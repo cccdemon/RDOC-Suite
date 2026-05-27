@@ -80,6 +80,8 @@ RDOC-Suite/
   `suite.raumdock.org`; LiveKit URL should use `voice.raumdock.org`.
 - 2026-05-27: Remove `/dccc` from public suite URLs. Web interfaces should be
   served from `https://suite.raumdock.org/` with empty `PUBLIC_BASE_PATH`.
+- 2026-05-27: Configure new Git remote origin:
+  `git@github.com:cccdemon/RDOC-Suite.git`.
 
 ## Completed Steps
 
@@ -114,6 +116,8 @@ RDOC-Suite/
   - Left historical `CHANGELOG.md` entries unchanged.
 - 2026-05-27: Removed `/dccc` path prefix from active production config and
   docs. `PUBLIC_BASE_PATH` is now empty for production root-host routing.
+- 2026-05-27: Configured Git remote `origin` as
+  `git@github.com:cccdemon/RDOC-Suite.git`.
 
 ## Open Decisions
 
