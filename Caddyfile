@@ -2,10 +2,10 @@
 	acme_dns cloudflare {env.CF_API_TOKEN}
 }
 
-commander.raumdock.org {
+suite.raumdock.org {
 	reverse_proxy bridge:8787
 }
 
-commander-rtc.raumdock.org {
+voice.raumdock.org {
 	reverse_proxy livekit:7880
 }

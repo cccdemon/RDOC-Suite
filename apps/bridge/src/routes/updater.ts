@@ -50,7 +50,7 @@ function publicOrigin(): string {
 
 /** Set CORS headers on every response from this router. The companion
  *  runs under `tauri.localhost`; without ACAO the WebView blocks the
- *  cross-origin call to commander.raumdock.org with "Failed to fetch". */
+ *  cross-origin call to suite.raumdock.org with "Failed to fetch". */
 function setCors(reply: import("fastify").FastifyReply): void {
   reply.header("access-control-allow-origin", "*");
   reply.header("access-control-allow-methods", "GET, POST, OPTIONS");

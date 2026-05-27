@@ -76,6 +76,8 @@ RDOC-Suite/
   `RDOC/RDOC-RTC`, `RDOC/RDOC-VoiceRelayBots`) for upstream changes with
   `git pull`, then bring relevant source changes into `RDOC-Suite` while
   preserving the suite repo as the independent target repository.
+- 2026-05-27: Apply deployment naming decision: all web interfaces should use
+  `suite.raumdock.org`; LiveKit URL should use `voice.raumdock.org`.
 
 ## Completed Steps
 
@@ -101,6 +103,13 @@ RDOC-Suite/
     reported `Already up to date`.
   - Result for `RDOC-Suite`: no source-code changes imported from upstream
     because the only reachable source repo had no new commits.
+- 2026-05-27: Applied deployment naming decision.
+  - Web interface / bridge public URL: `https://suite.raumdock.org/dccc`
+  - Discord OAuth callback: `https://suite.raumdock.org/dccc/auth/callback`
+  - LiveKit signaling URL: `wss://voice.raumdock.org`
+  - Updated `.env.example`, `.env.prod.template`, `Caddyfile`,
+    `docker-compose.prod.yml`, `STAND.md`, and relevant code comments.
+  - Left historical `CHANGELOG.md` entries unchanged.
 
 ## Open Decisions
 

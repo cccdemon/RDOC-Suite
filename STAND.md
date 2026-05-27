@@ -22,7 +22,7 @@ Stand: 2026-05-27 (Bridge auf Commit `4988a88` deployed, Companion build 125 rel
    - Bot-Rolle in Hierarchie über RDOC-CC + RDPC-SQ-CC ziehen (sonst 403 bei Role-Assign)
    - Discord → Servereinstellungen → Rollen → IDs von RDOC-CC + RDPC-SQ-CC kopieren (Entwicklermodus an) → in Admin → KONFIG → "Commander-Rollen", **RDOC-CC zuerst** (steuert den grün/rot-Indikator)
 
-3. **Raid-Planer testen**: https://commander.raumdock.org/dccc/admin/raid-planer
+3. **Raid-Planer testen**: https://suite.raumdock.org/dccc/admin/raid-planer
    - Drag-and-Drop Member zwischen Channel-Tiles
    - Klick (mit oder ohne Strg) auf Member = toggle Selection; Klick ins Leere = clear
    - Rechtsklick auf einen markierten User → Aktion fan-out auf alle Selected
@@ -43,7 +43,7 @@ Stand: 2026-05-27 (Bridge auf Commit `4988a88` deployed, Companion build 125 rel
 
 ## Was läuft
 
-Alle drei DCCC-Services laufen als Docker-Container auf LXC `headwig`. Bridge + LiveKit sind extern erreichbar unter `https://commander.raumdock.org` (Traefik path-routing). Bot redet nur outbound mit Discord.
+Alle drei DCCC-Services laufen als Docker-Container auf LXC `headwig`. Bridge/Admin-Webinterfaces sind extern unter `https://suite.raumdock.org/dccc` erreichbar; LiveKit-Signaling unter `wss://voice.raumdock.org`. Bot redet nur outbound mit Discord.
 
 ```
 Public :443/tcp ── LXC 101 nginx (SNI-Passthrough) ──► 10.10.10.97:443 (Traefik)
@@ -58,7 +58,7 @@ Public :7882/udp ── LXC 101 iptables DNAT ──► 10.10.10.97:7882 (LiveKi
 - **SSH:** `ssh -p 22107 -i ~/.ssh/llw_homepage_ed25519 root@landwurscht.raumdock.org` → landet direkt auf LXC `headwig`
 - **LXC:** `headwig` / `10.10.10.97`, Proxmox-Container (Kernel `pve`)
 - **Repo:** `/opt/discord-channel-commander` (Verzeichnis-Name bewusst beibehalten), branch `main`, **neues GitHub-Remote `git@github.com:head87x/rdcc.git`** (privat). Das alte geteilte Remote `head87x/discord-channel-commander` ist nur noch unter `archive-shared` als Referenz da; wir arbeiten ab 2026-05-23 ausschließlich am neuen Repo, um die Kollision mit dem `better-architecture`-Branch des anderen Devs zu vermeiden.
-- **Hostname:** `commander.raumdock.org` (Cloudflare-DNS, kein Proxy/Orange-Cloud)
+- **Hostname:** `suite.raumdock.org` (Cloudflare-DNS, kein Proxy/Orange-Cloud)
 - **TLS:** Traefik via Cloudflare-DNS-01, Cert-Resolver `le` (zusätzlich `tlsChallenge: {}` als Fallback)
 - **Web-Proxy:** Traefik (systemd, kein Docker — direkt auf der LXC)
 - **Alle DCCC-Services:** Docker via [docker-compose.prod.yml](docker-compose.prod.yml)
@@ -80,10 +80,10 @@ Volumes:
 ## Smoke-Test
 
 ```bash
-curl https://commander.raumdock.org/dccc/health
+curl https://suite.raumdock.org/dccc/health
 # {"ok":true,"service":"bridge"}
 
-curl -I https://commander.raumdock.org/lk/
+curl -I https://voice.raumdock.org/
 # HTTP/2 200  (LiveKit-Root "OK\n")
 ```
 
@@ -132,7 +132,7 @@ Dynamic Config (file provider), aktiver Stand:
 http:
   routers:
     dccc-bridge-https:
-      rule: "Host(`commander.raumdock.org`) && PathPrefix(`/dccc`)"
+      rule: "Host(`suite.raumdock.org`) && PathPrefix(`/dccc`)"
       entryPoints: [websecure]
       middlewares: [dccc-strip]
       service: dccc-bridge
@@ -140,21 +140,20 @@ http:
         certResolver: le
 
     dccc-bridge-http:
-      rule: "Host(`commander.raumdock.org`) && PathPrefix(`/dccc`)"
+      rule: "Host(`suite.raumdock.org`) && PathPrefix(`/dccc`)"
       entryPoints: [web]
       middlewares: [dccc-redirect-https]
       service: dccc-bridge
 
     dccc-livekit-https:
-      rule: "Host(`commander.raumdock.org`) && PathPrefix(`/lk`)"
+      rule: "Host(`voice.raumdock.org`)"
       entryPoints: [websecure]
-      middlewares: [lk-strip]
       service: dccc-livekit
       tls:
         certResolver: le
 
     dccc-livekit-http:
-      rule: "Host(`commander.raumdock.org`) && PathPrefix(`/lk`)"
+      rule: "Host(`voice.raumdock.org`)"
       entryPoints: [web]
       middlewares: [dccc-redirect-https]
       service: dccc-livekit
@@ -164,10 +163,6 @@ http:
       stripPrefix:
         prefixes:
           - "/dccc"
-    lk-strip:
-      stripPrefix:
-        prefixes:
-          - "/lk"
     dccc-redirect-https:
       redirectScheme:
         scheme: https
@@ -195,9 +190,10 @@ In `/etc/nginx/stream.d/minecraft.raumdock.org.conf`:
 
 ```nginx
 # in map $ssl_preread_server_name $upstream
-commander.raumdock.org  cc_commander;
+suite.raumdock.org  rdoc_suite;
+voice.raumdock.org  rdoc_suite;
 
-upstream cc_commander {
+upstream rdoc_suite {
     server 10.10.10.97:443;
 }
 ```
@@ -230,11 +226,11 @@ DATABASE_URL="file:./dev.db"
 
 BRIDGE_HOST=0.0.0.0
 BRIDGE_PORT=8787
-OAUTH_REDIRECT_URI=https://commander.raumdock.org/dccc/auth/callback
+OAUTH_REDIRECT_URI=https://suite.raumdock.org/dccc/auth/callback
 PUBLIC_BASE_PATH=/dccc              # damit OAuth-State-Cookie unter /dccc/auth gesetzt wird
 SESSION_SECRET=<32+-char-random>
 
-LIVEKIT_URL=wss://commander.raumdock.org/lk
+LIVEKIT_URL=wss://voice.raumdock.org
 LIVEKIT_API_KEY=<echter-key>           # nicht "devkey"
 LIVEKIT_API_SECRET=<echter-secret>
 
@@ -282,8 +278,8 @@ Drei Slashes nach RFC 8089. **Pfad bewusst `/app/data/`, nicht `/app/prisma/`** 
 
 - ✅ **systemd-Konflikt gelöst** — keine `dccc-*.service` Unit mehr aktiv (`systemctl list-units 'dccc-*'` ist leer).
 - ✅ **Bot ist im Compose-Stack** — läuft als Container `dccc-bot`, teilt sich das `bridge_data`-Volume mit der Bridge.
-- ✅ **Companion-Build für Prod** — Production-EXE wird mit `VITE_BRIDGE_URL=https://commander.raumdock.org/dccc` aus [apps/companion/.env.production](apps/companion/.env.production) gebaut.
-- ✅ **Discord OAuth Redirect-URI** im Developer-Portal eingetragen: `https://commander.raumdock.org/dccc/auth/callback`.
+- ✅ **Companion-Build für Prod** — Production-EXE wird mit `VITE_BRIDGE_URL=https://suite.raumdock.org/dccc` aus [apps/companion/.env.production](apps/companion/.env.production) gebaut.
+- ✅ **Discord OAuth Redirect-URI** im Developer-Portal eingetragen: `https://suite.raumdock.org/dccc/auth/callback`.
 - ✅ **Voice-Channel-Enforcement aktiv und in Produktion verifiziert** (Phase A + A.1 des Folgendes-Plans). Bridge weist Commander ab, deren aktueller Discord-Voice-Channel nicht in `allowedVoiceChannelIds` ist. Bot trackt Voice-States via `GuildVoiceStates`-Intent in der neuen `UserVoiceState`-Tabelle. Migration `20260523195614_add_user_voice_state` läuft beim Bridge-Container-Start automatisch.
 - ✅ **Instant Audio-Toggle (Phase A.1)** — Bot pusht Voice-State-Änderungen per HTTP-POST an `/internal/voice-state-changed` an die Bridge, die sofort `audio:enable` / `audio:disable` an die offene Companion-WS schickt. Audio cuttet innerhalb ~100 ms beim Verlassen des erlaubten Channels und kommt innerhalb ~100 ms beim Wieder-Beitreten zurück. Shared-Secret in `.env` als `INTERNAL_BRIDGE_SECRET` (mind. 16 chars), Bridge-URL als `BRIDGE_INTERNAL_URL=http://bridge:8787` (Docker-Compose-Service-DNS).
 - ✅ **Phase B1 deployed (2026-05-23)** — neue Prisma-Models (`AdminUser`, `ApiCredential`, `Session`, `InviteToken`), 3-Tier-Auth (Admin/Admiral/Commander), REST-API `/api/v1/sessions/...`, WS-Auth-Paths `?invite=` und `?adm=`, Bot-Commands `/cc admin add|remove|list` + `/cc generate-credential`. **Wurde am 2026-05-24 wieder zurückgebaut** (siehe nächster Eintrag) weil zu komplex.
@@ -321,7 +317,7 @@ Vollständige Details siehe [CLAUDE.md §Architektur-Pickup Punkt 4](CLAUDE.md).
 
 ## Path-Prefix-Awareness der Bridge
 
-Die Bridge weiss durch die Env-Variable `PUBLIC_BASE_PATH` (default `""`), unter welchem öffentlichen Pfad sie hinter Traefik erreichbar ist. Das ist nötig, damit Cookies (insbesondere der OAuth-`state`-Cookie) mit dem **vor dem Strip** sichtbaren Pfad-Attribut gesetzt werden — der Browser sieht ja `https://commander.raumdock.org/dccc/auth/...` und schickt Cookies nur für matching Path-Prefixe zurück.
+Die Bridge weiss durch die Env-Variable `PUBLIC_BASE_PATH` (default `""`), unter welchem öffentlichen Pfad sie hinter Traefik erreichbar ist. Das ist nötig, damit Cookies (insbesondere der OAuth-`state`-Cookie) mit dem **vor dem Strip** sichtbaren Pfad-Attribut gesetzt werden — der Browser sieht ja `https://suite.raumdock.org/dccc/auth/...` und schickt Cookies nur für matching Path-Prefixe zurück.
 
 Logik in [apps/bridge/src/auth/oauth.ts](apps/bridge/src/auth/oauth.ts): `cookiePath = ${PUBLIC_BASE_PATH}/auth`. Mit `PUBLIC_BASE_PATH=/dccc` ergibt das den korrekten `Path=/dccc/auth`.
 

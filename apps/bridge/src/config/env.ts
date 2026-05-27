@@ -10,7 +10,7 @@ const baseEnvSchema = z.object({
   LIVEKIT_API_KEY: z.string().default("devkey"),
   LIVEKIT_API_SECRET: z.string().default("secret"),
   // Public path prefix in front of the bridge (e.g. "/dccc" when Traefik
-  // routes commander.raumdock.org/dccc → bridge with stripPrefix).
+  // routes suite.raumdock.org/dccc → bridge with stripPrefix).
   // Required so cookies set during the OAuth flow carry the right Path
   // attribute — the browser sees the un-stripped URL, the bridge sees the
   // stripped one. Empty string disables the prefix (local dev).
