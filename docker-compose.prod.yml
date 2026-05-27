@@ -89,5 +89,48 @@ services:
     depends_on:
       - bridge
 
+  fleetplanner:
+    build:
+      context: .
+      dockerfile: apps/fleetplanner/Dockerfile
+    image: rdoc-suite-fleetplanner:latest
+    container_name: rdoc-suite-fleetplanner
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3200"
+      DATABASE_URL: "file:/app/data/fleetplanner.db"
+      WEB_PUBLIC_URL: "${FLEETPLANNER_PUBLIC_URL:-https://suite.raumdock.org}"
+      PUBLIC_BASE_PATH: "/fleetplanner"
+    ports:
+      - "127.0.0.1:3200:3200"
+    volumes:
+      - fleetplanner_data:/app/data
+
+  monitoring:
+    build:
+      context: .
+      dockerfile: apps/monitoring/Dockerfile
+    image: rdoc-suite-monitoring:latest
+    container_name: rdoc-suite-monitoring
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.external-url=https://suite.raumdock.org/monitoring"
+      - "--web.route-prefix=/monitoring"
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - monitoring_data:/prometheus
+    depends_on:
+      - bridge
+      - livekit
+
 volumes:
   bridge_data:
+  fleetplanner_data:
+  monitoring_data:

@@ -1,0 +1,23 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: rdoc-suite-bridge
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - bridge:8787
+
+  - job_name: rdoc-suite-livekit
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - livekit:7880
+
+  # Enabled once apps/relay-bots is imported.
+  # - job_name: rdoc-suite-relay-bots
+  #   metrics_path: /metrics
+  #   static_configs:
+  #     - targets:
+  #         - relay-bots:8788

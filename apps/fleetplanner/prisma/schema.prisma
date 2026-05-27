@@ -1,0 +1,146 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Users (Discord OAuth) ──────────────────────────────────────────
+model User {
+  id         String   @id          // Discord snowflake
+  username   String
+  avatarHash String?
+  role       String   @default("crew")  // superadmin | fleetoperator | captain | crew
+  active     Boolean  @default(true)
+  joinedAt   DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  sessions        UserSession[]
+  createdOps      Operation[]
+  leaderRoles     OperationLeader[]
+  captainedUnits  FleetUnit[]       @relation("UnitCaptain")
+  seatAssignments SeatAssignment[]
+}
+
+model UserSession {
+  id        String   @id @default(cuid())
+  userId    String
+  csrfToken String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Ship cache (SC wiki API) ───────────────────────────────────────
+model Ship {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String
+  manufacturer  String   @default("")
+  size          String   @default("")   // Small | Medium | Large | Capital | Vehicle
+  career        String   @default("")   // Combat | Transport | Support | Exploration …
+  role          String   @default("")   // Fighter | Gunship | Frigate | Corvette …
+  minCrew       Int      @default(1)
+  maxCrew       Int      @default(1)
+  weaponCrew    Int      @default(0)    // dedicated gunner seats
+  operationCrew Int      @default(0)    // dedicated engineer/operator seats
+  imageUrl      String?
+  rawJson       String   @default("{}")
+  syncedAt      DateTime @default(now())
+
+  fleetUnits FleetUnit[]
+}
+
+// ── Operations ─────────────────────────────────────────────────────
+model Operation {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  opType      String   @default("combat")  // combat | pve | training | mixed | exploration
+  scheduledAt DateTime
+  status      String   @default("draft")  // draft | open | locked | in_progress | completed | cancelled
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User              @relation(fields: [createdById], references: [id])
+  leaders   OperationLeader[]
+  groups    CompositionGroup[]
+  units     FleetUnit[]
+}
+
+model OperationLeader {
+  id          String @id @default(cuid())
+  operationId String
+  userId      String
+  leaderRole  String @default("raid_leader")  // fleet_commander | raid_leader | wing_commander
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([operationId, userId])
+}
+
+// ── Composition template ───────────────────────────────────────────
+model CompositionGroup {
+  id          String @id @default(cuid())
+  operationId String
+  name        String
+  order       Int    @default(0)
+
+  operation    Operation               @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  requirements CompositionRequirement[]
+}
+
+model CompositionRequirement {
+  id       String  @id @default(cuid())
+  groupId  String
+  category String  // capital | subcapital | fighter | support | ground | transport | any
+  label    String
+  count    Int     @default(1)
+  note     String?
+  order    Int     @default(0)
+
+  group      CompositionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  fleetUnits FleetUnit[]
+}
+
+// ── Fleet units (ships + squads) ───────────────────────────────────
+model FleetUnit {
+  id            String   @id @default(cuid())
+  operationId   String
+  unitType      String   @default("ship")  // ship | squad
+
+  shipId        String?   // → Ship.id  (null for FPS squads)
+  squadName     String?   // e.g. "Alpha Squad"
+  squadSize     Int?      // total incl. captain, 2–8
+
+  captainId     String
+  requirementId String?
+  status        String   @default("pending")  // pending | accepted | rejected
+  captainNote   String?
+  leaderNote    String?
+  createdAt     DateTime @default(now())
+
+  operation   Operation               @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  ship        Ship?                   @relation(fields: [shipId], references: [id])
+  captain     User                    @relation("UnitCaptain", fields: [captainId], references: [id])
+  requirement CompositionRequirement? @relation(fields: [requirementId], references: [id])
+  seats       SeatAssignment[]
+}
+
+// ── Seat assignments ───────────────────────────────────────────────
+model SeatAssignment {
+  id       String  @id @default(cuid())
+  unitId   String
+  label    String  // "Pilot", "Gunner 1", "Engineer 2", "FPS 1" …
+  seatType String  // pilot | gunner | operation | flex | fps
+  order    Int
+  userId   String?
+
+  fleetUnit FleetUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id])
+}

@@ -3,6 +3,14 @@
 }
 
 suite.raumdock.org {
+	handle_path /fleetplanner* {
+		reverse_proxy fleetplanner:3200
+	}
+
+	handle /monitoring* {
+		reverse_proxy monitoring:9090
+	}
+
 	reverse_proxy bridge:8787
 }
 

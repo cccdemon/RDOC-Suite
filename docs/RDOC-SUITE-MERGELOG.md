@@ -84,6 +84,9 @@ RDOC-Suite/
   `git@github.com:cccdemon/RDOC-Suite.git`.
 - 2026-05-27: Rename Docker containers/images to the clear pattern
   `rdoc-suite-<part>` for parts like `livekit`, `bridge`, and `bot`.
+- 2026-05-27: Move toward microservice architecture by adding dedicated
+  Docker images/services for `monitoring` and `fleetplanner` instead of
+  folding those concerns into the bridge image.
 
 ## Completed Steps
 
@@ -126,6 +129,21 @@ RDOC-Suite/
   - `rdoc-suite-bridge`
   - `rdoc-suite-bot`
   - Updated compose files, production env comment, and deployment notes.
+- 2026-05-27: Added first microservice split for Fleetplanner and Monitoring.
+  - Imported RDOC-RTC `apps/fleetplanner` as `@rdoc-suite/fleetplanner`.
+  - Added dedicated fleetplanner production image/service:
+    `rdoc-suite-fleetplanner`.
+  - Added dedicated Prometheus-based monitoring image/service:
+    `rdoc-suite-monitoring`.
+  - Routed fleetplanner via `https://suite.raumdock.org/fleetplanner`.
+  - Routed monitoring via `https://suite.raumdock.org/monitoring`.
+  - Added separate data volumes for fleetplanner and monitoring.
+  - Ran `pnpm.cmd --filter @rdoc-suite/fleetplanner exec prisma generate
+    --schema prisma/schema.prisma` and `pnpm.cmd --filter
+    @rdoc-suite/fleetplanner build`; both passed.
+  - Ran production compose config validation with a temporary `.env`; passed.
+  - Docker image build for monitoring was not run successfully because Docker
+    Desktop Linux engine was not available in this environment.
 
 ## Open Decisions
 

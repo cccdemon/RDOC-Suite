@@ -70,11 +70,15 @@ Public :7882/udp ── LXC 101 iptables DNAT ──► 10.10.10.97:7882 (LiveKi
 | --- | --- | --- | --- | --- | --- |
 | Bridge | `rdoc-suite-bridge` | `rdoc-suite-bridge:latest` (lokal gebaut) | `127.0.0.1:8787 → 8787/tcp` | `rdoc-suite_bridge_data → /app/data` | `unless-stopped` |
 | Bot | `rdoc-suite-bot` | `rdoc-suite-bot:latest` (lokal gebaut) | keine (nur outbound zu Discord) | `rdoc-suite_bridge_data → /app/data` (shared mit Bridge) | `unless-stopped` |
+| Fleetplanner | `rdoc-suite-fleetplanner` | `rdoc-suite-fleetplanner:latest` (lokal gebaut) | `127.0.0.1:3200 → 3200/tcp` | `rdoc-suite_fleetplanner_data → /app/data` | `unless-stopped` |
+| Monitoring | `rdoc-suite-monitoring` | `rdoc-suite-monitoring:latest` (lokal gebaut) | `127.0.0.1:9090 → 9090/tcp` | `rdoc-suite_monitoring_data → /prometheus` | `unless-stopped` |
 | LiveKit | `rdoc-suite-livekit` | `livekit/livekit-server:latest` | `127.0.0.1:7880` (signaling), `:7881/tcp`, `:7882/udp` (WebRTC) | bind `livekit.yaml → /etc/livekit.yaml` | `unless-stopped` |
 | Traefik | (systemd) | — | `:80`, `:443` | `/etc/traefik/*` | systemd-managed |
 
 Volumes:
 - `rdoc-suite_bridge_data` — aktives Volume mit der SQLite-DB.
+- `rdoc-suite_fleetplanner_data` — Fleetplanner SQLite-DB.
+- `rdoc-suite_monitoring_data` — Prometheus TSDB.
 - `dccc_bridge_data` — **verwaist** (vom alten Compose-Project-Namen, kein Container mountet das mehr). Sicher löschbar, sobald man sich sicher ist, dass dort keine wertvollen Daten liegen.
 
 ## Smoke-Test
@@ -85,6 +89,9 @@ curl https://suite.raumdock.org/health
 
 curl -I https://voice.raumdock.org/
 # HTTP/2 200  (LiveKit-Root "OK\n")
+
+curl -I https://suite.raumdock.org/fleetplanner
+curl -I https://suite.raumdock.org/monitoring
 ```
 
 WebRTC-Media von extern (Status hängt aktuell an Port-Freigaben des Hosting-Providers für die Public-IP):
@@ -144,6 +151,21 @@ http:
       middlewares: [rdoc-suite-redirect-https]
       service: rdoc-suite-bridge
 
+    rdoc-suite-fleetplanner-https:
+      rule: "Host(`suite.raumdock.org`) && PathPrefix(`/fleetplanner`)"
+      entryPoints: [websecure]
+      middlewares: [fleetplanner-strip]
+      service: rdoc-suite-fleetplanner
+      tls:
+        certResolver: le
+
+    rdoc-suite-monitoring-https:
+      rule: "Host(`suite.raumdock.org`) && PathPrefix(`/monitoring`)"
+      entryPoints: [websecure]
+      service: rdoc-suite-monitoring
+      tls:
+        certResolver: le
+
     rdoc-suite-livekit-https:
       rule: "Host(`voice.raumdock.org`)"
       entryPoints: [websecure]
@@ -158,6 +180,10 @@ http:
       service: rdoc-suite-livekit
 
   middlewares:
+    fleetplanner-strip:
+      stripPrefix:
+        prefixes:
+          - "/fleetplanner"
     rdoc-suite-redirect-https:
       redirectScheme:
         scheme: https
@@ -174,6 +200,18 @@ http:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:7880"
+        passHostHeader: true
+
+    rdoc-suite-fleetplanner:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:3200"
+        passHostHeader: true
+
+    rdoc-suite-monitoring:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:9090"
         passHostHeader: true
 ```
 
