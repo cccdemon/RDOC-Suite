@@ -6,6 +6,7 @@ import { registerOAuthRoutes } from "./auth/oauth.js";
 import { registerInternalRoutes } from "./routes/internal.js";
 import { registerDownloadRoutes } from "./routes/download.js";
 import { registerUpdaterRoutes } from "./routes/updater.js";
+import { registerSuiteRoutes } from "./routes/suite.js";
 import { registerAdminRoutes } from "./admin/routes.js";
 import { getEnv } from "./config/env.js";
 
@@ -50,6 +51,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerInternalRoutes(app);
   await registerDownloadRoutes(app);
   await registerUpdaterRoutes(app);
+  await registerSuiteRoutes(app);
   await registerAdminRoutes(app);
   await registerWsRoute(app);
 

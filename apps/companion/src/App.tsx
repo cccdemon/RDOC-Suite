@@ -28,11 +28,17 @@ import {
   saveHotkey,
   saveOutputMuted,
   saveRemoteVolumes,
+  saveRelayHotkey,
   saveSession,
   type SavedGuild,
 } from "./lib/store";
-import { DEFAULT_BRIDGE_URL, DEFAULT_HOTKEY } from "./lib/config";
+import { DEFAULT_BRIDGE_URL, DEFAULT_HOTKEY, DEFAULT_RELAY_HOTKEY } from "./lib/config";
 import { LivekitAudio, type AudioStatus, type DeviceConfig } from "./lib/livekit";
+import {
+  DEFAULT_SUITE_CAPABILITIES,
+  loadSuiteCapabilities,
+  type SuiteCapabilities,
+} from "./lib/suite";
 import { feedbackAudio } from "./lib/audioFeedback";
 import { Icon } from "./components/kit/Icon";
 import { SettingsModal, type SettingsDraft } from "./components/SettingsModal";
@@ -46,6 +52,8 @@ type AppState = {
   guildName: string | null;
   token: string | null;
   hotkey: string;
+  relayHotkey: string;
+  suiteCapabilities: SuiteCapabilities;
   /** Mirror of the persisted audio prefs — kept in state so a Settings
    *  save can re-apply live without re-loading from disk. */
   device: DeviceConfig;
@@ -79,6 +87,8 @@ const INITIAL: AppState = {
   guildName: null,
   token: null,
   hotkey: DEFAULT_HOTKEY,
+  relayHotkey: DEFAULT_RELAY_HOTKEY,
+  suiteCapabilities: DEFAULT_SUITE_CAPABILITIES,
   device: { outputVolumePct: 100, micGainPct: 100 },
   wsStatus: "idle",
   wsDetail: null,
@@ -261,7 +271,7 @@ export function App(): JSX.Element {
       // started with (without revealing the token itself).
       void logInfo(`[boot] ${longVersion()}`);
       void logInfo(
-        `[boot] settings loaded: bridgeUrl=${settings.bridgeUrl} hasToken=${!!settings.token} guildId=${settings.guildId ?? "-"} hotkey=${settings.hotkey} micGain=${settings.micGainPct}% outputVol=${settings.outputVolumePct}% micDevice=${settings.micDeviceId ?? "default"} outputDevice=${settings.outputDeviceId ?? "default"} remoteVolumes=${Object.keys(settings.remoteVolumes).length} entries`,
+        `[boot] settings loaded: bridgeUrl=${settings.bridgeUrl} hasToken=${!!settings.token} guildId=${settings.guildId ?? "-"} hotkey=${settings.hotkey} relayHotkey=${settings.relayHotkey} micGain=${settings.micGainPct}% outputVol=${settings.outputVolumePct}% micDevice=${settings.micDeviceId ?? "default"} outputDevice=${settings.outputDeviceId ?? "default"} remoteVolumes=${Object.keys(settings.remoteVolumes).length} entries`,
       );
 
       const deviceCfg: DeviceConfig = {
@@ -425,6 +435,7 @@ export function App(): JSX.Element {
         token: settings.token ?? null,
         guildId: settings.guildId ?? null,
         hotkey: settings.hotkey,
+        relayHotkey: settings.relayHotkey,
         device: deviceCfg,
         outputMuted: settings.outputMuted,
         afk: settings.afk,
@@ -456,6 +467,29 @@ export function App(): JSX.Element {
       ws.disconnect();
     }
   }, [state.token, state.guildId]);
+
+  useEffect(() => {
+    if (!state.bridgeUrl || !state.token || !state.guildId) {
+      setState((s) =>
+        s.suiteCapabilities === DEFAULT_SUITE_CAPABILITIES
+          ? s
+          : { ...s, suiteCapabilities: DEFAULT_SUITE_CAPABILITIES },
+      );
+      return;
+    }
+    let cancelled = false;
+    void loadSuiteCapabilities({
+      bridgeUrl: state.bridgeUrl,
+      token: state.token,
+      guildId: state.guildId,
+    }).then((capabilities) => {
+      if (cancelled) return;
+      setState((s) => ({ ...s, suiteCapabilities: capabilities }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [state.bridgeUrl, state.token, state.guildId]);
 
   const onSignIn = useCallback(() => {
     // Open the picker; actual OAuth is fired by the picker's confirm
@@ -559,6 +593,7 @@ export function App(): JSX.Element {
       guildId: null,
       guildName: null,
       activeCommanders: [],
+      suiteCapabilities: DEFAULT_SUITE_CAPABILITIES,
     }));
   }, []);
 
@@ -566,6 +601,7 @@ export function App(): JSX.Element {
     async (next: SettingsDraft) => {
       let nextBridgeUrl = state.bridgeUrl;
       let nextHotkey = state.hotkey;
+      let nextRelayHotkey = state.relayHotkey;
       if (next.bridgeUrl !== state.bridgeUrl) {
         await saveBridgeUrl(next.bridgeUrl);
         wsRef.current?.setBridgeUrl(next.bridgeUrl);
@@ -581,6 +617,10 @@ export function App(): JSX.Element {
           setShowSettings(false);
           return;
         }
+      }
+      if (next.relayHotkey && next.relayHotkey !== state.relayHotkey) {
+        await saveRelayHotkey(next.relayHotkey);
+        nextRelayHotkey = next.relayHotkey;
       }
 
       // Audio prefs — persist + hot-apply to the running LiveKit session.
@@ -639,6 +679,7 @@ export function App(): JSX.Element {
         ...s,
         bridgeUrl: nextBridgeUrl,
         hotkey: nextHotkey,
+        relayHotkey: nextRelayHotkey,
         device: nextDevice,
         feedbackSoundsEnabled: next.feedbackSoundsEnabled,
         feedbackSoundsVolumePct: next.feedbackSoundsVolumePct,
@@ -651,6 +692,7 @@ export function App(): JSX.Element {
     [
       state.bridgeUrl,
       state.hotkey,
+      state.relayHotkey,
       state.device,
       state.feedbackSoundsEnabled,
       state.feedbackSoundsVolumePct,
@@ -698,6 +740,28 @@ export function App(): JSX.Element {
             >
               <Icon.users size={12} />
               SERVER WECHSELN
+            </button>
+          ) : null}
+          {state.suiteCapabilities.canManageSessions ? (
+            <button
+              type="button"
+              className="cc-btn ghost sm"
+              disabled
+              title="Admiral-Werkzeuge werden in einem kommenden Schritt hier freigeschaltet"
+            >
+              <Icon.key size={12} />
+              ADMIRAL
+            </button>
+          ) : null}
+          {state.suiteCapabilities.canUseRelay ? (
+            <button
+              type="button"
+              className="cc-btn ghost sm"
+              disabled
+              title={`Voice-to-All vorbereitet · Hotkey ${state.relayHotkey}`}
+            >
+              <Icon.radio size={12} />
+              VOICE TO ALL
             </button>
           ) : null}
           {hasStoredToken ? (
@@ -912,6 +976,7 @@ export function App(): JSX.Element {
           initial={{
             bridgeUrl: state.bridgeUrl,
             hotkey: state.hotkey,
+            relayHotkey: state.relayHotkey,
             micDeviceId: state.device.micDeviceId,
             outputDeviceId: state.device.outputDeviceId,
             outputVolumePct: state.device.outputVolumePct,
@@ -921,6 +986,7 @@ export function App(): JSX.Element {
             duckingEnabled: state.duckingEnabled,
             duckingTargetVolumePct: state.duckingTargetVolumePct,
           }}
+          canUseRelay={state.suiteCapabilities.canUseRelay}
           onSave={onSettingsSave}
           onClose={() => setShowSettings(false)}
         />

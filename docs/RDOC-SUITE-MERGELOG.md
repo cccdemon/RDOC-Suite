@@ -87,6 +87,10 @@ RDOC-Suite/
 - 2026-05-27: Move toward microservice architecture by adding dedicated
   Docker images/services for `monitoring` and `fleetplanner` instead of
   folding those concerns into the bridge image.
+- 2026-05-27: Start one-binary Companion merge. Keep RDCC SquadLink UI as
+  default, then add dormant RDOC-RTC/Suite capability plumbing for future
+  role-unlocked Admiral tools and Voice-to-All without changing the normal
+  Commander flow.
 
 ## Completed Steps
 
@@ -144,6 +148,18 @@ RDOC-Suite/
   - Ran production compose config validation with a temporary `.env`; passed.
   - Docker image build for monitoring was not run successfully because Docker
     Desktop Linux engine was not available in this environment.
+- 2026-05-27: Started one-binary Companion merge.
+  - Kept `apps/companion` RDCC/SquadLink UI as the base.
+  - Added `apps/companion/src/lib/suite.ts` capability lookup with
+    Commander-only fallback.
+  - Added dormant persisted `relayHotkey` setting for future Voice-to-All.
+  - Added hidden future top-bar controls for Admiral and Voice-to-All; they
+    only render if the bridge grants capabilities.
+  - Added bridge route `/suite/capabilities`, authenticated by companion
+    session JWT and returning conservative false capabilities for now.
+  - Verified `pnpm.cmd --filter @dccc/companion build`: passed.
+  - `@dccc/bridge` full build remains blocked by existing admin/db TypeScript
+    issues unrelated to this route; re-check after schema/db package cleanup.
 
 ## Open Decisions
 

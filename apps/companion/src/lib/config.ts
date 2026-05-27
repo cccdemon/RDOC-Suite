@@ -26,6 +26,11 @@ export const DEFAULT_BRIDGE_URL = envBridgeUrl || devFallback;
  *  Ctrl+Shift+T, etc.) work too; see hotkey.ts for the dispatch. */
 export const DEFAULT_HOTKEY = "Mouse4";
 
+/** Separate future hotkey for the Voice-to-All relay room. It is
+ * persisted now, but the UI only exposes it once the bridge grants the
+ * relay capability. */
+export const DEFAULT_RELAY_HOTKEY = "R";
+
 export type CompanionConfig = {
   bridgeHttpUrl: string;
   bridgeWsUrl: string;

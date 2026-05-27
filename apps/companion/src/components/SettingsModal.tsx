@@ -11,6 +11,7 @@ import {
 export type SettingsDraft = {
   bridgeUrl: string;
   hotkey: string;
+  relayHotkey: string;
   micDeviceId?: string;
   outputDeviceId?: string;
   outputVolumePct: number;
@@ -26,6 +27,8 @@ type Props = {
   initial: SettingsDraft;
   /** Called when user clicks SAVE with valid values. */
   onSave: (next: SettingsDraft) => void | Promise<void>;
+  /** Shows future Suite relay controls only for authorized users. */
+  canUseRelay?: boolean;
   /** Called when user clicks CANCEL or hits Escape / clicks the backdrop. */
   onClose: () => void;
 };
@@ -34,7 +37,7 @@ type TestStatus = "idle" | "testing" | "ok" | "fail";
 
 const DEFAULT_DEVICE_KEY = "__default__";
 
-export function SettingsModal({ initial, onSave, onClose }: Props): JSX.Element {
+export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }: Props): JSX.Element {
   const [draft, setDraft] = useState<SettingsDraft>(initial);
   const [testStatus, setTestStatus] = useState<TestStatus>("idle");
   const [testDetail, setTestDetail] = useState<string | null>(null);
@@ -120,6 +123,7 @@ export function SettingsModal({ initial, onSave, onClose }: Props): JSX.Element 
         ...draft,
         bridgeUrl: trimmed,
         hotkey: draft.hotkey.trim() || initial.hotkey,
+        relayHotkey: draft.relayHotkey.trim() || initial.relayHotkey,
       });
     } finally {
       setSaving(false);
@@ -178,6 +182,20 @@ export function SettingsModal({ initial, onSave, onClose }: Props): JSX.Element 
             Mouse4 / Mouse5 = die Seitentasten an Gaming-Mäusen. Esc bricht ab.
           </span>
         </div>
+
+        {canUseRelay ? (
+          <div className="cc-field">
+            <label className="cc-label">Voice-to-All Hotkey</label>
+            <HotkeyCapture
+              value={draft.relayHotkey}
+              onChange={(v) => setDraft((d) => ({ ...d, relayHotkey: v }))}
+            />
+            <span className="cc-hint">
+              Separater Hotkey fÃ¼r den Discord-Relay-Kanal. Sichtbar nur, wenn dein Server
+              Voice-to-All freigeschaltet hat.
+            </span>
+          </div>
+        ) : null}
 
         {/* ── Audio: Devices + Volume ────────────────────── */}
         <div className="cc-card" style={{ padding: "12px 14px", marginTop: 4 }}>

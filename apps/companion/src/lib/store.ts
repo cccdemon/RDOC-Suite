@@ -1,5 +1,5 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
-import { DEFAULT_BRIDGE_URL, DEFAULT_HOTKEY } from "./config";
+import { DEFAULT_BRIDGE_URL, DEFAULT_HOTKEY, DEFAULT_RELAY_HOTKEY } from "./config";
 
 /**
  * Persisted user settings. Anything that can differ between deployments
@@ -14,6 +14,8 @@ export type Settings = {
   bridgeUrl: string;
   /** PTT hotkey accelerator (e.g. "Mouse4", "Alt+F1"). */
   hotkey: string;
+  /** Future Voice-to-All relay hotkey. Hidden until relay capability exists. */
+  relayHotkey: string;
   /** Last session token (JWT). Optional — absent = signed out. */
   token?: string;
   /** Guild ID the session token is valid for. */
@@ -60,6 +62,7 @@ const store = new LazyStore(STORE_FILE);
 const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceId" | "outputDeviceId"> = {
   bridgeUrl: DEFAULT_BRIDGE_URL,
   hotkey: DEFAULT_HOTKEY,
+  relayHotkey: DEFAULT_RELAY_HOTKEY,
   savedGuilds: [],
   outputVolumePct: 100,
   micGainPct: 100,
@@ -79,7 +82,7 @@ const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceI
  */
 export async function loadSettings(): Promise<Settings> {
   const [
-    bridgeUrl, hotkey, token, guildId, savedGuilds, lastGuildId,
+    bridgeUrl, hotkey, relayHotkey, token, guildId, savedGuilds, lastGuildId,
     micDeviceId, outputDeviceId, outputVolumePct, micGainPct, remoteVolumes,
     outputMuted, afk,
     feedbackSoundsEnabled, feedbackSoundsVolumePct,
@@ -87,6 +90,7 @@ export async function loadSettings(): Promise<Settings> {
   ] = await Promise.all([
     store.get<string>("bridgeUrl"),
     store.get<string>("hotkey"),
+    store.get<string>("relayHotkey"),
     store.get<string>("token"),
     store.get<string>("guildId"),
     store.get<SavedGuild[]>("savedGuilds"),
@@ -106,6 +110,7 @@ export async function loadSettings(): Promise<Settings> {
   return {
     bridgeUrl: bridgeUrl ?? DEFAULTS.bridgeUrl,
     hotkey: hotkey ?? DEFAULTS.hotkey,
+    relayHotkey: relayHotkey ?? DEFAULTS.relayHotkey,
     token: token ?? undefined,
     guildId: guildId ?? undefined,
     savedGuilds: Array.isArray(savedGuilds) ? savedGuilds : [],
@@ -150,6 +155,11 @@ export async function clearSession(): Promise<void> {
 
 export async function saveHotkey(accelerator: string): Promise<void> {
   await store.set("hotkey", accelerator);
+  await store.save();
+}
+
+export async function saveRelayHotkey(accelerator: string): Promise<void> {
+  await store.set("relayHotkey", accelerator);
   await store.save();
 }
 
