@@ -1,0 +1,951 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CommanderInfo } from "@dccc/shared";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
+import { BridgeWs, type WsStatus } from "./lib/ws";
+import {
+  formatKeyboardAccelerator,
+  isMouseHotkey,
+  keyReleaseMatchesAccelerator,
+  setupHotkey,
+  teardownHotkey,
+  type HotkeyEventPayload,
+} from "./lib/hotkey";
+import { jwtSubject, startOAuthInWebview } from "./lib/auth";
+import { info as logInfo } from "@tauri-apps/plugin-log";
+import { longVersion, shortVersion } from "./lib/version";
+import { checkForUpdate, type UpdateCheckResult } from "./lib/updater";
+import { UpdateModal } from "./components/UpdateModal";
+import {
+  clearSession,
+  loadSettings,
+  saveAfk,
+  saveAudioPrefs,
+  saveBridgeUrl,
+  saveDucking,
+  saveFeedbackSounds,
+  saveGuilds,
+  saveHotkey,
+  saveOutputMuted,
+  saveRemoteVolumes,
+  saveSession,
+  type SavedGuild,
+} from "./lib/store";
+import { DEFAULT_BRIDGE_URL, DEFAULT_HOTKEY } from "./lib/config";
+import { LivekitAudio, type AudioStatus, type DeviceConfig } from "./lib/livekit";
+import { feedbackAudio } from "./lib/audioFeedback";
+import { Icon } from "./components/kit/Icon";
+import { SettingsModal, type SettingsDraft } from "./components/SettingsModal";
+import { GuildPickerModal } from "./components/GuildPickerModal";
+
+type AppState = {
+  bridgeUrl: string;
+  guildId: string | null;
+  /** Discord display name for the guild, when the bridge could resolve
+   *  it from Discord. Falls back to guildId at render time. */
+  guildName: string | null;
+  token: string | null;
+  hotkey: string;
+  /** Mirror of the persisted audio prefs — kept in state so a Settings
+   *  save can re-apply live without re-loading from disk. */
+  device: DeviceConfig;
+  wsStatus: WsStatus;
+  wsDetail: string | null;
+  audioStatus: AudioStatus;
+  audioDetail: string | null;
+  pttActive: boolean;
+  /** Local-only mirror of "I have muted incoming audio". Sent to the
+   *  bridge via status:output-mute so peers see the same flag in their
+   *  roster. Persisted across restarts. */
+  outputMuted: boolean;
+  /** Local-only mirror of the manual AFK toggle. Sent to the bridge
+   *  via status:afk for peer visibility. Persisted across restarts. */
+  afk: boolean;
+  /** Synth-burst PTT/incoming chirps on/off (local UX only). */
+  feedbackSoundsEnabled: boolean;
+  /** 0..100 volume for those chirps. */
+  feedbackSoundsVolumePct: number;
+  /** Lower Discord's per-app volume while squad-link audio is active. */
+  duckingEnabled: boolean;
+  /** Target Discord volume while ducked, 0..100. */
+  duckingTargetVolumePct: number;
+  activeCommanders: CommanderInfo[];
+  lastError: string | null;
+};
+
+const INITIAL: AppState = {
+  bridgeUrl: DEFAULT_BRIDGE_URL,
+  guildId: null,
+  guildName: null,
+  token: null,
+  hotkey: DEFAULT_HOTKEY,
+  device: { outputVolumePct: 100, micGainPct: 100 },
+  wsStatus: "idle",
+  wsDetail: null,
+  audioStatus: "idle",
+  audioDetail: null,
+  pttActive: false,
+  outputMuted: false,
+  afk: false,
+  feedbackSoundsEnabled: true,
+  feedbackSoundsVolumePct: 50,
+  duckingEnabled: true,
+  duckingTargetVolumePct: 25,
+  activeCommanders: [],
+  lastError: null,
+};
+
+export function App(): JSX.Element {
+  const [state, setState] = useState<AppState>(INITIAL);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showGuildPicker, setShowGuildPicker] = useState(false);
+  const [savedGuilds, setSavedGuilds] = useState<SavedGuild[]>([]);
+  const [lastGuildId, setLastGuildId] = useState<string | undefined>(undefined);
+  const [remoteVolumes, setRemoteVolumes] = useState<Record<string, number>>({});
+  const [updateOffer, setUpdateOffer] = useState<
+    Extract<UpdateCheckResult, { kind: "available" }> | null
+  >(null);
+
+  const wsRef = useRef<BridgeWs | null>(null);
+  const audioRef = useRef<LivekitAudio | null>(null);
+  const stateRef = useRef<AppState>(INITIAL);
+  stateRef.current = state;
+  /** Set of remote-commander userIds that were `speaking=true` in the
+   *  last commander:list. Diff'd against the next list so we can fire
+   *  exactly one feedbackAudio chirp per remote-talk-start / -stop. */
+  const prevSpeakingRef = useRef<Set<string>>(new Set());
+  /** Reference count of "things that should keep Discord ducked":
+   *  +1 while own PTT is held, +1 per remote commander currently
+   *  speaking. Duck on 0→positive edge, restore on positive→0 edge.
+   *  Avoids re-issuing duck() / restore() on every overlapping source. */
+  const duckingActiveCountRef = useRef(0);
+
+  // Stable PTT handler. Lives in a useCallback (with refs for the
+  // moving parts) so it can be passed to BOTH the initial setupHotkey
+  // at mount AND a re-registration after Settings-Save. Previously the
+  // settings flow passed a no-op here and teardownHotkey+setupHotkey
+  // overwrote the mount-time listener — PTT silently stopped working
+  // until the next app restart.
+  /** Increment the ducking ref count. Edge-trigger duck() when
+   *  going from 0 → 1. The Tauri command is no-op on non-Windows
+   *  and when Discord isn't running, so callers don't have to
+   *  guard. Honours the user's duckingEnabled flag. */
+  const duckingActivate = useCallback(() => {
+    const cur = stateRef.current;
+    duckingActiveCountRef.current += 1;
+    if (!cur.duckingEnabled) return;
+    if (duckingActiveCountRef.current === 1) {
+      void invoke("duck_discord", { targetPct: cur.duckingTargetVolumePct }).catch(() => {
+        /* invoke failure is logged Rust-side; ignore here */
+      });
+    }
+  }, []);
+
+  /** Decrement the ducking ref count. Edge-trigger restore() when
+   *  going from 1 → 0. Clamps at 0 in case of any miscount. */
+  const duckingDeactivate = useCallback(() => {
+    if (duckingActiveCountRef.current > 0) {
+      duckingActiveCountRef.current -= 1;
+    }
+    const cur = stateRef.current;
+    if (!cur.duckingEnabled) return;
+    if (duckingActiveCountRef.current === 0) {
+      void invoke("restore_discord_volume").catch(() => {});
+    }
+  }, []);
+
+  const handlePttEvent = useCallback((e: HotkeyEventPayload) => {
+    setState((s) => ({ ...s, pttActive: e.state === "pressed" }));
+    const wsLocal = wsRef.current;
+    const audioLocal = audioRef.current;
+    const cur = stateRef.current;
+    if (audioLocal) void audioLocal.setMuted(e.state !== "pressed");
+    // Local audio feedback — even if WS is offline. Helps the user
+    // know the hotkey at least registered with the Companion.
+    if (e.state === "pressed") {
+      feedbackAudio.playPttPress();
+      duckingActivate();
+    } else {
+      feedbackAudio.playPttRelease();
+      duckingDeactivate();
+    }
+    if (!wsLocal || !cur.token || !cur.guildId) return;
+    if (e.state === "pressed") {
+      wsLocal.send({ type: "ptt:start", guildId: cur.guildId });
+    } else {
+      wsLocal.send({ type: "ptt:stop", guildId: cur.guildId });
+    }
+  }, []);
+
+  // Window-focused fallback for KEYBOARD hotkeys. When the Companion
+  // window has focus, WebView2 captures the keystroke before our
+  // global WH_KEYBOARD_LL (via rdev) sees it — at least on Windows
+  // builds where webview's input swallowing is aggressive. So we also
+  // attach a window-level keydown/keyup listener. Mouse-side-buttons
+  // (Mouse4/5) are unaffected — the mouse hook isn't swallowed by
+  // webview focus — and remain rdev-only.
+  //
+  // Both paths route through the same handlePttEvent, so a press
+  // delivered twice (rdev + window-handler) is idempotent: the mute
+  // state simply gets re-set to the same value.
+  useEffect(() => {
+    const hotkey = state.hotkey;
+    if (!hotkey || isMouseHotkey(hotkey)) return;
+
+    const onDown = (e: KeyboardEvent): void => {
+      if (e.repeat) return; // ignore OS auto-repeat
+      const formatted = formatKeyboardAccelerator(e);
+      if (formatted === hotkey) {
+        e.preventDefault();
+        handlePttEvent({ state: "pressed", accelerator: hotkey });
+      }
+    };
+    const onUp = (e: KeyboardEvent): void => {
+      if (keyReleaseMatchesAccelerator(e, hotkey)) {
+        e.preventDefault();
+        handlePttEvent({ state: "released", accelerator: hotkey });
+      }
+    };
+    window.addEventListener("keydown", onDown, true);
+    window.addEventListener("keyup", onUp, true);
+    return () => {
+      window.removeEventListener("keydown", onDown, true);
+      window.removeEventListener("keyup", onUp, true);
+    };
+  }, [state.hotkey, handlePttEvent]);
+
+  // Check for an auto-update once we have BOTH bridgeUrl + sessionToken.
+  // The bridge requires the JWT to peek the release — no public bypass
+  // of the admin's single-use-token mechanism. Slight delay so the
+  // initial UI can render first.
+  useEffect(() => {
+    if (!state.bridgeUrl || !state.token) return;
+    const timer = setTimeout(async () => {
+      const res = await checkForUpdate({
+        bridgeUrl: state.bridgeUrl,
+        sessionToken: state.token,
+      });
+      if (res.kind === "available") {
+        setUpdateOffer(res);
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [state.bridgeUrl, state.token]);
+
+  // Debug: log EVERY hotkey event the Rust side emits — helps diagnose
+  // mouse-button mapping and unexpected key strings.
+  useEffect(() => {
+    let canceled = false;
+    let unlisten: (() => void) | null = null;
+    (async () => {
+      const fn = await listen<HotkeyEventPayload>("hotkey", (e) => {
+        console.log("[hotkey raw]", e.payload);
+      });
+      if (canceled) fn();
+      else unlisten = fn;
+    })();
+    return () => {
+      canceled = true;
+      unlisten?.();
+    };
+  }, []);
+
+  // Mount: load persisted settings + wire ws/audio/hotkey
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      const settings = await loadSettings();
+      if (!mounted) return;
+      // Diagnostic dump so the log file always shows what the user
+      // started with (without revealing the token itself).
+      void logInfo(`[boot] ${longVersion()}`);
+      void logInfo(
+        `[boot] settings loaded: bridgeUrl=${settings.bridgeUrl} hasToken=${!!settings.token} guildId=${settings.guildId ?? "-"} hotkey=${settings.hotkey} micGain=${settings.micGainPct}% outputVol=${settings.outputVolumePct}% micDevice=${settings.micDeviceId ?? "default"} outputDevice=${settings.outputDeviceId ?? "default"} remoteVolumes=${Object.keys(settings.remoteVolumes).length} entries`,
+      );
+
+      const deviceCfg: DeviceConfig = {
+        micDeviceId: settings.micDeviceId,
+        outputDeviceId: settings.outputDeviceId,
+        outputVolumePct: settings.outputVolumePct,
+        micGainPct: settings.micGainPct,
+      };
+
+      // ── Create ws + audio FIRST, then setState. ─────────────────
+      // If we setState before creating the refs, the useEffect that
+      // depends on state.token runs while wsRef.current is still null
+      // (an await would yield in between), so ws.connect never fires
+      // and a perfectly valid stored token sits unused — user lands
+      // on the connected pane but everything stays IDLE forever.
+      const ws = new BridgeWs();
+      ws.setBridgeUrl(settings.bridgeUrl);
+      wsRef.current = ws;
+      const audio = new LivekitAudio();
+      audioRef.current = audio;
+      await audio.applyDeviceConfig(deviceCfg);
+      audio.setRemoteVolumes(settings.remoteVolumes);
+      // Apply persisted output-mute BEFORE the first LiveKit attach so a
+      // user who quit muted stays muted on next launch.
+      audio.setOutputMuted(settings.outputMuted);
+      // Audio feedback (PTT chirps) — apply persisted prefs.
+      feedbackAudio.setEnabled(settings.feedbackSoundsEnabled);
+      feedbackAudio.setVolumePct(settings.feedbackSoundsVolumePct);
+      // Chirps follow output-mute: if you can't hear peers, you don't
+      // want a chirp announcing them either.
+      feedbackAudio.setSuppressed(settings.outputMuted);
+      audio.setListeners({
+        status: (audioStatus, detail) => {
+          setState((s) => ({ ...s, audioStatus, audioDetail: detail ?? null }));
+        },
+      });
+
+      ws.setListeners({
+        status: (status, detail) => {
+          setState((s) => ({ ...s, wsStatus: status, wsDetail: detail ?? null }));
+          if (status === "closed" && detail === "unauthenticated") {
+            void clearSession();
+            setState((s) => ({
+              ...s,
+              token: null,
+              guildId: null,
+              activeCommanders: [],
+              lastError: "Sitzung abgelaufen — bitte erneut anmelden.",
+            }));
+            void audio.disconnect();
+          }
+          if (status === "closed" && detail === "superseded") {
+            // Another instance of the companion grabbed this user's
+            // bridge slot. Tell the user what happened; keep the
+            // stored token so they can re-take control with ABMELDEN
+            // + neu anmelden if they want this instance back.
+            setState((s) => ({
+              ...s,
+              activeCommanders: [],
+              lastError:
+                "Eine andere Companion-Instanz hat die Sitzung übernommen. Falls das du selbst warst (z.B. zweite EXE offen): die andere schließen.",
+            }));
+            void audio.disconnect();
+          }
+        },
+        message: (msg) => {
+          if (msg.type === "bridge:joined") {
+            setState((s) => ({
+              ...s,
+              activeCommanders: msg.activeCommanders,
+              guildName: msg.guildName ?? s.guildName,
+              lastError: null,
+            }));
+            if (msg.livekitUrl && msg.livekitToken) {
+              audio.connect(msg.livekitUrl, msg.livekitToken).catch((err) =>
+                setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })),
+              );
+            }
+            // Push the persisted output-mute / afk state to the bridge
+            // so peers see the same flags we're carrying locally. Skip
+            // the default-false case so a fresh user doesn't generate
+            // pointless commander:list broadcasts.
+            const cur = stateRef.current;
+            if (cur.outputMuted) {
+              ws.send({ type: "status:output-mute", muted: true });
+            }
+            if (cur.afk) {
+              ws.send({ type: "status:afk", afk: true });
+            }
+          } else if (msg.type === "audio:enable") {
+            setState((s) => ({ ...s, lastError: null }));
+            audio.connect(msg.livekitUrl, msg.livekitToken).catch((err) =>
+              setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })),
+            );
+          } else if (msg.type === "audio:disable") {
+            void audio.disconnect();
+            setState((s) => ({
+              ...s,
+              lastError:
+                msg.reason === "not_in_voice"
+                  ? "Audio pausiert — du bist nicht in einem Voice-Channel."
+                  : "Audio pausiert — dein aktueller Channel ist nicht freigeschaltet.",
+            }));
+          } else if (msg.type === "commander:list") {
+            // Diff speaking-state vs. previous list and chirp once per
+            // remote talk-start / talk-stop. Skip self so our own PTT
+            // doesn't trigger an incoming-chirp on top of the
+            // press/release sound that handlePttEvent already played.
+            const myUserId = stateRef.current.token
+              ? jwtSubject(stateRef.current.token)
+              : null;
+            const nextSpeaking = new Set<string>();
+            for (const c of msg.commanders) {
+              if (c.speaking && c.userId !== myUserId) nextSpeaking.add(c.userId);
+            }
+            const prev = prevSpeakingRef.current;
+            for (const userId of nextSpeaking) {
+              if (!prev.has(userId)) {
+                feedbackAudio.playIncomingStart();
+                duckingActivate();
+              }
+            }
+            for (const userId of prev) {
+              if (!nextSpeaking.has(userId)) {
+                feedbackAudio.playIncomingStop();
+                duckingDeactivate();
+              }
+            }
+            prevSpeakingRef.current = nextSpeaking;
+            setState((s) => ({ ...s, activeCommanders: msg.commanders }));
+          } else if (msg.type === "bridge:left") {
+            setState((s) => ({ ...s, activeCommanders: [] }));
+            // Any peers we had been tracking as "speaking" are now
+            // gone. Force-restore Discord by decrementing once per
+            // such peer, so the ducking count returns to zero.
+            for (let i = 0; i < prevSpeakingRef.current.size; i++) {
+              duckingDeactivate();
+            }
+            prevSpeakingRef.current = new Set();
+            void audio.disconnect();
+          } else if (msg.type === "error") {
+            setState((s) => ({ ...s, lastError: `${msg.code}: ${msg.message}` }));
+          }
+        },
+      });
+
+      await setupHotkey(settings.hotkey, handlePttEvent);
+
+      if (!mounted) return;
+      // setState LAST so the useEffect that connects WS finds the
+      // refs already populated. This is the bug-fix: previously
+      // setState fired first and the connect-on-token-change effect
+      // ran while wsRef.current was still null, silently dropping
+      // the auto-connect of a valid stored token.
+      setSavedGuilds(settings.savedGuilds);
+      setLastGuildId(settings.lastGuildId);
+      setRemoteVolumes(settings.remoteVolumes);
+      setState((s) => ({
+        ...s,
+        bridgeUrl: settings.bridgeUrl,
+        token: settings.token ?? null,
+        guildId: settings.guildId ?? null,
+        hotkey: settings.hotkey,
+        device: deviceCfg,
+        outputMuted: settings.outputMuted,
+        afk: settings.afk,
+        feedbackSoundsEnabled: settings.feedbackSoundsEnabled,
+        feedbackSoundsVolumePct: settings.feedbackSoundsVolumePct,
+        duckingEnabled: settings.duckingEnabled,
+        duckingTargetVolumePct: settings.duckingTargetVolumePct,
+      }));
+    })();
+
+    return () => {
+      mounted = false;
+      void teardownHotkey();
+      wsRef.current?.disconnect();
+      void audioRef.current?.disconnect();
+    };
+  }, []);
+
+  // Connect WS whenever we have BOTH a token and a target guildId.
+  // The token is the user identity; the guildId is per-session and
+  // can change without re-doing OAuth, so we rebuild the URL on every
+  // change of either.
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    if (state.token && state.guildId) {
+      ws.connect(state.token, state.guildId);
+    } else {
+      ws.disconnect();
+    }
+  }, [state.token, state.guildId]);
+
+  const onSignIn = useCallback(() => {
+    // Open the picker; actual OAuth is fired by the picker's confirm
+    // handler (onGuildConfirm) which also persists the guild list.
+    setShowGuildPicker(true);
+  }, []);
+
+  const onGuildConfirm = useCallback(
+    async (guildId: string) => {
+      setShowGuildPicker(false);
+      setLastGuildId(guildId);
+      // If we already have a valid token, just switch the active guild —
+      // the session JWT is no longer guild-bound, so no second OAuth
+      // round-trip needed. The useEffect picks up the new guildId and
+      // reconnects the WS to the right room.
+      if (state.token) {
+        await saveSession(state.token, guildId);
+        setState((s) => ({ ...s, guildId, guildName: null, activeCommanders: [], lastError: null }));
+        return;
+      }
+      try {
+        const result = await startOAuthInWebview(state.bridgeUrl, guildId);
+        setState((s) => ({
+          ...s,
+          token: result.token,
+          guildId: result.guildId,
+          lastError: null,
+        }));
+      } catch (err) {
+        setState((s) => ({ ...s, lastError: String(err) }));
+      }
+    },
+    [state.bridgeUrl, state.token],
+  );
+
+  const onGuildsUpdate = useCallback(async (next: SavedGuild[]) => {
+    setSavedGuilds(next);
+    await saveGuilds(next);
+  }, []);
+
+  /** Adjust playback level for one remote commander. Applies live to
+   *  the GainNode for that user and persists the new map to the Tauri
+   *  store so it sticks across reconnects + EXE restarts. */
+  const onRemoteVolumeChange = useCallback(
+    (userId: string, pct: number) => {
+      audioRef.current?.setRemoteVolume(userId, pct);
+      setRemoteVolumes((prev) => {
+        // Drop the entry when reverting to unity, so the store stays
+        // small and an unset value naturally means "100%".
+        const next = { ...prev };
+        if (pct === 100) delete next[userId];
+        else next[userId] = pct;
+        // Fire-and-forget; debouncing during slider drag is overkill
+        // since saveRemoteVolumes is just a single Tauri-store write.
+        void saveRemoteVolumes(next);
+        return next;
+      });
+    },
+    [],
+  );
+
+  /** Toggle the local "output mute" flag (we stop hearing peers).
+   *  Persists the new state, mutes/unmutes already-attached remote
+   *  audio elements, and tells the bridge so other commanders see the
+   *  flag in their roster ("MUTED" pill).
+   *
+   *  Side effects deliberately live OUTSIDE the setState updater —
+   *  React may call updater functions more than once (strict mode,
+   *  concurrent rendering), which would emit duplicate audio.setMuted
+   *  calls and duplicate ws sends. Use stateRef for the current value
+   *  so two rapid clicks still toggle correctly. */
+  const onToggleOutputMute = useCallback(() => {
+    const next = !stateRef.current.outputMuted;
+    void logInfo(`[status] output-mute toggled -> ${next}`);
+    audioRef.current?.setOutputMuted(next);
+    // Mute the chirps too — no point pinging the user about peer talk
+    // they can't hear anyway.
+    feedbackAudio.setSuppressed(next);
+    void saveOutputMuted(next);
+    wsRef.current?.send({ type: "status:output-mute", muted: next });
+    setState((s) => ({ ...s, outputMuted: next }));
+  }, []);
+
+  /** Toggle the manual AFK flag. No-op locally except for persistence
+   *  + the bridge broadcast — the peer-side roster shows the "AFK"
+   *  pill, but audio behavior is unchanged. Same side-effect-outside-
+   *  setState pattern as onToggleOutputMute for the same reason. */
+  const onToggleAfk = useCallback(() => {
+    const next = !stateRef.current.afk;
+    void logInfo(`[status] afk toggled -> ${next}`);
+    void saveAfk(next);
+    wsRef.current?.send({ type: "status:afk", afk: next });
+    setState((s) => ({ ...s, afk: next }));
+  }, []);
+
+  const onSignOut = useCallback(async () => {
+    await clearSession();
+    setState((s) => ({
+      ...s,
+      token: null,
+      guildId: null,
+      guildName: null,
+      activeCommanders: [],
+    }));
+  }, []);
+
+  const onSettingsSave = useCallback(
+    async (next: SettingsDraft) => {
+      let nextBridgeUrl = state.bridgeUrl;
+      let nextHotkey = state.hotkey;
+      if (next.bridgeUrl !== state.bridgeUrl) {
+        await saveBridgeUrl(next.bridgeUrl);
+        wsRef.current?.setBridgeUrl(next.bridgeUrl);
+        nextBridgeUrl = next.bridgeUrl;
+      }
+      if (next.hotkey && next.hotkey !== state.hotkey) {
+        try {
+          await setupHotkey(next.hotkey, handlePttEvent);
+          await saveHotkey(next.hotkey);
+          nextHotkey = next.hotkey;
+        } catch (err) {
+          setState((s) => ({ ...s, lastError: `Hotkey: ${String(err)}` }));
+          setShowSettings(false);
+          return;
+        }
+      }
+
+      // Audio prefs — persist + hot-apply to the running LiveKit session.
+      const nextDevice: DeviceConfig = {
+        micDeviceId: next.micDeviceId,
+        outputDeviceId: next.outputDeviceId,
+        outputVolumePct: next.outputVolumePct,
+        micGainPct: next.micGainPct,
+      };
+      const audioChanged =
+        nextDevice.micDeviceId !== state.device.micDeviceId ||
+        nextDevice.outputDeviceId !== state.device.outputDeviceId ||
+        nextDevice.outputVolumePct !== state.device.outputVolumePct ||
+        nextDevice.micGainPct !== state.device.micGainPct;
+      if (audioChanged) {
+        await saveAudioPrefs({
+          micDeviceId: nextDevice.micDeviceId,
+          outputDeviceId: nextDevice.outputDeviceId,
+          outputVolumePct: nextDevice.outputVolumePct,
+          micGainPct: nextDevice.micGainPct,
+        });
+        await audioRef.current?.applyDeviceConfig(nextDevice);
+      }
+
+      // Feedback-sound prefs — apply live + persist.
+      const feedbackChanged =
+        next.feedbackSoundsEnabled !== state.feedbackSoundsEnabled ||
+        next.feedbackSoundsVolumePct !== state.feedbackSoundsVolumePct;
+      if (feedbackChanged) {
+        feedbackAudio.setEnabled(next.feedbackSoundsEnabled);
+        feedbackAudio.setVolumePct(next.feedbackSoundsVolumePct);
+        await saveFeedbackSounds({
+          enabled: next.feedbackSoundsEnabled,
+          volumePct: next.feedbackSoundsVolumePct,
+        });
+      }
+
+      // Ducking prefs — persist + safe-state-transition. If the user
+      // disables ducking WHILE Discord is currently ducked, snap-restore
+      // so Discord doesn't get stuck at the lowered level.
+      const duckingChanged =
+        next.duckingEnabled !== state.duckingEnabled ||
+        next.duckingTargetVolumePct !== state.duckingTargetVolumePct;
+      if (duckingChanged) {
+        await saveDucking({
+          enabled: next.duckingEnabled,
+          targetVolumePct: next.duckingTargetVolumePct,
+        });
+        if (state.duckingEnabled && !next.duckingEnabled) {
+          // turning ducking off — make sure Discord isn't left ducked
+          void invoke("restore_discord_volume").catch(() => {});
+        }
+      }
+
+      setState((s) => ({
+        ...s,
+        bridgeUrl: nextBridgeUrl,
+        hotkey: nextHotkey,
+        device: nextDevice,
+        feedbackSoundsEnabled: next.feedbackSoundsEnabled,
+        feedbackSoundsVolumePct: next.feedbackSoundsVolumePct,
+        duckingEnabled: next.duckingEnabled,
+        duckingTargetVolumePct: next.duckingTargetVolumePct,
+        lastError: null,
+      }));
+      setShowSettings(false);
+    },
+    [
+      state.bridgeUrl,
+      state.hotkey,
+      state.device,
+      state.feedbackSoundsEnabled,
+      state.feedbackSoundsVolumePct,
+      state.duckingEnabled,
+      state.duckingTargetVolumePct,
+    ],
+  );
+
+  // Treat any persisted token as "signed in" for UI purposes. The
+  // WS-status handler already clears the token + drops to the sign-in
+  // form when the bridge rejects it (close code 4401 "unauthenticated"),
+  // so a stale token won't pin the user on the roster — but a VALID
+  // token that hasn't connected yet (cold start, network blip) also
+  // shouldn't flash the sign-in form, because the user might click
+  // it and trigger a needless second OAuth.
+  const wsConnected = state.wsStatus === "connected";
+  const signedIn = Boolean(state.token);
+  const hasStoredToken = signedIn;
+  const audioLive = state.audioStatus === "connected" && !state.pttActive;
+  const audioTransmit = state.audioStatus === "connected" && state.pttActive;
+
+  const audioBadgeTone = useMemo(() => {
+    if (audioTransmit) return "green";
+    if (audioLive) return "cyan";
+    if (state.audioStatus === "error") return "red";
+    return "dim";
+  }, [audioLive, audioTransmit, state.audioStatus]);
+
+  return (
+    <div className="cc-window">
+      {/* ── Brand bar (replaces native chrome for now) ────── */}
+      <header className="cc-modebar">
+        <div className="cc-brand">
+          <span className="brand-cy">RDOC</span>
+          <span className="brand-sep">//</span>
+          <span className="brand-gd">SQUAD LINK</span>
+        </div>
+        <div className="cc-modebar-right">
+          {hasStoredToken ? (
+            <button
+              type="button"
+              className="cc-btn ghost sm"
+              onClick={() => setShowGuildPicker(true)}
+              title="Anderen Server wählen ohne Discord-Re-Auth"
+            >
+              <Icon.users size={12} />
+              SERVER WECHSELN
+            </button>
+          ) : null}
+          {hasStoredToken ? (
+            <button
+              type="button"
+              className={`cc-btn ${state.outputMuted ? "gold" : "ghost"} sm`}
+              onClick={onToggleOutputMute}
+              title={
+                state.outputMuted
+                  ? "Du hörst gerade niemanden — Klick zum Aufheben"
+                  : "Output stummschalten — du hörst dann niemanden mehr (andere sehen das)"
+              }
+            >
+              <Icon.volume size={12} />
+              {state.outputMuted ? "MUTED" : "MUTE"}
+            </button>
+          ) : null}
+          {hasStoredToken ? (
+            <button
+              type="button"
+              className={`cc-btn ${state.afk ? "cyan" : "ghost"} sm`}
+              onClick={onToggleAfk}
+              title={
+                state.afk
+                  ? "Du bist auf AFK gesetzt — Klick zum Aufheben"
+                  : "Als AFK markieren — andere sehen das im Roster"
+              }
+            >
+              <Icon.users size={12} />
+              {state.afk ? "AFK ✓" : "AFK"}
+            </button>
+          ) : null}
+          {hasStoredToken ? (
+            <button type="button" className="cc-btn ghost sm" onClick={onSignOut} title="Gespeicherte Sitzung löschen">
+              <Icon.power size={12} />
+              ABMELDEN
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="cc-btn ghost sm"
+            onClick={() => setShowSettings(true)}
+            title="Einstellungen"
+          >
+            <Icon.settings size={12} />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Status strip ───────────────────────────────────── */}
+      <section className="cc-status-strip">
+        <span className="cc-status-stripe"></span>
+        <span className={`cc-badge ${wsConnected ? "green" : "dim"}`}>
+          <span className="cc-badge-dot" style={{ background: "currentColor" }}></span>
+          {wsConnected ? "VERBUNDEN" : state.wsStatus.toUpperCase()}
+        </span>
+        <span className={`cc-badge ${audioBadgeTone}`}>
+          {audioTransmit ? <Icon.mic size={11} /> : <Icon.micOff size={11} />}
+          {audioTransmit ? "PTT AKTIV" : audioLive ? "AUDIO LIVE" : state.audioStatus.toUpperCase()}
+        </span>
+        <div className="cc-name-wrap">
+          <span className="cc-name-label">SERVER</span>
+          <span
+            className="cc-readout"
+            style={{ padding: "4px 9px", fontSize: 11 }}
+            title={state.guildId ?? undefined}
+          >
+            {state.guildName ?? state.guildId ?? "—"}
+          </span>
+        </div>
+      </section>
+
+      {/* ── Body ───────────────────────────────────────────── */}
+      <main className="cc-window-body">
+        {state.lastError ? <div className="cc-banner error"><Icon.x size={12} />{state.lastError}</div> : null}
+        {!state.lastError && audioTransmit ? (
+          <div className="cc-banner info"><Icon.radio size={12} />Squad Link aktiv — die anderen Commander hören dich.</div>
+        ) : null}
+
+        {!signedIn ? (
+          // ────────── Disconnected: sign-in panel ──────────
+          <section className="cc-card cc-fade-in">
+            <span className="cc-card-tick"></span>
+            <div className="cc-card-title"><span>VERBINDUNG // BRIDGE</span></div>
+
+            <div className="cc-field">
+              <label className="cc-label">Bridge</label>
+              <span className="cc-readout" title={state.bridgeUrl}>
+                <span className="lbl">URL</span>
+                <span className="val" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {state.bridgeUrl}
+                </span>
+                <button
+                  type="button"
+                  className="cc-btn ghost sm"
+                  onClick={() => setShowSettings(true)}
+                  title="Bridge-URL ändern"
+                >
+                  <Icon.settings size={11} />
+                </button>
+              </span>
+            </div>
+
+            {lastGuildId ? (
+              <div className="cc-field" style={{ marginTop: 10 }}>
+                <label className="cc-label">Letzter Server</label>
+                <span className="cc-readout" title={lastGuildId}>
+                  <span className="lbl">ID</span>
+                  <span className="val" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {savedGuilds.find((g) => g.id === lastGuildId)?.label ?? lastGuildId}
+                  </span>
+                </span>
+              </div>
+            ) : null}
+
+            <div className="cc-col" style={{ gap: 8, marginTop: 12 }}>
+              <button
+                type="button"
+                className="cc-btn green full lg"
+                onClick={onSignIn}
+                disabled={!state.bridgeUrl}
+                title={!state.bridgeUrl ? "Erst Bridge-URL in den Einstellungen setzen" : undefined}
+              >
+                <Icon.key size={14} />
+                {savedGuilds.length > 0 ? "SERVER WÄHLEN + ANMELDEN" : "MIT DISCORD ANMELDEN"}
+              </button>
+            </div>
+          </section>
+        ) : (
+          // ────────── Connected: mic + roster ──────────
+          <section className="cc-2col cc-fade-in">
+            <div className="cc-card">
+              <span className="cc-card-tick"></span>
+              <div className="cc-card-title"><span>SQUAD ROSTER</span><span className="cc-badge dim">{state.activeCommanders.length}</span></div>
+              {state.activeCommanders.length === 0 ? (
+                <div className="cc-hint" style={{ padding: "12px 0", textAlign: "center" }}>
+                  — niemand verbunden —
+                </div>
+              ) : (
+                <div className="cc-col" style={{ gap: 4 }}>
+                  {state.activeCommanders.map((c) => {
+                    // Don't show the volume slider for yourself — your
+                    // own track isn't played back locally.
+                    const isSelf = state.token && c.userId === jwtSubject(state.token);
+                    const vol = remoteVolumes[c.userId] ?? 100;
+                    return (
+                      <div key={c.userId} className={`cc-prow ${c.speaking ? "speaking" : ""}`}>
+                        <span className="cc-prow-tick"></span>
+                        <div className="cc-avatar">
+                          {c.speaking ? <Icon.mic size={14} /> : <Icon.headphones size={14} />}
+                        </div>
+                        <div className="cc-prow-name">{c.displayName ?? c.userId}</div>
+                        {!isSelf ? (
+                          <div className="cc-prow-vol" title={`Lautstärke ${vol}%`}>
+                            <Icon.volume size={11} />
+                            <input
+                              type="range"
+                              className="cc-range cc-range-sm"
+                              min={0}
+                              max={100}
+                              step={5}
+                              value={vol}
+                              onChange={(e) =>
+                                onRemoteVolumeChange(c.userId, Number(e.target.value))
+                              }
+                            />
+                            <span className="cc-prow-vol-val">{vol}%</span>
+                          </div>
+                        ) : null}
+                        <div className="cc-prow-state">
+                          {c.afk ? (
+                            <span className="cc-badge cyan" style={{ marginRight: 6 }}>AFK</span>
+                          ) : null}
+                          {c.outputMuted ? (
+                            <span className="cc-badge gold" style={{ marginRight: 6 }}>MUTED</span>
+                          ) : null}
+                          {c.speaking ? "TALKING" : "IDLE"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="cc-card">
+              <span className="cc-card-tick"></span>
+              <div className="cc-card-title"><span>PTT</span></div>
+              <div className="cc-col" style={{ alignItems: "center", gap: 14, padding: "8px 0" }}>
+                <div className={`cc-mic-orb ${audioTransmit ? "live" : state.audioStatus === "error" ? "muted" : ""}`}>
+                  {audioTransmit ? <Icon.mic size={36} /> : <Icon.micOff size={36} />}
+                </div>
+                <div className="cc-ptt-key" style={{ padding: "4px 9px", border: "1px solid var(--border)", background: "var(--bg3)", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "1.5px", color: "var(--dim)" }}>
+                  HOLD <span style={{ color: "var(--cyan)" }}>{state.hotkey}</span>
+                </div>
+                {state.wsDetail ? (
+                  <div className="cc-hint" style={{ fontSize: 10 }}>{state.wsDetail}</div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        )}
+      </main>
+
+      <footer className="cc-window-footer">
+        <span title={longVersion()}>RDOC SQUAD LINK · {shortVersion()}</span>
+        <span>OUR BUSINESS IS CHAOS ITSELF&nbsp;&nbsp;//&nbsp;&nbsp;o7</span>
+      </footer>
+
+      {showSettings ? (
+        <SettingsModal
+          initial={{
+            bridgeUrl: state.bridgeUrl,
+            hotkey: state.hotkey,
+            micDeviceId: state.device.micDeviceId,
+            outputDeviceId: state.device.outputDeviceId,
+            outputVolumePct: state.device.outputVolumePct,
+            micGainPct: state.device.micGainPct,
+            feedbackSoundsEnabled: state.feedbackSoundsEnabled,
+            feedbackSoundsVolumePct: state.feedbackSoundsVolumePct,
+            duckingEnabled: state.duckingEnabled,
+            duckingTargetVolumePct: state.duckingTargetVolumePct,
+          }}
+          onSave={onSettingsSave}
+          onClose={() => setShowSettings(false)}
+        />
+      ) : null}
+
+      {showGuildPicker ? (
+        <GuildPickerModal
+          savedGuilds={savedGuilds}
+          lastGuildId={lastGuildId}
+          bridgeUrlConfigured={Boolean(state.bridgeUrl)}
+          onConfirm={onGuildConfirm}
+          onRemoveSaved={onGuildsUpdate}
+          onUpsertSaved={onGuildsUpdate}
+          onClose={() => setShowGuildPicker(false)}
+        />
+      ) : null}
+
+      {updateOffer && state.token ? (
+        <UpdateModal
+          remote={updateOffer.remote}
+          bridgeUrl={state.bridgeUrl}
+          sessionToken={state.token}
+          onPostpone={() => setUpdateOffer(null)}
+        />
+      ) : null}
+    </div>
+  );
+}

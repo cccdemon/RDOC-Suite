@@ -1,0 +1,9 @@
+**/dist/**
+**/node_modules/**
+**/target/**
+**/src-tauri/target/**
+**/build/**
+**/.vite/**
+**/generated/**
+pnpm-lock.yaml
+CHANGELOG.md

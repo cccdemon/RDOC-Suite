@@ -1,0 +1,233 @@
+/* ════════════════════════════════════════════════════════
+   CHAOS CREW VOICE CONSOLE — Foundations
+   Colors · Type · Spacing · Borders · Shadows
+   Derived from cccdemon/STS_Streamertools_Twitch_Streamerbot
+   ════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+/* Local: Bebas Neue — display face for hero numbers and brand moments */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./fonts/BebasNeue-Regular.ttf') format('truetype');
+}
+
+:root {
+  /* ── Background scale (deep-space navy) ─────────────── */
+  --bg:        #04060a;   /* base — void */
+  --bg2:       #080e14;   /* panel/header surface */
+  --bg3:       #0c1520;   /* recessed surface, inputs */
+  --bg-card:   #080e14;
+  --bg-input:  #0c1520;
+
+  /* ── Foreground / neutral ──────────────────────────── */
+  --text:      #c8dce8;            /* primary text — pale ice */
+  --text-hi:   #ffffff;
+  --dim:       rgba(200,220,232,0.40);
+  --dim2:      rgba(200,220,232,0.18);
+  --dim3:      rgba(200,220,232,0.08);
+
+  /* ── Accent: CYAN (primary, info, "connected") ─────── */
+  --cyan:      #00d4ff;
+  --cyan-08:   rgba(0,212,255,0.08);
+  --cyan-18:   rgba(0,212,255,0.18);
+  --cyan-28:   rgba(0,212,255,0.28);
+  --cyan-38:   rgba(0,212,255,0.38);
+  --cyan-50:   rgba(0,212,255,0.50);
+
+  /* ── Accent: GOLD (commander, alert/idle, special) ── */
+  --gold:      #f0a500;
+  --gold-08:   rgba(240,165,0,0.08);
+  --gold-28:   rgba(240,165,0,0.28);
+  --gold-38:   rgba(240,165,0,0.38);
+  --gold-50:   rgba(240,165,0,0.50);
+
+  /* ── Semantic accents ───────────────────────────────── */
+  --green:     #00ff88;        /* success / connected / live */
+  --green-08:  rgba(0,255,136,0.08);
+  --green-38:  rgba(0,255,136,0.38);
+  --red:       #ff4444;        /* danger / muted / error */
+  --red-08:    rgba(255,68,68,0.08);
+  --red-38:    rgba(255,68,68,0.38);
+
+  /* ── PTT / mic indicator ────────────────────────────── */
+  --ptt-active:  var(--green);
+  --ptt-shadow:  0 0 24px rgba(0,255,136,0.45);
+  --mute-active: var(--red);
+
+  /* ── Borders ────────────────────────────────────────── */
+  --border:    rgba(0,212,255,0.10);
+  --border-hi: rgba(0,212,255,0.28);
+  --border-gold: rgba(240,165,0,0.28);
+  --border-strong: rgba(0,212,255,0.50);
+  --hairline:  rgba(255,255,255,0.04);
+
+  /* ── Shadows / glows ────────────────────────────────── */
+  --glow-cyan-sm: 0 0 12px rgba(0,212,255,0.25);
+  --glow-cyan:    0 0 24px rgba(0,212,255,0.35);
+  --glow-cyan-lg: 0 0 48px rgba(0,212,255,0.45);
+  --glow-gold:    0 0 24px rgba(240,165,0,0.35);
+  --glow-green:   0 0 18px rgba(0,255,136,0.40);
+  --glow-red:     0 0 14px rgba(255,68,68,0.35);
+
+  /* ── Type families ──────────────────────────────────── */
+  --font-mono:  'Share Tech Mono', ui-monospace, monospace;   /* labels, badges, buttons, technical */
+  --font-body:  'Rajdhani', 'Inter', system-ui, sans-serif;   /* UI body, names, large readable text */
+  --font-display: 'Bebas Neue', 'Rajdhani', sans-serif;       /* hero numbers, splash moments, big timers */
+
+  /* ── Type sizes ─────────────────────────────────────── */
+  --fs-9:  9px;
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-18: 18px;
+  --fs-22: 22px;
+  --fs-28: 28px;
+  --fs-44: 44px;
+
+  /* ── Tracking (letter-spacing) ──────────────────────── */
+  --tr-1: 1px;
+  --tr-2: 2px;
+  --tr-3: 3px;
+  --tr-4: 4px;
+  --tr-5: 5px;
+
+  /* ── Spacing ────────────────────────────────────────── */
+  --sp-1:  2px;
+  --sp-2:  4px;
+  --sp-3:  6px;
+  --sp-4:  8px;
+  --sp-5:  10px;
+  --sp-6:  12px;
+  --sp-7:  14px;
+  --sp-8:  16px;
+  --sp-9:  20px;
+  --sp-10: 24px;
+  --sp-11: 28px;
+  --sp-12: 36px;
+
+  /* ── Radius (the system is SQUARE — no rounding) ────── */
+  --r-0:  0;
+  --r-1:  1px;   /* hairline corner clip, used rarely */
+  --r-pill: 999px;  /* avoid; only for full-pill toggles */
+
+  /* ── Transitions ────────────────────────────────────── */
+  --t-fast: 0.12s ease;
+  --t-med:  0.18s ease;
+  --t-slow: 0.30s ease;
+}
+
+/* ════════════════════════════════════════════════════════
+   SEMANTIC ELEMENT DEFAULTS
+   Use raw HTML or the matching utility class.
+   ════════════════════════════════════════════════════════ */
+
+body, .body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Display: huge sci-fi titles (logo, hero counts) ── */
+.t-display, h1.display {
+  font-family: var(--font-mono);
+  font-size: var(--fs-28);
+  letter-spacing: var(--tr-4);
+  color: var(--cyan);
+  text-shadow: var(--glow-cyan-sm);
+  line-height: 1;
+}
+
+/* ── Page title (HUD style) — "MODULE // SUB-TITLE" ── */
+.t-page-title, h1 {
+  font-family: var(--font-mono);
+  font-size: var(--fs-15);
+  letter-spacing: var(--tr-3);
+  color: var(--cyan);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.t-page-title em, h1 em { color: var(--gold); font-style: normal; }
+.t-page-title .sep, h1 .sep { color: var(--cyan-28); }
+
+/* ── Section header above a group of cards ─────────── */
+.t-group, h2 {
+  font-family: var(--font-mono);
+  font-size: var(--fs-9);
+  letter-spacing: var(--tr-3);
+  color: var(--cyan-50);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* ── Card title — small label inside a card ────────── */
+.t-card-title, h3 {
+  font-family: var(--font-mono);
+  font-size: var(--fs-9);
+  letter-spacing: var(--tr-2);
+  color: var(--cyan-50);
+  text-transform: uppercase;
+}
+
+/* ── Body / paragraph ─────────────────────────────── */
+p, .t-body {
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* ── Label (form labels, stat labels) ──────────────── */
+label, .t-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  letter-spacing: var(--tr-1);
+  color: var(--dim);
+  text-transform: uppercase;
+}
+
+/* ── Mono / readout / value-as-data ────────────────── */
+code, .t-mono, .t-readout {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: var(--text);
+  letter-spacing: 0.5px;
+}
+
+/* ── Big stat number (e.g. "12" participants) ──────── */
+.t-stat {
+  font-family: var(--font-mono);
+  font-size: var(--fs-22);
+  color: var(--cyan);
+  line-height: 1;
+  letter-spacing: var(--tr-1);
+}
+.t-stat.gold { color: var(--gold); }
+
+/* ── Status display (huge readout: CONNECTED / IDLE) ── */
+.t-status {
+  font-family: var(--font-mono);
+  font-size: var(--fs-22);
+  letter-spacing: var(--tr-5);
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+.t-status.ok       { color: var(--green); text-shadow: var(--glow-green); }
+.t-status.warning  { color: var(--gold);  text-shadow: var(--glow-gold); }
+.t-status.idle     { color: var(--dim2); }
+.t-status.danger   { color: var(--red);   text-shadow: var(--glow-red); }
+
+/* ── Dim hint ───────────────────────────────────────── */
+.t-hint  { font-family: var(--font-body); font-size: var(--fs-12); color: var(--dim); line-height: 1.4; }
+.t-empty { font-family: var(--font-mono); font-size: var(--fs-11); color: var(--dim); font-style: italic; }

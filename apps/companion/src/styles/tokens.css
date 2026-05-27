@@ -1,0 +1,101 @@
+/* RDOC Squad Link — Foundations
+   Colors · Type · Spacing · Borders · Shadows
+   Ported from the Chaos Crew Voice Console design-system handoff
+   (project/colors_and_type.css). Identifier semantics preserved
+   so kit.css and the design-bundle previews work unchanged. */
+
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+
+/* Bebas Neue ships with the app — served from /fonts/ by Vite. */
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/BebasNeue-Regular.ttf') format('truetype');
+}
+
+:root {
+  /* ── Background scale (deep-space navy) ─────────────── */
+  --bg:        #04060a;
+  --bg2:       #080e14;
+  --bg3:       #0c1520;
+  --bg-card:   #080e14;
+  --bg-input:  #0c1520;
+
+  /* ── Foreground / neutral ──────────────────────────── */
+  --text:      #c8dce8;
+  --text-hi:   #ffffff;
+  --dim:       rgba(200,220,232,0.40);
+  --dim2:      rgba(200,220,232,0.18);
+  --dim3:      rgba(200,220,232,0.08);
+
+  /* ── Accent: CYAN (primary, info, "connected") ─────── */
+  --cyan:      #00d4ff;
+  --cyan-08:   rgba(0,212,255,0.08);
+  --cyan-18:   rgba(0,212,255,0.18);
+  --cyan-28:   rgba(0,212,255,0.28);
+  --cyan-38:   rgba(0,212,255,0.38);
+  --cyan-50:   rgba(0,212,255,0.50);
+
+  /* ── Accent: GOLD (commander, alert/idle, special) ── */
+  --gold:      #f0a500;
+  --gold-08:   rgba(240,165,0,0.08);
+  --gold-28:   rgba(240,165,0,0.28);
+  --gold-38:   rgba(240,165,0,0.38);
+  --gold-50:   rgba(240,165,0,0.50);
+
+  /* ── Semantic accents ───────────────────────────────── */
+  --green:     #00ff88;
+  --green-08:  rgba(0,255,136,0.08);
+  --green-38:  rgba(0,255,136,0.38);
+  --red:       #ff4444;
+  --red-08:    rgba(255,68,68,0.08);
+  --red-38:    rgba(255,68,68,0.38);
+
+  /* ── PTT / mic indicator ────────────────────────────── */
+  --ptt-active:  var(--green);
+  --ptt-shadow:  0 0 24px rgba(0,255,136,0.45);
+  --mute-active: var(--red);
+
+  /* ── Borders ────────────────────────────────────────── */
+  --border:    rgba(0,212,255,0.10);
+  --border-hi: rgba(0,212,255,0.28);
+  --border-gold: rgba(240,165,0,0.28);
+  --border-strong: rgba(0,212,255,0.50);
+  --hairline:  rgba(255,255,255,0.04);
+
+  /* ── Shadows / glows ────────────────────────────────── */
+  --glow-cyan-sm: 0 0 12px rgba(0,212,255,0.25);
+  --glow-cyan:    0 0 24px rgba(0,212,255,0.35);
+  --glow-cyan-lg: 0 0 48px rgba(0,212,255,0.45);
+  --glow-gold:    0 0 24px rgba(240,165,0,0.35);
+  --glow-green:   0 0 18px rgba(0,255,136,0.40);
+  --glow-red:     0 0 14px rgba(255,68,68,0.35);
+
+  /* ── Type families ──────────────────────────────────── */
+  --font-mono:    'Share Tech Mono', ui-monospace, monospace;
+  --font-body:    'Rajdhani', 'Inter', system-ui, sans-serif;
+  --font-display: 'Bebas Neue', 'Rajdhani', sans-serif;
+
+  /* ── Type sizes ─────────────────────────────────────── */
+  --fs-9:  9px;  --fs-10: 10px; --fs-11: 11px; --fs-12: 12px;
+  --fs-13: 13px; --fs-14: 14px; --fs-15: 15px; --fs-18: 18px;
+  --fs-22: 22px; --fs-28: 28px; --fs-44: 44px;
+
+  /* ── Tracking ───────────────────────────────────────── */
+  --tr-1: 1px; --tr-2: 2px; --tr-3: 3px; --tr-4: 4px; --tr-5: 5px;
+
+  /* ── Spacing ────────────────────────────────────────── */
+  --sp-1:  2px;  --sp-2:  4px;  --sp-3:  6px;  --sp-4:  8px;
+  --sp-5:  10px; --sp-6:  12px; --sp-7:  14px; --sp-8:  16px;
+  --sp-9:  20px; --sp-10: 24px; --sp-11: 28px; --sp-12: 36px;
+
+  /* ── Radius (square system) ─────────────────────────── */
+  --r-0: 0; --r-1: 1px; --r-pill: 999px;
+
+  /* ── Transitions ────────────────────────────────────── */
+  --t-fast: 0.12s ease;
+  --t-med:  0.18s ease;
+  --t-slow: 0.30s ease;
+}

@@ -1,0 +1,535 @@
+/* RDOC Squad Link — UI Kit (cards, forms, badges, layout)
+   Ported from project/ui_kits/_shared/kit.css of the design bundle.
+   Token import lives in tokens.css; imported globally from main.tsx. */
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+#root {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+/* The HTML `hidden` attribute must always win — locally set
+   `display: flex` would otherwise override it. */
+[hidden] { display: none !important; }
+
+/* ════════════════════════════════════════════════════════
+   WINDOW SHELL
+   ════════════════════════════════════════════════════════ */
+.cc-window {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border-hi);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle scanlines overlay — purely decorative, never intercepts input. */
+.cc-window::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,212,255,0.006) 3px, rgba(0,212,255,0.006) 4px);
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Brand bar (replaces the bundle's title+mode bar — we have a single
+   mode and rely on the native OS title bar for window controls). */
+.cc-modebar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 22px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border-hi);
+  flex-shrink: 0;
+  position: relative;
+}
+.cc-modebar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 110px; height: 2px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+}
+
+.cc-brand {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.cc-brand .brand-cy { color: var(--cyan); }
+.cc-brand .brand-gd { color: var(--gold); }
+.cc-brand .brand-sep { color: var(--cyan-28); }
+
+.cc-modebar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cc-window-body {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 22px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cc-window-footer {
+  height: 28px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 22px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--cyan-50);
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════
+   CARDS (corner-tick visual signature)
+   ════════════════════════════════════════════════════════ */
+.cc-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  position: relative;
+}
+.cc-card-tick {
+  position: absolute;
+  top: 0; right: 0;
+  width: 8px; height: 8px;
+  border-top: 1px solid rgba(0,212,255,0.25);
+  border-right: 1px solid rgba(0,212,255,0.25);
+}
+.cc-card-title {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--cyan-50);
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+.cc-card-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ════════════════════════════════════════════════════════
+   FORM ELEMENTS
+   ════════════════════════════════════════════════════════ */
+.cc-field { display: flex; flex-direction: column; gap: 6px; }
+.cc-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--dim);
+  text-transform: uppercase;
+}
+.cc-hint {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--dim2);
+  text-transform: uppercase;
+}
+
+.cc-input,
+.cc-select-native {
+  background: var(--bg3);
+  border: 1px solid var(--cyan-18);
+  color: var(--text);
+  font-size: 13px;
+  padding: 7px 11px;
+  outline: none;
+  font-family: var(--font-body);
+  width: 100%;
+  transition: border-color var(--t-fast);
+}
+.cc-input.mono,
+.cc-select-native { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.5px; }
+.cc-input:focus, .cc-select-native:focus { border-color: var(--cyan-50); }
+.cc-input::placeholder { color: rgba(200,220,232,0.22); }
+
+/* Buttons */
+.cc-btn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 7px 14px;
+  border: 1px solid;
+  background: transparent;
+  text-transform: uppercase;
+  transition: background var(--t-fast);
+  white-space: nowrap;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.cc-btn:disabled { opacity: 0.28; cursor: not-allowed; }
+.cc-btn.cyan  { color: var(--cyan); border-color: var(--cyan-38); }
+.cc-btn.cyan:hover  { background: var(--cyan-08); }
+.cc-btn.gold  { color: var(--gold); border-color: var(--gold-38); }
+.cc-btn.gold:hover  { background: var(--gold-08); }
+.cc-btn.red   { color: var(--red);  border-color: var(--red-38); }
+.cc-btn.red:hover   { background: var(--red-08); }
+.cc-btn.green { color: var(--green); border-color: var(--green-38); }
+.cc-btn.green:hover { background: var(--green-08); }
+.cc-btn.ghost { color: var(--dim); border-color: var(--border); }
+.cc-btn.ghost:hover { color: var(--text); border-color: var(--border-hi); }
+.cc-btn.full  { width: 100%; }
+.cc-btn.sm    { padding: 4px 9px; font-size: 9px; }
+.cc-btn.lg    { padding: 12px 18px; font-size: 11px; }
+
+/* Range / slider */
+.cc-range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--cyan-18);
+  outline: none;
+}
+.cc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--cyan);
+  cursor: pointer;
+  border: 0;
+}
+.cc-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--cyan);
+  cursor: pointer;
+  border: 0;
+}
+
+/* ════════════════════════════════════════════════════════
+   BADGES
+   ════════════════════════════════════════════════════════ */
+.cc-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  padding: 4px 10px;
+  border: 1px solid;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+.cc-badge-dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+.cc-badge.cyan  { color: var(--cyan); border-color: var(--cyan-38); }
+.cc-badge.gold  { color: var(--gold); border-color: var(--gold-38); }
+.cc-badge.green { color: var(--green); border-color: var(--green-38); }
+.cc-badge.red   { color: var(--red); border-color: var(--red-38); }
+.cc-badge.dim   { color: var(--dim); border-color: var(--border); }
+
+/* ════════════════════════════════════════════════════════
+   STATUS STRIP
+   ════════════════════════════════════════════════════════ */
+.cc-status-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg2);
+  border: 1px solid var(--cyan-28);
+  padding: 8px 14px;
+  position: relative;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.cc-status-stripe {
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 90px; height: 2px;
+  background: linear-gradient(90deg, var(--cyan), transparent);
+}
+.cc-name-wrap { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.cc-name-label { font-family: var(--font-mono); font-size: 9px; color: var(--dim); letter-spacing: 1.5px; }
+
+/* ════════════════════════════════════════════════════════
+   PARTICIPANT ROW
+   ════════════════════════════════════════════════════════ */
+.cc-prow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 11px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: background var(--t-fast);
+}
+.cc-prow:hover { background: var(--bg3); }
+.cc-prow-tick {
+  position: absolute;
+  top: 0; right: 0;
+  width: 7px; height: 7px;
+  border-top: 1px solid rgba(0,212,255,0.25);
+  border-right: 1px solid rgba(0,212,255,0.25);
+}
+.cc-avatar {
+  width: 30px; height: 30px;
+  border: 1px solid var(--cyan-28);
+  background: var(--bg3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  flex-shrink: 0;
+  color: var(--cyan);
+  transition: box-shadow var(--t-med), border-color var(--t-med);
+}
+.cc-prow.speaking .cc-avatar {
+  border-color: var(--green);
+  box-shadow: var(--glow-green);
+  color: var(--green);
+}
+.cc-prow-name { flex: 1; font-family: var(--font-body); font-size: 13px; color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cc-prow-state {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+  /* Fixed slot so IDLE / TALKING swap doesn't shift the row. */
+  min-width: 56px;
+  text-align: right;
+}
+.cc-prow.speaking .cc-prow-state { color: var(--green); }
+
+/* Per-remote-user volume slider inside the participant row.
+   Compact + dim by default; lights up on hover so users can find it
+   but it doesn't fight the row's primary read (name + state). */
+.cc-prow-vol {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dim);
+  opacity: 0.55;
+  transition: opacity var(--t-fast), color var(--t-fast);
+  flex-shrink: 0;
+}
+.cc-prow:hover .cc-prow-vol { opacity: 1; }
+.cc-prow-vol:hover, .cc-prow-vol:focus-within { color: var(--cyan); }
+.cc-range-sm { width: 80px; height: 3px; }
+.cc-range-sm::-webkit-slider-thumb { width: 10px; height: 10px; }
+.cc-range-sm::-moz-range-thumb { width: 10px; height: 10px; }
+.cc-prow-vol-val {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  color: inherit;
+  min-width: 32px;
+  text-align: right;
+  /* Slot is always reserved (no layout shift); the value is invisible
+     at rest, full opacity on hover/focus. */
+  visibility: hidden;
+}
+.cc-prow:hover .cc-prow-vol-val,
+.cc-prow-vol:focus-within .cc-prow-vol-val { visibility: visible; }
+
+/* ════════════════════════════════════════════════════════
+   STAT BLOCK
+   ════════════════════════════════════════════════════════ */
+.cc-statblock {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  padding: 14px 12px;
+  text-align: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.cc-statblock-tick {
+  position: absolute;
+  top: 0; right: 0;
+  width: 7px; height: 7px;
+  border-top: 1px solid rgba(0,212,255,0.25);
+  border-right: 1px solid rgba(0,212,255,0.25);
+}
+.cc-statblock-val {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  letter-spacing: 3px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cyan);
+}
+.cc-statblock-lbl {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+/* ════════════════════════════════════════════════════════
+   LAYOUT HELPERS
+   ════════════════════════════════════════════════════════ */
+.cc-2col {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 14px;
+  align-items: start;
+}
+/* Below ~520px content width (e.g., user shrunk the window), flow
+   the two cards on top of each other so the roster + PTT each get
+   the full width. */
+@media (max-width: 540px) {
+  .cc-2col { grid-template-columns: 1fr; }
+}
+.cc-row { display: flex; gap: 10px; align-items: center; }
+.cc-col { display: flex; flex-direction: column; gap: 10px; }
+.cc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cc-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* ════════════════════════════════════════════════════════
+   PTT / MIC INDICATOR
+   ════════════════════════════════════════════════════════ */
+.cc-mic-orb {
+  width: 88px;
+  height: 88px;
+  border: 2px solid var(--cyan-38);
+  background: var(--bg3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan);
+  position: relative;
+  transition: border-color var(--t-fast), color var(--t-fast), box-shadow var(--t-fast);
+}
+.cc-mic-orb.live {
+  border-color: var(--green);
+  color: var(--green);
+  animation: ptt-pulse 1.2s ease-in-out infinite;
+}
+.cc-mic-orb.muted {
+  border-color: var(--red-38);
+  color: var(--red);
+}
+@keyframes ptt-pulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(0,255,136,0.40); }
+  50%      { box-shadow: 0 0 30px rgba(0,255,136,0.65); }
+}
+
+/* ════════════════════════════════════════════════════════
+   MODAL OVERLAY (settings, guild picker)
+   ════════════════════════════════════════════════════════ */
+.cc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4,6,10,0.72);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.cc-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border-hi);
+  padding: 24px 26px;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.cc-modal-title {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  text-transform: uppercase;
+}
+.cc-modal-title em { color: var(--gold); font-style: normal; }
+.cc-modal-title .sep { color: var(--cyan-28); }
+.cc-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* ════════════════════════════════════════════════════════
+   BANNERS (error / info)
+   ════════════════════════════════════════════════════════ */
+.cc-banner {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
+  border: 1px solid;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cc-banner.error { color: var(--red); border-color: var(--red-38); background: var(--red-08); }
+.cc-banner.warn  { color: var(--gold); border-color: var(--gold-38); background: var(--gold-08); }
+.cc-banner.info  { color: var(--cyan); border-color: var(--cyan-38); background: var(--cyan-08); }
+
+/* ════════════════════════════════════════════════════════
+   SCROLLBAR + ANIMATIONS
+   ════════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--cyan-18); }
+::-webkit-scrollbar-thumb:hover { background: var(--cyan-38); }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cc-fade-in { animation: slideUp 0.25s ease-out; }
+
+@keyframes cc-spin { to { transform: rotate(360deg); } }
+.cc-spin { animation: cc-spin 0.9s linear infinite; }

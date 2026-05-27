@@ -1,0 +1,40 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "RDOC Squad Link",
+  "version": "0.5.0",
+  "identifier": "com.head87x.dccc.companion",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "RDOC Squad Link",
+        "width": 640,
+        "height": 680,
+        "minWidth": 560,
+        "minHeight": 540,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "alwaysOnTop": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {},
+  "bundle": {
+    "active": false,
+    "targets": "all",
+    "icon": ["icons/icon.png", "icons/icon.ico"],
+    "category": "Utility",
+    "shortDescription": "Cross-channel push-to-talk for Discord channel commanders",
+    "longDescription": "Companion application for the Discord Channel Commander system. Provides a global hotkey to open a voice bridge between commanders across different voice channels."
+  }
+}

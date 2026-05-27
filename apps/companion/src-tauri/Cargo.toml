@@ -1,0 +1,49 @@
+[package]
+name = "rdoc-squad-link"
+version = "0.5.0"
+edition = "2021"
+description = "RDOC Squad Link — Discord cross-channel commander companion"
+authors = ["head87x"]
+publish = false
+
+[lib]
+name = "rdoc_squad_link_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-store = "2"
+tauri-plugin-log = "2"
+log = "0.4"
+
+# Mouse-button hotkeys (e.g. Mouse4 / Mouse5). Windows-only for now;
+# macOS needs Accessibility permissions, Linux needs uinput access.
+# Keyboard hotkeys go through the windows-rs Raw Input path below
+# (privilege-neutral, fullscreen-game-safe, doesn't conflict with
+# Discord/TeamSpeak's own keyboard hooks).
+[target.'cfg(target_os = "windows")'.dependencies]
+rdev = "0.5"
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_Media_Audio",
+    "Win32_UI_Input",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

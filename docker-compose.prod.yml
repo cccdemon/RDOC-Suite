@@ -1,0 +1,92 @@
+# Production stack for the Commander LXC (10.10.10.97).
+#
+# TLS-Terminierung läuft NICHT hier — Traefik auf dem LXC-Host terminiert
+# commander.raumdock.org und routet:
+#   /dccc  -> http://127.0.0.1:8787  (bridge)
+#   /lk    -> http://127.0.0.1:7880  (livekit signaling)
+# Traefik bekommt das Cert via Cloudflare-DNS-01 (siehe /etc/traefik/...).
+#
+# LXC 101 nginx macht weiterhin TCP-SNI-Passthrough auf :443
+# -> 10.10.10.97:8443 (Traefik-websecure).
+# WebRTC-Media (7881/tcp, 7882/udp) wird von LXC 101 direkt via iptables-DNAT
+# auf 10.10.10.97 weitergeleitet.
+#
+# Bring up:   docker compose -f docker-compose.prod.yml up -d
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: dccc-livekit
+    restart: unless-stopped
+    # --node-ip is load-bearing: without it, LiveKit tries to STUN-detect
+    # its public IP, but inside a double-NAT Proxmox/LXC setup STUN returns
+    # the LXC-internal gateway (e.g. 10.10.10.1) instead of the actual
+    # public IP. LiveKit then advertises that internal address to clients
+    # as an ICE candidate, ICE never establishes, and audio fails with
+    # "could not establish pc connection". Solution: pass the deployer's
+    # real public IP explicitly via env. Same pattern as the dev compose
+    # uses --node-ip 127.0.0.1 for Docker Desktop on Windows.
+    command: --config /etc/livekit.yaml --node-ip ${LIVEKIT_NODE_IP}
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      # 7880: nur an Loopback publishen — Traefik (auf demselben Host)
+      # nutzt das als Upstream, von extern unerreichbar.
+      - "127.0.0.1:7880:7880"
+      # WebRTC-Media — extern erreichbar über LXC-101-DNAT.
+      - "7881:7881"
+      - "7882:7882/udp"
+    environment:
+      # LIVEKIT_KEYS is LiveKit's native env-var override for the
+      # `keys:` block in livekit.yaml. Format: "key: secret" (one pair).
+      # docker-compose interpolates the ${...} from .env before the
+      # container ever starts — no envsubst step, no template that
+      # `git pull` can overwrite, no secret in committed YAML.
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
+
+  bridge:
+    build:
+      context: .
+      dockerfile: apps/bridge/Dockerfile
+    image: dccc-bridge:latest
+    container_name: dccc-bridge
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      BRIDGE_HOST: "0.0.0.0"
+      BRIDGE_PORT: "8787"
+    # An Loopback binden, damit Traefik via http://127.0.0.1:8787 ranreicht
+    # und der Port von extern (durch die LXC-Host-Firewall) nicht offen ist.
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      # SQLite file lives outside the image so data survives rebuilds.
+      # IMPORTANT: mount under /app/data, NOT /app/prisma. Mounting on
+      # /app/prisma would shadow the image's prisma/schema.prisma and
+      # prisma/migrations/ with whatever the volume happens to contain,
+      # which is how a prior parallel deployment (better-architecture
+      # branch) silently took over our schema. DATABASE_URL in .env must
+      # point to /app/data/prod.db (the volume) — not /app/prisma/prod.db.
+      # For Postgres, drop this mount and point DATABASE_URL at the DB.
+      - bridge_data:/app/data
+    depends_on:
+      - livekit
+
+  bot:
+    build:
+      context: .
+      dockerfile: apps/bot/Dockerfile
+    image: dccc-bot:latest
+    container_name: dccc-bot
+    restart: unless-stopped
+    env_file: .env
+    # Shares the bridge's SQLite DB at /app/data/prod.db. The bridge
+    # container owns migrations (entrypoint runs `prisma migrate deploy`);
+    # the bot only opens the generated client. depends_on ensures the
+    # bridge starts first so the schema is in place before the bot connects.
+    volumes:
+      - bridge_data:/app/data
+    depends_on:
+      - bridge
+
+volumes:
+  bridge_data:

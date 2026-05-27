@@ -1,0 +1,20 @@
+services:
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: dccc-livekit
+    # `--node-ip 127.0.0.1` forces LiveKit to advertise localhost as its
+    # WebRTC endpoint, so the browser can reach it through Docker's port
+    # mappings. Without this, LiveKit auto-detects the host's *external*
+    # IP via STUN, and the browser can't NAT-hairpin back to itself on
+    # Windows (Docker Desktop runs in a VM).
+    command: --dev --bind 0.0.0.0 --node-ip 127.0.0.1
+    restart: unless-stopped
+    ports:
+      - "7880:7880" # WebSocket signaling
+      - "7881:7881" # ICE TCP
+      - "7882:7882/udp" # ICE UDP
+    # `--dev` starts LiveKit with built-in dev credentials:
+    #   api key:    devkey
+    #   api secret: secret
+    # WebSocket signaling: ws://localhost:7880
+    # Suitable for local development only — never expose to the internet.

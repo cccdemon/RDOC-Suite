@@ -1,0 +1,25 @@
+node_modules
+**/node_modules
+**/dist
+**/.turbo
+**/coverage
+**/*.log
+
+# Tauri build artifacts — huge, never needed in the bridge image
+apps/companion/src-tauri/target
+apps/companion/dist
+
+# Prisma generated client is regenerated inside the image
+packages/db/generated
+
+# Local-only files
+.env
+.env.local
+*.db
+*.db-journal
+
+# Editor / VCS noise
+.git
+.gitignore
+.vscode
+.idea
