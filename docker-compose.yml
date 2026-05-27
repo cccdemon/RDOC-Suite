@@ -1,7 +1,7 @@
 services:
   livekit:
     image: livekit/livekit-server:latest
-    container_name: dccc-livekit
+    container_name: rdoc-suite-livekit
     # `--node-ip 127.0.0.1` forces LiveKit to advertise localhost as its
     # WebRTC endpoint, so the browser can reach it through Docker's port
     # mappings. Without this, LiveKit auto-detects the host's *external*

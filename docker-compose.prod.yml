@@ -16,7 +16,7 @@
 services:
   livekit:
     image: livekit/livekit-server:latest
-    container_name: dccc-livekit
+    container_name: rdoc-suite-livekit
     restart: unless-stopped
     # --node-ip is load-bearing: without it, LiveKit tries to STUN-detect
     # its public IP, but inside a double-NAT Proxmox/LXC setup STUN returns
@@ -48,8 +48,8 @@ services:
     build:
       context: .
       dockerfile: apps/bridge/Dockerfile
-    image: dccc-bridge:latest
-    container_name: dccc-bridge
+    image: rdoc-suite-bridge:latest
+    container_name: rdoc-suite-bridge
     restart: unless-stopped
     env_file: .env
     environment:
@@ -76,8 +76,8 @@ services:
     build:
       context: .
       dockerfile: apps/bot/Dockerfile
-    image: dccc-bot:latest
-    container_name: dccc-bot
+    image: rdoc-suite-bot:latest
+    container_name: rdoc-suite-bot
     restart: unless-stopped
     env_file: .env
     # Shares the bridge's SQLite DB at /app/data/prod.db. The bridge

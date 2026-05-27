@@ -82,6 +82,8 @@ RDOC-Suite/
   served from `https://suite.raumdock.org/` with empty `PUBLIC_BASE_PATH`.
 - 2026-05-27: Configure new Git remote origin:
   `git@github.com:cccdemon/RDOC-Suite.git`.
+- 2026-05-27: Rename Docker containers/images to the clear pattern
+  `rdoc-suite-<part>` for parts like `livekit`, `bridge`, and `bot`.
 
 ## Completed Steps
 
@@ -118,6 +120,12 @@ RDOC-Suite/
   docs. `PUBLIC_BASE_PATH` is now empty for production root-host routing.
 - 2026-05-27: Configured Git remote `origin` as
   `git@github.com:cccdemon/RDOC-Suite.git`.
+- 2026-05-27: Renamed active Docker container/image references to
+  `rdoc-suite-<part>`.
+  - `rdoc-suite-livekit`
+  - `rdoc-suite-bridge`
+  - `rdoc-suite-bot`
+  - Updated compose files, production env comment, and deployment notes.
 
 ## Open Decisions
 

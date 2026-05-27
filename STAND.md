@@ -5,7 +5,7 @@ Stand: 2026-05-27 (Bridge auf Commit `4988a88` deployed, Companion build 125 rel
 ## 🔁 Pickup für die nächste Session
 
 **Was läuft live?**
-- Bridge: `dccc-bridge:latest` auf LXC `headwig`, Commit `4988a88` — Raid-Planer + Output-Mute via Subscribe/Unsubscribe + AFK + alle Discord-REST-Mutation-Endpoints
+- Bridge: `rdoc-suite-bridge:latest` auf LXC `headwig`, Commit `4988a88` — Raid-Planer + Output-Mute via Subscribe/Unsubscribe + AFK + alle Discord-REST-Mutation-Endpoints
 - Companion: **build 125 lokal gebaut, GitHub-Release ausstehend**. Vorheriger Live-Release `v0.5.0-build114`. Neue Builds seitdem: build123 = PTT-Sound Auto-Repeat-Fix (Raw-Input-Debounce), build125 = neues App-Icon (RDOC Squad Link Helm-Logo, generiert per `tauri icon`).
 - Bot: unverändert (kein Code-Change in dieser Session)
 
@@ -43,13 +43,13 @@ Stand: 2026-05-27 (Bridge auf Commit `4988a88` deployed, Companion build 125 rel
 
 ## Was läuft
 
-Alle drei DCCC-Services laufen als Docker-Container auf LXC `headwig`. Bridge/Admin-Webinterfaces sind extern unter `https://suite.raumdock.org` erreichbar; LiveKit-Signaling unter `wss://voice.raumdock.org`. Bot redet nur outbound mit Discord.
+Alle drei RDOC-Suite-Services laufen als Docker-Container auf LXC `headwig`. Bridge/Admin-Webinterfaces sind extern unter `https://suite.raumdock.org` erreichbar; LiveKit-Signaling unter `wss://voice.raumdock.org`. Bot redet nur outbound mit Discord.
 
 ```
 Public :443/tcp ── LXC 101 nginx (SNI-Passthrough) ──► 10.10.10.97:443 (Traefik)
                                                           │
-                         suite.raumdock.org/* ─────────► 127.0.0.1:8787 (dccc-bridge, Docker)
-                         voice.raumdock.org/* ─────────► 127.0.0.1:7880 (dccc-livekit, Docker)
+                         suite.raumdock.org/* ─────────► 127.0.0.1:8787 (rdoc-suite-bridge, Docker)
+                         voice.raumdock.org/* ─────────► 127.0.0.1:7880 (rdoc-suite-livekit, Docker)
 
 Public :7881/tcp ── LXC 101 iptables DNAT ──► 10.10.10.97:7881 (LiveKit ICE-TCP)
 Public :7882/udp ── LXC 101 iptables DNAT ──► 10.10.10.97:7882 (LiveKit RTC-Media)
@@ -57,24 +57,24 @@ Public :7882/udp ── LXC 101 iptables DNAT ──► 10.10.10.97:7882 (LiveKi
 
 - **SSH:** `ssh -p 22107 -i ~/.ssh/llw_homepage_ed25519 root@landwurscht.raumdock.org` → landet direkt auf LXC `headwig`
 - **LXC:** `headwig` / `10.10.10.97`, Proxmox-Container (Kernel `pve`)
-- **Repo:** `/opt/discord-channel-commander` (Verzeichnis-Name bewusst beibehalten), branch `main`, **neues GitHub-Remote `git@github.com:head87x/rdcc.git`** (privat). Das alte geteilte Remote `head87x/discord-channel-commander` ist nur noch unter `archive-shared` als Referenz da; wir arbeiten ab 2026-05-23 ausschließlich am neuen Repo, um die Kollision mit dem `better-architecture`-Branch des anderen Devs zu vermeiden.
+- **Repo:** `/opt/RDOC-Suite` (Verzeichnis-Name bewusst beibehalten), branch `main`, **neues GitHub-Remote `git@github.com:head87x/rdcc.git`** (privat). Das alte geteilte Remote `head87x/discord-channel-commander` ist nur noch unter `archive-shared` als Referenz da; wir arbeiten ab 2026-05-23 ausschließlich am neuen Repo, um die Kollision mit dem `better-architecture`-Branch des anderen Devs zu vermeiden.
 - **Hostname:** `suite.raumdock.org` (Cloudflare-DNS, kein Proxy/Orange-Cloud)
 - **TLS:** Traefik via Cloudflare-DNS-01, Cert-Resolver `le` (zusätzlich `tlsChallenge: {}` als Fallback)
 - **Web-Proxy:** Traefik (systemd, kein Docker — direkt auf der LXC)
-- **Alle DCCC-Services:** Docker via [docker-compose.prod.yml](docker-compose.prod.yml)
-- **Es gibt KEINE `dccc-*.service` systemd-Units mehr** (der alte Konflikt aus älterer Doku ist gelöst — `systemctl list-units 'dccc-*'` ist leer)
+- **Alle RDOC-Suite-Services:** Docker via [docker-compose.prod.yml](docker-compose.prod.yml)
+- **Es gibt KEINE `rdoc-suite-*.service` systemd-Units mehr** (der alte Konflikt aus älterer Doku ist gelöst — `systemctl list-units 'rdoc-suite-*'` ist leer)
 
 ## Komponenten (verifizierter Stand)
 
 | Komponente | Container | Image | Ports | Mounts | Restart |
 | --- | --- | --- | --- | --- | --- |
-| Bridge | `dccc-bridge` | `dccc-bridge:latest` (lokal gebaut) | `127.0.0.1:8787 → 8787/tcp` | `discord-channel-commander_bridge_data → /app/data` | `unless-stopped` |
-| Bot | `dccc-bot` | `dccc-bot:latest` (lokal gebaut) | keine (nur outbound zu Discord) | `discord-channel-commander_bridge_data → /app/data` (shared mit Bridge) | `unless-stopped` |
-| LiveKit | `dccc-livekit` | `livekit/livekit-server:latest` | `127.0.0.1:7880` (signaling), `:7881/tcp`, `:7882/udp` (WebRTC) | bind `livekit.yaml → /etc/livekit.yaml` | `unless-stopped` |
+| Bridge | `rdoc-suite-bridge` | `rdoc-suite-bridge:latest` (lokal gebaut) | `127.0.0.1:8787 → 8787/tcp` | `rdoc-suite_bridge_data → /app/data` | `unless-stopped` |
+| Bot | `rdoc-suite-bot` | `rdoc-suite-bot:latest` (lokal gebaut) | keine (nur outbound zu Discord) | `rdoc-suite_bridge_data → /app/data` (shared mit Bridge) | `unless-stopped` |
+| LiveKit | `rdoc-suite-livekit` | `livekit/livekit-server:latest` | `127.0.0.1:7880` (signaling), `:7881/tcp`, `:7882/udp` (WebRTC) | bind `livekit.yaml → /etc/livekit.yaml` | `unless-stopped` |
 | Traefik | (systemd) | — | `:80`, `:443` | `/etc/traefik/*` | systemd-managed |
 
 Volumes:
-- `discord-channel-commander_bridge_data` — aktives Volume mit der SQLite-DB.
+- `rdoc-suite_bridge_data` — aktives Volume mit der SQLite-DB.
 - `dccc_bridge_data` — **verwaist** (vom alten Compose-Project-Namen, kein Container mountet das mehr). Sicher löschbar, sobald man sich sicher ist, dass dort keine wertvollen Daten liegen.
 
 ## Smoke-Test
@@ -131,46 +131,46 @@ Dynamic Config (file provider), aktiver Stand:
 ```yaml
 http:
   routers:
-    dccc-bridge-https:
+    rdoc-suite-bridge-https:
       rule: "Host(`suite.raumdock.org`)"
       entryPoints: [websecure]
-      service: dccc-bridge
+      service: rdoc-suite-bridge
       tls:
         certResolver: le
 
-    dccc-bridge-http:
+    rdoc-suite-bridge-http:
       rule: "Host(`suite.raumdock.org`)"
       entryPoints: [web]
-      middlewares: [dccc-redirect-https]
-      service: dccc-bridge
+      middlewares: [rdoc-suite-redirect-https]
+      service: rdoc-suite-bridge
 
-    dccc-livekit-https:
+    rdoc-suite-livekit-https:
       rule: "Host(`voice.raumdock.org`)"
       entryPoints: [websecure]
-      service: dccc-livekit
+      service: rdoc-suite-livekit
       tls:
         certResolver: le
 
-    dccc-livekit-http:
+    rdoc-suite-livekit-http:
       rule: "Host(`voice.raumdock.org`)"
       entryPoints: [web]
-      middlewares: [dccc-redirect-https]
-      service: dccc-livekit
+      middlewares: [rdoc-suite-redirect-https]
+      service: rdoc-suite-livekit
 
   middlewares:
-    dccc-redirect-https:
+    rdoc-suite-redirect-https:
       redirectScheme:
         scheme: https
         permanent: true
 
   services:
-    dccc-bridge:
+    rdoc-suite-bridge:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:8787"
         passHostHeader: true
 
-    dccc-livekit:
+    rdoc-suite-livekit:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:7880"
@@ -238,7 +238,7 @@ COMPANION_ASSET_PATTERN=.exe              # default; matched gegen Release-Asset
 ## Build- und Deploy-Commands
 
 ```bash
-cd /opt/discord-channel-commander
+cd /opt/RDOC-Suite
 git pull
 docker compose -f docker-compose.prod.yml build bridge
 docker compose -f docker-compose.prod.yml up -d
@@ -263,7 +263,7 @@ Drei Slashes nach RFC 8089. **Pfad bewusst `/app/data/`, nicht `/app/prisma/`** 
 
 2. **Caddyfile-Leiche** — [Caddyfile](Caddyfile) liegt noch im Repo, wird nicht mehr benutzt (Traefik hat übernommen). Kann gelöscht werden.
 
-3. **SQLite → Postgres** — aktuell SQLite im Volume `discord-channel-commander_bridge_data`. Für produktive Last laut [CLAUDE.md](CLAUDE.md) auf Postgres wechseln.
+3. **SQLite → Postgres** — aktuell SQLite im Volume `rdoc-suite_bridge_data`. Für produktive Last laut [CLAUDE.md](CLAUDE.md) auf Postgres wechseln.
 
 4. **Verwaistes Volume `dccc_bridge_data`** existiert noch (alter Compose-Project-Name), wird von keinem Container mehr gemountet. Sicher löschbar via `docker volume rm dccc_bridge_data`, sobald sicher ist dass darin keine wertvollen Daten liegen.
 
@@ -271,8 +271,8 @@ Drei Slashes nach RFC 8089. **Pfad bewusst `/app/data/`, nicht `/app/prisma/`** 
 
 ### Erledigt (zuletzt verifiziert 2026-05-23)
 
-- ✅ **systemd-Konflikt gelöst** — keine `dccc-*.service` Unit mehr aktiv (`systemctl list-units 'dccc-*'` ist leer).
-- ✅ **Bot ist im Compose-Stack** — läuft als Container `dccc-bot`, teilt sich das `bridge_data`-Volume mit der Bridge.
+- ✅ **systemd-Konflikt gelöst** — keine `rdoc-suite-*.service` Unit mehr aktiv (`systemctl list-units 'rdoc-suite-*'` ist leer).
+- ✅ **Bot ist im Compose-Stack** — läuft als Container `rdoc-suite-bot`, teilt sich das `rdoc-suite_bridge_data`-Volume mit der Bridge.
 - ✅ **Companion-Build für Prod** — Production-EXE wird mit `VITE_BRIDGE_URL=https://suite.raumdock.org` aus [apps/companion/.env.production](apps/companion/.env.production) gebaut.
 - ✅ **Discord OAuth Redirect-URI** im Developer-Portal eingetragen: `https://suite.raumdock.org/auth/callback`.
 - ✅ **Voice-Channel-Enforcement aktiv und in Produktion verifiziert** (Phase A + A.1 des Folgendes-Plans). Bridge weist Commander ab, deren aktueller Discord-Voice-Channel nicht in `allowedVoiceChannelIds` ist. Bot trackt Voice-States via `GuildVoiceStates`-Intent in der neuen `UserVoiceState`-Tabelle. Migration `20260523195614_add_user_voice_state` läuft beim Bridge-Container-Start automatisch.
