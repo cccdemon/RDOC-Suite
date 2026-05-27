@@ -72,11 +72,35 @@ RDOC-Suite/
 
 - 2026-05-27: Create this merge log and project plan before any merge work, so
   future agents can resume from a repo-local source of truth.
+- 2026-05-27: Check all source repositories (`RDOC-SC-Suite/RDCC`,
+  `RDOC/RDOC-RTC`, `RDOC/RDOC-VoiceRelayBots`) for upstream changes with
+  `git pull`, then bring relevant source changes into `RDOC-Suite` while
+  preserving the suite repo as the independent target repository.
 
 ## Completed Steps
 
 - 2026-05-27: Created fresh Git repository `RDOC-Suite` from RDCC shell.
   Commit: `5045813`.
+- 2026-05-27: Added this merge log and initial integration plan.
+  Commit: `7846263`.
+- 2026-05-27: Attempted to pull source repositories before importing further
+  changes.
+  - `RDOC-SC-Suite/RDCC`: local branch `main`, HEAD
+    `607f1fe99b7480ece952402c16ce4db4553fc418`. `git pull --ff-only`
+    failed because remote is `git@github.com:head87x/rdcc.git` and GitHub SSH
+    auth is unavailable in this environment (`Permission denied (publickey)`).
+    HTTPS also requested credentials, so no upstream changes could be fetched.
+  - `RDOC/RDOC-RTC`: local branch `better-architecture`, HEAD
+    `056e7d7232a594426868726c13ee484e03fdf5a5`. `git pull --ff-only`
+    failed because remote is `git@github.com:cccdemon/RDOC-RTC.git` and
+    GitHub SSH auth is unavailable. HTTPS also requested credentials, so no
+    upstream changes could be fetched.
+  - `RDOC/RDOC-VoiceRelayBots`: local branch `main`, HEAD
+    `1d32ceeb3ead7cc365e8116cc432e13ca82386a1`. HTTPS pull from
+    `https://github.com/cccdemon/RDOC-VoiceRelayBots.git main` succeeded and
+    reported `Already up to date`.
+  - Result for `RDOC-Suite`: no source-code changes imported from upstream
+    because the only reachable source repo had no new commits.
 
 ## Open Decisions
 
