@@ -78,6 +78,8 @@ RDOC-Suite/
   preserving the suite repo as the independent target repository.
 - 2026-05-27: Apply deployment naming decision: all web interfaces should use
   `suite.raumdock.org`; LiveKit URL should use `voice.raumdock.org`.
+- 2026-05-27: Remove `/dccc` from public suite URLs. Web interfaces should be
+  served from `https://suite.raumdock.org/` with empty `PUBLIC_BASE_PATH`.
 
 ## Completed Steps
 
@@ -104,12 +106,14 @@ RDOC-Suite/
   - Result for `RDOC-Suite`: no source-code changes imported from upstream
     because the only reachable source repo had no new commits.
 - 2026-05-27: Applied deployment naming decision.
-  - Web interface / bridge public URL: `https://suite.raumdock.org/dccc`
-  - Discord OAuth callback: `https://suite.raumdock.org/dccc/auth/callback`
+  - Web interface / bridge public URL: `https://suite.raumdock.org`
+  - Discord OAuth callback: `https://suite.raumdock.org/auth/callback`
   - LiveKit signaling URL: `wss://voice.raumdock.org`
   - Updated `.env.example`, `.env.prod.template`, `Caddyfile`,
     `docker-compose.prod.yml`, `STAND.md`, and relevant code comments.
   - Left historical `CHANGELOG.md` entries unchanged.
+- 2026-05-27: Removed `/dccc` path prefix from active production config and
+  docs. `PUBLIC_BASE_PATH` is now empty for production root-host routing.
 
 ## Open Decisions
 
