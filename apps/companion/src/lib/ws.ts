@@ -17,11 +17,15 @@ export class BridgeWs {
   private listeners: Listener = {};
   private token: string | null = null;
   private guildId: string | null = null;
+  private sessionId: string | null = null;
   private bridgeUrl = "";
   private status: WsStatus = "idle";
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private reconnectAttempts = 0;
   private explicitlyClosed = false;
+  private lastHeartbeatTimestamp: number | null = null;
+  /** Most recent measured RTT in milliseconds. Null until first pong received. */
+  rtt: number | null = null;
 
   setListeners(listeners: Listener): void {
     this.listeners = listeners;
@@ -31,7 +35,7 @@ export class BridgeWs {
     this.bridgeUrl = url;
   }
 
-  /** Connect (or reconnect with new guildId). The session token is now
+  /** Connect (or reconnect) to a guild room. The session token is now
    *  guild-agnostic — the active guildId is supplied per-connect so
    *  the user can switch servers without re-doing OAuth.
    *
@@ -42,20 +46,20 @@ export class BridgeWs {
   connect(token: string, guildId: string): void {
     this.token = token;
     this.guildId = guildId;
-    if (this.socket) {
-      const old = this.socket;
-      old.onopen = null;
-      old.onmessage = null;
-      old.onerror = null;
-      old.onclose = null;
-      try {
-        old.close(1000, "switching_guild");
-      } catch {
-        // already closing — fine
-      }
-      this.socket = null;
-    }
-    this.clearHeartbeat();
+    this.sessionId = null;
+    this.teardownSocket("switching_guild");
+    this.reconnectAttempts = 0;
+    this.explicitlyClosed = false;
+    this.openSocket();
+  }
+
+  /** Connect to a session room using an OAuth token (same token as guild path).
+   *  The bridge verifies the user consumed a SessionInvite for this sessionId. */
+  connectSession(token: string, sessionId: string): void {
+    this.token = token;
+    this.sessionId = sessionId;
+    this.guildId = null;
+    this.teardownSocket("switching_session");
     this.reconnectAttempts = 0;
     this.explicitlyClosed = false;
     this.openSocket();
@@ -64,11 +68,25 @@ export class BridgeWs {
   disconnect(): void {
     this.explicitlyClosed = true;
     this.clearHeartbeat();
+    this.teardownSocket("client_disconnect");
+    this.setStatus("closed");
+  }
+
+  private teardownSocket(reason: string): void {
     if (this.socket) {
-      this.socket.close(1000, "client_disconnect");
+      const old = this.socket;
+      old.onopen = null;
+      old.onmessage = null;
+      old.onerror = null;
+      old.onclose = null;
+      try {
+        old.close(1000, reason);
+      } catch {
+        // already closing — fine
+      }
       this.socket = null;
     }
-    this.setStatus("closed");
+    this.clearHeartbeat();
   }
 
   send(msg: ClientMessage): void {
@@ -78,11 +96,14 @@ export class BridgeWs {
   }
 
   private openSocket(): void {
-    if (!this.token || !this.bridgeUrl || !this.guildId) return;
+    if (!this.token || !this.bridgeUrl) return;
+    if (!this.guildId && !this.sessionId) return;
+
     const { bridgeWsUrl } = buildConfig(this.bridgeUrl);
-    const url =
-      `${bridgeWsUrl}/ws?token=${encodeURIComponent(this.token)}` +
-      `&guildId=${encodeURIComponent(this.guildId)}`;
+    const roomParam = this.sessionId
+      ? `&sessionId=${encodeURIComponent(this.sessionId)}`
+      : `&guildId=${encodeURIComponent(this.guildId!)}`;
+    const url = `${bridgeWsUrl}/ws?token=${encodeURIComponent(this.token)}${roomParam}`;
     this.setStatus(this.reconnectAttempts > 0 ? "reconnecting" : "connecting");
 
     const socket = new WebSocket(url);
@@ -97,6 +118,9 @@ export class BridgeWs {
     socket.onmessage = (ev) => {
       try {
         const parsed = JSON.parse(ev.data) as ServerMessage;
+        if (parsed.type === "pong" && this.lastHeartbeatTimestamp !== null) {
+          this.rtt = Date.now() - this.lastHeartbeatTimestamp;
+        }
         this.listeners.message?.(parsed);
       } catch {
         // ignore malformed messages
@@ -117,6 +141,11 @@ export class BridgeWs {
       // Code 4401 = unauthenticated; do not reconnect blindly.
       if (ev.code === 4401) {
         this.setStatus("closed", "unauthenticated");
+        return;
+      }
+      // Code 4403 = forbidden (session ended, not a member); do not reconnect.
+      if (ev.code === 4403) {
+        this.setStatus("closed", "forbidden");
         return;
       }
       // Code 4409 = the bridge kicked this socket because another
@@ -144,7 +173,9 @@ export class BridgeWs {
   private startHeartbeat(): void {
     this.clearHeartbeat();
     this.heartbeat = setInterval(() => {
-      this.send({ type: "heartbeat", timestamp: Date.now() });
+      const ts = Date.now();
+      this.lastHeartbeatTimestamp = ts;
+      this.send({ type: "heartbeat", timestamp: ts });
     }, HEARTBEAT_INTERVAL_MS);
   }
 

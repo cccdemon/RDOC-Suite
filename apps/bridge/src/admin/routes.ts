@@ -8,6 +8,7 @@ import { getEnv, getOAuthEnv } from "../config/env.js";
 import {
   addGuildMemberRole,
   buildAuthorizeUrl,
+  bulkModifyChannelPositions,
   exchangeCodeForToken,
   fetchCurrentUser,
   fetchGuildMember,
@@ -61,8 +62,26 @@ import {
   renderError,
   renderLogin,
   renderRaidPlaner,
+  renderRelayBots,
+  renderSessionDetail,
+  renderSessions,
   type DashboardData,
 } from "./views.js";
+import { getRelayBotsConfig } from "../services/relayBotsConfig.js";
+import { bridgeEvents } from "../services/bridgeEvents.js";
+import { createStrategyChannel } from "../services/strategyChannels.js";
+import { appendAudit, listRecentAudit, countAudit } from "../services/audit.js";
+import { monitoringSnapshot } from "../services/monitoring.js";
+import { renderAudit, renderDiscordVoice, renderMonitoring } from "./views.js";
+import {
+  createSession,
+  endSession,
+  getSession,
+  listActiveSessions,
+  mintSessionInvite,
+  listSessionInvites,
+  revokeSessionInvite,
+} from "../services/sessions.js";
 
 const STATE_COOKIE_LOGIN = "dccc_admin_oauth_state";
 const STATE_COOKIE_INVITE = "dccc_admin_invite_state";
@@ -233,6 +252,18 @@ function deriveOAuthRedirectUri(suffix: "/oauth/callback" | "/invite/callback"):
 }
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
+  // URL-encoded body parser for native HTML form POSTs (sessions pages).
+  app.addContentTypeParser(
+    "application/x-www-form-urlencoded",
+    { parseAs: "string" },
+    (_req, body, done) => {
+      const params = new URLSearchParams(body as string);
+      const obj: Record<string, string> = {};
+      for (const [k, v] of params) obj[k] = v;
+      done(null, obj);
+    },
+  );
+
   // ──────────────────────────────────────────────────────────────
   // Static assets: /admin/static/* → admin/static/ folder
   // ──────────────────────────────────────────────────────────────
@@ -495,6 +526,12 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     reply.redirect(`${navBase()}/login`);
   });
 
+  // Trailing-slash redirect: /admin -> /admin/ so users who type the
+  // URL without the trailing slash don't hit a 404.
+  app.get(ROUTE_PREFIX, async (_request, reply) => {
+    reply.redirect(`${navBase()}/`);
+  });
+
   // ──────────────────────────────────────────────────────────────
   // Protected: dashboard
   // ──────────────────────────────────────────────────────────────
@@ -753,6 +790,9 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         return;
       }
       const ok = await revokeInviteLink({ id: request.params.id, guildId: session.guildId });
+      if (ok) {
+        void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "invite_link.revoke", target: request.params.id });
+      }
       reply.send({ ok });
     },
   );
@@ -785,6 +825,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         reply.code(status).send({ error: result.reason });
         return;
       }
+      void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "admin.remove", target: request.params.userId });
       reply.send({ ok: true });
     },
   );
@@ -906,6 +947,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         reply.code(status).send({ error: result.reason });
         return;
       }
+      void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "admin.set_role", target: request.params.userId, metadata: { role: parsed.data.role } });
       reply.send({ ok: true });
     },
   );
@@ -1185,6 +1227,219 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   );
 
   const dmLinkSchema = z.object({ label: z.string().min(1).max(120).optional() });
+  // ──────────────────────────────────────────────────────────────
+  // Protected: relay bots admin page (step 7)
+  // ──────────────────────────────────────────────────────────────
+  app.get<{ Querystring: { saved?: string } }>(
+    `${ROUTE_PREFIX}/relay-bots`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const [config, nav] = await Promise.all([
+        getRelayBotsConfig(),
+        getAdminNavGuilds(session.sub, session.guildId),
+      ]);
+      reply.type("text/html").send(
+        renderRelayBots({
+          staticBase: staticBase(),
+          navBase: navBase(),
+          data: {
+            config,
+            canSeeTokens: session.role === "admiral",
+          },
+          currentGuild: nav.currentGuild,
+          otherGuilds: nav.otherGuilds,
+          saved: request.query.saved === "1",
+        }),
+      );
+    },
+  );
+
+  // ──────────────────────────────────────────────────────────────
+  // Protected: sessions pages (step 4 — admin web UI for ops sessions)
+  // ──────────────────────────────────────────────────────────────
+
+  const createSessionBodySchema = z.object({
+    guildId: z.string().regex(/^[0-9]{17,20}$/),
+    label: z.string().min(1).max(80),
+  });
+
+  app.get<{ Querystring: { created?: string } }>(
+    `${ROUTE_PREFIX}/sessions`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const [sessions, nav] = await Promise.all([
+        listActiveSessions(session.guildId),
+        getAdminNavGuilds(session.sub, session.guildId),
+      ]);
+      const inviteCounts = await Promise.all(
+        sessions.map((s) =>
+          listSessionInvites({ sessionId: s.id, guildId: session.guildId }).then(
+            (invs) => invs?.length ?? 0,
+          ),
+        ),
+      );
+      reply.type("text/html").send(
+        renderSessions({
+          staticBase: staticBase(),
+          navBase: navBase(),
+          data: {
+            guildId: session.guildId,
+            sessions: sessions.map((s, i) => ({ ...s, inviteCount: inviteCounts[i] })),
+          },
+          currentGuild: nav.currentGuild,
+          otherGuilds: nav.otherGuilds,
+          created: request.query.created,
+        }),
+      );
+    },
+  );
+
+  app.post(
+    `${ROUTE_PREFIX}/sessions`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const parsed = createSessionBodySchema.safeParse(request.body);
+      if (!parsed.success || parsed.data.guildId !== session.guildId) {
+        reply.code(400).send({ error: "invalid_body" });
+        return;
+      }
+      const created = await createSession({
+        guildId: session.guildId,
+        label: parsed.data.label,
+        createdBy: session.sub,
+      });
+      void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "session.create", target: created.id, metadata: { label: created.label } });
+      reply.redirect(`${navBase()}/sessions?created=${encodeURIComponent(created.label)}`);
+    },
+  );
+
+  const mintInviteBodySchema = z.object({
+    label: z.string().min(1).max(80),
+    ttlHours: z.coerce.number().int().min(1).max(168).optional(),
+  });
+
+  app.get<{
+    Params: { id: string };
+    Querystring: { fresh_token?: string; fresh_label?: string; fresh_exp?: string };
+  }>(
+    `${ROUTE_PREFIX}/sessions/:id`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const { id } = request.params;
+      const [sessionData, invites, nav] = await Promise.all([
+        getSession({ sessionId: id, guildId: session.guildId }),
+        listSessionInvites({ sessionId: id, guildId: session.guildId }),
+        getAdminNavGuilds(session.sub, session.guildId),
+      ]);
+      if (!sessionData || !invites) {
+        reply.code(404).type("text/html").send(
+          renderError({
+            staticBase: staticBase(),
+            title: "Session nicht gefunden",
+            message: "Diese Session existiert nicht oder gehört nicht zu deinem Server.",
+          }),
+        );
+        return;
+      }
+      let freshInvite: { plaintext: string; label: string; expiresAt: Date } | undefined;
+      if (request.query.fresh_token && request.query.fresh_label && request.query.fresh_exp) {
+        freshInvite = {
+          plaintext: request.query.fresh_token,
+          label: decodeURIComponent(request.query.fresh_label),
+          expiresAt: new Date(Number(request.query.fresh_exp) * 1000),
+        };
+      }
+      reply.type("text/html").send(
+        renderSessionDetail({
+          staticBase: staticBase(),
+          navBase: navBase(),
+          data: { session: sessionData, invites, freshInvite },
+          currentGuild: nav.currentGuild,
+          otherGuilds: nav.otherGuilds,
+        }),
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    `${ROUTE_PREFIX}/sessions/:id/end`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const result = await endSession({ sessionId: request.params.id, guildId: session.guildId });
+      if (result.ok) {
+        void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "session.end", target: request.params.id });
+      }
+      if (!result.ok && result.reason === "not_found") {
+        reply.code(404).type("text/html").send(
+          renderError({
+            staticBase: staticBase(),
+            title: "Session nicht gefunden",
+            message: "Diese Session existiert nicht oder gehört nicht zu deinem Server.",
+          }),
+        );
+        return;
+      }
+      // already_ended is fine — just redirect back to sessions list
+      reply.redirect(`${navBase()}/sessions`);
+    },
+  );
+
+  app.post<{ Params: { id: string } }>(
+    `${ROUTE_PREFIX}/sessions/:id/invites`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const parsed = mintInviteBodySchema.safeParse(request.body);
+      if (!parsed.success) {
+        reply.code(400).send({ error: "invalid_body" });
+        return;
+      }
+      const invite = await mintSessionInvite({
+        sessionId: request.params.id,
+        guildId: session.guildId,
+        label: parsed.data.label,
+        createdBy: session.sub,
+        ttlHours: parsed.data.ttlHours,
+      });
+      if (!invite) {
+        reply.code(404).type("text/html").send(
+          renderError({
+            staticBase: staticBase(),
+            title: "Session nicht gefunden",
+            message: "Die Session wurde nicht gefunden oder ist bereits beendet.",
+          }),
+        );
+        return;
+      }
+      const exp = Math.floor(invite.expiresAt.getTime() / 1000);
+      reply.redirect(
+        `${navBase()}/sessions/${request.params.id}` +
+          `?fresh_token=${encodeURIComponent(invite.plaintext)}` +
+          `&fresh_label=${encodeURIComponent(invite.label)}` +
+          `&fresh_exp=${exp}`,
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string; inviteId: string } }>(
+    `${ROUTE_PREFIX}/sessions/:id/invites/:inviteId/revoke`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      await revokeSessionInvite({
+        inviteId: request.params.inviteId,
+        sessionId: request.params.id,
+        guildId: session.guildId,
+      });
+      reply.redirect(`${navBase()}/sessions/${request.params.id}`);
+    },
+  );
+
   app.post<{ Params: { userId: string } }>(
     `${ROUTE_PREFIX}/api/members/:userId/dm-download-link`,
     async (request, reply) => {
@@ -1249,6 +1504,340 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       reply.send({ ok: true, tokenId: minted.id });
     },
   );
+
+  // ──────────────────────────────────────────────────────────────
+  // Monitoring page + snapshot endpoint
+  // ──────────────────────────────────────────────────────────────
+  app.get(`${ROUTE_PREFIX}/monitoring`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+    const nav = await getAdminNavGuilds(session.sub, session.guildId);
+    reply.type("text/html").send(
+      renderMonitoring({
+        staticBase: staticBase(),
+        navBase: navBase(),
+        currentGuild: nav.currentGuild,
+        otherGuilds: nav.otherGuilds,
+      }),
+    );
+  });
+
+  app.get(`${ROUTE_PREFIX}/monitoring/snapshot`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+    reply.send(await monitoringSnapshot());
+  });
+
+  // ──────────────────────────────────────────────────────────────
+  // Audit log page (admiral-only)
+  // ──────────────────────────────────────────────────────────────
+  app.get<{ Querystring: { limit?: string; offset?: string } }>(
+    `${ROUTE_PREFIX}/audit`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      if (session.role !== "admiral") {
+        reply.code(403).type("text/html").send(
+          renderError({
+            staticBase: staticBase(),
+            title: "Kein Zugriff",
+            message: "Das Audit-Log ist nur für Admirals zugänglich.",
+          }),
+        );
+        return;
+      }
+      const limit = Math.min(parseInt(request.query.limit ?? "100", 10) || 100, 500);
+      const offset = Math.max(parseInt(request.query.offset ?? "0", 10) || 0, 0);
+      const [entries, total, nav] = await Promise.all([
+        listRecentAudit(session.guildId, limit, offset),
+        countAudit(session.guildId),
+        getAdminNavGuilds(session.sub, session.guildId),
+      ]);
+      reply.type("text/html").send(
+        renderAudit({
+          staticBase: staticBase(),
+          navBase: navBase(),
+          entries,
+          total,
+          currentGuild: nav.currentGuild,
+          otherGuilds: nav.otherGuilds,
+        }),
+      );
+    },
+  );
+
+  // ──────────────────────────────────────────────────────────────
+  // Discord Voice page + supporting JSON endpoints
+  // ──────────────────────────────────────────────────────────────
+  app.get(`${ROUTE_PREFIX}/discord-voice`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+    const nav = await getAdminNavGuilds(session.sub, session.guildId);
+    reply.type("text/html").send(
+      renderDiscordVoice({
+        staticBase: staticBase(),
+        navBase: navBase(),
+        currentGuild: nav.currentGuild,
+        otherGuilds: nav.otherGuilds,
+      }),
+    );
+  });
+
+  app.get(`${ROUTE_PREFIX}/discord/voice-states`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+    const oauth = getOAuthEnv();
+    if (!oauth) {
+      reply.send({ offline: true, channels: [], voiceStates: [] });
+      return;
+    }
+    const [channels, voiceRows] = await Promise.all([
+      getCachedChannels(session.guildId, oauth.DISCORD_BOT_TOKEN),
+      getPrisma().userVoiceState.findMany({
+        where: { guildId: session.guildId, channelId: { not: null } },
+      }),
+    ]);
+    const voiceChannels = channels.filter((c) => c.type === 2);
+    reply.send({
+      channels: voiceChannels.map((c) => ({ id: c.id, name: c.name })),
+      voiceStates: voiceRows.map((r) => ({
+        userId: r.userId,
+        displayName: r.userId,
+        channelId: r.channelId,
+      })),
+    });
+  });
+
+  app.get(`${ROUTE_PREFIX}/discord/roles`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+    const oauth = getOAuthEnv();
+    if (!oauth) {
+      reply.send({ roles: [] });
+      return;
+    }
+    const roles = await getCachedRoles(session.guildId, oauth.DISCORD_BOT_TOKEN);
+    reply.send({ roles: roles.map((r) => ({ id: r.id, name: r.name })) });
+  });
+
+  app.patch<{ Params: { userId: string }; Body: { channelId: string | null } }>(
+    `${ROUTE_PREFIX}/discord/members/:userId/channel`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const oauth = getOAuthEnv();
+      if (!oauth) { reply.code(503).send({ error: "discord_not_configured" }); return; }
+      if (!/^[0-9]{17,20}$/.test(request.params.userId)) {
+        reply.code(400).send({ error: "invalid_user_id" }); return;
+      }
+      const channelId = (request.body as { channelId?: string | null })?.channelId ?? null;
+      const res = await moveGuildMember({
+        botToken: oauth.DISCORD_BOT_TOKEN,
+        guildId: session.guildId,
+        userId: request.params.userId,
+        channelId,
+      });
+      if (!res.ok) {
+        const { code, status } = mapDiscordError(res.error.status, "missing_move_members");
+        reply.code(status).send({ error: code }); return;
+      }
+      void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "discord.move_member", target: request.params.userId, metadata: { channelId } });
+      reply.send({ ok: true });
+    },
+  );
+
+  app.put<{ Params: { userId: string; roleId: string } }>(
+    `${ROUTE_PREFIX}/discord/members/:userId/roles/:roleId`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const oauth = getOAuthEnv();
+      if (!oauth) { reply.code(503).send({ error: "discord_not_configured" }); return; }
+      const res = await addGuildMemberRole({
+        botToken: oauth.DISCORD_BOT_TOKEN,
+        guildId: session.guildId,
+        userId: request.params.userId,
+        roleId: request.params.roleId,
+      });
+      if (!res.ok) {
+        const { code, status } = mapDiscordError(res.error.status, "missing_manage_roles");
+        reply.code(status).send({ error: code }); return;
+      }
+      void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "discord.add_role", target: request.params.userId, metadata: { roleId: request.params.roleId } });
+      reply.send({ ok: true });
+    },
+  );
+
+  app.delete<{ Params: { userId: string; roleId: string } }>(
+    `${ROUTE_PREFIX}/discord/members/:userId/roles/:roleId`,
+    async (request, reply) => {
+      const session = await requireAdminSession(request, reply);
+      if (!session) return;
+      const oauth = getOAuthEnv();
+      if (!oauth) { reply.code(503).send({ error: "discord_not_configured" }); return; }
+      const res = await removeGuildMemberRole({
+        botToken: oauth.DISCORD_BOT_TOKEN,
+        guildId: session.guildId,
+        userId: request.params.userId,
+        roleId: request.params.roleId,
+      });
+      if (!res.ok) {
+        const { code, status } = mapDiscordError(res.error.status, "missing_manage_roles");
+        reply.code(status).send({ error: code }); return;
+      }
+      void appendAudit({ guildId: session.guildId, actorUserId: session.sub, action: "discord.remove_role", target: request.params.userId, metadata: { roleId: request.params.roleId } });
+      reply.send({ ok: true });
+    },
+  );
+
+  // ──────────────────────────────────────────────────────────────
+  // SSE live-stream: /admin/api/live-stream
+  // Pushes the same payload as /api/live on every guild-state-changed
+  // event from the bridgeEvents bus (debounced 100 ms per guild).
+  // 25 s heartbeat comment-frame keeps idle proxies from closing.
+  // Frontend falls back to /api/live polling if EventSource errors.
+  // ──────────────────────────────────────────────────────────────
+  app.get(`${ROUTE_PREFIX}/api/live-stream`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+
+    reply.hijack();
+    const raw = reply.raw;
+    raw.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
+
+    let closed = false;
+    let inFlight = false;
+    let pendingAfterFlight = false;
+
+    const sendFrame = async (): Promise<void> => {
+      if (closed) return;
+      if (inFlight) { pendingAfterFlight = true; return; }
+      inFlight = true;
+      try {
+        const [data, info] = await Promise.all([
+          loadDashboardData(session.guildId),
+          (await import("../services/guildInfo.js")).getGuildInfo(session.guildId),
+        ]);
+        if (info) data.guildName = info.name;
+        if (closed) return;
+        raw.write(`data: ${JSON.stringify(data)}\n\n`);
+      } catch (err) {
+        logger.warn({ err, guildId: session.guildId }, "live-stream sendFrame failed");
+      } finally {
+        inFlight = false;
+        if (pendingAfterFlight && !closed) {
+          pendingAfterFlight = false;
+          void sendFrame();
+        }
+      }
+    };
+
+    await sendFrame();
+
+    const unsubscribe = bridgeEvents.onGuildStateChanged((gid) => {
+      if (gid === session.guildId) void sendFrame();
+    });
+
+    const heartbeat = setInterval(() => {
+      if (closed) return;
+      try { raw.write(":\n\n"); } catch { /* peer gone */ }
+    }, 25_000);
+    heartbeat.unref?.();
+
+    const onClose = (): void => {
+      if (closed) return;
+      closed = true;
+      clearInterval(heartbeat);
+      unsubscribe();
+    };
+    request.raw.on("close", onClose);
+    raw.on("close", onClose);
+  });
+
+  // ──────────────────────────────────────────────────────────────
+  // Channel reorder: POST /admin/api/channels/reorder
+  // Body: { ordered: string[] } — IDs of allowed voice channels in
+  // the requested display order. Bridge calculates the minimal set of
+  // Discord position PATCH calls needed.
+  // ──────────────────────────────────────────────────────────────
+  const reorderSchema = z.object({
+    ordered: z.array(z.string().regex(/^[0-9]{17,20}$/)).min(2).max(50),
+  });
+  app.post(`${ROUTE_PREFIX}/api/channels/reorder`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+    const oauth = getOAuthEnv();
+    if (!oauth) { reply.code(503).send({ error: "discord_not_configured" }); return; }
+    const parsed = reorderSchema.safeParse(request.body);
+    if (!parsed.success) {
+      reply.code(400).send({ error: "invalid_body", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) });
+      return;
+    }
+    const cfg = await (await import("../services/guildConfig.js")).readGuildConfig(session.guildId);
+    const allowed = new Set(cfg?.allowedVoiceChannelIds ?? []);
+    if (parsed.data.ordered.some((id) => !allowed.has(id))) {
+      reply.code(403).send({ error: "channel_not_in_allowed_list" });
+      return;
+    }
+    const channels = await getCachedChannels(session.guildId, oauth.DISCORD_BOT_TOKEN);
+    const positions = channels
+      .filter((c) => allowed.has(c.id))
+      .map((c) => ({ id: c.id, position: c.position ?? 0 }))
+      .sort((a, b) => a.position - b.position);
+    const slots = positions.map((p) => p.position);
+    const items = parsed.data.ordered.map((id, i) => ({ id, position: slots[i] ?? i }));
+    const result = await bulkModifyChannelPositions({
+      botToken: oauth.DISCORD_BOT_TOKEN,
+      guildId: session.guildId,
+      items,
+    });
+    if (!result.ok) {
+      const { code, status } = mapDiscordError(result.error.status, "missing_manage_channels");
+      reply.code(status).send({ error: code });
+      return;
+    }
+    invalidateChannels(session.guildId);
+    bridgeEvents.emitGuildStateChanged(session.guildId);
+    reply.send({ ok: true });
+  });
+
+  // ──────────────────────────────────────────────────────────────
+  // Strategy channel: POST /admin/api/strategy-channel
+  // Body: { name: string; userIds: string[] }
+  // Creates a temporary Discord voice channel and moves the selected
+  // commanders into it. GC'd after 15 min idle.
+  // ──────────────────────────────────────────────────────────────
+  const strategyChannelSchema = z.object({
+    name: z.string().min(1).max(100),
+    userIds: z.array(z.string().regex(/^[0-9]{17,20}$/)).min(1).max(50),
+  });
+  app.post(`${ROUTE_PREFIX}/api/strategy-channel`, async (request, reply) => {
+    const session = await requireAdminSession(request, reply);
+    if (!session) return;
+    const parsed = strategyChannelSchema.safeParse(request.body);
+    if (!parsed.success) {
+      reply.code(400).send({ error: "invalid_body" });
+      return;
+    }
+    const result = await createStrategyChannel({
+      guildId: session.guildId,
+      name: parsed.data.name,
+      userIds: parsed.data.userIds,
+      createdBy: session.sub,
+    });
+    if (!result.ok) {
+      if (result.reason === "no_oauth") { reply.code(503).send({ error: "discord_not_configured" }); return; }
+      const { code, status } = mapDiscordError(result.status, "missing_manage_channels");
+      reply.code(status).send({ error: code, message: result.message });
+      return;
+    }
+    reply.send({ ok: true, channelId: result.channelId, name: result.name, moved: result.moved, moveFailures: result.moveFailures });
+  });
 }
 
 // ────────────────────────────────────────────────────────────────

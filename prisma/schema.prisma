@@ -139,3 +139,89 @@ model CompanionDownloadToken {
 
   @@index([createdBy])
 }
+
+// An Admiral-created voice ops room. Each session gets its own LiveKit room.
+// Commanders join via a single-use SessionInvite token.
+// status: "active" | "ended"
+model Session {
+  id          String    @id // generated in TypeScript (randomUUID) so livekitRoom can be derived atomically
+  guildId     String
+  label       String
+  createdBy   String    // Discord userId of the Admiral who created it
+  livekitRoom String    @unique // "session-<id>"
+  status      String    @default("active")
+  createdAt   DateTime  @default(now())
+  endedAt     DateTime?
+
+  invites     SessionInvite[]
+
+  @@index([guildId, status])
+}
+
+// Single-use invite token minted by an Admiral for one specific Commander.
+// sha256(rawToken) is stored; the raw token is sent to the Commander once.
+model SessionInvite {
+  id        String    @id @default(cuid())
+  sessionId String
+  tokenHash String    @unique
+  label     String    // e.g. "Alice" — for the Admiral's audit list
+  createdBy String    // Discord userId of issuing Admiral
+  usedBy    String?   // Discord userId of who consumed it
+  usedAt    DateTime?
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  session   Session   @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId])
+}
+
+// Admin action audit log. Best-effort append (never throws to the caller).
+// Guild-scoped: guildId is nullable for forward compat but always set by
+// the bridge routes. actorLabel is a display name snapshot captured at
+// write time so the log stays readable after a user leaves the guild.
+model AdminAuditLog {
+  id          String   @id
+  guildId     String?
+  actorUserId String?
+  actorLabel  String?
+  action      String
+  target      String?
+  metadata    String   @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([guildId, createdAt])
+}
+
+// Ephemeral "Strategy" voice channel created on-demand from the admin
+// Raid-Planer to pull selected members into a side-call. A background
+// GC loop in the bridge polls UserVoiceState per channel every 30 s:
+// occupied → update lastActiveAt to now; empty + 15 min idle → delete
+// channel in Discord + drop this row.
+model EphemeralChannel {
+  guildId      String
+  channelId    String   @id // Discord channel snowflake
+  name         String
+  createdBy    String   // Discord userId of the admin who created it
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  @@index([guildId])
+}
+
+// Per-deployment relay-bots configuration. Singleton row (id = "singleton").
+// Stores LiveKit credentials + per-bot Discord tokens so the relay bots
+// service can fetch its full config from one authenticated endpoint instead
+// of needing its own .env copy. botsJson is a JSON array of
+// { name, token, channelId }.
+model RelayBotsConfig {
+  id               String   @id @default("singleton")
+  livekitUrl       String   @default("")
+  livekitApiKey    String   @default("")
+  livekitApiSecret String   @default("")
+  roomName         String   @default("voice-relay")
+  guildId          String   @default("")
+  botsJson         String   @default("[]")
+  updatedAt        DateTime @updatedAt
+  updatedById      String?
+}

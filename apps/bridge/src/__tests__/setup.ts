@@ -1,5 +1,17 @@
 // Runs before any test module is imported.
 // Sets env vars so getEnv() (called eagerly by the logger) succeeds.
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Absolute path so Prisma finds dev.db regardless of which directory vitest
+// sets as CWD. setup.ts lives at apps/bridge/src/__tests__/; the actual
+// SQLite file lives at <root>/prisma/prisma/dev.db — Prisma resolves
+// DATABASE_URL="file:./prisma/dev.db" relative to the schema directory
+// (prisma/), so the path doubles. Forward slashes required on Windows.
+const __dir = fileURLToPath(new URL(".", import.meta.url));
+const dbPath = resolve(__dir, "../../../../prisma/prisma/dev.db").replace(/\\/g, "/");
+process.env.DATABASE_URL = `file:${dbPath}`;
+
 process.env.SESSION_SECRET = "test-secret-this-is-at-least-32-chars!";
 process.env.LOG_LEVEL = "fatal";
 process.env.BRIDGE_HOST = "127.0.0.1";

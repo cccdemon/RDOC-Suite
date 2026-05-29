@@ -555,3 +555,180 @@ describe("POST /internal/voice-state-changed", () => {
     await clearVoiceFixtures();
   });
 });
+
+// --- pong ---
+
+describe("/ws pong", () => {
+  it("replies with pong when client sends heartbeat", async () => {
+    const token = await issueSessionToken(SECRET, { sub: USER_ID, guildId: GUILD_ID });
+    const { socket, next } = await connect(token);
+    await next(); // drain bridge:joined
+    const ts = Date.now();
+    send(socket, { type: "heartbeat", timestamp: ts });
+    const reply = (await next()) as { type: string; timestamp?: number; serverTime?: number };
+    expect(reply.type).toBe("pong");
+    expect(reply.timestamp).toBe(ts);
+    expect(typeof reply.serverTime).toBe("number");
+    socket.close();
+  });
+});
+
+// --- bridge:joined includes roomMode ---
+
+describe("/ws bridge:joined roomMode", () => {
+  it("includes roomMode:guild for guild WS path", async () => {
+    const token = await issueSessionToken(SECRET, { sub: USER_ID, guildId: GUILD_ID });
+    const { socket, next } = await connect(token);
+    const reply = (await next()) as { type: string; roomMode?: string };
+    expect(reply.type).toBe("bridge:joined");
+    expect(reply.roomMode).toBe("guild");
+    socket.close();
+  });
+});
+
+// --- session WS path ---
+
+const SESSION_USER_ID = "777700000000000001";
+const SESSION_GUILD_ID = "777700000000000002";
+const SESSION_ID = "test-session-abc";
+const SESSION_LIVEKIT_ROOM = `session-${SESSION_ID}`;
+
+function connectWsSession(token: string, sessionId: string): Promise<Handle> {
+  const url =
+    `${baseUrl}/ws?token=${encodeURIComponent(token)}&sessionId=${encodeURIComponent(sessionId)}`;
+  const socket = new WebSocket(url);
+  const queue: unknown[] = [];
+  const waiters: ((v: unknown) => void)[] = [];
+  socket.on("message", (raw) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw.toString());
+    } catch {
+      parsed = raw.toString();
+    }
+    const w = waiters.shift();
+    if (w) w(parsed);
+    else queue.push(parsed);
+  });
+  const next = (timeoutMs = 1000): Promise<unknown> =>
+    new Promise((resolve, reject) => {
+      if (queue.length > 0) { resolve(queue.shift()); return; }
+      waiters.push(resolve);
+      setTimeout(() => {
+        const idx = waiters.indexOf(resolve);
+        if (idx >= 0) waiters.splice(idx, 1);
+        reject(new Error("ws message timeout"));
+      }, timeoutMs);
+    });
+  return new Promise((resolve, reject) => {
+    socket.on("close", () => resolve({ socket, next }));
+    socket.on("error", () => {});
+    socket.on("open", () => resolve({ socket, next }));
+    setTimeout(() => reject(new Error("ws connect timeout")), 2000);
+  });
+}
+
+async function seedSession(): Promise<void> {
+  await getPrisma().session.upsert({
+    where: { id: SESSION_ID },
+    create: {
+      id: SESSION_ID,
+      guildId: SESSION_GUILD_ID,
+      label: "Test Session",
+      createdBy: SESSION_USER_ID,
+      livekitRoom: SESSION_LIVEKIT_ROOM,
+      status: "active",
+    },
+    update: { status: "active" },
+  });
+  await getPrisma().sessionInvite.upsert({
+    where: { id: "test-invite-001" },
+    create: {
+      id: "test-invite-001",
+      sessionId: SESSION_ID,
+      tokenHash: "deadbeef".repeat(8),
+      label: "Tester",
+      createdBy: SESSION_USER_ID,
+      usedBy: SESSION_USER_ID,
+      usedAt: new Date(),
+      expiresAt: new Date(Date.now() + 3_600_000),
+    },
+    update: { usedBy: SESSION_USER_ID },
+  });
+}
+
+async function clearSessionFixtures(): Promise<void> {
+  await getPrisma().sessionInvite.deleteMany({ where: { sessionId: SESSION_ID } });
+  await getPrisma().session.deleteMany({ where: { id: SESSION_ID } });
+}
+
+describe("/ws session path", () => {
+  beforeEach(async () => {
+    await clearSessionFixtures();
+  });
+
+  it("rejects invalid token (close 4401)", async () => {
+    await seedSession();
+    const { socket } = await connectWsSession("not.a.jwt", SESSION_ID);
+    const code = await nextClose(socket);
+    expect(code).toBe(4401);
+    await clearSessionFixtures();
+  });
+
+  it("rejects when user has no consumed invite (close 4403)", async () => {
+    await seedSession();
+    const otherUser = "888800000000000001";
+    const token = await issueSessionToken(SECRET, { sub: otherUser });
+    const { socket } = await connectWsSession(token, SESSION_ID);
+    const code = await nextClose(socket);
+    expect(code).toBe(4403);
+    await clearSessionFixtures();
+  });
+
+  it("rejects when session is ended (close 4403)", async () => {
+    await seedSession();
+    await getPrisma().session.update({ where: { id: SESSION_ID }, data: { status: "ended" } });
+    const token = await issueSessionToken(SECRET, { sub: SESSION_USER_ID });
+    const { socket } = await connectWsSession(token, SESSION_ID);
+    const code = await nextClose(socket);
+    expect(code).toBe(4403);
+    await clearSessionFixtures();
+  });
+
+  it("sends bridge:joined with roomMode:session and LiveKit creds for valid session member", async () => {
+    await seedSession();
+    const token = await issueSessionToken(SECRET, { sub: SESSION_USER_ID });
+    const { socket, next } = await connectWsSession(token, SESSION_ID);
+    const reply = (await next()) as {
+      type: string;
+      roomMode?: string;
+      sessionId?: string;
+      roomId?: string;
+      livekitUrl?: string;
+      livekitToken?: string;
+      activeCommanders?: unknown[];
+    };
+    expect(reply.type).toBe("bridge:joined");
+    expect(reply.roomMode).toBe("session");
+    expect(reply.sessionId).toBe(SESSION_ID);
+    expect(reply.roomId).toBe(SESSION_LIVEKIT_ROOM);
+    expect(reply.livekitUrl).toMatch(/^ws/);
+    expect(reply.livekitToken).toBeTruthy();
+    expect(Array.isArray(reply.activeCommanders)).toBe(true);
+    socket.close();
+    await clearSessionFixtures();
+  });
+
+  it("ptt:start in session room broadcasts commander:list", async () => {
+    await seedSession();
+    const token = await issueSessionToken(SECRET, { sub: SESSION_USER_ID });
+    const { socket, next } = await connectWsSession(token, SESSION_ID);
+    await next(); // drain bridge:joined
+    send(socket, { type: "ptt:start", guildId: SESSION_GUILD_ID });
+    const list = (await next()) as { type: string; commanders: { userId: string; speaking: boolean }[] };
+    expect(list.type).toBe("commander:list");
+    expect(list.commanders[0]).toMatchObject({ userId: SESSION_USER_ID, speaking: true });
+    socket.close();
+    await clearSessionFixtures();
+  });
+});

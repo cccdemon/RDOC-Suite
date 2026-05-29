@@ -5,12 +5,13 @@ import type { ServerMessage } from "@dccc/shared";
 import { getEnv, getOAuthEnv } from "../config/env.js";
 import { verifySessionToken } from "../auth/sessionToken.js";
 import { logger } from "../services/logger.js";
-import { bridgeRoomName, issueLivekitToken } from "../services/livekit.js";
+import { bridgeRoomName, issueSessionLivekitToken, issueLivekitToken, sessionRoomName } from "../services/livekit.js";
 import { rooms } from "../services/rooms.js";
 import { checkAllowedVoiceChannel, recheckCommanderRole } from "../services/permissions.js";
 import { readGuildConfig } from "../services/guildConfig.js";
 import { fetchGuildMember } from "../auth/discord.js";
 import { getGuildInfo } from "../services/guildInfo.js";
+import { getPrisma } from "@dccc/db";
 
 const HEARTBEAT_INTERVAL_MS = 20_000;
 // Role-check stays at 60s. Voice-channel-change is delivered in real
@@ -157,7 +158,9 @@ function attachLifecycle(
         break;
       }
       case "heartbeat":
-        // ws-level ping/pong is the real liveness signal
+        // ws-level ping/pong is the real liveness signal; also reply with
+        // an application-level pong so the companion can measure RTT.
+        send(socket, { type: "pong", timestamp: msg.timestamp, serverTime: Date.now() });
         break;
       case "device:update":
         logger.info({ userId, inputDeviceId: msg.inputDeviceId }, "device update");
@@ -273,6 +276,7 @@ async function handleOAuthCommander(
   send(socket, {
     type: "bridge:joined",
     roomId,
+    roomMode: "guild",
     ...(guildInfo?.name ? { guildName: guildInfo.name } : {}),
     activeCommanders,
     ...(initialLivekit ?? {}),
@@ -346,11 +350,108 @@ async function resolveDisplayName(guildId: string, userId: string): Promise<stri
   }
 }
 
+async function handleSessionCommander(
+  socket: WebSocket,
+  token: string,
+  sessionId: string,
+): Promise<void> {
+  const verified = await verifySessionToken(getEnv().SESSION_SECRET, token);
+  if (!verified.ok) {
+    send(socket, {
+      type: "error",
+      code: verified.reason,
+      message: `session token ${verified.reason}`,
+    });
+    socket.close(CLOSE_UNAUTHENTICATED, verified.reason);
+    return;
+  }
+  const { sub: userId } = verified.payload;
+
+  const db = getPrisma();
+  const invite = await db.sessionInvite.findFirst({
+    where: { sessionId, usedBy: userId },
+  });
+  if (!invite) {
+    send(socket, {
+      type: "error",
+      code: "not_a_session_member",
+      message: "no consumed invite found for this session",
+    });
+    socket.close(CLOSE_FORBIDDEN, "not_a_session_member");
+    return;
+  }
+
+  const session = await db.session.findUnique({ where: { id: sessionId } });
+  if (!session || session.status !== "active") {
+    send(socket, {
+      type: "error",
+      code: "session_ended",
+      message: "this session has ended or does not exist",
+    });
+    socket.close(CLOSE_FORBIDDEN, "session_ended");
+    return;
+  }
+
+  logger.info({ userId, sessionId, authPath: "session" }, "ws client connected");
+
+  const roomId = sessionRoomName(sessionId);
+  const activeCommanders = rooms.join(roomId, userId, socket, {});
+
+  let livekitToken: string | undefined;
+  try {
+    livekitToken = await issueSessionLivekitToken({ userId, livekitRoom: session.livekitRoom });
+  } catch (err) {
+    logger.error({ err, userId, sessionId }, "session: failed to issue LiveKit token");
+  }
+
+  send(socket, {
+    type: "bridge:joined",
+    roomId,
+    roomMode: "session",
+    sessionId,
+    activeCommanders,
+    livekitUrl: livekitToken ? getEnv().LIVEKIT_URL : undefined,
+    livekitToken,
+  });
+  rooms.broadcast(
+    roomId,
+    { type: "commander:list", roomId, commanders: activeCommanders },
+    socket,
+  );
+
+  attachLifecycle(socket, {
+    userId,
+    roomId,
+    pttGuildIdGate: null,
+    recheck: async () => {
+      const current = await db.session.findUnique({ where: { id: sessionId } });
+      if (current && current.status === "active") return;
+      logger.info({ userId, sessionId }, "session ended, kicking WS client");
+      send(socket, {
+        type: "error",
+        code: "session_ended",
+        message: "this session has ended",
+      });
+      const leftRoom = rooms.leave(socket);
+      if (leftRoom) {
+        send(socket, { type: "bridge:left", roomId: leftRoom.roomId });
+        rooms.broadcast(leftRoom.roomId, {
+          type: "commander:list",
+          roomId: leftRoom.roomId,
+          commanders: leftRoom.commanders,
+        });
+      }
+      socket.close(CLOSE_FORBIDDEN, "session_ended");
+    },
+  });
+}
+
 export async function registerWsRoute(app: FastifyInstance): Promise<void> {
   app.get("/ws", { websocket: true }, async (socket, request) => {
     const url = new URL(request.url, "http://localhost");
     const token = url.searchParams.get("token");
     const guildId = url.searchParams.get("guildId");
+    const sessionId = url.searchParams.get("sessionId");
 
     if (!token) {
       send(socket, {
@@ -361,6 +462,10 @@ export async function registerWsRoute(app: FastifyInstance): Promise<void> {
       socket.close(CLOSE_UNAUTHENTICATED, "no_token");
       return;
     }
-    await handleOAuthCommander(socket, token, guildId);
+    if (sessionId) {
+      await handleSessionCommander(socket, token, sessionId);
+    } else {
+      await handleOAuthCommander(socket, token, guildId);
+    }
   });
 }

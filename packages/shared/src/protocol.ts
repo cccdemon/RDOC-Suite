@@ -36,6 +36,9 @@ export type ServerMessage =
   | {
       type: "bridge:joined";
       roomId: string;
+      roomMode: "guild" | "session";
+      /** Present for session rooms; absent for guild rooms. */
+      sessionId?: string;
       /** Discord display name for the guild, when the bot can resolve it.
        *  The companion shows this in the connected status strip instead
        *  of the raw snowflake. Falls back to guildId at render time. */
@@ -85,6 +88,14 @@ export type ServerMessage =
        */
       type: "audio:disable";
       reason: "not_in_voice" | "outside_allowed_voice_channel";
+    }
+  | {
+      /** Reply to a client `heartbeat`. Client computes RTT as `Date.now() - timestamp`. */
+      type: "pong";
+      /** Echo of the client's heartbeat timestamp. */
+      timestamp: number;
+      /** Server wall-clock at send time. */
+      serverTime: number;
     }
   | {
       type: "error";

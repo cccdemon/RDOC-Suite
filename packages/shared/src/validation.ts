@@ -57,6 +57,8 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
 const bridgeJoinedSchema = z.object({
   type: z.literal("bridge:joined"),
   roomId: z.string().min(1).max(256),
+  roomMode: z.enum(["guild", "session"]),
+  sessionId: z.string().min(1).max(256).optional(),
   guildName: z.string().min(1).max(200).optional(),
   activeCommanders: z.array(commanderInfoSchema),
   // Optional: only present when the user is in an allowed voice channel
@@ -88,6 +90,12 @@ const audioDisableSchema = z.object({
   reason: z.enum(["not_in_voice", "outside_allowed_voice_channel"]),
 });
 
+const pongSchema = z.object({
+  type: z.literal("pong"),
+  timestamp: z.number().int().nonnegative(),
+  serverTime: z.number().int().nonnegative(),
+});
+
 const errorMessageSchema = z.object({
   type: z.literal("error"),
   code: z.string().min(1).max(64),
@@ -100,6 +108,7 @@ export const serverMessageSchema = z.discriminatedUnion("type", [
   commanderListSchema,
   audioEnableSchema,
   audioDisableSchema,
+  pongSchema,
   errorMessageSchema,
 ]);
 

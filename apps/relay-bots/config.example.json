@@ -1,0 +1,19 @@
+{
+  "_comment": "Set bridge.url + bridge.serviceSecret to pull config from the suite bridge (recommended). Remove the bridge block to use local config only.",
+  "bridge": {
+    "url": "https://suite.raumdock.org",
+    "serviceSecret": "RELAY_BOTS_SECRET_VALUE_FROM_BRIDGE_ENV"
+  },
+  "livekit": {
+    "url": "wss://voice.raumdock.org",
+    "apiKey": "LIVEKIT_API_KEY",
+    "apiSecret": "LIVEKIT_API_SECRET",
+    "relayRoomName": "voice-relay"
+  },
+  "discord": {
+    "guildId": "DISCORD_GUILD_ID",
+    "bots": [
+      { "token": "DISCORD_BOT_TOKEN", "channelId": "DISCORD_VOICE_CHANNEL_ID", "name": "Funker Bob" }
+    ]
+  }
+}

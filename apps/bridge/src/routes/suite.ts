@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { getEnv } from "../config/env.js";
 import { verifySessionToken } from "../auth/sessionToken.js";
+import { isAdmin } from "../services/admins.js";
+
+const snowflake = z.string().regex(/^[0-9]{17,20}$/);
 
 function extractBearer(header: string | undefined): string | null {
   if (!header) return null;
@@ -27,12 +31,24 @@ export async function registerSuiteRoutes(app: FastifyInstance): Promise<void> {
       return { error: verified.reason };
     }
 
-    // Conservative default. Future merge steps will derive these from
-    // guild-scoped admin rows, relay-role checks, and enabled modules.
+    const userId = verified.payload.sub;
+
+    // guildId: prefer query param (companion always sends ?guildId=),
+    // fall back to the optional claim in the JWT itself.
+    const queryGuildId = snowflake.safeParse(
+      (request.query as Record<string, unknown>).guildId,
+    );
+    const guildId = queryGuildId.success
+      ? queryGuildId.data
+      : (verified.payload.guildId ?? null);
+
+    const canManageSessions =
+      guildId !== null && (await isAdmin({ guildId, userId }));
+
     return {
-      canManageSessions: false,
-      canUseRelay: false,
-      canUseFleetTools: false,
+      canManageSessions,
+      canUseRelay: false,       // decision pending
+      canUseFleetTools: false,  // web-first, not companion feature
     };
   });
 

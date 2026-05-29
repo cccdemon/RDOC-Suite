@@ -429,3 +429,73 @@ export function buildAuthorizeUrl(opts: {
   });
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }
+
+export async function createGuildVoiceChannel(opts: {
+  botToken: string;
+  guildId: string;
+  name: string;
+  parentId: string | null;
+}): Promise<DiscordResult<DiscordGuildChannel>> {
+  const res = await fetchWithRateLimit(`${DISCORD_API}/guilds/${opts.guildId}/channels`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${opts.botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      name: opts.name,
+      type: 2,
+      parent_id: opts.parentId ?? undefined,
+    }),
+  });
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: { kind: "http_error", status: res.status, message: await res.text() },
+    };
+  }
+  const raw: unknown = await res.json();
+  const parsed = guildChannelSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: { kind: "http_error", status: 502, message: "create-channel response malformed" },
+    };
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export async function bulkModifyChannelPositions(opts: {
+  botToken: string;
+  guildId: string;
+  items: Array<{ id: string; position: number }>;
+}): Promise<DiscordResult<true>> {
+  const res = await fetchWithRateLimit(`${DISCORD_API}/guilds/${opts.guildId}/channels`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bot ${opts.botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(opts.items),
+  });
+  if (res.ok || res.status === 204) return { ok: true, value: true };
+  return {
+    ok: false,
+    error: { kind: "http_error", status: res.status, message: await res.text() },
+  };
+}
+
+export async function deleteChannel(opts: {
+  botToken: string;
+  channelId: string;
+}): Promise<DiscordResult<true>> {
+  const res = await fetchWithRateLimit(`${DISCORD_API}/channels/${opts.channelId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bot ${opts.botToken}` },
+  });
+  if (res.ok || res.status === 404) return { ok: true, value: true };
+  return {
+    ok: false,
+    error: { kind: "http_error", status: res.status, message: await res.text() },
+  };
+}

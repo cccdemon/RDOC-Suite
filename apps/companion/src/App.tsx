@@ -43,6 +43,10 @@ import { feedbackAudio } from "./lib/audioFeedback";
 import { Icon } from "./components/kit/Icon";
 import { SettingsModal, type SettingsDraft } from "./components/SettingsModal";
 import { GuildPickerModal } from "./components/GuildPickerModal";
+import { SessionJoinModal } from "./components/SessionJoinModal";
+import { joinSession } from "./lib/sessionApi";
+import { RelayAudio, type RelayStatus } from "./lib/relayAudio";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 type AppState = {
   bridgeUrl: string;
@@ -79,6 +83,11 @@ type AppState = {
   duckingTargetVolumePct: number;
   activeCommanders: CommanderInfo[];
   lastError: string | null;
+  /** Non-null when connected to a session room via invite. */
+  sessionId: string | null;
+  sessionLabel: string | null;
+  relayStatus: RelayStatus;
+  relayPttActive: boolean;
 };
 
 const INITIAL: AppState = {
@@ -103,6 +112,10 @@ const INITIAL: AppState = {
   duckingTargetVolumePct: 25,
   activeCommanders: [],
   lastError: null,
+  sessionId: null,
+  sessionLabel: null,
+  relayStatus: "idle",
+  relayPttActive: false,
 };
 
 export function App(): JSX.Element {
@@ -116,8 +129,13 @@ export function App(): JSX.Element {
     Extract<UpdateCheckResult, { kind: "available" }> | null
   >(null);
 
+  const [showSessionJoin, setShowSessionJoin] = useState(false);
+  const [sessionJoinError, setSessionJoinError] = useState<string | null>(null);
+  const [sessionJoinLoading, setSessionJoinLoading] = useState(false);
+
   const wsRef = useRef<BridgeWs | null>(null);
   const audioRef = useRef<LivekitAudio | null>(null);
+  const relayRef = useRef<RelayAudio | null>(null);
   const stateRef = useRef<AppState>(INITIAL);
   stateRef.current = state;
   /** Set of remote-commander userIds that were `speaking=true` in the
@@ -585,8 +603,99 @@ export function App(): JSX.Element {
     setState((s) => ({ ...s, afk: next }));
   }, []);
 
+  const onAdmiralClick = useCallback(() => {
+    const cur = stateRef.current;
+    void openUrl(`${cur.bridgeUrl.replace(/\/+$/, "")}/admin/sessions`).catch(() => {});
+  }, []);
+
+  const onSessionJoinConfirm = useCallback(async (inviteToken: string) => {
+    const cur = stateRef.current;
+    if (!cur.token || !cur.bridgeUrl) return;
+    setSessionJoinLoading(true);
+    setSessionJoinError(null);
+    const result = await joinSession(cur.bridgeUrl, cur.token, inviteToken);
+    setSessionJoinLoading(false);
+    if (!result.ok) {
+      setSessionJoinError(result.reason);
+      return;
+    }
+    setShowSessionJoin(false);
+    // Disconnect guild WS, connect session WS
+    wsRef.current?.disconnect();
+    wsRef.current?.connectSession(cur.token, result.sessionId);
+    // Connect LiveKit with session token
+    audioRef.current?.connect(result.livekitUrl, result.livekitToken).catch((err) =>
+      setState((s) => ({ ...s, lastError: `LiveKit (session): ${String(err)}` })),
+    );
+    setState((s) => ({
+      ...s,
+      sessionId: result.sessionId,
+      sessionLabel: result.sessionLabel,
+      activeCommanders: [],
+      lastError: null,
+    }));
+  }, []);
+
+  const onLeaveSession = useCallback(() => {
+    const cur = stateRef.current;
+    wsRef.current?.disconnect();
+    void audioRef.current?.disconnect();
+    setState((s) => ({
+      ...s,
+      sessionId: null,
+      sessionLabel: null,
+      activeCommanders: [],
+      lastError: null,
+    }));
+    // Reconnect to guild room
+    if (cur.token && cur.guildId) {
+      wsRef.current?.connect(cur.token, cur.guildId);
+    }
+  }, []);
+
+  const onRelayPttEvent = useCallback((e: HotkeyEventPayload) => {
+    const active = e.state === "pressed";
+    setState((s) => ({ ...s, relayPttActive: active }));
+    void relayRef.current?.setPttActive(active);
+  }, []);
+
+  // Relay hotkey window-level listener (keyboard only, same pattern as PTT).
+  useEffect(() => {
+    const hotkey = state.relayHotkey;
+    if (!hotkey || isMouseHotkey(hotkey) || !state.suiteCapabilities.canUseRelay) return;
+    const onDown = (e: KeyboardEvent): void => {
+      if (e.repeat) return;
+      const formatted = formatKeyboardAccelerator(e);
+      if (formatted === hotkey) { e.preventDefault(); onRelayPttEvent({ state: "pressed", accelerator: hotkey }); }
+    };
+    const onUp = (e: KeyboardEvent): void => {
+      if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onRelayPttEvent({ state: "released", accelerator: hotkey }); }
+    };
+    window.addEventListener("keydown", onDown, true);
+    window.addEventListener("keyup", onUp, true);
+    return () => {
+      window.removeEventListener("keydown", onDown, true);
+      window.removeEventListener("keyup", onUp, true);
+    };
+  }, [state.relayHotkey, state.suiteCapabilities.canUseRelay, onRelayPttEvent]);
+
+  // Connect / disconnect relay audio when canUseRelay changes.
+  useEffect(() => {
+    if (!state.suiteCapabilities.canUseRelay || !state.token || !state.bridgeUrl) {
+      void relayRef.current?.disconnect();
+      return;
+    }
+    if (!relayRef.current) {
+      const r = new RelayAudio();
+      r.setStatusListener((status) => setState((s) => ({ ...s, relayStatus: status })));
+      relayRef.current = r;
+    }
+    void relayRef.current.connect(state.bridgeUrl, state.token, state.guildId ?? undefined);
+  }, [state.suiteCapabilities.canUseRelay, state.token, state.bridgeUrl, state.guildId]);
+
   const onSignOut = useCallback(async () => {
     await clearSession();
+    void relayRef.current?.disconnect();
     setState((s) => ({
       ...s,
       token: null,
@@ -594,6 +703,8 @@ export function App(): JSX.Element {
       guildName: null,
       activeCommanders: [],
       suiteCapabilities: DEFAULT_SUITE_CAPABILITIES,
+      sessionId: null,
+      sessionLabel: null,
     }));
   }, []);
 
@@ -746,22 +857,45 @@ export function App(): JSX.Element {
             <button
               type="button"
               className="cc-btn ghost sm"
-              disabled
-              title="Admiral-Werkzeuge werden in einem kommenden Schritt hier freigeschaltet"
+              onClick={onAdmiralClick}
+              title="Session-Verwaltung im Web-Admin öffnen"
             >
               <Icon.key size={12} />
               ADMIRAL
             </button>
           ) : null}
-          {state.suiteCapabilities.canUseRelay ? (
+          {signedIn && !state.sessionId ? (
             <button
               type="button"
               className="cc-btn ghost sm"
-              disabled
-              title={`Voice-to-All vorbereitet · Hotkey ${state.relayHotkey}`}
+              onClick={() => { setSessionJoinError(null); setShowSessionJoin(true); }}
+              title="Session via Invite-Token beitreten"
+            >
+              <Icon.key size={12} />
+              SESSION
+            </button>
+          ) : null}
+          {state.sessionId ? (
+            <button
+              type="button"
+              className="cc-btn gold sm"
+              onClick={onLeaveSession}
+              title="Session verlassen und zurück zur Guild-Verbindung"
+            >
+              <Icon.power size={12} />
+              SESSION VERLASSEN
+            </button>
+          ) : null}
+          {state.suiteCapabilities.canUseRelay ? (
+            <button
+              type="button"
+              className={`cc-btn ${state.relayPttActive ? "green" : state.relayStatus === "connected" ? "cyan" : "ghost"} sm`}
+              title={`Voice-to-All · Hotkey ${state.relayHotkey} · ${state.relayStatus}`}
+              onMouseDown={() => onRelayPttEvent({ state: "pressed", accelerator: state.relayHotkey })}
+              onMouseUp={() => onRelayPttEvent({ state: "released", accelerator: state.relayHotkey })}
             >
               <Icon.radio size={12} />
-              VOICE TO ALL
+              {state.relayPttActive ? "RELAY AKTIV" : "VOICE TO ALL"}
             </button>
           ) : null}
           {hasStoredToken ? (
@@ -823,13 +957,13 @@ export function App(): JSX.Element {
           {audioTransmit ? "PTT AKTIV" : audioLive ? "AUDIO LIVE" : state.audioStatus.toUpperCase()}
         </span>
         <div className="cc-name-wrap">
-          <span className="cc-name-label">SERVER</span>
+          <span className="cc-name-label">{state.sessionId ? "SESSION" : "SERVER"}</span>
           <span
             className="cc-readout"
             style={{ padding: "4px 9px", fontSize: 11 }}
-            title={state.guildId ?? undefined}
+            title={state.sessionId ?? state.guildId ?? undefined}
           >
-            {state.guildName ?? state.guildId ?? "—"}
+            {state.sessionId ? (state.sessionLabel ?? state.sessionId) : (state.guildName ?? state.guildId ?? "—")}
           </span>
         </div>
       </section>
@@ -1010,6 +1144,15 @@ export function App(): JSX.Element {
           bridgeUrl={state.bridgeUrl}
           sessionToken={state.token}
           onPostpone={() => setUpdateOffer(null)}
+        />
+      ) : null}
+
+      {showSessionJoin ? (
+        <SessionJoinModal
+          onConfirm={onSessionJoinConfirm}
+          onClose={() => setShowSessionJoin(false)}
+          error={sessionJoinError}
+          loading={sessionJoinLoading}
         />
       ) : null}
     </div>

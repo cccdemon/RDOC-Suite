@@ -62,6 +62,34 @@ const baseEnvSchema = z.object({
   // zip + .sig sibling for signature). The updater endpoint will
   // only find a release if THIS asset is present.
   COMPANION_UPDATER_PATTERN: z.string().default(".nsis.zip"),
+
+  // Voice relay bots. Optional — when unset the relay token endpoint 503s.
+  // RELAY_GUILD_ID: default guild for Discord role checks (can be overridden
+  //   per-request via ?guildId= query param).
+  // RELAY_REQUIRED_ROLE_ID: Discord role that a user must have to get a
+  //   publisher relay token. Omit to allow any authenticated user to publish.
+  // RELAY_DISCORD_BOT_TOKEN: bot token used for Discord role membership checks.
+  //   If unset, the bridge falls back to the first bot token stored in
+  //   RelayBotsConfig.bots. Can be the same token as DISCORD_BOT_TOKEN.
+  // RELAY_LIVEKIT_ROOM: fallback room name when RelayBotsConfig has no roomName.
+  // RELAY_BOTS_ADMIN_URL: base URL of the relay bots service admin API
+  //   (e.g. http://relay-bots:8788). When set, metrics + reload are proxied.
+  // RELAY_BOTS_SECRET: Bearer secret that the relay bots service presents when
+  //   calling GET /relay-bots/service-config.
+  // RELAY_BOTS_ADMIN_SECRET: secret the bridge sends to the relay bots service
+  //   admin API (Basic auth: admin:<secret>).
+  RELAY_GUILD_ID: z.string().optional(),
+  RELAY_REQUIRED_ROLE_ID: z.string().optional(),
+  RELAY_DISCORD_BOT_TOKEN: z.string().optional(),
+  RELAY_LIVEKIT_ROOM: z.string().default("voice-relay"),
+  RELAY_BOTS_ADMIN_URL: z.string().optional(),
+  RELAY_BOTS_SECRET: z.string().optional(),
+  RELAY_BOTS_ADMIN_SECRET: z.string().optional(),
+  // Optional explicit URL for LiveKit's Prometheus metrics endpoint.
+  // When unset, the bridge derives it from LIVEKIT_URL by replacing ws(s)
+  // with http(s) and appending /metrics. Set this when LiveKit is behind a
+  // proxy or the metrics port differs from the signaling port.
+  LIVEKIT_PROMETHEUS_URL: z.string().url().optional(),
 });
 
 export type BridgeEnv = z.infer<typeof baseEnvSchema>;

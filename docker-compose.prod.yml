@@ -108,6 +108,31 @@ services:
     volumes:
       - fleetplanner_data:/app/data
 
+  relay-bots:
+    build:
+      context: apps/relay-bots
+      dockerfile: Dockerfile
+    image: rdoc-suite-relay-bots:latest
+    container_name: rdoc-suite-relay-bots
+    restart: unless-stopped
+    environment:
+      CONFIG_PATH: "/app/config.json"
+      ADMIN_HOST: "0.0.0.0"
+      ADMIN_PORT: "8788"
+    # Mount a config.json you create on the host — see apps/relay-bots/config.example.json.
+    # Minimal bridge-backed config:
+    #   { "bridge": { "url": "http://bridge:8787", "serviceSecret": "<RELAY_BOTS_SECRET>" },
+    #     "livekit": { "url": "wss://voice.raumdock.org", "apiKey": "x", "apiSecret": "x", "relayRoomName": "voice-relay" },
+    #     "discord": { "guildId": "0", "bots": [] } }
+    # (livekit/discord placeholders are overwritten by the bridge service-config endpoint)
+    volumes:
+      - ./relay-bots.config.json:/app/config.json:ro
+    ports:
+      # Admin API (metrics/reload) — localhost only, scraped by Prometheus.
+      - "127.0.0.1:8788:8788"
+    depends_on:
+      - bridge
+
   monitoring:
     build:
       context: .
@@ -129,6 +154,7 @@ services:
     depends_on:
       - bridge
       - livekit
+      - relay-bots
 
 volumes:
   bridge_data:

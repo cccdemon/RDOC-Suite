@@ -182,6 +182,39 @@ class RoomRegistry {
     }
   }
 
+  globalMetrics(): {
+    activeRooms: number;
+    activeCommanders: number;
+    speakingCommanders: number;
+    rooms: Array<{
+      roomId: string;
+      activeCommanders: number;
+      speakingCommanders: number;
+      commanders: Array<{ userId: string; displayName?: string; speaking: boolean }>;
+    }>;
+  } {
+    let totalCommanders = 0;
+    let totalSpeaking = 0;
+    const roomList = [];
+    for (const [roomId, set] of this.rooms) {
+      let speaking = 0;
+      const commanders = [];
+      for (const p of set) {
+        if (p.speaking) speaking++;
+        commanders.push({ userId: p.userId, displayName: p.displayName, speaking: p.speaking });
+      }
+      totalCommanders += set.size;
+      totalSpeaking += speaking;
+      roomList.push({ roomId, activeCommanders: set.size, speakingCommanders: speaking, commanders });
+    }
+    return {
+      activeRooms: this.rooms.size,
+      activeCommanders: totalCommanders,
+      speakingCommanders: totalSpeaking,
+      rooms: roomList,
+    };
+  }
+
   /** Test-only: wipe all rooms. Production code never needs this. */
   _clear(): void {
     this.rooms.clear();

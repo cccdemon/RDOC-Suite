@@ -7,7 +7,12 @@ import { registerInternalRoutes } from "./routes/internal.js";
 import { registerDownloadRoutes } from "./routes/download.js";
 import { registerUpdaterRoutes } from "./routes/updater.js";
 import { registerSuiteRoutes } from "./routes/suite.js";
+import { registerSessionRoutes } from "./routes/sessions.js";
+import { registerRelayRoute } from "./routes/relay.js";
+import { registerRelayBotsRoutes } from "./routes/relayBots.js";
+import { registerPrometheusMetricsRoute } from "./routes/prometheusMetrics.js";
 import { registerAdminRoutes } from "./admin/routes.js";
+import { startStrategyChannelGc } from "./services/strategyChannels.js";
 import { getEnv } from "./config/env.js";
 
 const REDACT_PATHS = [
@@ -52,8 +57,14 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerDownloadRoutes(app);
   await registerUpdaterRoutes(app);
   await registerSuiteRoutes(app);
+  await registerSessionRoutes(app);
+  await registerRelayRoute(app);
+  await registerRelayBotsRoutes(app);
+  await registerPrometheusMetricsRoute(app);
   await registerAdminRoutes(app);
   await registerWsRoute(app);
+
+  startStrategyChannelGc();
 
   return app;
 }
