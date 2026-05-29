@@ -46,6 +46,7 @@ export async function pushAudioEnable(
     });
     return;
   }
+  rooms.setAudioEnabled(socket, true);
   send(socket, {
     type: "audio:enable",
     roomId: opts.roomId,
@@ -58,6 +59,7 @@ export function pushAudioDisable(
   socket: WebSocket,
   reason: "not_in_voice" | "outside_allowed_voice_channel",
 ): void {
+  rooms.setAudioEnabled(socket, false);
   send(socket, { type: "audio:disable", reason });
 }
 
@@ -133,6 +135,19 @@ function attachLifecycle(
             type: "error",
             code: "guild_mismatch",
             message: "ptt guildId does not match session",
+          });
+          return;
+        }
+        // Audio gating is server-authoritative: a client must not be able
+        // to broadcast TALKING after the bridge has disabled its audio
+        // (e.g. it moved out of an allowed voice channel). The companion
+        // unmutes locally for instant hotkey feedback, but the bridge only
+        // reflects speaking state when it has actually granted audio.
+        if (!rooms.isAudioEnabled(socket)) {
+          send(socket, {
+            type: "error",
+            code: "audio_not_enabled",
+            message: "audio is not currently enabled for this connection",
           });
           return;
         }
@@ -281,6 +296,9 @@ async function handleOAuthCommander(
     activeCommanders,
     ...(initialLivekit ?? {}),
   });
+  // Record the server-authoritative audio grant: enabled iff we shipped
+  // an initial LiveKit token (i.e. the user is in an allowed channel).
+  rooms.setAudioEnabled(socket, initialLivekit !== null);
   // When the user isn't currently in an allowed voice channel, also
   // push an audio:disable so the companion knows WHY audio is silent
   // and can show the "Audio pausiert" banner immediately, not only
@@ -302,26 +320,59 @@ async function handleOAuthCommander(
     pttGuildIdGate: guildId,
     recheck: async () => {
       const verdict = await recheckCommanderRole({ userId, guildId });
-      if (verdict.ok) return;
-      logger.info(
-        { userId, guildId, reason: verdict.reason },
-        "role recheck failed, kicking client",
-      );
-      send(socket, {
-        type: "error",
-        code: verdict.reason,
-        message: "you no longer have permission for this bridge",
-      });
-      const leftRoom = rooms.leave(socket);
-      if (leftRoom) {
-        send(socket, { type: "bridge:left", roomId: leftRoom.roomId });
-        rooms.broadcast(leftRoom.roomId, {
-          type: "commander:list",
-          roomId: leftRoom.roomId,
-          commanders: leftRoom.commanders,
+      if (!verdict.ok) {
+        logger.info(
+          { userId, guildId, reason: verdict.reason },
+          "role recheck failed, kicking client",
+        );
+        send(socket, {
+          type: "error",
+          code: verdict.reason,
+          message: "you no longer have permission for this bridge",
         });
+        const leftRoom = rooms.leave(socket);
+        if (leftRoom) {
+          send(socket, { type: "bridge:left", roomId: leftRoom.roomId });
+          rooms.broadcast(leftRoom.roomId, {
+            type: "commander:list",
+            roomId: leftRoom.roomId,
+            commanders: leftRoom.commanders,
+          });
+        }
+        socket.close(CLOSE_FORBIDDEN, verdict.reason);
+        return;
       }
-      socket.close(CLOSE_FORBIDDEN, verdict.reason);
+      // Voice-channel safety net. The bot's /internal/voice-state-changed
+      // push normally enables/disables audio in real time, but if that
+      // push is unavailable (INTERNAL_BRIDGE_SECRET unset, bot down, lost
+      // packet) a user who moved out of an allowed channel would otherwise
+      // keep publishing audio. Reconcile the audio grant here so the
+      // enforcement still converges within one recheck interval.
+      const gc = await readGuildConfig(guildId);
+      const allowedIds = gc?.allowedVoiceChannelIds ?? [];
+      const voice = await checkAllowedVoiceChannel({ userId, guildId, allowedIds });
+      const currentlyEnabled = rooms.isAudioEnabled(socket);
+      if (!voice.ok && currentlyEnabled) {
+        logger.info(
+          { userId, guildId, reason: voice.reason },
+          "voice recheck: disabling audio (channel drift, bot push missed)",
+        );
+        pushAudioDisable(socket, voice.reason);
+        const updated = rooms.setSpeaking(socket, false);
+        if (updated) {
+          rooms.broadcast(updated.roomId, {
+            type: "commander:list",
+            roomId: updated.roomId,
+            commanders: updated.commanders,
+          });
+        }
+      } else if (voice.ok && !currentlyEnabled) {
+        logger.info(
+          { userId, guildId },
+          "voice recheck: re-enabling audio (back in allowed channel)",
+        );
+        await pushAudioEnable(socket, { userId, guildId, roomId });
+      }
     },
   });
 }
@@ -413,6 +464,9 @@ async function handleSessionCommander(
     livekitUrl: livekitToken ? getEnv().LIVEKIT_URL : undefined,
     livekitToken,
   });
+  // Session rooms grant publish on join (no voice-channel gating); audio
+  // is enabled iff we successfully minted a LiveKit token.
+  rooms.setAudioEnabled(socket, livekitToken !== undefined);
   rooms.broadcast(
     roomId,
     { type: "commander:list", roomId, commanders: activeCommanders },

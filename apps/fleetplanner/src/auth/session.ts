@@ -26,10 +26,16 @@ export async function loadSession(request: FastifyRequest): Promise<{ user: User
   return { user: session.user, sessionId: session.id, csrfToken: session.csrfToken };
 }
 
+// Secure cookies require HTTPS. In production (behind Traefik TLS) that's
+// always the case, but local dev runs over plain http://localhost:3200,
+// where a Secure cookie is silently dropped and login never sticks. Gate
+// on NODE_ENV so prod stays Secure and dev works.
+const SECURE_COOKIES = process.env.NODE_ENV === "production";
+
 export function setSessionCookie(reply: FastifyReply, sessionId: string, expiresAt: Date): void {
   reply.setCookie(COOKIE, sessionId, {
     httpOnly: true,
-    secure: true,
+    secure: SECURE_COOKIES,
     sameSite: "lax",
     path: "/",
     expires: expiresAt,

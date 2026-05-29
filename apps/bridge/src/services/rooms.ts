@@ -11,6 +11,14 @@ type Participant = {
   outputMuted: boolean;
   /** User manually flagged Away From Keyboard (Etappe 2). No auto-idle. */
   afk: boolean;
+  /**
+   * Whether the bridge currently permits this socket to publish audio
+   * (i.e. an audio:enable / initial LiveKit token has been granted and
+   * not since revoked by an audio:disable). The bridge — not the client
+   * — owns this flag; ptt:start is rejected when it is false so a client
+   * cannot broadcast TALKING after the bridge has disabled its audio.
+   */
+  audioEnabled: boolean;
 };
 
 /**
@@ -64,6 +72,7 @@ class RoomRegistry {
       speaking: false,
       outputMuted: false,
       afk: false,
+      audioEnabled: false,
     };
     set.add(participant);
     this.socketRoom.set(socket, { roomId, participant });
@@ -96,6 +105,24 @@ class RoomRegistry {
     }
     entry.participant.speaking = speaking;
     return { roomId: entry.roomId, commanders: this.snapshot(entry.roomId) };
+  }
+
+  /**
+   * Set whether the socket is currently allowed to publish audio. Called
+   * by the WS layer whenever it grants (audio:enable / initial token) or
+   * revokes (audio:disable) audio. Returns false if the socket isn't in
+   * any room (already gone).
+   */
+  setAudioEnabled(socket: WebSocket, enabled: boolean): boolean {
+    const entry = this.socketRoom.get(socket);
+    if (!entry) return false;
+    entry.participant.audioEnabled = enabled;
+    return true;
+  }
+
+  /** Whether the bridge currently permits this socket to publish audio. */
+  isAudioEnabled(socket: WebSocket): boolean {
+    return this.socketRoom.get(socket)?.participant.audioEnabled ?? false;
   }
 
   setOutputMuted(

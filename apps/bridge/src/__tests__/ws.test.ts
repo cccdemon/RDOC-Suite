@@ -418,6 +418,31 @@ describe("/ws voice-channel enforcement", () => {
     socket.close();
     await clearVoiceFixtures();
   });
+
+  it("rejects ptt:start with audio_not_enabled when audio is not granted", async () => {
+    // User sits in a non-allowed channel → bridge:joined without creds +
+    // audio:disable. A client that unmutes locally and sends ptt:start
+    // must NOT be able to flip speaking=true: audio gating is
+    // server-authoritative.
+    await seedAllowedVoiceChannels([VOICE_ALLOWED_CH]);
+    await seedUserVoiceState(VOICE_OTHER_CH);
+    const token = await issueSessionToken(SECRET, {
+      sub: VOICE_USER_ID,
+      guildId: VOICE_GUILD_ID,
+    });
+    const { socket, next } = await connect(token);
+    const joined = (await next()) as { type: string };
+    expect(joined.type).toBe("bridge:joined");
+    const paused = (await next()) as { type: string };
+    expect(paused.type).toBe("audio:disable");
+
+    send(socket, { type: "ptt:start", guildId: VOICE_GUILD_ID });
+    const err = (await next()) as { type: string; code?: string };
+    expect(err.type).toBe("error");
+    expect(err.code).toBe("audio_not_enabled");
+    socket.close();
+    await clearVoiceFixtures();
+  });
 });
 
 describe("POST /internal/voice-state-changed", () => {

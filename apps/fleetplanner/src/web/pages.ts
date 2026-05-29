@@ -579,16 +579,63 @@ export function shipsPage(opts: {
 
 type UserRow = Pick<User, "id" | "username" | "role" | "active" | "joinedAt" | "lastSeenAt">;
 
+export type ShipSyncView = {
+  enabled: boolean;
+  intervalDays: number;
+  lastRunAt: Date | null;
+  lastResult: string | null;
+  running: boolean;
+  shipCount: number;
+};
+
 export function adminPage(opts: {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
   flash?: string;
   users: UserRow[];
+  sync: ShipSyncView;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
   const isSuperAdmin = opts.currentUser?.role === "superadmin";
+  const isFleetOp = opts.currentUser?.role === "superadmin" || opts.currentUser?.role === "fleetoperator";
+  const s = opts.sync;
+
+  const syncPanel = html`
+    <div class="section">
+      <div class="section-title">Ship Catalog</div>
+      <div class="ship-sync card" style="padding:1rem">
+        <div class="ship-sync-stats" style="display:flex;flex-wrap:wrap;gap:1.25rem;margin-bottom:.75rem">
+          <div><span class="text-dim text-sm">Ships cached</span><br><strong class="text-mono">${String(s.shipCount)}</strong></div>
+          <div><span class="text-dim text-sm">Auto-refresh</span><br><strong>${s.enabled ? safe(`every ${s.intervalDays} day(s)`) : safe("disabled")}</strong></div>
+          <div><span class="text-dim text-sm">Last run</span><br><strong>${s.lastRunAt ? fmtDate(s.lastRunAt) : safe("never")}</strong></div>
+          <div><span class="text-dim text-sm">Status</span><br><strong>${s.running ? safe("⟳ running…") : safe("idle")}</strong></div>
+        </div>
+        ${s.lastResult ? html`<p class="text-dim text-sm" style="margin:0 0 .75rem">${s.lastResult}</p>` : safe("")}
+        ${isFleetOp ? html`
+          <div style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end">
+            <form method="post" action="${bp}/admin/ships/sync" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <button type="submit" class="btn btn-cyan" ${s.running ? safe("disabled") : safe("")}>
+                ${s.running ? safe("Syncing…") : safe("Sync now")}
+              </button>
+            </form>
+            <form method="post" action="${bp}/admin/ships/config" class="inline" style="display:flex;gap:.5rem;align-items:flex-end">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <label class="text-sm text-dim">Interval (days)
+                <input type="number" name="intervalDays" min="1" max="90" value="${String(s.intervalDays)}" style="width:5rem" />
+              </label>
+              <label class="text-sm text-dim" style="display:flex;align-items:center;gap:.35rem">
+                <input type="checkbox" name="enabled" value="1" ${s.enabled ? safe("checked") : safe("")} /> auto-refresh
+              </label>
+              <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+            </form>
+          </div>
+          <p class="text-dim text-sm" style="margin:.5rem 0 0">A full sync pulls every ship from the Star&nbsp;Citizen wiki — it can take a couple of minutes.</p>
+        ` : safe("")}
+      </div>
+    </div>`;
 
   const rows = opts.users.map((u) => html`
     <tr>
@@ -620,6 +667,7 @@ export function adminPage(opts: {
     <div class="page-header">
       <h1 class="page-title">ADMIN PANEL</h1>
     </div>
+    ${syncPanel}
     <div class="section">
       <div class="section-title">Users (${opts.users.length})</div>
       <div style="overflow-x:auto">

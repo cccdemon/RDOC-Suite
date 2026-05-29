@@ -660,7 +660,6 @@ export function renderSessionDetail(opts: {
   otherGuilds?: NavGuild[];
 }): string {
   const { session, invites } = opts.data;
-  const titleText = opts.currentGuild?.name ?? session.guildId;
   const isEnded = session.status !== "active";
 
   const inviteRows = invites.length

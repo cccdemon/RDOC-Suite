@@ -71,6 +71,7 @@ describe("parseServerMessage", () => {
       parseServerMessage({
         type: "bridge:joined",
         roomId: "room-1",
+        roomMode: "guild",
         activeCommanders: [{ userId: USER_ID, active: true, speaking: false }],
         livekitUrl: "ws://localhost:7880",
         livekitToken: "fake.jwt.token",

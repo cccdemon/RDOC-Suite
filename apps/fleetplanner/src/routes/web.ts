@@ -3,13 +3,15 @@ import { rawHtml } from "../web/pages.js";
 import {
   homePage, opDetailPage, opFormPage, shipsPage, adminPage, errorPage,
 } from "../web/pages.js";
-import { requireAuth, requireRole, optionalAuth } from "../auth/middleware.js";
+import { requireRole, optionalAuth } from "../auth/middleware.js";
 import { basePath } from "../config/env.js";
 import { prisma } from "../db.js";
 import {
   createOperation, getOperation, listOperations, updateOperation, deleteOperation,
 } from "../services/operations.js";
 import { searchShips } from "../services/scwiki.js";
+import { deleteScheduledEvent } from "../services/discord.js";
+import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
 
 function htmlReply(reply: import("fastify").FastifyReply, page: import("../web/render.js").SafeHtml) {
   reply.type("text/html; charset=utf-8").send(rawHtml(page));
@@ -17,6 +19,12 @@ function htmlReply(reply: import("fastify").FastifyReply, page: import("../web/r
 
 function csrfOk(body: Record<string, unknown>, csrfToken: string): boolean {
   return typeof body._csrf === "string" && body._csrf === csrfToken;
+}
+
+function parseUtcDateTimeLocal(raw: string | undefined): Date | null {
+  if (!raw) return null;
+  const value = new Date(`${raw}Z`);
+  return Number.isNaN(value.getTime()) ? null : value;
 }
 
 export async function webRoutes(app: FastifyInstance) {
@@ -64,7 +72,8 @@ export async function webRoutes(app: FastifyInstance) {
         return reply.code(403).send("Invalid CSRF token");
       }
       const { title, description, opType, scheduledAt } = req.body;
-      if (!title?.trim() || !scheduledAt) {
+      const parsedDate = parseUtcDateTimeLocal(scheduledAt);
+      if (!title?.trim() || !parsedDate) {
         return reply.redirect(basePath("/ops/new?flash=error:Title+and+date+are+required"), 302);
       }
       try {
@@ -72,7 +81,7 @@ export async function webRoutes(app: FastifyInstance) {
           title: title.trim(),
           description: description ?? "",
           opType: opType ?? "combat",
-          scheduledAt: new Date(scheduledAt),
+          scheduledAt: parsedDate,
         });
         return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Operation+created.`), 302);
       } catch {
@@ -129,12 +138,16 @@ export async function webRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       const { title, description, opType, scheduledAt } = req.body;
+      const parsedDate = scheduledAt ? parseUtcDateTimeLocal(scheduledAt) : null;
+      if (scheduledAt && !parsedDate) {
+        return reply.redirect(basePath(`/ops/${req.params.id}/edit?flash=error:Invalid+date`), 302);
+      }
       try {
         await updateOperation(req.params.id, {
           ...(title && { title: title.trim() }),
           ...(description !== undefined && { description }),
           ...(opType && { opType }),
-          ...(scheduledAt && { scheduledAt: new Date(scheduledAt) }),
+          ...(parsedDate && { scheduledAt: parsedDate }),
         });
         return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Saved.`), 302);
       } catch {
@@ -151,7 +164,13 @@ export async function webRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       try {
+        const op = await prisma.operation.findUnique({ where: { id: req.params.id } });
         await deleteOperation(req.params.id);
+        if (op?.discordEventId) {
+          deleteScheduledEvent(op.discordEventId).catch((err) =>
+            app.log.warn(err, "Discord event deletion failed after operation delete")
+          );
+        }
         return reply.redirect(basePath("/?flash=ok:Operation+deleted."), 302);
       } catch {
         return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Delete+failed`), 302);
@@ -183,14 +202,44 @@ export async function webRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const ctx = await requireRole(req, reply, "captain");
       if (!ctx) return;
-      const users = await prisma.user.findMany({ orderBy: { joinedAt: "asc" } });
+      const [users, sync] = await Promise.all([
+        prisma.user.findMany({ orderBy: { joinedAt: "asc" } }),
+        getSyncState(),
+      ]);
       htmlReply(reply, adminPage({
         basePath: basePath(),
         currentUser: ctx.user,
         csrfToken: ctx.csrfToken,
         flash: req.query.flash,
         users,
+        sync,
       }));
+    }
+  );
+
+  app.post<{ Body: Record<string, string> }>(
+    "/admin/ships/sync",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      runSync("manual").catch((err) => app.log.error(err, "Manual ship catalog sync failed"));
+      return reply.redirect(basePath("/admin?flash=ok:Ship+catalog+sync+started."), 302);
+    }
+  );
+
+  app.post<{ Body: Record<string, string> }>(
+    "/admin/ships/config",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const intervalDays = Number.parseInt(req.body.intervalDays ?? "7", 10);
+      await updateSyncConfig({
+        enabled: req.body.enabled === "1",
+        intervalDays,
+      });
+      return reply.redirect(basePath("/admin?flash=ok:Ship+catalog+settings+saved."), 302);
     }
   );
 
@@ -203,6 +252,20 @@ export async function webRoutes(app: FastifyInstance) {
       const validRoles = ["superadmin", "fleetoperator", "captain", "crew"];
       const role = req.body.role;
       if (!validRoles.includes(role)) return reply.code(400).send("Invalid role");
+      if (req.params.id === ctx.user.id && role !== "superadmin") {
+        return reply.redirect(basePath("/admin?flash=error:You+cannot+demote+yourself."), 302);
+      }
+      if (role !== "superadmin") {
+        const target = await prisma.user.findUnique({ where: { id: req.params.id } });
+        if (target?.role === "superadmin") {
+          const superadminCount = await prisma.user.count({
+            where: { role: "superadmin", active: true },
+          });
+          if (superadminCount <= 1) {
+            return reply.redirect(basePath("/admin?flash=error:Cannot+demote+the+last+active+superadmin."), 302);
+          }
+        }
+      }
       await prisma.user.update({ where: { id: req.params.id }, data: { role } });
       return reply.redirect(basePath("/admin?flash=ok:Role+updated."), 302);
     }
@@ -216,6 +279,17 @@ export async function webRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       const user = await prisma.user.findUnique({ where: { id: req.params.id } });
       if (!user) return reply.code(404).send("Not found");
+      if (user.id === ctx.user.id && user.active) {
+        return reply.redirect(basePath("/admin?flash=error:You+cannot+disable+yourself."), 302);
+      }
+      if (user.role === "superadmin" && user.active) {
+        const superadminCount = await prisma.user.count({
+          where: { role: "superadmin", active: true },
+        });
+        if (superadminCount <= 1) {
+          return reply.redirect(basePath("/admin?flash=error:Cannot+disable+the+last+active+superadmin."), 302);
+        }
+      }
       await prisma.user.update({ where: { id: req.params.id }, data: { active: !user.active } });
       return reply.redirect(basePath("/admin?flash=ok:User+status+toggled."), 302);
     }

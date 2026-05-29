@@ -1,5 +1,5 @@
 import { prisma } from "../db.js";
-import { specForShip, specForSquad, createSeats } from "./seats.js";
+import { specForShip, specForSquad } from "./seats.js";
 
 export type RegisterUnitInput = {
   unitType: "ship" | "squad";
@@ -16,20 +16,8 @@ export async function registerUnit(operationId: string, captainId: string, input
     throw new Error("squadName and squadSize required for squad units");
   }
 
-  const unit = await prisma.fleetUnit.create({
-    data: {
-      operationId,
-      captainId,
-      unitType: input.unitType,
-      shipId: input.shipId ?? null,
-      squadName: input.squadName ?? null,
-      squadSize: input.squadSize ?? null,
-      requirementId: input.requirementId ?? null,
-      captainNote: input.captainNote ?? null,
-      status: "pending",
-    },
-  });
-
+  // Validate the ship and compute seat specs BEFORE writing anything, so a
+  // bad shipId can never leave an orphan unit row behind.
   let specs;
   if (input.unitType === "ship" && input.shipId) {
     const ship = await prisma.ship.findUnique({ where: { id: input.shipId } });
@@ -39,14 +27,38 @@ export async function registerUnit(operationId: string, captainId: string, input
     specs = specForSquad(input.squadSize!);
   }
 
-  const seats = await createSeats(unit.id, specs);
+  // Create the unit, its seats, and the captain auto-assignment atomically:
+  // either the whole unit comes into existence with its seats, or nothing does.
+  return prisma.$transaction(async (tx) => {
+    const unit = await tx.fleetUnit.create({
+      data: {
+        operationId,
+        captainId,
+        unitType: input.unitType,
+        shipId: input.shipId ?? null,
+        squadName: input.squadName ?? null,
+        squadSize: input.squadSize ?? null,
+        requirementId: input.requirementId ?? null,
+        captainNote: input.captainNote ?? null,
+        status: "pending",
+      },
+    });
 
-  // Auto-assign captain to the first seat (Pilot / Squad Captain)
-  if (seats.length > 0) {
-    await prisma.seatAssignment.update({ where: { id: seats[0].id }, data: { userId: captainId } });
-  }
+    for (const s of specs) {
+      await tx.seatAssignment.create({
+        data: {
+          unitId: unit.id,
+          label: s.label,
+          seatType: s.seatType,
+          order: s.order,
+          // Auto-assign captain to the first seat (Pilot / Squad Captain).
+          ...(s.order === 0 ? { userId: captainId } : {}),
+        },
+      });
+    }
 
-  return unit;
+    return unit;
+  });
 }
 
 export async function deleteUnit(unitId: string, userId: string, userRole: string) {
@@ -73,16 +85,25 @@ export async function claimSeat(seatId: string, userId: string) {
   if (seat.fleetUnit.status !== "accepted") throw new Error("Unit not yet accepted");
   if (seat.userId) throw new Error("Seat already taken");
 
-  // A user can only hold one seat per operation — check across all units in the op
-  const alreadyClaimed = await prisma.seatAssignment.findFirst({
-    where: {
-      userId,
-      fleetUnit: { operationId: seat.fleetUnit.operationId },
-    },
-  });
-  if (alreadyClaimed) throw new Error("Already assigned to a seat in this operation");
+  const operationId = seat.fleetUnit.operationId;
 
-  await prisma.seatAssignment.update({ where: { id: seatId }, data: { userId } });
+  // Race-safe claim. Two concurrent requests could both pass the checks
+  // above, so do the single-seat-per-op check and the claim inside one
+  // transaction, and claim with a conditional updateMany (userId: null)
+  // that only succeeds if the seat is still empty. count===0 means another
+  // request won the seat between our read and write.
+  await prisma.$transaction(async (tx) => {
+    const alreadyClaimed = await tx.seatAssignment.findFirst({
+      where: { userId, fleetUnit: { operationId } },
+    });
+    if (alreadyClaimed) throw new Error("Already assigned to a seat in this operation");
+
+    const result = await tx.seatAssignment.updateMany({
+      where: { id: seatId, userId: null },
+      data: { userId },
+    });
+    if (result.count === 0) throw new Error("Seat already taken");
+  });
 }
 
 export async function unclaimSeat(seatId: string, userId: string, userRole: string) {

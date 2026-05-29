@@ -547,3 +547,97 @@ RDOC-Suite/
   - prometheus.yml: relay-bots scrape job uncommented (was gated on step 11,
     moved to active now that relay-bots is imported).
   - Build: `pnpm --filter @dccc/bridge build` exits 0. All 73 tests pass.
+---
+
+## Queued — Post-merge review fixes (2026-05-30)
+
+External code review of committed merge (07d0ac4) found bugs. Fixing in one pass:
+
+- **#1 (High)** Voice-channel enforcement fallback missing. `internal.ts` docstring
+  claims the 60s recheck loop catches voice-channel drift, but the `attachLifecycle`
+  recheck in `ws.ts` only calls `recheckCommanderRole` (role only). Add
+  `checkAllowedVoiceChannel` to the loop so a user who leaves an allowed channel
+  loses audio even if the bot's internal push is unavailable.
+- **#2 (Med)** `ptt:start` accepted regardless of audio-enabled state. Bridge will
+  reject ptt:start when the socket is not currently audio-enabled, so a client
+  cannot broadcast TALKING after `audio:disable`.
+- **#3 (Med)** Shared test drift: `validation.test.ts` bridge:joined fixture missing
+  required `roomMode` → `@dccc/shared` test fails. Add `roomMode`.
+- **#4 (Med)** `registerUnit` creates fleetUnit before validating ship / creating
+  seats → orphan unit on failure. Validate ship + compute specs first, then create
+  unit + seats + captain assignment in one `$transaction`.
+- **#5 (Med)** `claimSeat` check-then-update race. Wrap in `$transaction` with a
+  conditional `updateMany` (where userId null) + re-check single-seat-per-op.
+- **#6 (Med)** Relay subscriber tokens unprotected. `GET /relay/token?role=subscriber`
+  required only a valid companion JWT; doc claimed a shared secret. Require
+  `RELAY_BOTS_SECRET` bearer for subscriber role; companion JWT path = publisher only.
+- **#7 (Med)** Updater token in request body + wildcard CORS. Move to Authorization
+  bearer; restrict CORS to known origins.
+- **#8 (Low)** Companion download tokens stored plaintext. Store SHA-256 hash, compare
+  on redeem.
+- **#9 (Low)** ESLint config: add browser/service-worker globals for static JS, ignore
+  generated/static assets. Fix real unused-var findings.
+- **Cosmetic** Fix mojibake in README + oauth.ts strings; self-host fleetplanner fonts;
+  fleetplanner dev cookie `secure` conditional on NODE_ENV.
+
+## Completed — Post-merge review fixes (2026-05-30)
+
+All 11 review findings fixed. `pnpm build` ✓, `pnpm lint` ✓ (188 → 0 errors),
+`pnpm test` ✓ (shared 13, bridge 87 — was 80, +7 new). Companion + fleetplanner
+tsc/vite build ✓.
+
+- **#1** `apps/bridge/src/signaling/ws.ts` — guild-path recheck loop now also runs
+  `checkAllowedVoiceChannel` and reconciles the audio grant (pushAudioDisable /
+  pushAudioEnable) so voice-channel drift is caught even if the bot's
+  `/internal/voice-state-changed` push is unavailable.
+- **#2** Audio gating made server-authoritative. `rooms.ts` tracks per-socket
+  `audioEnabled`; `pushAudioEnable`/`pushAudioDisable` and both join paths set it;
+  `ptt:start` now rejects with `audio_not_enabled` when audio isn't granted.
+  Regression test added.
+- **#3** `packages/shared/src/__tests__/validation.test.ts` — bridge:joined fixture
+  gained `roomMode: "guild"`. Shared tests pass.
+- **#4** `apps/fleetplanner/src/services/units.ts` — `registerUnit` validates ship +
+  computes seat specs before any write, then creates unit + seats + captain
+  assignment inside one `$transaction` (no orphan units).
+- **#5** `claimSeat` wrapped in a `$transaction` with a conditional
+  `updateMany(where userId:null)` — race-safe seat claiming.
+- **#6** `apps/bridge/src/routes/relay.ts` — `role=subscriber` now requires the
+  `RELAY_BOTS_SECRET` bearer (constant-time compare); companion JWT path is
+  publisher-only. No HTTP consumer used subscriber (relay-bots mints its own token),
+  so nothing breaks. 6 relay tests added (`relay.test.ts`).
+- **#7** `apps/bridge/src/routes/updater.ts` + `apps/companion/src/lib/updater.ts` —
+  token moved to `Authorization: Bearer` header (query/body kept as fallback for
+  older EXEs); CORS echoes the request Origin instead of `*` and allows the
+  `authorization` header.
+- **#8** `apps/bridge/src/services/companionDownloads.ts` — raw download tokens are
+  no longer persisted (only sha256). A DB read can't recover live links. Admin
+  re-copy after mint is gone (re-mint instead).
+- **#9** `eslint.config.mjs` — browser + service-worker globals for
+  `apps/bridge/src/admin/static/**/*.js`; `_`-prefix ignore + `caughtErrors:none` +
+  `allowEmptyCatch` for that vendored JS. Fixed 5 real unused-var/`prefer-const`
+  findings in `views.ts`, `auth.ts`, `web.ts`, `routes.ts`, `livekit.ts`.
+- **Cosmetic** Fixed mojibake `fÃ¼r`→`für` in `SettingsModal.tsx`; dropped the
+  Google-Fonts `@import` from fleetplanner `render.ts` (system-font fallbacks already
+  present); fleetplanner session cookie `secure` now gated on
+  `NODE_ENV==="production"` so local HTTP dev login works.
+  (README mojibake reported by the reviewer was a false positive — files are clean UTF-8.)
+
+---
+
+## Queued — Fleetplanner finalize (2026-05-30)
+
+User directive "finalize my fleetmanager". Scope:
+
+1. **DB → Postgres** (from SQLite). New `postgres` service in docker-compose.prod.yml,
+   `DATABASE_URL` switched, fresh PG baseline migration (old SQLite migration dropped),
+   `.env.example` + STAND.md updated. Assumption: fresh DB (ships re-sync; old SQLite
+   ops/users not migrated).
+2. **Ship catalog cache + weekly refresh**: ships fetched from SC wiki are cached
+   (already are); add a configurable auto-refresh (default weekly) + manual admin
+   trigger. New `ShipSyncState` singleton (intervalDays, lastRunAt, running, enabled,
+   shipCount). Scheduler in boot; full-catalog paginated sync.
+3. **Feature audit**: confirm seat-claim, captain-adds-ship-with-crew-count,
+   admiral-creates-op→discord-event all work end-to-end; fix gaps.
+   Found gaps: backgroundSync never scheduled; Discord event id never stored
+   (re-open duplicates events, can't delete on cancel) → add `Operation.discordEventId`.
+4. **Admin GUI**: ship-sync panel (status, interval, "Sync now"); general GUI polish.

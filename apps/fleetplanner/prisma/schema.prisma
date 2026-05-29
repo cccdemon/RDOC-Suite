@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -52,6 +52,23 @@ model Ship {
   syncedAt      DateTime @default(now())
 
   fleetUnits FleetUnit[]
+
+  @@index([name])
+}
+
+// ── Ship-catalog sync state (singleton row, id = "singleton") ──────
+// Drives the periodic SC-wiki refresh: how often to run, when it last
+// ran, whether it's enabled, and whether a run is in flight (so the
+// admin "Sync now" button can't kick off overlapping syncs).
+model ShipSyncState {
+  id           String    @id @default("singleton")
+  enabled      Boolean   @default(true)
+  intervalDays Int       @default(7)
+  lastRunAt    DateTime?
+  lastResult   String?   // short human summary of the last run
+  running      Boolean   @default(false)
+  shipCount    Int       @default(0)
+  updatedAt    DateTime  @updatedAt
 }
 
 // ── Operations ─────────────────────────────────────────────────────
@@ -63,6 +80,7 @@ model Operation {
   scheduledAt DateTime
   status      String   @default("draft")  // draft | open | locked | in_progress | completed | cancelled
   createdById String
+  discordEventId String?  // id of the Discord scheduled event created when opened
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

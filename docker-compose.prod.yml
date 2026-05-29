@@ -89,6 +89,23 @@ services:
     depends_on:
       - bridge
 
+  fleetplanner-db:
+    image: postgres:16-alpine
+    container_name: rdoc-suite-fleetplanner-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "fleetplanner"
+      POSTGRES_PASSWORD: "${FLEETPLANNER_DB_PASSWORD}"
+      POSTGRES_DB: "fleetplanner"
+    volumes:
+      - fleetplanner_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # migrate deploy in the app entrypoint races the DB otherwise.
+      test: ["CMD-SHELL", "pg_isready -U fleetplanner -d fleetplanner"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   fleetplanner:
     build:
       context: .
@@ -100,13 +117,15 @@ services:
     environment:
       HOST: "0.0.0.0"
       PORT: "3200"
-      DATABASE_URL: "file:/app/data/fleetplanner.db"
+      # Postgres lives in the fleetplanner-db service on the compose network.
+      DATABASE_URL: "postgresql://fleetplanner:${FLEETPLANNER_DB_PASSWORD}@fleetplanner-db:5432/fleetplanner?schema=public"
       WEB_PUBLIC_URL: "${FLEETPLANNER_PUBLIC_URL:-https://suite.raumdock.org}"
       PUBLIC_BASE_PATH: "/fleetplanner"
     ports:
       - "127.0.0.1:3200:3200"
-    volumes:
-      - fleetplanner_data:/app/data
+    depends_on:
+      fleetplanner-db:
+        condition: service_healthy
 
   relay-bots:
     build:
@@ -158,5 +177,5 @@ services:
 
 volumes:
   bridge_data:
-  fleetplanner_data:
+  fleetplanner_pgdata:
   monitoring_data:

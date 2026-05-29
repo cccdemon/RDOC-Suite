@@ -5,8 +5,11 @@ import { getPrisma } from "@dccc/db";
  * Single-use download links for the Companion EXE.
  *
  * An admin clicks "Create download link" in the web UI. Bridge mints
- * 32 random bytes, persists sha256(token) + metadata, returns the
- * raw token ONCE so the issuing admin can DM the URL to the recipient.
+ * 32 random bytes, persists ONLY sha256(token) + metadata, and returns
+ * the raw token ONCE so the issuing admin can DM the URL to the
+ * recipient. The raw token is never written to the DB — a DB read can
+ * therefore not recover any live download link. (The admin UI's old
+ * "re-copy URL" button is gone; re-mint instead.)
  * When the recipient opens the URL, the bridge consumes the token
  * (marks usedAt + usedFrom) and streams the latest GitHub release
  * asset to the browser. The same URL is dead on the second click.
@@ -43,9 +46,11 @@ export async function mintDownloadToken(opts: {
   const row = await getPrisma().companionDownloadToken.create({
     data: {
       tokenHash,
-      // Stored alongside the hash so the admin UI can show a re-copy
-      // button later. Nulled on consume.
-      plaintext: raw,
+      // Never persist the raw token. Only sha256(token) is stored, so a
+      // DB compromise cannot recover usable download links. The legacy
+      // `plaintext` column is kept (nullable) to avoid a migration but is
+      // always null.
+      plaintext: null,
       label: opts.label,
       createdBy: opts.createdBy,
       expiresAt,
@@ -121,8 +126,8 @@ export async function listDownloadTokens(): Promise<
     expiresAt: Date;
     usedAt: Date | null;
     usedFrom: string | null;
-    /** Raw token — present only for unused, unexpired tokens, so the
-     *  admin UI can render a "Copy URL" button without a re-mint. */
+    /** Always null now — raw tokens are no longer stored. Kept in the
+     *  shape so the admin UI compiles; it simply renders no re-copy. */
     plaintext: string | null;
   }>
 > {

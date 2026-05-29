@@ -26,10 +26,26 @@ import { mintDownloadToken } from "../services/companionDownloads.js";
  *     the regular landing-page + SmartScreen flow.
  */
 
+/** Pull a bearer token from the Authorization header, if present. */
+function bearerFromHeader(request: FastifyRequest): string | undefined {
+  const h = request.headers.authorization;
+  if (typeof h !== "string") return undefined;
+  const [scheme, tok] = h.split(/\s+/, 2);
+  if (scheme?.toLowerCase() === "bearer" && tok) return tok;
+  return undefined;
+}
+
+/**
+ * Authenticate the request. Prefers the Authorization bearer header
+ * (less likely to be logged/leaked than a query string or body field);
+ * `fallbackToken` keeps older Companion builds that send the token in the
+ * query/body working until they auto-update.
+ */
 async function authenticate(
   request: FastifyRequest,
-  rawToken: string | undefined,
+  fallbackToken: string | undefined,
 ): Promise<{ ok: true; userId: string } | { ok: false; status: number; reason: string }> {
+  const rawToken = bearerFromHeader(request) ?? fallbackToken;
   if (!rawToken) return { ok: false, status: 401, reason: "missing_token" };
   const verified = await verifySessionToken(getEnv().SESSION_SECRET, rawToken);
   if (!verified.ok) {
@@ -49,30 +65,36 @@ function publicOrigin(): string {
 }
 
 /** Set CORS headers on every response from this router. The companion
- *  runs under `tauri.localhost`; without ACAO the WebView blocks the
- *  cross-origin call to suite.raumdock.org with "Failed to fetch". */
-function setCors(reply: import("fastify").FastifyReply): void {
-  reply.header("access-control-allow-origin", "*");
+ *  runs under `tauri.localhost` (origin scheme varies by platform), so
+ *  rather than a blanket `*` we echo the caller's Origin. No credentials
+ *  (cookies) are used here — auth is an explicit bearer token — so
+ *  echoing the origin is not a credentialed-CORS risk, it just drops the
+ *  wildcard. `authorization` is allowed so the token can move out of the
+ *  query string / body into the header. */
+function setCors(reply: import("fastify").FastifyReply, request: FastifyRequest): void {
+  const origin = request.headers.origin;
+  reply.header("access-control-allow-origin", typeof origin === "string" && origin ? origin : "null");
+  reply.header("vary", "Origin");
   reply.header("access-control-allow-methods", "GET, POST, OPTIONS");
-  reply.header("access-control-allow-headers", "content-type");
+  reply.header("access-control-allow-headers", "content-type, authorization");
 }
 
 export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void> {
   // OPTIONS preflight for the POST endpoint. (Simple GETs don't
   // strictly need a preflight but we register one too for paranoia.)
-  app.options("/updater/companion/check", async (_req, reply) => {
-    setCors(reply);
+  app.options("/updater/companion/check", async (request, reply) => {
+    setCors(reply, request);
     reply.code(204).send();
   });
-  app.options("/updater/companion/mint-download-token", async (_req, reply) => {
-    setCors(reply);
+  app.options("/updater/companion/mint-download-token", async (request, reply) => {
+    setCors(reply, request);
     reply.code(204).send();
   });
 
   app.get<{ Querystring: { token?: string } }>(
     "/updater/companion/check",
     async (request, reply) => {
-      setCors(reply);
+      setCors(reply, request);
       const auth = await authenticate(request, request.query.token);
       if (!auth.ok) {
         reply.code(auth.status).send({ error: auth.reason });
@@ -102,15 +124,14 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
     },
   );
 
-  const mintBodySchema = z.object({ token: z.string().min(20) });
+  // Body token is now optional — the Companion sends the token in the
+  // Authorization header. Older builds still send it in the body, so we
+  // accept either; the body field is a fallback, not required.
+  const mintBodySchema = z.object({ token: z.string().min(20).optional() }).optional();
   app.post("/updater/companion/mint-download-token", async (request, reply) => {
-    setCors(reply);
-    const parsed = mintBodySchema.safeParse(request.body);
-    if (!parsed.success) {
-      reply.code(400).send({ error: "invalid_body" });
-      return;
-    }
-    const auth = await authenticate(request, parsed.data.token);
+    setCors(reply, request);
+    const parsed = mintBodySchema.safeParse(request.body ?? {});
+    const auth = await authenticate(request, parsed.success ? parsed.data?.token : undefined);
     if (!auth.ok) {
       reply.code(auth.status).send({ error: auth.reason });
       return;

@@ -54,8 +54,8 @@ export async function checkForUpdate(opts: {
   try {
     const { bridgeHttpUrl } = buildConfig(opts.bridgeUrl);
     const res = await fetch(
-      `${bridgeHttpUrl}/updater/companion/check?token=${encodeURIComponent(opts.sessionToken)}`,
-      { cache: "no-store" },
+      `${bridgeHttpUrl}/updater/companion/check`,
+      { cache: "no-store", headers: { authorization: `Bearer ${opts.sessionToken}` } },
     );
     if (res.status === 401) {
       void warn("[updater] check rejected — session token invalid/expired");
@@ -101,8 +101,11 @@ export async function startDownloadInBrowser(opts: {
     const { bridgeHttpUrl } = buildConfig(opts.bridgeUrl);
     const res = await fetch(`${bridgeHttpUrl}/updater/companion/mint-download-token`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ token: opts.sessionToken }),
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${opts.sessionToken}`,
+      },
+      body: "{}",
     });
     if (!res.ok) {
       return { ok: false, message: `HTTP ${res.status}` };

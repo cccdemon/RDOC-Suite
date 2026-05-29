@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import fastifyStatic from "@fastify/static";
 import { z } from "zod";
 import { getEnv, getOAuthEnv } from "../config/env.js";
@@ -1903,7 +1903,7 @@ async function loadDashboardData(guildId: string): Promise<
   // full id → {name, roles, isBot} lookup so the Raid-Planer page can
   // render display-names + role hints for any channel member (incl.
   // non-commanders + bots like funkrelais).
-  let commanderRoleMembers: Array<{
+  const commanderRoleMembers: Array<{
     userId: string;
     displayName: string;
     inVoice: boolean;

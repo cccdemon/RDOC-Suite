@@ -5,7 +5,6 @@ import { getEnv } from "./config/env.js";
 import { authRoutes } from "./routes/auth.js";
 import { webRoutes } from "./routes/web.js";
 import { apiRoutes } from "./routes/api.js";
-import { backgroundSync } from "./services/scwiki.js";
 
 export async function buildApp() {
   const env = getEnv();
@@ -24,13 +23,6 @@ export async function buildApp() {
   await app.register(authRoutes);
   await app.register(webRoutes);
   await app.register(apiRoutes);
-
-  // Periodic background sync of stale ship cache (every 30 min)
-  if (env.NODE_ENV === "production") {
-    setInterval(() => {
-      backgroundSync().catch((err) => app.log.error(err, "backgroundSync error"));
-    }, 30 * 60 * 1000);
-  }
 
   return app;
 }

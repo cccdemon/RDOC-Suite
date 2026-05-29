@@ -109,9 +109,13 @@ export function layout(opts: LayoutOptions): SafeHtml {
 
 // ── DCCC Design System CSS ───────────────────────────────────────────
 
+// No external font import: pulling from fonts.googleapis.com leaks every
+// page visit to a third party and breaks rendering offline. The
+// --font-mono / --font-body vars below already carry system-font
+// fallbacks (ui-monospace / system-ui), so the UI renders fine without
+// the Google fonts. To restore the exact Share Tech Mono / Rajdhani
+// typefaces, self-host their woff2 files and add @font-face rules here.
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
-
 :root {
   --bg:        #04060a;
   --bg2:       #080e14;

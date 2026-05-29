@@ -191,7 +191,7 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
               onChange={(v) => setDraft((d) => ({ ...d, relayHotkey: v }))}
             />
             <span className="cc-hint">
-              Separater Hotkey fÃ¼r den Discord-Relay-Kanal. Sichtbar nur, wenn dein Server
+              Separater Hotkey für den Discord-Relay-Kanal. Sichtbar nur, wenn dein Server
               Voice-to-All freigeschaltet hat.
             </span>
           </div>

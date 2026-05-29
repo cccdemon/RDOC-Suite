@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { timingSafeEqual } from "node:crypto";
 import { getEnv } from "../config/env.js";
 import { verifySessionToken } from "../auth/sessionToken.js";
 import { issueRelayToken } from "../services/livekit.js";
@@ -12,6 +13,14 @@ function extractBearer(header: string | undefined): string | null {
   const [scheme, token] = header.split(/\s+/, 2);
   if (scheme?.toLowerCase() !== "bearer" || !token) return null;
   return token;
+}
+
+/** Constant-time string compare; false on any length mismatch. */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ab = Buffer.from(a);
+  const bb = Buffer.from(b);
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
 }
 
 async function hasRelayRole(
@@ -38,19 +47,20 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
   // the relay room (Whisper to Channel / Voice-to-All). Also used by the relay
   // bots service to obtain a subscriber token (role=subscriber).
   //
-  // Auth: companion bearer JWT (same session token as all companion API calls).
-  //       role=publisher requires a Discord role check when RELAY_REQUIRED_ROLE_ID is set.
-  //       role=subscriber skips the role check (bot service uses a shared secret instead).
+  // Auth differs by role:
+  //   role=publisher  — companion bearer JWT (same session token as all
+  //                     companion API calls). Requires a Discord role check
+  //                     when RELAY_REQUIRED_ROLE_ID is set.
+  //   role=subscriber — the relay bots SERVICE, not a user. Requires the
+  //                     RELAY_BOTS_SECRET shared secret as the bearer. A
+  //                     companion JWT must NOT be able to obtain a subscriber
+  //                     token (it would let any commander silently listen to
+  //                     the whole Voice-to-All relay room).
   app.get("/relay/token", async (request, reply) => {
     const rawToken = extractBearer(request.headers.authorization);
     if (!rawToken) {
       return reply.code(401).send({ error: "missing_bearer" });
     }
-    const verified = await verifySessionToken(getEnv().SESSION_SECRET, rawToken);
-    if (!verified.ok) {
-      return reply.code(401).send({ error: verified.reason });
-    }
-    const userId = verified.payload.sub;
 
     const rawRole = (request.query as Record<string, string>).role ?? "publisher";
     const roleParsed = roleSchema.safeParse(rawRole);
@@ -59,17 +69,38 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
     }
 
     const env = getEnv();
-    const config = await getRelayBotsConfig();
 
+    if (roleParsed.data === "subscriber") {
+      const expected = env.RELAY_BOTS_SECRET;
+      if (!expected) {
+        return reply.code(503).send({ error: "relay_subscriber_not_configured" });
+      }
+      if (!timingSafeEqualStr(rawToken, expected)) {
+        return reply.code(401).send({ error: "invalid_service_secret" });
+      }
+      const { token, roomName, url } = await issueRelayToken({
+        userId: "relay-bot-service",
+        role: "subscriber",
+      });
+      return reply.send({ token, roomName, url });
+    }
+
+    // publisher path — companion JWT
+    const verified = await verifySessionToken(env.SESSION_SECRET, rawToken);
+    if (!verified.ok) {
+      return reply.code(401).send({ error: verified.reason });
+    }
+    const userId = verified.payload.sub;
+
+    const config = await getRelayBotsConfig();
     // guildId: from query param, then config, then env
     const queryGuildId = (request.query as Record<string, string>).guildId;
     const guildId = queryGuildId || config.guildId || env.RELAY_GUILD_ID;
     const requiredRoleId = env.RELAY_REQUIRED_ROLE_ID;
     const botToken = env.RELAY_DISCORD_BOT_TOKEN ?? config.bots[0]?.token;
 
-    // publisher role check: if RELAY_REQUIRED_ROLE_ID is set, the user must
-    // hold that Discord role in the guild. Subscriber (relay bots service) skips.
-    if (roleParsed.data === "publisher" && requiredRoleId) {
+    // If RELAY_REQUIRED_ROLE_ID is set, the user must hold that Discord role.
+    if (requiredRoleId) {
       if (!guildId || !botToken) {
         return reply.code(503).send({ error: "relay_not_configured" });
       }
@@ -79,11 +110,7 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
       }
     }
 
-    const { token, roomName, url } = await issueRelayToken({
-      userId,
-      role: roleParsed.data,
-    });
-
+    const { token, roomName, url } = await issueRelayToken({ userId, role: "publisher" });
     return reply.send({ token, roomName, url });
   });
 }

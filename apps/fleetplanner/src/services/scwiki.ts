@@ -10,7 +10,7 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 interface WikiVehicleList {
   data: WikiVehicleStub[];
-  meta?: { last_page?: number };
+  meta?: { last_page?: number; current_page?: number };
 }
 
 interface WikiVehicleStub {
@@ -62,7 +62,7 @@ export async function searchShips(query: string, limit = 20): Promise<Ship[]> {
   if (!q) return [];
 
   const local = await prisma.ship.findMany({
-    where: { name: { contains: q } },
+    where: { name: { contains: q, mode: "insensitive" } },
     take: limit,
     orderBy: { name: "asc" },
   });
@@ -81,7 +81,7 @@ export async function searchShips(query: string, limit = 20): Promise<Ship[]> {
       await fetchAndCacheShip(stub.slug).catch(() => null);
     }
     return prisma.ship.findMany({
-      where: { name: { contains: q } },
+      where: { name: { contains: q, mode: "insensitive" } },
       take: limit,
       orderBy: { name: "asc" },
     });
@@ -92,9 +92,9 @@ export async function searchShips(query: string, limit = 20): Promise<Ship[]> {
 
 // ── Fetch single ship by slug (with cache) ─────────────────────────
 
-export async function fetchAndCacheShip(slug: string): Promise<Ship | null> {
+export async function fetchAndCacheShip(slug: string, force = false): Promise<Ship | null> {
   const cached = await prisma.ship.findUnique({ where: { slug } });
-  if (cached && Date.now() - cached.syncedAt.getTime() < CACHE_TTL_MS) return cached;
+  if (!force && cached && Date.now() - cached.syncedAt.getTime() < CACHE_TTL_MS) return cached;
 
   try {
     const res = await fetch(`${WIKI_BASE}/vehicles/${encodeURIComponent(slug)}`, {
@@ -115,17 +115,48 @@ export async function fetchAndCacheShip(slug: string): Promise<Ship | null> {
   }
 }
 
-// ── Background sync: refresh stale ships ──────────────────────────
+// ── Full-catalog sync ──────────────────────────────────────────────
+// Walks the whole SC-wiki vehicle list (paginated) and force-refreshes
+// every ship into the local cache. Used by the weekly scheduler and the
+// admin "Sync now" button. Returns a summary for the sync state row.
 
-export async function backgroundSync(): Promise<void> {
-  const stale = await prisma.ship.findMany({
-    where: { syncedAt: { lt: new Date(Date.now() - CACHE_TTL_MS) } },
-    select: { slug: true },
-    take: 50,
-  });
-  for (const { slug } of stale) {
-    await fetchAndCacheShip(slug).catch(() => null);
+export type CatalogSyncResult = { fetched: number; failed: number; total: number };
+
+export async function syncShipCatalog(
+  onProgress?: (done: number, total: number) => void,
+): Promise<CatalogSyncResult> {
+  const slugs = await fetchAllVehicleSlugs();
+  let fetched = 0;
+  let failed = 0;
+  for (const slug of slugs) {
+    const ship = await fetchAndCacheShip(slug, true).catch(() => null);
+    if (ship) fetched++;
+    else failed++;
+    onProgress?.(fetched + failed, slugs.length);
   }
+  return { fetched, failed, total: slugs.length };
+}
+
+/** Paginate the wiki vehicle index and collect every slug. */
+async function fetchAllVehicleSlugs(): Promise<string[]> {
+  const slugs: string[] = [];
+  const limit = 100;
+  let page = 1;
+  let lastPage = 1;
+  do {
+    const res = await fetch(`${WIKI_BASE}/vehicles?page=${page}&limit=${limit}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) break;
+    const body = (await res.json()) as WikiVehicleList;
+    for (const stub of body.data ?? []) {
+      if (stub.slug) slugs.push(stub.slug);
+    }
+    lastPage = body.meta?.last_page ?? page;
+    page++;
+  } while (page <= lastPage && page <= 100); // hard cap: never loop unbounded
+  return slugs;
 }
 
 // ── Ship category for composition matching ─────────────────────────
