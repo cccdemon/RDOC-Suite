@@ -34,6 +34,7 @@
       "prisma",
       "@prisma/client",
       "@prisma/engines",
+      "@discordjs/opus",
       "esbuild"
     ],
     "overrides": {
