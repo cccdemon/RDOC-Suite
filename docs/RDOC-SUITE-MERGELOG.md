@@ -209,6 +209,17 @@ RDOC-Suite/
 - 2026-05-30: Step 12 — Full build/test/smoke verification and stable commit.
   Scope: build all workspace packages, run full bridge test suite, verify compose config,
   commit all merge work, tag stable milestone.
+  Results:
+  - `@dccc/shared` build: exit 0
+  - `@dccc/bridge` build: exit 0
+  - `@dccc/companion` build (tsc + vite): exit 0
+  - `@rdoc-suite/relay-bots` build: exit 0
+  - `@rdoc-suite/fleetplanner` build: exit 0
+  - `pnpm --filter @dccc/bridge test`: 80/80 passed (6 test files)
+  - `prisma migrate status`: 11 migrations, all applied
+  - `docker compose -f docker-compose.prod.yml config`: valid (exit 0)
+  - Commit: `f9984e9` — 64 files, 8068 insertions, 618 deletions
+  All 12 merge steps complete.
 
 - 2026-05-30: Step 11 — Update Docker Compose and deployment docs.
   Deliverables:
