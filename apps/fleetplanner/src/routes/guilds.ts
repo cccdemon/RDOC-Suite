@@ -5,8 +5,11 @@ import { installGuild, getMembership, listUserGuilds } from "../services/guilds.
 import { prisma } from "../db.js";
 import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage } from "../web/pages.js";
 
-// Discord bot permissions bitfield: MANAGE_EVENTS | SEND_MESSAGES | VIEW_CHANNEL
-const BOT_PERMISSIONS = (1n << 33n) | (1n << 11n) | (1n << 10n); // 8589937664
+// Discord bot permissions bitfield:
+// VIEW_CHANNEL(10) | SEND_MESSAGES(11) | READ_MESSAGE_HISTORY(16) |
+// MANAGE_ROLES(28) | MANAGE_EVENTS(33)
+const BOT_PERMISSIONS =
+  (1n << 10n) | (1n << 11n) | (1n << 16n) | (1n << 28n) | (1n << 33n); // 8858960896
 const ACTIVE_GUILD_COOKIE = "fp_guild";
 
 function setActiveGuild(reply: FastifyReply, guildId: string): void {
