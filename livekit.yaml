@@ -18,3 +18,7 @@ rtc:
 # deployer's host.
 
 log_level: info
+
+# Internal-only Prometheus endpoint. This is not published publicly; Prometheus
+# scrapes it on the Docker network as livekit:6789.
+prometheus_port: 6789

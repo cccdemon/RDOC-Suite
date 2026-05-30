@@ -1,0 +1,188 @@
+import type { FastifyInstance, FastifyReply } from "fastify";
+import { basePath, getEnv } from "../config/env.js";
+import { requireAuth, requireGuildRole } from "../auth/middleware.js";
+import { installGuild, getMembership, listUserGuilds } from "../services/guilds.js";
+import { prisma } from "../db.js";
+import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage } from "../web/pages.js";
+
+// Discord bot permissions bitfield: MANAGE_EVENTS | SEND_MESSAGES | VIEW_CHANNEL
+const BOT_PERMISSIONS = (1n << 33n) | (1n << 11n) | (1n << 10n); // 8589937664
+const ACTIVE_GUILD_COOKIE = "fp_guild";
+
+function setActiveGuild(reply: FastifyReply, guildId: string): void {
+  reply.setCookie(ACTIVE_GUILD_COOKIE, guildId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 365 * 24 * 60 * 60,
+  });
+}
+
+function htmlReply(reply: FastifyReply, page: import("../web/render.js").SafeHtml) {
+  reply.type("text/html; charset=utf-8").send(rawHtml(page));
+}
+
+function csrfOk(body: Record<string, unknown>, csrfToken: string): boolean {
+  return typeof body._csrf === "string" && body._csrf === csrfToken;
+}
+
+export async function guildRoutes(app: FastifyInstance) {
+  const env = getEnv();
+  const botClientId = env.DISCORD_FLEETPLANNER_CLIENT_ID || env.DISCORD_CLIENT_ID;
+
+  // ── Add bot to a Discord (self-service) ────────────────────────────
+  app.get("/guilds/add", async (req, reply) => {
+    const ctx = await requireAuth(req, reply);
+    if (!ctx) return;
+    if (!botClientId) {
+      return reply.redirect(basePath("/?flash=error:Bot+client+id+not+configured."), 302);
+    }
+    const redirectUri = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/guilds/added`;
+    const p = new URLSearchParams({
+      client_id: botClientId,
+      scope: "bot applications.commands",
+      permissions: BOT_PERMISSIONS.toString(),
+      redirect_uri: redirectUri,
+      response_type: "code",
+    });
+    return reply.redirect(`https://discord.com/oauth2/authorize?${p}`, 302);
+  });
+
+  // ── Bot-added callback (Discord redirects with ?guild_id=) ─────────
+  app.get<{ Querystring: { guild_id?: string; error?: string } }>(
+    "/guilds/added",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      const guildId = req.query.guild_id;
+      if (req.query.error || !guildId) {
+        return reply.redirect(basePath("/?flash=error:Bot+install+cancelled."), 302);
+      }
+      const installed = await installGuild(guildId, ctx.user.id);
+      if (!installed) {
+        return reply.redirect(basePath("/?flash=error:Could+not+read+guild+(is+the+bot+in+it?)."), 302);
+      }
+      setActiveGuild(reply, installed.id);
+      return reply.redirect(basePath(`/guilds/settings?flash=ok:${encodeURIComponent(installed.name)}+added.`), 302);
+    }
+  );
+
+  // ── Servers list (switch / settings / add) ────────────────────────
+  app.get<{ Querystring: { flash?: string } }>(
+    "/guilds",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      const memberships = await listUserGuilds(ctx.user.id);
+      htmlReply(reply, guildsListPage({
+        basePath: basePath(),
+        currentUser: ctx.user,
+        csrfToken: ctx.csrfToken,
+        flash: req.query.flash,
+        guilds: memberships.map((m) => ({ guildId: m.guildId, role: m.role, guildName: m.guild.name })),
+        activeGuildId: (req.cookies as Record<string, string | undefined>)[ACTIVE_GUILD_COOKIE] ?? null,
+      }));
+    }
+  );
+
+  // ── Switch active guild ─────────────────────────────────────────────
+  app.post<{ Body: Record<string, string> }>(
+    "/guilds/switch",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const guildId = req.body.guildId;
+      const membership = guildId ? await getMembership(ctx.user.id, guildId) : null;
+      if (!membership) {
+        return reply.redirect(basePath("/?flash=error:Not+a+member+of+that+guild."), 302);
+      }
+      setActiveGuild(reply, guildId);
+      return reply.redirect(basePath("/?flash=ok:Switched+server."), 302);
+    }
+  );
+
+  // ── "No guild yet" landing ──────────────────────────────────────────
+  app.get<{ Querystring: { flash?: string } }>(
+    "/guilds/none",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      // If they actually have a guild now, bounce home.
+      const guilds = await listUserGuilds(ctx.user.id);
+      if (guilds.length > 0) return reply.redirect(basePath("/"), 302);
+      htmlReply(reply, noGuildPage({
+        basePath: basePath(),
+        currentUser: ctx.user,
+        csrfToken: ctx.csrfToken,
+        flash: req.query.flash,
+      }));
+    }
+  );
+
+  // ── Guild settings (admiral of the active guild) ───────────────────
+  app.get<{ Querystring: { flash?: string } }>(
+    "/guilds/settings",
+    async (req, reply) => {
+      const gctx = await requireGuildRole(req, reply, "fleetoperator");
+      if (!gctx) return;
+      const [guild, memberships] = await Promise.all([
+        prisma.guild.findUnique({ where: { id: gctx.guildId } }),
+        prisma.guildMembership.findMany({
+          where: { guildId: gctx.guildId },
+          include: { user: true },
+          orderBy: { createdAt: "asc" },
+        }),
+      ]);
+      if (!guild) return reply.redirect(basePath("/guilds/none"), 302);
+      htmlReply(reply, guildSettingsPage({
+        basePath: basePath(),
+        currentUser: gctx.user,
+        csrfToken: gctx.csrfToken,
+        flash: req.query.flash,
+        guild,
+        memberships,
+        activeGuildId: gctx.guildId,
+        activeGuildName: gctx.guildName,
+      }));
+    }
+  );
+
+  app.post<{ Body: Record<string, string> }>(
+    "/guilds/settings",
+    async (req, reply) => {
+      const gctx = await requireGuildRole(req, reply, "fleetoperator");
+      if (!gctx) return;
+      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const snowflake = (v: string | undefined) => (v && /^\d{16,25}$/.test(v.trim()) ? v.trim() : null);
+      await prisma.guild.update({
+        where: { id: gctx.guildId },
+        data: {
+          eventChannelId: snowflake(req.body.eventChannelId),
+          admiralRoleId: snowflake(req.body.admiralRoleId),
+          captainRoleId: snowflake(req.body.captainRoleId),
+        },
+      });
+      return reply.redirect(basePath("/guilds/settings?flash=ok:Server+settings+saved."), 302);
+    }
+  );
+
+  // ── Set a member's role within the active guild ─────────────────────
+  app.post<{ Params: { userId: string }; Body: Record<string, string> }>(
+    "/guilds/members/:userId/role",
+    async (req, reply) => {
+      const gctx = await requireGuildRole(req, reply, "fleetoperator");
+      if (!gctx) return;
+      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const valid = ["fleetoperator", "captain", "crew"];
+      const role = req.body.role;
+      if (!valid.includes(role)) return reply.code(400).send("Invalid role");
+      await prisma.guildMembership.updateMany({
+        where: { guildId: gctx.guildId, userId: req.params.userId },
+        data: { role },
+      });
+      return reply.redirect(basePath("/guilds/settings?flash=ok:Member+role+updated."), 302);
+    }
+  );
+}

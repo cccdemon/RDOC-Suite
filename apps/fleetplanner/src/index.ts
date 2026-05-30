@@ -1,6 +1,7 @@
 import { buildApp } from "./app.js";
 import { getEnv } from "./config/env.js";
 import { startShipSyncScheduler } from "./services/shipSync.js";
+import { startLocationSyncScheduler } from "./services/locations.js";
 
 const env = getEnv();
 const app = await buildApp();
@@ -10,6 +11,10 @@ try {
   // Weekly (configurable) SC-wiki ship-catalog refresh. Self-paces via
   // ShipSyncState; the first run also seeds an empty catalog.
   startShipSyncScheduler({
+    info: (msg) => app.log.info(msg),
+    error: (e, msg) => app.log.error(e, msg),
+  });
+  startLocationSyncScheduler({
     info: (msg) => app.log.info(msg),
     error: (e, msg) => app.log.error(e, msg),
   });

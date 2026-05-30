@@ -5,6 +5,7 @@ import { getEnv } from "./config/env.js";
 import { authRoutes } from "./routes/auth.js";
 import { webRoutes } from "./routes/web.js";
 import { apiRoutes } from "./routes/api.js";
+import { guildRoutes } from "./routes/guilds.js";
 
 export async function buildApp() {
   const env = getEnv();
@@ -21,6 +22,7 @@ export async function buildApp() {
   // handle_path strips it before forwarding. basePath() is only used for
   // generating URLs in responses/redirects that go through Caddy.
   await app.register(authRoutes);
+  await app.register(guildRoutes);
   await app.register(webRoutes);
   await app.register(apiRoutes);
 

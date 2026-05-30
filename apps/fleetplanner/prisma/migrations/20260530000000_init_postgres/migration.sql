@@ -1,5 +1,6 @@
 -- Initial PostgreSQL baseline for @rdoc-suite/fleetplanner.
--- Replaces the former SQLite migration. Mirrors prisma/schema.prisma.
+-- Includes: multi-provider auth (UserIdentity), Location/LocationSyncState,
+-- UserShip, AppSetting, CrewAssignmentRequest, ShipSyncState, Operation.discordEventId.
 
 -- CreateTable
 CREATE TABLE "User" (
@@ -12,6 +13,20 @@ CREATE TABLE "User" (
     "lastSeenAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "UserIdentity" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "provider" TEXT NOT NULL,
+    "providerId" TEXT NOT NULL,
+    "username" TEXT,
+    "email" TEXT,
+    "avatarUrl" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "UserIdentity_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -46,6 +61,52 @@ CREATE TABLE "Ship" (
 );
 
 -- CreateTable
+CREATE TABLE "UserShip" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "shipId" TEXT NOT NULL,
+    "nickname" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "UserShip_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Location" (
+    "id" TEXT NOT NULL,
+    "uuid" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "system" TEXT NOT NULL,
+    "systemSlug" TEXT NOT NULL,
+    "parentName" TEXT NOT NULL DEFAULT '',
+    "parentSlug" TEXT NOT NULL DEFAULT '',
+    "typeName" TEXT NOT NULL DEFAULT '',
+    "classification" TEXT NOT NULL DEFAULT '',
+    "hidden" BOOLEAN NOT NULL DEFAULT false,
+    "hasResources" BOOLEAN NOT NULL DEFAULT false,
+    "webUrl" TEXT,
+    "rawJson" TEXT NOT NULL,
+    "syncedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "Location_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "LocationSyncState" (
+    "id" TEXT NOT NULL DEFAULT 'singleton',
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "intervalDays" INTEGER NOT NULL DEFAULT 7,
+    "lastRunAt" TIMESTAMP(3),
+    "lastResult" TEXT,
+    "running" BOOLEAN NOT NULL DEFAULT false,
+    "locationCount" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "LocationSyncState_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "ShipSyncState" (
     "id" TEXT NOT NULL DEFAULT 'singleton',
     "enabled" BOOLEAN NOT NULL DEFAULT true,
@@ -60,11 +121,52 @@ CREATE TABLE "ShipSyncState" (
 );
 
 -- CreateTable
+CREATE TABLE "AppSetting" (
+    "key" TEXT NOT NULL,
+    "value" TEXT NOT NULL DEFAULT '',
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AppSetting_pkey" PRIMARY KEY ("key")
+);
+
+-- CreateTable
+CREATE TABLE "Guild" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "iconHash" TEXT,
+    "ownerUserId" TEXT,
+    "eventChannelId" TEXT,
+    "admiralRoleId" TEXT,
+    "captainRoleId" TEXT,
+    "botInstalledAt" TIMESTAMP(3),
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Guild_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "GuildMembership" (
+    "id" TEXT NOT NULL,
+    "guildId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "role" TEXT NOT NULL DEFAULT 'crew',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "GuildMembership_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "Operation" (
     "id" TEXT NOT NULL,
+    "guildId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT NOT NULL DEFAULT '',
     "opType" TEXT NOT NULL DEFAULT 'combat',
+    "meetingSystem" TEXT NOT NULL DEFAULT 'stanton',
+    "meetingLocation" TEXT NOT NULL DEFAULT '',
     "scheduledAt" TIMESTAMP(3) NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'draft',
     "createdById" TEXT NOT NULL,
@@ -73,6 +175,17 @@ CREATE TABLE "Operation" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Operation_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "CrewAssignmentRequest" (
+    "id" TEXT NOT NULL,
+    "operationId" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "note" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "CrewAssignmentRequest_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -133,52 +246,75 @@ CREATE TABLE "SeatAssignment" (
     "label" TEXT NOT NULL,
     "seatType" TEXT NOT NULL,
     "order" INTEGER NOT NULL,
+    "active" BOOLEAN NOT NULL DEFAULT true,
     "userId" TEXT,
 
     CONSTRAINT "SeatAssignment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Ship_slug_key" ON "Ship"("slug");
+CREATE UNIQUE INDEX "UserIdentity_provider_providerId_key" ON "UserIdentity"("provider", "providerId");
+CREATE INDEX "UserIdentity_userId_idx" ON "UserIdentity"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Ship_slug_key" ON "Ship"("slug");
 CREATE INDEX "Ship_name_idx" ON "Ship"("name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "UserShip_userId_shipId_key" ON "UserShip"("userId", "shipId");
+CREATE INDEX "UserShip_userId_idx" ON "UserShip"("userId");
+CREATE INDEX "UserShip_shipId_idx" ON "UserShip"("shipId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Location_uuid_key" ON "Location"("uuid");
+CREATE UNIQUE INDEX "Location_slug_key" ON "Location"("slug");
+CREATE INDEX "Location_name_idx" ON "Location"("name");
+CREATE INDEX "Location_systemSlug_idx" ON "Location"("systemSlug");
+CREATE INDEX "Location_classification_idx" ON "Location"("classification");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CrewAssignmentRequest_operationId_userId_key" ON "CrewAssignmentRequest"("operationId", "userId");
+CREATE INDEX "CrewAssignmentRequest_operationId_idx" ON "CrewAssignmentRequest"("operationId");
+CREATE INDEX "CrewAssignmentRequest_userId_idx" ON "CrewAssignmentRequest"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "GuildMembership_guildId_userId_key" ON "GuildMembership"("guildId", "userId");
+CREATE INDEX "GuildMembership_userId_idx" ON "GuildMembership"("userId");
+CREATE INDEX "Operation_guildId_idx" ON "Operation"("guildId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "OperationLeader_operationId_userId_key" ON "OperationLeader"("operationId", "userId");
 
 -- AddForeignKey
+ALTER TABLE "UserIdentity" ADD CONSTRAINT "UserIdentity_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
 ALTER TABLE "UserSession" ADD CONSTRAINT "UserSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+ALTER TABLE "UserShip" ADD CONSTRAINT "UserShip_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "UserShip" ADD CONSTRAINT "UserShip_shipId_fkey" FOREIGN KEY ("shipId") REFERENCES "Ship"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "Guild" ADD CONSTRAINT "Guild_ownerUserId_fkey" FOREIGN KEY ("ownerUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+ALTER TABLE "GuildMembership" ADD CONSTRAINT "GuildMembership_guildId_fkey" FOREIGN KEY ("guildId") REFERENCES "Guild"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "GuildMembership" ADD CONSTRAINT "GuildMembership_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+ALTER TABLE "Operation" ADD CONSTRAINT "Operation_guildId_fkey" FOREIGN KEY ("guildId") REFERENCES "Guild"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "Operation" ADD CONSTRAINT "Operation_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
-ALTER TABLE "OperationLeader" ADD CONSTRAINT "OperationLeader_operationId_fkey" FOREIGN KEY ("operationId") REFERENCES "Operation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CrewAssignmentRequest" ADD CONSTRAINT "CrewAssignmentRequest_operationId_fkey" FOREIGN KEY ("operationId") REFERENCES "Operation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CrewAssignmentRequest" ADD CONSTRAINT "CrewAssignmentRequest_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
+ALTER TABLE "OperationLeader" ADD CONSTRAINT "OperationLeader_operationId_fkey" FOREIGN KEY ("operationId") REFERENCES "Operation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "OperationLeader" ADD CONSTRAINT "OperationLeader_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "CompositionGroup" ADD CONSTRAINT "CompositionGroup_operationId_fkey" FOREIGN KEY ("operationId") REFERENCES "Operation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "CompositionRequirement" ADD CONSTRAINT "CompositionRequirement_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "CompositionGroup"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "FleetUnit" ADD CONSTRAINT "FleetUnit_operationId_fkey" FOREIGN KEY ("operationId") REFERENCES "Operation"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "FleetUnit" ADD CONSTRAINT "FleetUnit_shipId_fkey" FOREIGN KEY ("shipId") REFERENCES "Ship"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "FleetUnit" ADD CONSTRAINT "FleetUnit_captainId_fkey" FOREIGN KEY ("captainId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "FleetUnit" ADD CONSTRAINT "FleetUnit_requirementId_fkey" FOREIGN KEY ("requirementId") REFERENCES "CompositionRequirement"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- AddForeignKey
 ALTER TABLE "SeatAssignment" ADD CONSTRAINT "SeatAssignment_unitId_fkey" FOREIGN KEY ("unitId") REFERENCES "FleetUnit"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "SeatAssignment" ADD CONSTRAINT "SeatAssignment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

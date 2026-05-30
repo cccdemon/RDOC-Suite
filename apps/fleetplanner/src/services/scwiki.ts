@@ -26,7 +26,7 @@ interface WikiVehicleData {
   slug: string;
   name: string;
   manufacturer?: { name?: string };
-  size?: string | number;
+  size?: string | number | Record<string, unknown>;
   career?: { name?: string } | string;
   role?: { name?: string } | string;
   crew?: { min?: number; max?: number; weapon?: number; operation?: number };
@@ -38,7 +38,7 @@ interface WikiVehicleData {
 function normalise(d: WikiVehicleData): Omit<Ship, "id" | "syncedAt"> {
   const career = typeof d.career === "object" ? (d.career?.name ?? "") : (d.career ?? "");
   const role   = typeof d.role   === "object" ? (d.role?.name   ?? "") : (d.role   ?? "");
-  const size   = String(d.size ?? "");
+  const size   = labelFromWikiValue(d.size);
   return {
     slug:          d.slug,
     name:          d.name,
@@ -53,6 +53,16 @@ function normalise(d: WikiVehicleData): Omit<Ship, "id" | "syncedAt"> {
     imageUrl:      d.media?.[0]?.source_url ?? null,
     rawJson:       JSON.stringify(d),
   };
+}
+
+function labelFromWikiValue(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  if (value && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const label = obj.en_EN ?? obj.name ?? obj.label ?? obj.type;
+    return typeof label === "string" || typeof label === "number" ? String(label) : "";
+  }
+  return "";
 }
 
 // ── Search ships (local DB first, fall back to wiki) ───────────────
@@ -91,6 +101,23 @@ export async function searchShips(query: string, limit = 20): Promise<Ship[]> {
 }
 
 // ── Fetch single ship by slug (with cache) ─────────────────────────
+
+export async function searchLocalShips(query: string, limit = 20): Promise<Ship[]> {
+  const q = query.trim().slice(0, 80);
+  const take = Math.min(Math.max(limit, 1), 100);
+  if (!q) {
+    return prisma.ship.findMany({
+      take,
+      orderBy: { name: "asc" },
+    });
+  }
+
+  return prisma.ship.findMany({
+    where: { name: { contains: q, mode: "insensitive" } },
+    take,
+    orderBy: { name: "asc" },
+  });
+}
 
 export async function fetchAndCacheShip(slug: string, force = false): Promise<Ship | null> {
   const cached = await prisma.ship.findUnique({ where: { slug } });

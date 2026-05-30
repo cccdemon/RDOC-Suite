@@ -1,5 +1,5 @@
-import { html, safe, layout, type SafeHtml, type LayoutOptions } from "./render.js";
-import type { User, Operation, Ship } from "@prisma/client";
+import { html, safe, rawHtml, layout, type SafeHtml, type LayoutOptions } from "./render.js";
+import type { User, Operation, Ship, Location } from "@prisma/client";
 
 // ── Re-export layout for routes ─────────────────────────────────────
 export { layout, rawHtml } from "./render.js";
@@ -33,6 +33,32 @@ function opTypeTag(opType: string): SafeHtml {
   return html`<span class="tag">${opType.toUpperCase()}</span>`;
 }
 
+function roleLabel(role: string): string {
+  return role.replace(/_/g, " ");
+}
+
+function eventStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    draft: "Planning",
+    open: "Planning",
+    locked: "Locked",
+    in_progress: "In Progress",
+    completed: "Completed",
+    cancelled: "Canceled",
+  };
+  return map[status] ?? status;
+}
+
+function discordAvatarUrl(user: Pick<User, "id" | "avatarHash">): string | null {
+  return user.avatarHash ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatarHash}.webp?size=80` : null;
+}
+
+const SYSTEMS = ["stanton", "pyro", "nyx"] as const;
+
+function systemLabel(system: string): string {
+  return system ? system[0].toUpperCase() + system.slice(1) : "Stanton";
+}
+
 function flashFromQuery(msg: string | undefined): LayoutOptions["flash"] {
   if (!msg) return null;
   const [kind, ...rest] = msg.split(":");
@@ -42,6 +68,21 @@ function flashFromQuery(msg: string | undefined): LayoutOptions["flash"] {
 }
 
 // ── Home / Calendar ──────────────────────────────────────────────────
+
+function shipSizeLabel(ship: Pick<Ship, "size" | "rawJson">): string {
+  if (ship.size && ship.size !== "[object Object]") return ship.size;
+  try {
+    const raw = JSON.parse(ship.rawJson) as { size?: unknown };
+    if (typeof raw.size === "string" || typeof raw.size === "number") return String(raw.size);
+    if (raw.size && typeof raw.size === "object") {
+      const size = raw.size as Record<string, unknown>;
+      return String(size.en_EN ?? size.name ?? size.label ?? size.type ?? "");
+    }
+  } catch {
+    // Ignore invalid legacy cache rows.
+  }
+  return "";
+}
 
 type OpListItem = {
   id: string; title: string; opType: string; scheduledAt: Date; status: string;
@@ -111,11 +152,21 @@ export function opDetailPage(opts: {
   csrfToken?: string;
   flash?: string;
   op: NonNullable<OpFull>;
-  ships: Ship[];  // for register form
+  ownedShips: Ship[];
+  assignableUsers: Pick<User, "id" | "username" | "role">[];
+  viewAsRole?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
-  const u = opts.currentUser;
+  const realUser = opts.currentUser;
+  const previewRoles = ["guest", "crew", "captain", "fleetoperator", "superadmin"];
+  const canPreview = !!realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
+  const viewAsRole = canPreview && opts.viewAsRole && previewRoles.includes(opts.viewAsRole) ? opts.viewAsRole : "";
+  const u = viewAsRole === "guest"
+    ? null
+    : viewAsRole && realUser
+      ? { ...realUser, role: viewAsRole }
+      : realUser;
   const csrf = opts.csrfToken ?? "";
 
   const currentUserId = u?.id;
@@ -124,6 +175,7 @@ export function opDetailPage(opts: {
     op.leaders.some((l) => l.user.id === currentUserId)
   );
   const canManage = u && (u.role === "superadmin" || u.role === "fleetoperator");
+  const canRealManage = realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
 
   // Separate unslotted units (no requirementId) from slotted ones
   const unslottedUnits = op.units.filter((unit) => !unit.requirementId);
@@ -132,22 +184,36 @@ export function opDetailPage(opts: {
   function unitCard(unit: UnitFull): SafeHtml {
     const isCaptain = u && unit.captainId === u.id;
     const unitName = unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+    const canConfigureSeats = !!(isCaptain || canManage);
 
     const seats = unit.seats.map((seat) => {
       const claimed = !!seat.userId;
       const isMe = u && seat.userId === u.id;
-      const canClaim = u && !claimed && unit.status === "accepted";
+      const canClaim = u && seat.active && seat.order !== 0 && !claimed && unit.status === "accepted";
+      const canAssign = isLeader && seat.active && seat.order !== 0 && !claimed && unit.status === "accepted";
       const canUnclaim = claimed && (isMe || isLeader);
 
       return html`
-        <div class="seat-row">
+        <div class="seat-row ${seat.active ? "" : "seat-disabled"}">
           <span class="seat-label">${seat.label}</span>
           <span class="seat-type text-mono" style="font-size:0.65rem;color:var(--dim)">${seat.seatType}</span>
           <span class="seat-user ${claimed ? "" : "empty"}">${claimed ? seat.user?.username ?? "?" : "— open —"}</span>
+          ${!seat.active ? html`<span class="tag tag-dim">disabled</span>` : ""}
           ${canClaim ? html`
             <form method="post" action="${bp}/api/seats/${seat.id}/claim" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
               <button type="submit" class="btn btn-sm btn-green">Claim</button>
+            </form>` : ""}
+          ${canAssign ? html`
+            <form method="post" action="${bp}/api/seats/${seat.id}/assign" class="inline" style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <select name="userId" required style="width:auto;min-width:10rem;padding:.25rem .4rem;font-size:.75rem">
+                <option value="">Assign user...</option>
+                ${opts.assignableUsers.map((user) => html`
+                  <option value="${user.id}">${user.username} (${user.role})</option>
+                `)}
+              </select>
+              <button type="submit" class="btn btn-sm">Add</button>
             </form>` : ""}
           ${canUnclaim && !(seat.order === 0 && !canManage) ? html`
             <form method="post" action="${bp}/api/seats/${seat.id}/unclaim" class="inline">
@@ -157,12 +223,46 @@ export function opDetailPage(opts: {
         </div>`;
     });
 
+    const seatSetup = canConfigureSeats ? html`
+      <details class="seat-setup">
+        <summary>Seat Setup</summary>
+        <form method="post" action="${bp}/api/ops/${op.id}/units/${unit.id}/seats">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          ${unit.seats.map((seat) => {
+            const placeholder = seat.seatType === "fps"
+              ? "Boomtuber, Railgunner, Medic, Soldier, Sniper"
+              : "Turret top, Turret bottom, Engineer, Scanner";
+            return html`
+              <div class="seat-setup-row">
+                <input type="text" name="label_${seat.id}" value="${seat.label}" maxlength="40" placeholder="${placeholder}" />
+                <span class="tag tag-dim">${seat.seatType}</span>
+                <label class="seat-toggle">
+                  <input type="checkbox" name="active_${seat.id}" value="1" ${seat.active ? safe("checked") : ""} ${seat.order === 0 ? safe("checked disabled") : ""} />
+                  Active
+                </label>
+              </div>`;
+          })}
+          <button type="submit" class="btn btn-sm">Save Seats</button>
+        </form>
+      </details>` : "";
+
     return html`
       <div class="unit-card status-${unit.status}">
         <div class="unit-card-header">
           <span class="unit-name">${unitName}</span>
           ${unit.unitType === "squad" ? html`<span class="tag">FPS</span>` : ""}
           ${statusTag(unit.status)}
+          ${canManage && unit.status === "accepted" ? html`
+            <form method="post" action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="role" value="commander" />
+              <button type="submit" class="btn btn-sm btn-gold">Commander</button>
+            </form>
+            <form method="post" action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="role" value="admiral" />
+              <button type="submit" class="btn btn-sm btn-gold">Admiral</button>
+            </form>` : ""}
           ${isLeader && unit.status === "pending" ? html`
             <form method="post" action="${bp}/api/ops/${op.id}/units/${unit.id}/accept" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
@@ -181,6 +281,7 @@ export function opDetailPage(opts: {
         <div class="unit-captain">Captain: ${unit.captain.username}</div>
         ${unit.captainNote ? html`<div class="text-dim text-sm mb-1">Note: ${unit.captainNote}</div>` : ""}
         ${unit.leaderNote ? html`<div class="text-dim text-sm mb-1" style="color:var(--gold)">Leader note: ${unit.leaderNote}</div>` : ""}
+        ${seatSetup}
         <div>${seats}</div>
       </div>`;
   }
@@ -268,7 +369,7 @@ export function opDetailPage(opts: {
 
   // ── Register unit form ─────────────────────────────────────────────
   const canRegister = u && (op.status === "open" || op.status === "draft");
-  const alreadyCaptain = u && op.units.some((unit) => unit.captainId === currentUserId);
+  const myCrewRequest = u ? op.crewRequests.find((request) => request.user.id === u.id) : null;
 
   // Available composition slots (not yet fully filled by non-rejected units)
   const availableSlots = op.groups.flatMap((g) =>
@@ -280,10 +381,10 @@ export function opDetailPage(opts: {
       })
   );
 
-  const registerForm = canRegister && !alreadyCaptain ? html`
+  const registerForm = canRegister ? html`
     <div class="section">
-      <button class="collapse-toggle" onclick="toggleRegister(this)">
-        <span>▶</span> + REGISTER A UNIT
+      <button class="btn btn-sm" onclick="toggleRegister(this)" type="button">
+        + Register a Unit
       </button>
       <div class="collapse-body" id="register-body">
         <div class="type-tabs mb-1">
@@ -296,12 +397,29 @@ export function opDetailPage(opts: {
           <input type="hidden" name="unitType" id="unit-type-field" value="ship" />
 
           <div id="ship-section">
+            ${opts.ownedShips.length ? html`
+              <div class="form-group">
+                <label>Owned Ship (optional)</label>
+                <select name="ownedShipId" id="owned-ship-select">
+                  <option value="">-- Search another ship below --</option>
+                  ${opts.ownedShips.map((ship) => html`
+                    <option value="${ship.id}">${ship.name}${ship.manufacturer ? ` // ${ship.manufacturer}` : ""}</option>
+                  `)}
+                </select>
+              </div>` : ""}
             <div class="form-group">
               <label>Search Ship</label>
-              <input type="search" id="ship-search" placeholder="Type ship name…" autocomplete="off" />
+              <input type="search" id="ship-search" placeholder="Type ship name..." autocomplete="off" />
               <div id="ship-results" class="ship-results"></div>
               <input type="hidden" name="shipId" id="ship-id-field" />
             </div>
+            <label class="text-sm text-dim" style="display:flex;align-items:center;gap:.4rem;margin-top:-.5rem;margin-bottom:1rem">
+              <input type="checkbox" name="storeOwnedShip" value="1" />
+              Store this ship in my profile
+            </label>
+            <p class="text-dim text-sm" style="margin-top:-0.5rem;margin-bottom:1rem">
+              Profile ships can also be managed at <a href="${bp}/profile">/profile</a>.
+            </p>
           </div>
 
           <div id="squad-section" hidden>
@@ -321,8 +439,8 @@ export function opDetailPage(opts: {
             <div class="form-group">
               <label>Fill Composition Slot (optional)</label>
               <select name="requirementId">
-                <option value="">— Unslotted —</option>
-                ${availableSlots.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
+                <option value="">-- Unslotted --</option>
+                ${availableSlots.map((slot) => html`<option value="${slot.id}">${slot.label}</option>`)}
               </select>
             </div>` : ""}
 
@@ -337,7 +455,28 @@ export function opDetailPage(opts: {
         </form>
       </div>
     </div>` : "";
-
+  const crewRequestPanel = canRegister ? html`
+    <div class="section">
+      <div class="section-title">Crewmember Assignment</div>
+      ${myCrewRequest ? html`
+        <div class="flex gap-1" style="align-items:center;flex-wrap:wrap">
+          <span class="tag tag-green">Need assignment</span>
+          ${myCrewRequest.note ? html`<span class="text-dim text-sm">${myCrewRequest.note}</span>` : ""}
+          <form method="post" action="${bp}/api/ops/${op.id}/crew-requests/remove" class="inline">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <button type="submit" class="btn btn-sm btn-ghost">Cancel</button>
+          </form>
+        </div>`
+      : html`
+        <form method="post" action="${bp}/api/ops/${op.id}/crew-requests" class="flex gap-1" style="align-items:flex-end;flex-wrap:wrap">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <div class="form-group" style="margin:0;min-width:18rem;flex:1">
+            <label>Need assignment note</label>
+            <input type="text" name="note" maxlength="240" placeholder="Any seat, prefer FPS / medic / gunner..." />
+          </div>
+          <button type="submit" class="btn btn-sm">Anmelden als Crewmember</button>
+        </form>`}
+    </div>` : "";
   // ── Status controls ────────────────────────────────────────────────
   const statusControls = canManage ? html`
     <div class="flex gap-1 mt-2" style="flex-wrap:wrap">
@@ -349,6 +488,93 @@ export function opDetailPage(opts: {
             <button type="submit" class="btn btn-sm btn-ghost">${s.replace("_"," ")}</button>
           </form>` : "")}
     </div>` : "";
+
+  const activeUnits = op.units.filter((unit) => unit.status !== "rejected");
+  const fleetOverview = html`
+    <aside class="op-side op-fleet">
+      <div class="section-title">Aktuelle Flotte (${activeUnits.length})</div>
+      ${activeUnits.length ? html`
+        <div class="fleet-list">
+          ${activeUnits.map((unit) => {
+            const assigned = unit.seats.filter((seat) => seat.active && seat.userId).length;
+            const total = unit.seats.filter((seat) => seat.active).length;
+            const name = unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+            return html`
+              <div class="fleet-row">
+                <div>
+                  <div class="fleet-name">${name}</div>
+                  <div class="text-dim text-sm">${unit.captain.username}</div>
+                </div>
+                <div class="fleet-meta">
+                  ${statusTag(unit.status)}
+                  <span class="text-mono">${assigned}/${total}</span>
+                </div>
+              </div>`;
+          })}
+        </div>`
+      : html`<p class="text-dim text-sm">Noch keine Einheiten registriert.</p>`}
+    </aside>`;
+
+  const raidLead = op.leaders.find((leader) => leader.leaderRole === "raid_leader")
+    ?? op.leaders.find((leader) => leader.leaderRole === "fleet_commander")
+    ?? op.leaders.find((leader) => leader.leaderRole === "event_leader");
+  const raidLeadUser = raidLead?.user ?? op.createdBy;
+  const raidLeadAvatar = discordAvatarUrl(raidLeadUser);
+  const meetingSystem = op.meetingSystem ?? "stanton";
+  const actionDetails = html`
+    <aside class="op-side op-details">
+      <div class="section-title">Aktionsdetails</div>
+      <div class="system-map system-${meetingSystem}">
+        <div class="system-orbit orbit-a"></div>
+        <div class="system-orbit orbit-b"></div>
+        <div class="system-core"></div>
+        <div class="system-node node-a"></div>
+        <div class="system-node node-b"></div>
+        <div class="system-label">${systemLabel(meetingSystem)}</div>
+      </div>
+      <div class="detail-row">
+        <span>Status</span>
+        <strong>${eventStatusLabel(op.status)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Treffpunkt</span>
+        <strong>${op.meetingLocation || systemLabel(meetingSystem)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Zeit</span>
+        <strong>${fmtDate(op.scheduledAt)}</strong>
+      </div>
+      <div class="raidlead">
+        ${raidLeadAvatar
+          ? html`<img src="${raidLeadAvatar}" alt="" />`
+          : html`<div class="raidlead-fallback">${raidLeadUser.username.slice(0, 2).toUpperCase()}</div>`}
+        <div>
+          <span class="text-dim text-sm">Aktueller Raidlead</span>
+          <strong>${raidLeadUser.username}</strong>
+        </div>
+      </div>
+      ${op.description ? html`
+        <div class="action-brief">
+          <span class="text-dim text-sm">Briefing</span>
+          <p>${op.description}</p>
+        </div>` : ""}
+      ${isLeader ? html`
+        <div class="crew-pool">
+          <div class="section-title">Need Assignment (${op.crewRequests.length})</div>
+          ${op.crewRequests.length ? op.crewRequests.map((request) => html`
+            <div class="crew-request-row">
+              <div>
+                <strong>${request.user.username}</strong>
+                ${request.note ? html`<div class="text-dim text-sm">${request.note}</div>` : ""}
+              </div>
+              <form method="post" action="${bp}/api/ops/${op.id}/crew-requests/remove" class="inline">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <input type="hidden" name="userId" value="${request.user.id}" />
+                <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
+              </form>
+            </div>`) : html`<p class="text-dim text-sm">No unassigned crewmembers.</p>`}
+        </div>` : ""}
+    </aside>`;
 
   const body = html`
     <div class="page-header">
@@ -366,27 +592,72 @@ export function opDetailPage(opts: {
       <p class="page-subtitle">${fmtDate(op.scheduledAt)}</p>
       ${op.description ? html`<p class="text-sm mt-1">${op.description}</p>` : ""}
       ${statusControls}
+      ${canRealManage ? html`
+        <form method="get" action="${bp}/ops/${op.id}" class="flex gap-1 mt-2" style="align-items:center;flex-wrap:wrap">
+          <span class="text-dim text-sm">View as Role</span>
+          <select name="viewAs" onchange="this.form.submit()" style="width:auto;min-width:9rem;padding:.3rem .5rem">
+            <option value="">Actual Role</option>
+            ${previewRoles.map((role) => html`<option value="${role}" ${viewAsRole === role ? safe("selected") : ""}>${role}</option>`)}
+          </select>
+        </form>` : ""}
     </div>
 
-    <div class="section">
-      <div class="section-title">Leaders</div>
-      <div class="flex gap-1" style="flex-wrap:wrap">
-        ${op.leaders.length
-          ? op.leaders.map((l) => html`<span class="tag tag-gold">${l.user.username} (${l.leaderRole.replace("_"," ")})</span>`)
-          : html`<span class="text-dim text-sm">No leaders assigned</span>`}
+    <div class="op-dashboard">
+      ${fleetOverview}
+      <div class="op-control">
+        ${registerForm}
+        ${crewRequestPanel}
+        <div class="section">
+          <div class="section-title">Leaders</div>
+          <div class="flex gap-1" style="flex-wrap:wrap">
+            ${op.leaders.length
+              ? op.leaders.map((l) => html`
+                <span class="tag tag-gold">${l.user.username} (${roleLabel(l.leaderRole)})</span>
+                ${canManage ? html`
+                  <form method="post" action="${bp}/api/ops/${op.id}/leaders/remove" class="inline">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <input type="hidden" name="userId" value="${l.user.id}" />
+                    <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
+                  </form>` : ""}
+              `)
+              : html`<span class="text-dim text-sm">No leaders assigned</span>`}
+          </div>
+          ${canManage ? html`
+            <form method="post" action="${bp}/api/ops/${op.id}/leaders" class="flex gap-1 mt-2" style="align-items:flex-end;flex-wrap:wrap">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <div class="form-group" style="margin:0;min-width:14rem">
+                <label>Assign Leader</label>
+                <select name="userId" required>
+                  <option value="">Select user...</option>
+                  ${opts.assignableUsers.map((user) => html`
+                    <option value="${user.id}">${user.username} (${user.role})</option>
+                  `)}
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;min-width:12rem">
+                <label>Role</label>
+                <select name="leaderRole">
+                  <option value="event_leader">Event Leader</option>
+                  <option value="fleet_commander">Fleet Commander</option>
+                  <option value="raid_leader">Raid Leader</option>
+                  <option value="wing_commander">Wing Commander</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-sm">Assign</button>
+            </form>` : ""}
+        </div>
+
+        ${groupsSection}
+
+        <div class="section">
+          <div class="section-title">Registered Units (${op.units.length})</div>
+          ${op.units.length
+            ? html`<div class="unit-grid">${unslottedUnits.map((u) => unitCard(u))}</div>`
+            : html`<p class="text-dim text-sm">No units registered yet.</p>`}
+        </div>
       </div>
+      ${actionDetails}
     </div>
-
-    ${groupsSection}
-
-    <div class="section">
-      <div class="section-title">Registered Units (${op.units.length})</div>
-      ${op.units.length
-        ? html`<div class="unit-grid">${unslottedUnits.map((u) => unitCard(u))}</div>`
-        : html`<p class="text-dim text-sm">No units registered yet.</p>`}
-    </div>
-
-    ${registerForm}
 
     <script>
     function toggleForm(id) {
@@ -396,7 +667,7 @@ export function opDetailPage(opts: {
     function toggleRegister(btn) {
       const body = document.getElementById('register-body');
       const open = body.classList.toggle('open');
-      btn.querySelector('span').textContent = open ? '▼' : '▶';
+      btn.textContent = open ? '- Hide Registration' : '+ Register a Unit';
     }
     function switchTab(btn, type) {
       document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'));
@@ -408,33 +679,43 @@ export function opDetailPage(opts: {
     const shipSearch = document.getElementById('ship-search');
     const shipResults = document.getElementById('ship-results');
     const shipIdField = document.getElementById('ship-id-field');
+    const ownedShipSelect = document.getElementById('owned-ship-select');
     let searchTimer;
-    if (shipSearch) {
+    if (ownedShipSelect && shipIdField) {
+      ownedShipSelect.addEventListener('change', () => {
+        if (ownedShipSelect.value) {
+          shipIdField.value = '';
+          if (shipSearch) shipSearch.value = '';
+          if (shipResults) shipResults.innerHTML = '';
+        }
+      });
+    }
+    if (shipSearch && shipResults && shipIdField) {
       shipSearch.addEventListener('input', () => {
         clearTimeout(searchTimer);
         const q = shipSearch.value.trim();
-        if (!q) { shipResults.innerHTML = ''; return; }
-        searchTimer = setTimeout(() => {
-          fetch('${bp}/api/ships?q=' + encodeURIComponent(q))
-            .then(r => r.json())
-            .then(ships => {
-              shipResults.innerHTML = ships.slice(0,10).map(s =>
-                '<div class="ship-row" data-id="' + escHtml(s.id) + '" data-name="' + escHtml(s.name) + '" onclick="selectShip(this)">' +
-                '<span class="ship-name">' + escHtml(s.name) + '</span>' +
-                '<span class="ship-mfr">' + escHtml(s.manufacturer || '') + '</span>' +
-                '<span class="ship-stat">' + escHtml(s.size || '') + '</span>' +
-                '<span class="ship-stat">crew ' + s.minCrew + '–' + s.maxCrew + '</span>' +
-                '</div>'
-              ).join('');
-            });
-        }, 250);
+        shipIdField.value = '';
+        if (ownedShipSelect) ownedShipSelect.value = '';
+        if (q.length < 2) {
+          shipResults.innerHTML = '';
+          return;
+        }
+        searchTimer = setTimeout(async () => {
+          const res = await fetch('${bp}/api/ships?q=' + encodeURIComponent(q));
+          const ships = await res.json();
+          shipResults.innerHTML = ships.map(s =>
+            '<button type="button" class="ship-row" data-id="' + escHtml(s.id) + '" data-name="' + escHtml(s.name) + '" onclick="selectShip(this)">' +
+            '<strong>' + escHtml(s.name) + '</strong><span>' + escHtml(s.manufacturer || '') + ' // ' + escHtml(s.size || '') + '</span></button>'
+          ).join('');
+        }, 180);
       });
     }
     function selectShip(el) {
-      document.querySelectorAll('.ship-row').forEach(r => r.classList.remove('selected'));
+      document.querySelectorAll('.ship-row').forEach(row => row.classList.remove('selected'));
       el.classList.add('selected');
-      shipIdField.value = el.dataset.id;
-      shipSearch.value = el.dataset.name;
+      if (shipIdField) shipIdField.value = el.dataset.id || '';
+      if (shipSearch) shipSearch.value = el.dataset.name || '';
+      if (ownedShipSelect) ownedShipSelect.value = '';
     }
     function escHtml(s) {
       return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -453,12 +734,128 @@ export function opDetailPage(opts: {
 
 // ── Operation form (create / edit) ──────────────────────────────────
 
+
+type OwnedShipRow = {
+  id: string;
+  nickname: string | null;
+  createdAt: Date;
+  ship: Ship;
+};
+
+export function profilePage(opts: {
+  basePath: string;
+  currentUser: NonNullable<LayoutOptions["currentUser"]>;
+  csrfToken?: string;
+  flash?: string;
+  ownedShips: OwnedShipRow[];
+  searchResults: Ship[];
+  query: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+
+  const ownedRows = opts.ownedShips.map((owned) => html`
+    <tr>
+      <td class="text-mono" style="color:var(--cyan)">${owned.ship.name}</td>
+      <td>${owned.nickname ?? ""}</td>
+      <td class="text-dim">${owned.ship.manufacturer}</td>
+      <td>${shipSizeLabel(owned.ship)}</td>
+      <td>${owned.ship.career}</td>
+      <td>${owned.ship.role}</td>
+      <td class="text-mono text-right">${owned.ship.minCrew}-${owned.ship.maxCrew}</td>
+      <td class="text-right">
+        <form method="post" action="${bp}/profile/ships/${owned.id}/delete" class="inline">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Remove this ship from your profile?')">Remove</button>
+        </form>
+      </td>
+    </tr>`);
+
+  const resultRows = opts.searchResults.map((ship) => {
+    const alreadyOwned = opts.ownedShips.some((owned) => owned.ship.id === ship.id);
+    return html`
+      <tr>
+        <td class="text-mono" style="color:var(--cyan)">${ship.name}</td>
+        <td class="text-dim">${ship.manufacturer}</td>
+        <td>${shipSizeLabel(ship)}</td>
+        <td>${ship.career}</td>
+        <td>${ship.role}</td>
+        <td class="text-mono text-right">${ship.minCrew}-${ship.maxCrew}</td>
+        <td class="text-right">
+          ${alreadyOwned ? html`<span class="tag tag-green">Owned</span>` : html`
+            <form method="post" action="${bp}/profile/ships" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="shipId" value="${ship.id}" />
+              <button type="submit" class="btn btn-sm">Add</button>
+            </form>`}
+        </td>
+      </tr>`;
+  });
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">PROFILE</h1>
+      <p class="page-subtitle">${opts.currentUser.username} // ${opts.currentUser.role}</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Owned Ships (${opts.ownedShips.length})</div>
+      ${opts.ownedShips.length ? html`
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Ship</th><th>Nickname</th><th>Manufacturer</th><th>Size</th>
+                <th>Career</th><th>Role</th><th class="text-right">Crew</th><th></th>
+              </tr>
+            </thead>
+            <tbody>${ownedRows}</tbody>
+          </table>
+        </div>`
+      : html`<p class="text-dim text-sm">No ships added yet. Search the ship database below and add the ships you own.</p>`}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Add Ship</div>
+      <form method="get" action="${bp}/profile" class="flex gap-1 mb-2" style="flex-wrap:wrap">
+        <input type="search" name="q" value="${opts.query}" placeholder="Search ship name..." style="max-width:24rem" />
+        <button type="submit" class="btn btn-sm">Search</button>
+        ${opts.query ? html`<a href="${bp}/profile" class="btn btn-sm btn-ghost">Clear</a>` : ""}
+      </form>
+      ${opts.query
+        ? opts.searchResults.length
+          ? html`
+            <div style="overflow-x:auto">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ship</th><th>Manufacturer</th><th>Size</th><th>Career</th>
+                    <th>Role</th><th class="text-right">Crew</th><th></th>
+                  </tr>
+                </thead>
+                <tbody>${resultRows}</tbody>
+              </table>
+            </div>`
+          : html`<p class="text-dim text-sm">No ships found.</p>`
+        : html`<p class="text-dim text-sm">Search for a ship to add it to your profile.</p>`}
+    </div>`;
+
+  return layout({
+    title: "Profile",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
 export function opFormPage(opts: {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
   flash?: string;
-  op?: Pick<Operation, "id" | "title" | "description" | "opType" | "scheduledAt"> | null;
+  op?: Pick<Operation, "id" | "title" | "description" | "opType" | "meetingSystem" | "meetingLocation" | "scheduledAt"> | null;
+  locations: Pick<Location, "slug" | "name" | "system" | "systemSlug" | "parentName" | "classification">[];
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -466,6 +863,17 @@ export function opFormPage(opts: {
   const csrf = opts.csrfToken ?? "";
 
   const opTypes = ["combat", "pve", "training", "mixed", "exploration"];
+  const meetingSystem = op?.meetingSystem ?? "stanton";
+  const locationOptions = opts.locations
+    .filter((location) => SYSTEMS.includes(location.systemSlug as (typeof SYSTEMS)[number]))
+    .map((location) => ({
+    slug: location.slug,
+    value: `${location.name}${location.parentName ? ` (${location.parentName})` : ""}`,
+    system: location.systemSlug,
+    label: `${location.name} // ${location.system}${location.classification ? ` // ${location.classification}` : ""}`,
+  }));
+  const selectedLocation = locationOptions.find((location) => location.value === op?.meetingLocation)
+    ?? locationOptions.find((location) => location.value.startsWith(`${op?.meetingLocation ?? ""} (`));
 
   const body = html`
     <div class="page-header">
@@ -491,6 +899,23 @@ export function opFormPage(opts: {
                 html`<option value="${t}" ${op?.opType === t ? safe(' selected') : ""}>${t}</option>`)}
             </select>
           </div>
+          <div class="form-group">
+            <label>Meeting System</label>
+            <select name="meetingSystem" id="meeting-system-select">
+              ${SYSTEMS.map((s) => html`<option value="${s}" ${meetingSystem === s ? safe("selected") : ""}>${systemLabel(s)}</option>`)}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Meeting Location</label>
+            <select name="meetingLocationSlug" id="meeting-location-select">
+              <option value="" data-system="">-- Select location --</option>
+              ${locationOptions.map((location) => html`
+                <option value="${location.slug}" data-system="${location.system}" data-label="${location.value}" ${selectedLocation?.slug === location.slug ? safe("selected") : ""}>
+                  ${location.label}
+                </option>`)}
+            </select>
+            <input type="hidden" name="meetingLocation" id="meeting-location-label" value="${op?.meetingLocation ?? ""}" />
+          </div>
         </div>
         <div class="form-group">
           <label>Description</label>
@@ -501,7 +926,20 @@ export function opFormPage(opts: {
           <a href="${op ? `${bp}/ops/${op.id}` : `${bp}/`}" class="btn btn-ghost">Cancel</a>
         </div>
       </form>
-    </div>`;
+    </div>
+    <script>
+    const meetingLocationSelect = document.getElementById('meeting-location-select');
+    const meetingSystemSelect = document.getElementById('meeting-system-select');
+    const meetingLocationLabel = document.getElementById('meeting-location-label');
+    function syncMeetingSystemFromLocation() {
+      if (!meetingLocationSelect || !meetingSystemSelect || !meetingLocationLabel) return;
+      const opt = meetingLocationSelect.selectedOptions[0];
+      meetingLocationLabel.value = opt?.dataset.label || '';
+      if (opt?.dataset.system) meetingSystemSelect.value = opt.dataset.system;
+    }
+    meetingLocationSelect?.addEventListener('change', syncMeetingSystemFromLocation);
+    syncMeetingSystemFromLocation();
+    </script>`;
 
   return layout({
     title: op ? `Edit: ${op.title}` : "New Operation",
@@ -529,7 +967,7 @@ export function shipsPage(opts: {
     <tr>
       <td class="text-mono" style="color:var(--cyan)">${s.name}</td>
       <td class="text-dim">${s.manufacturer}</td>
-      <td>${s.size}</td>
+      <td>${shipSizeLabel(s)}</td>
       <td>${s.career}</td>
       <td>${s.role}</td>
       <td class="text-mono text-right">${s.minCrew}–${s.maxCrew}</td>
@@ -577,6 +1015,45 @@ export function shipsPage(opts: {
 
 // ── Admin panel ──────────────────────────────────────────────────────
 
+export function feedbackPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">FEEDBACK</h1>
+      <p class="page-subtitle">Send a bug report, idea, or issue to the fleetplanner team.</p>
+    </div>
+    <div class="section">
+      <form method="post" action="${bp}/feedback" style="max-width:48rem">
+        <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+        <div class="form-group">
+          <label>Subject</label>
+          <input type="text" name="subject" maxlength="120" required />
+        </div>
+        <div class="form-group">
+          <label>Message</label>
+          <textarea name="message" maxlength="1800" required placeholder="What happened? What should happen instead?"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn">Send Feedback</button>
+        </div>
+      </form>
+    </div>`;
+
+  return layout({
+    title: "Feedback",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
 type UserRow = Pick<User, "id" | "username" | "role" | "active" | "joinedAt" | "lastSeenAt">;
 
 export type ShipSyncView = {
@@ -588,6 +1065,15 @@ export type ShipSyncView = {
   shipCount: number;
 };
 
+export type LocationSyncView = {
+  enabled: boolean;
+  intervalDays: number;
+  lastRunAt: Date | null;
+  lastResult: string | null;
+  running: boolean;
+  locationCount: number;
+};
+
 export function adminPage(opts: {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];
@@ -595,12 +1081,15 @@ export function adminPage(opts: {
   flash?: string;
   users: UserRow[];
   sync: ShipSyncView;
+  locationSync: LocationSyncView;
+  feedbackChannelId: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
   const isSuperAdmin = opts.currentUser?.role === "superadmin";
   const isFleetOp = opts.currentUser?.role === "superadmin" || opts.currentUser?.role === "fleetoperator";
   const s = opts.sync;
+  const ls = opts.locationSync;
 
   const syncPanel = html`
     <div class="section">
@@ -637,6 +1126,56 @@ export function adminPage(opts: {
       </div>
     </div>`;
 
+  const feedbackPanel = html`
+    <div class="section">
+      <div class="section-title">Feedback</div>
+      <div class="card" style="padding:1rem">
+        <form method="post" action="${bp}/admin/feedback/config" class="inline" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <label class="text-sm text-dim">Discord Channel ID
+            <input type="text" name="channelId" value="${opts.feedbackChannelId}" placeholder="123456789012345678" style="min-width:18rem" />
+          </label>
+          <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+        </form>
+        <p class="text-dim text-sm" style="margin:.5rem 0 0">Feedback tickets are posted to this Discord channel by the configured bot.</p>
+      </div>
+    </div>`;
+
+  const locationSyncPanel = html`
+    <div class="section">
+      <div class="section-title">Location Catalog</div>
+      <div class="ship-sync card" style="padding:1rem">
+        <div class="ship-sync-stats" style="display:flex;flex-wrap:wrap;gap:1.25rem;margin-bottom:.75rem">
+          <div><span class="text-dim text-sm">Locations cached</span><br><strong class="text-mono">${String(ls.locationCount)}</strong></div>
+          <div><span class="text-dim text-sm">Auto-refresh</span><br><strong>${ls.enabled ? safe(`every ${ls.intervalDays} day(s)`) : safe("disabled")}</strong></div>
+          <div><span class="text-dim text-sm">Last run</span><br><strong>${ls.lastRunAt ? fmtDate(ls.lastRunAt) : safe("never")}</strong></div>
+          <div><span class="text-dim text-sm">Status</span><br><strong>${ls.running ? safe("running...") : safe("idle")}</strong></div>
+        </div>
+        ${ls.lastResult ? html`<p class="text-dim text-sm" style="margin:0 0 .75rem">${ls.lastResult}</p>` : safe("")}
+        ${isFleetOp ? html`
+          <div style="display:flex;flex-wrap:wrap;gap:.75rem;align-items:flex-end">
+            <form method="post" action="${bp}/admin/locations/sync" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <button type="submit" class="btn btn-cyan" ${ls.running ? safe("disabled") : safe("")}>
+                ${ls.running ? safe("Syncing...") : safe("Sync now")}
+              </button>
+            </form>
+            <form method="post" action="${bp}/admin/locations/config" class="inline" style="display:flex;gap:.5rem;align-items:flex-end">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <label class="text-sm text-dim">Interval (days)
+                <input type="number" name="intervalDays" min="1" max="90" value="${String(ls.intervalDays)}" style="width:5rem" />
+              </label>
+              <label class="text-sm text-dim" style="display:flex;align-items:center;gap:.35rem">
+                <input type="checkbox" name="enabled" value="1" ${ls.enabled ? safe("checked") : safe("")} /> auto-refresh
+              </label>
+              <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+            </form>
+          </div>
+          <p class="text-dim text-sm" style="margin:.5rem 0 0">A full sync pulls locations from the Star Citizen wiki location API.</p>
+        ` : safe("")}
+      </div>
+    </div>`;
+
   const rows = opts.users.map((u) => html`
     <tr>
       <td class="text-mono" style="font-size:0.72rem;color:var(--dim)">${u.id}</td>
@@ -668,6 +1207,8 @@ export function adminPage(opts: {
       <h1 class="page-title">ADMIN PANEL</h1>
     </div>
     ${syncPanel}
+    ${locationSyncPanel}
+    ${isFleetOp ? feedbackPanel : ""}
     <div class="section">
       <div class="section-title">Users (${opts.users.length})</div>
       <div style="overflow-x:auto">
@@ -695,18 +1236,36 @@ export function adminPage(opts: {
 export function loginPage(opts: {
   basePath: string;
   flash?: string;
+  discord: boolean;
+  github: boolean;
+  google: boolean;
 }): SafeHtml {
   const bp = opts.basePath;
+  const buttons = [
+    opts.discord && html`<a href="${bp}/auth/discord/start" class="btn btn-login btn-discord" style="display:flex;align-items:center;gap:.6rem;justify-content:center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      Login with Discord
+    </a>`,
+    opts.github && html`<a href="${bp}/auth/github/start" class="btn btn-login btn-github" style="display:flex;align-items:center;gap:.6rem;justify-content:center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+      Login with GitHub
+    </a>`,
+    opts.google && html`<a href="${bp}/auth/google/start" class="btn btn-login btn-google" style="display:flex;align-items:center;gap:.6rem;justify-content:center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Login with Google
+    </a>`,
+  ].filter(Boolean);
+
   const body = html`
-    <div style="max-width:28rem;margin:4rem auto;text-align:center">
+    <div style="max-width:22rem;margin:4rem auto;text-align:center">
       <h1 class="page-title" style="font-size:2rem;margin-bottom:1rem">RDOC FLEETPLANNER</h1>
-      <p class="text-dim text-sm" style="margin-bottom:2rem">
+      <p class="text-dim text-sm" style="margin-bottom:1.5rem">
         Star Citizen fleet operations — calendar, unit registration, seat assignment.
       </p>
-      <a href="${bp}/auth/start" class="btn" style="font-size:1rem;padding:.75rem 2rem">
-        Login via Discord
-      </a>
-      <p class="text-dim text-sm" style="margin-top:1.5rem">
+      <div style="display:flex;flex-direction:column;gap:.65rem;margin-bottom:1.5rem">
+        ${safe((buttons.filter(Boolean) as SafeHtml[]).map(rawHtml).join(""))}
+      </div>
+      <p class="text-dim text-sm">
         Public operations are visible without login.
         <a href="${bp}/">Browse operations →</a>
       </p>
@@ -716,6 +1275,50 @@ export function loginPage(opts: {
     title: "Login",
     basePath: bp,
     currentUser: null,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function accountPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  identities: Array<{ provider: string; username: string | null; email: string | null; createdAt: Date }>;
+  discord: boolean;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const providerLabel: Record<string, string> = { discord: "Discord", github: "GitHub", google: "Google" };
+  const hasDiscord = opts.identities.some((i) => i.provider === "discord");
+
+  const rows = opts.identities.map((i) => html`
+    <div class="identity-row" style="display:flex;align-items:center;gap:1rem;padding:.6rem 0;border-bottom:1px solid var(--bg3)">
+      <span class="tag" style="min-width:5rem;text-align:center">${providerLabel[i.provider] ?? i.provider}</span>
+      <span>${i.username ?? "—"}</span>
+      ${i.email ? html`<span class="text-dim text-sm">${i.email}</span>` : safe("")}
+      <span class="text-dim text-sm" style="margin-left:auto">since ${fmtDate(i.createdAt)}</span>
+    </div>`);
+
+  const linkDiscordBtn = (!hasDiscord && opts.discord)
+    ? html`<a href="${bp}/auth/discord/link/start" class="btn btn-cyan" style="margin-top:1rem">Link Discord account</a>`
+    : safe("");
+
+  const body = html`
+    <div class="page-header"><h1 class="page-title">MY ACCOUNT</h1></div>
+    <div class="section">
+      <div class="section-title">Linked accounts</div>
+      <div class="card" style="padding:1rem">
+        ${rows}
+        ${linkDiscordBtn}
+      </div>
+    </div>`;
+
+  return layout({
+    title: "My Account",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
     flash: flashFromQuery(opts.flash),
     body,
   });
@@ -740,6 +1343,163 @@ export function errorPage(opts: {
     basePath: opts.basePath,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+// ── Multi-tenant: no-guild landing + guild settings ─────────────────
+
+export function noGuildPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html`
+    <div style="max-width:32rem;margin:4rem auto;text-align:center">
+      <h1 class="page-title" style="font-size:1.6rem;margin-bottom:1rem">No Discord server yet</h1>
+      <p class="text-dim" style="margin-bottom:1.5rem">
+        Fleetplanner is organised per Discord server. To start planning, add the
+        bot to a Discord you manage — or log in with a Discord account that is a
+        member of a server where the bot is already installed.
+      </p>
+      <a href="${bp}/guilds/add" class="btn btn-cyan" style="font-size:1rem;padding:.75rem 2rem">
+        + Add Fleetplanner bot to my Discord
+      </a>
+      <p class="text-dim text-sm" style="margin-top:1.5rem">
+        Already a member somewhere? <a href="${bp}/account">Link your Discord account →</a>
+      </p>
+    </div>`;
+  return layout({
+    title: "Get started",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function guildsListPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guilds: Array<{ guildId: string; role: string; guildName: string }>;
+  activeGuildId: string | null;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const roleLabel: Record<string, string> = { fleetoperator: "Admiral", captain: "Captain", crew: "Crew" };
+
+  const rows = opts.guilds.map((g) => {
+    const isActive = g.guildId === opts.activeGuildId;
+    return html`
+    <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.75rem 1rem;margin-bottom:.5rem">
+      <strong style="flex:1">${g.guildName} ${isActive ? safe('<span class="tag tag-green">active</span>') : safe("")}</strong>
+      <span class="tag tag-role">${roleLabel[g.role] ?? g.role}</span>
+      ${g.role === "fleetoperator" ? html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">Settings</a>` : safe("")}
+      ${isActive ? safe("") : html`
+        <form method="post" action="${bp}/guilds/switch" class="inline">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <input type="hidden" name="guildId" value="${g.guildId}" />
+          <button type="submit" class="btn btn-cyan btn-sm">Switch to this server</button>
+        </form>`}
+    </div>`;
+  });
+
+  const body = html`
+    <div class="page-header"><h1 class="page-title">SERVERS</h1></div>
+    <div class="section">
+      ${opts.guilds.length
+        ? html`<div>${rows}</div>`
+        : html`<p class="text-dim">You're not a member of any server yet.</p>`}
+      <a href="${bp}/guilds/add" class="btn btn-cyan" style="margin-top:1rem">+ Add Fleetplanner bot to a Discord</a>
+    </div>`;
+
+  return layout({
+    title: "Servers",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function guildSettingsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guild: { id: string; name: string; eventChannelId: string | null; admiralRoleId: string | null; captainRoleId: string | null };
+  memberships: Array<{ userId: string; role: string; user: { username: string }; createdAt: Date }>;
+  activeGuildId: string;
+  activeGuildName: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const g = opts.guild;
+
+  const memberRows = opts.memberships.map((m) => html`
+    <tr>
+      <td>${m.user.username}</td>
+      <td class="text-mono text-sm text-dim">${m.userId}</td>
+      <td>
+        <form method="post" action="${bp}/guilds/members/${m.userId}/role" class="inline">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <select name="role" onchange="this.form.submit()" class="user-table">
+            ${["fleetoperator", "captain", "crew"].map((r) =>
+              html`<option value="${r}" ${m.role === r ? safe("selected") : ""}>${r}</option>`)}
+          </select>
+        </form>
+      </td>
+      <td class="text-dim text-sm">${fmtDate(m.createdAt)}</td>
+    </tr>`);
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">SERVER SETTINGS<span class="sep"> // </span><em>${g.name}</em></h1>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Discord integration</div>
+      <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        <label class="text-sm text-dim">Event voice channel ID (optional — empty = external event)
+          <input type="text" name="eventChannelId" value="${g.eventChannelId ?? ""}" placeholder="123456789012345678" />
+        </label>
+        <label class="text-sm text-dim">Admiral role ID (Discord role → fleetoperator)
+          <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="optional" />
+        </label>
+        <label class="text-sm text-dim">Captain role ID (Discord role → captain)
+          <input type="text" name="captainRoleId" value="${g.captainRoleId ?? ""}" placeholder="optional" />
+        </label>
+        <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>
+      </form>
+      <p class="text-dim text-sm" style="margin-top:.5rem">
+        Scheduled events for this server's operations are posted to this Discord.
+        Role IDs are optional — set them to auto-map Discord roles to fleet roles on login.
+      </p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Members (${opts.memberships.length})</div>
+      <div style="overflow-x:auto">
+        <table class="user-table">
+          <thead><tr><th>User</th><th>ID</th><th>Role (this server)</th><th>Joined</th></tr></thead>
+          <tbody>${memberRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  return layout({
+    title: `Settings — ${g.name}`,
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
     body,
   });
 }

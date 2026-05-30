@@ -92,6 +92,27 @@ fresh DB; ship catalog re-syncs from the SC wiki automatically, ops/users start 
 Ship catalog auto-refreshes (default weekly, configurable) and can be triggered
 manually at `…/fleetplanner/admin`.
 
+### Fleetplanner = multi-tenant (since 2026-05-30)
+
+Multiple Discord servers share one instance. Operations are scoped per Discord
+guild (`Operation.guildId`); users only see servers they're a member of. Model:
+`Guild` + `GuildMembership` (role per guild: fleetoperator/captain/crew).
+
+- **Login**: Discord OAuth now requests the `guilds` scope; on login the user's
+  Discord guilds ∩ installed guilds → `GuildMembership` rows. Alternative logins
+  (GitHub/Google) exist; those users link Discord at `/account` to get access.
+- **Add a server**: any logged-in user can self-service add the bot via
+  `…/guilds/add` (Discord bot-invite, returns to `/guilds/added?guild_id=`). The
+  installer becomes that guild's Admiral (fleetoperator).
+- **Roles per guild**: installer=Admiral + manual management at `/guilds/settings`
+  + optional Discord-role mapping (set Admiral/Captain role IDs per guild → synced
+  on login). `User.role` is now instance-level (`superadmin` = instance owner;
+  global `/admin` ship/location catalog + user mgmt is superadmin-only).
+- **Active guild**: `fp_guild` cookie; switch at `/guilds`.
+- **Events**: scheduled events post to the operation's own guild (one bot token,
+  bot is a member because it was invited). Per-guild event channel optional.
+- Bot needs MANAGE_EVENTS + SEND_MESSAGES; set `DISCORD_FLEETPLANNER_CLIENT_ID`.
+
 ## Open decisions (from mergelog)
 
 - Package namespace: still `@dccc/*`; recommended final namespace `@rdoc-suite/*` or `@rdoc-sc/*`.

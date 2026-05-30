@@ -7,9 +7,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ── Users (Discord OAuth) ──────────────────────────────────────────
+// ── Users ─────────────────────────────────────────────────────────
 model User {
-  id         String   @id          // Discord snowflake
+  id         String   @id @default(cuid())
   username   String
   avatarHash String?
   role       String   @default("crew")  // superadmin | fleetoperator | captain | crew
@@ -18,10 +18,69 @@ model User {
   lastSeenAt DateTime @default(now())
 
   sessions        UserSession[]
+  identities      UserIdentity[]
+  ownedShips      UserShip[]
   createdOps      Operation[]
   leaderRoles     OperationLeader[]
+  crewRequests    CrewAssignmentRequest[]
   captainedUnits  FleetUnit[]       @relation("UnitCaptain")
   seatAssignments SeatAssignment[]
+  guildMemberships GuildMembership[]
+  ownedGuilds      Guild[]          @relation("GuildOwner")
+}
+
+// ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
+model Guild {
+  id             String    @id          // Discord guild snowflake
+  name           String
+  iconHash       String?
+  ownerUserId    String?                // fleetplanner user who installed the bot
+  eventChannelId String?                // voice/text channel for scheduled events
+  admiralRoleId  String?                // Discord role id → fleetoperator (optional mapping)
+  captainRoleId  String?                // Discord role id → captain (optional mapping)
+  botInstalledAt DateTime?
+  active         Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  owner       User?             @relation("GuildOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  memberships GuildMembership[]
+  operations  Operation[]
+}
+
+model GuildMembership {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String
+  role      String   @default("crew")   // fleetoperator | captain | crew (PER guild)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([userId])
+}
+
+// ── OAuth identities ───────────────────────────────────────────────
+// One user can have multiple provider-logins (discord + github + google).
+// provider: "discord" | "github" | "google"
+// providerId: the external account ID (Discord snowflake, GitHub user id, Google sub).
+model UserIdentity {
+  id          String   @id @default(cuid())
+  userId      String
+  provider    String   // discord | github | google
+  providerId  String   // external account id
+  username    String?  // display name at provider
+  email       String?
+  avatarUrl   String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
 }
 
 model UserSession {
@@ -52,8 +111,57 @@ model Ship {
   syncedAt      DateTime @default(now())
 
   fleetUnits FleetUnit[]
+  owners     UserShip[]
 
   @@index([name])
+}
+
+model Location {
+  id             String   @id @default(cuid())
+  uuid           String   @unique
+  slug           String   @unique
+  name           String
+  system         String
+  systemSlug     String
+  parentName     String   @default("")
+  parentSlug     String   @default("")
+  typeName       String   @default("")
+  classification String   @default("")
+  hidden         Boolean  @default(false)
+  hasResources   Boolean  @default(false)
+  webUrl         String?
+  rawJson        String
+  syncedAt       DateTime @default(now())
+
+  @@index([name])
+  @@index([systemSlug])
+  @@index([classification])
+}
+
+model LocationSyncState {
+  id           String    @id @default("singleton")
+  enabled      Boolean   @default(true)
+  intervalDays Int       @default(7)
+  lastRunAt    DateTime?
+  lastResult   String?
+  running      Boolean   @default(false)
+  locationCount Int      @default(0)
+  updatedAt    DateTime  @updatedAt
+}
+
+model UserShip {
+  id        String   @id @default(cuid())
+  userId    String
+  shipId    String
+  nickname  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ship Ship @relation(fields: [shipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, shipId])
+  @@index([userId])
+  @@index([shipId])
 }
 
 // ── Ship-catalog sync state (singleton row, id = "singleton") ──────
@@ -72,11 +180,20 @@ model ShipSyncState {
 }
 
 // ── Operations ─────────────────────────────────────────────────────
+model AppSetting {
+  key       String   @id
+  value     String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
 model Operation {
   id          String   @id @default(cuid())
+  guildId     String                      // tenant — which Discord server this op belongs to
   title       String
   description String   @default("")
   opType      String   @default("combat")  // combat | pve | training | mixed | exploration
+  meetingSystem String @default("stanton")
+  meetingLocation String @default("")
   scheduledAt DateTime
   status      String   @default("draft")  // draft | open | locked | in_progress | completed | cancelled
   createdById String
@@ -84,10 +201,27 @@ model Operation {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  guild     Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
   createdBy User              @relation(fields: [createdById], references: [id])
   leaders   OperationLeader[]
   groups    CompositionGroup[]
   units     FleetUnit[]
+  crewRequests CrewAssignmentRequest[]
+}
+
+model CrewAssignmentRequest {
+  id          String   @id @default(cuid())
+  operationId String
+  userId      String
+  note        String?
+  createdAt   DateTime @default(now())
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, userId])
+  @@index([operationId])
+  @@index([userId])
 }
 
 model OperationLeader {
@@ -157,6 +291,7 @@ model SeatAssignment {
   label    String  // "Pilot", "Gunner 1", "Engineer 2", "FPS 1" …
   seatType String  // pilot | gunner | operation | flex | fps
   order    Int
+  active   Boolean @default(true)
   userId   String?
 
   fleetUnit FleetUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)

@@ -641,3 +641,54 @@ User directive "finalize my fleetmanager". Scope:
    Found gaps: backgroundSync never scheduled; Discord event id never stored
    (re-open duplicates events, can't delete on cancel) → add `Operation.discordEventId`.
 4. **Admin GUI**: ship-sync panel (status, interval, "Sync now"); general GUI polish.
+
+---
+
+## Queued — Fleetplanner multi-tenant (Option A) (2026-05-30)
+
+Multiple Discords share one Fleetplanner instance. Decisions:
+- Trennlinie: `Operation.guildId`. New `Guild` + `GuildMembership` (role per guild).
+- Roles per guild: installer=Admiral + manual mgmt + optional Discord-role mapping
+  (Guild stores admiralRoleId/captainRoleId, synced on login via bot REST).
+- Bot invite: self-service — any logged-in user can add the bot to a Discord they
+  manage (`/guilds/add` → Discord bot-invite → `/guilds/added` ?guild_id).
+- Access: must be a real Discord member (Discord OAuth gains `guilds` scope; on login
+  user's guilds ∩ installed Guilds → GuildMembership upsert; role via mapping).
+- `User.role` becomes instance-level (superadmin only); per-guild role via membership.
+- Active guild via cookie `fp_guild`, validated against membership; header switcher.
+- Events: `createScheduledEvent(op)` uses `op.guildId` + `Guild.eventChannelId` + the
+  single bot token (bot is in the target guild because it was invited).
+- Fresh PG DB → fold Guild/GuildMembership/Operation.guildId into the baseline migration.
+
+## Completed — Fleetplanner multi-tenant (Option A) (2026-05-30)
+
+Multiple Discords share one instance. `pnpm --filter @rdoc-suite/fleetplanner build` ✓.
+NOTE: Codex was editing fleetplanner in parallel; per user decision Codex stopped
+fleetplanner and this agent owns the implementation. Codex had stubbed multi-tenant
+with a hardcoded `currentGuildId()="default"` — replaced with the real resolution.
+
+- Schema: `Guild` + `GuildMembership` (role/guild) + `Operation.guildId`; folded into
+  the PG baseline migration (fresh DB).
+- `services/guilds.ts`: installGuild, syncUserGuildMemberships (Discord guilds ∩
+  installed → role via mapping), resolveActiveGuild, effectiveOpRole, listUserGuilds.
+- Auth: Discord OAuth gained `guilds` scope; `providers.ts` returns discordGuildIds;
+  `identity.ts` syncs memberships on login + on Discord-link.
+- `routes/guilds.ts`: `/guilds` (list/switch), `/guilds/add` + `/guilds/added`
+  (self-service bot invite), `/guilds/switch`, `/guilds/none`, `/guilds/settings`
+  (+ per-guild member role mgmt). `fp_guild` active-guild cookie.
+- Middleware: `requireGuild` / `requireGuildRole` / `optionalGuild` / `requireOpRole`.
+- web.ts: home/ops-new/detail scoped to active guild; op edit/delete via requireOpRole;
+  global `/admin` (ship/location catalog + user mgmt) now instance-superadmin-only;
+  assignable-users list scoped to the op's guild.
+- api.ts: all op-management routes (accept/reject/discord-role/status/seats/leaders/
+  groups/requirements) + inline checks converted from global role to per-op guild role.
+- discord.ts: `createScheduledEvent(op)` posts to `op.guildId` + per-guild event
+  channel; `deleteScheduledEvent(guildId, eventId)`; added fetchGuildBasic /
+  fetchGuildMemberRoles bot REST helpers.
+- Pages: noGuildPage, guildsListPage, guildSettingsPage; nav gained "Servers"; login
+  link → /login (multi-provider).
+- env/.env.example/STAND updated (guilds scope, bot-invite redirect, GitHub/Google,
+  DISCORD_FLEETPLANNER_CLIENT_ID).
+
+Follow-ups (not blocking): header inline guild-switcher dropdown (currently a /guilds
+page); migrating any existing single-tenant data (fresh DB assumed).

@@ -1,18 +1,24 @@
 import { prisma } from "../db.js";
 
 export type CreateOperationInput = {
+  guildId: string;
   title: string;
   description?: string;
   opType?: string;
+  meetingSystem?: string;
+  meetingLocation?: string;
   scheduledAt: Date;
 };
 
 export async function createOperation(createdById: string, input: CreateOperationInput) {
   return prisma.operation.create({
     data: {
+      guildId: input.guildId,
       title: input.title,
       description: input.description ?? "",
       opType: input.opType ?? "combat",
+      meetingSystem: input.meetingSystem ?? "stanton",
+      meetingLocation: input.meetingLocation ?? "",
       scheduledAt: input.scheduledAt,
       createdById,
       status: "draft",
@@ -26,6 +32,7 @@ export async function getOperation(id: string) {
     include: {
       createdBy: true,
       leaders: { include: { user: true } },
+      crewRequests: { include: { user: true }, orderBy: { createdAt: "asc" } },
       groups: {
         orderBy: { order: "asc" },
         include: {
@@ -56,10 +63,13 @@ export async function getOperation(id: string) {
   });
 }
 
-export async function listOperations(includePast = false) {
+export async function listOperations(guildId: string, includePast = false) {
   const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000); // show ops up to 3h in the past
   return prisma.operation.findMany({
-    where: includePast ? {} : { scheduledAt: { gte: cutoff } },
+    where: {
+      guildId, // tenant scope — only this guild's operations
+      ...(includePast ? {} : { scheduledAt: { gte: cutoff } }),
+    },
     orderBy: { scheduledAt: "asc" },
     include: {
       createdBy: true,
@@ -76,6 +86,8 @@ export async function updateOperation(id: string, input: Partial<CreateOperation
       ...(input.title !== undefined && { title: input.title }),
       ...(input.description !== undefined && { description: input.description }),
       ...(input.opType !== undefined && { opType: input.opType }),
+      ...(input.meetingSystem !== undefined && { meetingSystem: input.meetingSystem }),
+      ...(input.meetingLocation !== undefined && { meetingLocation: input.meetingLocation }),
       ...(input.scheduledAt !== undefined && { scheduledAt: input.scheduledAt }),
     },
   });

@@ -28,7 +28,7 @@ export function consumeState(state: string): boolean {
 export function buildAuthorizeUrl(state: string): string {
   const env = getEnv();
   const p = new URLSearchParams({
-    client_id: env.DISCORD_CLIENT_ID,
+    client_id: env.DISCORD_CLIENT_ID!,
     redirect_uri: redirectUri(),
     response_type: "code",
     scope: "identify",
@@ -46,8 +46,8 @@ export async function exchangeCode(code: string): Promise<DiscordTokenResponse> 
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: env.DISCORD_CLIENT_ID,
-      client_secret: env.DISCORD_CLIENT_SECRET,
+      client_id: env.DISCORD_CLIENT_ID!,
+      client_secret: env.DISCORD_CLIENT_SECRET!,
       grant_type: "authorization_code",
       code,
       redirect_uri: redirectUri(),
