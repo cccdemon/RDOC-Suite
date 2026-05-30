@@ -2,7 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { rawHtml } from "../web/pages.js";
 import {
   homePage, opDetailPage, opFormPage, profilePage, shipsPage, feedbackPage, adminPage, errorPage,
-  loginPage, accountPage,
+  loginPage, accountPage, howToPage, licensePage,
+
 } from "../web/pages.js";
 import { requireRole, optionalAuth, requireAuth, optionalGuild, requireGuildRole, requireOpRole } from "../auth/middleware.js";
 import { discordEnabled, githubEnabled, googleEnabled } from "../auth/providers.js";
@@ -10,7 +11,7 @@ import { getMembership, listUserGuilds, effectiveOpRole } from "../services/guil
 import { basePath, getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import {
-  createOperation, getOperation, listOperations, updateOperation, deleteOperation,
+  createOperation, getOperation, listOperations, listAllUserOperations, updateOperation, deleteOperation,
 } from "../services/operations.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import { deleteScheduledEvent, sendDiscordChannelMessage } from "../services/discord.js";
@@ -72,42 +73,51 @@ async function resolveMeetingFields(body: Record<string, string>): Promise<{ mee
 
 export async function webRoutes(app: FastifyInstance) {
 
-  // ── Home (scoped to the active guild/tenant) ──────────────────────────
+  // ── Home — shows ops from ALL user's guilds with server marker ──────────
   app.get<{ Querystring: { flash?: string; past?: string } }>(
     "/",
     async (req, reply) => {
-      const gctx = await optionalGuild(req);
-      // Anonymous → login. Logged in but no guild membership → onboarding.
-      if (!gctx) {
-        const ctx = await optionalAuth(req);
-        if (!ctx) return reply.redirect(basePath("/login"), 302);
-        return reply.redirect(basePath("/guilds/none"), 302);
-      }
+      const ctx = await optionalAuth(req);
+      if (!ctx) return reply.redirect(basePath("/login"), 302);
+      const memberships = await listUserGuilds(ctx.user.id);
+      if (memberships.length === 0) return reply.redirect(basePath("/guilds/none"), 302);
       const includePast = !!req.query.past;
-      const ops = await listOperations(gctx.guildId, includePast);
+      const guildIds = memberships.map((m) => m.guildId);
+      const ops = await listAllUserOperations(guildIds, includePast);
+      // Operator guilds for the "New Op" picker
+      const operatorGuilds = memberships
+        .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
+        .map((m) => ({ id: m.guildId, name: m.guild.name }));
       htmlReply(reply, homePage({
         basePath: basePath(),
-        currentUser: gctx.user,
-        csrfToken: gctx.csrfToken,
+        currentUser: ctx.user,
+        csrfToken: ctx.csrfToken,
         flash: req.query.flash,
         ops,
         includePast,
+        operatorGuilds,
       }));
     }
   );
 
-  // ── New operation form (fleetoperator/Admiral of the active guild) ────
+  // ── New operation form — guild picker when user has multiple servers ─────
   app.get<{ Querystring: { flash?: string } }>(
     "/ops/new",
     async (req, reply) => {
-      const gctx = await requireGuildRole(req, reply, "fleetoperator");
-      if (!gctx) return;
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      const memberships = await listUserGuilds(ctx.user.id);
+      const operatorGuilds = memberships
+        .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
+        .map((m) => ({ id: m.guildId, name: m.guild.name }));
+      if (operatorGuilds.length === 0) return reply.code(403).send({ error: "forbidden" });
       htmlReply(reply, opFormPage({
         basePath: basePath(),
-        currentUser: gctx.user,
-        csrfToken: gctx.csrfToken,
+        currentUser: ctx.user,
+        csrfToken: ctx.csrfToken,
         flash: req.query.flash,
         op: null,
+        operatorGuilds,
         locations: await searchLocations(undefined, "", 2000),
       }));
     }
@@ -116,10 +126,20 @@ export async function webRoutes(app: FastifyInstance) {
   app.post<{ Body: Record<string, string> }>(
     "/ops/new",
     async (req, reply) => {
-      const gctx = await requireGuildRole(req, reply, "fleetoperator");
-      if (!gctx) return;
-      if (!csrfOk(req.body, gctx.csrfToken)) {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) {
         return reply.code(403).send("Invalid CSRF token");
+      }
+      // Guild comes from the form picker; validate the user is an operator there.
+      const guildIdFromBody = req.body.guildId?.trim();
+      const memberships = await listUserGuilds(ctx.user.id);
+      const targetMembership = memberships.find(
+        (m) => m.guildId === guildIdFromBody &&
+          (m.role === "fleetoperator" || ctx.user.role === "superadmin")
+      );
+      if (!targetMembership) {
+        return reply.redirect(basePath("/ops/new?flash=error:Select+a+valid+server+where+you+are+Admiral"), 302);
       }
       const { title, description, opType, scheduledAt } = req.body;
       const parsedDate = parseUtcDateTimeLocal(scheduledAt);
@@ -128,8 +148,8 @@ export async function webRoutes(app: FastifyInstance) {
       }
       try {
         const meeting = await resolveMeetingFields(req.body);
-        const op = await createOperation(gctx.user.id, {
-          guildId: gctx.guildId,
+        const op = await createOperation(ctx.user.id, {
+          guildId: targetMembership.guildId,
           title: title.trim(),
           description: description ?? "",
           opType: opType ?? "combat",
@@ -383,6 +403,17 @@ export async function webRoutes(app: FastifyInstance) {
       }));
     }
   );
+
+  // ── Public info pages (no login required) ────────────────────────────
+  app.get("/how-to", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(reply, howToPage({ basePath: basePath(), currentUser: ctx?.user ?? null, csrfToken: ctx?.csrfToken }));
+  });
+
+  app.get("/license", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(reply, licensePage({ basePath: basePath(), currentUser: ctx?.user ?? null, csrfToken: ctx?.csrfToken }));
+  });
 
   // ── Login page ────────────────────────────────────────────────────────
   app.get<{ Querystring: { flash?: string } }>(

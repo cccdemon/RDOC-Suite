@@ -86,6 +86,7 @@ function shipSizeLabel(ship: Pick<Ship, "size" | "rawJson">): string {
 
 type OpListItem = {
   id: string; title: string; opType: string; scheduledAt: Date; status: string;
+  guild: { id: string; name: string; iconHash: string | null };
   createdBy: User;
   leaders: { user: User }[];
   units: { id: string; status: string }[];
@@ -98,10 +99,20 @@ export function homePage(opts: {
   flash?: string;
   ops: OpListItem[];
   includePast: boolean;
+  /** Guilds the user can create ops for — shown in the quick guild picker. */
+  operatorGuilds?: Array<{ id: string; name: string }>;
 }): SafeHtml {
   const bp = opts.basePath;
-  const canCreate = opts.currentUser &&
-    (opts.currentUser.role === "superadmin" || opts.currentUser.role === "fleetoperator");
+  const canCreate = (opts.operatorGuilds?.length ?? 0) > 0;
+
+  // Assign a consistent CSS class per guild for the colored badge
+  const guildIndex = new Map<string, number>();
+  let guildCounter = 0;
+  const GUILD_COLORS = ["guild-a", "guild-b", "guild-c", "guild-d", "guild-e"];
+  function guildClass(guildId: string): string {
+    if (!guildIndex.has(guildId)) guildIndex.set(guildId, guildCounter++ % GUILD_COLORS.length);
+    return GUILD_COLORS[guildIndex.get(guildId)!];
+  }
 
   const rows = opts.ops.length
     ? html`
@@ -111,6 +122,7 @@ export function homePage(opts: {
           const total = op.units.length;
           return html`
             <a href="${bp}/ops/${op.id}" class="op-row" style="color:inherit;text-decoration:none;">
+              <span class="op-guild-badge ${guildClass(op.guild.id)}">${op.guild.name}</span>
               <span class="op-time">${fmtDate(op.scheduledAt)}</span>
               <span class="op-title">${op.title}</span>
               ${opTypeTag(op.opType)}
@@ -121,13 +133,28 @@ export function homePage(opts: {
       </div>`
     : html`<p class="text-dim text-sm">No operations scheduled. ${canCreate ? html`<a href="${bp}/ops/new">Create one?</a>` : ""}</p>`;
 
+  // Quick new-op picker: inline guild selector when user has multiple servers
+  const newOpControl = canCreate ? (() => {
+    const guilds = opts.operatorGuilds!;
+    if (guilds.length === 1) {
+      return html`<a href="${bp}/ops/new" class="btn btn-sm">+ New Operation</a>`;
+    }
+    return html`
+      <form method="get" action="${bp}/ops/new" class="inline new-op-picker">
+        <select name="_guild" class="guild-picker-select" onchange="this.form.submit()" title="Select server for new operation">
+          <option value="">+ New Operation on…</option>
+          ${guilds.map((g) => html`<option value="${g.id}">${g.name}</option>`)}
+        </select>
+      </form>`;
+  })() : safe("");
+
   const body = html`
     <div class="page-header">
       <h1 class="page-title">FLEET OPERATIONS</h1>
       <p class="page-subtitle">Star Citizen – RDOC operation calendar</p>
     </div>
     <div class="flex gap-2 mb-1">
-      ${canCreate ? html`<a href="${bp}/ops/new" class="btn btn-sm">+ New Operation</a>` : ""}
+      ${newOpControl}
       ${opts.includePast
         ? html`<a href="${bp}/" class="btn btn-sm btn-ghost">Hide Past</a>`
         : html`<a href="${bp}/?past=1" class="btn btn-sm btn-ghost">Show Past</a>`}
@@ -854,8 +881,10 @@ export function opFormPage(opts: {
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
   flash?: string;
-  op?: Pick<Operation, "id" | "title" | "description" | "opType" | "meetingSystem" | "meetingLocation" | "scheduledAt"> | null;
+  op?: (Pick<Operation, "id" | "title" | "description" | "opType" | "meetingSystem" | "meetingLocation" | "scheduledAt"> & { guildId?: string }) | null;
   locations: Pick<Location, "slug" | "name" | "system" | "systemSlug" | "parentName" | "classification">[];
+  /** For new operations: guilds the user can create ops for. Show picker when >1. */
+  operatorGuilds?: Array<{ id: string; name: string }>;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -882,6 +911,19 @@ export function opFormPage(opts: {
     <div class="card">
       <form method="post" action="${action}">
         <input type="hidden" name="_csrf" value="${csrf}" />
+        ${(!op && opts.operatorGuilds && opts.operatorGuilds.length > 0) ? html`
+        <div class="form-group">
+          <label>Server</label>
+          ${opts.operatorGuilds.length === 1
+            ? html`
+              <input type="hidden" name="guildId" value="${opts.operatorGuilds[0].id}" />
+              <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
+            : html`
+              <select name="guildId" required class="guild-picker-select-form">
+                <option value="">— Select server —</option>
+                ${opts.operatorGuilds.map((g) => html`<option value="${g.id}">${g.name}</option>`)}
+              </select>`}
+        </div>` : safe("")}
         <div class="form-group">
           <label>Operation Title</label>
           <input type="text" name="title" value="${op?.title ?? ""}" required placeholder="Operation Darkstar" />
@@ -1341,6 +1383,150 @@ export function errorPage(opts: {
   return layout({
     title: `Error ${opts.status}`,
     basePath: opts.basePath,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+// ── Public info pages ────────────────────────────────────────────────
+
+export function howToPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html`
+    <div class="page-header"><h1 class="page-title">HOW TO USE RDOC FLEETPLANNER</h1></div>
+
+    <div class="section">
+      <div class="section-title">What is this?</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p>RDOC Fleetplanner organises Star Citizen fleet operations across multiple Discord servers.
+        Admirals plan operations, captains register their ships, crew members claim seats — all
+        coordinated through Discord and posted as Discord scheduled events.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Roles</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <table class="user-table" style="width:100%">
+          <thead><tr><th>Role</th><th>What they can do</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-role">Admiral</span></td>
+              <td>Add the bot to a Discord server, create &amp; manage operations, accept/reject units, assign leaders, manage composition, post Discord scheduled events.</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-role">Captain</span></td>
+              <td>Register a ship or squad for an operation, manage their unit's seats.</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-role">Crew</span></td>
+              <td>Claim open seats on accepted units, submit crew assignment requests.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Getting started — for Admirals</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <ol style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem">
+          <li><strong>Login</strong> via Discord (or GitHub / Google if configured).</li>
+          <li>Click <strong>Servers → + Add Fleetplanner bot to a Discord</strong> and authorise the bot on your server. You become that server's Admiral.</li>
+          <li>Go to <strong>Servers → Settings</strong> to set an optional event voice channel and Discord-role mapping (auto-assigns Admiral/Captain roles on login).</li>
+          <li>Click <strong>+ New Operation</strong>, fill in title, date, meeting location, and op type. Save as draft.</li>
+          <li>Add a <strong>Composition</strong> to define which ship types you need.</li>
+          <li>Set status to <strong>Open</strong> — a Discord scheduled event is posted automatically to your server.</li>
+          <li>Accept incoming unit registrations from Captains. Accepted units get their seats opened for Crew.</li>
+          <li>When done, set status to <strong>Completed</strong> or <strong>Cancelled</strong> (event is removed from Discord).</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Getting started — for Captains &amp; Crew</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <ol style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem">
+          <li><strong>Login</strong> and make sure your Discord account is linked (required to see your server's operations).</li>
+          <li>Open an operation and click <strong>Register a Unit</strong>. Pick your ship (search or use your hangar) or create an FPS squad.</li>
+          <li>Wait for the Admiral to <strong>accept</strong> your unit.</li>
+          <li>Once accepted, open seats become visible — crew members can claim them.</li>
+          <li>Add ships to <strong>Profile → My Hangar</strong> for quick access when registering.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Multiple Discord servers</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p>One Fleetplanner instance supports many Discord servers. Each server has its own operations and members.
+        Switch between servers via <strong>Servers</strong> in the nav. You only see operations from servers you are a Discord member of.</p>
+        <p style="margin-top:.5rem">Roles can be auto-assigned from Discord roles — set Admiral Role ID and Captain Role ID in the server settings.</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ship catalog</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p>Ships are pulled from the <a href="https://api.star-citizen.wiki" target="_blank" rel="noopener">Star Citizen Wiki API</a> and cached locally.
+        The catalog refreshes weekly automatically. Admins can trigger a manual sync in the Admin panel.</p>
+      </div>
+    </div>`;
+
+  return layout({
+    title: "How to",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+export function licensePage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html`
+    <div class="page-header"><h1 class="page-title">LICENSE</h1></div>
+    <div class="section">
+      <div class="card" style="padding:1.25rem;max-width:48rem">
+        <pre style="font-family:var(--font-mono);font-size:.82rem;white-space:pre-wrap;color:var(--text);margin:0">MIT License
+
+Copyright (c) 2026 head87x
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre>
+        <p class="text-dim text-sm" style="margin-top:1rem">
+          Source: <a href="https://github.com/cccdemon/RDOC-Suite" target="_blank" rel="noopener">github.com/cccdemon/RDOC-Suite</a>
+        </p>
+      </div>
+    </div>`;
+
+  return layout({
+    title: "License",
+    basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
     body,

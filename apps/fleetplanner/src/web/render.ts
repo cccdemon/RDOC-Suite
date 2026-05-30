@@ -68,6 +68,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
       <span class="nav-brand">RDOC // FLEETPLANNER</span>
       <a href="${bp}/">Operations</a>
       ${u ? html`<a href="${bp}/guilds">Servers</a>` : ""}
+      <a href="${bp}/how-to">How to</a>
       <a href="${bp}/feedback">Feedback</a>
       ${u ? html`<a href="${bp}/profile">Profile</a>` : ""}
       ${u && u.role === "superadmin"
@@ -397,7 +398,7 @@ select option { background: var(--bg3); }
 .op-list { display: flex; flex-direction: column; gap: 0.5rem; }
 .op-row {
   display: grid;
-  grid-template-columns: 9rem 1fr auto auto auto;
+  grid-template-columns: 7rem 9rem 1fr auto auto auto;
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1rem;
@@ -409,6 +410,30 @@ select option { background: var(--bg3); }
 .op-time { font-family: var(--font-mono); font-size: 0.78rem; color: var(--dim); }
 .op-title { font-weight: 600; color: var(--text); }
 .op-count { font-family: var(--font-mono); font-size: 0.78rem; color: var(--dim); }
+
+/* Server/guild badge on op rows — up to 5 color variants */
+.op-guild-badge {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: .04em;
+  padding: .18rem .52rem; border-radius: 3px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 7rem;
+}
+.guild-a { background: rgba(0,212,255,.15); color: var(--cyan); border: 1px solid rgba(0,212,255,.35); }
+.guild-b { background: rgba(160,100,255,.15); color: #a064ff; border: 1px solid rgba(160,100,255,.35); }
+.guild-c { background: rgba(0,255,136,.12); color: var(--green); border: 1px solid rgba(0,255,136,.28); }
+.guild-d { background: rgba(240,165,0,.15); color: var(--gold); border: 1px solid rgba(240,165,0,.35); }
+.guild-e { background: rgba(255,68,68,.13); color: var(--red); border: 1px solid rgba(255,68,68,.28); }
+
+/* Guild picker (home quick-create + form) */
+.guild-picker-select, .guild-picker-select-form {
+  background: var(--bg3); color: var(--text);
+  border: 1px solid var(--border); padding: .35rem .6rem;
+  font-size: .82rem; cursor: pointer;
+}
+.guild-selected-badge {
+  display: inline-block; padding: .3rem .75rem;
+  background: var(--bg3); border: 1px solid var(--border);
+  font-size: .82rem; color: var(--dim);
+}
 
 /* ── Unit cards ──────────────────────────────────────────────── */
 .unit-grid {
@@ -672,7 +697,11 @@ select option { background: var(--bg3); }
   .seat-row { grid-template-columns: 1fr; gap: 0.15rem; padding: 0.6rem 0; }
   .seat-row .inline { margin-top: 0.25rem; }
   .seat-setup-row { grid-template-columns: 1fr; }
-  .op-row { grid-template-columns: 1fr; gap: 0.35rem; }
+  .op-row { grid-template-columns: auto 1fr; gap: 0.35rem; }
+  .op-guild-badge { grid-column: 1; }
+  .op-title { grid-column: 2; }
+  .op-time, .op-count { font-size: 0.72rem; }
+  .op-time, .op-count, .tag { grid-column: span 2; }
   .form-row { grid-template-columns: 1fr; }
   .op-dashboard { grid-template-columns: 1fr; }
   .op-side { padding: 0.85rem; }

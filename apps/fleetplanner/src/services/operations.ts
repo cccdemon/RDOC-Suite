@@ -64,14 +64,34 @@ export async function getOperation(id: string) {
 }
 
 export async function listOperations(guildId: string, includePast = false) {
-  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000); // show ops up to 3h in the past
+  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
   return prisma.operation.findMany({
     where: {
-      guildId, // tenant scope — only this guild's operations
+      guildId,
       ...(includePast ? {} : { scheduledAt: { gte: cutoff } }),
     },
     orderBy: { scheduledAt: "asc" },
     include: {
+      guild: { select: { id: true, name: true, iconHash: true } },
+      createdBy: true,
+      leaders: { include: { user: true } },
+      units: { select: { id: true, status: true } },
+    },
+  });
+}
+
+/** List operations across multiple guilds (all user's servers). */
+export async function listAllUserOperations(guildIds: string[], includePast = false) {
+  if (guildIds.length === 0) return [];
+  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  return prisma.operation.findMany({
+    where: {
+      guildId: { in: guildIds },
+      ...(includePast ? {} : { scheduledAt: { gte: cutoff } }),
+    },
+    orderBy: { scheduledAt: "asc" },
+    include: {
+      guild: { select: { id: true, name: true, iconHash: true } },
       createdBy: true,
       leaders: { include: { user: true } },
       units: { select: { id: true, status: true } },
