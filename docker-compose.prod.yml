@@ -14,6 +14,25 @@
 #
 # Bring up:   docker compose -f docker-compose.prod.yml up -d
 services:
+  caddy-rdoc:
+    build:
+      context: .
+      dockerfile: deploy/caddy-rdoc/Dockerfile
+    image: rdoc-suite-caddy:latest
+    container_name: rdoc-suite-caddy
+    restart: unless-stopped
+    env_file: .env
+    network_mode: host
+    volumes:
+      - ./deploy/caddy-rdoc/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_rdoc_data:/data
+      - caddy_rdoc_config:/config
+    depends_on:
+      - bridge
+      - fleetplanner
+      - livekit
+      - monitoring
+
   livekit:
     image: livekit/livekit-server:latest
     container_name: rdoc-suite-livekit
@@ -177,5 +196,7 @@ services:
 
 volumes:
   bridge_data:
+  caddy_rdoc_config:
+  caddy_rdoc_data:
   fleetplanner_pgdata:
   monitoring_data:

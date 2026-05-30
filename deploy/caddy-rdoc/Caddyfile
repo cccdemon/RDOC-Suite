@@ -1,0 +1,25 @@
+{
+	admin off
+	auto_https disable_redirects
+	acme_dns cloudflare {env.CF_API_TOKEN}
+}
+
+suite.raumdock.org:9443 {
+	handle_path /fleetplanner* {
+		reverse_proxy 127.0.0.1:3200
+	}
+
+	handle /monitoring* {
+		reverse_proxy 127.0.0.1:9090
+	}
+
+	reverse_proxy 127.0.0.1:8787
+}
+
+voice.raumdock.org:9443 {
+	reverse_proxy 127.0.0.1:7880
+}
+
+monitoring.raumdock.org:9443 {
+	reverse_proxy 127.0.0.1:9090
+}
