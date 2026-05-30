@@ -10,7 +10,7 @@ suite.raumdock.org:9443 {
 	}
 
 	handle /monitoring* {
-		reverse_proxy 127.0.0.1:9090
+		reverse_proxy 127.0.0.1:3001
 	}
 
 	reverse_proxy 127.0.0.1:8787
@@ -21,5 +21,5 @@ voice.raumdock.org:9443 {
 }
 
 monitoring.raumdock.org:9443 {
-	reverse_proxy 127.0.0.1:9090
+	reverse_proxy 127.0.0.1:3001
 }

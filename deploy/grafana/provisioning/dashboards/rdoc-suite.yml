@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: RDOC Suite
+    orgId: 1
+    folder: RDOC Suite
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
