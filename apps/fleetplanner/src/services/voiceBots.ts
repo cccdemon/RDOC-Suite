@@ -90,6 +90,29 @@ export async function addGuildVoiceBot(input: {
   });
 }
 
+export async function updateGuildVoiceBot(
+  guildId: string,
+  id: string,
+  input: { label?: string; token?: string },
+): Promise<void> {
+  const bot = await prisma.guildVoiceBot.findFirst({ where: { guildId, id } });
+  if (!bot) throw new Error("Voice bot not found");
+
+  const data: Record<string, unknown> = {};
+  if (input.label?.trim()) data.label = cleanLabel(input.label);
+  if (input.token?.trim()) {
+    const token = input.token.trim();
+    if (token.length < 30) throw new Error("Bot token looks too short");
+    const encrypted = encryptSecret(token);
+    data.tokenCiphertext = encrypted.ciphertext;
+    data.tokenIv = encrypted.iv;
+    data.tokenSalt = encrypted.salt;
+    data.tokenTag = encrypted.tag;
+  }
+  if (Object.keys(data).length === 0) return;
+  await prisma.guildVoiceBot.update({ where: { id }, data });
+}
+
 export async function deleteGuildVoiceBot(guildId: string, id: string): Promise<void> {
   await prisma.guildVoiceBot.deleteMany({ where: { guildId, id } });
 }

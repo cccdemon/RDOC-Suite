@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { basePath, getEnv } from "../config/env.js";
 import { requireAuth, requireGuildRole } from "../auth/middleware.js";
 import { installGuild, getMembership, listUserGuilds } from "../services/guilds.js";
-import { addGuildVoiceBot, deleteGuildVoiceBot } from "../services/voiceBots.js";
+import { addGuildVoiceBot, deleteGuildVoiceBot, updateGuildVoiceBot } from "../services/voiceBots.js";
 import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
 import { prisma } from "../db.js";
 import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage, guildDiagnosticsPage } from "../web/pages.js";
@@ -226,6 +226,25 @@ export async function guildRoutes(app: FastifyInstance) {
         return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+saved."), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to save voice bot";
+        return reply.redirect(basePath(`/guilds/settings?flash=error:${encodeURIComponent(msg)}`), 302);
+      }
+    }
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/guilds/voice-bots/:id/edit",
+    async (req, reply) => {
+      const gctx = await requireGuildRole(req, reply, "fleetoperator");
+      if (!gctx) return;
+      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      try {
+        await updateGuildVoiceBot(gctx.guildId, req.params.id, {
+          label: req.body.label,
+          token: req.body.botToken,
+        });
+        return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+updated."), 302);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to update voice bot";
         return reply.redirect(basePath(`/guilds/settings?flash=error:${encodeURIComponent(msg)}`), 302);
       }
     }

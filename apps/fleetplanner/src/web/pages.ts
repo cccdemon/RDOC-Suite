@@ -1775,9 +1775,25 @@ export function guildSettingsPage(opts: {
       <td class="text-dim text-sm">${fmtDate(bot.updatedAt)}</td>
       <td>
         <a href="${discordBotInviteUrl(bot.botUserId, relayBotInvitePermissions)}" class="btn btn-sm btn-ghost" target="_blank" rel="noopener">Invite</a>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="toggleBotEdit('${bot.id}')">Edit</button>
         <form method="post" action="${bp}/guilds/voice-bots/${bot.id}/delete" class="inline">
           <input type="hidden" name="_csrf" value="${csrf}" />
           <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Remove this encrypted voice bot token?')">Delete</button>
+        </form>
+      </td>
+    </tr>
+    <tr id="bot-edit-${bot.id}" style="display:none">
+      <td colspan="5" style="padding:.75rem 0">
+        <form method="post" action="${bp}/guilds/voice-bots/${bot.id}/edit"
+              style="display:grid;grid-template-columns:1fr 1.8fr auto;gap:.5rem;align-items:flex-end">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <label class="text-sm text-dim">New label
+            <input type="text" name="label" value="${bot.label}" placeholder="Funkrelais 1" />
+          </label>
+          <label class="text-sm text-dim">New token <span style="opacity:.6">(leave empty to keep current)</span>
+            <input type="text" name="botToken" placeholder="Bot token…" autocomplete="off" />
+          </label>
+          <button type="submit" class="btn btn-sm btn-cyan">Save</button>
         </form>
       </td>
     </tr>`);
@@ -1851,7 +1867,13 @@ export function guildSettingsPage(opts: {
           <tbody>${memberRows}</tbody>
         </table>
       </div>
-    </div>`;
+    </div>
+    <script>
+    function toggleBotEdit(id) {
+      var row = document.getElementById('bot-edit-' + id);
+      if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+    }
+    </script>`;
 
   return layout({
     title: `Settings — ${g.name}`,
