@@ -68,7 +68,7 @@ const baseEnvSchema = z.object({
   //   per-request via ?guildId= query param).
   // RELAY_REQUIRED_ROLE_ID: Discord role that a user must have to get a
   //   publisher relay token. Omit to allow any authenticated user to publish.
-  // RELAY_DISCORD_RDOCRTC_BOT_TOKEN: bot token used for Discord role membership checks.
+  // DISCORD_RELAY_BOT_TOKEN: bot token used for Discord role membership checks.
   //   If unset, the bridge falls back to the first bot token stored in
   //   RelayBotsConfig.bots. Can be the same token as DISCORD_RDOCRTC_BOT_TOKEN.
   // RELAY_LIVEKIT_ROOM: fallback room name when RelayBotsConfig has no roomName.
@@ -80,7 +80,7 @@ const baseEnvSchema = z.object({
   //   admin API (Basic auth: admin:<secret>).
   RELAY_GUILD_ID: z.string().optional(),
   RELAY_REQUIRED_ROLE_ID: z.string().optional(),
-  RELAY_DISCORD_RDOCRTC_BOT_TOKEN: z.string().optional(),
+  DISCORD_RELAY_BOT_TOKEN: z.string().optional(),
   RELAY_LIVEKIT_ROOM: z.string().default("voice-relay"),
   RELAY_BOTS_ADMIN_URL: z.string().optional(),
   RELAY_BOTS_SECRET: z.string().optional(),

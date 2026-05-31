@@ -1,0 +1,12 @@
+services:
+  integration-test:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.integration
+    image: rdoc-suite-test:latest
+    container_name: rdoc-suite-test
+    env_file: .env
+    environment:
+      SUITE_URL: "${SUITE_URL:-https://suite.raumdock.org}"
+      VOICE_URL: "${VOICE_URL:-https://voice.raumdock.org}"
+    network_mode: host
