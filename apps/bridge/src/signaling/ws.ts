@@ -389,7 +389,7 @@ async function resolveDisplayName(guildId: string, userId: string): Promise<stri
   if (!oauth) return undefined;
   try {
     const res = await fetchGuildMember({
-      botToken: oauth.DISCORD_BOT_TOKEN,
+      botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
       guildId,
       userId,
     });

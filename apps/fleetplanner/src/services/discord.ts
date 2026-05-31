@@ -250,20 +250,14 @@ export async function deleteScheduledEvent(guildId: string, eventId: string): Pr
 
 export type CaptainDiscordRole = "commander" | "admiral";
 
-export async function assignCaptainDiscordRole(userId: string, role: CaptainDiscordRole): Promise<void> {
+async function putGuildMemberRole(guildId: string, discordUserId: string, roleId: string): Promise<void> {
   const env = getEnv();
   const token = fleetplannerBotToken();
-  if (!env.DISCORD_GUILD_ID || !token) {
+  if (!token) {
     throw new Error("Discord Fleetplanner Bot integration is not configured");
   }
 
-  const roleId = role === "commander" ? env.DISCORD_COMMANDER_ROLE_ID : env.DISCORD_ADMIRAL_ROLE_ID;
-  if (!roleId) {
-    throw new Error(`Discord ${role} role id is not configured`);
-  }
-
-  const discordUserId = await discordRecipientIdForUser(userId);
-  const res = await fetch(`${DISCORD_API}/guilds/${env.DISCORD_GUILD_ID}/members/${discordUserId}/roles/${roleId}`, {
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`, {
     method: "PUT",
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
@@ -273,6 +267,58 @@ export async function assignCaptainDiscordRole(userId: string, role: CaptainDisc
     const err = await res.text().catch(() => res.statusText);
     throw new Error(`Discord role assignment failed (${res.status}): ${err}`);
   }
+}
+
+async function deleteGuildMemberRole(guildId: string, discordUserId: string, roleId: string): Promise<void> {
+  const token = fleetplannerBotToken();
+  if (!token) return;
+
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${discordUserId}/roles/${roleId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bot ${token}` },
+    signal: AbortSignal.timeout(8000),
+  });
+
+  if (!res.ok && res.status !== 404) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Discord role removal failed (${res.status}): ${err}`);
+  }
+}
+
+function configuredCaptainRoleIds(
+  guild: { captainRoleId: string | null; globalVoiceRoleId: string | null; admiralRoleId?: string | null },
+  role: CaptainDiscordRole,
+): string[] {
+  const env = getEnv();
+  const commanderRole = guild.captainRoleId ?? env.DISCORD_COMMANDER_ROLE_ID;
+  const globalRole = guild.globalVoiceRoleId ?? guild.admiralRoleId ?? env.DISCORD_ADMIRAL_ROLE_ID;
+  const ids = role === "admiral" ? [commanderRole, globalRole] : [commanderRole];
+  return ids.filter((id): id is string => Boolean(id));
+}
+
+export async function assignCaptainDiscordRole(userId: string, guildId: string, role: CaptainDiscordRole): Promise<void> {
+  const guild = await prisma.guild.findUnique({
+    where: { id: guildId },
+    select: { captainRoleId: true, globalVoiceRoleId: true, admiralRoleId: true },
+  });
+  if (!guild) throw new Error("Guild not found");
+  const roleIds = configuredCaptainRoleIds(guild, role);
+  if (roleIds.length === 0) throw new Error(`Discord ${role} role id is not configured`);
+
+  const discordUserId = await discordRecipientIdForUser(userId);
+  await Promise.all(roleIds.map((roleId) => putGuildMemberRole(guildId, discordUserId, roleId)));
+}
+
+export async function removeCaptainDiscordRoles(userId: string, guildId: string): Promise<void> {
+  const guild = await prisma.guild.findUnique({
+    where: { id: guildId },
+    select: { captainRoleId: true, globalVoiceRoleId: true, admiralRoleId: true },
+  });
+  if (!guild) return;
+  const roleIds = Array.from(new Set(configuredCaptainRoleIds(guild, "admiral")));
+  if (roleIds.length === 0) return;
+  const discordUserId = await discordRecipientIdForUser(userId);
+  await Promise.all(roleIds.map((roleId) => deleteGuildMemberRole(guildId, discordUserId, roleId)));
 }
 
 export async function sendDiscordChannelMessage(channelId: string, content: string): Promise<void> {
@@ -335,7 +381,7 @@ export async function sendDiscordDm(userId: string, content: string): Promise<vo
 
 export async function sendAcceptedCaptainVoiceDm(
   userId: string,
-  input: { operationTitle: string; unitName: string; operationUrl: string },
+  input: { operationTitle: string; unitName: string; operationUrl: string; companionConfigUrl?: string },
 ): Promise<void> {
   const env = getEnv();
   const lines = [
@@ -351,7 +397,10 @@ export async function sendAcceptedCaptainVoiceDm(
   if (env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL) {
     lines.push(`Voice client config: ${env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL}`);
   }
-  if (!env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL && !env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL) {
+  if (input.companionConfigUrl) {
+    lines.push(`Connect companion to this Fleetplanner account: ${input.companionConfigUrl}`);
+  }
+  if (!env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL && !env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL && !input.companionConfigUrl) {
     lines.push("Voice client links are not configured yet. Ask your fleet lead for the current setup.");
   }
 

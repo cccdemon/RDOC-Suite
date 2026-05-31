@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   process.once("SIGINT", () => void shutdown("SIGINT"));
   process.once("SIGTERM", () => void shutdown("SIGTERM"));
 
-  await client.login(env.DISCORD_BOT_TOKEN);
+  await client.login(env.DISCORD_RDOCRTC_BOT_TOKEN);
 }
 
 main().catch((err) => {

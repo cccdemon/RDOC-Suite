@@ -49,7 +49,7 @@ export async function recheckCommanderRole(opts: {
   }
 
   const memberRes = await fetchGuildMember({
-    botToken: oauth.DISCORD_BOT_TOKEN,
+    botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
     guildId: opts.guildId,
     userId: opts.userId,
   });

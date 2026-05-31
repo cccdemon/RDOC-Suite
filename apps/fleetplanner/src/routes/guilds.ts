@@ -184,6 +184,7 @@ export async function guildRoutes(app: FastifyInstance) {
           voiceChannelCategoryId: snowflake(req.body.voiceChannelCategoryId),
           admiralRoleId: snowflake(req.body.admiralRoleId),
           captainRoleId: snowflake(req.body.captainRoleId),
+          globalVoiceRoleId: snowflake(req.body.globalVoiceRoleId),
         },
       });
       return reply.redirect(basePath("/guilds/settings?flash=ok:Server+settings+saved."), 302);

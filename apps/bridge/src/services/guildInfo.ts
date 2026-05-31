@@ -29,7 +29,7 @@ async function fetchGuildFromDiscord(guildId: string): Promise<DiscordGuildInfo 
   if (!oauth) return null;
   try {
     const res = await fetch(`https://discord.com/api/v10/guilds/${guildId}`, {
-      headers: { authorization: `Bot ${oauth.DISCORD_BOT_TOKEN}` },
+      headers: { authorization: `Bot ${oauth.DISCORD_RDOCRTC_BOT_TOKEN}` },
     });
     if (!res.ok) {
       logger.warn(

@@ -8,7 +8,7 @@ export const logger = pino({
     paths: [
       "token",
       "*.token",
-      "*.DISCORD_BOT_TOKEN",
+      "*.DISCORD_RDOCRTC_BOT_TOKEN",
       "*.DISCORD_CLIENT_SECRET",
       "*.SESSION_SECRET",
     ],

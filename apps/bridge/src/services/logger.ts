@@ -9,7 +9,7 @@ export const logger = pino({
       "token",
       "*.token",
       "*.SESSION_SECRET",
-      "*.DISCORD_BOT_TOKEN",
+      "*.DISCORD_RDOCRTC_BOT_TOKEN",
       "*.DISCORD_CLIENT_SECRET",
     ],
     censor: "[REDACTED]",

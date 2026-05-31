@@ -1693,6 +1693,7 @@ export function guildSettingsPage(opts: {
     voiceChannelCategoryId: string | null;
     admiralRoleId: string | null;
     captainRoleId: string | null;
+    globalVoiceRoleId: string | null;
   };
   voiceBots: Array<{
     id: string;
@@ -1762,6 +1763,9 @@ export function guildSettingsPage(opts: {
         </label>
         <label class="text-sm text-dim">Captain role ID (Discord role → captain)
           <input type="text" name="captainRoleId" value="${g.captainRoleId ?? ""}" placeholder="optional" />
+        </label>
+        <label class="text-sm text-dim">Globaltalk role ID (Discord role -> Companion global voice)
+          <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
         </label>
         <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>
       </form>

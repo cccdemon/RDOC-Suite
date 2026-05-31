@@ -40,10 +40,10 @@ export async function createStrategyChannel(opts: {
   const oauth = getOAuthEnv();
   if (!oauth) return { ok: false, reason: "no_oauth" };
 
-  const parentId = await resolveParentCategory(opts.guildId, oauth.DISCORD_BOT_TOKEN);
+  const parentId = await resolveParentCategory(opts.guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN);
 
   const created = await createGuildVoiceChannel({
-    botToken: oauth.DISCORD_BOT_TOKEN,
+    botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
     guildId: opts.guildId,
     name: opts.name,
     parentId,
@@ -78,7 +78,7 @@ export async function createStrategyChannel(opts: {
   const moveResults = await Promise.allSettled(
     opts.userIds.map((userId) =>
       moveGuildMember({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId: opts.guildId,
         userId,
         channelId: channel.id,
@@ -216,7 +216,7 @@ export async function tickGarbageCollect(): Promise<void> {
       continue;
     }
     const del = await deleteChannel({
-      botToken: oauth.DISCORD_BOT_TOKEN,
+      botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
       channelId: row.channelId,
     });
     if (!del.ok) {

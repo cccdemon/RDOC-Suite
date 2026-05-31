@@ -5,10 +5,10 @@ import { basePath, getEnv } from "../config/env.js";
 import { searchLocalShips, shipCategory } from "../services/scwiki.js";
 import { registerUnit, deleteUnit, setUnitStatus, claimSeat, assignSeat, unclaimSeat } from "../services/units.js";
 import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
-import { assignCaptainDiscordRole, createScheduledEvent, deleteScheduledEvent, sendAcceptedCaptainVoiceDm, sendSeatAssignmentDm } from "../services/discord.js";
+import { assignCaptainDiscordRole, createScheduledEvent, deleteScheduledEvent, removeCaptainDiscordRoles, sendAcceptedCaptainVoiceDm, sendSeatAssignmentDm } from "../services/discord.js";
 import { cleanupOperationVoiceChannels, deleteOperationVoiceChannel, launchOperationVoiceChannels, moveOperationCrewToVoiceChannels, renameOperationVoiceChannel } from "../services/voiceBots.js";
 import { issueUnitLivekitToken, issueGlobalVoiceToken } from "../services/livekit.js";
-import { loadCompanionSession } from "../auth/companionSession.js";
+import { createCompanionSession, loadCompanionSession } from "../auth/companionSession.js";
 import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../services/discord.js";
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
@@ -49,6 +49,36 @@ function shipSizeLabel(ship: Pick<Ship, "size" | "rawJson">): string {
     // Ignore invalid legacy cache rows.
   }
   return "";
+}
+
+async function captainsWhoseEventRolesCanBeRemoved(operationId: string): Promise<string[]> {
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    select: {
+      guildId: true,
+      units: { where: { status: "accepted" }, select: { captainId: true } },
+    },
+  });
+  if (!op) return [];
+
+  const captainIds = Array.from(new Set(op.units.map((unit) => unit.captainId)));
+  const removable: string[] = [];
+  for (const captainId of captainIds) {
+    const otherActiveUnit = await prisma.fleetUnit.findFirst({
+      where: {
+        captainId,
+        status: "accepted",
+        operationId: { not: operationId },
+        operation: {
+          guildId: op.guildId,
+          status: { in: ["open", "locked", "in_progress"] },
+        },
+      },
+      select: { id: true },
+    });
+    if (!otherActiveUnit) removable.push(captainId);
+  }
+  return removable;
 }
 
 export async function apiRoutes(app: FastifyInstance) {
@@ -188,7 +218,7 @@ export async function apiRoutes(app: FastifyInstance) {
         where: { id: req.params.unitId, operationId: req.params.id },
         include: {
           ship: true,
-          operation: { select: { id: true, title: true } },
+          operation: { select: { id: true, title: true, guildId: true } },
         },
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
@@ -196,12 +226,15 @@ export async function apiRoutes(app: FastifyInstance) {
       const env = getEnv();
       const unitName = unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
       const operationUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${unit.operation.id}`;
+      const companionToken = await createCompanionSession(unit.captainId);
+      const companionConfigUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/companion/configure?token=${encodeURIComponent(companionToken)}`;
       Promise.allSettled([
-        assignCaptainDiscordRole(unit.captainId, "commander"),
+        assignCaptainDiscordRole(unit.captainId, unit.operation.guildId, "commander"),
         sendAcceptedCaptainVoiceDm(unit.captainId, {
           operationTitle: unit.operation.title,
           unitName,
           operationUrl,
+          companionConfigUrl,
         }),
       ]).then((results) => {
         for (const result of results) {
@@ -243,7 +276,7 @@ export async function apiRoutes(app: FastifyInstance) {
 
       const unit = await prisma.fleetUnit.findFirst({
         where: { id: req.params.unitId, operationId: req.params.id },
-        select: { status: true, captainId: true },
+        select: { status: true, captainId: true, operation: { select: { guildId: true } } },
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       if (unit.status !== "accepted") {
@@ -251,7 +284,7 @@ export async function apiRoutes(app: FastifyInstance) {
       }
 
       try {
-        await assignCaptainDiscordRole(unit.captainId, role);
+        await assignCaptainDiscordRole(unit.captainId, unit.operation.guildId, role);
         return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Discord+role+assigned.`), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to assign Discord role";
@@ -361,11 +394,13 @@ export async function apiRoutes(app: FastifyInstance) {
       if (newStatus === "completed" || newStatus === "cancelled") {
         try {
           const cleanup = await cleanupOperationVoiceChannels(req.params.id);
+          const removableCaptainIds = await captainsWhoseEventRolesCanBeRemoved(req.params.id);
+          await Promise.allSettled(removableCaptainIds.map((userId) => removeCaptainDiscordRoles(userId, updated.guildId)));
           const skipped = cleanup.skippedDiscordUsers
             ? `+${cleanup.skippedDiscordUsers}+users+had+no+Discord+identity.`
             : "";
           return reply.redirect(
-            basePath(`/ops/${req.params.id}?flash=ok:Status+updated.+Deleted+${cleanup.deleted}+voice+channels,+disconnected+${cleanup.disconnected}+crew.${skipped}`),
+            basePath(`/ops/${req.params.id}?flash=ok:Status+updated.+Deleted+${cleanup.deleted}+voice+channels,+disconnected+${cleanup.disconnected}+crew,+removed+${removableCaptainIds.length}+captain+voice+roles.${skipped}`),
             302,
           );
         } catch (err: unknown) {
@@ -818,12 +853,14 @@ export async function apiRoutes(app: FastifyInstance) {
         const ut = await issueUnitLivekitToken(userId, op.id, activeUnit.id);
         if (ut) unitRoom = { ...ut, opTitle: op.title };
 
-        // Global voice: only if guild has a globalVoiceRoleId AND user holds the role
-        if (guild.globalVoiceRoleId) {
+        // Global voice: dedicated Globaltalk role if configured; otherwise
+        // fall back to the Admiral mapping role for older guild settings.
+        const globalVoiceRoleId = guild.globalVoiceRoleId ?? guild.admiralRoleId;
+        if (globalVoiceRoleId) {
           try {
             const discordId = await discordUserIdForFleetplannerUser(userId);
             const roles = await fetchGuildMemberRoles(op.guildId, discordId);
-            if (roles?.includes(guild.globalVoiceRoleId)) {
+            if (roles?.includes(globalVoiceRoleId)) {
               const gvt = await issueGlobalVoiceToken(userId, op.id);
               if (gvt) globalVoice = gvt;
             }

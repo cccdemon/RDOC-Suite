@@ -55,7 +55,7 @@ export async function registerOAuthRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(503).send({
         error: "oauth_not_configured",
         message:
-          "Bridge is missing Discord OAuth credentials (DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_BOT_TOKEN, OAUTH_REDIRECT_URI).",
+          "Bridge is missing Discord OAuth credentials (DISCORD_RDOCRTC_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_RDOCRTC_BOT_TOKEN, OAUTH_REDIRECT_URI).",
       });
     }
 
@@ -81,7 +81,7 @@ export async function registerOAuthRoutes(app: FastifyInstance): Promise<void> {
     });
 
     const url = buildAuthorizeUrl({
-      clientId: oauth.DISCORD_CLIENT_ID,
+      clientId: oauth.DISCORD_RDOCRTC_CLIENT_ID,
       redirectUri: oauth.OAUTH_REDIRECT_URI,
       state,
     });
@@ -117,7 +117,7 @@ export async function registerOAuthRoutes(app: FastifyInstance): Promise<void> {
     reply.clearCookie(STATE_COOKIE, { path: `${getEnv().PUBLIC_BASE_PATH}/auth` });
 
     const tokenRes = await exchangeCodeForToken({
-      clientId: oauth.DISCORD_CLIENT_ID,
+      clientId: oauth.DISCORD_RDOCRTC_CLIENT_ID,
       clientSecret: oauth.DISCORD_CLIENT_SECRET,
       redirectUri: oauth.OAUTH_REDIRECT_URI,
       code: parsed.data.code,
@@ -147,7 +147,7 @@ export async function registerOAuthRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const memberRes = await fetchGuildMember({
-      botToken: oauth.DISCORD_BOT_TOKEN,
+      botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
       guildId: cookie.guildId,
       userId,
     });

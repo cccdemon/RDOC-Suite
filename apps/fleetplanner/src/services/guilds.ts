@@ -3,7 +3,7 @@
 // active guild for a request.
 
 import { prisma } from "../db.js";
-import { fetchGuildBasic, fetchGuildMemberRoles } from "./discord.js";
+import { discordUserIdForFleetplannerUser, fetchGuildBasic, fetchGuildMemberRoles } from "./discord.js";
 
 export type GuildRole = "fleetoperator" | "captain" | "crew";
 
@@ -80,7 +80,8 @@ export async function syncUserGuildMemberships(userId: string, discordGuildIds: 
     let role: GuildRole = isOwner ? "fleetoperator" : "crew";
 
     if (!isOwner && (guild.admiralRoleId || guild.captainRoleId)) {
-      const roleIds = await fetchGuildMemberRoles(guild.id, userId).catch(() => null);
+      const discordUserId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
+      const roleIds = discordUserId ? await fetchGuildMemberRoles(guild.id, discordUserId).catch(() => null) : null;
       if (roleIds) {
         const mapped = mapDiscordRole(guild, roleIds);
         if (mapped) role = mapped;

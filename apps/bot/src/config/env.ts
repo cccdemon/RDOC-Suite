@@ -2,10 +2,10 @@ import "dotenv/config";
 import { z } from "zod";
 
 const envSchema = z.object({
-  DISCORD_BOT_TOKEN: z.string().min(1, "DISCORD_BOT_TOKEN is required"),
-  DISCORD_CLIENT_ID: z
+  DISCORD_RDOCRTC_BOT_TOKEN: z.string().min(1, "DISCORD_RDOCRTC_BOT_TOKEN is required"),
+  DISCORD_RDOCRTC_CLIENT_ID: z
     .string()
-    .regex(/^[0-9]{17,20}$/, "DISCORD_CLIENT_ID must be a Discord snowflake"),
+    .regex(/^[0-9]{17,20}$/, "DISCORD_RDOCRTC_CLIENT_ID must be a Discord snowflake"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   // Internal bridge endpoint for real-time voice-state push.
   // BRIDGE_INTERNAL_URL: in docker-compose typically http://bridge:8787

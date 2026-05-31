@@ -4,9 +4,9 @@ import { buildApp } from "../app.js";
 import { resetEnvCache } from "../config/env.js";
 
 const OAUTH_ENV = {
-  DISCORD_CLIENT_ID: "100000000000000000",
+  DISCORD_RDOCRTC_CLIENT_ID: "100000000000000000",
   DISCORD_CLIENT_SECRET: "test-client-secret",
-  DISCORD_BOT_TOKEN: "test-bot-token",
+  DISCORD_RDOCRTC_BOT_TOKEN: "test-bot-token",
   OAUTH_REDIRECT_URI: "http://localhost:8787/auth/callback",
   COMPANION_REDIRECT_URI: "dccc://auth",
 };
@@ -66,7 +66,7 @@ describe("GET /auth/start", () => {
     expect(res.statusCode).toBe(302);
     const location = res.headers.location as string;
     expect(location.startsWith("https://discord.com/oauth2/authorize")).toBe(true);
-    expect(location).toContain(`client_id=${OAUTH_ENV.DISCORD_CLIENT_ID}`);
+    expect(location).toContain(`client_id=${OAUTH_ENV.DISCORD_RDOCRTC_CLIENT_ID}`);
     expect(location).toContain("scope=identify+guilds.members.read");
     expect(location).toContain("state=");
     expect(res.cookies.find((c) => c.name === "dccc_oauth_state")).toBeDefined();

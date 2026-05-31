@@ -41,13 +41,43 @@ docker compose -f docker-compose.prod.yml logs -f fleetplanner
 
 Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md mehr.
 
+## Discord Bots — NIE verwechseln
+
+| Bot | Env-Vars | Container | Zweck |
+|---|---|---|---|
+| **RDOC-RTC Bot** (App `1509191397264064689`) | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY` | `rdoc-suite-bot` | Slash-Commands (`/cc`), Companion Bridge-Auth OAuth, Companion Fleet-OAuth (`DISCORD_COMPANION_BOT_ID/KEY` = selbe App) |
+| **Fleetmanager Bot** | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | — (im fleetplanner) | Discord-Events erstellen, Voice-Channels, Rollen verwalten |
+| **Relay Bot** | `DISCORD_RELAY_BOT_TOKEN` | `rdoc-suite-relay-bots` | Voice-Audio in Discord-Channels relayieren |
+| **Voice Bots (Funkrelais)** | verschlüsselt in DB (`GuildVoiceBot`) | — | 6 Bots für Crew-Voice-Channels pro Operation |
+
+### Erforderliche Bot-Permissions
+
+**RDOC-RTC Bot** — Scopes: `bot applications.commands`
+- Intents: `Guilds`, `GuildVoiceStates` (non-privileged, kein Portal-Toggle nötig)
+- Permissions: `Send Messages`, `Read Message History`, `View Channel`
+
+**Fleetmanager Bot** — Scopes: `bot applications.commands`
+- Permissions (bitfield `549822808112`):
+  `MANAGE_CHANNELS`, `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`,
+  `CONNECT`, `MOVE_MEMBERS`, `MANAGE_ROLES`, `MANAGE_EVENTS`
+- Intents: `Guilds`, `GuildVoiceStates`
+
+**Relay Bot** — Scopes: `bot`
+- Intents: `Guilds`, `GuildVoiceStates`
+- Permissions: `VIEW_CHANNEL`, `CONNECT`, `SPEAK`
+
+**Voice Bots (Funkrelais)** — Scopes: `bot`
+- Permissions: `VIEW_CHANNEL`, `CONNECT` (werden per Channel-PermissionOverwrite gesetzt)
+
+**Token 401 → immer:** Discord Developer Portal → richtige App → Bot → Reset Token → `.env` updaten → Container neu starten.
+
 ## Regeln für Claude Code — immer befolgen
 
 1. **Mergelog zuerst, immer.** Vor JEDER Änderung: Queued-Eintrag in `docs/RDOC-SUITE-MERGELOG.md`. Keine Ausnahmen.
 
 2. **RDOC-Suite ≠ DCCC.** Nie verwechseln (siehe Deploy-Regeln oben).
 
-3. **User deployt selbst.** Artifacts im Repo vorbereiten. Kein SSH in Prod.
+3. **SSH in Prod erlaubt.** SSH-Key vorhanden. Server: `10.10.10.99`, Pfad: `/opt/RDOC-Suite`.
 
 4. **Kein lokales pnpm/npm/cargo.** Docker baut alles server-seitig. Dockerfile bootstrappt sich selbst.
 

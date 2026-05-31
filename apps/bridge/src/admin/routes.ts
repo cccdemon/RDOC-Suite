@@ -225,7 +225,7 @@ async function getAdminDisplayNames(
   await Promise.all(
     userIds.map(async (userId) => {
       const res = await fetchGuildMember({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId,
         userId,
       });
@@ -317,7 +317,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       setLoginStateCookie(reply, encodeState({ state, return_to: returnTo }));
       const redirectUri = deriveOAuthRedirectUri("/oauth/callback");
       const url = buildAuthorizeUrl({
-        clientId: oauth.DISCORD_CLIENT_ID,
+        clientId: oauth.DISCORD_RDOCRTC_CLIENT_ID,
         redirectUri,
         state,
         scope: "identify",
@@ -351,7 +351,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     }
     const redirectUri = deriveOAuthRedirectUri("/oauth/callback");
     const tokenRes = await exchangeCodeForToken({
-      clientId: oauth.DISCORD_CLIENT_ID,
+      clientId: oauth.DISCORD_RDOCRTC_CLIENT_ID,
       clientSecret: oauth.DISCORD_CLIENT_SECRET,
       redirectUri,
       code: parsed.data.code,
@@ -412,7 +412,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       setInviteStateCookie(reply, encodeState({ state, token: request.params.token }));
       const redirectUri = deriveOAuthRedirectUri("/invite/callback");
       const url = buildAuthorizeUrl({
-        clientId: oauth.DISCORD_CLIENT_ID,
+        clientId: oauth.DISCORD_RDOCRTC_CLIENT_ID,
         redirectUri,
         state,
         scope: "identify",
@@ -454,7 +454,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     }
     const redirectUri = deriveOAuthRedirectUri("/invite/callback");
     const tokenRes = await exchangeCodeForToken({
-      clientId: oauth.DISCORD_CLIENT_ID,
+      clientId: oauth.DISCORD_RDOCRTC_CLIENT_ID,
       clientSecret: oauth.DISCORD_CLIENT_SECRET,
       redirectUri,
       code: parsed.data.code,
@@ -858,7 +858,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       // generate noise in the Discord audit log for roles they never
       // held in the first place.
       const memberRes = await fetchGuildMember({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId: session.guildId,
         userId: request.params.userId,
       });
@@ -879,7 +879,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       const results = await Promise.all(
         toStrip.map((roleId) =>
           removeGuildMemberRole({
-            botToken: oauth.DISCORD_BOT_TOKEN,
+            botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
             guildId: session.guildId,
             userId: request.params.userId,
             roleId,
@@ -1080,7 +1080,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         return;
       }
       const result = await modifyChannel({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         channelId: request.params.channelId,
         body: { name: parsed.data.name },
       });
@@ -1143,7 +1143,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       }
       const fn = parsed.data.action === "add" ? addGuildMemberRole : removeGuildMemberRole;
       const result = await fn({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId: session.guildId,
         userId: request.params.userId,
         roleId: parsed.data.roleId,
@@ -1190,7 +1190,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         return;
       }
       const result = await moveGuildMember({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId: session.guildId,
         userId: request.params.userId,
         channelId: parsed.data.channelId,
@@ -1478,7 +1478,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
         `Hey! Hier dein Companion-Download für RDOC Squad Link:\n${landingUrl}\n\n` +
         `Der Link ist einmalig gültig (7 Tage). Falls er nicht funktioniert, melde dich bei einem Admin.`;
       const sent = await sendDirectMessage({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         userId: request.params.userId,
         content,
       });
@@ -1592,7 +1592,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
     const [channels, voiceRows] = await Promise.all([
-      getCachedChannels(session.guildId, oauth.DISCORD_BOT_TOKEN),
+      getCachedChannels(session.guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN),
       getPrisma().userVoiceState.findMany({
         where: { guildId: session.guildId, channelId: { not: null } },
       }),
@@ -1616,7 +1616,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       reply.send({ roles: [] });
       return;
     }
-    const roles = await getCachedRoles(session.guildId, oauth.DISCORD_BOT_TOKEN);
+    const roles = await getCachedRoles(session.guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN);
     reply.send({ roles: roles.map((r) => ({ id: r.id, name: r.name })) });
   });
 
@@ -1632,7 +1632,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       }
       const channelId = (request.body as { channelId?: string | null })?.channelId ?? null;
       const res = await moveGuildMember({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId: session.guildId,
         userId: request.params.userId,
         channelId,
@@ -1654,7 +1654,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       const oauth = getOAuthEnv();
       if (!oauth) { reply.code(503).send({ error: "discord_not_configured" }); return; }
       const res = await addGuildMemberRole({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId: session.guildId,
         userId: request.params.userId,
         roleId: request.params.roleId,
@@ -1676,7 +1676,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       const oauth = getOAuthEnv();
       if (!oauth) { reply.code(503).send({ error: "discord_not_configured" }); return; }
       const res = await removeGuildMemberRole({
-        botToken: oauth.DISCORD_BOT_TOKEN,
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
         guildId: session.guildId,
         userId: request.params.userId,
         roleId: request.params.roleId,
@@ -1784,7 +1784,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       reply.code(403).send({ error: "channel_not_in_allowed_list" });
       return;
     }
-    const channels = await getCachedChannels(session.guildId, oauth.DISCORD_BOT_TOKEN);
+    const channels = await getCachedChannels(session.guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN);
     const positions = channels
       .filter((c) => allowed.has(c.id))
       .map((c) => ({ id: c.id, position: c.position ?? 0 }))
@@ -1792,7 +1792,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     const slots = positions.map((p) => p.position);
     const items = parsed.data.ordered.map((id, i) => ({ id, position: slots[i] ?? i }));
     const result = await bulkModifyChannelPositions({
-      botToken: oauth.DISCORD_BOT_TOKEN,
+      botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
       guildId: session.guildId,
       items,
     });
@@ -1920,7 +1920,7 @@ async function loadDashboardData(guildId: string): Promise<
     try {
       const url = `https://discord.com/api/v10/guilds/${guildId}/members?limit=1000`;
       const res = await fetch(url, {
-        headers: { authorization: `Bot ${oauth.DISCORD_BOT_TOKEN}` },
+        headers: { authorization: `Bot ${oauth.DISCORD_RDOCRTC_BOT_TOKEN}` },
       });
       if (res.ok) {
         const raw: unknown = await res.json();
@@ -1992,8 +1992,8 @@ async function loadDashboardData(guildId: string): Promise<
   let commanderRoles: DashboardData["commanderRoles"] = [];
   if (oauth) {
     const [channels, roles, voiceRows] = await Promise.all([
-      getCachedChannels(guildId, oauth.DISCORD_BOT_TOKEN),
-      getCachedRoles(guildId, oauth.DISCORD_BOT_TOKEN),
+      getCachedChannels(guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN),
+      getCachedRoles(guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN),
       getPrisma().userVoiceState.findMany({ where: { guildId } }),
     ]);
     if (channels.length > 0) {

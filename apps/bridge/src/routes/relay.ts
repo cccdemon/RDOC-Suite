@@ -97,7 +97,7 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
     const queryGuildId = (request.query as Record<string, string>).guildId;
     const guildId = queryGuildId || config.guildId || env.RELAY_GUILD_ID;
     const requiredRoleId = env.RELAY_REQUIRED_ROLE_ID;
-    const botToken = env.RELAY_DISCORD_BOT_TOKEN ?? config.bots[0]?.token;
+    const botToken = env.RELAY_DISCORD_RDOCRTC_BOT_TOKEN ?? config.bots[0]?.token;
 
     // If RELAY_REQUIRED_ROLE_ID is set, the user must hold that Discord role.
     if (requiredRoleId) {

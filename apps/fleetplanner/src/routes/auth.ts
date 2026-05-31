@@ -7,11 +7,19 @@ import {
 import type { OAuthProvider } from "../auth/providers.js";
 import { resolveIdentity, linkIdentity } from "../auth/identity.js";
 import { createSession, destroySession, setSessionCookie, clearSessionCookie } from "../auth/session.js";
-import { createCompanionSession } from "../auth/companionSession.js";
+import { createCompanionSession, loadCompanionSession } from "../auth/companionSession.js";
 import { requireAuth } from "../auth/middleware.js";
 
 const STATE_COOKIE = "fp_oauth_state";
 const LINK_INTENT_COOKIE = "fp_link_provider";
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 function cookieOpts(env: ReturnType<typeof getEnv>) {
   return {
@@ -154,6 +162,45 @@ export async function authRoutes(app: FastifyInstance) {
     return reply.redirect(basePath(`/auth/discord/callback${qs ? "?" + qs : ""}`), 302);
   });
 
+  app.get<{ Querystring: { token?: string } }>("/companion/configure", async (req, reply) => {
+    const token = req.query.token?.trim() ?? "";
+    const userId = await loadCompanionSession(token);
+    const env = getEnv();
+    const deepLink = userId ? `dccc://fleet-auth?token=${encodeURIComponent(token)}` : "";
+    const downloadUrl = env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL ?? "";
+    const escapedDeepLink = escapeHtml(deepLink);
+    const escapedDownloadUrl = escapeHtml(downloadUrl);
+    reply.type("text/html; charset=utf-8").send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RDOC Squad Link Configuration</title>
+  ${deepLink ? `<meta http-equiv="refresh" content="0; url=${escapedDeepLink}" />` : ""}
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #05080b; color: #e8f7ff; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    main { width: min(560px, calc(100vw - 32px)); border: 1px solid #08384a; padding: 28px; background: #071017; }
+    h1 { margin: 0 0 14px; color: #00d8ff; font-size: 22px; }
+    p { color: #8ea7b8; line-height: 1.5; }
+    a { color: #00ff9c; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+    .btn { display: inline-block; border: 1px solid #0b5b74; padding: 10px 14px; text-decoration: none; color: #e8f7ff; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>RDOC Squad Link</h1>
+    ${
+      deepLink
+        ? `<p>The Companion configuration was created. If the app is installed, it should open automatically and connect to Fleetplanner.</p>
+           <div class="actions"><a class="btn" href="${escapedDeepLink}">Open Companion</a>${downloadUrl ? `<a class="btn" href="${escapedDownloadUrl}">Download app</a>` : ""}</div>`
+        : `<p>This Companion configuration link is invalid or expired.</p>${downloadUrl ? `<div class="actions"><a class="btn" href="${escapedDownloadUrl}">Download app</a></div>` : ""}`
+    }
+  </main>
+</body>
+</html>`);
+  });
+
   // ── Companion app OAuth (uses RDOC-RTC Bot: DISCORD_COMPANION_BOT_ID/KEY) ────
   // Opens Discord OAuth in the companion's embedded WebView2. On success,
   // redirects to dccc://fleet-auth?token=<bearer> which the Rust on_navigation
@@ -237,6 +284,8 @@ export async function authRoutes(app: FastifyInstance) {
           provider: "discord",
           providerId: discordUser.id,
           username: discordUser.global_name ?? discordUser.username ?? discordUser.id,
+          email: null,
+          avatarUrl: null,
         });
         if (!result.ok) {
           return reply.redirect("dccc://fleet-auth?error=account_disabled", 302);
