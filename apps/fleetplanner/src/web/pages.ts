@@ -194,6 +194,8 @@ export function opDetailPage(opts: {
   availableVoiceBotCount: number;
   voiceEnabled: boolean;
   missionVoice?: { globalVoiceRoom: string | null; commanderVoiceRoom: string | null } | null;
+  /** Fleet voice links per eligible user — only passed for fleetoperator+ views */
+  fleetVoiceLinks?: Array<{ userId: string; username: string; link: string }> | null;
   viewAsRole?: string;
 }): SafeHtml {
   const bp = opts.basePath;
@@ -541,7 +543,18 @@ export function opDetailPage(opts: {
           <div class="text-mono text-sm">${opts.missionVoice.globalVoiceRoom}</div>
           <div class="text-sm text-dim">Commander Channel <span class="tag tag-green">LIVE</span></div>
           <div class="text-mono text-sm">${opts.missionVoice.commanderVoiceRoom ?? "—"}</div>
-        </div>` : html`
+        </div>
+        ${opts.fleetVoiceLinks?.length ? html`
+        <div style="margin-top:1rem">
+          <div class="text-sm text-dim" style="margin-bottom:.5rem">Fleet Voice Links — copy and send to each commander:</div>
+          <div style="display:flex;flex-direction:column;gap:.4rem">
+            ${opts.fleetVoiceLinks.map((l) => html`
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <span class="text-sm" style="min-width:8rem">${l.username}</span>
+                <input type="text" readonly value="${l.link}" class="text-mono text-sm" style="flex:1;padding:.2rem .4rem;font-size:.7rem" onclick="this.select()" />
+              </div>`)}
+          </div>
+        </div>` : safe("")}` : html`
         <p class="text-dim text-sm">No active voice session. Rooms are created automatically when the operation is set to <strong>open</strong> or <strong>in progress</strong>.</p>`}
     </div>` : safe("");
 

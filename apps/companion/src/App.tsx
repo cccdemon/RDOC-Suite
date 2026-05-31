@@ -19,6 +19,7 @@ import { UpdateModal } from "./components/UpdateModal";
 import {
   clearSession,
   clearFleetplannerToken,
+  clearMissionConfig,
   loadSettings,
   saveAfk,
   saveAudioPrefs,
@@ -29,6 +30,9 @@ import {
   saveFleetplannerUrl,
   saveGuilds,
   saveHotkey,
+  saveMissionConfig,
+  saveCommanderHotkey,
+  saveGlobalHotkey,
   saveOutputMuted,
   saveRemoteVolumes,
   saveRelayHotkey,
@@ -52,6 +56,8 @@ import { RelayAudio, type RelayStatus } from "./lib/relayAudio";
 import { FleetAudio, type FleetStatus } from "./lib/fleetAudio";
 import { startFleetOAuthInWebview } from "./lib/fleetplannerAuth";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { MissionVoicePanel } from "./components/MissionVoicePanel";
+import { MissionLinkModal } from "./components/MissionLinkModal";
 
 type AppState = {
   bridgeUrl: string;
@@ -101,6 +107,19 @@ type AppState = {
   fleetplannerToken: string | null;
   globalFleetStatus: FleetStatus;
   globalFleetPttActive: boolean;
+  // ── Mission Voice (Fleetcommander mode) ─────────────────────────────
+  missionActive: boolean;
+  missionOpTitle: string | null;
+  missionHasCommander: boolean;
+  commanderStatus: FleetStatus;
+  globalMissionStatus: FleetStatus;
+  commanderPttActive: boolean;
+  globalMissionPttActive: boolean;
+  commanderHotkey: string;
+  globalHotkey: string;
+  missionToken: string | null;
+  missionUrl: string | null;
+  missionEnded: boolean;
 };
 
 const INITIAL: AppState = {
@@ -137,6 +156,18 @@ const INITIAL: AppState = {
   fleetplannerToken: null,
   globalFleetStatus: "idle",
   globalFleetPttActive: false,
+  missionActive: false,
+  missionOpTitle: null,
+  missionHasCommander: false,
+  commanderStatus: "idle",
+  globalMissionStatus: "idle",
+  commanderPttActive: false,
+  globalMissionPttActive: false,
+  commanderHotkey: "Mouse5",
+  globalHotkey: "F9",
+  missionToken: null,
+  missionUrl: null,
+  missionEnded: false,
 };
 
 export function App(): JSX.Element {
@@ -161,6 +192,12 @@ export function App(): JSX.Element {
   const globalFleetRef = useRef<FleetAudio | null>(null);
   const currentFleetRoomRef = useRef<string | null>(null);
   const currentGlobalRoomRef = useRef<string | null>(null);
+  // Mission voice refs
+  const missionCommanderRef = useRef<FleetAudio | null>(null);
+  const missionGlobalRef = useRef<FleetAudio | null>(null);
+  const currentMissionCommanderRoomRef = useRef<string | null>(null);
+  const currentMissionGlobalRoomRef = useRef<string | null>(null);
+  const [showMissionModal, setShowMissionModal] = useState(false);
   const stateRef = useRef<AppState>(INITIAL);
   stateRef.current = state;
   /** Set of remote-commander userIds that were `speaking=true` in the
@@ -488,6 +525,10 @@ export function App(): JSX.Element {
         duckingTargetVolumePct: settings.duckingTargetVolumePct,
         fleetplannerUrl: settings.fleetplannerUrl,
         fleetplannerToken: settings.fleetplannerToken ?? null,
+        missionToken: settings.missionToken ?? null,
+        missionUrl: settings.missionUrl ?? null,
+        commanderHotkey: settings.commanderHotkey,
+        globalHotkey: settings.globalHotkey,
       }));
     })();
 
@@ -498,6 +539,8 @@ export function App(): JSX.Element {
       void audioRef.current?.disconnect();
       void fleetRef.current?.disconnect();
       void globalFleetRef.current?.disconnect();
+      void missionCommanderRef.current?.disconnect();
+      void missionGlobalRef.current?.disconnect();
     };
   }, []);
 
@@ -825,6 +868,178 @@ export function App(): JSX.Element {
     void globalFleetRef.current?.setPttActive(pressed);
   }, []);
 
+  // ── Mission voice PTT ────────────────────────────────────────────────
+  const onCommanderPtt = useCallback((pressed: boolean) => {
+    setState((s) => ({ ...s, commanderPttActive: pressed }));
+    void missionCommanderRef.current?.setPttActive(pressed);
+  }, []);
+
+  const onGlobalMissionPtt = useCallback((pressed: boolean) => {
+    setState((s) => ({ ...s, globalMissionPttActive: pressed }));
+    void missionGlobalRef.current?.setPttActive(pressed);
+  }, []);
+
+  // ── Mission disconnect ───────────────────────────────────────────────
+  const onMissionDisconnect = useCallback(async () => {
+    await missionCommanderRef.current?.disconnect();
+    await missionGlobalRef.current?.disconnect();
+    currentMissionCommanderRoomRef.current = null;
+    currentMissionGlobalRoomRef.current = null;
+    await clearMissionConfig();
+    setState((s) => ({
+      ...s,
+      missionActive: false,
+      missionOpTitle: null,
+      missionHasCommander: false,
+      commanderStatus: "idle",
+      globalMissionStatus: "idle",
+      commanderPttActive: false,
+      globalMissionPttActive: false,
+      missionToken: null,
+      missionUrl: null,
+      missionEnded: false,
+    }));
+  }, []);
+
+  // ── Apply fleet-voice deep link ──────────────────────────────────────
+  const onMissionLinkApply = useCallback(async (token: string, url: string) => {
+    await saveMissionConfig(token, url);
+    setState((s) => ({ ...s, missionToken: token, missionUrl: url, missionEnded: false }));
+    setShowMissionModal(false);
+  }, []);
+
+  // ── Mission voice polling effect ─────────────────────────────────────
+  useEffect(() => {
+    if (!state.missionToken || !state.missionUrl) return;
+
+    type MissionRoom = { room: string; token: string };
+    type MissionVoiceResponse = {
+      op: null | {
+        opId: string;
+        opTitle: string;
+        livekitUrl: string;
+        globalRoom: MissionRoom;
+        commanderRoom: MissionRoom | null;
+      };
+    };
+
+    const poll = async (): Promise<void> => {
+      const base = state.missionUrl!.replace(/\/+$/, "");
+      try {
+        const res = await fetch(`${base}/api/companion/mission-voice`, {
+          headers: { Authorization: `Bearer ${state.missionToken}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json() as MissionVoiceResponse;
+
+        if (!data.op) {
+          // No active session — disconnect + mark ended if we were active
+          if (stateRef.current.missionActive) {
+            await missionCommanderRef.current?.disconnect();
+            await missionGlobalRef.current?.disconnect();
+            currentMissionCommanderRoomRef.current = null;
+            currentMissionGlobalRoomRef.current = null;
+            setState((s) => ({
+              ...s,
+              missionActive: false,
+              missionOpTitle: null,
+              missionHasCommander: false,
+              commanderStatus: "idle",
+              globalMissionStatus: "idle",
+              commanderPttActive: false,
+              globalMissionPttActive: false,
+              missionEnded: true,
+            }));
+          }
+          return;
+        }
+
+        const { opTitle, livekitUrl, globalRoom, commanderRoom } = data.op;
+
+        // Global room
+        if (currentMissionGlobalRoomRef.current !== globalRoom.room ||
+            missionGlobalRef.current?.getStatus() === "idle") {
+          if (!missionGlobalRef.current) {
+            const fa = new FleetAudio();
+            fa.setStatusListener((s) => setState((st) => ({ ...st, globalMissionStatus: s })));
+            missionGlobalRef.current = fa;
+          }
+          await missionGlobalRef.current.connect(livekitUrl, globalRoom.token);
+          currentMissionGlobalRoomRef.current = globalRoom.room;
+        }
+
+        // Commander room (only if returned)
+        if (commanderRoom) {
+          if (currentMissionCommanderRoomRef.current !== commanderRoom.room ||
+              missionCommanderRef.current?.getStatus() === "idle") {
+            if (!missionCommanderRef.current) {
+              const fa = new FleetAudio();
+              fa.setStatusListener((s) => setState((st) => ({ ...st, commanderStatus: s })));
+              missionCommanderRef.current = fa;
+            }
+            await missionCommanderRef.current.connect(livekitUrl, commanderRoom.token);
+            currentMissionCommanderRoomRef.current = commanderRoom.room;
+          }
+        } else if (missionCommanderRef.current?.getStatus() !== "idle") {
+          await missionCommanderRef.current?.disconnect();
+          currentMissionCommanderRoomRef.current = null;
+        }
+
+        setState((s) => ({
+          ...s,
+          missionActive: true,
+          missionOpTitle: opTitle,
+          missionHasCommander: Boolean(commanderRoom),
+          missionEnded: false,
+        }));
+      } catch {
+        // network error — retry on next tick
+      }
+    };
+
+    void poll();
+    const interval = setInterval(() => void poll(), 30_000);
+    return () => clearInterval(interval);
+  }, [state.missionToken, state.missionUrl]);
+
+  // ── Commander hotkey (keyboard) ──────────────────────────────────────
+  useEffect(() => {
+    const hotkey = state.commanderHotkey;
+    if (!hotkey || isMouseHotkey(hotkey) || !state.missionActive) return;
+    const onDown = (e: KeyboardEvent): void => {
+      if (e.repeat) return;
+      if (formatKeyboardAccelerator(e) === hotkey) { e.preventDefault(); onCommanderPtt(true); }
+    };
+    const onUp = (e: KeyboardEvent): void => {
+      if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onCommanderPtt(false); }
+    };
+    window.addEventListener("keydown", onDown, true);
+    window.addEventListener("keyup", onUp, true);
+    return () => {
+      window.removeEventListener("keydown", onDown, true);
+      window.removeEventListener("keyup", onUp, true);
+    };
+  }, [state.commanderHotkey, state.missionActive, onCommanderPtt]);
+
+  // ── Global mission hotkey (keyboard) ────────────────────────────────
+  useEffect(() => {
+    const hotkey = state.globalHotkey;
+    if (!hotkey || isMouseHotkey(hotkey) || !state.missionActive) return;
+    const onDown = (e: KeyboardEvent): void => {
+      if (e.repeat) return;
+      if (formatKeyboardAccelerator(e) === hotkey) { e.preventDefault(); onGlobalMissionPtt(true); }
+    };
+    const onUp = (e: KeyboardEvent): void => {
+      if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onGlobalMissionPtt(false); }
+    };
+    window.addEventListener("keydown", onDown, true);
+    window.addEventListener("keyup", onUp, true);
+    return () => {
+      window.removeEventListener("keydown", onDown, true);
+      window.removeEventListener("keyup", onUp, true);
+    };
+  }, [state.globalHotkey, state.missionActive, onGlobalMissionPtt]);
+
   const onSignOut = useCallback(async () => {
     await clearSession();
     void relayRef.current?.disconnect();
@@ -847,6 +1062,8 @@ export function App(): JSX.Element {
       let nextFleetplannerUrl = state.fleetplannerUrl;
       let nextHotkey = state.hotkey;
       let nextRelayHotkey = state.relayHotkey;
+      let nextCommanderHotkey = state.commanderHotkey;
+      let nextGlobalHotkey = state.globalHotkey;
       if (next.bridgeUrl !== state.bridgeUrl) {
         await saveBridgeUrl(next.bridgeUrl);
         wsRef.current?.setBridgeUrl(next.bridgeUrl);
@@ -870,6 +1087,14 @@ export function App(): JSX.Element {
       if (next.relayHotkey && next.relayHotkey !== state.relayHotkey) {
         await saveRelayHotkey(next.relayHotkey);
         nextRelayHotkey = next.relayHotkey;
+      }
+      if (next.commanderHotkey && next.commanderHotkey !== state.commanderHotkey) {
+        await saveCommanderHotkey(next.commanderHotkey);
+        nextCommanderHotkey = next.commanderHotkey;
+      }
+      if (next.globalHotkey && next.globalHotkey !== state.globalHotkey) {
+        await saveGlobalHotkey(next.globalHotkey);
+        nextGlobalHotkey = next.globalHotkey;
       }
 
       // Audio prefs — persist + hot-apply to the running LiveKit session.
@@ -930,6 +1155,8 @@ export function App(): JSX.Element {
         fleetplannerUrl: nextFleetplannerUrl,
         hotkey: nextHotkey,
         relayHotkey: nextRelayHotkey,
+        commanderHotkey: nextCommanderHotkey,
+        globalHotkey: nextGlobalHotkey,
         device: nextDevice,
         feedbackSoundsEnabled: next.feedbackSoundsEnabled,
         feedbackSoundsVolumePct: next.feedbackSoundsVolumePct,
@@ -943,6 +1170,8 @@ export function App(): JSX.Element {
       state.bridgeUrl,
       state.hotkey,
       state.relayHotkey,
+      state.commanderHotkey,
+      state.globalHotkey,
       state.device,
       state.feedbackSoundsEnabled,
       state.feedbackSoundsVolumePct,
@@ -1146,6 +1375,15 @@ export function App(): JSX.Element {
           ) : null}
           <button
             type="button"
+            className={`cc-btn ${state.missionToken ? "cyan" : "ghost"} sm`}
+            onClick={() => setShowMissionModal(true)}
+            title="Fleet Voice Link einfügen / Mission Voice konfigurieren"
+          >
+            <Icon.radio size={12} />
+            MISSION
+          </button>
+          <button
+            type="button"
             className="cc-btn ghost sm"
             onClick={() => setShowSettings(true)}
             title="Einstellungen"
@@ -1154,6 +1392,12 @@ export function App(): JSX.Element {
           </button>
         </div>
       </header>
+
+      {/* ── Mode banner ─────────────────────────────────────── */}
+      <div className={`cc-mode-banner ${state.missionActive ? "mission" : "bridge"}`}>
+        <Icon.radio size={10} />
+        {state.missionActive ? "MISSION MODE" : "BRIDGE MODE"}
+      </div>
 
       {/* ── Status strip ───────────────────────────────────── */}
       <section className="cc-status-strip">
@@ -1183,6 +1427,24 @@ export function App(): JSX.Element {
         {state.lastError ? <div className="cc-banner error"><Icon.x size={12} />{state.lastError}</div> : null}
         {!state.lastError && audioTransmit ? (
           <div className="cc-banner info"><Icon.radio size={12} />Squad Link aktiv — die anderen Commander hören dich.</div>
+        ) : null}
+        {state.missionEnded && !state.missionActive ? (
+          <div className="cc-banner info"><Icon.x size={12} />MISSION BEENDET — Voice-Session wurde getrennt.</div>
+        ) : null}
+        {state.missionActive ? (
+          <MissionVoicePanel
+            opTitle={state.missionOpTitle}
+            commanderStatus={state.commanderStatus}
+            globalStatus={state.globalMissionStatus}
+            commanderPttActive={state.commanderPttActive}
+            globalPttActive={state.globalMissionPttActive}
+            hasCommanderRoom={state.missionHasCommander}
+            onCommanderPtt={onCommanderPtt}
+            onGlobalPtt={onGlobalMissionPtt}
+            onDisconnect={() => void onMissionDisconnect()}
+            commanderHotkey={state.commanderHotkey}
+            globalHotkey={state.globalHotkey}
+          />
         ) : null}
 
         {!signedIn ? (
@@ -1322,6 +1584,8 @@ export function App(): JSX.Element {
             fleetplannerUrl: state.fleetplannerUrl,
             hotkey: state.hotkey,
             relayHotkey: state.relayHotkey,
+            commanderHotkey: state.commanderHotkey,
+            globalHotkey: state.globalHotkey,
             micDeviceId: state.device.micDeviceId,
             outputDeviceId: state.device.outputDeviceId,
             outputVolumePct: state.device.outputVolumePct,
@@ -1364,6 +1628,12 @@ export function App(): JSX.Element {
           onClose={() => setShowSessionJoin(false)}
           error={sessionJoinError}
           loading={sessionJoinLoading}
+        />
+      ) : null}
+      {showMissionModal ? (
+        <MissionLinkModal
+          onApply={(token, url) => void onMissionLinkApply(token, url)}
+          onClose={() => setShowMissionModal(false)}
         />
       ) : null}
 

@@ -3,6 +3,23 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-05-31: Companion Fleetcommander Mode + Mission Voice Integration
+
+Fleetplanner:
+- GET /api/companion/mission-voice (Bearer companionSession): returns globalRoom+commanderRoom tokens for active op
+- POST /api/companion/generate-voice-link/:userId: SuperAdmin/fleetoperator creates per-user companion session; returns dccc://fleet-voice link
+- Op detail page: "Fleet Voice Links" section (open/in_progress + rooms exist) — shows dccc:// link per accepted captain + per fleetoperator
+- Rust lib.rs: add dccc://fleet-voice?token=...&url=... handler → emits fleet-voice-configured event
+
+Companion:
+- lib/missionVoice.ts: 2 FleetAudio instances (commanderRef, globalRef), polls /api/companion/mission-voice every 30s
+- AppState: add missionActive, missionOpTitle, missionHasCommander, commanderStatus, globalStatus, commanderPttActive, globalPttActive, commanderHotkey, globalHotkey
+- AppState: remove fleetStatus, globalFleetStatus, fleetPttActive, globalFleetPttActive, fleetRoomName (keep FLEET unit room button in bridge mode)
+- components/MissionVoicePanel.tsx: COMMANDER + GLOBAL PTT buttons, op title, DISCONNECT
+- Mode banner: top strip shows "MISSION MODE" (cyan) or "BRIDGE MODE" (dark) at all times
+- Store + Settings: commanderHotkey (default Mouse5), globalHotkey (default F9)
+- Auto-connect on boot via stored missionToken + fleetplannerUrl
+
 ## Queued / Planned Step - 2026-05-31: Fleetplanner Mission Voice Sessions + Voice Permission flag
 
 Schema:

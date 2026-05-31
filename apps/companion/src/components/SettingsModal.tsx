@@ -13,6 +13,8 @@ export type SettingsDraft = {
   fleetplannerUrl: string;
   hotkey: string;
   relayHotkey: string;
+  commanderHotkey: string;
+  globalHotkey: string;
   micDeviceId?: string;
   outputDeviceId?: string;
   outputVolumePct: number;
@@ -215,6 +217,24 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
             </span>
           </div>
         ) : null}
+
+        {/* ── Mission Voice hotkeys ───────────────────────── */}
+        <div className="cc-field">
+          <label className="cc-label">Mission // Commander-Kanal PTT</label>
+          <HotkeyCapture
+            value={draft.commanderHotkey}
+            onChange={(v) => setDraft((d) => ({ ...d, commanderHotkey: v }))}
+          />
+          <span className="cc-hint">PTT für den Commander-Kanal im Mission Mode (nur Flottenleiter + Kapitäne).</span>
+        </div>
+        <div className="cc-field">
+          <label className="cc-label">Mission // Global-Kanal PTT</label>
+          <HotkeyCapture
+            value={draft.globalHotkey}
+            onChange={(v) => setDraft((d) => ({ ...d, globalHotkey: v }))}
+          />
+          <span className="cc-hint">PTT für den Globalkanal im Mission Mode (alle Besatzungsmitglieder + Relay-Bots).</span>
+        </div>
 
         {/* ── Audio: Devices + Volume ────────────────────── */}
         <div className="cc-card" style={{ padding: "12px 14px", marginTop: 4 }}>

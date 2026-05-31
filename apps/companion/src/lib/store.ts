@@ -58,12 +58,20 @@ export type Settings = {
   duckingEnabled: boolean;
   /** Target Discord volume while ducked, 0..100. */
   duckingTargetVolumePct: number;
+  /** Mission voice companion session token (from dccc://fleet-voice link). */
+  missionToken?: string;
+  /** Fleetplanner URL for mission voice (from dccc://fleet-voice link). */
+  missionUrl?: string;
+  /** PTT hotkey for the Commander Channel (mission mode). */
+  commanderHotkey: string;
+  /** PTT hotkey for the Global Channel (mission mode). */
+  globalHotkey: string;
 };
 
 const STORE_FILE = "settings.json";
 const store = new LazyStore(STORE_FILE);
 
-const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceId" | "outputDeviceId" | "fleetplannerToken"> = {
+const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceId" | "outputDeviceId" | "fleetplannerToken" | "missionToken" | "missionUrl"> = {
   bridgeUrl: DEFAULT_BRIDGE_URL,
   fleetplannerUrl: DEFAULT_FLEETPLANNER_URL,
   hotkey: DEFAULT_HOTKEY,
@@ -78,6 +86,8 @@ const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceI
   feedbackSoundsVolumePct: 50,
   duckingEnabled: true,
   duckingTargetVolumePct: 25,
+  commanderHotkey: "Mouse5",
+  globalHotkey: "F9",
 };
 
 /**
@@ -93,6 +103,7 @@ export async function loadSettings(): Promise<Settings> {
     outputMuted, afk,
     feedbackSoundsEnabled, feedbackSoundsVolumePct,
     duckingEnabled, duckingTargetVolumePct,
+    missionToken, missionUrl, commanderHotkey, globalHotkey,
   ] = await Promise.all([
     store.get<string>("bridgeUrl"),
     store.get<string>("fleetplannerUrl"),
@@ -114,6 +125,10 @@ export async function loadSettings(): Promise<Settings> {
     store.get<number>("feedbackSoundsVolumePct"),
     store.get<boolean>("duckingEnabled"),
     store.get<number>("duckingTargetVolumePct"),
+    store.get<string>("missionToken"),
+    store.get<string>("missionUrl"),
+    store.get<string>("commanderHotkey"),
+    store.get<string>("globalHotkey"),
   ]);
   return {
     bridgeUrl: bridgeUrl ?? DEFAULTS.bridgeUrl,
@@ -147,6 +162,10 @@ export async function loadSettings(): Promise<Settings> {
       typeof duckingTargetVolumePct === "number"
         ? duckingTargetVolumePct
         : DEFAULTS.duckingTargetVolumePct,
+    missionToken: missionToken ?? undefined,
+    missionUrl: missionUrl ?? undefined,
+    commanderHotkey: commanderHotkey ?? DEFAULTS.commanderHotkey,
+    globalHotkey: globalHotkey ?? DEFAULTS.globalHotkey,
   };
 }
 
@@ -237,6 +256,28 @@ export async function saveFeedbackSounds(opts: {
   if (typeof opts.volumePct === "number")
     writes.push(store.set("feedbackSoundsVolumePct", opts.volumePct));
   await Promise.all(writes);
+  await store.save();
+}
+
+export async function saveMissionConfig(token: string, url: string): Promise<void> {
+  await store.set("missionToken", token);
+  await store.set("missionUrl", url);
+  await store.save();
+}
+
+export async function clearMissionConfig(): Promise<void> {
+  await store.delete("missionToken");
+  await store.delete("missionUrl");
+  await store.save();
+}
+
+export async function saveCommanderHotkey(accelerator: string): Promise<void> {
+  await store.set("commanderHotkey", accelerator);
+  await store.save();
+}
+
+export async function saveGlobalHotkey(accelerator: string): Promise<void> {
+  await store.set("globalHotkey", accelerator);
   await store.save();
 }
 

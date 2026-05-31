@@ -218,6 +218,31 @@ export async function webRoutes(app: FastifyInstance) {
         prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
         hasVoicePermission(op.guildId),
       ]);
+      const opRole = ctx ? await effectiveOpRole(ctx.user.id, ctx.user.role, op.id) : null;
+      const globalVoiceRoom = (op as Record<string, unknown>).globalVoiceRoom as string | null ?? null;
+      // Generate fleet voice links for fleetoperators when voice session is active
+      let fleetVoiceLinks: Array<{ userId: string; username: string; link: string }> | null = null;
+      if (opRole === "fleetoperator" && voiceEnabled && globalVoiceRoom && ctx) {
+        try {
+          const env = getEnv();
+          const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+          const captainIds = new Set<string>(op.units.filter((u) => u.status === "accepted").map((u) => u.captainId));
+          const fpMembers = await prisma.guildMembership.findMany({
+            where: { guildId: op.guildId, role: "fleetoperator" },
+            include: { user: true },
+          });
+          const allUserIds = new Set<string>([...captainIds, ...fpMembers.map((m) => m.userId)]);
+          const captainUsers = await prisma.user.findMany({ where: { id: { in: [...captainIds] } }, select: { id: true, username: true } });
+          const usernameMap = new Map(captainUsers.map((u) => [u.id, u.username]));
+          for (const m of fpMembers) usernameMap.set(m.userId, m.user.username);
+          const { createCompanionSession } = await import("../auth/companionSession.js");
+          fleetVoiceLinks = await Promise.all([...allUserIds].map(async (uid) => {
+            const token = await createCompanionSession(uid);
+            const params = new URLSearchParams({ token, url: fleetplannerUrl });
+            return { userId: uid, username: usernameMap.get(uid) ?? uid, link: `dccc://fleet-voice?${params.toString()}` };
+          }));
+        } catch { /* non-fatal */ }
+      }
       htmlReply(reply, opDetailPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
@@ -228,7 +253,8 @@ export async function webRoutes(app: FastifyInstance) {
         assignableUsers,
         availableVoiceBotCount,
         voiceEnabled,
-        missionVoice: { globalVoiceRoom: (op as Record<string, unknown>).globalVoiceRoom as string | null ?? null, commanderVoiceRoom: (op as Record<string, unknown>).commanderVoiceRoom as string | null ?? null },
+        missionVoice: { globalVoiceRoom, commanderVoiceRoom: (op as Record<string, unknown>).commanderVoiceRoom as string | null ?? null },
+        fleetVoiceLinks,
         viewAsRole: req.query.viewAs,
       }));
     }
