@@ -3,6 +3,7 @@ import { getEnv } from "./config/env.js";
 import { startShipSyncScheduler } from "./services/shipSync.js";
 import { startLocationSyncScheduler } from "./services/locations.js";
 import { startReminderScheduler } from "./services/reminderScheduler.js";
+import { startVoiceSessionScheduler } from "./services/voiceSession.js";
 
 const env = getEnv();
 const app = await buildApp();
@@ -20,6 +21,10 @@ try {
     error: (e, msg) => app.log.error(e, msg),
   });
   startReminderScheduler({
+    info: (msg) => app.log.info(msg),
+    error: (e, msg) => app.log.error(e, msg),
+  });
+  startVoiceSessionScheduler({
     info: (msg) => app.log.info(msg),
     error: (e, msg) => app.log.error(e, msg),
   });

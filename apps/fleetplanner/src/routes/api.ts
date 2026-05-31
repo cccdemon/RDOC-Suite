@@ -7,6 +7,7 @@ import { registerUnit, deleteUnit, setUnitStatus, claimSeat, assignSeat, unclaim
 import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
 import { assignCaptainDiscordRole, createScheduledEvent, deleteScheduledEvent, removeCaptainDiscordRoles, sendAcceptedCaptainVoiceDm, sendSeatAssignmentDm } from "../services/discord.js";
 import { cleanupOperationVoiceChannels, deleteOperationVoiceChannel, launchOperationVoiceChannels, moveOperationCrewToVoiceChannels, renameOperationVoiceChannel } from "../services/voiceBots.js";
+import { closeMissionVoiceSession, hasVoicePermission, openMissionVoiceSession } from "../services/voiceSession.js";
 import { issueUnitLivekitToken, issueGlobalVoiceToken } from "../services/livekit.js";
 import { createCompanionSession, loadCompanionSession } from "../auth/companionSession.js";
 import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../services/discord.js";
@@ -346,6 +347,22 @@ export async function apiRoutes(app: FastifyInstance) {
       const newStatus = req.body.status;
       if (!valid.includes(newStatus)) return reply.code(400).send({ error: "Invalid status" });
       const updated = await setStatus(req.params.id, newStatus);
+
+      // Mission voice session: open/in_progress → create rooms + grant roles
+      if (newStatus === "open" || newStatus === "in_progress") {
+        if (await hasVoicePermission(updated.guildId)) {
+          openMissionVoiceSession(req.params.id).catch((err) =>
+            app.log.warn(err, "Mission voice session open failed (non-fatal)"),
+          );
+        }
+      }
+      // Mission voice session: completed/cancelled → close rooms + revoke roles
+      if (newStatus === "completed" || newStatus === "cancelled") {
+        closeMissionVoiceSession(req.params.id).catch((err) =>
+          app.log.warn(err, "Mission voice session close failed (non-fatal)"),
+        );
+      }
+
       // Create Discord scheduled event when op is opened
       if (newStatus === "open" && !updated.discordEventId) {
         const op = await getOperation(req.params.id);

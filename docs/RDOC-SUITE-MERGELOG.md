@@ -3,6 +3,37 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-05-31: Fleetplanner Mission Voice Sessions + Voice Permission flag
+
+Schema:
+- `Guild.voiceEnabled Boolean @default(false)` — feature flag; only SuperAdmin can set
+- `Guild.commanderVoiceRoleId String?` — Discord role granted to fleetoperators + captains when mission opens
+- `Operation.globalVoiceRoom String?` — LiveKit room name (random, stored on first open/in_progress)
+- `Operation.commanderVoiceRoom String?` — LiveKit room name (random, stored on first open/in_progress)
+Migration: 20260531005000_voice_session
+
+Env: `RAUMDOCK_GUILD_ID` — guild always permitted to use voice regardless of voiceEnabled flag.
+
+New service `apps/fleetplanner/src/services/voiceSession.ts`:
+- `hasVoicePermission(guildId)` → Guild.voiceEnabled OR guildId === RAUMDOCK_GUILD_ID
+- `openMissionVoiceSession(operationId)` — stores random room names in DB, grants globalVoiceRoleId to all crew + captains, grants commanderVoiceRoleId to fleetoperators + captains
+- `closeMissionVoiceSession(operationId)` — deletes LiveKit rooms, revokes both roles, clears room names
+- `cleanupStaleVoiceSessions(log)` — called from scheduler: revoke+close ops older than 24h that still have rooms
+
+Wire api.ts:
+- status → "open" or "in_progress": call openMissionVoiceSession (non-fatal) if hasVoicePermission
+- status → "completed" or "cancelled": call closeMissionVoiceSession (non-fatal)
+
+Guild settings:
+- SuperAdmin: voiceEnabled toggle + commanderVoiceRoleId + globalVoiceRoleId fields
+- Route: POST /guilds/settings/voice-permission (superadmin only)
+
+UI gating via hasVoicePermission:
+- Op detail: hide voice channel launch + relay bot sections if !hasVoicePermission
+- Guild settings: hide voice bot section from non-superadmin if !hasVoicePermission
+
+Scheduler: add cleanupStaleVoiceSessions to 60s tick in index.ts
+
 ## Queued / Planned Step - 2026-05-31: Fleetplanner VOICEBOT_ENCRYPTION_KEY (BYOK)
 
 - `apps/fleetplanner/src/config/env.ts`: Add `VOICEBOT_ENCRYPTION_KEY` (optional, min 32).

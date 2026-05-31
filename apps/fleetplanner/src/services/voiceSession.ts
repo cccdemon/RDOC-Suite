@@ -1,0 +1,240 @@
+import { randomUUID } from "node:crypto";
+import { RoomServiceClient } from "livekit-server-sdk";
+import { getEnv } from "../config/env.js";
+import { prisma } from "../db.js";
+import { discordUserIdForFleetplannerUser } from "./discord.js";
+
+type Logger = { info: (msg: string) => void; error: (e: unknown, msg: string) => void };
+
+// ── Permission check ────────────────────────────────────────────────
+
+export async function hasVoicePermission(guildId: string): Promise<boolean> {
+  const env = getEnv();
+  if (env.RAUMDOCK_GUILD_ID && guildId === env.RAUMDOCK_GUILD_ID) return true;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const guild = await (prisma.guild.findUnique as any)({
+    where: { id: guildId },
+    select: { voiceEnabled: true },
+  }) as { voiceEnabled: boolean } | null;
+  return guild?.voiceEnabled ?? false;
+}
+
+// ── LiveKit helpers ─────────────────────────────────────────────────
+
+function roomServiceClient(): RoomServiceClient | null {
+  const env = getEnv();
+  if (!env.LIVEKIT_URL || !env.LIVEKIT_API_KEY || !env.LIVEKIT_API_SECRET) return null;
+  const host = env.LIVEKIT_URL.replace(/^wss?:\/\//, "https://").replace(/^https?:\/\//, "https://");
+  return new RoomServiceClient(host, env.LIVEKIT_API_KEY, env.LIVEKIT_API_SECRET);
+}
+
+async function deleteLivekitRoom(name: string): Promise<void> {
+  const client = roomServiceClient();
+  if (!client) return;
+  try {
+    await client.deleteRoom(name);
+  } catch {
+    // Room may not exist yet (no participants joined) — that's fine
+  }
+}
+
+// ── Discord role helpers ────────────────────────────────────────────
+
+async function grantDiscordRole(
+  guildId: string,
+  userId: string,
+  roleId: string,
+): Promise<void> {
+  const env = getEnv();
+  const token = env.DISCORD_FLEETPLANNER_BOT_TOKEN;
+  if (!token) return;
+  const discordId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
+  if (!discordId) return;
+  await fetch(
+    `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
+    { method: "PUT", headers: { Authorization: `Bot ${token}` }, signal: AbortSignal.timeout(8000) },
+  ).catch(() => {});
+}
+
+async function revokeDiscordRole(
+  guildId: string,
+  userId: string,
+  roleId: string,
+): Promise<void> {
+  const env = getEnv();
+  const token = env.DISCORD_FLEETPLANNER_BOT_TOKEN;
+  if (!token) return;
+  const discordId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
+  if (!discordId) return;
+  await fetch(
+    `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
+    { method: "DELETE", headers: { Authorization: `Bot ${token}` }, signal: AbortSignal.timeout(8000) },
+  ).catch(() => {});
+}
+
+// ── Core session management ─────────────────────────────────────────
+
+type OpForVoice = {
+  id: string;
+  guildId: string;
+  globalVoiceRoom: string | null;
+  commanderVoiceRoom: string | null;
+  guild: {
+    globalVoiceRoleId: string | null;
+    commanderVoiceRoleId: string | null;
+  };
+  units: Array<{
+    captainId: string;
+    status: string;
+    seats: Array<{ userId: string | null; active: boolean }>;
+  }>;
+};
+
+async function getOpForVoice(operationId: string): Promise<OpForVoice | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (prisma.operation.findUnique as any)({
+    where: { id: operationId },
+    select: {
+      id: true,
+      guildId: true,
+      globalVoiceRoom: true,
+      commanderVoiceRoom: true,
+      guild: { select: { globalVoiceRoleId: true, commanderVoiceRoleId: true } },
+      units: {
+        select: {
+          captainId: true,
+          status: true,
+          seats: { select: { userId: true, active: true } },
+        },
+      },
+    },
+  }) as Promise<OpForVoice | null>;
+}
+
+function collectUsers(op: OpForVoice): {
+  allCrew: Set<string>;
+  captains: Set<string>;
+} {
+  const allCrew = new Set<string>();
+  const captains = new Set<string>();
+  for (const unit of op.units) {
+    if (unit.status !== "accepted") continue;
+    captains.add(unit.captainId);
+    allCrew.add(unit.captainId);
+    for (const seat of unit.seats) {
+      if (seat.active && seat.userId) allCrew.add(seat.userId);
+    }
+  }
+  return { allCrew, captains };
+}
+
+export async function openMissionVoiceSession(operationId: string): Promise<void> {
+  const op = await getOpForVoice(operationId);
+  if (!op) return;
+
+  // Idempotent: only create rooms once
+  const globalRoom = op.globalVoiceRoom ?? `fg-${randomUUID()}`;
+  const commanderRoom = op.commanderVoiceRoom ?? `fc-${randomUUID()}`;
+
+  if (!op.globalVoiceRoom || !op.commanderVoiceRoom) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (prisma.operation.update as any)({
+      where: { id: operationId },
+      data: { globalVoiceRoom: globalRoom, commanderVoiceRoom: commanderRoom },
+    });
+  }
+
+  // Grant Discord roles (non-fatal per user)
+  const { allCrew, captains } = collectUsers(op);
+
+  // fleetoperators for this guild also get commander role
+  const fleetopMembers = await prisma.guildMembership.findMany({
+    where: { guildId: op.guildId, role: "fleetoperator" },
+    select: { userId: true },
+  });
+  const commanderUsers = new Set<string>([...captains, ...fleetopMembers.map((m) => m.userId)]);
+
+  if (op.guild.globalVoiceRoleId) {
+    for (const userId of allCrew) {
+      await grantDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId);
+    }
+  }
+  if (op.guild.commanderVoiceRoleId) {
+    for (const userId of commanderUsers) {
+      await grantDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId);
+    }
+  }
+}
+
+export async function closeMissionVoiceSession(operationId: string): Promise<void> {
+  const op = await getOpForVoice(operationId);
+  if (!op) return;
+
+  // Delete LiveKit rooms
+  if (op.globalVoiceRoom) await deleteLivekitRoom(op.globalVoiceRoom);
+  if (op.commanderVoiceRoom) await deleteLivekitRoom(op.commanderVoiceRoom);
+
+  // Clear room names from DB
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (prisma.operation.update as any)({
+    where: { id: operationId },
+    data: { globalVoiceRoom: null, commanderVoiceRoom: null },
+  });
+
+  // Revoke Discord roles
+  const { allCrew, captains } = collectUsers(op);
+  const fleetopMembers = await prisma.guildMembership.findMany({
+    where: { guildId: op.guildId, role: "fleetoperator" },
+    select: { userId: true },
+  });
+  const commanderUsers = new Set<string>([...captains, ...fleetopMembers.map((m) => m.userId)]);
+
+  if (op.guild.globalVoiceRoleId) {
+    for (const userId of allCrew) {
+      await revokeDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId);
+    }
+  }
+  if (op.guild.commanderVoiceRoleId) {
+    for (const userId of commanderUsers) {
+      await revokeDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId);
+    }
+  }
+}
+
+// ── Stale session cleanup scheduler ────────────────────────────────
+
+let cleanupRunning = false;
+
+export async function cleanupStaleVoiceSessions(log: Logger): Promise<void> {
+  if (cleanupRunning) return;
+  cleanupRunning = true;
+  try {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stale = await (prisma.operation.findMany as any)({
+      where: {
+        status: { in: ["open", "locked", "in_progress"] },
+        scheduledAt: { lt: cutoff },
+        OR: [{ globalVoiceRoom: { not: null } }, { commanderVoiceRoom: { not: null } }],
+      },
+      select: { id: true },
+    }) as Array<{ id: string }>;
+    for (const op of stale) {
+      try {
+        await closeMissionVoiceSession(op.id);
+        log.info(`[voiceSession] Cleaned up stale voice session for op ${op.id}`);
+      } catch (e) {
+        log.error(e, `[voiceSession] Cleanup failed for op ${op.id}`);
+      }
+    }
+  } finally {
+    cleanupRunning = false;
+  }
+}
+
+export function startVoiceSessionScheduler(log: Logger): void {
+  setTimeout(() => {
+    void cleanupStaleVoiceSessions(log);
+    setInterval(() => void cleanupStaleVoiceSessions(log), 5 * 60 * 1000); // every 5 min
+  }, 15000);
+}

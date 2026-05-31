@@ -15,6 +15,7 @@ import {
 } from "../services/operations.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import { deleteScheduledEvent, fetchGuildVoiceChannels, sendDiscordChannelMessage } from "../services/discord.js";
+import { hasVoicePermission } from "../services/voiceSession.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
 import { getLocationSyncState, runLocationSync, searchLocations, updateLocationSyncConfig } from "../services/locations.js";
 import { getSetting, setSetting } from "../services/settings.js";
@@ -213,9 +214,10 @@ export async function webRoutes(app: FastifyInstance) {
             orderBy: { user: { username: "asc" } },
           })).map((m) => ({ id: m.user.id, username: m.user.username, role: m.role }))
         : [];
-      const availableVoiceBotCount = await prisma.guildVoiceBot.count({
-        where: { guildId: op.guildId, assignedChannelId: null },
-      });
+      const [availableVoiceBotCount, voiceEnabled] = await Promise.all([
+        prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
+        hasVoicePermission(op.guildId),
+      ]);
       htmlReply(reply, opDetailPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
@@ -225,6 +227,8 @@ export async function webRoutes(app: FastifyInstance) {
         ownedShips,
         assignableUsers,
         availableVoiceBotCount,
+        voiceEnabled,
+        missionVoice: { globalVoiceRoom: (op as Record<string, unknown>).globalVoiceRoom as string | null ?? null, commanderVoiceRoom: (op as Record<string, unknown>).commanderVoiceRoom as string | null ?? null },
         viewAsRole: req.query.viewAs,
       }));
     }

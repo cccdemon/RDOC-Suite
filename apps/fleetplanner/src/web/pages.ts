@@ -192,6 +192,8 @@ export function opDetailPage(opts: {
   ownedShips: Ship[];
   assignableUsers: Pick<User, "id" | "username" | "role">[];
   availableVoiceBotCount: number;
+  voiceEnabled: boolean;
+  missionVoice?: { globalVoiceRoom: string | null; commanderVoiceRoom: string | null } | null;
   viewAsRole?: string;
 }): SafeHtml {
   const bp = opts.basePath;
@@ -530,7 +532,20 @@ export function opDetailPage(opts: {
           </form>` : "")}
     </div>` : "";
 
-  const voiceChannelsSection = canManage ? html`
+  const missionVoiceSection = (canManage && opts.voiceEnabled) ? html`
+    <div class="section">
+      <div class="section-title">Mission Voice Rooms</div>
+      ${opts.missionVoice?.globalVoiceRoom ? html`
+        <div class="fleet-row" style="flex-direction:column;gap:.25rem">
+          <div class="text-sm text-dim">Global Channel <span class="tag tag-green">LIVE</span></div>
+          <div class="text-mono text-sm">${opts.missionVoice.globalVoiceRoom}</div>
+          <div class="text-sm text-dim">Commander Channel <span class="tag tag-green">LIVE</span></div>
+          <div class="text-mono text-sm">${opts.missionVoice.commanderVoiceRoom ?? "—"}</div>
+        </div>` : html`
+        <p class="text-dim text-sm">No active voice session. Rooms are created automatically when the operation is set to <strong>open</strong> or <strong>in progress</strong>.</p>`}
+    </div>` : safe("");
+
+  const voiceChannelsSection = (canManage && opts.voiceEnabled) ? html`
     <div class="section">
       <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
         <span>Voice Channels</span>
@@ -1733,6 +1748,8 @@ export function guildSettingsPage(opts: {
     admiralRoleId: string | null;
     captainRoleId: string | null;
     globalVoiceRoleId: string | null;
+    commanderVoiceRoleId: string | null;
+    voiceEnabled: boolean;
   };
   voiceBots: Array<{
     id: string;
@@ -1822,8 +1839,11 @@ export function guildSettingsPage(opts: {
         <label class="text-sm text-dim">Captain role ID (Discord role → captain)
           <input type="text" name="captainRoleId" value="${g.captainRoleId ?? ""}" placeholder="optional" />
         </label>
-        <label class="text-sm text-dim">Globaltalk role ID (Discord role -> Companion global voice)
+        <label class="text-sm text-dim">Global Voice role ID <span style="opacity:.65">(Discord role → granted to all crew when mission opens)</span>
           <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
+        </label>
+        <label class="text-sm text-dim">Commander Voice role ID <span style="opacity:.65">(Discord role → granted to fleetoperators + captains when mission opens)</span>
+          <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
         </label>
         <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>
       </form>
@@ -1833,8 +1853,24 @@ export function guildSettingsPage(opts: {
       </p>
     </div>
 
+    ${opts.currentUser?.role === "superadmin" ? html`
     <div class="section">
-      <div class="section-title">Voice relay bots (${opts.voiceBots.length}/6)</div>
+      <div class="section-title">RDOC Voice Permission <span class="tag ${g.voiceEnabled ? safe("tag-green") : safe("tag-dim")}">${g.voiceEnabled ? safe("GRANTED") : safe("NOT GRANTED")}</span></div>
+      <p class="text-dim text-sm">Controls whether this server can use the LiveKit voice server (Mission Voice Sessions, relay bots, voice channels).</p>
+      <form method="post" action="${bp}/guilds/settings/voice-permission" style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem">
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        <input type="hidden" name="guildId" value="${g.id}" />
+        ${g.voiceEnabled
+          ? html`<input type="hidden" name="voiceEnabled" value="0" /><button type="submit" class="btn btn-sm btn-danger">Revoke Voice Permission</button>`
+          : html`<input type="hidden" name="voiceEnabled" value="1" /><button type="submit" class="btn btn-sm btn-cyan">Grant Voice Permission</button>`}
+      </form>
+    </div>` : safe("")}
+
+    ${g.voiceEnabled ? html`
+    <div class="section">
+      <div class="section-title">Voice relay bots (${opts.voiceBots.length}/6)</div>` : html`
+    <div class="section" style="opacity:.45;pointer-events:none">
+      <div class="section-title">Voice relay bots <span class="tag tag-dim">RDOC Voice Permission required</span></div>`}
       <form method="post" action="${bp}/guilds/voice-bots" class="card" style="padding:1rem;display:grid;grid-template-columns:1fr 1.2fr 1.8fr auto;gap:.75rem;align-items:flex-end">
         <input type="hidden" name="_csrf" value="${csrf}" />
         <label class="text-sm text-dim">Label

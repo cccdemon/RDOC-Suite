@@ -137,7 +137,12 @@ export async function guildRoutes(app: FastifyInstance) {
       const gctx = await requireGuildRole(req, reply, "fleetoperator");
       if (!gctx) return;
       const [guild, memberships, voiceBots] = await Promise.all([
-        prisma.guild.findUnique({ where: { id: gctx.guildId } }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
+          id: true, name: true, eventChannelId: true, voiceChannelCategoryId: true,
+          admiralRoleId: true, captainRoleId: true, globalVoiceRoleId: true,
+          commanderVoiceRoleId: true, voiceEnabled: true,
+        } }) as Promise<{ id: string; name: string; eventChannelId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: { user: true },
@@ -196,7 +201,8 @@ export async function guildRoutes(app: FastifyInstance) {
       if (!gctx) return;
       if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       const snowflake = (v: string | undefined) => (v && /^\d{16,25}$/.test(v.trim()) ? v.trim() : null);
-      await prisma.guild.update({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (prisma.guild.update as any)({
         where: { id: gctx.guildId },
         data: {
           eventChannelId: snowflake(req.body.eventChannelId),
@@ -204,9 +210,28 @@ export async function guildRoutes(app: FastifyInstance) {
           admiralRoleId: snowflake(req.body.admiralRoleId),
           captainRoleId: snowflake(req.body.captainRoleId),
           globalVoiceRoleId: snowflake(req.body.globalVoiceRoleId),
+          commanderVoiceRoleId: snowflake(req.body.commanderVoiceRoleId),
         },
       });
       return reply.redirect(basePath("/guilds/settings?flash=ok:Server+settings+saved."), 302);
+    }
+  );
+
+  // SuperAdmin-only: grant or revoke RDOC Voice Permission for the active guild
+  app.post<{ Body: Record<string, string> }>(
+    "/guilds/settings/voice-permission",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (ctx.user.role !== "superadmin") return reply.code(403).send({ error: "superadmin only" });
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const guildId = req.body.guildId?.trim();
+      if (!guildId) return reply.redirect(basePath("/guilds/settings?flash=error:Missing+guild+id"), 302);
+      const enabled = req.body.voiceEnabled === "1";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (prisma.guild.update as any)({ where: { id: guildId }, data: { voiceEnabled: enabled } });
+      const msg = enabled ? "RDOC+Voice+Permission+granted." : "RDOC+Voice+Permission+revoked.";
+      return reply.redirect(basePath(`/guilds/settings?flash=ok:${msg}`), 302);
     }
   );
 

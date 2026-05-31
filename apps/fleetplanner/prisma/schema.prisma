@@ -41,7 +41,9 @@ model Guild {
   admiralRoleId          String? // Discord role id → fleetoperator (optional mapping)
   captainRoleId          String? // Discord role id → captain (optional mapping)
   reminderOffsetMin      Int       @default(15) // minutes before scheduledAt to send reminder DMs
-  globalVoiceRoleId      String?   // Discord role id → fleet global voice access (cross-unit)
+  globalVoiceRoleId      String?   // Discord role id → granted to all crew when mission opens
+  commanderVoiceRoleId   String?   // Discord role id → granted to fleetoperators + captains when mission opens
+  voiceEnabled           Boolean   @default(false) // SuperAdmin-gated feature flag for LiveKit voice sessions
   botInstalledAt         DateTime?
   active                 Boolean   @default(true)
   createdAt              DateTime  @default(now())
@@ -237,6 +239,8 @@ model Operation {
   createdById     String
   discordEventId        String?   // id of the Discord scheduled event created when opened
   eventVoiceChannelId   String?   // Discord voice channel id to use as event location (overrides Guild.eventChannelId)
+  globalVoiceRoom       String?   // LiveKit room name for Global Channel (set when mission opens, random)
+  commanderVoiceRoom    String?   // LiveKit room name for Commander Channel (set when mission opens, random)
   reminderSentAt        DateTime? // set once reminder DMs have been dispatched; null = not yet sent
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

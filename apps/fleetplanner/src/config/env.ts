@@ -29,6 +29,8 @@ const schema = z.object({
   // Optional legacy alias kept only so old environments still parse.
   // Fleetplanner Discord actions require DISCORD_FLEETPLANNER_BOT_TOKEN.
   DISCORD_GUILD_ID: z.string().optional(),
+  // Guild that is always allowed to use LiveKit voice sessions regardless of voiceEnabled flag.
+  RAUMDOCK_GUILD_ID: z.string().optional(),
   DISCORD_BOT_TOKEN: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_ID: z.string().optional(),
   DISCORD_FLEETPLANNER_BOT_TOKEN: z.string().optional(),
