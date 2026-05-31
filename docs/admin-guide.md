@@ -12,13 +12,13 @@ This guide walks a Discord server administrator through setting up Channel Comma
 
 1. Open [https://discord.com/developers/applications](https://discord.com/developers/applications) and log in.
 2. Click **"New Application"** (top right). Name it e.g. `Channel Commander`. Accept the terms. Click **Create**.
-3. You are now on the **General Information** page. Note down the **Application ID** — this is your `DISCORD_CLIENT_ID`.
+3. You are now on the **General Information** page. Note down the **Application ID** — this is your `DISCORD_RDOCRTC_CLIENT_ID`.
 4. Scroll down to **Client Secret**. Click **Reset Secret**, copy the value, save it — this is your `DISCORD_CLIENT_SECRET`. (You can only see it once.)
 
 ## 2. Configure the bot
 
 1. In the left sidebar click **Bot**.
-2. The bot is auto-created. Under **Token**, click **Reset Token** and copy it — this is your `DISCORD_BOT_TOKEN`. Save it somewhere safe (a password manager).
+2. The bot is auto-created. Under **Token**, click **Reset Token** and copy it — this is your `DISCORD_RDOCRTC_BOT_TOKEN`. Save it somewhere safe (a password manager).
 3. Under **Privileged Gateway Intents**: **none of these are required**. Leave them off.
 4. Under **Bot Permissions**, the slash commands handle their own permission gating, so you do not need to pre-grant anything special here.
 
@@ -47,8 +47,8 @@ The bot should now be listed in your server's member list (it will appear as off
 In your local clone of this repository, edit `.env` and fill in the four Discord values you collected:
 
 ```env
-DISCORD_BOT_TOKEN="<from step 2>"
-DISCORD_CLIENT_ID="<from step 1>"
+DISCORD_RDOCRTC_BOT_TOKEN="<from step 2>"
+DISCORD_RDOCRTC_CLIENT_ID="<from step 1>"
 DISCORD_CLIENT_SECRET="<from step 1>"
 OAUTH_REDIRECT_URI="http://localhost:8787/auth/callback"
 COMPANION_REDIRECT_URI="dccc://auth"

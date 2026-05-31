@@ -45,28 +45,28 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 
 | Bot | Env-Vars | Container | Zweck |
 |---|---|---|---|
-| **RDOC-RTC Bot** (App `1509191397264064689`) | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY` | `rdoc-suite-bot` | Slash-Commands (`/cc`), Companion Bridge-Auth OAuth, Companion Fleet-OAuth (`DISCORD_COMPANION_BOT_ID/KEY` = selbe App) |
-| **Fleetmanager Bot** | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | — (im fleetplanner) | Discord-Events erstellen, Voice-Channels, Rollen verwalten |
-| **Relay Bot** | `DISCORD_RELAY_BOT_TOKEN` | `rdoc-suite-relay-bots` | Voice-Audio in Discord-Channels relayieren |
-| **Voice Bots (Funkrelais)** | verschlüsselt in DB (`GuildVoiceBot`) | — | 6 Bots für Crew-Voice-Channels pro Operation |
+| **RDOC-RTC Bot** (Prod App `1507722962919227452`) | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY` | `rdoc-suite-bot`, `rdoc-suite-bridge` | Slash-Commands (`/cc`), Bridge-OAuth, Guild-/Role-Checks, Strategy-Channels |
+| **Fleetmanager Bot** (Prod App `1509191397264064689`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | — (im fleetplanner) | Discord-Events, Feedback-Tickets, DMs, Event-Rollen |
+| **Companion OAuth App** | `DISCORD_COMPANION_BOT_ID`, `DISCORD_COMPANION_BOT_KEY` | — (im fleetplanner) | Companion-Fleet-Voice OAuth. Kann dieselbe App wie RDOC-RTC sein, muss aber explizit passen. |
+| **Relay role-check Bot** | `DISCORD_RELAY_BOT_TOKEN` | `rdoc-suite-bridge` | Optionaler Bot-Token nur für `/relay/token` Rollenprüfung. Nicht der Audio-Relay-Worker. |
+| **Voice Bots (Funkrelais)** | verschlüsselt in DB (`GuildVoiceBot`) | `rdoc-suite-relay-bots` | 6 Bots für Crew-Voice-Channels pro Operation + Audio-Relay |
 
 ### Erforderliche Bot-Permissions
 
 **RDOC-RTC Bot** — Scopes: `bot applications.commands`
 - Intents: `Guilds`, `GuildVoiceStates` (non-privileged, kein Portal-Toggle nötig)
-- Permissions: `Send Messages`, `Read Message History`, `View Channel`
+- Permissions: `Send Messages`, `Read Message History`, `View Channel`, optional `Manage Channels` für Strategy-Channels
 
 **Fleetmanager Bot** — Scopes: `bot applications.commands`
 - Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_ROLES`, `MANAGE_EVENTS`
 - Intents: `Guilds`, `GuildVoiceStates`
 - **NICHT** `MANAGE_CHANNELS` / `MOVE_MEMBERS` — das machen die Voice Relay Bots
 
-**Relay Bot** — Scopes: `bot`
-- Intents: `Guilds`, `GuildVoiceStates`
-- Permissions: `VIEW_CHANNEL`, `CONNECT`, `SPEAK`
+**Relay role-check Bot** — Scopes: `bot`
+- Permissions: Rollen/Members des Guilds lesen können. Kann derselbe Bot wie RDOC-RTC sein.
 
 **Voice Bots (Funkrelais)** — Scopes: `bot`
-- Permissions: `MANAGE_CHANNELS`, `VIEW_CHANNEL`, `CONNECT`, `MOVE_MEMBERS`
+- Permissions: `MANAGE_CHANNELS`, `VIEW_CHANNEL`, `CONNECT`, `SPEAK`, `MOVE_MEMBERS`
 - Jeder Bot erstellt seinen eigenen Channel, benennt ihn um, zieht Crew rein
 
 **Token 401 → immer:** Discord Developer Portal → richtige App → Bot → Reset Token → `.env` updaten → Container neu starten.

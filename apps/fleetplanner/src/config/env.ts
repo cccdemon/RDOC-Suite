@@ -22,7 +22,8 @@ const schema = z.object({
   // Google OAuth (optional — leave unset to hide Google login button)
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-  // Optional Discord bot integration for creating scheduled events
+  // Optional legacy alias kept only so old environments still parse.
+  // Fleetplanner Discord actions require DISCORD_FLEETPLANNER_BOT_TOKEN.
   DISCORD_GUILD_ID: z.string().optional(),
   DISCORD_BOT_TOKEN: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_ID: z.string().optional(),

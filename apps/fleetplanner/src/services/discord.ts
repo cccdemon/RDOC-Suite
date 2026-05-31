@@ -7,7 +7,7 @@ export type DiscordEventResult = { id: string } | null;
 
 function fleetplannerBotToken(): string | undefined {
   const env = getEnv();
-  return env.DISCORD_FLEETPLANNER_BOT_TOKEN || env.DISCORD_BOT_TOKEN;
+  return env.DISCORD_FLEETPLANNER_BOT_TOKEN;
 }
 
 export async function discordUserIdForFleetplannerUser(userId: string): Promise<string> {
