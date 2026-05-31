@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { basePath, getEnv } from "../config/env.js";
 import {
   issueState, consumeState, authorizeUrlFor, exchangeForProfile, redirectUriFor,
-  discordEnabled, githubEnabled, googleEnabled,
+  discordEnabled, discordOAuthClientId, githubEnabled, googleEnabled,
 } from "../auth/providers.js";
 import type { OAuthProvider } from "../auth/providers.js";
 import { resolveIdentity, linkIdentity } from "../auth/identity.js";
@@ -106,7 +106,7 @@ export async function authRoutes(app: FastifyInstance) {
       reply.setCookie(STATE_COOKIE, state, cookieOpts(env));
       // Separate redirect URI for the link flow so Discord knows this is linking
       const p = new URLSearchParams({
-        client_id: env.DISCORD_CLIENT_ID!,
+        client_id: discordOAuthClientId()!,
         redirect_uri: linkRedirectUri,
         response_type: "code",
         scope: "identify",

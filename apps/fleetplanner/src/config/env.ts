@@ -11,6 +11,7 @@ const schema = z.object({
   // At least one OAuth provider must be configured. Discord is the
   // original provider; GitHub and Google are alternatives.
   DISCORD_CLIENT_ID: z.string().optional(),
+  DISCORD_RDOCRTC_CLIENT_ID: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
   SUPERADMIN_DISCORD_ID: z.string().optional(),
 

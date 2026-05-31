@@ -28,7 +28,7 @@ export function consumeState(state: string): boolean {
 export function buildAuthorizeUrl(state: string): string {
   const env = getEnv();
   const p = new URLSearchParams({
-    client_id: env.DISCORD_CLIENT_ID!,
+    client_id: discordOAuthClientId()!,
     redirect_uri: redirectUri(),
     response_type: "code",
     scope: "identify",
@@ -46,7 +46,7 @@ export async function exchangeCode(code: string): Promise<DiscordTokenResponse> 
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: env.DISCORD_CLIENT_ID!,
+      client_id: discordOAuthClientId()!,
       client_secret: env.DISCORD_CLIENT_SECRET!,
       grant_type: "authorization_code",
       code,
@@ -55,6 +55,13 @@ export async function exchangeCode(code: string): Promise<DiscordTokenResponse> 
   });
   if (!res.ok) throw new Error(`Discord token exchange failed: ${res.status}`);
   return res.json() as Promise<DiscordTokenResponse>;
+}
+
+function discordOAuthClientId(): string {
+  const env = getEnv();
+  const clientId = env.DISCORD_CLIENT_ID ?? env.DISCORD_COMPANION_BOT_ID ?? env.DISCORD_RDOCRTC_CLIENT_ID;
+  if (!clientId) throw new Error("Discord client id is not configured");
+  return clientId;
 }
 
 export async function fetchDiscordUser(accessToken: string): Promise<DiscordUser> {

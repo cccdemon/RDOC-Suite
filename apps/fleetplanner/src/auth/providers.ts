@@ -41,13 +41,18 @@ export function consumeState(state: string): { provider: OAuthProvider; linkUser
 
 export function discordEnabled(): boolean {
   const env = getEnv();
-  return !!(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET);
+  return !!(discordOAuthClientId() && env.DISCORD_CLIENT_SECRET);
+}
+
+export function discordOAuthClientId(): string | undefined {
+  const env = getEnv();
+  return env.DISCORD_CLIENT_ID ?? env.DISCORD_COMPANION_BOT_ID ?? env.DISCORD_RDOCRTC_CLIENT_ID;
 }
 
 export function discordAuthorizeUrl(state: string, redirectUri: string): string {
   const env = getEnv();
   const p = new URLSearchParams({
-    client_id: env.DISCORD_CLIENT_ID!,
+    client_id: discordOAuthClientId()!,
     redirect_uri: redirectUri,
     response_type: "code",
     // `guilds` lets us read which Discord servers the user is in, to scope
@@ -64,7 +69,7 @@ export async function discordExchange(code: string, redirectUri: string): Promis
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: env.DISCORD_CLIENT_ID!,
+      client_id: discordOAuthClientId()!,
       client_secret: env.DISCORD_CLIENT_SECRET!,
       grant_type: "authorization_code",
       code,

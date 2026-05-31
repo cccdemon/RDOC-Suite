@@ -62,7 +62,7 @@ function discordBotInviteUrl(clientId: string, permissions: string): string {
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
 }
 
-const SYSTEMS = ["stanton", "pyro", "nyx"] as const;
+const SYSTEMS = ["stanton", "nyx", "pyro"] as const;
 
 function systemLabel(system: string): string {
   return system ? system[0].toUpperCase() + system.slice(1) : "Stanton";
@@ -947,7 +947,6 @@ export function opFormPage(opts: {
   const csrf = opts.csrfToken ?? "";
 
   const opTypes = ["combat", "pve", "training", "mixed", "exploration"];
-  const meetingSystem = op?.meetingSystem ?? "stanton";
   const locationOptions = opts.locations
     .filter((location) => SYSTEMS.includes(location.systemSlug as (typeof SYSTEMS)[number]))
     .map((location) => ({
@@ -958,6 +957,7 @@ export function opFormPage(opts: {
   }));
   const selectedLocation = locationOptions.find((location) => location.value === op?.meetingLocation)
     ?? locationOptions.find((location) => location.value.startsWith(`${op?.meetingLocation ?? ""} (`));
+  const meetingSystem = selectedLocation?.system ?? op?.meetingSystem ?? "stanton";
 
   const body = html`
     <div class="page-header">
@@ -1028,14 +1028,34 @@ export function opFormPage(opts: {
     const meetingLocationSelect = document.getElementById('meeting-location-select');
     const meetingSystemSelect = document.getElementById('meeting-system-select');
     const meetingLocationLabel = document.getElementById('meeting-location-label');
-    function syncMeetingSystemFromLocation() {
+    function syncMeetingLocationLabel() {
       if (!meetingLocationSelect || !meetingSystemSelect || !meetingLocationLabel) return;
       const opt = meetingLocationSelect.selectedOptions[0];
       meetingLocationLabel.value = opt?.dataset.label || '';
-      if (opt?.dataset.system) meetingSystemSelect.value = opt.dataset.system;
     }
-    meetingLocationSelect?.addEventListener('change', syncMeetingSystemFromLocation);
-    syncMeetingSystemFromLocation();
+    function filterMeetingLocations() {
+      if (!meetingLocationSelect || !meetingSystemSelect || !meetingLocationLabel) return;
+      const system = meetingSystemSelect.value;
+      const placeholder = meetingLocationSelect.options[0];
+      if (placeholder) placeholder.textContent = '-- Select ' + meetingSystemSelect.options[meetingSystemSelect.selectedIndex].text + ' location --';
+      let selectedAllowed = false;
+      for (const opt of Array.from(meetingLocationSelect.options)) {
+        if (!opt.value) {
+          opt.hidden = false;
+          opt.disabled = false;
+          continue;
+        }
+        const allowed = opt.dataset.system === system;
+        opt.hidden = !allowed;
+        opt.disabled = !allowed;
+        if (opt.selected && allowed) selectedAllowed = true;
+      }
+      if (!selectedAllowed) meetingLocationSelect.value = '';
+      syncMeetingLocationLabel();
+    }
+    meetingSystemSelect?.addEventListener('change', filterMeetingLocations);
+    meetingLocationSelect?.addEventListener('change', syncMeetingLocationLabel);
+    filterMeetingLocations();
     </script>`;
 
   return layout({
