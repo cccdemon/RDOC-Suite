@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 
 const DEFAULT_INVITE_TTL_HOURS = 24;
 

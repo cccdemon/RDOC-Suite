@@ -1,6 +1,6 @@
 import type { Client, VoiceState } from "discord.js";
 import { Events } from "discord.js";
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 import { getEnv } from "../config/env.js";
 import { logger } from "../services/logger.js";
 

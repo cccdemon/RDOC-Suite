@@ -95,13 +95,13 @@ docker compose up -d livekit
 
 ```bash
 # Terminal 1 — Bridge
-pnpm --filter @dccc/bridge build && node apps/bridge/dist/index.js
+pnpm --filter @rdoc-suite/bridge build && node apps/bridge/dist/index.js
 
 # Terminal 2 — Bot (needs DISCORD_BOT_TOKEN + DISCORD_CLIENT_ID in .env)
-pnpm --filter @dccc/bot build && node apps/bot/dist/index.js
+pnpm --filter @rdoc-suite/bot build && node apps/bot/dist/index.js
 
 # Terminal 3 — Companion (live UI, hot-reloads on changes)
-pnpm --filter @dccc/companion tauri:dev
+pnpm --filter @rdoc-suite/companion tauri:dev
 ```
 
 For a step-by-step admin walkthrough (creating the Discord application, inviting the bot, configuring roles), see [docs/admin-guide.md](docs/admin-guide.md).

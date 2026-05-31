@@ -10,6 +10,22 @@ function fleetplannerBotToken(): string | undefined {
   return env.DISCORD_FLEETPLANNER_BOT_TOKEN || env.DISCORD_BOT_TOKEN;
 }
 
+export async function discordUserIdForFleetplannerUser(userId: string): Promise<string> {
+  const identity = await prisma.userIdentity.findFirst({
+    where: { userId, provider: "discord" },
+    select: { providerId: true },
+  });
+  if (identity?.providerId) return identity.providerId;
+
+  // Legacy installs used the Discord snowflake directly as User.id.
+  if (/^\d{16,25}$/.test(userId)) return userId;
+  throw new Error("User has no linked Discord identity");
+}
+
+async function discordRecipientIdForUser(userId: string): Promise<string> {
+  return discordUserIdForFleetplannerUser(userId);
+}
+
 // ── Bot REST helpers (multi-tenant) ────────────────────────────────
 
 /** Fetch a guild's basic info via the bot token. Bot must be a member. */
@@ -37,6 +53,124 @@ export async function fetchGuildMemberRoles(guildId: string, userId: string): Pr
   if (!res.ok) return null;
   const member = (await res.json()) as { roles?: string[] };
   return Array.isArray(member.roles) ? member.roles : [];
+}
+
+type PermissionOverwrite = {
+  id: string;
+  type: 0 | 1;
+  allow?: string;
+  deny?: string;
+};
+
+export async function createGuildVoiceChannel(input: {
+  guildId: string;
+  name: string;
+  parentId?: string | null;
+  permissionOverwrites?: PermissionOverwrite[];
+  botToken?: string;
+}): Promise<{ id: string }> {
+  const token = input.botToken ?? fleetplannerBotToken();
+  if (!token) throw new Error("Discord bot token is not configured");
+
+  const body = {
+    name: input.name.slice(0, 100),
+    type: 2,
+    parent_id: input.parentId || undefined,
+    permission_overwrites: input.permissionOverwrites ?? undefined,
+  };
+
+  const res = await fetch(`${DISCORD_API}/guilds/${input.guildId}/channels`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(10000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Discord voice channel creation failed (${res.status}): ${err}`);
+  }
+
+  return res.json() as Promise<{ id: string }>;
+}
+
+export async function updateDiscordChannelName(input: {
+  channelId: string;
+  name: string;
+  botToken: string;
+}): Promise<void> {
+  const res = await fetch(`${DISCORD_API}/channels/${input.channelId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bot ${input.botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name: input.name.slice(0, 100) }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Discord voice channel rename failed (${res.status}): ${err}`);
+  }
+}
+
+export async function deleteDiscordChannel(input: {
+  channelId: string;
+  botToken: string;
+}): Promise<void> {
+  const res = await fetch(`${DISCORD_API}/channels/${input.channelId}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bot ${input.botToken}` },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok && res.status !== 404) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Discord voice channel deletion failed (${res.status}): ${err}`);
+  }
+}
+
+export async function disconnectGuildMemberFromVoice(input: {
+  guildId: string;
+  userId: string;
+  botToken: string;
+}): Promise<void> {
+  const res = await fetch(`${DISCORD_API}/guilds/${input.guildId}/members/${input.userId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bot ${input.botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ channel_id: null }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok && res.status !== 404) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Discord voice disconnect failed (${res.status}): ${err}`);
+  }
+}
+
+export async function moveGuildMemberToVoice(input: {
+  guildId: string;
+  userId: string;
+  channelId: string;
+  botToken: string;
+}): Promise<boolean> {
+  const res = await fetch(`${DISCORD_API}/guilds/${input.guildId}/members/${input.userId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bot ${input.botToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ channel_id: input.channelId }),
+    signal: AbortSignal.timeout(10000),
+  });
+  if (res.ok) return true;
+  if (res.status === 400 || res.status === 404) return false;
+  const err = await res.text().catch(() => res.statusText);
+  throw new Error(`Discord voice move failed (${res.status}): ${err}`);
 }
 
 // ── Scheduled events (posted to the operation's own guild) ─────────
@@ -128,7 +262,8 @@ export async function assignCaptainDiscordRole(userId: string, role: CaptainDisc
     throw new Error(`Discord ${role} role id is not configured`);
   }
 
-  const res = await fetch(`${DISCORD_API}/guilds/${env.DISCORD_GUILD_ID}/members/${userId}/roles/${roleId}`, {
+  const discordUserId = await discordRecipientIdForUser(userId);
+  const res = await fetch(`${DISCORD_API}/guilds/${env.DISCORD_GUILD_ID}/members/${discordUserId}/roles/${roleId}`, {
     method: "PUT",
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
@@ -164,6 +299,7 @@ export async function sendDiscordChannelMessage(channelId: string, content: stri
 export async function sendDiscordDm(userId: string, content: string): Promise<void> {
   const token = fleetplannerBotToken();
   if (!token) throw new Error("Discord Fleetplanner Bot integration is not configured");
+  const discordUserId = await discordRecipientIdForUser(userId);
 
   const channelRes = await fetch(`${DISCORD_API}/users/@me/channels`, {
     method: "POST",
@@ -171,7 +307,7 @@ export async function sendDiscordDm(userId: string, content: string): Promise<vo
       Authorization: `Bot ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ recipient_id: userId }),
+    body: JSON.stringify({ recipient_id: discordUserId }),
     signal: AbortSignal.timeout(8000),
   });
 

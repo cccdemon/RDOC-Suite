@@ -10,6 +10,7 @@ import {
 
 export type SettingsDraft = {
   bridgeUrl: string;
+  fleetplannerUrl: string;
   hotkey: string;
   relayHotkey: string;
   micDeviceId?: string;
@@ -168,6 +169,24 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
             {testStatus === "fail" ? <span className="cc-badge red"><Icon.x size={10} />FEHLER</span> : null}
             {testDetail ? <span className="cc-hint">{testDetail}</span> : null}
           </div>
+        </div>
+
+        {/* ── Fleetplanner URL ───────────────────────────── */}
+        <div className="cc-field">
+          <label className="cc-label" htmlFor="fleetplanner-url">Fleetplanner-URL</label>
+          <input
+            id="fleetplanner-url"
+            className="cc-input mono"
+            type="text"
+            placeholder="https://suite.raumdock.org/fleetplanner"
+            value={draft.fleetplannerUrl}
+            onChange={(e) => setDraft((d) => ({ ...d, fleetplannerUrl: e.target.value }))}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <span className="cc-hint">
+            Fleetplanner-Origin für Fleet Voice. Leer lassen wenn nicht genutzt.
+          </span>
         </div>
 
         {/* ── Hotkey ─────────────────────────────────────── */}

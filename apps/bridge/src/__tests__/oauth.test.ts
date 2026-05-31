@@ -110,7 +110,7 @@ describe("GET /auth/callback", () => {
   });
 });
 
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 
 async function seedGuildConfig(opts: { enabled: boolean; roleIds: string[] }): Promise<void> {
   await getPrisma().guildConfig.upsert({

@@ -53,6 +53,15 @@ function discordAvatarUrl(user: Pick<User, "id" | "avatarHash">): string | null 
   return user.avatarHash ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatarHash}.webp?size=80` : null;
 }
 
+function discordBotInviteUrl(clientId: string, permissions: string): string {
+  const params = new URLSearchParams({
+    client_id: clientId,
+    scope: "bot",
+    permissions,
+  });
+  return `https://discord.com/oauth2/authorize?${params.toString()}`;
+}
+
 const SYSTEMS = ["stanton", "pyro", "nyx"] as const;
 
 function systemLabel(system: string): string {
@@ -181,6 +190,7 @@ export function opDetailPage(opts: {
   op: NonNullable<OpFull>;
   ownedShips: Ship[];
   assignableUsers: Pick<User, "id" | "username" | "role">[];
+  availableVoiceBotCount: number;
   viewAsRole?: string;
 }): SafeHtml {
   const bp = opts.basePath;
@@ -232,16 +242,19 @@ export function opDetailPage(opts: {
               <button type="submit" class="btn btn-sm btn-green">Claim</button>
             </form>` : ""}
           ${canAssign ? html`
-            <form method="post" action="${bp}/api/seats/${seat.id}/assign" class="inline" style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap">
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              <select name="userId" required style="width:auto;min-width:10rem;padding:.25rem .4rem;font-size:.75rem">
-                <option value="">Assign user...</option>
-                ${opts.assignableUsers.map((user) => html`
-                  <option value="${user.id}">${user.username} (${user.role})</option>
-                `)}
-              </select>
-              <button type="submit" class="btn btn-sm">Add</button>
-            </form>` : ""}
+            <details class="seat-assign-details">
+              <summary class="btn btn-sm btn-ghost">Assign to user...</summary>
+              <form method="post" action="${bp}/api/seats/${seat.id}/assign" class="seat-assign-form">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <select name="userId" required>
+                  <option value="">Select user...</option>
+                  ${opts.assignableUsers.map((user) => html`
+                    <option value="${user.id}">${user.username} (${user.role})</option>
+                  `)}
+                </select>
+                <button type="submit" class="btn btn-sm">Add</button>
+              </form>
+            </details>` : ""}
           ${canUnclaim && !(seat.order === 0 && !canManage) ? html`
             <form method="post" action="${bp}/api/seats/${seat.id}/unclaim" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
@@ -516,6 +529,47 @@ export function opDetailPage(opts: {
           </form>` : "")}
     </div>` : "";
 
+  const voiceChannelsSection = canManage ? html`
+    <div class="section">
+      <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+        <span>Voice Channels</span>
+        ${opts.availableVoiceBotCount > 0 ? html`
+          <form method="post" action="${bp}/api/ops/${op.id}/voice-channels/launch" class="inline">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <button type="submit" class="btn btn-sm btn-cyan">Launch Voice Channels</button>
+          </form>` : safe("")}
+      </div>
+      ${op.voiceChannels.length ? html`
+        <div class="fleet-list">
+          ${op.voiceChannels.map((channel) => {
+            const unitName = channel.unit.unitType === "ship"
+              ? (channel.unit.ship?.name ?? "Unknown Ship")
+              : (channel.unit.squadName ?? "Squad");
+            const channelName = channel.channelName || unitName;
+            return html`
+              <div class="fleet-row">
+                <div>
+                  <div class="fleet-name">${channelName}</div>
+                  <div class="text-dim text-sm">Captain: ${channel.unit.captain.username}</div>
+                </div>
+                <div class="fleet-meta">
+                  <span class="tag tag-cyan">${channel.channelId}</span>
+                  ${channel.voiceBot ? html`<span class="tag tag-gold">${channel.voiceBot.label}</span>` : html`<span class="tag tag-dim">no bot assigned</span>`}
+                  <form method="post" action="${bp}/api/ops/${op.id}/voice-channels/${channel.id}/rename" class="inline" style="display:flex;gap:.35rem;align-items:center">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <input type="text" name="name" value="${channelName}" maxlength="100" style="width:14rem;padding:.25rem .4rem;font-size:.75rem" required />
+                    <button type="submit" class="btn btn-sm btn-ghost">Rename</button>
+                  </form>
+                  <form method="post" action="${bp}/api/ops/${op.id}/voice-channels/${channel.id}/delete" class="inline">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Delete this Discord voice channel?')">Delete</button>
+                  </form>
+                </div>
+              </div>`;
+          })}
+        </div>` : html`<p class="text-dim text-sm">No generated voice channels yet.</p>`}
+    </div>` : "";
+
   const activeUnits = op.units.filter((unit) => unit.status !== "rejected");
   const fleetOverview = html`
     <aside class="op-side op-fleet">
@@ -634,6 +688,7 @@ export function opDetailPage(opts: {
       <div class="op-control">
         ${registerForm}
         ${crewRequestPanel}
+        ${voiceChannelsSection}
         <div class="section">
           <div class="section-title">Leaders</div>
           <div class="flex gap-1" style="flex-wrap:wrap">
@@ -675,15 +730,15 @@ export function opDetailPage(opts: {
         </div>
 
         ${groupsSection}
-
-        <div class="section">
-          <div class="section-title">Registered Units (${op.units.length})</div>
-          ${op.units.length
-            ? html`<div class="unit-grid">${unslottedUnits.map((u) => unitCard(u))}</div>`
-            : html`<p class="text-dim text-sm">No units registered yet.</p>`}
-        </div>
       </div>
       ${actionDetails}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Registered Units (${op.units.length})</div>
+      ${op.units.length
+        ? html`<div class="unit-grid">${unslottedUnits.map((u) => unitCard(u))}</div>`
+        : html`<p class="text-dim text-sm">No units registered yet.</p>`}
     </div>
 
     <script>
@@ -1578,14 +1633,26 @@ export function guildsListPage(opts: {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
   const roleLabel: Record<string, string> = { fleetoperator: "Admiral", captain: "Captain", crew: "Crew" };
+  const isSuperAdmin = opts.currentUser?.role === "superadmin";
 
   const rows = opts.guilds.map((g) => {
     const isActive = g.guildId === opts.activeGuildId;
+    const canManage = isSuperAdmin || g.role === "fleetoperator";
     return html`
     <div class="card" style="display:flex;align-items:center;gap:1rem;padding:.75rem 1rem;margin-bottom:.5rem">
       <strong style="flex:1">${g.guildName} ${isActive ? safe('<span class="tag tag-green">active</span>') : safe("")}</strong>
       <span class="tag tag-role">${roleLabel[g.role] ?? g.role}</span>
-      ${g.role === "fleetoperator" ? html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">Settings</a>` : safe("")}
+      ${canManage ? (
+        isActive
+          ? html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">Settings</a>`
+          : html`
+            <form method="post" action="${bp}/guilds/switch" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="guildId" value="${g.guildId}" />
+              <input type="hidden" name="next" value="/guilds/settings" />
+              <button type="submit" class="btn btn-ghost btn-sm">Settings</button>
+            </form>`
+      ) : safe("")}
       ${isActive ? safe("") : html`
         <form method="post" action="${bp}/guilds/switch" class="inline">
           <input type="hidden" name="_csrf" value="${csrf}" />
@@ -1619,7 +1686,22 @@ export function guildSettingsPage(opts: {
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
   flash?: string;
-  guild: { id: string; name: string; eventChannelId: string | null; admiralRoleId: string | null; captainRoleId: string | null };
+  guild: {
+    id: string;
+    name: string;
+    eventChannelId: string | null;
+    voiceChannelCategoryId: string | null;
+    admiralRoleId: string | null;
+    captainRoleId: string | null;
+  };
+  voiceBots: Array<{
+    id: string;
+    label: string;
+    botUserId: string;
+    assignedChannelId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  }>;
   memberships: Array<{ userId: string; role: string; user: { username: string }; createdAt: Date }>;
   activeGuildId: string;
   activeGuildName: string;
@@ -1627,6 +1709,7 @@ export function guildSettingsPage(opts: {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
   const g = opts.guild;
+  const relayBotInvitePermissions = "282574843809040";
 
   const memberRows = opts.memberships.map((m) => html`
     <tr>
@@ -1644,6 +1727,21 @@ export function guildSettingsPage(opts: {
       <td class="text-dim text-sm">${fmtDate(m.createdAt)}</td>
     </tr>`);
 
+  const voiceBotRows = opts.voiceBots.map((bot) => html`
+    <tr>
+      <td>${bot.label}</td>
+      <td class="text-mono text-sm text-dim">${bot.botUserId}</td>
+      <td>${bot.assignedChannelId ? html`<span class="tag tag-gold">assigned</span>` : html`<span class="tag tag-green">available</span>`}</td>
+      <td class="text-dim text-sm">${fmtDate(bot.updatedAt)}</td>
+      <td>
+        <a href="${discordBotInviteUrl(bot.botUserId, relayBotInvitePermissions)}" class="btn btn-sm btn-ghost" target="_blank" rel="noopener">Invite</a>
+        <form method="post" action="${bp}/guilds/voice-bots/${bot.id}/delete" class="inline">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Remove this encrypted voice bot token?')">Delete</button>
+        </form>
+      </td>
+    </tr>`);
+
   const body = html`
     <div class="page-header">
       <h1 class="page-title">SERVER SETTINGS<span class="sep"> // </span><em>${g.name}</em></h1>
@@ -1655,6 +1753,9 @@ export function guildSettingsPage(opts: {
         <input type="hidden" name="_csrf" value="${csrf}" />
         <label class="text-sm text-dim">Event voice channel ID (optional — empty = external event)
           <input type="text" name="eventChannelId" value="${g.eventChannelId ?? ""}" placeholder="123456789012345678" />
+        </label>
+        <label class="text-sm text-dim">Operation voice category ID
+          <input type="text" name="voiceChannelCategoryId" value="${g.voiceChannelCategoryId ?? ""}" placeholder="1507879660724162770" />
         </label>
         <label class="text-sm text-dim">Admiral role ID (Discord role → fleetoperator)
           <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="optional" />
@@ -1668,6 +1769,32 @@ export function guildSettingsPage(opts: {
         Scheduled events for this server's operations are posted to this Discord.
         Role IDs are optional — set them to auto-map Discord roles to fleet roles on login.
       </p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Voice relay bots (${opts.voiceBots.length}/6)</div>
+      <form method="post" action="${bp}/guilds/voice-bots" class="card" style="padding:1rem;display:grid;grid-template-columns:1fr 1.2fr 1.8fr auto;gap:.75rem;align-items:flex-end">
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        <label class="text-sm text-dim">Label
+          <input type="text" name="label" maxlength="60" placeholder="Funkrelais 1" required />
+        </label>
+        <label class="text-sm text-dim">Bot user ID
+          <input type="text" name="botUserId" placeholder="1509191397264064689" required />
+        </label>
+        <label class="text-sm text-dim">Bot token
+          <input type="password" name="botToken" autocomplete="new-password" placeholder="Stored encrypted with per-token salt" required />
+        </label>
+        <button type="submit" class="btn btn-cyan btn-sm">Save Bot</button>
+      </form>
+      <p class="text-dim text-sm" style="margin-top:.5rem">
+        Tokens are encrypted before storage and never rendered back to the browser. Use six entries for the six Funkrelais bots.
+      </p>
+      <div style="overflow-x:auto;margin-top:1rem">
+        <table class="user-table">
+          <thead><tr><th>Label</th><th>Bot ID</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>
+          <tbody>${voiceBotRows.length ? voiceBotRows : html`<tr><td colspan="5" class="text-dim">No relay bots configured.</td></tr>`}</tbody>
+        </table>
+      </div>
     </div>
 
     <div class="section">

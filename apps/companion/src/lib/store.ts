@@ -1,5 +1,5 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
-import { DEFAULT_BRIDGE_URL, DEFAULT_HOTKEY, DEFAULT_RELAY_HOTKEY } from "./config";
+import { DEFAULT_BRIDGE_URL, DEFAULT_FLEETPLANNER_URL, DEFAULT_HOTKEY, DEFAULT_RELAY_HOTKEY } from "./config";
 
 /**
  * Persisted user settings. Anything that can differ between deployments
@@ -12,6 +12,10 @@ export type SavedGuild = { id: string; label?: string };
 export type Settings = {
   /** Bridge HTTPS origin (no trailing slash) — formerly VITE_BRIDGE_URL. */
   bridgeUrl: string;
+  /** Fleetplanner origin — empty until user configures it in Settings. */
+  fleetplannerUrl: string;
+  /** Companion bearer token from fleetplanner Discord OAuth. Null = not authenticated. */
+  fleetplannerToken?: string;
   /** PTT hotkey accelerator (e.g. "Mouse4", "Alt+F1"). */
   hotkey: string;
   /** Future Voice-to-All relay hotkey. Hidden until relay capability exists. */
@@ -59,8 +63,9 @@ export type Settings = {
 const STORE_FILE = "settings.json";
 const store = new LazyStore(STORE_FILE);
 
-const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceId" | "outputDeviceId"> = {
+const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceId" | "outputDeviceId" | "fleetplannerToken"> = {
   bridgeUrl: DEFAULT_BRIDGE_URL,
+  fleetplannerUrl: DEFAULT_FLEETPLANNER_URL,
   hotkey: DEFAULT_HOTKEY,
   relayHotkey: DEFAULT_RELAY_HOTKEY,
   savedGuilds: [],
@@ -82,13 +87,16 @@ const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceI
  */
 export async function loadSettings(): Promise<Settings> {
   const [
-    bridgeUrl, hotkey, relayHotkey, token, guildId, savedGuilds, lastGuildId,
+    bridgeUrl, fleetplannerUrl, fleetplannerToken,
+    hotkey, relayHotkey, token, guildId, savedGuilds, lastGuildId,
     micDeviceId, outputDeviceId, outputVolumePct, micGainPct, remoteVolumes,
     outputMuted, afk,
     feedbackSoundsEnabled, feedbackSoundsVolumePct,
     duckingEnabled, duckingTargetVolumePct,
   ] = await Promise.all([
     store.get<string>("bridgeUrl"),
+    store.get<string>("fleetplannerUrl"),
+    store.get<string>("fleetplannerToken"),
     store.get<string>("hotkey"),
     store.get<string>("relayHotkey"),
     store.get<string>("token"),
@@ -109,6 +117,8 @@ export async function loadSettings(): Promise<Settings> {
   ]);
   return {
     bridgeUrl: bridgeUrl ?? DEFAULTS.bridgeUrl,
+    fleetplannerUrl: fleetplannerUrl ?? DEFAULTS.fleetplannerUrl,
+    fleetplannerToken: fleetplannerToken ?? undefined,
     hotkey: hotkey ?? DEFAULTS.hotkey,
     relayHotkey: relayHotkey ?? DEFAULTS.relayHotkey,
     token: token ?? undefined,
@@ -165,6 +175,21 @@ export async function saveRelayHotkey(accelerator: string): Promise<void> {
 
 export async function saveBridgeUrl(url: string): Promise<void> {
   await store.set("bridgeUrl", url);
+  await store.save();
+}
+
+export async function saveFleetplannerUrl(url: string): Promise<void> {
+  await store.set("fleetplannerUrl", url);
+  await store.save();
+}
+
+export async function saveFleetplannerToken(token: string): Promise<void> {
+  await store.set("fleetplannerToken", token);
+  await store.save();
+}
+
+export async function clearFleetplannerToken(): Promise<void> {
+  await store.delete("fleetplannerToken");
   await store.save();
 }
 

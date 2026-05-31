@@ -6,6 +6,10 @@ import { searchLocalShips, shipCategory } from "../services/scwiki.js";
 import { registerUnit, deleteUnit, setUnitStatus, claimSeat, assignSeat, unclaimSeat } from "../services/units.js";
 import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
 import { assignCaptainDiscordRole, createScheduledEvent, deleteScheduledEvent, sendAcceptedCaptainVoiceDm, sendSeatAssignmentDm } from "../services/discord.js";
+import { cleanupOperationVoiceChannels, deleteOperationVoiceChannel, launchOperationVoiceChannels, moveOperationCrewToVoiceChannels, renameOperationVoiceChannel } from "../services/voiceBots.js";
+import { issueUnitLivekitToken, issueGlobalVoiceToken } from "../services/livekit.js";
+import { loadCompanionSession } from "../auth/companionSession.js";
+import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../services/discord.js";
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 
@@ -336,7 +340,101 @@ export async function apiRoutes(app: FastifyInstance) {
           )
           .catch((err) => app.log.warn(err, "Discord event deletion failed (non-fatal)"));
       }
+      if (newStatus === "in_progress") {
+        try {
+          const moved = await moveOperationCrewToVoiceChannels(req.params.id);
+          const skipped = moved.skippedDiscordUsers
+            ? `+${moved.skippedDiscordUsers}+users+had+no+Discord+identity.`
+            : "";
+          const notConnected = moved.notConnected
+            ? `+${moved.notConnected}+users+were+not+connected+to+voice.`
+            : "";
+          return reply.redirect(
+            basePath(`/ops/${req.params.id}?flash=ok:Status+updated.+Moved+${moved.moved}+crew+into+${moved.channels}+voice+channels.${notConnected}${skipped}`),
+            302,
+          );
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Voice move failed";
+          return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Status+updated,+voice+move+failed:+${encodeURIComponent(msg)}`), 302);
+        }
+      }
+      if (newStatus === "completed" || newStatus === "cancelled") {
+        try {
+          const cleanup = await cleanupOperationVoiceChannels(req.params.id);
+          const skipped = cleanup.skippedDiscordUsers
+            ? `+${cleanup.skippedDiscordUsers}+users+had+no+Discord+identity.`
+            : "";
+          return reply.redirect(
+            basePath(`/ops/${req.params.id}?flash=ok:Status+updated.+Deleted+${cleanup.deleted}+voice+channels,+disconnected+${cleanup.disconnected}+crew.${skipped}`),
+            302,
+          );
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "Voice cleanup failed";
+          return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Status+updated,+voice+cleanup+failed:+${encodeURIComponent(msg)}`), 302);
+        }
+      }
       return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Status+updated.`), 302);
+    }
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/voice-channels/launch",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      try {
+        const result = await launchOperationVoiceChannels(req.params.id);
+        const skipped = result.skippedDiscordUsers
+          ? `+${result.skippedDiscordUsers}+users+had+no+Discord+identity.`
+          : "";
+        return reply.redirect(
+          basePath(`/ops/${req.params.id}?flash=ok:Created+${result.created}+voice+channels,+assigned+${result.botsAssigned}+bots.${skipped}`),
+          302,
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to launch voice channels";
+        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+      }
+    }
+  );
+
+  app.post<{ Params: { id: string; voiceChannelId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/voice-channels/:voiceChannelId/rename",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      try {
+        await renameOperationVoiceChannel({
+          operationId: req.params.id,
+          voiceChannelId: req.params.voiceChannelId,
+          name: req.body.name ?? "",
+        });
+        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Voice+channel+renamed.`), 302);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to rename voice channel";
+        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+      }
+    }
+  );
+
+  app.post<{ Params: { id: string; voiceChannelId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/voice-channels/:voiceChannelId/delete",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      try {
+        await deleteOperationVoiceChannel({
+          operationId: req.params.id,
+          voiceChannelId: req.params.voiceChannelId,
+        });
+        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Voice+channel+deleted.`), 302);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to delete voice channel";
+        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+      }
     }
   );
 
@@ -615,6 +713,127 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!requirement) return reply.code(404).send({ error: "Requirement not found" });
       await prisma.compositionRequirement.delete({ where: { id: req.params.reqId } });
       return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Requirement+deleted.`), 302);
+    }
+  );
+
+  // ── Fleet voice token ────────────────────────────────────────────────
+  // Returns a LiveKit token for the caller's accepted unit in this operation.
+  // captains: auto-resolved; crew: auto-resolved from seat; fleetoperators:
+  // may pass ?unitId= to get a token for any accepted unit.
+  app.get<{ Params: { id: string }; Querystring: { unitId?: string } }>(
+    "/api/ops/:id/voice-token",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+
+      const op = await prisma.operation.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, title: true, guildId: true, status: true },
+      });
+      if (!op) return reply.code(404).send({ error: "Operation not found" });
+
+      const userId = ctx.user.id;
+      let unitId = req.query.unitId;
+
+      if (!unitId) {
+        const asCaptain = await prisma.fleetUnit.findFirst({
+          where: { operationId: op.id, captainId: userId, status: "accepted" },
+          select: { id: true },
+        });
+        if (asCaptain) {
+          unitId = asCaptain.id;
+        } else {
+          const asCrew = await prisma.seatAssignment.findFirst({
+            where: { userId, active: true, fleetUnit: { operationId: op.id, status: "accepted" } },
+            select: { unitId: true },
+          });
+          if (asCrew) unitId = asCrew.unitId;
+        }
+      }
+
+      if (!unitId) return reply.code(403).send({ error: "No accepted unit found for this user in this operation" });
+
+      const unit = await prisma.fleetUnit.findFirst({
+        where: { id: unitId, operationId: op.id, status: "accepted" },
+        select: { id: true },
+      });
+      if (!unit) return reply.code(404).send({ error: "Unit not found or not accepted" });
+
+      const result = await issueUnitLivekitToken(userId, op.id, unit.id);
+      if (!result) return reply.code(503).send({ error: "LiveKit is not configured on this server" });
+
+      return reply.send({ ...result, opTitle: op.title });
+    }
+  );
+
+  // ── Companion auto-voice endpoint ────────────────────────────────────
+  // Used by the companion app's 20s polling loop. Bearer token issued
+  // by /auth/discord/companion/callback. Returns the caller's active fleet
+  // unit room token (if in an accepted unit in an active op) and, if they
+  // hold the guild's globalVoiceRoleId Discord role, a global voice token.
+  app.get(
+    "/api/companion/voice",
+    async (req, reply) => {
+      const authHeader = (req.headers as Record<string, string | undefined>).authorization;
+      if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
+      const userId = await loadCompanionSession(authHeader.slice(7));
+      if (!userId) return reply.code(401).send({ error: "unauthorized" });
+
+      const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
+
+      // Find active accepted unit as captain
+      let activeUnit = await prisma.fleetUnit.findFirst({
+        where: {
+          captainId: userId,
+          status: "accepted",
+          operation: { status: { in: [...ACTIVE_STATUSES] } },
+        },
+        include: { operation: { include: { guild: true } } },
+        orderBy: { createdAt: "desc" },
+      });
+
+      // Fall back to crew seat
+      if (!activeUnit) {
+        const crewSeat = await prisma.seatAssignment.findFirst({
+          where: {
+            userId,
+            active: true,
+            fleetUnit: {
+              status: "accepted",
+              operation: { status: { in: [...ACTIVE_STATUSES] } },
+            },
+          },
+          include: { fleetUnit: { include: { operation: { include: { guild: true } } } } },
+        });
+        if (crewSeat) activeUnit = crewSeat.fleetUnit;
+      }
+
+      let unitRoom: { livekitUrl: string; token: string; room: string; opTitle: string } | null = null;
+      let globalVoice: { livekitUrl: string; token: string; room: string } | null = null;
+
+      if (activeUnit) {
+        const op = activeUnit.operation;
+        const guild = op.guild;
+
+        const ut = await issueUnitLivekitToken(userId, op.id, activeUnit.id);
+        if (ut) unitRoom = { ...ut, opTitle: op.title };
+
+        // Global voice: only if guild has a globalVoiceRoleId AND user holds the role
+        if (guild.globalVoiceRoleId) {
+          try {
+            const discordId = await discordUserIdForFleetplannerUser(userId);
+            const roles = await fetchGuildMemberRoles(op.guildId, discordId);
+            if (roles?.includes(guild.globalVoiceRoleId)) {
+              const gvt = await issueGlobalVoiceToken(userId, op.id);
+              if (gvt) globalVoice = gvt;
+            }
+          } catch {
+            // no Discord identity or role lookup failed → no global voice
+          }
+        }
+      }
+
+      return reply.send({ unitRoom, globalVoice });
     }
   );
 }

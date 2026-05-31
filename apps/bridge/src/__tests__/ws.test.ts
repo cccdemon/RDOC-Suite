@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import WebSocket from "ws";
 import type { FastifyInstance } from "fastify";
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 import { buildApp } from "../app.js";
 import { _clearRevocations, issueSessionToken } from "../auth/sessionToken.js";
 import { rooms } from "../services/rooms.js";

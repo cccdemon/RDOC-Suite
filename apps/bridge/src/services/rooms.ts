@@ -1,5 +1,5 @@
 import type { WebSocket } from "ws";
-import type { CommanderInfo, ServerMessage } from "@dccc/shared";
+import type { CommanderInfo, ServerMessage } from "@rdoc-suite/shared";
 
 type Participant = {
   userId: string;

@@ -204,6 +204,9 @@ export async function webRoutes(app: FastifyInstance) {
             orderBy: { user: { username: "asc" } },
           })).map((m) => ({ id: m.user.id, username: m.user.username, role: m.role }))
         : [];
+      const availableVoiceBotCount = await prisma.guildVoiceBot.count({
+        where: { guildId: op.guildId, assignedChannelId: null },
+      });
       htmlReply(reply, opDetailPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
@@ -212,6 +215,7 @@ export async function webRoutes(app: FastifyInstance) {
         op,
         ownedShips,
         assignableUsers,
+        availableVoiceBotCount,
         viewAsRole: req.query.viewAs,
       }));
     }

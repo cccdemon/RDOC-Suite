@@ -1,5 +1,5 @@
-import type { BridgeMode, GuildConfig } from "@dccc/shared";
-import { getPrisma } from "@dccc/db";
+import type { BridgeMode, GuildConfig } from "@rdoc-suite/shared";
+import { getPrisma } from "@rdoc-suite/db";
 
 const BRIDGE_MODES = new Set<BridgeMode>(["discord_channel", "external_voice", "bot_relay"]);
 

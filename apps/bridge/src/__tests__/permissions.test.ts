@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
-import { disconnectPrisma, getPrisma } from "@dccc/db";
+import { disconnectPrisma, getPrisma } from "@rdoc-suite/db";
 import { checkAllowedVoiceChannel } from "../services/permissions.js";
 
 const GUILD_ID = "987654321098765432";

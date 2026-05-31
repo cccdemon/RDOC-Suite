@@ -1,4 +1,4 @@
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 import { getEnv } from "../config/env.js";
 
 export type BotEntry = { name: string; token: string; channelId: string };

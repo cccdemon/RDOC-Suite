@@ -15,14 +15,49 @@ RDOC-Suite — Discord Channel Commander Voice Bridge (Monorepo aus RDCC + RDOC-
 - **Open Decisions** — ungeklärte Architekturfragen; entfernen wenn entschieden.
 
 Offene Entscheidungen (Stand 2026-05-27):
-1. **Package-Namespace**: `@dccc/*` → `@rdoc-suite/*` oder `@rdoc-sc/*`? Betrifft alle Workspaces + Dockerfiles.
+1. **Package-Namespace**: ✓ Entschieden — `@rdoc-suite/*` (war `@dccc/*`, umbenannt 2026-05-31).
 2. **Voice-to-All**: Commander-Rolle, separate Discord-Rolle oder Admin-only?
 3. **Session-Modell**: Invite-basierte Ops-Räume (Step 3 implementiert) vs. einheitliche Guild-Räume mit Invite-Links?
 4. **`Caddyfile` im Repo**: veraltet, Production läuft auf Traefik — kann gelöscht werden.
 
-## Operative Hinweise für Claude Code
+## Deploy-Regeln — immer einhalten
 
-> **Für Production: [STAND.md](STAND.md) ist Single-Source-of-Truth.** Dort steht der aktuelle Deploy-Stand (Hostname, Traefik-Routing, LXC-Setup, iptables-DNAT, `.env` auf dem Server, offene Punkte). Wenn du an Docker/Deploy/Traefik/Prod-`.env` arbeitest, lies STAND.md zuerst. Dieser Abschnitt beschreibt nur den Code und das lokale Dev-Setup.
+**RDOC-Suite ≠ DCCC. Zwei verschiedene Server, zwei verschiedene Projekte.**
+
+| Projekt | Server | Pfad | Stack |
+|---|---|---|---|
+| **RDOC-Suite** | `10.10.10.99` | `/opt/RDOC-Suite` | `docker compose -f docker-compose.prod.yml` |
+| **DCCC** | `10.10.10.97` (headwig) | `/opt/discord-channel-commander` | `docker compose -f docker-compose.prod.yml` |
+
+**RDOC-Suite Deploy:**
+```bash
+cd /opt/RDOC-Suite
+git pull
+docker compose -f docker-compose.prod.yml up -d --build          # alle Services
+docker compose -f docker-compose.prod.yml up -d --build bridge    # einzeln
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner
+docker compose -f docker-compose.prod.yml logs -f fleetplanner
+```
+
+Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md mehr.
+
+## Regeln für Claude Code — immer befolgen
+
+1. **Mergelog zuerst, immer.** Vor JEDER Änderung: Queued-Eintrag in `docs/RDOC-SUITE-MERGELOG.md`. Keine Ausnahmen.
+
+2. **RDOC-Suite ≠ DCCC.** Nie verwechseln (siehe Deploy-Regeln oben).
+
+3. **User deployt selbst.** Artifacts im Repo vorbereiten. Kein SSH in Prod.
+
+4. **Kein lokales pnpm/npm/cargo.** Docker baut alles server-seitig. Dockerfile bootstrappt sich selbst.
+
+5. **Code first, compile last.** Ganzes Feature end-to-end schreiben, dann alle Type-Errors in einem Batch fixen.
+
+6. **Docs nur in `docs/`.** Kein STAND.md. Infra-Wahrheit liegt in `docs/RDOC-SUITE-MERGELOG.md`.
+
+7. **Regeln in CLAUDE.md schreiben** wenn der User sie nennt — nicht nur in Memory.
+
+## Operative Hinweise für Claude Code
 
 ### Häufige Commands — Lokales Dev
 
@@ -40,10 +75,10 @@ pnpm format
 pnpm test                   # vitest in jedem Workspace mit test-Skript
 
 # Einzelnes Workspace bauen / entwickeln (Watch-Mode)
-pnpm --filter @dccc/bot dev
-pnpm --filter @dccc/bridge dev
-pnpm --filter @dccc/companion dev          # nur Vite-Frontend
-pnpm --filter @dccc/companion tauri:dev    # Vite + Rust Shell (Hotkeys, Deep-Link)
+pnpm --filter @rdoc-suite/bot dev
+pnpm --filter @rdoc-suite/bridge dev
+pnpm --filter @rdoc-suite/companion dev          # nur Vite-Frontend
+pnpm --filter @rdoc-suite/companion tauri:dev    # Vite + Rust Shell (Hotkeys, Deep-Link)
 pnpm --filter @rdoc-suite/fleetplanner dev
 pnpm --filter @rdoc-suite/relay-bots dev
 
@@ -52,8 +87,8 @@ node apps/bot/dist/index.js
 node apps/bridge/dist/index.js
 
 # Einzelne Tests laufen lassen
-pnpm --filter @dccc/bridge test -- oauth      # nur oauth.test.ts
-pnpm --filter @dccc/bridge test -- -t "name"  # einzelner it("name", ...) Block
+pnpm --filter @rdoc-suite/bridge test -- oauth      # nur oauth.test.ts
+pnpm --filter @rdoc-suite/bridge test -- -t "name"  # einzelner it("name", ...) Block
 
 # Lokales LiveKit (für Voice-Tests zwingend; Dev-Compose mit eingebauten Creds)
 docker compose up -d livekit
@@ -61,14 +96,15 @@ docker compose up -d livekit
 
 Es gibt keinen `ts-node`-Runner. Bot und Bridge müssen vor dem Start kompiliert werden (Output in `dist/`). **Für Production wird ausschließlich in Docker gebaut** — kein lokaler pnpm/npm/cargo auf dem Server.
 
-### Häufige Commands — Production (auf dem Commander-LXC)
+### Häufige Commands — Production (10.10.10.99 /opt/RDOC-Suite)
 
 ```bash
-cd /opt/discord-channel-commander
+cd /opt/RDOC-Suite
 git pull
-docker compose -f docker-compose.prod.yml build         # baut alle geänderten Services
-docker compose -f docker-compose.prod.yml up -d
-docker compose -f docker-compose.prod.yml logs -f bridge   # oder bot / fleetplanner
+docker compose -f docker-compose.prod.yml up -d --build             # alle Services
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner  # einzeln
+docker compose -f docker-compose.prod.yml logs -f fleetplanner
+docker compose -f docker-compose.prod.yml logs -f bridge
 ```
 
 Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Windows** (Tauri braucht Rust + MSVC).
@@ -77,14 +113,14 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 
 | Verzeichnis | pnpm-Name | Docker-Image |
 | --- | --- | --- |
-| [apps/bot/](apps/bot/) | `@dccc/bot` | `rdoc-suite-bot` |
-| [apps/bridge/](apps/bridge/) | `@dccc/bridge` | `rdoc-suite-bridge` |
-| [apps/companion/](apps/companion/) | `@dccc/companion` | — (lokaler Windows-Build) |
+| [apps/bot/](apps/bot/) | `@rdoc-suite/bot` | `rdoc-suite-bot` |
+| [apps/bridge/](apps/bridge/) | `@rdoc-suite/bridge` | `rdoc-suite-bridge` |
+| [apps/companion/](apps/companion/) | `@rdoc-suite/companion` | — (lokaler Windows-Build) |
 | [apps/fleetplanner/](apps/fleetplanner/) | `@rdoc-suite/fleetplanner` | `rdoc-suite-fleetplanner` |
 | [apps/relay-bots/](apps/relay-bots/) | `@rdoc-suite/relay-bots` | `rdoc-suite-relay-bots` (noch nicht in Prod-Compose) |
 | [apps/monitoring/](apps/monitoring/) | — (Prometheus-Image) | `rdoc-suite-monitoring` |
-| [packages/shared/](packages/shared/) | `@dccc/shared` | — |
-| [packages/db/](packages/db/) | `@dccc/db` | — |
+| [packages/shared/](packages/shared/) | `@rdoc-suite/shared` | — |
+| [packages/db/](packages/db/) | `@rdoc-suite/db` | — |
 
 ### Architektur-Pickup
 
@@ -108,7 +144,7 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 
 10. **`apps/relay-bots` (Step 6) = importierter VoiceRelayBots-Worker** (`@rdoc-suite/relay-bots`). Liest Config von der Bridge, subscribed LiveKit-Track, relayed Audio in Discord Voice Channels via `@discordjs/voice`. `@discordjs/opus` ist ein nativer Addon — `pnpm approve-builds` nötig beim Deploy.
 
-11. **`apps/fleetplanner` = Fastify + Prisma + SSR** (`@rdoc-suite/fleetplanner`). Eigenes SQLite (`fleetplanner.db`); Production-Route unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate` Skripte pro Workspace.
+11. **`apps/fleetplanner` = Fastify + Prisma + SSR** (`@rdoc-suite/fleetplanner`). Eigene **PostgreSQL**-DB (`fleetplanner-db` Container); Production-Route unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate` Skripte pro Workspace. Companion-OAuth via RDOC-RTC Bot (`DISCORD_COMPANION_BOT_ID`/`KEY`), fleet voice via LiveKit unit rooms + global voice.
 
 12. **`apps/monitoring` = Prometheus-Image.** Keine eigene TypeScript-Quelle; `apps/monitoring/Dockerfile` wraps das offizielle Prometheus-Image mit `apps/monitoring/prometheus.yml`. Route: `suite.raumdock.org/monitoring`.
 
@@ -132,15 +168,28 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 
 ### Wo welche Doku liegt
 
-- [docs/RDOC-SUITE-MERGELOG.md](docs/RDOC-SUITE-MERGELOG.md) — **Merge-Handover-Log** (Queued/Completed/Decisions). Vor jeder Änderung lesen und schreiben.
-- [STAND.md](STAND.md) — **aktueller Deployment-Stand** (Hostname, Routing, .env, offene Punkte). Bei Production-Fragen zuerst hier lesen.
-- [README.md](README.md) — Quickstart, Architektur-Diagramm, Repository-Layout
-- [docs/admin-guide.md](docs/admin-guide.md) — Slash-Commands, Bot-Invite, Credential-Flow
-- [docs/commander-guide.md](docs/commander-guide.md) — Companion-Install, Hotkey, Audio
-- [docs/privacy.md](docs/privacy.md) — Daten-Inventar
-- [security-plan.md](security-plan.md) — Threat-Model und geplante Härtungen
-- Datenmodell: [prisma/schema.prisma](prisma/schema.prisma)
-- WS-Protokoll: [packages/shared/src/protocol.ts](packages/shared/src/protocol.ts) + [packages/shared/src/validation.ts](packages/shared/src/validation.ts)
+| Datei | Zweck |
+|---|---|
+| [docs/RDOC-SUITE-MERGELOG.md](docs/RDOC-SUITE-MERGELOG.md) | **Primäre Quelle** — Queued/Completed/Decisions. Vor jeder Änderung lesen und schreiben. |
+| [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md) | Feature-Backlog Fleetplanner — was done, was fehlt. |
+| [docs/admin-guide.md](docs/admin-guide.md) | Slash-Commands, Bot-Invite, Credential-Flow |
+| [docs/commander-guide.md](docs/commander-guide.md) | Companion-Install, Hotkey, Audio |
+| [docs/privacy.md](docs/privacy.md) | Daten-Inventar |
+| [README.md](README.md) | Quickstart, Architektur-Diagramm, Repository-Layout |
+| [security-plan.md](security-plan.md) | Threat-Model und geplante Härtungen |
+| [prisma/schema.prisma](prisma/schema.prisma) | Bridge/Bot Datenmodell |
+| [apps/fleetplanner/prisma/schema.prisma](apps/fleetplanner/prisma/schema.prisma) | Fleetplanner Datenmodell |
+| [packages/shared/src/protocol.ts](packages/shared/src/protocol.ts) | WS-Protokoll |
+
+Kein STAND.md — alles in `docs/`.
+
+### Naming & URL-Konventionen
+
+- Public-Interface: `https://suite.raumdock.org`
+- LiveKit-Signaling: `wss://voice.raumdock.org`
+- Docker-Image-Prefix: `rdoc-suite-<part>`
+- `PUBLIC_BASE_PATH` = `""` — kein `/dccc`-Prefix irgendwo.
+- Companion-OAuth deep-link scheme: `dccc://` (kein OS-Level-Register; nur im Webview abgefangen)
 
 ---
 

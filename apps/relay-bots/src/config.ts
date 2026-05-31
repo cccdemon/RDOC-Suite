@@ -25,7 +25,7 @@ export const ConfigSchema = z.object({
   }),
   discord: z.object({
     guildId: z.string().min(1),
-    bots: z.array(BotConfigSchema).min(1),
+    bots: z.array(BotConfigSchema),
   }),
 });
 

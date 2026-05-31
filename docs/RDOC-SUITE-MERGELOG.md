@@ -206,6 +206,35 @@ RDOC-Suite/
 
 ## Queued / Planned Steps
 
+- 2026-05-31: Add GitHub Actions workflow for automated companion Windows build + deploy to server.
+  Primary: GH Actions Windows runner → tauri:build → SCP EXE to /opt/RDOC-Suite/downloads/ → bridge serves via updater.
+  Fallback: local build script for manual upload.
+
+- 2026-05-31: Rename all @dccc/* workspace packages to @rdoc-suite/* — package.json names, all imports, Dockerfiles, docker-compose, CLAUDE.md, pnpm-workspace.yaml.
+
+- 2026-05-31: Mark Fleetplanner backlog item #4.2 (auto-create voice channels + assign bots) as done in FLEETPLANNER-BACKLOG.md; user confirmed it is already implemented.
+- 2026-05-31: Implement Fleetplanner companion auth + global voice.
+  Fleetplanner: CompanionSession DB model, Guild.globalVoiceRoleId, companion OAuth routes
+  (/auth/discord/companion/start + /callback → dccc://fleet-auth?token=...),
+  GET /api/companion/voice bearer-token endpoint (auto-resolves unit room + global voice gated by Discord role).
+  Companion Rust: start_fleet_oauth_webview command (catches dccc://fleet-auth?token=...).
+  Companion TS: fleetplannerAuth.ts, store/config fleetplannerUrl+token,
+  SettingsModal fleetplannerUrl field, App.tsx: fleet OAuth flow, 20s polling,
+  auto-connect FleetAudio (unit) + globalFleetRef (global voice), FLEET LOGIN/PTT/GLOBAL buttons.
+- 2026-05-31: Implement Fleetplanner LiveKit voice + Companion integration.
+  Fleetplanner: add livekit-server-sdk, new services/livekit.ts (issueUnitLivekitToken, per-unit rooms fleet-{opId}-unit-{unitId}),
+  new GET /api/ops/:id/voice-token endpoint (auth required, auto-resolves unit from captain or crew seat).
+  Companion: new lib/fleetAudio.ts (FleetAudio class wrapping LivekitAudio, direct url+token connect),
+  new components/FleetVoiceModal.tsx (paste JSON token from fleetplanner op page),
+  App.tsx wired: fleetStatus/fleetPttActive/fleetRoomName/fleetOpTitle state, fleetRef, FLEET button in modebar,
+  mouse PTT from modebar button, disconnect on sign-out.
+- 2026-05-31: Implement Fleetplanner backlog #3 — Discord reminder DMs before operation start.
+  Schema: add `reminderSentAt DateTime?` to `Operation`, add `reminderOffsetMin Int @default(15)` to `Guild`.
+  New migration: `20260531002000_reminder_scheduler`.
+  New service: `apps/fleetplanner/src/services/reminderScheduler.ts` — 60s tick, queries ops due for reminder,
+  sends DM via existing Fleetplanner Bot (`sendDiscordDm`), marks `reminderSentAt` to prevent re-send.
+  Wire into `src/index.ts` alongside existing schedulers.
+
 - 2026-05-30: Step 12 — Full build/test/smoke verification and stable commit.
   Scope: build all workspace packages, run full bridge test suite, verify compose config,
   commit all merge work, tag stable milestone.

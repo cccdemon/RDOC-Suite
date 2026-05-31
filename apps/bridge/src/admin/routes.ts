@@ -45,7 +45,7 @@ import {
   revokeDownloadToken,
 } from "../services/companionDownloads.js";
 import { fetchLatestCompanionRelease } from "../services/githubReleases.js";
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 import { rooms } from "../services/rooms.js";
 import { bridgeRoomName } from "../services/livekit.js";
 import { getGuildInfo, getGuildInfos } from "../services/guildInfo.js";

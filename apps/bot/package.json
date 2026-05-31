@@ -1,5 +1,5 @@
 {
-  "name": "@dccc/bot",
+  "name": "@rdoc-suite/bot",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "dev": "tsc -p tsconfig.json --watch"
   },
   "dependencies": {
-    "@dccc/db": "workspace:*",
-    "@dccc/shared": "workspace:*",
+    "@rdoc-suite/db": "workspace:*",
+    "@rdoc-suite/shared": "workspace:*",
     "discord.js": "^14.26.4",
     "dotenv": "^17.4.2",
     "pino": "^10.3.1",

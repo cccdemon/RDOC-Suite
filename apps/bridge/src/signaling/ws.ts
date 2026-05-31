@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { WebSocket } from "ws";
-import { parseClientMessage } from "@dccc/shared";
-import type { ServerMessage } from "@dccc/shared";
+import { parseClientMessage } from "@rdoc-suite/shared";
+import type { ServerMessage } from "@rdoc-suite/shared";
 import { getEnv, getOAuthEnv } from "../config/env.js";
 import { verifySessionToken } from "../auth/sessionToken.js";
 import { logger } from "../services/logger.js";
@@ -11,7 +11,7 @@ import { checkAllowedVoiceChannel, recheckCommanderRole } from "../services/perm
 import { readGuildConfig } from "../services/guildConfig.js";
 import { fetchGuildMember } from "../auth/discord.js";
 import { getGuildInfo } from "../services/guildInfo.js";
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 
 const HEARTBEAT_INTERVAL_MS = 20_000;
 // Role-check stays at 60s. Voice-channel-change is delivered in real

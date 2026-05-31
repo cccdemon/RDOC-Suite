@@ -27,6 +27,7 @@ services:
       - ./deploy/caddy-rdoc/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_rdoc_data:/data
       - caddy_rdoc_config:/config
+      - ./downloads:/srv/downloads:ro
     depends_on:
       - bridge
       - fleetplanner
@@ -155,7 +156,7 @@ services:
     container_name: rdoc-suite-relay-bots
     restart: unless-stopped
     environment:
-      CONFIG_PATH: "/app/config.json"
+      CONFIG_PATH: "/app/data/config.json"
       ADMIN_HOST: "0.0.0.0"
       ADMIN_PORT: "8788"
     # Mount a config.json you create on the host — see apps/relay-bots/config.example.json.
@@ -165,7 +166,7 @@ services:
     #     "discord": { "guildId": "0", "bots": [] } }
     # (livekit/discord placeholders are overwritten by the bridge service-config endpoint)
     volumes:
-      - ./relay-bots.config.json:/app/config.json:ro
+      - ./data/relay-bots:/app/data
     ports:
       # Admin API (metrics/reload) — localhost only, scraped by Prometheus.
       - "127.0.0.1:8788:8788"

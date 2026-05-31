@@ -66,8 +66,8 @@ In three separate terminals (in the project root):
 
 ```bash
 docker compose up -d livekit
-pnpm --filter @dccc/bridge build && node apps/bridge/dist/index.js
-pnpm --filter @dccc/bot   build && node apps/bot/dist/index.js
+pnpm --filter @rdoc-suite/bridge build && node apps/bridge/dist/index.js
+pnpm --filter @rdoc-suite/bot   build && node apps/bot/dist/index.js
 ```
 
 The bot should log `bot ready` once it connects to Discord.

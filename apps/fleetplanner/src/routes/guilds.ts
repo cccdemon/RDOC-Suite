@@ -2,14 +2,16 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { basePath, getEnv } from "../config/env.js";
 import { requireAuth, requireGuildRole } from "../auth/middleware.js";
 import { installGuild, getMembership, listUserGuilds } from "../services/guilds.js";
+import { addGuildVoiceBot, deleteGuildVoiceBot } from "../services/voiceBots.js";
 import { prisma } from "../db.js";
 import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage } from "../web/pages.js";
 
 // Discord bot permissions bitfield:
-// VIEW_CHANNEL(10) | SEND_MESSAGES(11) | READ_MESSAGE_HISTORY(16) |
-// MANAGE_ROLES(28) | MANAGE_EVENTS(33)
+// MANAGE_CHANNELS(4) | VIEW_CHANNEL(10) | SEND_MESSAGES(11) | READ_MESSAGE_HISTORY(16) |
+// CONNECT(20) | MOVE_MEMBERS(24) | MANAGE_ROLES(28) | MANAGE_EVENTS(33)
 const BOT_PERMISSIONS =
-  (1n << 10n) | (1n << 11n) | (1n << 16n) | (1n << 28n) | (1n << 33n); // 8858960896
+  (1n << 4n) | (1n << 10n) | (1n << 11n) | (1n << 16n) |
+  (1n << 20n) | (1n << 24n) | (1n << 28n) | (1n << 33n);
 const ACTIVE_GUILD_COOKIE = "fp_guild";
 
 function setActiveGuild(reply: FastifyReply, guildId: string): void {
@@ -102,6 +104,9 @@ export async function guildRoutes(app: FastifyInstance) {
         return reply.redirect(basePath("/?flash=error:Not+a+member+of+that+guild."), 302);
       }
       setActiveGuild(reply, guildId);
+      if (req.body.next === "/guilds/settings") {
+        return reply.redirect(basePath("/guilds/settings"), 302);
+      }
       return reply.redirect(basePath("/?flash=ok:Switched+server."), 302);
     }
   );
@@ -130,11 +135,23 @@ export async function guildRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const gctx = await requireGuildRole(req, reply, "fleetoperator");
       if (!gctx) return;
-      const [guild, memberships] = await Promise.all([
+      const [guild, memberships, voiceBots] = await Promise.all([
         prisma.guild.findUnique({ where: { id: gctx.guildId } }),
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: { user: true },
+          orderBy: { createdAt: "asc" },
+        }),
+        prisma.guildVoiceBot.findMany({
+          where: { guildId: gctx.guildId },
+          select: {
+            id: true,
+            label: true,
+            botUserId: true,
+            assignedChannelId: true,
+            createdAt: true,
+            updatedAt: true,
+          },
           orderBy: { createdAt: "asc" },
         }),
       ]);
@@ -146,6 +163,7 @@ export async function guildRoutes(app: FastifyInstance) {
         flash: req.query.flash,
         guild,
         memberships,
+        voiceBots,
         activeGuildId: gctx.guildId,
         activeGuildName: gctx.guildName,
       }));
@@ -163,11 +181,44 @@ export async function guildRoutes(app: FastifyInstance) {
         where: { id: gctx.guildId },
         data: {
           eventChannelId: snowflake(req.body.eventChannelId),
+          voiceChannelCategoryId: snowflake(req.body.voiceChannelCategoryId),
           admiralRoleId: snowflake(req.body.admiralRoleId),
           captainRoleId: snowflake(req.body.captainRoleId),
         },
       });
       return reply.redirect(basePath("/guilds/settings?flash=ok:Server+settings+saved."), 302);
+    }
+  );
+
+  app.post<{ Body: Record<string, string> }>(
+    "/guilds/voice-bots",
+    async (req, reply) => {
+      const gctx = await requireGuildRole(req, reply, "fleetoperator");
+      if (!gctx) return;
+      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      try {
+        await addGuildVoiceBot({
+          guildId: gctx.guildId,
+          label: req.body.label ?? "",
+          botUserId: req.body.botUserId ?? "",
+          token: req.body.botToken ?? "",
+        });
+        return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+saved."), 302);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to save voice bot";
+        return reply.redirect(basePath(`/guilds/settings?flash=error:${encodeURIComponent(msg)}`), 302);
+      }
+    }
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/guilds/voice-bots/:id/delete",
+    async (req, reply) => {
+      const gctx = await requireGuildRole(req, reply, "fleetoperator");
+      if (!gctx) return;
+      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      await deleteGuildVoiceBot(gctx.guildId, req.params.id);
+      return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+removed."), 302);
     }
   );
 

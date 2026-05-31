@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 
 export type AuditEntryInput = {
   guildId?: string | null;

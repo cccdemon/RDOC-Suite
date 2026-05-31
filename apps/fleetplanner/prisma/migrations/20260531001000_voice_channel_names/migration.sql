@@ -1,0 +1,2 @@
+ALTER TABLE "FleetVoiceChannel"
+  ADD COLUMN IF NOT EXISTS "channelName" TEXT NOT NULL DEFAULT '';

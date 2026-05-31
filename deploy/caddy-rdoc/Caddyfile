@@ -13,6 +13,12 @@ suite.raumdock.org:9443 {
 		reverse_proxy 127.0.0.1:3001
 	}
 
+	handle_path /downloads* {
+		file_server {
+			root /srv/downloads
+		}
+	}
+
 	reverse_proxy 127.0.0.1:8787
 }
 

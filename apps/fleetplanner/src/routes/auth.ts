@@ -7,6 +7,7 @@ import {
 import type { OAuthProvider } from "../auth/providers.js";
 import { resolveIdentity, linkIdentity } from "../auth/identity.js";
 import { createSession, destroySession, setSessionCookie, clearSessionCookie } from "../auth/session.js";
+import { createCompanionSession } from "../auth/companionSession.js";
 import { requireAuth } from "../auth/middleware.js";
 
 const STATE_COOKIE = "fp_oauth_state";
@@ -152,6 +153,102 @@ export async function authRoutes(app: FastifyInstance) {
     const qs = new URLSearchParams(req.query as Record<string, string>).toString();
     return reply.redirect(basePath(`/auth/discord/callback${qs ? "?" + qs : ""}`), 302);
   });
+
+  // ── Companion app OAuth (uses RDOC-RTC Bot: DISCORD_COMPANION_BOT_ID/KEY) ────
+  // Opens Discord OAuth in the companion's embedded WebView2. On success,
+  // redirects to dccc://fleet-auth?token=<bearer> which the Rust on_navigation
+  // handler intercepts, emits fleet-oauth-completed, and closes the window.
+  // Add {WEB_PUBLIC_URL}/auth/discord/companion/callback to the RDOC-RTC Bot's
+  // OAuth2 redirect URIs in the Discord Developer Portal.
+  app.get("/auth/discord/companion/start", async (req, reply) => {
+    if (!env.DISCORD_COMPANION_BOT_ID) {
+      return reply.redirect("dccc://fleet-auth?error=companion_bot_not_configured", 302);
+    }
+    const state = issueState("discord");
+    const companionRedirectUri = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/auth/discord/companion/callback`;
+    const params = new URLSearchParams({
+      client_id: env.DISCORD_COMPANION_BOT_ID,
+      redirect_uri: companionRedirectUri,
+      response_type: "code",
+      scope: "identify",
+      state,
+    });
+    reply.setCookie(STATE_COOKIE, state, cookieOpts(env));
+    return reply.redirect(`https://discord.com/api/v10/oauth2/authorize?${params}`, 302);
+  });
+
+  app.get<{ Querystring: { code?: string; state?: string; error?: string } }>(
+    "/auth/discord/companion/callback",
+    async (req, reply) => {
+      const { code, state, error } = req.query;
+      const cookieState = (req.cookies as Record<string, string | undefined>)[STATE_COOKIE];
+
+      if (error || !code || !state || !cookieState || cookieState !== state) {
+        return reply.redirect("dccc://fleet-auth?error=login_failed", 302);
+      }
+      const consumed = consumeState(state);
+      if (!consumed) {
+        return reply.redirect("dccc://fleet-auth?error=session_expired", 302);
+      }
+      reply.clearCookie(STATE_COOKIE, { path: basePath("/auth") });
+
+      if (!env.DISCORD_COMPANION_BOT_ID || !env.DISCORD_COMPANION_BOT_KEY) {
+        return reply.redirect("dccc://fleet-auth?error=companion_bot_not_configured", 302);
+      }
+
+      try {
+        const companionRedirectUri = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/auth/discord/companion/callback`;
+
+        // Direct token exchange using RDOC-RTC Bot credentials (not the Fleetmanager Bot)
+        const tokenRes = await fetch("https://discord.com/api/v10/oauth2/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: env.DISCORD_COMPANION_BOT_ID,
+            client_secret: env.DISCORD_COMPANION_BOT_KEY,
+            grant_type: "authorization_code",
+            code,
+            redirect_uri: companionRedirectUri,
+          }).toString(),
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!tokenRes.ok) {
+          app.log.error({ status: tokenRes.status }, "Companion OAuth token exchange failed");
+          return reply.redirect("dccc://fleet-auth?error=token_exchange_failed", 302);
+        }
+        const tokenData = await tokenRes.json() as { access_token?: string };
+        if (!tokenData.access_token) {
+          return reply.redirect("dccc://fleet-auth?error=token_exchange_failed", 302);
+        }
+
+        const userRes = await fetch("https://discord.com/api/v10/users/@me", {
+          headers: { Authorization: `Bearer ${tokenData.access_token}` },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!userRes.ok) {
+          return reply.redirect("dccc://fleet-auth?error=user_fetch_failed", 302);
+        }
+        const discordUser = await userRes.json() as { id?: string; username?: string; global_name?: string };
+        if (!discordUser.id) {
+          return reply.redirect("dccc://fleet-auth?error=user_fetch_failed", 302);
+        }
+
+        const result = await resolveIdentity({
+          provider: "discord",
+          providerId: discordUser.id,
+          username: discordUser.global_name ?? discordUser.username ?? discordUser.id,
+        });
+        if (!result.ok) {
+          return reply.redirect("dccc://fleet-auth?error=account_disabled", 302);
+        }
+        const token = await createCompanionSession(result.userId);
+        return reply.redirect(`dccc://fleet-auth?token=${encodeURIComponent(token)}`, 302);
+      } catch (err) {
+        app.log.error(err, "Companion OAuth callback error");
+        return reply.redirect("dccc://fleet-auth?error=server_error", 302);
+      }
+    }
+  );
 
   // ── Logout ──────────────────────────────────────────────────────────
   app.post("/auth/logout", async (req, reply) => {

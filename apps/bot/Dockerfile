@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Multi-stage build for the @dccc/bot service. Built from the repo root:
+# Multi-stage build for the @rdoc-suite/bot service. Built from the repo root:
 #   docker build -f apps/bot/Dockerfile -t dccc-bot .
 # or via docker-compose.prod.yml (build.context: .).
 #
@@ -28,7 +28,7 @@ COPY packages/shared/package.json packages/shared/
 COPY packages/db/package.json packages/db/
 COPY apps/bot/package.json apps/bot/
 
-RUN pnpm install --no-frozen-lockfile --filter @dccc/bot...
+RUN pnpm install --no-frozen-lockfile --filter @rdoc-suite/bot...
 
 COPY packages/shared packages/shared
 COPY packages/db packages/db
@@ -36,11 +36,11 @@ COPY apps/bot apps/bot
 
 RUN pnpm exec prisma generate
 
-RUN pnpm --filter @dccc/shared build \
- && pnpm --filter @dccc/db build \
- && pnpm --filter @dccc/bot build
+RUN pnpm --filter @rdoc-suite/shared build \
+ && pnpm --filter @rdoc-suite/db build \
+ && pnpm --filter @rdoc-suite/bot build
 
-RUN pnpm install --no-frozen-lockfile --filter @dccc/bot... --prod
+RUN pnpm install --no-frozen-lockfile --filter @rdoc-suite/bot... --prod
 
 # ─── runtime ────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime

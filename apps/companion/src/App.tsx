@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CommanderInfo } from "@dccc/shared";
+import type { CommanderInfo } from "@rdoc-suite/shared";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { BridgeWs, type WsStatus } from "./lib/ws";
@@ -18,12 +18,15 @@ import { checkForUpdate, type UpdateCheckResult } from "./lib/updater";
 import { UpdateModal } from "./components/UpdateModal";
 import {
   clearSession,
+  clearFleetplannerToken,
   loadSettings,
   saveAfk,
   saveAudioPrefs,
   saveBridgeUrl,
   saveDucking,
   saveFeedbackSounds,
+  saveFleetplannerToken,
+  saveFleetplannerUrl,
   saveGuilds,
   saveHotkey,
   saveOutputMuted,
@@ -32,7 +35,7 @@ import {
   saveSession,
   type SavedGuild,
 } from "./lib/store";
-import { DEFAULT_BRIDGE_URL, DEFAULT_HOTKEY, DEFAULT_RELAY_HOTKEY } from "./lib/config";
+import { DEFAULT_BRIDGE_URL, DEFAULT_FLEETPLANNER_URL, DEFAULT_HOTKEY, DEFAULT_RELAY_HOTKEY } from "./lib/config";
 import { LivekitAudio, type AudioStatus, type DeviceConfig } from "./lib/livekit";
 import {
   DEFAULT_SUITE_CAPABILITIES,
@@ -46,6 +49,8 @@ import { GuildPickerModal } from "./components/GuildPickerModal";
 import { SessionJoinModal } from "./components/SessionJoinModal";
 import { joinSession } from "./lib/sessionApi";
 import { RelayAudio, type RelayStatus } from "./lib/relayAudio";
+import { FleetAudio, type FleetStatus } from "./lib/fleetAudio";
+import { startFleetOAuthInWebview } from "./lib/fleetplannerAuth";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 type AppState = {
@@ -88,6 +93,14 @@ type AppState = {
   sessionLabel: string | null;
   relayStatus: RelayStatus;
   relayPttActive: boolean;
+  fleetStatus: FleetStatus;
+  fleetPttActive: boolean;
+  fleetRoomName: string | null;
+  fleetOpTitle: string | null;
+  fleetplannerUrl: string;
+  fleetplannerToken: string | null;
+  globalFleetStatus: FleetStatus;
+  globalFleetPttActive: boolean;
 };
 
 const INITIAL: AppState = {
@@ -116,6 +129,14 @@ const INITIAL: AppState = {
   sessionLabel: null,
   relayStatus: "idle",
   relayPttActive: false,
+  fleetStatus: "idle",
+  fleetPttActive: false,
+  fleetRoomName: null,
+  fleetOpTitle: null,
+  fleetplannerUrl: DEFAULT_FLEETPLANNER_URL,
+  fleetplannerToken: null,
+  globalFleetStatus: "idle",
+  globalFleetPttActive: false,
 };
 
 export function App(): JSX.Element {
@@ -136,6 +157,10 @@ export function App(): JSX.Element {
   const wsRef = useRef<BridgeWs | null>(null);
   const audioRef = useRef<LivekitAudio | null>(null);
   const relayRef = useRef<RelayAudio | null>(null);
+  const fleetRef = useRef<FleetAudio | null>(null);
+  const globalFleetRef = useRef<FleetAudio | null>(null);
+  const currentFleetRoomRef = useRef<string | null>(null);
+  const currentGlobalRoomRef = useRef<string | null>(null);
   const stateRef = useRef<AppState>(INITIAL);
   stateRef.current = state;
   /** Set of remote-commander userIds that were `speaking=true` in the
@@ -461,6 +486,8 @@ export function App(): JSX.Element {
         feedbackSoundsVolumePct: settings.feedbackSoundsVolumePct,
         duckingEnabled: settings.duckingEnabled,
         duckingTargetVolumePct: settings.duckingTargetVolumePct,
+        fleetplannerUrl: settings.fleetplannerUrl,
+        fleetplannerToken: settings.fleetplannerToken ?? null,
       }));
     })();
 
@@ -469,6 +496,8 @@ export function App(): JSX.Element {
       void teardownHotkey();
       wsRef.current?.disconnect();
       void audioRef.current?.disconnect();
+      void fleetRef.current?.disconnect();
+      void globalFleetRef.current?.disconnect();
     };
   }, []);
 
@@ -653,6 +682,11 @@ export function App(): JSX.Element {
     }
   }, []);
 
+  const onFleetPttEvent = useCallback((pressed: boolean) => {
+    setState((s) => ({ ...s, fleetPttActive: pressed }));
+    void fleetRef.current?.setPttActive(pressed);
+  }, []);
+
   const onRelayPttEvent = useCallback((e: HotkeyEventPayload) => {
     const active = e.state === "pressed";
     setState((s) => ({ ...s, relayPttActive: active }));
@@ -693,9 +727,102 @@ export function App(): JSX.Element {
     void relayRef.current.connect(state.bridgeUrl, state.token, state.guildId ?? undefined);
   }, [state.suiteCapabilities.canUseRelay, state.token, state.bridgeUrl, state.guildId]);
 
+  // Poll fleetplanner every 20s — auto-connect unit room + global voice.
+  useEffect(() => {
+    if (!state.fleetplannerToken || !state.fleetplannerUrl) return;
+
+    type VoiceRoom = { livekitUrl: string; token: string; room: string; opTitle?: string };
+
+    const poll = async (): Promise<void> => {
+      const base = state.fleetplannerUrl.replace(/\/+$/, "");
+      try {
+        const res = await fetch(`${base}/api/companion/voice`, {
+          headers: { Authorization: `Bearer ${state.fleetplannerToken}` },
+        });
+        if (!res.ok) return;
+        const data = await res.json() as { unitRoom: VoiceRoom | null; globalVoice: VoiceRoom | null };
+
+        // Unit room
+        if (data.unitRoom) {
+          if (currentFleetRoomRef.current !== data.unitRoom.room || fleetRef.current?.getStatus() === "idle") {
+            if (!fleetRef.current) {
+              const fa = new FleetAudio();
+              fa.setStatusListener((s) => setState((st) => ({ ...st, fleetStatus: s })));
+              fleetRef.current = fa;
+            }
+            await fleetRef.current.connect(data.unitRoom.livekitUrl, data.unitRoom.token);
+            currentFleetRoomRef.current = data.unitRoom.room;
+            setState((s) => ({ ...s, fleetRoomName: data.unitRoom!.room, fleetOpTitle: data.unitRoom!.opTitle ?? null }));
+          }
+        } else if (fleetRef.current?.getStatus() !== "idle") {
+          await fleetRef.current?.disconnect();
+          currentFleetRoomRef.current = null;
+          setState((s) => ({ ...s, fleetRoomName: null, fleetOpTitle: null }));
+        }
+
+        // Global voice
+        if (data.globalVoice) {
+          if (currentGlobalRoomRef.current !== data.globalVoice.room || globalFleetRef.current?.getStatus() === "idle") {
+            if (!globalFleetRef.current) {
+              const gfa = new FleetAudio();
+              gfa.setStatusListener((s) => setState((st) => ({ ...st, globalFleetStatus: s })));
+              globalFleetRef.current = gfa;
+            }
+            await globalFleetRef.current.connect(data.globalVoice.livekitUrl, data.globalVoice.token);
+            currentGlobalRoomRef.current = data.globalVoice.room;
+          }
+        } else if (globalFleetRef.current?.getStatus() !== "idle") {
+          await globalFleetRef.current?.disconnect();
+          currentGlobalRoomRef.current = null;
+          setState((s) => ({ ...s, globalFleetStatus: "idle", globalFleetPttActive: false }));
+        }
+      } catch {
+        // network error — silent retry on next tick
+      }
+    };
+
+    void poll();
+    const interval = setInterval(() => void poll(), 20_000);
+    return () => clearInterval(interval);
+  }, [state.fleetplannerToken, state.fleetplannerUrl]);
+
+  const onFleetOAuth = useCallback(async () => {
+    const cur = stateRef.current;
+    if (!cur.fleetplannerUrl) return;
+    try {
+      const result = await startFleetOAuthInWebview(cur.fleetplannerUrl);
+      await saveFleetplannerToken(result.token);
+      setState((s) => ({ ...s, fleetplannerToken: result.token }));
+    } catch (e) {
+      setState((s) => ({ ...s, lastError: `Fleet Auth: ${String(e)}` }));
+    }
+  }, []);
+
+  const onFleetSignOut = useCallback(async () => {
+    await clearFleetplannerToken();
+    await fleetRef.current?.disconnect();
+    await globalFleetRef.current?.disconnect();
+    currentFleetRoomRef.current = null;
+    currentGlobalRoomRef.current = null;
+    setState((s) => ({
+      ...s,
+      fleetplannerToken: null,
+      fleetRoomName: null,
+      fleetOpTitle: null,
+      globalFleetStatus: "idle",
+      globalFleetPttActive: false,
+    }));
+  }, []);
+
+  const onGlobalFleetPttEvent = useCallback((pressed: boolean) => {
+    setState((s) => ({ ...s, globalFleetPttActive: pressed }));
+    void globalFleetRef.current?.setPttActive(pressed);
+  }, []);
+
   const onSignOut = useCallback(async () => {
     await clearSession();
     void relayRef.current?.disconnect();
+    void fleetRef.current?.disconnect();
     setState((s) => ({
       ...s,
       token: null,
@@ -711,12 +838,17 @@ export function App(): JSX.Element {
   const onSettingsSave = useCallback(
     async (next: SettingsDraft) => {
       let nextBridgeUrl = state.bridgeUrl;
+      let nextFleetplannerUrl = state.fleetplannerUrl;
       let nextHotkey = state.hotkey;
       let nextRelayHotkey = state.relayHotkey;
       if (next.bridgeUrl !== state.bridgeUrl) {
         await saveBridgeUrl(next.bridgeUrl);
         wsRef.current?.setBridgeUrl(next.bridgeUrl);
         nextBridgeUrl = next.bridgeUrl;
+      }
+      if (next.fleetplannerUrl !== state.fleetplannerUrl) {
+        await saveFleetplannerUrl(next.fleetplannerUrl);
+        nextFleetplannerUrl = next.fleetplannerUrl;
       }
       if (next.hotkey && next.hotkey !== state.hotkey) {
         try {
@@ -789,6 +921,7 @@ export function App(): JSX.Element {
       setState((s) => ({
         ...s,
         bridgeUrl: nextBridgeUrl,
+        fleetplannerUrl: nextFleetplannerUrl,
         hotkey: nextHotkey,
         relayHotkey: nextRelayHotkey,
         device: nextDevice,
@@ -885,6 +1018,57 @@ export function App(): JSX.Element {
               <Icon.power size={12} />
               SESSION VERLASSEN
             </button>
+          ) : null}
+          {state.fleetplannerUrl ? (
+            state.fleetplannerToken ? (
+              <>
+                {state.fleetStatus === "connected" ? (
+                  <button
+                    type="button"
+                    className={`cc-btn ${state.fleetPttActive ? "green" : "cyan"} sm`}
+                    title={`Fleet Voice · ${state.fleetOpTitle ?? state.fleetRoomName ?? "connected"}`}
+                    onMouseDown={() => onFleetPttEvent(true)}
+                    onMouseUp={() => onFleetPttEvent(false)}
+                    onMouseLeave={() => { if (state.fleetPttActive) onFleetPttEvent(false); }}
+                  >
+                    <Icon.radio size={12} />
+                    {state.fleetPttActive ? "FLEET AKTIV" : "FLEET VOICE"}
+                  </button>
+                ) : null}
+                {state.globalFleetStatus === "connected" ? (
+                  <button
+                    type="button"
+                    className={`cc-btn ${state.globalFleetPttActive ? "green" : "cyan"} sm`}
+                    title="Global Fleet Voice — alle Units"
+                    onMouseDown={() => onGlobalFleetPttEvent(true)}
+                    onMouseUp={() => onGlobalFleetPttEvent(false)}
+                    onMouseLeave={() => { if (state.globalFleetPttActive) onGlobalFleetPttEvent(false); }}
+                  >
+                    <Icon.radio size={12} />
+                    {state.globalFleetPttActive ? "GLOBAL AKTIV" : "GLOBAL"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="cc-btn ghost sm"
+                  onClick={() => void onFleetSignOut()}
+                  title="Fleet Voice abmelden"
+                >
+                  <Icon.power size={12} />
+                  FLEET ABMELDEN
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                className="cc-btn ghost sm"
+                onClick={() => void onFleetOAuth()}
+                title="Mit Fleetplanner per Discord anmelden"
+              >
+                <Icon.radio size={12} />
+                FLEET LOGIN
+              </button>
+            )
           ) : null}
           {state.suiteCapabilities.canUseRelay ? (
             <button
@@ -1102,13 +1286,14 @@ export function App(): JSX.Element {
 
       <footer className="cc-window-footer">
         <span title={longVersion()}>RDOC SQUAD LINK · {shortVersion()}</span>
-        <span>OUR BUSINESS IS CHAOS ITSELF&nbsp;&nbsp;//&nbsp;&nbsp;o7</span>
+        <span>made by @xheadwix&nbsp;&nbsp;//&nbsp;&nbsp;o7</span>
       </footer>
 
       {showSettings ? (
         <SettingsModal
           initial={{
             bridgeUrl: state.bridgeUrl,
+            fleetplannerUrl: state.fleetplannerUrl,
             hotkey: state.hotkey,
             relayHotkey: state.relayHotkey,
             micDeviceId: state.device.micDeviceId,
@@ -1155,6 +1340,7 @@ export function App(): JSX.Element {
           loading={sessionJoinLoading}
         />
       ) : null}
+
     </div>
   );
 }

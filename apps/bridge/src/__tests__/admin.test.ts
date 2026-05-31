@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { FastifyInstance } from "fastify";
-import { disconnectPrisma, getPrisma } from "@dccc/db";
+import { disconnectPrisma, getPrisma } from "@rdoc-suite/db";
 import { buildApp } from "../app.js";
 import { resetEnvCache } from "../config/env.js";
 import {

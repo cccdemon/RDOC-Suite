@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 import { type AdminRole, addAdmin, isAdminRole } from "./admins.js";
 
 /**

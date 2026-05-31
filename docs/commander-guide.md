@@ -18,7 +18,7 @@ Until precompiled binaries are published, you build the companion locally:
 git clone https://github.com/head87x/rdcc.git
 cd rdcc
 pnpm install
-pnpm --filter @dccc/companion tauri:dev
+pnpm --filter @rdoc-suite/companion tauri:dev
 ```
 
 A window titled "Discord Channel Commander" opens.

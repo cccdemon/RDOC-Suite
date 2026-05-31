@@ -1,4 +1,4 @@
-import type { ClientMessage, ServerMessage } from "@dccc/shared";
+import type { ClientMessage, ServerMessage } from "@rdoc-suite/shared";
 import { buildConfig } from "./config";
 
 export type WsStatus = "idle" | "connecting" | "connected" | "reconnecting" | "closed";

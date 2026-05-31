@@ -1,0 +1,410 @@
+import { prisma } from "../db.js";
+import {
+  createGuildVoiceChannel,
+  deleteDiscordChannel,
+  disconnectGuildMemberFromVoice,
+  discordUserIdForFleetplannerUser,
+  moveGuildMemberToVoice,
+  updateDiscordChannelName,
+} from "./discord.js";
+import { syncFleetplannerRelayBots } from "./relayBots.js";
+import { decryptSecret, encryptSecret } from "./secrets.js";
+
+const SNOWFLAKE = /^\d{16,25}$/;
+const VIEW_CHANNEL = 1n << 10n;
+const CONNECT = 1n << 20n;
+const VOICE_ACCESS = (VIEW_CHANNEL | CONNECT).toString();
+
+function cleanLabel(raw: string): string {
+  const label = raw.trim().slice(0, 60);
+  if (!label) throw new Error("Bot label is required");
+  return label;
+}
+
+function cleanSnowflake(raw: string, field: string): string {
+  const value = raw.trim();
+  if (!SNOWFLAKE.test(value)) throw new Error(`${field} must be a Discord snowflake ID`);
+  return value;
+}
+
+function channelNameForUnit(unit: {
+  unitType: string;
+  squadName: string | null;
+  captain: { username: string };
+  ship: { name: string } | null;
+}): string {
+  const base = unit.unitType === "ship" ? (unit.ship?.name ?? "ship") : (unit.squadName ?? "squad");
+  return `${base} - ${unit.captain.username}`
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 90) || "fleet-unit";
+}
+
+function cleanChannelName(raw: string): string {
+  const name = raw.trim().slice(0, 100);
+  if (!name) throw new Error("Channel name is required");
+  return name;
+}
+
+function decryptVoiceBotToken(bot: {
+  tokenCiphertext: string;
+  tokenIv: string;
+  tokenSalt: string;
+  tokenTag: string;
+}): string {
+  return decryptSecret({
+    ciphertext: bot.tokenCiphertext,
+    iv: bot.tokenIv,
+    salt: bot.tokenSalt,
+    tag: bot.tokenTag,
+  });
+}
+
+export async function addGuildVoiceBot(input: {
+  guildId: string;
+  label: string;
+  botUserId: string;
+  token: string;
+}) {
+  const label = cleanLabel(input.label);
+  const botUserId = cleanSnowflake(input.botUserId, "Bot user ID");
+  const token = input.token.trim();
+  if (token.length < 30) throw new Error("Bot token looks too short");
+
+  const existing = await prisma.guildVoiceBot.findUnique({
+    where: { guildId_botUserId: { guildId: input.guildId, botUserId } },
+    select: { id: true },
+  });
+  if (!existing) {
+    const count = await prisma.guildVoiceBot.count({ where: { guildId: input.guildId } });
+    if (count >= 6) throw new Error("A maximum of six voice relay bots can be configured");
+  }
+
+  const encrypted = encryptSecret(token);
+  return prisma.guildVoiceBot.upsert({
+    where: { guildId_botUserId: { guildId: input.guildId, botUserId } },
+    create: {
+      guildId: input.guildId,
+      label,
+      botUserId,
+      tokenCiphertext: encrypted.ciphertext,
+      tokenIv: encrypted.iv,
+      tokenSalt: encrypted.salt,
+      tokenTag: encrypted.tag,
+    },
+    update: {
+      label,
+      tokenCiphertext: encrypted.ciphertext,
+      tokenIv: encrypted.iv,
+      tokenSalt: encrypted.salt,
+      tokenTag: encrypted.tag,
+    },
+  });
+}
+
+export async function deleteGuildVoiceBot(guildId: string, id: string): Promise<void> {
+  await prisma.guildVoiceBot.deleteMany({ where: { guildId, id } });
+}
+
+export async function decryptGuildVoiceBotToken(id: string): Promise<string | null> {
+  const bot = await prisma.guildVoiceBot.findUnique({ where: { id } });
+  if (!bot) return null;
+  return decryptSecret({
+    ciphertext: bot.tokenCiphertext,
+    iv: bot.tokenIv,
+    salt: bot.tokenSalt,
+    tag: bot.tokenTag,
+  });
+}
+
+export async function launchOperationVoiceChannels(operationId: string): Promise<{
+  created: number;
+  existing: number;
+  botsAssigned: number;
+  skippedDiscordUsers: number;
+}> {
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    include: {
+      guild: true,
+      voiceChannels: true,
+      units: {
+        where: { status: "accepted" },
+        include: {
+          ship: true,
+          captain: true,
+          seats: { where: { active: true }, include: { user: true }, orderBy: { order: "asc" } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+  if (!op) throw new Error("Operation not found");
+  if (op.units.length === 0) throw new Error("No accepted units to create channels for");
+
+  const existingUnitIds = new Set(op.voiceChannels.map((channel) => channel.unitId));
+  const unitsToCreate = op.units.filter((unit) => !existingUnitIds.has(unit.id));
+  if (unitsToCreate.length === 0) {
+    return {
+      created: 0,
+      existing: op.voiceChannels.length,
+      botsAssigned: 0,
+      skippedDiscordUsers: 0,
+    };
+  }
+
+  const availableBots = await prisma.guildVoiceBot.findMany({
+    where: { guildId: op.guildId, assignedChannelId: null },
+    orderBy: { createdAt: "asc" },
+  });
+  if (availableBots.length < unitsToCreate.length) {
+    throw new Error(`Not enough available voice bots (${availableBots.length}/${unitsToCreate.length})`);
+  }
+
+  let botCursor = 0;
+  let created = 0;
+  let botsAssigned = 0;
+  let skippedDiscordUsers = 0;
+
+  for (const unit of unitsToCreate) {
+    const userIds = new Set<string>([unit.captainId]);
+    for (const seat of unit.seats) {
+      if (seat.userId) userIds.add(seat.userId);
+    }
+
+    const bot = availableBots[botCursor++];
+    const botToken = decryptVoiceBotToken(bot);
+    const channelName = channelNameForUnit(unit);
+    const permissionOverwrites: Array<{ id: string; type: 0 | 1; allow?: string; deny?: string }> = [{
+      id: op.guildId,
+      type: 0,
+      deny: VOICE_ACCESS,
+    }];
+    permissionOverwrites.push({ id: bot.botUserId, type: 1, allow: VOICE_ACCESS });
+    for (const userId of userIds) {
+      try {
+        permissionOverwrites.push({
+          id: await discordUserIdForFleetplannerUser(userId),
+          type: 1,
+          allow: VOICE_ACCESS,
+        });
+      } catch {
+        skippedDiscordUsers += 1;
+      }
+    }
+
+    const channel = await createGuildVoiceChannel({
+      guildId: op.guildId,
+      name: channelName,
+      parentId: op.guild.voiceChannelCategoryId,
+      permissionOverwrites,
+      botToken,
+    });
+
+    await prisma.guildVoiceBot.update({
+      where: { id: bot.id },
+      data: { assignedChannelId: channel.id },
+    });
+    botsAssigned += 1;
+
+    await prisma.fleetVoiceChannel.create({
+      data: {
+        operationId: op.id,
+        unitId: unit.id,
+        guildId: op.guildId,
+        channelId: channel.id,
+        channelName,
+        voiceBotId: bot?.id,
+      },
+    });
+    created += 1;
+  }
+
+  await syncFleetplannerRelayBots(op.guildId);
+
+  return {
+    created,
+    existing: op.voiceChannels.length,
+    botsAssigned,
+    skippedDiscordUsers,
+  };
+}
+
+export async function renameOperationVoiceChannel(input: {
+  operationId: string;
+  voiceChannelId: string;
+  name: string;
+}): Promise<void> {
+  const name = cleanChannelName(input.name);
+  const channel = await prisma.fleetVoiceChannel.findFirst({
+    where: { id: input.voiceChannelId, operationId: input.operationId },
+    include: { voiceBot: true },
+  });
+  if (!channel) throw new Error("Voice channel not found");
+  if (!channel.voiceBot) throw new Error("Voice channel has no assigned bot");
+
+  await updateDiscordChannelName({
+    channelId: channel.channelId,
+    name,
+    botToken: decryptVoiceBotToken(channel.voiceBot),
+  });
+  await prisma.fleetVoiceChannel.update({
+    where: { id: channel.id },
+    data: { channelName: name },
+  });
+  await syncFleetplannerRelayBots(channel.guildId);
+}
+
+export async function deleteOperationVoiceChannel(input: {
+  operationId: string;
+  voiceChannelId: string;
+}): Promise<void> {
+  const channel = await prisma.fleetVoiceChannel.findFirst({
+    where: { id: input.voiceChannelId, operationId: input.operationId },
+    include: { voiceBot: true },
+  });
+  if (!channel) throw new Error("Voice channel not found");
+  if (!channel.voiceBot) throw new Error("Voice channel has no assigned bot");
+
+  await deleteDiscordChannel({
+    channelId: channel.channelId,
+    botToken: decryptVoiceBotToken(channel.voiceBot),
+  });
+  await prisma.$transaction([
+    prisma.fleetVoiceChannel.delete({ where: { id: channel.id } }),
+    prisma.guildVoiceBot.update({
+      where: { id: channel.voiceBot.id },
+      data: { assignedChannelId: null },
+    }),
+  ]);
+  await syncFleetplannerRelayBots(channel.guildId);
+}
+
+export async function cleanupOperationVoiceChannels(operationId: string): Promise<{
+  deleted: number;
+  disconnected: number;
+  skippedDiscordUsers: number;
+}> {
+  const channels = await prisma.fleetVoiceChannel.findMany({
+    where: { operationId },
+    include: {
+      voiceBot: true,
+      unit: {
+        include: {
+          seats: { where: { userId: { not: null } }, orderBy: { order: "asc" } },
+        },
+      },
+    },
+  });
+
+  let deleted = 0;
+  let disconnected = 0;
+  let skippedDiscordUsers = 0;
+
+  for (const channel of channels) {
+    if (!channel.voiceBot) {
+      throw new Error(`Voice channel ${channel.channelId} has no assigned bot`);
+    }
+    const botToken = decryptVoiceBotToken(channel.voiceBot);
+    const userIds = new Set<string>([channel.unit.captainId]);
+    for (const seat of channel.unit.seats) {
+      if (seat.userId) userIds.add(seat.userId);
+    }
+
+    for (const userId of userIds) {
+      try {
+        await disconnectGuildMemberFromVoice({
+          guildId: channel.guildId,
+          userId: await discordUserIdForFleetplannerUser(userId),
+          botToken,
+        });
+        disconnected += 1;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("has no linked Discord identity")) {
+          skippedDiscordUsers += 1;
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    await deleteDiscordChannel({
+      channelId: channel.channelId,
+      botToken,
+    });
+
+    await prisma.$transaction([
+      prisma.fleetVoiceChannel.delete({ where: { id: channel.id } }),
+      prisma.guildVoiceBot.update({
+        where: { id: channel.voiceBot.id },
+        data: { assignedChannelId: null },
+      }),
+    ]);
+    deleted += 1;
+  }
+
+  if (channels[0]) {
+    await syncFleetplannerRelayBots(channels[0].guildId);
+  }
+
+  return { deleted, disconnected, skippedDiscordUsers };
+}
+
+export async function moveOperationCrewToVoiceChannels(operationId: string): Promise<{
+  moved: number;
+  notConnected: number;
+  skippedDiscordUsers: number;
+  channels: number;
+}> {
+  const channels = await prisma.fleetVoiceChannel.findMany({
+    where: { operationId },
+    include: {
+      voiceBot: true,
+      unit: {
+        include: {
+          seats: { where: { userId: { not: null }, active: true }, orderBy: { order: "asc" } },
+        },
+      },
+    },
+  });
+
+  let moved = 0;
+  let notConnected = 0;
+  let skippedDiscordUsers = 0;
+
+  for (const channel of channels) {
+    if (!channel.voiceBot) {
+      throw new Error(`Voice channel ${channel.channelId} has no assigned bot`);
+    }
+    const botToken = decryptVoiceBotToken(channel.voiceBot);
+    const userIds = new Set<string>([channel.unit.captainId]);
+    for (const seat of channel.unit.seats) {
+      if (seat.userId) userIds.add(seat.userId);
+    }
+
+    for (const userId of userIds) {
+      try {
+        const didMove = await moveGuildMemberToVoice({
+          guildId: channel.guildId,
+          userId: await discordUserIdForFleetplannerUser(userId),
+          channelId: channel.channelId,
+          botToken,
+        });
+        if (didMove) moved += 1;
+        else notConnected += 1;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "";
+        if (msg.includes("has no linked Discord identity")) {
+          skippedDiscordUsers += 1;
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  return { moved, notConnected, skippedDiscordUsers, channels: channels.length };
+}

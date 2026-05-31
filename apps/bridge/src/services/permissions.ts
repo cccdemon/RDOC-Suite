@@ -1,4 +1,4 @@
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 import { fetchGuildMember } from "../auth/discord.js";
 import { getOAuthEnv } from "../config/env.js";
 import { logger } from "./logger.js";

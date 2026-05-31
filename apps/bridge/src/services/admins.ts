@@ -1,4 +1,4 @@
-import { getPrisma } from "@dccc/db";
+import { getPrisma } from "@rdoc-suite/db";
 
 /**
  * Admin = a Discord user authorized to sign into the web admin UI for

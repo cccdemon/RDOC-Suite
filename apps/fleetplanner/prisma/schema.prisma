@@ -12,47 +12,74 @@ model User {
   id         String   @id @default(cuid())
   username   String
   avatarHash String?
-  role       String   @default("crew")  // superadmin | fleetoperator | captain | crew
+  role       String   @default("crew") // superadmin | fleetoperator | captain | crew
   active     Boolean  @default(true)
   joinedAt   DateTime @default(now())
   lastSeenAt DateTime @default(now())
 
-  sessions        UserSession[]
-  identities      UserIdentity[]
-  ownedShips      UserShip[]
-  createdOps      Operation[]
-  leaderRoles     OperationLeader[]
-  crewRequests    CrewAssignmentRequest[]
-  captainedUnits  FleetUnit[]       @relation("UnitCaptain")
-  seatAssignments SeatAssignment[]
+  sessions           UserSession[]
+  companionSessions  CompanionSession[]
+  identities         UserIdentity[]
+  ownedShips       UserShip[]
+  createdOps       Operation[]
+  leaderRoles      OperationLeader[]
+  crewRequests     CrewAssignmentRequest[]
+  captainedUnits   FleetUnit[]             @relation("UnitCaptain")
+  seatAssignments  SeatAssignment[]
   guildMemberships GuildMembership[]
-  ownedGuilds      Guild[]          @relation("GuildOwner")
+  ownedGuilds      Guild[]                 @relation("GuildOwner")
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
 model Guild {
-  id             String    @id          // Discord guild snowflake
-  name           String
-  iconHash       String?
-  ownerUserId    String?                // fleetplanner user who installed the bot
-  eventChannelId String?                // voice/text channel for scheduled events
-  admiralRoleId  String?                // Discord role id → fleetoperator (optional mapping)
-  captainRoleId  String?                // Discord role id → captain (optional mapping)
-  botInstalledAt DateTime?
-  active         Boolean   @default(true)
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id                     String    @id // Discord guild snowflake
+  name                   String
+  iconHash               String?
+  ownerUserId            String? // fleetplanner user who installed the bot
+  eventChannelId         String? // voice/text channel for scheduled events
+  voiceChannelCategoryId String? // Discord category for operation voice channels
+  admiralRoleId          String? // Discord role id → fleetoperator (optional mapping)
+  captainRoleId          String? // Discord role id → captain (optional mapping)
+  reminderOffsetMin      Int       @default(15) // minutes before scheduledAt to send reminder DMs
+  globalVoiceRoleId      String?   // Discord role id → fleet global voice access (cross-unit)
+  botInstalledAt         DateTime?
+  active                 Boolean   @default(true)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
-  owner       User?             @relation("GuildOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  memberships GuildMembership[]
-  operations  Operation[]
+  owner         User?               @relation("GuildOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  memberships   GuildMembership[]
+  operations    Operation[]
+  voiceBots     GuildVoiceBot[]
+  voiceChannels FleetVoiceChannel[]
+}
+
+model GuildVoiceBot {
+  id                String   @id @default(cuid())
+  guildId           String
+  label             String
+  botUserId         String
+  tokenCiphertext   String
+  tokenIv           String
+  tokenSalt         String
+  tokenTag          String
+  assignedChannelId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  guild         Guild               @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  voiceChannels FleetVoiceChannel[]
+
+  @@unique([guildId, botUserId])
+  @@index([guildId])
+  @@index([assignedChannelId])
 }
 
 model GuildMembership {
   id        String   @id @default(cuid())
   guildId   String
   userId    String
-  role      String   @default("crew")   // fleetoperator | captain | crew (PER guild)
+  role      String   @default("crew") // fleetoperator | captain | crew (PER guild)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -68,14 +95,14 @@ model GuildMembership {
 // provider: "discord" | "github" | "google"
 // providerId: the external account ID (Discord snowflake, GitHub user id, Google sub).
 model UserIdentity {
-  id          String   @id @default(cuid())
-  userId      String
-  provider    String   // discord | github | google
-  providerId  String   // external account id
-  username    String?  // display name at provider
-  email       String?
-  avatarUrl   String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String // discord | github | google
+  providerId String // external account id
+  username   String? // display name at provider
+  email      String?
+  avatarUrl  String?
+  createdAt  DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -93,19 +120,30 @@ model UserSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model CompanionSession {
+  id        String   @id // 64-char hex bearer token — stored in Tauri settings store
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 // ── Ship cache (SC wiki API) ───────────────────────────────────────
 model Ship {
   id            String   @id @default(cuid())
   slug          String   @unique
   name          String
   manufacturer  String   @default("")
-  size          String   @default("")   // Small | Medium | Large | Capital | Vehicle
-  career        String   @default("")   // Combat | Transport | Support | Exploration …
-  role          String   @default("")   // Fighter | Gunship | Frigate | Corvette …
+  size          String   @default("") // Small | Medium | Large | Capital | Vehicle
+  career        String   @default("") // Combat | Transport | Support | Exploration …
+  role          String   @default("") // Fighter | Gunship | Frigate | Corvette …
   minCrew       Int      @default(1)
   maxCrew       Int      @default(1)
-  weaponCrew    Int      @default(0)    // dedicated gunner seats
-  operationCrew Int      @default(0)    // dedicated engineer/operator seats
+  weaponCrew    Int      @default(0) // dedicated gunner seats
+  operationCrew Int      @default(0) // dedicated engineer/operator seats
   imageUrl      String?
   rawJson       String   @default("{}")
   syncedAt      DateTime @default(now())
@@ -139,14 +177,14 @@ model Location {
 }
 
 model LocationSyncState {
-  id           String    @id @default("singleton")
-  enabled      Boolean   @default(true)
-  intervalDays Int       @default(7)
-  lastRunAt    DateTime?
-  lastResult   String?
-  running      Boolean   @default(false)
-  locationCount Int      @default(0)
-  updatedAt    DateTime  @updatedAt
+  id            String    @id @default("singleton")
+  enabled       Boolean   @default(true)
+  intervalDays  Int       @default(7)
+  lastRunAt     DateTime?
+  lastResult    String?
+  running       Boolean   @default(false)
+  locationCount Int       @default(0)
+  updatedAt     DateTime  @updatedAt
 }
 
 model UserShip {
@@ -173,7 +211,7 @@ model ShipSyncState {
   enabled      Boolean   @default(true)
   intervalDays Int       @default(7)
   lastRunAt    DateTime?
-  lastResult   String?   // short human summary of the last run
+  lastResult   String? // short human summary of the last run
   running      Boolean   @default(false)
   shipCount    Int       @default(0)
   updatedAt    DateTime  @updatedAt
@@ -187,26 +225,28 @@ model AppSetting {
 }
 
 model Operation {
-  id          String   @id @default(cuid())
-  guildId     String                      // tenant — which Discord server this op belongs to
-  title       String
-  description String   @default("")
-  opType      String   @default("combat")  // combat | pve | training | mixed | exploration
-  meetingSystem String @default("stanton")
-  meetingLocation String @default("")
-  scheduledAt DateTime
-  status      String   @default("draft")  // draft | open | locked | in_progress | completed | cancelled
-  createdById String
-  discordEventId String?  // id of the Discord scheduled event created when opened
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  guildId         String // tenant — which Discord server this op belongs to
+  title           String
+  description     String   @default("")
+  opType          String   @default("combat") // combat | pve | training | mixed | exploration
+  meetingSystem   String   @default("stanton")
+  meetingLocation String   @default("")
+  scheduledAt     DateTime
+  status          String   @default("draft") // draft | open | locked | in_progress | completed | cancelled
+  createdById     String
+  discordEventId  String? // id of the Discord scheduled event created when opened
+  reminderSentAt  DateTime? // set once reminder DMs have been dispatched; null = not yet sent
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  guild     Guild             @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  createdBy User              @relation(fields: [createdById], references: [id])
-  leaders   OperationLeader[]
-  groups    CompositionGroup[]
-  units     FleetUnit[]
-  crewRequests CrewAssignmentRequest[]
+  guild         Guild                   @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  createdBy     User                    @relation(fields: [createdById], references: [id])
+  leaders       OperationLeader[]
+  groups        CompositionGroup[]
+  units         FleetUnit[]
+  crewRequests  CrewAssignmentRequest[]
+  voiceChannels FleetVoiceChannel[]
 }
 
 model CrewAssignmentRequest {
@@ -228,7 +268,7 @@ model OperationLeader {
   id          String @id @default(cuid())
   operationId String
   userId      String
-  leaderRole  String @default("raid_leader")  // fleet_commander | raid_leader | wing_commander
+  leaderRole  String @default("raid_leader") // fleet_commander | raid_leader | wing_commander
 
   operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id])
@@ -243,14 +283,14 @@ model CompositionGroup {
   name        String
   order       Int    @default(0)
 
-  operation    Operation               @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  operation    Operation                @relation(fields: [operationId], references: [id], onDelete: Cascade)
   requirements CompositionRequirement[]
 }
 
 model CompositionRequirement {
   id       String  @id @default(cuid())
   groupId  String
-  category String  // capital | subcapital | fighter | support | ground | transport | any
+  category String // capital | subcapital | fighter | support | ground | transport | any
   label    String
   count    Int     @default(1)
   note     String?
@@ -262,34 +302,56 @@ model CompositionRequirement {
 
 // ── Fleet units (ships + squads) ───────────────────────────────────
 model FleetUnit {
-  id            String   @id @default(cuid())
-  operationId   String
-  unitType      String   @default("ship")  // ship | squad
+  id          String @id @default(cuid())
+  operationId String
+  unitType    String @default("ship") // ship | squad
 
-  shipId        String?   // → Ship.id  (null for FPS squads)
-  squadName     String?   // e.g. "Alpha Squad"
-  squadSize     Int?      // total incl. captain, 2–8
+  shipId    String? // → Ship.id  (null for FPS squads)
+  squadName String? // e.g. "Alpha Squad"
+  squadSize Int? // total incl. captain, 2–8
 
   captainId     String
   requirementId String?
-  status        String   @default("pending")  // pending | accepted | rejected
+  status        String   @default("pending") // pending | accepted | rejected
   captainNote   String?
   leaderNote    String?
   createdAt     DateTime @default(now())
 
-  operation   Operation               @relation(fields: [operationId], references: [id], onDelete: Cascade)
-  ship        Ship?                   @relation(fields: [shipId], references: [id])
-  captain     User                    @relation("UnitCaptain", fields: [captainId], references: [id])
-  requirement CompositionRequirement? @relation(fields: [requirementId], references: [id])
-  seats       SeatAssignment[]
+  operation    Operation               @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  ship         Ship?                   @relation(fields: [shipId], references: [id])
+  captain      User                    @relation("UnitCaptain", fields: [captainId], references: [id])
+  requirement  CompositionRequirement? @relation(fields: [requirementId], references: [id])
+  seats        SeatAssignment[]
+  voiceChannel FleetVoiceChannel?
+}
+
+model FleetVoiceChannel {
+  id          String   @id @default(cuid())
+  operationId String
+  unitId      String   @unique
+  guildId     String
+  channelId   String
+  channelName String   @default("")
+  voiceBotId  String?
+  createdAt   DateTime @default(now())
+
+  operation Operation      @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  unit      FleetUnit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  guild     Guild          @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  voiceBot  GuildVoiceBot? @relation(fields: [voiceBotId], references: [id], onDelete: SetNull)
+
+  @@unique([operationId, unitId])
+  @@index([guildId])
+  @@index([channelId])
+  @@index([voiceBotId])
 }
 
 // ── Seat assignments ───────────────────────────────────────────────
 model SeatAssignment {
   id       String  @id @default(cuid())
   unitId   String
-  label    String  // "Pilot", "Gunner 1", "Engineer 2", "FPS 1" …
-  seatType String  // pilot | gunner | operation | flex | fps
+  label    String // "Pilot", "Gunner 1", "Engineer 2", "FPS 1" …
+  seatType String // pilot | gunner | operation | flex | fps
   order    Int
   active   Boolean @default(true)
   userId   String?

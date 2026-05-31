@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import { getEnv } from "./config/env.js";
 import { startShipSyncScheduler } from "./services/shipSync.js";
 import { startLocationSyncScheduler } from "./services/locations.js";
+import { startReminderScheduler } from "./services/reminderScheduler.js";
 
 const env = getEnv();
 const app = await buildApp();
@@ -15,6 +16,10 @@ try {
     error: (e, msg) => app.log.error(e, msg),
   });
   startLocationSyncScheduler({
+    info: (msg) => app.log.info(msg),
+    error: (e, msg) => app.log.error(e, msg),
+  });
+  startReminderScheduler({
     info: (msg) => app.log.info(msg),
     error: (e, msg) => app.log.error(e, msg),
   });

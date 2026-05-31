@@ -4,7 +4,7 @@ import { logger } from "./services/logger.js";
 import { registerSlashCommands } from "./commands/index.js";
 import { handleCc } from "./commands/cc.js";
 import { registerVoiceStateEvents } from "./events/voiceState.js";
-import { disconnectPrisma } from "@dccc/db";
+import { disconnectPrisma } from "@rdoc-suite/db";
 
 async function main(): Promise<void> {
   const env = getEnv();

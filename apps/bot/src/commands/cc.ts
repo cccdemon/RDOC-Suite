@@ -6,8 +6,8 @@ import {
   PermissionsBitField,
   SlashCommandBuilder,
 } from "discord.js";
-import { getPrisma } from "@dccc/db";
-import type { BridgeMode } from "@dccc/shared";
+import { getPrisma } from "@rdoc-suite/db";
+import type { BridgeMode } from "@rdoc-suite/shared";
 import {
   addAllowedChannel,
   addCommanderRole,
