@@ -45,9 +45,9 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 
 | Bot | Env-Vars | Container | Zweck |
 |---|---|---|---|
-| **RDOC-RTC Bot** (Prod App `1509191397264064689`, aktuell auch Fleetplanner Bot) | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY` | `rdoc-suite-bot`, `rdoc-suite-bridge` | Slash-Commands (`/cc`), Bridge-OAuth, Guild-/Role-Checks, Strategy-Channels |
-| **Fleetmanager Bot** (Prod App `1509191397264064689`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | — (im fleetplanner) | Discord-Events, Feedback-Tickets, DMs, Event-Rollen |
-| **Companion OAuth App** (Prod App `1507722962919227452`) | `DISCORD_COMPANION_BOT_ID`, `DISCORD_COMPANION_BOT_KEY` | — (im fleetplanner) | Companion-Fleet-Voice OAuth. Separat vom installierten RDOC/Fleetplanner Bot. |
+| **RDOC-RTC Bot** (Prod App `1507722962919227452`, Developer-Portal-Name `RDOC-RTC`) | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY` | `rdoc-suite-bot`, `rdoc-suite-bridge` | Slash-Commands (`/cc`), Bridge-OAuth, Guild-/Role-Checks, Strategy-Channels, Companion OAuth |
+| **RDOC-Fleetplanner Bot** (Prod App `1509191397264064689`, Developer-Portal-Name `RDOC-Fleetplanner`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | — (im fleetplanner) | Discord-Events, Feedback-Tickets, DMs, Event-Rollen |
+| **Companion OAuth App** | `DISCORD_COMPANION_BOT_ID`, `DISCORD_COMPANION_BOT_KEY` | — (im fleetplanner) | Muss auf die RDOC-RTC App `1507722962919227452` zeigen. |
 | **Relay role-check Bot** | `DISCORD_RELAY_BOT_TOKEN` | `rdoc-suite-bridge` | Optionaler Bot-Token nur für `/relay/token` Rollenprüfung. Nicht der Audio-Relay-Worker. |
 | **Voice Bots (Funkrelais)** | verschlüsselt in DB (`GuildVoiceBot`) | `rdoc-suite-relay-bots` | 6 Bots für Crew-Voice-Channels pro Operation + Audio-Relay |
 
@@ -57,6 +57,7 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 - Intents: `Guilds`, `GuildVoiceStates` (non-privileged, kein Portal-Toggle nötig)
 - Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_CHANNELS`, `MOVE_MEMBERS`
 - `MANAGE_CHANNELS` + `MOVE_MEMBERS` nötig für Strategy-Channels (bridge Admin-UI)
+- Muss auf jedem Discord Server installiert sein, auf dem `/cc` und Bridge-Funktionen genutzt werden.
 
 **Fleetmanager Bot** — Scopes: `bot applications.commands`
 - Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_ROLES`, `MANAGE_EVENTS`
