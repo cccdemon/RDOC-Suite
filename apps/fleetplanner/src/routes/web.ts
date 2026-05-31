@@ -101,7 +101,7 @@ export async function webRoutes(app: FastifyInstance) {
   );
 
   // ── New operation form — guild picker when user has multiple servers ─────
-  app.get<{ Querystring: { flash?: string } }>(
+  app.get<{ Querystring: { flash?: string; _guild?: string } }>(
     "/ops/new",
     async (req, reply) => {
       const ctx = await requireAuth(req, reply);
@@ -111,6 +111,9 @@ export async function webRoutes(app: FastifyInstance) {
         .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
         .map((m) => ({ id: m.guildId, name: m.guild.name }));
       if (operatorGuilds.length === 0) return reply.code(403).send({ error: "forbidden" });
+      const selectedOperatorGuildId = operatorGuilds.some((g) => g.id === req.query._guild)
+        ? req.query._guild
+        : undefined;
       htmlReply(reply, opFormPage({
         basePath: basePath(),
         currentUser: ctx.user,
@@ -118,6 +121,7 @@ export async function webRoutes(app: FastifyInstance) {
         flash: req.query.flash,
         op: null,
         operatorGuilds,
+        selectedOperatorGuildId,
         locations: await searchLocations(undefined, "", 2000),
       }));
     }

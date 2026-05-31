@@ -940,6 +940,7 @@ export function opFormPage(opts: {
   locations: Pick<Location, "slug" | "name" | "system" | "systemSlug" | "parentName" | "classification">[];
   /** For new operations: guilds the user can create ops for. Show picker when >1. */
   operatorGuilds?: Array<{ id: string; name: string }>;
+  selectedOperatorGuildId?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -947,6 +948,7 @@ export function opFormPage(opts: {
   const csrf = opts.csrfToken ?? "";
 
   const opTypes = ["combat", "pve", "training", "mixed", "exploration"];
+  const selectedOperatorGuild = opts.operatorGuilds?.find((g) => g.id === opts.selectedOperatorGuildId);
   const locationOptions = opts.locations
     .filter((location) => SYSTEMS.includes(location.systemSlug as (typeof SYSTEMS)[number]))
     .map((location) => ({
@@ -969,7 +971,11 @@ export function opFormPage(opts: {
         ${(!op && opts.operatorGuilds && opts.operatorGuilds.length > 0) ? html`
         <div class="form-group">
           <label>Server</label>
-          ${opts.operatorGuilds.length === 1
+          ${selectedOperatorGuild
+            ? html`
+              <input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
+              <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
+            : opts.operatorGuilds.length === 1
             ? html`
               <input type="hidden" name="guildId" value="${opts.operatorGuilds[0].id}" />
               <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
