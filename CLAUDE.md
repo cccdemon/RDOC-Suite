@@ -55,7 +55,8 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 
 **RDOC-RTC Bot** — Scopes: `bot applications.commands`
 - Intents: `Guilds`, `GuildVoiceStates` (non-privileged, kein Portal-Toggle nötig)
-- Permissions: `Send Messages`, `Read Message History`, `View Channel`, optional `Manage Channels` für Strategy-Channels
+- Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_CHANNELS`, `MOVE_MEMBERS`
+- `MANAGE_CHANNELS` + `MOVE_MEMBERS` nötig für Strategy-Channels (bridge Admin-UI)
 
 **Fleetmanager Bot** — Scopes: `bot applications.commands`
 - Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_ROLES`, `MANAGE_EVENTS`

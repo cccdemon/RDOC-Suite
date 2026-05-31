@@ -191,12 +191,14 @@ describe("Discord Bots", () => {
     await testBot({
       envVar: "DISCORD_RDOCRTC_BOT_TOKEN",
       label: "RDOC-RTC Bot",
-      purpose: "Slash-commands (/cc), bridge web-OAuth, companion bridge-auth",
+      purpose: "Slash-commands (/cc), bridge web-OAuth, companion auth, strategy-channels (create/move/delete)",
       guildId: TEST_GUILD_ID,
       requiredPerms: [
         ["VIEW_CHANNEL",         PERM.VIEW_CHANNEL],
         ["SEND_MESSAGES",        PERM.SEND_MESSAGES],
         ["READ_MESSAGE_HISTORY", PERM.READ_MESSAGE_HISTORY],
+        ["MANAGE_CHANNELS",      PERM.MANAGE_CHANNELS],  // strategyChannels.ts
+        ["MOVE_MEMBERS",         PERM.MOVE_MEMBERS],     // strategyChannels.ts
       ],
     });
   });
