@@ -44,32 +44,64 @@ async function grantDiscordRole(
   guildId: string,
   userId: string,
   roleId: string,
-): Promise<void> {
+): Promise<boolean> {
   const env = getEnv();
   const token = env.DISCORD_FLEETPLANNER_BOT_TOKEN;
-  if (!token) return;
+  if (!token) {
+    console.warn(`[voiceSession] cannot grant role ${roleId} to user ${userId}: DISCORD_FLEETPLANNER_BOT_TOKEN not set`);
+    return false;
+  }
   const discordId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
-  if (!discordId) return;
-  await fetch(
-    `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
-    { method: "PUT", headers: { Authorization: `Bot ${token}` }, signal: AbortSignal.timeout(8000) },
-  ).catch(() => {});
+  if (!discordId) {
+    console.warn(`[voiceSession] cannot grant role ${roleId}: no Discord identity for fleetplanner user ${userId}`);
+    return false;
+  }
+  try {
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
+      { method: "PUT", headers: { Authorization: `Bot ${token}` }, signal: AbortSignal.timeout(8000) },
+    );
+    if (!res.ok) {
+      console.warn(`[voiceSession] grant role ${roleId} to ${discordId} in guild ${guildId} failed: HTTP ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn(`[voiceSession] grant role ${roleId} to ${discordId} in guild ${guildId} errored: ${String(e)}`);
+    return false;
+  }
 }
 
 async function revokeDiscordRole(
   guildId: string,
   userId: string,
   roleId: string,
-): Promise<void> {
+): Promise<boolean> {
   const env = getEnv();
   const token = env.DISCORD_FLEETPLANNER_BOT_TOKEN;
-  if (!token) return;
+  if (!token) {
+    console.warn(`[voiceSession] cannot revoke role ${roleId} from user ${userId}: DISCORD_FLEETPLANNER_BOT_TOKEN not set`);
+    return false;
+  }
   const discordId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
-  if (!discordId) return;
-  await fetch(
-    `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
-    { method: "DELETE", headers: { Authorization: `Bot ${token}` }, signal: AbortSignal.timeout(8000) },
-  ).catch(() => {});
+  if (!discordId) {
+    console.warn(`[voiceSession] cannot revoke role ${roleId}: no Discord identity for fleetplanner user ${userId}`);
+    return false;
+  }
+  try {
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`,
+      { method: "DELETE", headers: { Authorization: `Bot ${token}` }, signal: AbortSignal.timeout(8000) },
+    );
+    if (!res.ok) {
+      console.warn(`[voiceSession] revoke role ${roleId} from ${discordId} in guild ${guildId} failed: HTTP ${res.status}`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.warn(`[voiceSession] revoke role ${roleId} from ${discordId} in guild ${guildId} errored: ${String(e)}`);
+    return false;
+  }
 }
 
 // ── Core session management ─────────────────────────────────────────
@@ -154,15 +186,22 @@ export async function openMissionVoiceSession(operationId: string): Promise<void
   });
   const commanderUsers = new Set<string>([...captains, ...fleetopMembers.map((m) => m.userId)]);
 
+  let granted = 0;
+  let grantFailed = 0;
   if (op.guild.globalVoiceRoleId) {
     for (const userId of allCrew) {
-      await grantDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId);
+      if (await grantDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId)) granted++;
+      else grantFailed++;
     }
   }
   if (op.guild.commanderVoiceRoleId) {
     for (const userId of commanderUsers) {
-      await grantDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId);
+      if (await grantDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId)) granted++;
+      else grantFailed++;
     }
+  }
+  if (grantFailed > 0) {
+    console.warn(`[voiceSession] openMissionVoiceSession op ${operationId}: ${granted} role grant(s) ok, ${grantFailed} failed — Discord voice permissions may be incomplete`);
   }
 }
 
@@ -189,15 +228,22 @@ export async function closeMissionVoiceSession(operationId: string): Promise<voi
   });
   const commanderUsers = new Set<string>([...captains, ...fleetopMembers.map((m) => m.userId)]);
 
+  let revoked = 0;
+  let revokeFailed = 0;
   if (op.guild.globalVoiceRoleId) {
     for (const userId of allCrew) {
-      await revokeDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId);
+      if (await revokeDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId)) revoked++;
+      else revokeFailed++;
     }
   }
   if (op.guild.commanderVoiceRoleId) {
     for (const userId of commanderUsers) {
-      await revokeDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId);
+      if (await revokeDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId)) revoked++;
+      else revokeFailed++;
     }
+  }
+  if (revokeFailed > 0) {
+    console.warn(`[voiceSession] closeMissionVoiceSession op ${operationId}: ${revoked} role revoke(s) ok, ${revokeFailed} failed`);
   }
 }
 

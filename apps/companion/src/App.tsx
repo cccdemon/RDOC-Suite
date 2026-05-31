@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CommanderInfo } from "@rdoc-suite/shared";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { onOpenUrl, getCurrent as getCurrentDeepLinks } from "@tauri-apps/plugin-deep-link";
 import { BridgeWs, type WsStatus } from "./lib/ws";
 import {
   formatKeyboardAccelerator,
@@ -10,6 +11,8 @@ import {
   setupHotkey,
   teardownHotkey,
   type HotkeyEventPayload,
+  setExtraHotkey,
+  clearExtraHotkey,
 } from "./lib/hotkey";
 import { jwtSubject, startOAuthInWebview } from "./lib/auth";
 import { info as logInfo } from "@tauri-apps/plugin-log";
@@ -908,6 +911,45 @@ export function App(): JSX.Element {
     setShowMissionModal(false);
   }, []);
 
+  // ── OS deep-link: dccc://fleet-voice?token=…&url=… ───────────────────
+  // Clicking a fleet-voice link (from Discord DM / browser) launches or
+  // focuses the Companion and auto-applies the mission config — no paste.
+  // Covers cold start (getCurrent) and while-running (onOpenUrl, forwarded
+  // by the single-instance plugin on Windows).
+  useEffect(() => {
+    let active = true;
+    let unlisten: (() => void) | null = null;
+    const applyRaw = (raw: string): void => {
+      try {
+        const u = new URL(raw.trim().replace(/^dccc:\/\//, "https://dccc.local/"));
+        const token = u.searchParams.get("token");
+        const url = u.searchParams.get("url");
+        if (token && url) void onMissionLinkApply(token, url);
+      } catch {
+        // not a fleet-voice link — ignore
+      }
+    };
+    void (async () => {
+      try {
+        const current = await getCurrentDeepLinks();
+        if (current) current.forEach(applyRaw);
+      } catch {
+        // not running under the Tauri deep-link plugin
+      }
+      try {
+        const fn = await onOpenUrl((urls: string[]) => urls.forEach(applyRaw));
+        if (active) unlisten = fn;
+        else fn();
+      } catch {
+        // deep-link plugin unavailable
+      }
+    })();
+    return () => {
+      active = false;
+      unlisten?.();
+    };
+  }, [onMissionLinkApply]);
+
   // ── Mission voice polling effect ─────────────────────────────────────
   useEffect(() => {
     if (!state.missionToken || !state.missionUrl) return;
@@ -1002,39 +1044,75 @@ export function App(): JSX.Element {
     return () => clearInterval(interval);
   }, [state.missionToken, state.missionUrl]);
 
-  // ── Commander hotkey (keyboard) ──────────────────────────────────────
+  // ── Commander hotkey (keyboard + mouse via native rdev/raw-input) ────
+  // Registers the accelerator with the native listener so it fires
+  // globally — incl. mouse side-buttons (the Mouse5 default) and even
+  // while a fullscreen game owns input. A window-level keyboard listener
+  // stays as a focused-window fallback, mirroring the bridge PTT path.
   useEffect(() => {
     const hotkey = state.commanderHotkey;
-    if (!hotkey || isMouseHotkey(hotkey) || !state.missionActive) return;
+    // Commander PTT only exists when the user holds a commander room
+    // (Admiral / captain). Plain crew = global voice only = 1 PTT.
+    if (!hotkey || !state.missionActive || !state.missionHasCommander) return;
+    let active = true;
+    let unlisten: (() => void) | null = null;
+    void setExtraHotkey("mission-commander", hotkey).catch(() => {});
+    void (async () => {
+      const fn = await listen<HotkeyEventPayload>("hotkey", (e) => {
+        if (e.payload.accelerator !== hotkey) return;
+        onCommanderPtt(e.payload.state === "pressed");
+      });
+      if (active) unlisten = fn;
+      else fn();
+    })();
     const onDown = (e: KeyboardEvent): void => {
-      if (e.repeat) return;
+      if (e.repeat || isMouseHotkey(hotkey)) return;
       if (formatKeyboardAccelerator(e) === hotkey) { e.preventDefault(); onCommanderPtt(true); }
     };
     const onUp = (e: KeyboardEvent): void => {
+      if (isMouseHotkey(hotkey)) return;
       if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onCommanderPtt(false); }
     };
     window.addEventListener("keydown", onDown, true);
     window.addEventListener("keyup", onUp, true);
     return () => {
+      active = false;
+      unlisten?.();
+      void clearExtraHotkey("mission-commander");
       window.removeEventListener("keydown", onDown, true);
       window.removeEventListener("keyup", onUp, true);
     };
-  }, [state.commanderHotkey, state.missionActive, onCommanderPtt]);
+  }, [state.commanderHotkey, state.missionActive, state.missionHasCommander, onCommanderPtt]);
 
-  // ── Global mission hotkey (keyboard) ────────────────────────────────
+  // ── Global mission hotkey (keyboard + mouse via native rdev/raw-input) ─
   useEffect(() => {
     const hotkey = state.globalHotkey;
-    if (!hotkey || isMouseHotkey(hotkey) || !state.missionActive) return;
+    if (!hotkey || !state.missionActive) return;
+    let active = true;
+    let unlisten: (() => void) | null = null;
+    void setExtraHotkey("mission-global", hotkey).catch(() => {});
+    void (async () => {
+      const fn = await listen<HotkeyEventPayload>("hotkey", (e) => {
+        if (e.payload.accelerator !== hotkey) return;
+        onGlobalMissionPtt(e.payload.state === "pressed");
+      });
+      if (active) unlisten = fn;
+      else fn();
+    })();
     const onDown = (e: KeyboardEvent): void => {
-      if (e.repeat) return;
+      if (e.repeat || isMouseHotkey(hotkey)) return;
       if (formatKeyboardAccelerator(e) === hotkey) { e.preventDefault(); onGlobalMissionPtt(true); }
     };
     const onUp = (e: KeyboardEvent): void => {
+      if (isMouseHotkey(hotkey)) return;
       if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onGlobalMissionPtt(false); }
     };
     window.addEventListener("keydown", onDown, true);
     window.addEventListener("keyup", onUp, true);
     return () => {
+      active = false;
+      unlisten?.();
+      void clearExtraHotkey("mission-global");
       window.removeEventListener("keydown", onDown, true);
       window.removeEventListener("keyup", onUp, true);
     };

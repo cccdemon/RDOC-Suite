@@ -3,6 +3,66 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-05-31: Remaining Codex items (#2 token scope, #4 capabilities, #6/#7 deep link) + env doc
+
+- **#2 voice-link token scope:** `POST /api/ops/:opId/voice-links` + `/api/companion/generate-voice-link/:userId`
+  currently mint full `CompanionSession` tokens for other users (authenticate as that
+  user against all companion endpoints). Replace with a dedicated, narrowly-scoped
+  mission-voice token (only `/api/companion/mission-voice`), short-lived.
+- **#4 `/suite/capabilities`:** VERIFIED INTENTIONAL — `canUseRelay: false` is marked
+  "decision pending" and `canUseFleetTools: false` is "web-first, not a companion
+  feature" in the route. Not a bug; left unchanged.
+- **#6/#7 `dccc://fleet-voice`:** add real handler so clicking the link configures the
+  Companion (token+url) instead of paste-only. Mirror existing `dccc://` webview
+  interception / single-instance arg path; emit `fleet-voice-configured`.
+- **env doc:** add `DISCORD_FLEETPLANNER_CLIENT_SECRET` to fleetplanner `.env.example`.
+
+## Queued / Planned Step - 2026-05-31: Fleetplanner web-login must use Fleetplanner OAuth client (not Companion/RDOC-RTC)
+
+Bug: `apps/fleetplanner/src/auth/providers.ts` `discordOAuthClientId()` falls back to
+`DISCORD_COMPANION_BOT_ID` / `DISCORD_RDOCRTC_CLIENT_ID`, so the normal Fleetplanner
+web-login emits authorize links with the Companion/RDOC-RTC client_id
+(1507722962919227452). Wrong — that client is Companion-only.
+
+Fix:
+- `config/env.ts`: add `DISCORD_FLEETPLANNER_CLIENT_SECRET` (optional).
+- `auth/providers.ts`: split client selection. Web login:
+  `discordOAuthClientId()` = `DISCORD_FLEETPLANNER_CLIENT_ID ?? DISCORD_CLIENT_ID` (NO
+  companion/rdocrtc fallback). New `discordOAuthClientSecret()` =
+  `DISCORD_FLEETPLANNER_CLIENT_SECRET ?? DISCORD_CLIENT_SECRET`. `discordEnabled()` =
+  both present. `discordExchange()` uses `discordOAuthClientSecret()` not raw
+  `DISCORD_CLIENT_SECRET`.
+- `auth/discord.ts`: same split if still used; no companion/rdocrtc fallback.
+- Companion OAuth (`/auth/discord/companion/*`) keeps `DISCORD_COMPANION_BOT_ID`/`_KEY`.
+- Tests: web `/auth/discord/start` → client_id = FLEETPLANNER_CLIENT_ID;
+  `/auth/discord/companion/start` → client_id = COMPANION_BOT_ID; only-companion-set ⇒
+  `discordEnabled()` false for web.
+
+## Queued / Planned Step - 2026-05-31: Mission Voice flow fixes (Codex review)
+
+Found via Codex review of the new Fleetcommander/Mission-Voice path. Fixing 3:
+
+1. **Response-shape mismatch (critical).** `GET /api/companion/mission-voice` success
+   branch in `apps/fleetplanner/src/routes/api.ts` returns flat `{ opId, opTitle, ... }`
+   while every "no session" branch returns `{ op: null }` and the companion
+   (`apps/companion/src/App.tsx`) reads `data.op`. So an ACTIVE mission was seen as
+   "no mission". Fix: wrap success payload in `op: { ... }`.
+
+2. **Mission mouse-hotkeys dead (#3).** Commander/Global mission PTT effects in App.tsx
+   only attach window keyboard listeners and `return` early on `isMouseHotkey`. Default
+   `commanderHotkey` is `Mouse5` → never fires unless the UI button is clicked. Fix:
+   subscribe to the Rust `"hotkey"` events for mission commander/global, matching the
+   stored accelerator (same mechanism bridge PTT uses via setupHotkey/rdev).
+
+3. **Silent Discord role grant/revoke (#5).** `apps/fleetplanner/src/services/voiceSession.ts`
+   swallows role grant/revoke errors, so fleetplanner can show "mission voice active"
+   even though Discord roles were never set. Fix: surface/log failures instead of
+   swallowing.
+
+Not fixing now (logged for later): voice-link token scope too broad (#2), bridge
+`/suite/capabilities` reports fleet/relay false (#4), `dccc://fleet-voice` is paste-only,
+no OS deep-link handler (#6/#7).
+
 ## Queued / Planned Step - 2026-05-31: Companion Fleetcommander Mode + Mission Voice Integration
 
 Fleetplanner:

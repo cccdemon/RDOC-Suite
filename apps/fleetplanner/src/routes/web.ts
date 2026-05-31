@@ -235,9 +235,9 @@ export async function webRoutes(app: FastifyInstance) {
           const captainUsers = await prisma.user.findMany({ where: { id: { in: [...captainIds] } }, select: { id: true, username: true } });
           const usernameMap = new Map(captainUsers.map((u) => [u.id, u.username]));
           for (const m of fpMembers) usernameMap.set(m.userId, m.user.username);
-          const { createCompanionSession } = await import("../auth/companionSession.js");
+          const { createMissionVoiceSession } = await import("../auth/companionSession.js");
           fleetVoiceLinks = await Promise.all([...allUserIds].map(async (uid) => {
-            const token = await createCompanionSession(uid);
+            const token = await createMissionVoiceSession(uid);
             const params = new URLSearchParams({ token, url: fleetplannerUrl });
             return { userId: uid, username: usernameMap.get(uid) ?? uid, link: `dccc://fleet-voice?${params.toString()}` };
           }));

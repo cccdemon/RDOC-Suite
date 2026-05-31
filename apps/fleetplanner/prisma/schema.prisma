@@ -127,6 +127,10 @@ model CompanionSession {
   userId    String
   createdAt DateTime @default(now())
   expiresAt DateTime
+  // "full" = companion app login token (valid for all companion endpoints).
+  // "mission-voice" = narrow token distributed via dccc://fleet-voice links;
+  // only valid for the mission-voice polling endpoint, not full companion auth.
+  scope     String   @default("full")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

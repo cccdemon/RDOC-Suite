@@ -40,13 +40,21 @@ export function consumeState(state: string): { provider: OAuthProvider; linkUser
 // ── Discord ────────────────────────────────────────────────────────
 
 export function discordEnabled(): boolean {
-  const env = getEnv();
-  return !!(discordOAuthClientId() && env.DISCORD_CLIENT_SECRET);
+  return !!(discordOAuthClientId() && discordOAuthClientSecret());
 }
 
 export function discordOAuthClientId(): string | undefined {
   const env = getEnv();
-  return env.DISCORD_CLIENT_ID ?? env.DISCORD_COMPANION_BOT_ID ?? env.DISCORD_RDOCRTC_CLIENT_ID;
+  // Fleetplanner web login + Discord linking use the RDOC-Fleetplanner app.
+  // NEVER fall back to the Companion/RDOC-RTC client (DISCORD_COMPANION_BOT_ID /
+  // DISCORD_RDOCRTC_CLIENT_ID) — that client is reserved for the Companion
+  // app OAuth flow (/auth/discord/companion/*).
+  return env.DISCORD_FLEETPLANNER_CLIENT_ID ?? env.DISCORD_CLIENT_ID;
+}
+
+export function discordOAuthClientSecret(): string | undefined {
+  const env = getEnv();
+  return env.DISCORD_FLEETPLANNER_CLIENT_SECRET ?? env.DISCORD_CLIENT_SECRET;
 }
 
 export function discordAuthorizeUrl(state: string, redirectUri: string): string {
@@ -64,13 +72,12 @@ export function discordAuthorizeUrl(state: string, redirectUri: string): string 
 }
 
 export async function discordExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
-  const env = getEnv();
   const tokenRes = await fetch("https://discord.com/api/v10/oauth2/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: discordOAuthClientId()!,
-      client_secret: env.DISCORD_CLIENT_SECRET!,
+      client_secret: discordOAuthClientSecret()!,
       grant_type: "authorization_code",
       code,
       redirect_uri: redirectUri,

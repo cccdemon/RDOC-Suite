@@ -58,6 +58,24 @@ export async function teardownHotkey(): Promise<void> {
   currentAccelerator = null;
 }
 
+/** Register an additional named PTT hotkey (e.g. mission commander /
+ *  global voice) that coexists with the primary bridge hotkey. The Rust
+ *  rdev/raw-input listener emits a "hotkey" event with this accelerator
+ *  on press/release, just like the primary hotkey — so mouse side-buttons
+ *  and game-fullscreen capture work the same way. */
+export async function setExtraHotkey(id: string, accelerator: string): Promise<void> {
+  await invoke("set_extra_hotkey", { id, accelerator });
+}
+
+/** Remove a named extra hotkey previously set with setExtraHotkey. */
+export async function clearExtraHotkey(id: string): Promise<void> {
+  try {
+    await invoke("clear_extra_hotkey", { id });
+  } catch {
+    // ignore — clearing a non-existent extra hotkey is a no-op
+  }
+}
+
 export function isMouseHotkey(accelerator: string): boolean {
   return /^Mouse\d+$/i.test(accelerator);
 }

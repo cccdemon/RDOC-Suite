@@ -9,7 +9,7 @@ import { assignCaptainDiscordRole, createScheduledEvent, deleteScheduledEvent, r
 import { cleanupOperationVoiceChannels, deleteOperationVoiceChannel, launchOperationVoiceChannels, moveOperationCrewToVoiceChannels, renameOperationVoiceChannel } from "../services/voiceBots.js";
 import { closeMissionVoiceSession, hasVoicePermission, openMissionVoiceSession } from "../services/voiceSession.js";
 import { issueUnitLivekitToken, issueGlobalVoiceToken, issueMissionVoiceToken } from "../services/livekit.js";
-import { createCompanionSession, loadCompanionSession } from "../auth/companionSession.js";
+import { createCompanionSession, createMissionVoiceSession, loadCompanionSession, loadMissionVoiceSession } from "../auth/companionSession.js";
 import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../services/discord.js";
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
@@ -899,7 +899,7 @@ export async function apiRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const authHeader = (req.headers as Record<string, string | undefined>).authorization;
       if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
-      const userId = await loadCompanionSession(authHeader.slice(7));
+      const userId = await loadMissionVoiceSession(authHeader.slice(7));
       if (!userId) return reply.code(401).send({ error: "unauthorized" });
 
       const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
@@ -966,11 +966,13 @@ export async function apiRoutes(app: FastifyInstance) {
         : null;
 
       return reply.send({
-        opId: activeOp.id,
-        opTitle: activeOp.title,
-        livekitUrl: env.LIVEKIT_URL,
-        globalRoom: { room: globalRoom, token: globalToken },
-        commanderRoom: (commanderToken && commanderRoom) ? { room: commanderRoom, token: commanderToken } : null,
+        op: {
+          opId: activeOp.id,
+          opTitle: activeOp.title,
+          livekitUrl: env.LIVEKIT_URL,
+          globalRoom: { room: globalRoom, token: globalToken },
+          commanderRoom: (commanderToken && commanderRoom) ? { room: commanderRoom, token: commanderToken } : null,
+        },
       });
     }
   );
@@ -1014,7 +1016,7 @@ export async function apiRoutes(app: FastifyInstance) {
       // Create companion sessions + build links
       const links: Array<{ userId: string; username: string; link: string }> = [];
       for (const uid of allUserIds) {
-        const token = await createCompanionSession(uid);
+        const token = await createMissionVoiceSession(uid);
         const params = new URLSearchParams({ token, url: fleetplannerUrl });
         links.push({
           userId: uid,

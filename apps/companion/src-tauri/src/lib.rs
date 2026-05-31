@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -24,6 +25,19 @@ struct HotkeyRegistry {
     /// Mouse button raw index (rdev `Button::Unknown(n)`), where the
     /// human-visible label is `Mouse{n+3}` (Mouse4 = Unknown(1)).
     mouse: Arc<Mutex<Option<u8>>>,
+    /// Additional named PTT hotkeys (e.g. mission commander / global voice)
+    /// that coexist with the primary bridge hotkey. Keyed by a JS-supplied
+    /// id so each can be set/cleared independently.
+    extra: Arc<Mutex<HashMap<String, HotkeyTarget>>>,
+}
+
+/// A single resolved hotkey binding — keyboard combo or mouse side-button.
+/// Used for the `extra` (mission) hotkeys that run alongside the primary
+/// bridge hotkey.
+#[derive(Clone)]
+enum HotkeyTarget {
+    Keyboard(KeySpec),
+    Mouse(u8),
 }
 
 #[derive(Clone, Serialize)]
@@ -410,6 +424,42 @@ fn clear_hotkey(registry: State<'_, HotkeyRegistry>) -> Result<(), String> {
     Ok(())
 }
 
+/// Registers an additional named PTT hotkey that coexists with the primary
+/// bridge hotkey (used for mission commander / global voice). Accepts the
+/// same accelerator formats as `set_hotkey`. The native listener emits a
+/// "hotkey" event with this accelerator on press/release.
+#[tauri::command]
+fn set_extra_hotkey(
+    id: String,
+    accelerator: String,
+    registry: State<'_, HotkeyRegistry>,
+) -> Result<(), String> {
+    let target = if let Some(rest) = accelerator.strip_prefix("Mouse") {
+        let n: u32 = rest.parse().map_err(|_| format!("invalid mouse hotkey: {accelerator}"))?;
+        if n < 3 {
+            return Err(format!(
+                "mouse buttons must be >= Mouse3 (got {accelerator}) — Mouse1/Mouse2 are left/middle click"
+            ));
+        }
+        HotkeyTarget::Mouse((n - 3) as u8)
+    } else {
+        let spec = parse_accelerator(&accelerator)
+            .ok_or_else(|| format!("unsupported hotkey: {accelerator}"))?;
+        HotkeyTarget::Keyboard(spec)
+    };
+    registry.extra.lock().unwrap().insert(id.clone(), target);
+    log::info!("extra hotkey set: {id} = {accelerator}");
+    Ok(())
+}
+
+/// Removes a named extra hotkey previously set with `set_extra_hotkey`.
+#[tauri::command]
+fn clear_extra_hotkey(id: String, registry: State<'_, HotkeyRegistry>) -> Result<(), String> {
+    registry.extra.lock().unwrap().remove(&id);
+    log::info!("extra hotkey cleared: {id}");
+    Ok(())
+}
+
 /// Lower every Discord audio session's per-app volume to `target_pct`
 /// (0..100). Used by the Companion to "duck" the regular Discord channel
 /// while squad-link audio is playing or while the user is talking.
@@ -475,8 +525,9 @@ fn spawn_hotkey_listener(app: AppHandle, registry: HotkeyRegistry) {
         // (~30/s) with RI_KEY_BREAK unset, so without this guard every
         // repeat would re-fire "pressed" and replay the PTT click.
         let mut hotkey_down = false;
+        let mut extra_down: HashMap<String, bool> = HashMap::new();
         while let Ok(evt) = raw_kb_rx.recv() {
-            handle_raw_key(&evt, &mut mods, &mut hotkey_down, &kb_registry, &kb_emit_tx);
+            handle_raw_key(&evt, &mut mods, &mut hotkey_down, &mut extra_down, &kb_registry, &kb_emit_tx);
         }
     });
 
@@ -489,8 +540,7 @@ fn spawn_hotkey_listener(app: AppHandle, registry: HotkeyRegistry) {
         let res = listen(move |event| {
             match event.event_type {
                 EventType::ButtonPress(Button::Unknown(n)) => {
-                    let configured = *mouse_registry.mouse.lock().unwrap();
-                    if configured == Some(n) {
+                    if mouse_button_is_bound(&mouse_registry, n) {
                         let _ = mouse_emit_tx.send(HotkeyEvent {
                             state: "pressed",
                             accelerator: format!("Mouse{}", n as u32 + 3),
@@ -498,8 +548,7 @@ fn spawn_hotkey_listener(app: AppHandle, registry: HotkeyRegistry) {
                     }
                 }
                 EventType::ButtonRelease(Button::Unknown(n)) => {
-                    let configured = *mouse_registry.mouse.lock().unwrap();
-                    if configured == Some(n) {
+                    if mouse_button_is_bound(&mouse_registry, n) {
                         let _ = mouse_emit_tx.send(HotkeyEvent {
                             state: "released",
                             accelerator: format!("Mouse{}", n as u32 + 3),
@@ -523,10 +572,24 @@ fn spawn_hotkey_listener(app: AppHandle, registry: HotkeyRegistry) {
 }
 
 #[cfg(target_os = "windows")]
+fn mouse_button_is_bound(registry: &HotkeyRegistry, n: u8) -> bool {
+    if *registry.mouse.lock().unwrap() == Some(n) {
+        return true;
+    }
+    registry
+        .extra
+        .lock()
+        .unwrap()
+        .values()
+        .any(|t| matches!(t, HotkeyTarget::Mouse(m) if *m == n))
+}
+
+#[cfg(target_os = "windows")]
 fn handle_raw_key(
     evt: &raw_input::RawKeyEvent,
     mods: &mut ModifierState,
     hotkey_down: &mut bool,
+    extra_down: &mut HashMap<String, bool>,
     registry: &HotkeyRegistry,
     emit_tx: &Sender<HotkeyEvent>,
 ) {
@@ -543,6 +606,18 @@ fn handle_raw_key(
                     state: "released",
                     accelerator: key_to_accelerator(spec),
                 });
+            }
+        }
+        // Extra (mission) keyboard hotkeys — release on main-key up.
+        for (id, target) in registry.extra.lock().unwrap().iter() {
+            if let HotkeyTarget::Keyboard(spec) = target {
+                if spec.key == evt.key && extra_down.get(id).copied().unwrap_or(false) {
+                    extra_down.insert(id.clone(), false);
+                    let _ = emit_tx.send(HotkeyEvent {
+                        state: "released",
+                        accelerator: key_to_accelerator(spec),
+                    });
+                }
             }
         }
         match evt.key {
@@ -576,6 +651,25 @@ fn handle_raw_key(
                     });
                 }
             }
+            // Extra (mission) keyboard hotkeys — press on full-combo match.
+            for (id, target) in registry.extra.lock().unwrap().iter() {
+                if let HotkeyTarget::Keyboard(spec) = target {
+                    let down = extra_down.get(id).copied().unwrap_or(false);
+                    if spec.key == evt.key
+                        && spec.ctrl == mods.ctrl
+                        && spec.alt == mods.alt
+                        && spec.shift == mods.shift
+                        && spec.meta == mods.meta
+                        && !down
+                    {
+                        extra_down.insert(id.clone(), true);
+                        let _ = emit_tx.send(HotkeyEvent {
+                            state: "pressed",
+                            accelerator: key_to_accelerator(spec),
+                        });
+                    }
+                }
+            }
         }
     }
 }
@@ -592,11 +686,20 @@ pub fn run() {
     let builder = tauri::Builder::default();
 
     builder
+        // single-instance MUST be the first plugin so a second launch (e.g. the
+        // OS `dccc://` scheme handler spawning a new process) forwards its args
+        // to the already-running instance instead of opening a second window.
+        // The "deep-link" feature forwards the URL to the deep-link plugin's
+        // onOpenUrl listener (consumed by the frontend).
+        .plugin(tauri_plugin_single_instance::init(|_app, _argv, _cwd| {}))
+        .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             start_oauth_webview,
             start_fleet_oauth_webview,
             set_hotkey,
             clear_hotkey,
+            set_extra_hotkey,
+            clear_extra_hotkey,
             duck_discord,
             restore_discord_volume
         ])
@@ -631,6 +734,14 @@ pub fn run() {
                     let _ = window.open_devtools();
                 }
             }
+            // Register the dccc:// scheme at runtime (covers dev + portable runs;
+            // the NSIS installer also registers it via the tauri.conf schemes).
+            #[cfg(desktop)]
+            {
+                use tauri_plugin_deep_link::DeepLinkExt;
+                let _ = app.deep_link().register("dccc");
+            }
+
             let registry = HotkeyRegistry::default();
             app.manage(registry.clone());
             spawn_hotkey_listener(app.handle().clone(), registry);

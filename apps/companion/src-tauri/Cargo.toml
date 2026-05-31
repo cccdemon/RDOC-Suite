@@ -21,6 +21,8 @@ url = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
 tauri-plugin-log = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 log = "0.4"
 
 # Mouse-button hotkeys (e.g. Mouse4 / Mouse5). Windows-only for now;

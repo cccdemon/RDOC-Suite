@@ -41,13 +41,12 @@ export type DiscordTokenResponse = { access_token: string; token_type: string };
 export type DiscordUser = { id: string; username: string; discriminator?: string; avatar: string | null; global_name?: string | null };
 
 export async function exchangeCode(code: string): Promise<DiscordTokenResponse> {
-  const env = getEnv();
   const res = await fetch(`${DISCORD_API}/oauth2/token`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: discordOAuthClientId()!,
-      client_secret: env.DISCORD_CLIENT_SECRET!,
+      client_id: discordOAuthClientId(),
+      client_secret: discordOAuthClientSecret(),
       grant_type: "authorization_code",
       code,
       redirect_uri: redirectUri(),
@@ -59,9 +58,17 @@ export async function exchangeCode(code: string): Promise<DiscordTokenResponse> 
 
 function discordOAuthClientId(): string {
   const env = getEnv();
-  const clientId = env.DISCORD_CLIENT_ID ?? env.DISCORD_COMPANION_BOT_ID ?? env.DISCORD_RDOCRTC_CLIENT_ID;
+  // Fleetplanner web login only — no Companion/RDOC-RTC fallback.
+  const clientId = env.DISCORD_FLEETPLANNER_CLIENT_ID ?? env.DISCORD_CLIENT_ID;
   if (!clientId) throw new Error("Discord client id is not configured");
   return clientId;
+}
+
+function discordOAuthClientSecret(): string {
+  const env = getEnv();
+  const clientSecret = env.DISCORD_FLEETPLANNER_CLIENT_SECRET ?? env.DISCORD_CLIENT_SECRET;
+  if (!clientSecret) throw new Error("Discord client secret is not configured");
+  return clientSecret;
 }
 
 export async function fetchDiscordUser(accessToken: string): Promise<DiscordUser> {

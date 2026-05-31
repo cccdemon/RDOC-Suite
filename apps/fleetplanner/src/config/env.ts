@@ -33,6 +33,7 @@ const schema = z.object({
   RAUMDOCK_GUILD_ID: z.string().optional(),
   DISCORD_BOT_TOKEN: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_ID: z.string().optional(),
+  DISCORD_FLEETPLANNER_CLIENT_SECRET: z.string().optional(),
   DISCORD_FLEETPLANNER_BOT_TOKEN: z.string().optional(),
   // Companion app OAuth — uses the RDOC-RTC Bot (separate from the Fleetmanager Bot)
   DISCORD_COMPANION_BOT_ID: z.string().optional(),

@@ -28,7 +28,13 @@
       "csp": null
     }
   },
-  "plugins": {},
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["dccc"]
+      }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
