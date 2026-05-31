@@ -98,6 +98,23 @@ export async function fetchGuildRolesByBot(guildId: string): Promise<Array<{ id:
   return res.json() as Promise<Array<{ id: string; name: string; permissions: string }>>;
 }
 
+export async function fetchGuildVoiceChannels(
+  guildId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  const token = fleetplannerBotToken();
+  if (!token) return [];
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    headers: { Authorization: `Bot ${token}` },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return [];
+  const channels = await res.json() as Array<{ id: string; name: string; type: number }>;
+  return channels
+    .filter((c) => c.type === 2) // GUILD_VOICE
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((c) => ({ id: c.id, name: c.name }));
+}
+
 export async function fetchBotIdentity(token: string): Promise<{ id: string; username: string } | null> {
   const clean = token.trim();
   if (!clean) return null;
@@ -236,30 +253,31 @@ export async function createScheduledEvent(op: {
   title: string;
   description: string;
   scheduledAt: Date;
+  eventVoiceChannelId?: string | null;
 }): Promise<DiscordEventResult> {
   const env = getEnv();
   const token = fleetplannerBotToken();
   if (!token) return null;
 
-  // Per-guild event channel (optional). Falls back to an EXTERNAL event.
+  // Per-event channel overrides guild-level eventChannelId.
   const guild = await prisma.guild.findUnique({
     where: { id: op.guildId },
     select: { eventChannelId: true },
   });
-  const eventChannelId = guild?.eventChannelId ?? null;
+  const voiceChannelId = op.eventVoiceChannelId ?? guild?.eventChannelId ?? null;
 
   // Discord requires events to be at least 1h long; use 3h as default
   const startTime = op.scheduledAt.toISOString();
   const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
 
-  const body = eventChannelId
+  const body = voiceChannelId
     ? {
         name: op.title,
         description: op.description || undefined,
         privacy_level: 2,
         scheduled_start_time: startTime,
         entity_type: 2, // VOICE
-        channel_id: eventChannelId,
+        channel_id: voiceChannelId,
       }
     : {
         name: op.title,
@@ -289,6 +307,19 @@ export async function createScheduledEvent(op: {
   }
 
   const data = await res.json() as { id: string };
+
+  // Prepend the Discord event link to the description.
+  const eventUrl = `https://discord.com/events/${op.guildId}/${data.id}`;
+  const updatedDescription = op.description
+    ? `${eventUrl}\n${op.description}`
+    : eventUrl;
+  await fetch(`${DISCORD_API}/guilds/${op.guildId}/scheduled-events/${data.id}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ description: updatedDescription.slice(0, 1000) }),
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => { /* non-fatal — event already created */ });
+
   return data;
 }
 
@@ -306,7 +337,6 @@ export async function deleteScheduledEvent(guildId: string, eventId: string): Pr
 export type CaptainDiscordRole = "commander" | "admiral";
 
 async function putGuildMemberRole(guildId: string, discordUserId: string, roleId: string): Promise<void> {
-  const env = getEnv();
   const token = fleetplannerBotToken();
   if (!token) {
     throw new Error("Discord Fleetplanner Bot integration is not configured");

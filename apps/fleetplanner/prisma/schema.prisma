@@ -235,8 +235,9 @@ model Operation {
   scheduledAt     DateTime
   status          String   @default("draft") // draft | open | locked | in_progress | completed | cancelled
   createdById     String
-  discordEventId  String? // id of the Discord scheduled event created when opened
-  reminderSentAt  DateTime? // set once reminder DMs have been dispatched; null = not yet sent
+  discordEventId        String?   // id of the Discord scheduled event created when opened
+  eventVoiceChannelId   String?   // Discord voice channel id to use as event location (overrides Guild.eventChannelId)
+  reminderSentAt        DateTime? // set once reminder DMs have been dispatched; null = not yet sent
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 

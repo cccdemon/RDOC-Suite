@@ -8,22 +8,24 @@ export type CreateOperationInput = {
   meetingSystem?: string;
   meetingLocation?: string;
   scheduledAt: Date;
+  eventVoiceChannelId?: string;
 };
 
 export async function createOperation(createdById: string, input: CreateOperationInput) {
-  return prisma.operation.create({
-    data: {
-      guildId: input.guildId,
-      title: input.title,
-      description: input.description ?? "",
-      opType: input.opType ?? "combat",
-      meetingSystem: input.meetingSystem ?? "stanton",
-      meetingLocation: input.meetingLocation ?? "",
-      scheduledAt: input.scheduledAt,
-      createdById,
-      status: "draft",
-    },
-  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = {
+    guildId: input.guildId,
+    title: input.title,
+    description: input.description ?? "",
+    opType: input.opType ?? "combat",
+    meetingSystem: input.meetingSystem ?? "stanton",
+    meetingLocation: input.meetingLocation ?? "",
+    scheduledAt: input.scheduledAt,
+    createdById,
+    status: "draft",
+    eventVoiceChannelId: input.eventVoiceChannelId || null,
+  };
+  return prisma.operation.create({ data });
 }
 
 export async function getOperation(id: string) {
@@ -116,6 +118,7 @@ export async function updateOperation(id: string, input: Partial<CreateOperation
       ...(input.meetingSystem !== undefined && { meetingSystem: input.meetingSystem }),
       ...(input.meetingLocation !== undefined && { meetingLocation: input.meetingLocation }),
       ...(input.scheduledAt !== undefined && { scheduledAt: input.scheduledAt }),
+      ...("eventVoiceChannelId" in input && { eventVoiceChannelId: input.eventVoiceChannelId || null }),
     },
   });
 }

@@ -937,11 +937,13 @@ export function opFormPage(opts: {
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
   flash?: string;
-  op?: (Pick<Operation, "id" | "title" | "description" | "opType" | "meetingSystem" | "meetingLocation" | "scheduledAt"> & { guildId?: string }) | null;
+  op?: (Pick<Operation, "id" | "title" | "description" | "opType" | "meetingSystem" | "meetingLocation" | "scheduledAt"> & { guildId?: string; eventVoiceChannelId?: string | null }) | null;
   locations: Pick<Location, "slug" | "name" | "system" | "systemSlug" | "parentName" | "classification">[];
   /** For new operations: guilds the user can create ops for. Show picker when >1. */
   operatorGuilds?: Array<{ id: string; name: string }>;
   selectedOperatorGuildId?: string;
+  /** Discord voice channels for the selected guild (type 2) */
+  guildVoiceChannels?: Array<{ id: string; name: string }>;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -1025,6 +1027,16 @@ export function opFormPage(opts: {
           <label>Description</label>
           <textarea name="description" placeholder="Briefing, objectives, notes…">${op?.description ?? ""}</textarea>
         </div>
+        ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0 ? html`
+        <div class="form-group">
+          <label>Discord Event Voice Channel <span style="font-weight:normal;opacity:.65">(optional — Discord scheduled event location)</span></label>
+          <select name="eventVoiceChannelId">
+            <option value="">— No voice channel —</option>
+            ${opts.guildVoiceChannels.map((ch) =>
+              html`<option value="${ch.id}" ${op?.eventVoiceChannelId === ch.id ? safe("selected") : ""}>${ch.name}</option>`
+            )}
+          </select>
+        </div>` : safe("")}
         <div class="form-actions">
           <button type="submit" class="btn">${op ? "Save Changes" : "Create Operation"}</button>
           <a href="${op ? `${bp}/ops/${op.id}` : `${bp}/`}" class="btn btn-ghost">Cancel</a>

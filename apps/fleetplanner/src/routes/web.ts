@@ -14,7 +14,7 @@ import {
   createOperation, getOperation, listOperations, listAllUserOperations, updateOperation, deleteOperation,
 } from "../services/operations.js";
 import { searchLocalShips } from "../services/scwiki.js";
-import { deleteScheduledEvent, sendDiscordChannelMessage } from "../services/discord.js";
+import { deleteScheduledEvent, fetchGuildVoiceChannels, sendDiscordChannelMessage } from "../services/discord.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
 import { getLocationSyncState, runLocationSync, searchLocations, updateLocationSyncConfig } from "../services/locations.js";
 import { getSetting, setSetting } from "../services/settings.js";
@@ -113,7 +113,10 @@ export async function webRoutes(app: FastifyInstance) {
       if (operatorGuilds.length === 0) return reply.code(403).send({ error: "forbidden" });
       const selectedOperatorGuildId = operatorGuilds.some((g) => g.id === req.query._guild)
         ? req.query._guild
-        : undefined;
+        : operatorGuilds.length === 1 ? operatorGuilds[0].id : undefined;
+      const guildVoiceChannels = selectedOperatorGuildId
+        ? await fetchGuildVoiceChannels(selectedOperatorGuildId)
+        : [];
       htmlReply(reply, opFormPage({
         basePath: basePath(),
         currentUser: ctx.user,
@@ -122,6 +125,7 @@ export async function webRoutes(app: FastifyInstance) {
         op: null,
         operatorGuilds,
         selectedOperatorGuildId,
+        guildVoiceChannels,
         locations: await searchLocations(undefined, "", 2000),
       }));
     }
@@ -145,7 +149,7 @@ export async function webRoutes(app: FastifyInstance) {
       if (!targetMembership) {
         return reply.redirect(basePath("/ops/new?flash=error:Select+a+valid+server+where+you+are+Admiral"), 302);
       }
-      const { title, description, opType, scheduledAt } = req.body;
+      const { title, description, opType, scheduledAt, eventVoiceChannelId } = req.body;
       const parsedDate = parseUtcDateTimeLocal(scheduledAt);
       if (!title?.trim() || !parsedDate) {
         return reply.redirect(basePath("/ops/new?flash=error:Title+and+date+are+required"), 302);
@@ -160,6 +164,7 @@ export async function webRoutes(app: FastifyInstance) {
           meetingSystem: meeting.meetingSystem,
           meetingLocation: meeting.meetingLocation,
           scheduledAt: parsedDate,
+          eventVoiceChannelId: eventVoiceChannelId?.trim() || undefined,
         });
         return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Operation+created.`), 302);
       } catch {
@@ -333,12 +338,14 @@ export async function webRoutes(app: FastifyInstance) {
       if (!ctx) return;
       const op = await getOperation(req.params.id);
       if (!op) return reply.code(404).send("Not found");
+      const guildVoiceChannels = await fetchGuildVoiceChannels(op.guildId);
       htmlReply(reply, opFormPage({
         basePath: basePath(),
         currentUser: ctx.user,
         csrfToken: ctx.csrfToken,
         flash: req.query.flash,
         op,
+        guildVoiceChannels,
         locations: await searchLocations(undefined, "", 2000),
       }));
     }
@@ -350,7 +357,7 @@ export async function webRoutes(app: FastifyInstance) {
       const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      const { title, description, opType, scheduledAt } = req.body;
+      const { title, description, opType, scheduledAt, eventVoiceChannelId } = req.body;
       const parsedDate = scheduledAt ? parseUtcDateTimeLocal(scheduledAt) : null;
       if (scheduledAt && !parsedDate) {
         return reply.redirect(basePath(`/ops/${req.params.id}/edit?flash=error:Invalid+date`), 302);
@@ -364,6 +371,7 @@ export async function webRoutes(app: FastifyInstance) {
           meetingSystem: meeting.meetingSystem,
           meetingLocation: meeting.meetingLocation,
           ...(parsedDate && { scheduledAt: parsedDate }),
+          eventVoiceChannelId: eventVoiceChannelId?.trim() || undefined,
         });
         return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Saved.`), 302);
       } catch {

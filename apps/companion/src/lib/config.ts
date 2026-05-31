@@ -1,14 +1,6 @@
-const isDev =
-  typeof import.meta !== "undefined" &&
-  (import.meta as { env?: { DEV?: boolean } }).env?.DEV === true;
+export const DEFAULT_BRIDGE_URL = "https://suite.raumdock.org";
 
-export const DEFAULT_BRIDGE_URL = isDev
-  ? "http://localhost:8787"
-  : "https://suite.raumdock.org";
-
-export const DEFAULT_FLEETPLANNER_URL = isDev
-  ? "http://localhost:3200/fleetplanner"
-  : "https://suite.raumdock.org/fleetplanner";
+export const DEFAULT_FLEETPLANNER_URL = "https://suite.raumdock.org/fleetplanner";
 
 export const DEFAULT_HOTKEY = "Mouse4";
 

@@ -3,6 +3,16 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-05-31: Companion config.ts localhost removal + Fleetplanner Discord event voice channel
+
+- `apps/companion/src/lib/config.ts`: Remove isDev localhost fallbacks. `DEFAULT_BRIDGE_URL` and `DEFAULT_FLEETPLANNER_URL` always point to prod.
+- `apps/fleetplanner/prisma/schema.prisma`: Add `eventVoiceChannelId String?` to `Operation`.
+- Migration: `20260531004000_event_voice_channel`.
+- `services/discord.ts`: `createScheduledEvent` uses `op.eventVoiceChannelId ?? guild.eventChannelId` as voice channel location; after creation PATCHes the event to prepend `https://discord.com/events/{guildId}/{eventId}` as first line of description. Added `fetchGuildVoiceChannels` (type=2 filter, sorted).
+- `services/operations.ts`: `CreateOperationInput` + `updateOperation` support `eventVoiceChannelId`.
+- `routes/web.ts`: New-op GET fetches voice channels for selected/single guild; edit GET fetches for op's guild. Both POST handlers parse and forward `eventVoiceChannelId`.
+- `web/pages.ts`: `opFormPage` shows voice channel `<select>` dropdown (optional) when channels are available.
+
 ## Queued / Planned Step - 2026-05-31: Fleetplanner Discord install diagnostics
 
 - Add a Fleetplanner GUI test suite for the selected Discord guild that checks
