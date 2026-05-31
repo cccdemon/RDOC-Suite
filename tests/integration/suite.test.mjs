@@ -101,28 +101,136 @@ describe("LiveKit", () => {
 
 // ── Discord API ────────────────────────────────────────────────────────
 
-describe("Discord", () => {
-  const token = process.env.DISCORD_RDOCRTC_BOT_TOKEN;
+// Discord permission bit flags
+const PERM = {
+  ADMINISTRATOR:        1n << 3n,
+  MANAGE_CHANNELS:      1n << 4n,
+  VIEW_CHANNEL:         1n << 10n,
+  SEND_MESSAGES:        1n << 11n,
+  READ_MESSAGE_HISTORY: 1n << 16n,
+  CONNECT:              1n << 20n,
+  MOVE_MEMBERS:         1n << 24n,
+  MANAGE_ROLES:         1n << 28n,
+  MANAGE_EVENTS:        1n << 33n,
+  SPEAK:                1n << 21n,
+};
 
-  test("RDOC-RTC bot token valid", { skip: !token ? "DISCORD_RDOCRTC_BOT_TOKEN not set" : false }, async () => {
-    const { status, body } = await get("https://discord.com/api/v10/users/@me", {
-      Authorization: `Bot ${token}`,
+async function discordGet(path, token) {
+  return get(`https://discord.com/api/v10${path}`, { Authorization: `Bot ${token}` });
+}
+
+/** Returns { username, id, tag, perms: BigInt } or null on auth failure. */
+async function inspectBot(token, guildId) {
+  const meR = await discordGet("/users/@me", token);
+  if (meR.status !== 200) return null;
+  const me = JSON.parse(meR.body);
+
+  // Member in test guild → roles
+  const mR = await discordGet(`/guilds/${guildId}/members/${me.id}`, token);
+  if (mR.status !== 200) return { ...me, perms: null, memberRoles: [] };
+  const member = JSON.parse(mR.body);
+
+  // Guild roles → compute permission bitfield
+  const rolesR = await discordGet(`/guilds/${guildId}/roles`, token);
+  if (rolesR.status !== 200) return { ...me, perms: null, memberRoles: member.roles };
+  const allRoles = JSON.parse(rolesR.body);
+
+  const everyoneRole = allRoles.find(r => r.id === guildId);
+  let perms = BigInt(everyoneRole?.permissions ?? "0");
+  const memberRoleSet = new Set(member.roles);
+  for (const role of allRoles) {
+    if (memberRoleSet.has(role.id)) perms |= BigInt(role.permissions);
+  }
+  return { ...me, perms, memberRoles: member.roles };
+}
+
+function hasPerm(perms, bit) {
+  if (perms === null) return null; // unknown (not in guild)
+  return (perms & PERM.ADMINISTRATOR) !== 0n || (perms & bit) !== 0n;
+}
+
+function permLine(perms, name, bit, required = false) {
+  const has = hasPerm(perms, bit);
+  if (has === null) return `      ? ${name} (bot not in guild — cannot check)`;
+  const icon = has ? "✓" : (required ? "✗ MISSING" : "✗");
+  return `      ${icon} ${name}`;
+}
+
+async function testBot({ envVar, label, purpose, requiredPerms, guildId }) {
+  const token = process.env[envVar];
+  if (!token) {
+    console.log(`\n  – ${label} — skipped (${envVar} not set)`);
+    return;
+  }
+
+  const bot = await inspectBot(token, guildId);
+  if (!bot) {
+    console.log(`\n  ✗ ${label} — token invalid (401)`);
+    return;
+  }
+
+  const missing = requiredPerms.filter(([, bit]) => !hasPerm(bot.perms, bit) && bot.perms !== null);
+
+  console.log(`\n  ${missing.length === 0 ? "✓" : "✗"} ${label} — @${bot.username} (${bot.id})`);
+  console.log(`      Purpose: ${purpose}`);
+  if (bot.perms === null) {
+    console.log(`      ⚠ Bot not in guild ${guildId} — permission check skipped`);
+  } else {
+    for (const [name, bit] of requiredPerms) {
+      console.log(permLine(bot.perms, name, bit, true));
+    }
+  }
+
+  assert.equal(missing.length, 0,
+    `${label} missing permissions in guild ${guildId}: ${missing.map(([n]) => n).join(", ")}`);
+}
+
+describe("Discord Bots", () => {
+  test("RDOC-RTC Bot — token + permissions", async () => {
+    await testBot({
+      envVar: "DISCORD_RDOCRTC_BOT_TOKEN",
+      label: "RDOC-RTC Bot",
+      purpose: "Slash-commands (/cc), bridge web-OAuth, companion bridge-auth",
+      guildId: TEST_GUILD_ID,
+      requiredPerms: [
+        ["VIEW_CHANNEL",         PERM.VIEW_CHANNEL],
+        ["SEND_MESSAGES",        PERM.SEND_MESSAGES],
+        ["READ_MESSAGE_HISTORY", PERM.READ_MESSAGE_HISTORY],
+      ],
     });
-    assert.equal(status, 200, `Discord API returned ${status}: ${body}`);
-    const json = JSON.parse(body);
-    assert.ok(json.username, "No username in response");
-    console.log(`    Bot: @${json.username} (${json.id})`);
   });
 
-  const fpToken = process.env.DISCORD_FLEETPLANNER_BOT_TOKEN;
-  test("Fleetmanager bot token valid", { skip: !fpToken ? "DISCORD_FLEETPLANNER_BOT_TOKEN not set" : false }, async () => {
-    const { status, body } = await get("https://discord.com/api/v10/users/@me", {
-      Authorization: `Bot ${fpToken}`,
+  test("Fleetmanager Bot — token + permissions", async () => {
+    await testBot({
+      envVar: "DISCORD_FLEETPLANNER_BOT_TOKEN",
+      label: "Fleetmanager Bot",
+      purpose: "Discord scheduled events, crew voice-channels, role management per operation",
+      guildId: TEST_GUILD_ID,
+      requiredPerms: [
+        ["MANAGE_CHANNELS",      PERM.MANAGE_CHANNELS],
+        ["VIEW_CHANNEL",         PERM.VIEW_CHANNEL],
+        ["SEND_MESSAGES",        PERM.SEND_MESSAGES],
+        ["READ_MESSAGE_HISTORY", PERM.READ_MESSAGE_HISTORY],
+        ["CONNECT",              PERM.CONNECT],
+        ["MOVE_MEMBERS",         PERM.MOVE_MEMBERS],
+        ["MANAGE_ROLES",         PERM.MANAGE_ROLES],
+        ["MANAGE_EVENTS",        PERM.MANAGE_EVENTS],
+      ],
     });
-    assert.equal(status, 200, `Discord API returned ${status}`);
-    const json = JSON.parse(body);
-    assert.ok(json.username, "No username in response");
-    console.log(`    Bot: @${json.username} (${json.id})`);
+  });
+
+  test("Relay Bot — token + permissions", async () => {
+    await testBot({
+      envVar: "DISCORD_RELAY_BOT_TOKEN",
+      label: "Relay Bot",
+      purpose: "Relay LiveKit audio into Discord voice channels",
+      guildId: TEST_GUILD_ID,
+      requiredPerms: [
+        ["VIEW_CHANNEL", PERM.VIEW_CHANNEL],
+        ["CONNECT",      PERM.CONNECT],
+        ["SPEAK",        PERM.SPEAK],
+      ],
+    });
   });
 });
 
