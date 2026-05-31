@@ -4,7 +4,15 @@ import { getEnv } from "../config/env.js";
 const ALGORITHM = "aes-256-gcm";
 
 function masterSecret(): string {
-  return getEnv().SESSION_SECRET;
+  const env = getEnv();
+  if (!env.VOICEBOT_ENCRYPTION_KEY) {
+    console.warn(
+      "[secrets] VOICEBOT_ENCRYPTION_KEY not set — falling back to SESSION_SECRET. " +
+      "Set VOICEBOT_ENCRYPTION_KEY in .env to avoid re-entering bot tokens on every SESSION_SECRET rotation.",
+    );
+    return env.SESSION_SECRET;
+  }
+  return env.VOICEBOT_ENCRYPTION_KEY;
 }
 
 function deriveKey(salt: Buffer): Buffer {

@@ -6,6 +6,9 @@ const schema = z.object({
   HOST: z.string().default("0.0.0.0"),
   DATABASE_URL: z.string().default("file:./data/fleetplanner.db"),
   SESSION_SECRET: z.string().min(32),
+  // Dedicated encryption key for GuildVoiceBot tokens. Set this once and keep it stable.
+  // If unset, falls back to SESSION_SECRET (which causes re-entry on every rotate).
+  VOICEBOT_ENCRYPTION_KEY: z.string().min(32).optional(),
   PUBLIC_BASE_PATH: z.string().default(""),
   WEB_PUBLIC_URL: z.string().default("http://localhost:3200"),
   // At least one OAuth provider must be configured. Discord is the
