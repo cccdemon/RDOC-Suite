@@ -177,6 +177,8 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 10. **`apps/relay-bots` (Step 6) = importierter VoiceRelayBots-Worker** (`@rdoc-suite/relay-bots`). Liest Config von der Bridge, subscribed LiveKit-Track, relayed Audio in Discord Voice Channels via `@discordjs/voice`. `@discordjs/opus` ist ein nativer Addon — `pnpm approve-builds` nötig beim Deploy.
 
 11. **`apps/fleetplanner` = Fastify + Prisma + SSR** (`@rdoc-suite/fleetplanner`). Eigene **PostgreSQL**-DB (`fleetplanner-db` Container); Production-Route unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate` Skripte pro Workspace. Companion-OAuth via RDOC-RTC Bot (`DISCORD_COMPANION_BOT_ID`/`KEY`), fleet voice via LiveKit unit rooms + global voice.
+    - **Fleetplanner bots:** drei separate Discord-Bots — (a) **Fleetplanner Bot** (`DISCORD_FLEETPLANNER_BOT_TOKEN`): Events, DMs, Rollen-Zuweisung; (b) **Companion OAuth App** (`DISCORD_COMPANION_BOT_ID`/`KEY`): Fleet-Auth-Flow; (c) **Funkrelais Bots** (6×, in `GuildVoiceBot`-Tabelle): für "Launch Voice Channels" — jeder Bot joined einen Channel per eigenem Token.
+    - **Funkrelais-Token-Verschlüsselung:** `apps/fleetplanner/src/services/secrets.ts` nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
 
 12. **`apps/monitoring` = Prometheus-Image.** Keine eigene TypeScript-Quelle; `apps/monitoring/Dockerfile` wraps das offizielle Prometheus-Image mit `apps/monitoring/prometheus.yml`. Route: `suite.raumdock.org/monitoring`.
 
@@ -197,6 +199,9 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 - **`GuildVoiceStates` ist nicht-privileged** — kein Toggle im Discord Developer Portal nötig. Wenn trotzdem keine Events: Intent fehlt im `new Client({intents: […]})`.
 - **Voice-State-Race beim Bot-Restart**: User die vor dem Bot in Voice waren, fehlen kurz in `UserVoiceState`. Connectet Companion in dem Fenster, kriegt es `not_in_voice` — Channel kurz verlassen + joinen umgeht's. Akzeptiert.
 - **`@discordjs/opus` in relay-bots ist ein nativer Addon** und benötigt `pnpm approve-builds` beim Deploy. TypeScript-Build läuft ohne es.
+- **Fleetplanner `__tests__/` aus TSC-Build ausgeschlossen.** `apps/fleetplanner/tsconfig.json` excludet `src/__tests__` — Vitest kompiliert Tests separat. Nie den exclude entfernen, sonst bricht Docker-Build wegen Mock-Typ-Inkompatibilität.
+- **`VOICEBOT_ENCRYPTION_KEY` stabil halten.** Fleetplanner verschlüsselt Funkrelais-Bot-Tokens mit diesem Key. Wird er geändert (oder ist nicht gesetzt → Fallback auf `SESSION_SECRET`), müssen alle 6 Bot-Tokens in den Guild-Einstellungen neu eingegeben werden. Key einmal setzen, nie wieder anfassen.
+- **"Unsupported state or unable to authenticate data" bei "Launch Voice Channels"** = `VOICEBOT_ENCRYPTION_KEY` hat sich geändert oder fehlt. Fix: alle Funkrelais-Tokens in `/guilds/settings` neu eingeben.
 
 ### Wo welche Doku liegt
 

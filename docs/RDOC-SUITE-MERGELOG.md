@@ -3,6 +3,14 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-05-31: Fleetplanner VOICEBOT_ENCRYPTION_KEY (BYOK)
+
+- `apps/fleetplanner/src/config/env.ts`: Add `VOICEBOT_ENCRYPTION_KEY` (optional, min 32).
+- `apps/fleetplanner/src/services/secrets.ts`: `masterSecret()` uses `VOICEBOT_ENCRYPTION_KEY` if set; falls back to `SESSION_SECRET` with console.warn.
+- `apps/fleetplanner/.env.example`: Document `VOICEBOT_ENCRYPTION_KEY` with generation instructions.
+- CLAUDE.md: Document bot architecture, VOICEBOT_ENCRYPTION_KEY quirk, and "Unsupported state" error diagnosis.
+- Server `.env`: `VOICEBOT_ENCRYPTION_KEY` added. After deploy, re-enter all 6 Funkrelais tokens in guild settings.
+
 ## Queued / Planned Step - 2026-05-31: Companion config.ts localhost removal + Fleetplanner Discord event voice channel
 
 - `apps/companion/src/lib/config.ts`: Remove isDev localhost fallbacks. `DEFAULT_BRIDGE_URL` and `DEFAULT_FLEETPLANNER_URL` always point to prod.
