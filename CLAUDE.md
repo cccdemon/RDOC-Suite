@@ -57,17 +57,17 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 - Permissions: `Send Messages`, `Read Message History`, `View Channel`
 
 **Fleetmanager Bot** — Scopes: `bot applications.commands`
-- Permissions (bitfield `549822808112`):
-  `MANAGE_CHANNELS`, `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`,
-  `CONNECT`, `MOVE_MEMBERS`, `MANAGE_ROLES`, `MANAGE_EVENTS`
+- Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_ROLES`, `MANAGE_EVENTS`
 - Intents: `Guilds`, `GuildVoiceStates`
+- **NICHT** `MANAGE_CHANNELS` / `MOVE_MEMBERS` — das machen die Voice Relay Bots
 
 **Relay Bot** — Scopes: `bot`
 - Intents: `Guilds`, `GuildVoiceStates`
 - Permissions: `VIEW_CHANNEL`, `CONNECT`, `SPEAK`
 
 **Voice Bots (Funkrelais)** — Scopes: `bot`
-- Permissions: `VIEW_CHANNEL`, `CONNECT` (werden per Channel-PermissionOverwrite gesetzt)
+- Permissions: `MANAGE_CHANNELS`, `VIEW_CHANNEL`, `CONNECT`, `MOVE_MEMBERS`
+- Jeder Bot erstellt seinen eigenen Channel, benennt ihn um, zieht Crew rein
 
 **Token 401 → immer:** Discord Developer Portal → richtige App → Bot → Reset Token → `.env` updaten → Container neu starten.
 

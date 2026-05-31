@@ -166,6 +166,7 @@ async function testBot({ envVar, label, purpose, requiredPerms, guildId }) {
   const bot = await inspectBot(token, guildId);
   if (!bot) {
     console.log(`\n  ✗ ${label} — token invalid (401)`);
+    assert.fail(`${label} token invalid — check ${envVar} in .env`);
     return;
   }
 
@@ -201,18 +202,17 @@ describe("Discord Bots", () => {
   });
 
   test("Fleetmanager Bot — token + permissions", async () => {
+    // MANAGE_CHANNELS + MOVE_MEMBERS are done by individual Voice Relay Bots (GuildVoiceBot
+    // tokens stored encrypted in DB), NOT by the Fleetmanager Bot.
     await testBot({
       envVar: "DISCORD_FLEETPLANNER_BOT_TOKEN",
       label: "Fleetmanager Bot",
-      purpose: "Discord scheduled events, crew voice-channels, role management per operation",
+      purpose: "Discord scheduled events, role management (GlobalVoice), DMs to captains",
       guildId: TEST_GUILD_ID,
       requiredPerms: [
-        ["MANAGE_CHANNELS",      PERM.MANAGE_CHANNELS],
         ["VIEW_CHANNEL",         PERM.VIEW_CHANNEL],
         ["SEND_MESSAGES",        PERM.SEND_MESSAGES],
         ["READ_MESSAGE_HISTORY", PERM.READ_MESSAGE_HISTORY],
-        ["CONNECT",              PERM.CONNECT],
-        ["MOVE_MEMBERS",         PERM.MOVE_MEMBERS],
         ["MANAGE_ROLES",         PERM.MANAGE_ROLES],
         ["MANAGE_EVENTS",        PERM.MANAGE_EVENTS],
       ],
