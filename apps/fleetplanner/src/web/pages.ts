@@ -1,5 +1,6 @@
 import { html, safe, rawHtml, layout, type SafeHtml, type LayoutOptions } from "./render.js";
 import type { User, Operation, Ship, Location } from "@prisma/client";
+import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/discordDiagnostics.js";
 
 // ── Re-export layout for routes ─────────────────────────────────────
 export { layout, rawHtml } from "./render.js";
@@ -56,7 +57,7 @@ function discordAvatarUrl(user: Pick<User, "id" | "avatarHash">): string | null 
 function discordBotInviteUrl(clientId: string, permissions: string): string {
   const params = new URLSearchParams({
     client_id: clientId,
-    scope: "bot",
+    scope: "bot applications.commands",
     permissions,
   });
   return `https://discord.com/oauth2/authorize?${params.toString()}`;
@@ -1772,6 +1773,9 @@ export function guildSettingsPage(opts: {
   const body = html`
     <div class="page-header">
       <h1 class="page-title">SERVER SETTINGS<span class="sep"> // </span><em>${g.name}</em></h1>
+      <div class="page-actions">
+        <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">Run Install Tests</a>
+      </div>
     </div>
 
     <div class="section">
@@ -1839,6 +1843,115 @@ export function guildSettingsPage(opts: {
 
   return layout({
     title: `Settings — ${g.name}`,
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+function diagnosticBadge(check: BotDiagnostic): SafeHtml {
+  if (check.severity === "ok") return html`<span class="tag tag-green">OK</span>`;
+  if (check.severity === "warn") return html`<span class="tag tag-gold">ACTION</span>`;
+  return html`<span class="tag tag-red">MISSING</span>`;
+}
+
+export function guildDiagnosticsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  diagnostics: DiscordInstallDiagnostics;
+  activeGuildId: string;
+  activeGuildName: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const d = opts.diagnostics;
+  const rows = d.bots.map((check) => {
+    const missing = check.missingPermissions.length
+      ? html`
+        <div class="text-sm text-dim" style="margin-top:.5rem">
+          Missing: ${check.missingPermissions.map((perm) => html`<span class="tag tag-red">${perm.key}</span>`)}
+        </div>`
+      : html`<div class="text-sm text-dim" style="margin-top:.5rem">All required permissions are present.</div>`;
+    const action = check.inviteUrl
+      ? html`<a href="${check.inviteUrl}" class="btn btn-cyan btn-sm" target="_blank" rel="noopener">Invite / Fix Permissions</a>`
+      : html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">Configure in Server Settings</a>`;
+
+    return html`
+      <div class="card" style="padding:1rem;margin-bottom:.75rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+          <div style="flex:1;min-width:16rem">
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+              <strong style="color:var(--cyan)">${check.name}</strong>
+              ${diagnosticBadge(check)}
+              ${check.installed ? html`<span class="tag tag-green">installed</span>` : html`<span class="tag tag-red">not installed</span>`}
+            </div>
+            <div class="text-sm text-dim" style="margin-top:.35rem">${check.note}</div>
+            <div class="text-sm text-dim" style="margin-top:.35rem">
+              App ID: <span class="text-mono">${check.appId ?? "not configured"}</span>
+              ${check.username ? html` · User: <span class="text-mono">${check.username}</span>` : ""}
+            </div>
+            ${missing}
+            <div class="text-sm text-dim" style="margin-top:.5rem">
+              Required: ${check.requiredPermissions.map((perm) => html`<span class="tag">${perm.key}</span>`)}
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            ${check.ok ? safe("") : action}
+          </div>
+        </div>
+      </div>`;
+  });
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">INSTALL TESTS<span class="sep"> // </span><em>${d.guild.name}</em></h1>
+      <div class="page-actions">
+        <a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">Server Settings</a>
+        <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">Retest</a>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="card" style="padding:1rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+        <span class="tag tag-green">${d.summary.ok} OK</span>
+        <span class="tag tag-gold">${d.summary.warn} ACTION</span>
+        <span class="tag tag-red">${d.summary.error} MISSING</span>
+        <span class="text-sm text-dim">
+          Selected Discord server: <span class="text-mono">${opts.activeGuildName}</span>
+          (<span class="text-mono">${opts.activeGuildId}</span>)
+        </span>
+      </div>
+      ${!d.canInspectPermissions ? html`
+        <div class="card" style="padding:1rem;margin-top:.75rem;border-color:var(--red)">
+          <strong class="tag tag-red">Inspector limited</strong>
+          <p class="text-dim text-sm" style="margin:.75rem 0 0">
+            Fleetplanner could not read the server role list. Install/fix the RDOC-Fleetplanner bot first,
+            then run this test again for exact permission results.
+          </p>
+        </div>` : safe("")}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Bots</div>
+      ${rows}
+    </div>
+
+    <div class="section">
+      <div class="section-title">Companion App</div>
+      <div class="card" style="padding:1rem">
+        <p class="text-dim text-sm" style="margin:0">
+          The Companion App uses this Fleetplanner page as the source of truth for Discord setup.
+          Open Fleetplanner Server Settings, select the Discord server, and run these install tests
+          whenever voice permissions or bot invites are changed.
+        </p>
+      </div>
+    </div>`;
+
+  return layout({
+    title: `Install Tests - ${d.guild.name}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

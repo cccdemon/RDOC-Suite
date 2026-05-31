@@ -12,6 +12,7 @@ const schema = z.object({
   // original provider; GitHub and Google are alternatives.
   DISCORD_CLIENT_ID: z.string().optional(),
   DISCORD_RDOCRTC_CLIENT_ID: z.string().optional(),
+  DISCORD_RDOCRTC_BOT_TOKEN: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
   SUPERADMIN_DISCORD_ID: z.string().optional(),
 

@@ -3,6 +3,16 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-05-31: Fleetplanner Discord install diagnostics
+
+- Add a Fleetplanner GUI test suite for the selected Discord guild that checks
+  RDOC-RTC, RDOC-Fleetplanner, and configured VoiceBots for installation and
+  required permissions.
+- Show exact invite links and setup instructions when a bot is missing or has
+  insufficient permissions.
+- Link the Companion app to the Fleetplanner diagnostics page instead of
+  duplicating bot setup logic in the desktop app.
+
 Rule: before implementation changes, add a short entry under "Queued /
 Planned Step" describing what will be changed. After the change, move or
 copy the result into "Completed Steps" with commit id if committed.

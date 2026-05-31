@@ -10,6 +10,24 @@ function fleetplannerBotToken(): string | undefined {
   return env.DISCORD_FLEETPLANNER_BOT_TOKEN;
 }
 
+export function discordInviteUrl(input: {
+  clientId: string;
+  permissions: string;
+  guildId?: string;
+  applicationsCommands?: boolean;
+}): string {
+  const params = new URLSearchParams({
+    client_id: input.clientId,
+    scope: input.applicationsCommands === false ? "bot" : "bot applications.commands",
+    permissions: input.permissions,
+  });
+  if (input.guildId) {
+    params.set("guild_id", input.guildId);
+    params.set("disable_guild_select", "true");
+  }
+  return `https://discord.com/oauth2/authorize?${params.toString()}`;
+}
+
 export async function discordUserIdForFleetplannerUser(userId: string): Promise<string> {
   const identity = await prisma.userIdentity.findFirst({
     where: { userId, provider: "discord" },
@@ -53,6 +71,43 @@ export async function fetchGuildMemberRoles(guildId: string, userId: string): Pr
   if (!res.ok) return null;
   const member = (await res.json()) as { roles?: string[] };
   return Array.isArray(member.roles) ? member.roles : [];
+}
+
+export async function fetchGuildMemberByBot(
+  guildId: string,
+  userId: string,
+): Promise<{ user?: { id?: string; username?: string; bot?: boolean }; roles?: string[] } | null> {
+  const token = fleetplannerBotToken();
+  if (!token) return null;
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
+    headers: { Authorization: `Bot ${token}` },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return null;
+  return res.json() as Promise<{ user?: { id?: string; username?: string; bot?: boolean }; roles?: string[] }>;
+}
+
+export async function fetchGuildRolesByBot(guildId: string): Promise<Array<{ id: string; name: string; permissions: string }> | null> {
+  const token = fleetplannerBotToken();
+  if (!token) return null;
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
+    headers: { Authorization: `Bot ${token}` },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return null;
+  return res.json() as Promise<Array<{ id: string; name: string; permissions: string }>>;
+}
+
+export async function fetchBotIdentity(token: string): Promise<{ id: string; username: string } | null> {
+  const clean = token.trim();
+  if (!clean) return null;
+  const res = await fetch(`${DISCORD_API}/users/@me`, {
+    headers: { Authorization: `Bot ${clean}` },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return null;
+  const body = await res.json() as { id?: string; username?: string };
+  return body.id && body.username ? { id: body.id, username: body.username } : null;
 }
 
 type PermissionOverwrite = {

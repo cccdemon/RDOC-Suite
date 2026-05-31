@@ -3,8 +3,9 @@ import { basePath, getEnv } from "../config/env.js";
 import { requireAuth, requireGuildRole } from "../auth/middleware.js";
 import { installGuild, getMembership, listUserGuilds } from "../services/guilds.js";
 import { addGuildVoiceBot, deleteGuildVoiceBot } from "../services/voiceBots.js";
+import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
 import { prisma } from "../db.js";
-import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage } from "../web/pages.js";
+import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage, guildDiagnosticsPage } from "../web/pages.js";
 
 // Discord bot permissions bitfield:
 // MANAGE_CHANNELS(4) | VIEW_CHANNEL(10) | SEND_MESSAGES(11) | READ_MESSAGE_HISTORY(16) |
@@ -164,6 +165,24 @@ export async function guildRoutes(app: FastifyInstance) {
         guild,
         memberships,
         voiceBots,
+        activeGuildId: gctx.guildId,
+        activeGuildName: gctx.guildName,
+      }));
+    }
+  );
+
+  app.get<{ Querystring: { flash?: string } }>(
+    "/guilds/diagnostics",
+    async (req, reply) => {
+      const gctx = await requireGuildRole(req, reply, "fleetoperator");
+      if (!gctx) return;
+      const diagnostics = await runDiscordInstallDiagnostics(gctx.guildId);
+      htmlReply(reply, guildDiagnosticsPage({
+        basePath: basePath(),
+        currentUser: gctx.user,
+        csrfToken: gctx.csrfToken,
+        flash: req.query.flash,
+        diagnostics,
         activeGuildId: gctx.guildId,
         activeGuildName: gctx.guildName,
       }));

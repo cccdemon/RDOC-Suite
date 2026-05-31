@@ -637,6 +637,12 @@ export function App(): JSX.Element {
     void openUrl(`${cur.bridgeUrl.replace(/\/+$/, "")}/admin/sessions`).catch(() => {});
   }, []);
 
+  const onFleetplannerDiagnosticsClick = useCallback(() => {
+    const cur = stateRef.current;
+    const base = (cur.fleetplannerUrl || DEFAULT_FLEETPLANNER_URL).replace(/\/+$/, "");
+    void openUrl(`${base}/guilds/diagnostics`).catch(() => {});
+  }, []);
+
   const onSessionJoinConfirm = useCallback(async (inviteToken: string) => {
     const cur = stateRef.current;
     if (!cur.token || !cur.bridgeUrl) return;
@@ -1051,6 +1057,15 @@ export function App(): JSX.Element {
                 <button
                   type="button"
                   className="cc-btn ghost sm"
+                  onClick={onFleetplannerDiagnosticsClick}
+                  title="Fleetplanner Bot- und Rechteprüfung öffnen"
+                >
+                  <Icon.settings size={12} />
+                  BOT TEST
+                </button>
+                <button
+                  type="button"
+                  className="cc-btn ghost sm"
                   onClick={() => void onFleetSignOut()}
                   title="Fleet Voice abmelden"
                 >
@@ -1059,15 +1074,26 @@ export function App(): JSX.Element {
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                className="cc-btn ghost sm"
-                onClick={() => void onFleetOAuth()}
-                title="Mit Fleetplanner per Discord anmelden"
-              >
-                <Icon.radio size={12} />
-                FLEET LOGIN
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="cc-btn ghost sm"
+                  onClick={() => void onFleetOAuth()}
+                  title="Mit Fleetplanner per Discord anmelden"
+                >
+                  <Icon.radio size={12} />
+                  FLEET LOGIN
+                </button>
+                <button
+                  type="button"
+                  className="cc-btn ghost sm"
+                  onClick={onFleetplannerDiagnosticsClick}
+                  title="Fleetplanner Bot- und Rechteprüfung öffnen"
+                >
+                  <Icon.settings size={12} />
+                  BOT TEST
+                </button>
+              </>
             )
           ) : null}
           {state.suiteCapabilities.canUseRelay ? (
