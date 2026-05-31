@@ -11,6 +11,9 @@ set -euo pipefail
 
 SUITE_URL="${SUITE_URL:-https://suite.raumdock.org}"
 VOICE_URL="${VOICE_URL:-https://voice.raumdock.org}"
+TEST_GUILD_ID="${TEST_GUILD_ID:-1431307397842079777}"
+[ -n "${RELAY_GUILD_ID:-}" ] && TEST_GUILD_ID="${RELAY_GUILD_ID}"
+TEST_GUILD_ID="${TEST_GUILD_ID:-1431307397842079777}"
 
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
 PASS=0; FAIL=0; SKIP=0
@@ -72,7 +75,7 @@ section "Bridge API"
 
 body=$(http_body "$SUITE_URL/auth/start" 2>/dev/null || echo "")
 # Should redirect to Discord OAuth
-code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 --max-redirs 0 "$SUITE_URL/auth/start")
+code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 --max-redirs 0 "$SUITE_URL/auth/start?guildId=$TEST_GUILD_ID")
 [ "$code" = "302" ] || [ "$code" = "200" ] && pass "Bridge OAuth start ($code)" || fail "Bridge OAuth start HTTP $code"
 
 # ── 4. Discord Bot ─────────────────────────────────────────────────────
@@ -116,7 +119,11 @@ section "WebSocket (Bridge)"
 if command -v node &>/dev/null && node -e "require('ws')" 2>/dev/null; then
   result=$(node -e "
 const WebSocket = require('ws');
-const ws = new WebSocket('wss://suite.raumdock.org/ws?token=invalid_test_token');
+const suiteUrl = new URL(process.env.SUITE_URL || '$SUITE_URL');
+suiteUrl.protocol = suiteUrl.protocol === 'https:' ? 'wss:' : 'ws:';
+suiteUrl.pathname = '/ws';
+suiteUrl.search = '?token=invalid_test_token';
+const ws = new WebSocket(suiteUrl.toString());
 ws.on('close', (code) => {
   if (code === 4401 || code === 4400) process.stdout.write('AUTH_REJECT');
   else process.stdout.write('CODE:' + code);

@@ -13,6 +13,7 @@ import assert from "node:assert/strict";
 
 const SUITE_URL = process.env.SUITE_URL ?? "https://suite.raumdock.org";
 const VOICE_URL = process.env.VOICE_URL ?? "https://voice.raumdock.org";
+const TEST_GUILD_ID = process.env.TEST_GUILD_ID || process.env.RELAY_GUILD_ID || "1431307397842079777";
 const TIMEOUT = 12_000;
 
 // ── helpers ────────────────────────────────────────────────────────────
@@ -40,8 +41,8 @@ describe("Bridge", () => {
   });
 
   test("OAuth start redirects to Discord", async () => {
-    const { status } = await get(`${SUITE_URL}/auth/start`);
-    assert.ok(status === 302 || status === 200, `Expected redirect, got ${status}`);
+    const { status, body } = await get(`${SUITE_URL}/auth/start?guildId=${TEST_GUILD_ID}`);
+    assert.ok(status === 302 || status === 200, `Expected redirect, got ${status}: ${body}`);
   });
 
   test("WebSocket endpoint rejects invalid token with 4401", async () => {
@@ -51,7 +52,8 @@ describe("Bridge", () => {
     try { WebSocket = require("ws"); } catch { return; } // skip if ws not installed
 
     await new Promise((resolve, reject) => {
-      const ws = new WebSocket(`wss://suite.raumdock.org/ws?token=invalid_test_token_12345`);
+      const wsBase = SUITE_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+      const ws = new WebSocket(`${wsBase}/ws?token=invalid_test_token_12345`);
       const t = setTimeout(() => reject(new Error("WebSocket timeout")), TIMEOUT);
       ws.on("close", (code) => {
         clearTimeout(t);
