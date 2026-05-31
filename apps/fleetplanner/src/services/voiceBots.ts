@@ -27,20 +27,6 @@ function cleanSnowflake(raw: string, field: string): string {
   return value;
 }
 
-function channelNameForUnit(unit: {
-  unitType: string;
-  squadName: string | null;
-  captain: { username: string };
-  ship: { name: string } | null;
-}): string {
-  const base = unit.unitType === "ship" ? (unit.ship?.name ?? "ship") : (unit.squadName ?? "squad");
-  return `${base} - ${unit.captain.username}`
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .slice(0, 90) || "fleet-unit";
-}
 
 function cleanChannelName(raw: string): string {
   const name = raw.trim().slice(0, 100);
@@ -176,7 +162,7 @@ export async function launchOperationVoiceChannels(operationId: string): Promise
 
     const bot = availableBots[botCursor++];
     const botToken = decryptVoiceBotToken(bot);
-    const channelName = channelNameForUnit(unit);
+    const channelName = bot.label;
     const permissionOverwrites: Array<{ id: string; type: 0 | 1; allow?: string; deny?: string }> = [{
       id: op.guildId,
       type: 0,
