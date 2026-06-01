@@ -3,6 +3,27 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Raid Planer → op-native "Voice Control" (Option B)
+
+Decision: the bridge Raid Planer (live Discord voice member control) is NOT ported as a
+standalone `/admin/bridge` panel. Instead its core function (pull crew into voice channels)
+is folded into the **operation detail page**, scoped to the op's units + their Discord voice
+channels — because moving crew belongs to running an operation, not a generic admin tool.
+
+- New `apps/fleetplanner/src/services/opVoice.ts`: `buildOpVoiceControl(op)` (per-unit crew +
+  each member's live voice location from a bridge voice-states snapshot), `moveUnitCrewToChannel`,
+  `moveOpMemberToUnit`. Crew = unit captain + seat-assigned users; mapped to Discord IDs via
+  `UserIdentity(provider=discord)`. Moves go through the bridge move API (RDOC-RTC bot has
+  MOVE_MEMBERS). Members not in any voice channel are skipped (Discord can't move them).
+- `web/pages.ts` `opDetailPage`: new "Voice Control" section (per unit: crew list w/ location
+  tags + "Pull all crew here" + per-member "Move here"). Gated: fleetoperator + voiceEnabled +
+  bridgeConfigured + op open/in_progress + units have Discord voice channels.
+- `routes/web.ts`: GET /ops/:id builds voiceControl when gated; POST /ops/:id/voice/move-unit/:unitId
+  and /ops/:id/voice/move-member/:unitId/:userId (requireOpRole fleetoperator + CSRF).
+
+The bridge `/admin/raid-planer` (arbitrary live drag-drop + strategy channels + channel reorder)
+stays on the bridge admin UI for non-op voice shuffling; op-bound crew moves now live in fleetplanner.
+
 ## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin (Option B, Phase 4) — companion downloads, relay metrics, refresh
 
 Ports the remaining medium/low items. Only **Raid Planer** (real-time drag-drop) now stays

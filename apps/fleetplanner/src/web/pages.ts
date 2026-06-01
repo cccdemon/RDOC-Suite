@@ -216,6 +216,20 @@ export function opDetailPage(opts: {
   missionVoice?: { globalVoiceRoom: string | null; commanderVoiceRoom: string | null } | null;
   /** Fleet voice links per eligible user — only passed for fleetoperator+ views */
   fleetVoiceLinks?: Array<{ userId: string; username: string; link: string }> | null;
+  /** Per-unit live Discord voice control (Option B). Only passed when the
+   *  bridge is configured, voice is enabled, the op is open/in_progress, the
+   *  viewer is fleetoperator+, and units have Discord voice channels. */
+  voiceControl?: Array<{
+    unitId: string;
+    channelId: string;
+    channelName: string;
+    crew: Array<{
+      userId: string;
+      username: string;
+      discordId: string | null;
+      location: "here" | "elsewhere" | "offline";
+    }>;
+  }> | null;
   viewAsRole?: string;
 }): SafeHtml {
   const bp = opts.basePath;
@@ -887,6 +901,75 @@ export function opDetailPage(opts: {
         </div>`
       : "";
 
+  // ── Option B: live Discord voice control, per unit ──────────────────
+  const locationTag = (loc: "here" | "elsewhere" | "offline"): SafeHtml =>
+    loc === "here"
+      ? html`<span class="tag tag-green">in channel</span>`
+      : loc === "elsewhere"
+        ? html`<span class="tag tag-gold">in voice</span>`
+        : html`<span class="tag tag-dim">offline</span>`;
+
+  const voiceControlSection =
+    canManage && opts.voiceEnabled && opts.voiceControl && opts.voiceControl.length
+      ? html` <div class="section">
+          <div class="section-title">Voice Control</div>
+          <p class="text-dim text-sm" style="margin:-.5rem 0 1rem">
+            Pull assigned crew into their unit's Discord voice channel. Members must already be in
+            <em>some</em> voice channel — Discord can't move someone who isn't connected.
+          </p>
+          <div class="fleet-list">
+            ${opts.voiceControl.map(
+              (unit) =>
+                html` <div class="card" style="padding:1rem;margin-bottom:.75rem">
+                  <div
+                    style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap"
+                  >
+                    <div class="fleet-name">${unit.channelName}</div>
+                    <form
+                      method="post"
+                      action="${bp}/ops/${op.id}/voice/move-unit/${unit.unitId}"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <button type="submit" class="btn btn-sm btn-cyan">Pull all crew here</button>
+                    </form>
+                  </div>
+                  <div style="margin-top:.6rem;display:flex;flex-direction:column;gap:.35rem">
+                    ${unit.crew.length
+                      ? unit.crew.map(
+                          (m) =>
+                            html` <div
+                              style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap"
+                            >
+                              <span style="min-width:9rem">${m.username}</span>
+                              ${m.discordId
+                                ? locationTag(m.location)
+                                : html`<span class="tag tag-red">no discord link</span>`}
+                              ${m.discordId && m.location === "elsewhere"
+                                ? html` <form
+                                    method="post"
+                                    action="${bp}/ops/${op.id}/voice/move-member/${unit.unitId}/${m.userId}"
+                                    class="inline"
+                                  >
+                                    <input type="hidden" name="_csrf" value="${csrf}" />
+                                    <button type="submit" class="btn btn-sm btn-ghost">
+                                      Move here
+                                    </button>
+                                  </form>`
+                                : safe("")}
+                            </div>`,
+                        )
+                      : html`<span class="text-dim text-sm">No assigned crew.</span>`}
+                  </div>
+                </div>`,
+            )}
+          </div>
+          <p style="margin-top:.25rem">
+            <a href="${bp}/ops/${op.id}">↻ Refresh voice state</a>
+          </p>
+        </div>`
+      : "";
+
   const activeUnits = op.units.filter((unit) => unit.status !== "rejected");
   const fleetOverview = html` <aside class="op-side op-fleet">
     <div class="section-title">Aktuelle Flotte (${activeUnits.length})</div>
@@ -1039,7 +1122,7 @@ export function opDetailPage(opts: {
     <div class="op-dashboard">
       ${fleetOverview}
       <div class="op-control">
-        ${registerForm} ${crewRequestPanel} ${voiceChannelsSection}
+        ${registerForm} ${crewRequestPanel} ${voiceChannelsSection} ${voiceControlSection}
         <div class="section">
           <div class="section-title">Leaders</div>
           <div class="flex gap-1" style="flex-wrap:wrap">
@@ -3153,73 +3236,137 @@ export function bridgeDownloadsPage(opts: {
   guildId: string;
   guildName: string;
   configured: boolean;
-  tokens: Array<{ id: string; label: string; createdAt: string; expiresAt: string; usedAt: string | null; usedFrom: string | null }>;
-  release: { tagName: string; name: string | null; asset: { name: string; size: number } | null } | null;
+  tokens: Array<{
+    id: string;
+    label: string;
+    createdAt: string;
+    expiresAt: string;
+    usedAt: string | null;
+    usedFrom: string | null;
+  }>;
+  release: {
+    tagName: string;
+    name: string | null;
+    asset: { name: string; size: number } | null;
+  } | null;
   freshUrl?: string;
   error?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
 
-  const tokenRows = opts.tokens.map((t) => html`
-    <tr>
-      <td>${t.label}</td>
-      <td class="text-dim text-sm">${t.expiresAt}</td>
-      <td>${t.usedAt ? html`<span class="tag tag-dim">used</span>` : html`<span class="tag tag-green">unused</span>`}</td>
-      <td class="text-right">
-        ${t.usedAt ? "" : html`<form method="post" action="${bp}/admin/bridge/${opts.guildId}/downloads/${t.id}/revoke" class="inline">
-          <input type="hidden" name="_csrf" value="${csrf}" />
-          <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
-        </form>`}
-      </td>
-    </tr>`);
+  const tokenRows = opts.tokens.map(
+    (t) =>
+      html` <tr>
+        <td>${t.label}</td>
+        <td class="text-dim text-sm">${t.expiresAt}</td>
+        <td>
+          ${t.usedAt
+            ? html`<span class="tag tag-dim">used</span>`
+            : html`<span class="tag tag-green">unused</span>`}
+        </td>
+        <td class="text-right">
+          ${t.usedAt
+            ? ""
+            : html`<form
+                method="post"
+                action="${bp}/admin/bridge/${opts.guildId}/downloads/${t.id}/revoke"
+                class="inline"
+              >
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+              </form>`}
+        </td>
+      </tr>`,
+  );
 
-  const body = html`
-    <div class="page-header">
+  const body = html` <div class="page-header">
       <h1 class="page-title">COMPANION DOWNLOADS</h1>
       <p class="page-subtitle text-mono">${opts.guildName}</p>
       ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
     </div>
-    ${opts.error ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>` : ""}
-    ${opts.freshUrl ? html`<div class="flash flash-ok">New download link (shown once): <span class="text-mono">${opts.freshUrl}</span></div>` : ""}
-    ${!opts.configured ? html`<div class="flash flash-warn">GITHUB_REPO not set on the bridge — the companion EXE cannot be served. Download links won't work until it is configured.</div>` : ""}
+    ${opts.error
+      ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>`
+      : ""}
+    ${opts.freshUrl
+      ? html`<div class="flash flash-ok">
+          New download link (shown once): <span class="text-mono">${opts.freshUrl}</span>
+        </div>`
+      : ""}
+    ${!opts.configured
+      ? html`<div class="flash flash-warn">
+          GITHUB_REPO not set on the bridge — the companion EXE cannot be served. Download links
+          won't work until it is configured.
+        </div>`
+      : ""}
     <div class="section">
       <div class="section-title">Latest release</div>
       <div class="card" style="padding:1.25rem">
         ${opts.release
-          ? html`<div class="text-mono">${opts.release.tagName}${opts.release.name ? ` — ${opts.release.name}` : ""}</div>
-              <p class="text-dim text-sm" style="margin:.35rem 0 0">${opts.release.asset ? `Asset: ${opts.release.asset.name} (${Math.round(opts.release.asset.size / 1024 / 1024)} MB)` : safe("No matching .exe asset found")}</p>`
-          : html`<p class="text-dim">No release info (GITHUB_REPO unset or GitHub unreachable).</p>`}
+          ? html`<div class="text-mono">
+                ${opts.release.tagName}${opts.release.name ? ` — ${opts.release.name}` : ""}
+              </div>
+              <p class="text-dim text-sm" style="margin:.35rem 0 0">
+                ${opts.release.asset
+                  ? `Asset: ${opts.release.asset.name} (${Math.round(opts.release.asset.size / 1024 / 1024)} MB)`
+                  : safe("No matching .exe asset found")}
+              </p>`
+          : html`<p class="text-dim">
+              No release info (GITHUB_REPO unset or GitHub unreachable).
+            </p>`}
       </div>
     </div>
     <div class="section">
       <div class="section-title">Create download link</div>
       <div class="card" style="padding:1.25rem">
-        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/downloads" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+        <form
+          method="post"
+          action="${bp}/admin/bridge/${opts.guildId}/downloads"
+          style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap"
+        >
           <input type="hidden" name="_csrf" value="${csrf}" />
-          <label class="text-sm text-dim" style="flex:1 1 14rem">Label
+          <label class="text-sm text-dim" style="flex:1 1 14rem"
+            >Label
             <input type="text" name="label" placeholder="for Alice" maxlength="120" required />
           </label>
           <button type="submit" class="btn btn-cyan btn-sm">Mint link</button>
         </form>
-        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/downloads/dm" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-top:1rem">
+        <form
+          method="post"
+          action="${bp}/admin/bridge/${opts.guildId}/downloads/dm"
+          style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-top:1rem"
+        >
           <input type="hidden" name="_csrf" value="${csrf}" />
-          <label class="text-sm text-dim" style="flex:1 1 14rem">DM to Discord user ID
+          <label class="text-sm text-dim" style="flex:1 1 14rem"
+            >DM to Discord user ID
             <input type="text" name="userId" placeholder="123456789012345678" required />
           </label>
           <button type="submit" class="btn btn-ghost btn-sm">Mint + DM link</button>
         </form>
-        <p class="text-dim text-sm" style="margin:.5rem 0 0">Links are single-use, 7-day TTL. The raw URL is shown once on mint (re-mint if lost).</p>
+        <p class="text-dim text-sm" style="margin:.5rem 0 0">
+          Links are single-use, 7-day TTL. The raw URL is shown once on mint (re-mint if lost).
+        </p>
       </div>
     </div>
     <div class="section">
       <div class="section-title">Tokens (${String(opts.tokens.length)})</div>
       ${opts.tokens.length === 0
         ? html`<p class="text-dim">No download tokens.</p>`
-        : html`<div style="overflow-x:auto"><table class="user-table">
-            <thead><tr><th>Label</th><th>Expires</th><th>Status</th><th></th></tr></thead>
-            <tbody>${tokenRows}</tbody>
-          </table></div>`}
+        : html`<div style="overflow-x:auto">
+            <table class="user-table">
+              <thead>
+                <tr>
+                  <th>Label</th>
+                  <th>Expires</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${tokenRows}
+              </tbody>
+            </table>
+          </div>`}
     </div>`;
 
   return layout({
@@ -3564,37 +3711,17 @@ export function licensePage(opts: {
         <pre
           style="font-family:var(--font-mono);font-size:.82rem;white-space:pre-wrap;color:var(--text);margin:0"
         >
-RDOC-Suite Source-Available Non-Commercial License
+RDOC-Suite License and Notices
 
-Copyright (c) 2026 head87x
+Code license:
+PolyForm Noncommercial License 1.0.0
+https://polyformproject.org/licenses/noncommercial/1.0.0
 
-Permission is granted, free of charge, to any person obtaining a copy of
-this software and associated documentation files (the "Software"), to use,
-copy, modify, merge, publish, and distribute the Software for non-commercial
-purposes, subject to the following conditions:
-
-1. The above copyright notice and this license notice must be included in all
-   copies or substantial portions of the Software.
-
-2. Commercial use is not permitted without prior written permission from the
-   author. Commercial use includes, but is not limited to, selling the
-   Software, offering the Software as a paid service, using the Software to
-   provide paid services to third parties, or incorporating the Software into
-   a commercial product or service.
-
-3. Permission to use the Software commercially may be granted separately by
-   the author in writing.
-
-4. The Software may not be sublicensed under different terms without prior
-   written permission from the author.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHOR OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.</pre
+Required Notice: RDOC-Suite Copyright (c) 2026 xheadwigx and justcallmedeimos.
+Required Notice: Authors: xheadwigx (https://github.com/cccdemon) and justcallmedeimos (https://twitch.tv/justcallmedeimos).
+Required Notice: RDOC-Suite source: https://github.com/cccdemon/RDOC-Suite
+Required Notice: RDOC-Suite is licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0. Commercial use requires prior written permission from the authors.
+Required Notice: The RDOC-Suite credit banner, stamp, logo, and visible attribution notices must not be removed, hidden, or materially altered in public deployments or redistributed versions without prior written permission from the authors.</pre
         >
         <p class="text-dim text-sm" style="margin-top:1rem">
           Source:

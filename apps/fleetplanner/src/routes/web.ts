@@ -16,6 +16,8 @@ import {
 import { searchLocalShips } from "../services/scwiki.js";
 import { deleteScheduledEvent, fetchGuildVoiceChannels, sendDiscordChannelMessage } from "../services/discord.js";
 import { hasVoicePermission } from "../services/voiceSession.js";
+import { bridgeConfigured } from "../services/bridge.js";
+import { buildOpVoiceControl, moveUnitCrewToChannel, moveOpMemberToUnit } from "../services/opVoice.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
 import { getLocationSyncState, runLocationSync, searchLocations, updateLocationSyncConfig } from "../services/locations.js";
 import { getSetting, setSetting } from "../services/settings.js";
@@ -243,6 +245,19 @@ export async function webRoutes(app: FastifyInstance) {
           }));
         } catch { /* non-fatal */ }
       }
+      // Option B: live Discord voice control, per unit. Gated to
+      // fleetoperator + voice-enabled + bridge configured + op live +
+      // units actually have Discord voice channels.
+      let voiceControl: Awaited<ReturnType<typeof buildOpVoiceControl>> | null = null;
+      if (
+        opRole === "fleetoperator" &&
+        voiceEnabled &&
+        bridgeConfigured() &&
+        (op.status === "open" || op.status === "in_progress") &&
+        op.voiceChannels.length > 0
+      ) {
+        voiceControl = await buildOpVoiceControl(op).catch(() => null);
+      }
       htmlReply(reply, opDetailPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
@@ -255,8 +270,48 @@ export async function webRoutes(app: FastifyInstance) {
         voiceEnabled,
         missionVoice: { globalVoiceRoom, commanderVoiceRoom: (op as Record<string, unknown>).commanderVoiceRoom as string | null ?? null },
         fleetVoiceLinks,
+        voiceControl,
         viewAsRole: req.query.viewAs,
       }));
+    }
+  );
+
+  // ── Option B: live Discord voice control (move op crew into channels) ──
+  app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
+    "/ops/:id/voice/move-unit/:unitId",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      if (!bridgeConfigured()) return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Bridge+not+configured.`), 302);
+      const op = await getOperation(req.params.id);
+      if (!op) return reply.redirect(basePath("/?flash=error:Operation+not+found."), 302);
+      try {
+        const r = await moveUnitCrewToChannel(op, req.params.unitId);
+        return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Moved+${r.moved}+(skipped+${r.skipped}%2C+failed+${r.failed}).`), 302);
+      } catch (err) {
+        app.log.error(err, "move unit crew failed");
+        return reply.redirect(basePath(`/ops/${op.id}?flash=error:Move+failed+(bridge+unreachable%3F).`), 302);
+      }
+    }
+  );
+
+  app.post<{ Params: { id: string; unitId: string; userId: string }; Body: Record<string, string> }>(
+    "/ops/:id/voice/move-member/:unitId/:userId",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      if (!bridgeConfigured()) return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Bridge+not+configured.`), 302);
+      const op = await getOperation(req.params.id);
+      if (!op) return reply.redirect(basePath("/?flash=error:Operation+not+found."), 302);
+      try {
+        await moveOpMemberToUnit(op, req.params.unitId, req.params.userId);
+        return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Member+moved.`), 302);
+      } catch (err) {
+        app.log.error(err, "move op member failed");
+        return reply.redirect(basePath(`/ops/${op.id}?flash=error:Move+failed.`), 302);
+      }
     }
   );
 
