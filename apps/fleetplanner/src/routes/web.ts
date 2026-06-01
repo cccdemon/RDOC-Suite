@@ -430,9 +430,13 @@ export async function webRoutes(app: FastifyInstance) {
       }
     }
     // Commander roster for the Commanders tab: accepted-unit captains +
-    // guild fleetoperators (implicit commanders) + manually-added
-    // participants. Mission deep-links are generated per person when a
-    // voice session is live (globalVoiceRoom set).
+    // manually-added participants ONLY. Guild fleetoperators are NOT
+    // auto-listed — they already get the commander room via their role
+    // (mission-voice isCommander check); listing every guild fleetoperator
+    // here just clutters the roster. A fleetoperator who wants their own
+    // link adds themselves via the add form (→ participant).
+    // Mission deep-links are generated per person when a voice session is
+    // live (globalVoiceRoom set).
     type CommanderEntry = {
       userId: string;
       username: string;
@@ -444,10 +448,6 @@ export async function webRoutes(app: FastifyInstance) {
       try {
         const env = getEnv();
         const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
-        const fpMembers = await prisma.guildMembership.findMany({
-          where: { guildId: op.guildId, role: "fleetoperator" },
-          include: { user: true },
-        });
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const participants = (await (prisma as any).missionVoiceParticipant.findMany({
           where: { operationId: op.id },
@@ -455,8 +455,8 @@ export async function webRoutes(app: FastifyInstance) {
           orderBy: { createdAt: "asc" },
         })) as Array<{ userId: string; user: { id: string; username: string } }>;
 
-        // Build a deduped ordered roster. Priority: captain > fleetoperator
-        // > participant (a person already a captain isn't shown as participant).
+        // Build a deduped ordered roster. Captains first, then manually
+        // added participants (someone already a captain isn't re-listed).
         const byId = new Map<string, CommanderEntry>();
         for (const u of op.units.filter((x) => x.status === "accepted")) {
           if (!byId.has(u.captainId))
@@ -464,15 +464,6 @@ export async function webRoutes(app: FastifyInstance) {
               userId: u.captainId,
               username: u.captain.username,
               kind: "captain",
-              link: null,
-            });
-        }
-        for (const m of fpMembers) {
-          if (!byId.has(m.userId))
-            byId.set(m.userId, {
-              userId: m.userId,
-              username: m.user.username,
-              kind: "fleetoperator",
               link: null,
             });
         }

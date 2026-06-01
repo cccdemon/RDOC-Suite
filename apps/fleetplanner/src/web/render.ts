@@ -1062,6 +1062,15 @@ select option { background: var(--bg3); }
   flex-direction: column;
   gap: 0.55rem;
 }
+/* Composition Board */
+.comp-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.comp-row:last-child { border-bottom: none; }
+.comp-row-head { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.comp-chips { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.comp-chip { width: 0.85rem; height: 0.85rem; border-radius: 2px; border: 1px solid var(--border); display: inline-block; }
+.comp-chip.filled { background: var(--green, #0f8); border-color: rgba(0,255,136,0.5); }
+.comp-chip.mismatch { background: var(--gold, #fb0); border-color: var(--gold-38, rgba(255,187,0,0.4)); }
+.comp-chip.open { background: transparent; border-style: dashed; opacity: 0.6; }
 .opv2-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

@@ -4,6 +4,7 @@ import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/disco
 import { fmtDateTz, fmtDateLocalTz, TIMEZONE_OPTIONS, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
+import { matchesCategory } from "../services/composition.js";
 
 // ── Re-export layout for routes ─────────────────────────────────────
 export { layout, rawHtml } from "./render.js";
@@ -2180,7 +2181,84 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
+  // ── Composition Board (read-only soll/ist/offen overview) ───────────
+  type CompRow = {
+    group: string;
+    label: string;
+    category: string;
+    count: number;
+    filled: number;
+    open: number;
+    mismatches: number;
+  };
+  const compRows: CompRow[] = op.groups.flatMap((g) =>
+    g.requirements.map((r) => {
+      const units = r.fleetUnits.filter((u) => u.status !== "rejected");
+      const filled = units.length;
+      const mismatches = units.filter(
+        (u) => !matchesCategory(r.category, { unitType: u.unitType, ship: u.ship }),
+      ).length;
+      return {
+        group: g.name,
+        label: r.label,
+        category: r.category,
+        count: r.count,
+        filled,
+        open: Math.max(0, r.count - filled),
+        mismatches,
+      };
+    }),
+  );
+  const compSoll = compRows.reduce((a, r) => a + r.count, 0);
+  const compIst = compRows.reduce((a, r) => a + r.filled, 0);
+  const compOpen = compRows.reduce((a, r) => a + r.open, 0);
+  const compChips = (r: CompRow) => {
+    const filledOk = Math.max(0, r.filled - r.mismatches);
+    const chips: SafeHtml[] = [];
+    for (let i = 0; i < filledOk; i++) chips.push(html`<span class="comp-chip filled"></span>`);
+    for (let i = 0; i < r.mismatches; i++)
+      chips.push(html`<span class="comp-chip mismatch" title="Unit does not match category"></span>`);
+    for (let i = 0; i < r.open; i++) chips.push(html`<span class="comp-chip open"></span>`);
+    return chips;
+  };
+  const compTone = (r: CompRow) =>
+    r.open === 0 ? "tag-green" : r.filled === 0 ? "tag-dim" : "tag-gold";
+  const compositionBoard = html`<section class="opv2-panel">
+    <div class="opv2-panel-title">Composition Board</div>
+    ${compRows.length
+      ? html`<div class="opv2-stack">
+            ${compRows.map(
+              (r) => html`<div class="comp-row">
+                <div class="comp-row-head">
+                  <strong>${r.label}</strong>
+                  <span class="tag tag-dim">${r.category}</span>
+                  <span class="tag ${compTone(r)}">${r.filled}/${r.count}</span>
+                  ${r.mismatches
+                    ? html`<span class="tag tag-gold" title="Units not matching the category"
+                        >${r.mismatches} mismatch</span
+                      >`
+                    : safe("")}
+                  ${r.group ? html`<span class="text-dim text-sm">${r.group}</span>` : safe("")}
+                </div>
+                <div class="comp-chips">${compChips(r)}</div>
+              </div>`,
+            )}
+            <div class="detail-row" style="border-top:1px solid var(--border,#243);margin-top:.4rem;padding-top:.4rem">
+              <span>Total</span>
+              <strong
+                >${compIst}/${compSoll} filled${compOpen
+                  ? html` · <span class="text-dim">${compOpen} open</span>`
+                  : safe("")}</strong
+              >
+            </div>
+          </div>`
+      : html`<p class="text-dim text-sm">
+          No composition defined.${canManage ? " Add groups & requirements in the Fleet tab." : ""}
+        </p>`}
+  </section>`;
+
   const overviewPanel = html`<div class="opv2-grid">
+    ${compositionBoard}
     <section class="opv2-panel">
       <div class="opv2-panel-title">${canManage ? "Edit Briefing" : "Briefing"}</div>
       ${canManage

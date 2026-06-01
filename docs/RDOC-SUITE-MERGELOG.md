@@ -3,6 +3,24 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Bugfixes + Composition Schritt 1+2
+
+- **Bug 1 (Companion):** mission-deeplink wechselte LiveKit-channel nicht — bridge-`audioRef`
+  (guild) + `missionCommanderRef` liefen parallel (layering statt switch). Fix (§9-F des Plans):
+  bei `missionActive && missionHasCommander` bridge-audio trennen; bei mission-ende mit
+  gemerkten creds (`lastBridgeCredsRef`, gesetzt in bridge:joined/audio:enable) wieder verbinden;
+  transition-guard (`missionOwnsLocalRef`) gegen reconnect-churn. bridge:joined/audio:enable
+  connecten nicht während mission LOCAL besitzt.
+- **Bug 2 (Fleetplanner):** Commanders-Tab listete alle guild-fleetoperators → wirkte als ob
+  seat-crew drin ist. Fix: roster = nur accepted-unit-captains + manuell hinzugefügte participants.
+  Fleetoperators behalten commander-zugriff per rolle (backend isCommander), werden aber nicht
+  mehr auto-gelistet.
+- **Composition Schritt 1:** `services/composition.ts` — pure `matchesCategory(category, unit)` +
+  `suggestSlot(unit, slots)` (category↔Ship.size/career/role; nur hint, keine sperre).
+- **Composition Schritt 2:** "Composition Board" (read-only) im Overview-Tab — soll/ist/offen je
+  requirement + chips (filled/mismatch/open) + summe; nutzt `matchesCategory` für mismatch-flag.
+  CSS `.comp-*` in render.ts. Kein Datenmodell-/Migration-Change. (Schritt 3+ aus Plan offen.)
+
 ## Queued / Planned Step - 2026-06-01: Composition-Rebuild — Plan-Dokument
 
 User: Composition-Teil "stellenweise unlogisch / nicht intuitiv". Pain (priorisiert):
