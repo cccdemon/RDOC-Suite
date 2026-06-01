@@ -1451,6 +1451,25 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const activeSeats = activeUnits.flatMap((unit) => unit.seats.filter((seat) => seat.active));
   const assignedSeats = activeSeats.filter((seat) => seat.userId);
   const crewWaiting = op.crewRequests.length;
+  const compositionTotal = op.groups.reduce(
+    (sum, group) =>
+      sum + group.requirements.reduce((groupSum, requirement) => groupSum + requirement.count, 0),
+    0,
+  );
+  const compositionFilled = op.groups.reduce(
+    (sum, group) =>
+      sum +
+      group.requirements.reduce(
+        (groupSum, requirement) =>
+          groupSum +
+          Math.min(
+            requirement.count,
+            requirement.fleetUnits.filter((unit) => unit.status !== "rejected").length,
+          ),
+        0,
+      ),
+    0,
+  );
   const tabNames = ["overview", "fleet", "crew", "voice", "admin"];
   const activeTab = tabNames.includes(opts.tab ?? "") ? opts.tab! : "overview";
   const tabUrl = (tab: string) => `${bp}/ops/${op.id}?tab=${tab}`;
@@ -2377,6 +2396,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ${metric("Accepted Units", acceptedUnits.length, "good")}
         ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
         ${metric("Crew Seats", `${assignedSeats.length}/${activeSeats.length}`)}
+        ${metric("Compositions", `${compositionFilled}/${compositionTotal}`)}
         ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
       </div>
 

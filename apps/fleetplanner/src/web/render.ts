@@ -959,7 +959,7 @@ select option { background: var(--bg3); }
 }
 .opv2-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 0.75rem;
   margin: 1rem 0;
 }
