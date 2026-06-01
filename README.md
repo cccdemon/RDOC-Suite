@@ -336,4 +336,16 @@ See `.env.example` for the full list and comments.
 
 ## License
 
-[MIT](LICENSE)
+Source-available for non-commercial use under the PolyForm Noncommercial License 1.0.0.
+
+Commercial use, paid hosting, resale, SaaS operation, or use as part of a commercial product or service requires prior written permission from the authors.
+
+The RDOC-Suite credit banner/stamp must remain visible in public deployments and redistributed versions unless the authors grant written permission to remove or alter it.
+
+Authors:
+
+- xheadwigx: https://github.com/cccdemon
+- justcallmedeimos: https://twitch.tv/justcallmedeimos
+
+See [LICENSE](LICENSE).
+See [NOTICE](NOTICE) and [BRANDING.md](BRANDING.md) for required attribution and brand notice terms.
