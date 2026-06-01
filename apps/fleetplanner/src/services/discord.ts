@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import sharp from "sharp";
 import { getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 
@@ -11,15 +12,24 @@ const OP_IMAGE_TYPES = new Set([
   "mixed", "exploration", "transport", "social",
 ]);
 
-function opTypeImageDataUri(opType: string | null | undefined): string | undefined {
+// Resized images are cached in memory — 9 types, load once per process lifetime.
+const imageCache = new Map<string, string>();
+
+async function opTypeImageDataUri(opType: string | null | undefined): Promise<string | undefined> {
   const type = opType?.toLowerCase() ?? "combat";
   const safe = OP_IMAGE_TYPES.has(type) ? type : "combat";
+  const cached = imageCache.get(safe);
+  if (cached) return cached;
   try {
     const file = new URL(`../../public/mission-images/${safe}.png`, import.meta.url);
-    const data = readFileSync(file);
-    return `data:image/png;base64,${data.toString("base64")}`;
+    const raw = readFileSync(file);
+    // Resize to 1280×720 and re-encode as JPEG — keeps payload well under Discord's limit.
+    const resized = await sharp(raw).resize(1280, 720, { fit: "cover" }).jpeg({ quality: 80 }).toBuffer();
+    const uri = `data:image/jpeg;base64,${resized.toString("base64")}`;
+    imageCache.set(safe, uri);
+    return uri;
   } catch (err) {
-    console.warn(`[discord] opTypeImageDataUri: failed to load ${safe}.png —`, err instanceof Error ? err.message : err);
+    console.warn(`[discord] opTypeImageDataUri: failed to process ${safe}.png —`, err instanceof Error ? err.message : err);
     return undefined;
   }
 }
@@ -289,7 +299,7 @@ export async function createScheduledEvent(op: {
   // Discord requires events to be at least 1h long; use 3h as default
   const startTime = op.scheduledAt.toISOString();
   const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
-  const image = opTypeImageDataUri(op.opType);
+  const image = await opTypeImageDataUri(op.opType);
 
   const body = voiceChannelId
     ? {
@@ -384,7 +394,7 @@ export async function updateScheduledEvent(op: {
   const startTime = op.scheduledAt.toISOString();
   const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
   const updatedDescription = buildEventDescription(op.id, op.description).slice(0, 1000);
-  const image = opTypeImageDataUri(op.opType);
+  const image = await opTypeImageDataUri(op.opType);
 
   const body = voiceChannelId
     ? {
