@@ -1290,6 +1290,326 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
 
 // ── Operation form (create / edit) ──────────────────────────────────
 
+// New operation detail flow behind ?ui=new.
+export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): SafeHtml {
+  const bp = opts.basePath;
+  const op = opts.op;
+  const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
+  const csrf = opts.csrfToken ?? "";
+  const user = opts.currentUser;
+  const canManage = !!user && (user.role === "superadmin" || user.role === "fleetoperator");
+  const isLeader = !!user && (canManage || op.leaders.some((leader) => leader.user.id === user.id));
+  const activeUnits = op.units.filter((unit) => unit.status !== "rejected");
+  const pendingUnits = op.units.filter((unit) => unit.status === "pending");
+  const acceptedUnits = op.units.filter((unit) => unit.status === "accepted");
+  const activeSeats = activeUnits.flatMap((unit) => unit.seats.filter((seat) => seat.active));
+  const assignedSeats = activeSeats.filter((seat) => seat.userId);
+  const crewWaiting = op.crewRequests.length;
+  const tabNames = ["overview", "fleet", "crew", "voice", "admin"];
+  const activeTab = tabNames.includes(opts.tab ?? "") ? opts.tab! : "overview";
+  const tabUrl = (tab: string) => `${bp}/ops/${op.id}?ui=new&tab=${tab}`;
+  const classicUrl = `${bp}/ops/${op.id}`;
+
+  const shellLink = (tab: string, label: string) =>
+    html`<a class="opv2-tab ${activeTab === tab ? "active" : ""}" href="${tabUrl(tab)}"
+      >${label}</a
+    >`;
+
+  const metric = (label: string, value: string | number, tone = "") =>
+    html`<div class="opv2-metric ${tone}">
+      <span>${label}</span>
+      <strong>${value}</strong>
+    </div>`;
+
+  const unitName = (unit: UnitFull) =>
+    unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+
+  const unitRows = activeUnits.length
+    ? activeUnits.map((unit) => {
+        const seats = unit.seats.filter((seat) => seat.active);
+        const assigned = seats.filter((seat) => seat.userId).length;
+        return html`<div class="opv2-row">
+          <div>
+            <strong>${unitName(unit)}</strong>
+            <span>Captain: ${unit.captain.username}</span>
+          </div>
+          <div class="opv2-row-meta">
+            ${statusTag(unit.status)}
+            <span class="text-mono">${assigned}/${seats.length} seats</span>
+          </div>
+        </div>`;
+      })
+    : [html`<p class="text-dim text-sm">No registered units yet.</p>`];
+
+  const compositionRows = op.groups.length
+    ? op.groups.map(
+        (group) =>
+          html`<div class="opv2-composition-group">
+            <div class="opv2-panel-title">${group.name}</div>
+            ${group.requirements.length
+              ? group.requirements.map((requirement) => {
+                  const filled = requirement.fleetUnits.filter(
+                    (unit) => unit.status !== "rejected",
+                  ).length;
+                  return html`<div class="opv2-requirement">
+                    <span>${requirement.label}</span>
+                    <span class="tag tag-dim">${requirement.category}</span>
+                    <strong>${filled}/${requirement.count}</strong>
+                  </div>`;
+                })
+              : html`<p class="text-dim text-sm">No requirements.</p>`}
+          </div>`,
+      )
+    : [html`<p class="text-dim text-sm">No composition has been defined yet.</p>`];
+
+  const statusControls = canManage
+    ? html`<div class="opv2-actions">
+        ${["draft", "open", "locked", "in_progress", "completed", "cancelled"].map((status) =>
+          status !== op.status
+            ? html`<form method="post" action="${bp}/api/ops/${op.id}/status" class="inline">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <input type="hidden" name="status" value="${status}" />
+                <button type="submit" class="btn btn-sm btn-ghost">
+                  ${status.replace("_", " ")}
+                </button>
+              </form>`
+            : safe(""),
+        )}
+      </div>`
+    : safe("");
+
+  const crewPanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Need Assignment</div>
+      ${op.crewRequests.length
+        ? op.crewRequests.map(
+            (request) =>
+              html`<div class="opv2-row">
+                <div>
+                  <strong>${request.user.username}</strong>
+                  <span>${request.note || "No note"}</span>
+                </div>
+                ${isLeader
+                  ? html`<form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/crew-requests/remove"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="userId" value="${request.user.id}" />
+                      <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
+                    </form>`
+                  : safe("")}
+              </div>`,
+          )
+        : html`<p class="text-dim text-sm">No unassigned crewmembers.</p>`}
+    </section>
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Crew Action</div>
+      ${user && (op.status === "open" || op.status === "draft")
+        ? html`<form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <label>Assignment note</label>
+            <input
+              type="text"
+              name="note"
+              maxlength="240"
+              placeholder="Any seat, prefer medic, gunner, FPS..."
+            />
+            <button type="submit" class="btn btn-sm mt-1">Request Assignment</button>
+          </form>`
+        : html`<p class="text-dim text-sm">
+            Crew requests are available while the op is draft or open.
+          </p>`}
+    </section>
+  </div>`;
+
+  const voicePanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Mission Voice</div>
+      ${opts.voiceEnabled
+        ? opts.missionVoice?.globalVoiceRoom
+          ? html`<div class="opv2-stack">
+              <div class="detail-row">
+                <span>Global</span>
+                <strong>${opts.missionVoice.globalVoiceRoom}</strong>
+              </div>
+              <div class="detail-row">
+                <span>Commander</span>
+                <strong>${opts.missionVoice.commanderVoiceRoom ?? "None"}</strong>
+              </div>
+            </div>`
+          : html`<p class="text-dim text-sm">
+              No active mission voice room. It starts when the operation is opened.
+            </p>`
+        : html`<p class="text-dim text-sm">Voice integration is not enabled for this server.</p>`}
+    </section>
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Unit Channels</div>
+      ${op.voiceChannels.length
+        ? op.voiceChannels.map((channel) => {
+            const name =
+              channel.channelName ||
+              (channel.unit.unitType === "ship"
+                ? (channel.unit.ship?.name ?? "Unknown Ship")
+                : (channel.unit.squadName ?? "Squad"));
+            return html`<div class="opv2-row">
+              <div>
+                <strong>${name}</strong>
+                <span>Captain: ${channel.unit.captain.username}</span>
+              </div>
+              <span class="tag tag-cyan">${channel.voiceBot?.label ?? "Discord"}</span>
+            </div>`;
+          })
+        : html`<p class="text-dim text-sm">No generated unit voice channels.</p>`}
+      ${canManage && opts.availableVoiceBotCount > 0
+        ? html`<form
+            method="post"
+            action="${bp}/api/ops/${op.id}/voice-channels/launch"
+            class="mt-1"
+          >
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <button type="submit" class="btn btn-sm btn-cyan">Launch Voice Channels</button>
+          </form>`
+        : safe("")}
+    </section>
+  </div>`;
+
+  const overviewPanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Briefing</div>
+      ${op.description
+        ? html`<p>${op.description}</p>`
+        : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
+      ${statusControls}
+    </section>
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Action Details</div>
+      <div class="detail-row">
+        <span>When</span>
+        <strong>${fmtDate(op.scheduledAt, gtz)}</strong>
+      </div>
+      <div class="detail-row">
+        <span>System</span>
+        <strong>${systemLabel(op.meetingSystem ?? "stanton")}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Rendezvous</span>
+        <strong>${op.meetingLocation || "Not set"}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Leaders</span>
+        <strong>${op.leaders.length || "None"}</strong>
+      </div>
+    </section>
+  </div>`;
+
+  const fleetPanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Fleet Units</div>
+      <div class="opv2-stack">${unitRows}</div>
+      <a href="${classicUrl}" class="btn btn-sm btn-ghost mt-1"
+        >Register or edit units in Classic UI</a
+      >
+    </section>
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Composition</div>
+      <div class="opv2-stack">${compositionRows}</div>
+    </section>
+  </div>`;
+
+  const adminPanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Operation Control</div>
+      <div class="opv2-actions">
+        ${canManage
+          ? html`<a href="${bp}/ops/${op.id}/edit" class="btn btn-sm">Edit Operation</a>`
+          : ""}
+        <a href="${classicUrl}" class="btn btn-sm btn-ghost">Classic Full Controls</a>
+        ${canManage
+          ? html`<form method="post" action="${bp}/ops/${op.id}/delete" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <button
+                type="submit"
+                class="btn btn-sm btn-danger"
+                onclick="return confirm('Delete this operation?')"
+              >
+                Delete
+              </button>
+            </form>`
+          : safe("")}
+      </div>
+      ${statusControls}
+    </section>
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Leaders</div>
+      ${op.leaders.length
+        ? op.leaders.map(
+            (leader) =>
+              html`<div class="opv2-row">
+                <div>
+                  <strong>${leader.user.username}</strong>
+                  <span>${roleLabel(leader.leaderRole)}</span>
+                </div>
+              </div>`,
+          )
+        : html`<p class="text-dim text-sm">No leaders assigned.</p>`}
+    </section>
+  </div>`;
+
+  const activePanel =
+    activeTab === "fleet"
+      ? fleetPanel
+      : activeTab === "crew"
+        ? crewPanel
+        : activeTab === "voice"
+          ? voicePanel
+          : activeTab === "admin"
+            ? adminPanel
+            : overviewPanel;
+
+  const body = html`<div class="opv2-shell">
+    <header class="opv2-hero">
+      <div>
+        <div class="opv2-eyebrow">${opTypeTag(op.opType)} ${statusTag(op.status)}</div>
+        <h1>${op.title}</h1>
+        <p>
+          ${fmtDate(op.scheduledAt, gtz)} at
+          ${op.meetingLocation || systemLabel(op.meetingSystem ?? "stanton")}
+        </p>
+      </div>
+      <div class="opv2-switch">
+        <a href="${classicUrl}" class="btn btn-sm btn-ghost">Classic UI</a>
+        <a href="${tabUrl(activeTab)}" class="btn btn-sm">New UI</a>
+      </div>
+    </header>
+
+    <div class="opv2-metrics">
+      ${metric("Accepted Units", acceptedUnits.length, "good")}
+      ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
+      ${metric("Crew Seats", `${assignedSeats.length}/${activeSeats.length}`)}
+      ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
+    </div>
+
+    <nav class="opv2-tabs">
+      ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
+      ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")} ${shellLink("admin", "Admin")}
+    </nav>
+
+    ${activePanel}
+  </div>`;
+
+  return layout({
+    title: op.title,
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+// Operation form (create / edit)
 type OwnedShipRow = {
   id: string;
   nickname: string | null;
@@ -3995,7 +4315,12 @@ export function guildSettingsPage(opts: {
           <select name="timezone">
             ${TIMEZONE_OPTIONS.map(
               (opt) =>
-                html`<option value="${opt.value}" ${g.timezone === opt.value ? safe("selected") : ""}>${opt.label}</option>`,
+                html`<option
+                  value="${opt.value}"
+                  ${g.timezone === opt.value ? safe("selected") : ""}
+                >
+                  ${opt.label}
+                </option>`,
             )}
           </select>
         </label>

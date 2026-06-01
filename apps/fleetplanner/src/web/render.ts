@@ -741,6 +741,164 @@ select option { background: var(--bg3); }
 }
 .crew-request-row:last-child { border-bottom: none; }
 
+.opv2-shell {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.opv2-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1.5rem;
+  align-items: start;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+.opv2-eyebrow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+}
+.opv2-hero h1 {
+  font-family: var(--font-mono);
+  font-size: 1.55rem;
+  line-height: 1.25;
+  letter-spacing: 0.06em;
+  color: var(--cyan);
+  overflow-wrap: anywhere;
+}
+.opv2-hero p {
+  color: var(--dim);
+  font-size: 0.92rem;
+  margin-top: 0.4rem;
+}
+.opv2-switch,
+.opv2-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.opv2-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+.opv2-metric {
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 0.85rem 1rem;
+}
+.opv2-metric span {
+  display: block;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.opv2-metric strong {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 1.25rem;
+}
+.opv2-metric.good { border-color: rgba(0,255,136,0.3); background: var(--green-08); }
+.opv2-metric.warn { border-color: var(--gold-38); background: var(--gold-08); }
+.opv2-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0.5rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+.opv2-tab {
+  padding: 0.75rem 1rem;
+  border: 1px solid transparent;
+  border-bottom: none;
+  color: var(--dim);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+}
+.opv2-tab:hover {
+  color: var(--text);
+  background: var(--cyan-08);
+}
+.opv2-tab.active {
+  color: var(--cyan);
+  border-color: var(--border);
+  background: var(--bg2);
+}
+.opv2-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(18rem, 0.8fr);
+  gap: 1rem;
+  align-items: start;
+}
+.opv2-panel {
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  padding: 1rem;
+  min-width: 0;
+}
+.opv2-panel-title {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  color: var(--cyan);
+  text-transform: uppercase;
+  margin-bottom: 0.8rem;
+}
+.opv2-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.opv2-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.opv2-row:last-child { border-bottom: none; }
+.opv2-row strong {
+  display: block;
+  font-family: var(--font-mono);
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.opv2-row span {
+  color: var(--dim);
+  font-size: 0.8rem;
+}
+.opv2-row-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-end;
+}
+.opv2-composition-group {
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  padding: 0.75rem;
+}
+.opv2-requirement {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.45rem 0;
+  border-top: 1px solid var(--border);
+}
+.opv2-requirement span:first-child {
+  overflow-wrap: anywhere;
+}
+
 .ship-results { margin-top: 1.25rem; }
 .ship-row {
   display: grid;
@@ -826,6 +984,22 @@ select option { background: var(--bg3); }
   .form-row { grid-template-columns: 1fr; }
   .op-dashboard { grid-template-columns: 1fr; }
   .op-side { padding: 0.85rem; }
+  .opv2-hero,
+  .opv2-grid,
+  .opv2-row {
+    grid-template-columns: 1fr;
+  }
+  .opv2-switch,
+  .opv2-row-meta {
+    align-items: flex-start;
+  }
+  .opv2-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .opv2-tab {
+    flex: 1 1 50%;
+    text-align: center;
+  }
   /* ship search: stack on mobile */
   .ship-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0.75rem 0.9rem; }
   .ship-stat { display: none; }
