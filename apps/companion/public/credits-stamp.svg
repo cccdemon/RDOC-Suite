@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="340" viewBox="0 0 860 340" role="img" aria-labelledby="title desc">
+  <title id="title">raumdock.org credits stamp</title>
+  <desc id="desc">raumdock.org - made by xheadwigx &amp; justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos</desc>
+  <defs>
+    <radialGradient id="stamp-fill" cx="50%" cy="45%" r="68%">
+      <stop offset="0" stop-color="#0c1520" stop-opacity="0.98" />
+      <stop offset="0.58" stop-color="#080e14" stop-opacity="0.98" />
+      <stop offset="1" stop-color="#04060a" stop-opacity="0.96" />
+    </radialGradient>
+    <filter id="cyan-glow" x="-20%" y="-25%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#00d4ff" flood-opacity="0.35" />
+    </filter>
+    <filter id="gold-glow" x="-20%" y="-25%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#f0a500" flood-opacity="0.32" />
+    </filter>
+    <filter id="distress" x="-8%" y="-12%" width="116%" height="124%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.12 0.82" numOctaves="3" seed="31" result="noise" />
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.1" />
+    </filter>
+    <filter id="ink-wear" x="-5%" y="-10%" width="110%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.92" numOctaves="2" seed="9" result="noise" />
+      <feColorMatrix in="noise" type="saturate" values="0" result="mono" />
+      <feComponentTransfer in="mono" result="speckle">
+        <feFuncA type="table" tableValues="0 0.1" />
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="speckle" mode="multiply" />
+    </filter>
+    <path id="top-arc" d="M 126 174 A 304 116 0 0 1 734 174" />
+    <path id="bottom-arc" d="M 734 174 A 304 116 0 0 1 126 174" />
+  </defs>
+
+  <g transform-origin="430 170">
+    <animateTransform
+      attributeName="transform"
+      type="rotate"
+      values="-7 430 170;2 430 170;0 430 170"
+      dur="680ms"
+      begin="0s"
+      fill="freeze"
+      calcMode="spline"
+      keySplines=".19 1 .22 1;.19 1 .22 1"
+    />
+    <animateTransform
+      attributeName="transform"
+      additive="sum"
+      type="scale"
+      values="1.22;0.96;1"
+      dur="680ms"
+      begin="0s"
+      fill="freeze"
+      calcMode="spline"
+      keySplines=".19 1 .22 1;.19 1 .22 1"
+    />
+    <animate attributeName="opacity" values="0;1;1" keyTimes="0;.22;1" dur="680ms" begin="0s" fill="freeze" />
+
+    <ellipse cx="430" cy="170" rx="386" ry="138" fill="url(#stamp-fill)" stroke="#00d4ff" stroke-width="2" opacity="0.98" />
+    <ellipse cx="430" cy="170" rx="368" ry="121" fill="none" stroke="#ff4444" stroke-width="13" stroke-dasharray="42 9 14 8" opacity="0.76" filter="url(#distress)" />
+    <ellipse cx="430" cy="170" rx="330" ry="93" fill="none" stroke="#00d4ff" stroke-width="3" stroke-dasharray="210 18 42 14 150 18" opacity="0.72" filter="url(#cyan-glow)" />
+    <ellipse cx="430" cy="170" rx="258" ry="62" fill="none" stroke="#f0a500" stroke-width="2" stroke-dasharray="14 9" opacity="0.55" />
+
+    <path d="M121 170h62M677 170h62M414 78h32M414 262h32" stroke="#00d4ff" stroke-width="5" stroke-linecap="square" opacity="0.55" />
+    <path d="M206 111l24 14M654 111l-24 14M206 229l24-14M654 229l-24-14" stroke="#f0a500" stroke-width="3" stroke-linecap="square" opacity="0.5" />
+
+    <text font-family="Share Tech Mono, Rajdhani, Bahnschrift, Consolas, monospace" font-size="22" letter-spacing="1.8" fill="#c8dce8" filter="url(#ink-wear)">
+      <textPath href="#top-arc" startOffset="50%" text-anchor="middle">MADE BY XHEADWIGX &amp; JUSTCALLMEDEIMOS</textPath>
+    </text>
+    <text font-family="Share Tech Mono, Rajdhani, Bahnschrift, Consolas, monospace" font-size="18" letter-spacing="1.5" fill="#c8dce8" filter="url(#ink-wear)">
+      <textPath href="#bottom-arc" startOffset="50%" text-anchor="middle">INFRASTRUCTURE POWERED BY TWITCH.TV/JUSTCALLMEDEIMOS</textPath>
+    </text>
+
+    <text
+      x="430"
+      y="160"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-family="Bebas Neue, Rajdhani, Bahnschrift Condensed, Arial Narrow, Arial, sans-serif"
+      font-size="78"
+      letter-spacing="4"
+      fill="#ffffff"
+      filter="url(#cyan-glow)"
+    >raumdock.org</text>
+    <text
+      x="430"
+      y="205"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-family="Share Tech Mono, Rajdhani, Bahnschrift, Consolas, monospace"
+      font-size="14"
+      letter-spacing="1.1"
+      textLength="612"
+      lengthAdjust="spacingAndGlyphs"
+      fill="#f0a500"
+      filter="url(#gold-glow)"
+    >raumdock.org - made by xheadwigx &amp; justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos</text>
+  </g>
+</svg>
