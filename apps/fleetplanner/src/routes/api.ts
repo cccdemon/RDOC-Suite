@@ -470,20 +470,23 @@ export async function apiRoutes(app: FastifyInstance) {
       }
 
       // Create Discord scheduled event when op is opened
+      let discordEventCreationFlash: string | null = null;
       if (newStatus === "open" && !updated.discordEventId) {
         const op = await getOperation(req.params.id);
         if (op) {
-          createScheduledEvent(op)
-            .then((event) => {
-              if (event?.id) {
-                return prisma.operation.update({
-                  where: { id: req.params.id },
-                  data: { discordEventId: event.id },
-                });
-              }
-              return null;
-            })
-            .catch((err) => app.log.warn(err, "Discord event creation failed (non-fatal)"));
+          try {
+            const event = await createScheduledEvent(op);
+            if (event?.id) {
+              await prisma.operation.update({
+                where: { id: req.params.id },
+                data: { discordEventId: event.id },
+              });
+            }
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : "Discord event creation failed";
+            app.log.warn(err, "Discord event creation failed (non-fatal)");
+            discordEventCreationFlash = `warn:Status+updated,+Discord+event+failed:+${encodeURIComponent(msg)}`;
+          }
         }
       }
       if (newStatus === "cancelled" && updated.discordEventId) {
@@ -565,8 +568,9 @@ export async function apiRoutes(app: FastifyInstance) {
           );
         }
       }
+      const finalFlash = discordEventCreationFlash ?? "ok:Status+updated.";
       return reply.redirect(
-        opReturnUrl(req.params.id, req.body, "ok:Status+updated.", "overview"),
+        opReturnUrl(req.params.id, req.body, finalFlash, "overview"),
         302,
       );
     },
