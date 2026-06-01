@@ -764,6 +764,15 @@ select option { background: var(--bg3); }
 }
 .crew-request-row:last-child { border-bottom: none; }
 
+.mission-banner {
+  min-height: 13rem;
+  margin: -1.25rem 0 2rem;
+  border: 1px solid var(--border);
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(0,212,255,0.08);
+}
+
 .opv2-shell {
   max-width: 1180px;
   margin: 0 auto;
@@ -775,6 +784,14 @@ select option { background: var(--bg3); }
   align-items: start;
   padding-bottom: 1.25rem;
   border-bottom: 1px solid var(--border);
+}
+.opv2-hero-mission {
+  min-height: 16rem;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(0,212,255,0.08);
 }
 .opv2-eyebrow {
   display: flex;

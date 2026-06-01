@@ -1,4 +1,8 @@
 import type { FastifyInstance } from "fastify";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { rawHtml } from "../web/pages.js";
 import {
   homePage,
@@ -58,6 +62,8 @@ import {
   updateLocationSyncConfig,
 } from "../services/locations.js";
 import { getSetting, setSetting } from "../services/settings.js";
+
+const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../public");
 
 function htmlReply(
   reply: import("fastify").FastifyReply,

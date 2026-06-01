@@ -72,6 +72,18 @@ function discordBotInviteUrl(clientId: string, permissions: string): string {
 }
 
 const SYSTEMS = ["stanton", "nyx", "pyro"] as const;
+const OP_TYPES = [
+  "combat",
+  "pve",
+  "mining",
+  "salvage",
+  "training",
+  "mixed",
+  "exploration",
+  "transport",
+  "social",
+] as const;
+const MISSION_IMAGE_TYPES = new Set(["combat", "pve", "mining", "salvage", "training"]);
 
 function systemLabel(system: string): string {
   return system ? system[0].toUpperCase() + system.slice(1) : "Stanton";
@@ -83,6 +95,15 @@ function flashFromQuery(msg: string | undefined): LayoutOptions["flash"] {
   const text = rest.join(":") || msg;
   if (kind === "ok" || kind === "warn" || kind === "error") return { kind, text };
   return { kind: "ok", text: msg };
+}
+
+function missionImageType(opType: string): string {
+  const normalized = opType.toLowerCase();
+  return MISSION_IMAGE_TYPES.has(normalized) ? normalized : "combat";
+}
+
+function missionImageUrl(bp: string, opType: string): string {
+  return `${bp}/assets/mission-images/${missionImageType(opType)}.png`;
 }
 
 function opUiSwitch(bp: string, opId: string, mode: "classic" | "new", tab = "overview"): SafeHtml {
@@ -1134,6 +1155,13 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
           </form>`
         : ""}
     </div>
+    <div
+      class="mission-banner"
+      style="background-image:linear-gradient(90deg, rgba(5,8,16,.96), rgba(5,8,16,.58), rgba(5,8,16,.18)), url('${missionImageUrl(
+        bp,
+        op.opType,
+      )}')"
+    ></div>
 
     <div class="op-dashboard">
       ${fleetOverview}
@@ -1591,15 +1619,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               <div>
                 <label>Type</label>
                 <select name="opType">
-                  ${[
-                    "combat",
-                    "mining",
-                    "salvage",
-                    "transport",
-                    "exploration",
-                    "training",
-                    "social",
-                  ].map(
+                  ${OP_TYPES.map(
                     (type) =>
                       html`<option value="${type}" ${op.opType === type ? safe("selected") : ""}>
                         ${type}
@@ -1915,7 +1935,13 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             : overviewPanel;
 
   const body = html`<div class="opv2-shell">
-    <header class="opv2-hero">
+    <header
+      class="opv2-hero opv2-hero-mission"
+      style="background-image:linear-gradient(90deg, rgba(5,8,16,.97), rgba(5,8,16,.72), rgba(5,8,16,.2)), url('${missionImageUrl(
+        bp,
+        op.opType,
+      )}')"
+    >
       <div>
         <div class="opv2-eyebrow">${opTypeTag(op.opType)} ${statusTag(op.status)}</div>
         <h1>${op.title}</h1>
@@ -2135,7 +2161,7 @@ export function opFormPage(opts: {
   const action = op ? `${bp}/ops/${op.id}/edit` : `${bp}/ops/new`;
   const csrf = opts.csrfToken ?? "";
 
-  const opTypes = ["combat", "pve", "training", "mixed", "exploration"];
+  const opTypes = OP_TYPES;
   const selectedOperatorGuild = opts.operatorGuilds?.find(
     (g) => g.id === opts.selectedOperatorGuildId,
   );
