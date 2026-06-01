@@ -376,6 +376,7 @@ export async function webRoutes(app: FastifyInstance) {
       voiceControl = await buildOpVoiceControl(op).catch(() => null);
     }
     const detailPage = req.query.ui === "new" ? opDetailPageV2 : opDetailPage;
+    reply.header("Cache-Control", "no-store");
     htmlReply(
       reply,
       detailPage({

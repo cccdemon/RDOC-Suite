@@ -2,6 +2,7 @@ import { html, safe, rawHtml, layout, type SafeHtml, type LayoutOptions } from "
 import type { User, Operation, Ship, Location } from "@prisma/client";
 import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/discordDiagnostics.js";
 import { fmtDateTz, fmtDateLocalTz, TIMEZONE_OPTIONS, DEFAULT_TIMEZONE } from "../lib/timezone.js";
+import { getEnv } from "../config/env.js";
 
 // ── Re-export layout for routes ─────────────────────────────────────
 export { layout, rawHtml } from "./render.js";
@@ -1371,6 +1372,7 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
       }
     </script>`;
 
+  const { WEB_PUBLIC_URL } = getEnv();
   return layout({
     title: op.title,
     basePath: bp,
@@ -1379,6 +1381,12 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
     flash: flashFromQuery(opts.flash),
     navSlot: opUiSwitch(bp, op.id, "classic"),
     body,
+    ogMeta: {
+      title: op.title,
+      description: op.description ? op.description.slice(0, 200) : undefined,
+      imageUrl: `${WEB_PUBLIC_URL}${missionImageUrl(bp, op.opType)}`,
+      pageUrl: `${WEB_PUBLIC_URL}${bp}/ops/${op.id}`,
+    },
   });
 }
 
@@ -2230,6 +2238,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       }
     </script>`;
 
+  const { WEB_PUBLIC_URL } = getEnv();
   return layout({
     title: op.title,
     basePath: bp,
@@ -2238,6 +2247,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     flash: flashFromQuery(opts.flash),
     navSlot: opUiSwitch(bp, op.id, "new", activeTab),
     body,
+    ogMeta: {
+      title: op.title,
+      description: op.description ? op.description.slice(0, 200) : undefined,
+      imageUrl: `${WEB_PUBLIC_URL}${missionImageUrl(bp, op.opType)}`,
+      pageUrl: `${WEB_PUBLIC_URL}${bp}/ops/${op.id}`,
+    },
   });
 }
 

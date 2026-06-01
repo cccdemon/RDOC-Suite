@@ -53,6 +53,12 @@ export type LayoutOptions = {
   flash?: { kind: "ok" | "warn" | "error"; text: string } | null;
   navSlot?: SafeHtml;
   body: SafeHtml;
+  ogMeta?: {
+    title: string;
+    description?: string;
+    imageUrl?: string;
+    pageUrl: string;
+  };
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -102,12 +108,23 @@ export function layout(opts: LayoutOptions): SafeHtml {
     ? html`<div class="flash flash-${opts.flash.kind}">${opts.flash.text}</div>`
     : "";
 
+  const og = opts.ogMeta;
+
   return html`<!doctype html>
     <html lang="en">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>${opts.title} — RDOC Fleetplanner</title>
+        ${og
+          ? html`<meta property="og:type" content="website" />
+              <meta property="og:site_name" content="RDOC Fleetplanner" />
+              <meta property="og:title" content="${og.title}" />
+              ${og.description ? html`<meta property="og:description" content="${og.description}" />` : ""}
+              ${og.imageUrl ? html`<meta property="og:image" content="${og.imageUrl}" />` : ""}
+              <meta property="og:url" content="${og.pageUrl}" />
+              <meta name="twitter:card" content="summary_large_image" />`
+          : ""}
         <style>
           ${safe(CSS)}
         </style>
