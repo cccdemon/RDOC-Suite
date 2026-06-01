@@ -177,6 +177,10 @@ export function App(): JSX.Element {
   // Mission voice: commander room only (global is handled via the relay path).
   const missionCommanderRef = useRef<FleetAudio | null>(null);
   const currentMissionCommanderRoomRef = useRef<string | null>(null);
+  // The opId this mission link joined. Pinned on first poll so a mission
+  // close/switch is detected (and ends the mission) instead of silently
+  // hopping the user onto the next active op.
+  const missionOpIdRef = useRef<string | null>(null);
   // Last guild-bridge LiveKit creds (from bridge:joined / audio:enable).
   // Used to resume guild audio after a mission ends — mission mode
   // suppresses the bridge LiveKit session so LOCAL voice truly switches
@@ -801,6 +805,7 @@ export function App(): JSX.Element {
   const onMissionDisconnect = useCallback(async () => {
     await missionCommanderRef.current?.disconnect();
     currentMissionCommanderRoomRef.current = null;
+    missionOpIdRef.current = null;
     await clearMissionConfig();
     setState((s) => ({
       ...s,
@@ -886,11 +891,25 @@ export function App(): JSX.Element {
         if (!res.ok) return;
         const data = (await res.json()) as MissionVoiceResponse;
 
-        if (!data.op) {
-          // No active session — disconnect + mark ended if we were active
-          if (stateRef.current.missionActive) {
+        const pinnedOpId = missionOpIdRef.current;
+        // End the mission when EITHER there is no active op, OR the active
+        // op is a DIFFERENT one than the one this link joined. The mission
+        // token is not op-bound, so the backend would otherwise hand us the
+        // NEXT active op and the app would silently hop missions. Closing a
+        // mission must kick everyone out — not roll them onto another op.
+        const missionEndedNow =
+          !data.op || (pinnedOpId !== null && data.op.opId !== pinnedOpId);
+        if (missionEndedNow) {
+          // Only act if we had actually joined (pinned) — otherwise we're
+          // just waiting for the linked op to open; keep polling silently.
+          if (pinnedOpId !== null) {
             await missionCommanderRef.current?.disconnect();
             currentMissionCommanderRoomRef.current = null;
+            missionOpIdRef.current = null;
+            // Drop the token so polling stops — re-joining requires a fresh
+            // mission link. Authorized users fall back to bridge mode (the
+            // bridge↔mission audio effect resumes guild audio).
+            await clearMissionConfig();
             setState((s) => ({
               ...s,
               missionActive: false,
@@ -898,13 +917,19 @@ export function App(): JSX.Element {
               missionHasCommander: false,
               commanderStatus: "idle",
               commanderPttActive: false,
+              missionToken: null,
+              missionUrl: null,
               missionEnded: true,
             }));
           }
           return;
         }
+        if (!data.op) return; // narrowing — handled above
 
-        const { opTitle, livekitUrl, commanderRoom } = data.op;
+        const { opId, opTitle, livekitUrl, commanderRoom } = data.op;
+        // Pin the op on first successful poll so later polls can detect a
+        // close/switch instead of following the backend onto the next op.
+        missionOpIdRef.current = opId;
 
         // Commander room (only if returned)
         if (commanderRoom) {

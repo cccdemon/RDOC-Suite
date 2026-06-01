@@ -3,6 +3,15 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-02: Companion Mission-Close kickt statt zu switchen
+
+Bug: mission-token ist nicht op-gebunden; `/api/companion/mission-voice` liefert dynamisch
+"nächste aktive op" → beim Schließen einer Mission sprang die App auf die nächste statt
+rauszuwerfen. Fix (companion-only): `missionOpIdRef` pinnt die opId beim ersten poll; liefert
+poll op:null ODER andere opId → Mission beenden (disconnect + `clearMissionConfig` stoppt
+polling + missionEnded), KEIN switch. Bridge-resume via bestehendem bridge↔mission-effekt.
+Re-join braucht frischen Link. `missionOpIdRef` auch in onMissionDisconnect zurückgesetzt.
+
 ## Queued / Planned Step - 2026-06-02: Companion Funk-Routing-Anzeige
 
 App.tsx: neue "FUNK"-strip-zeile unter dem status-strip zeigt verbundenen raum + sprech-ziel.
