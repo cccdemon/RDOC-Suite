@@ -113,8 +113,10 @@ function opTypeClass(opType: string): string {
 
 function opUiSwitch(bp: string, opId: string, mode: "classic" | "new", tab = "overview"): SafeHtml {
   return html`<span class="nav-ui-switch" aria-label="Operation UI switch">
-    <a href="${bp}/ops/${opId}" class="${mode === "classic" ? "active" : ""}">Classic</a>
-    <a href="${bp}/ops/${opId}?ui=new&tab=${tab}" class="${mode === "new" ? "active" : ""}">New</a>
+    <a href="${bp}/ops/${opId}?ui=classic" class="${mode === "classic" ? "active" : ""}"
+      >Classic</a
+    >
+    <a href="${bp}/ops/${opId}?tab=${tab}" class="${mode === "new" ? "active" : ""}">New</a>
   </span>`;
 }
 
@@ -1392,7 +1394,7 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
 
 // ── Operation form (create / edit) ──────────────────────────────────
 
-// New operation detail flow behind ?ui=new.
+// Default operation detail flow. Classic remains available through ?ui=classic.
 export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -1409,8 +1411,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const crewWaiting = op.crewRequests.length;
   const tabNames = ["overview", "fleet", "crew", "voice", "admin"];
   const activeTab = tabNames.includes(opts.tab ?? "") ? opts.tab! : "overview";
-  const tabUrl = (tab: string) => `${bp}/ops/${op.id}?ui=new&tab=${tab}`;
-  const classicUrl = `${bp}/ops/${op.id}`;
+  const tabUrl = (tab: string) => `${bp}/ops/${op.id}?tab=${tab}`;
+  const classicUrl = `${bp}/ops/${op.id}?ui=classic`;
   const returnFields = (tab: string) => html`
     <input type="hidden" name="ui" value="new" />
     <input type="hidden" name="tab" value="${tab}" />
@@ -1428,6 +1430,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </div>`;
 
   const unitName = (unit: UnitFull) =>
+    unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+
+  const unitTypeLabel = (unit: UnitFull) => (unit.unitType === "ship" ? "SHIP" : "FPS");
+
+  const unitTypeDetail = (unit: UnitFull) =>
     unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
 
   const seatRow = (unit: UnitFull, seat: UnitFull["seats"][number]) => {
@@ -1537,83 +1544,95 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ? activeUnits.map((unit) => {
         const seats = unit.seats.filter((seat) => seat.active);
         const assigned = seats.filter((seat) => seat.userId).length;
-        return html`<div class="opv2-unit-card">
-          <div class="opv2-row">
-            <div>
+        const free = Math.max(seats.length - assigned, 0);
+        const unitActions = html`
+          ${canManage && unit.status === "accepted"
+            ? html`<div class="opv2-actions">
+                <form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
+                  class="inline"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <input type="hidden" name="role" value="commander" />
+                  <button type="submit" class="btn btn-sm btn-gold">Commander</button>
+                </form>
+                <form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
+                  class="inline"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <input type="hidden" name="role" value="admiral" />
+                  <button type="submit" class="btn btn-sm btn-gold">Admiral</button>
+                </form>
+              </div>`
+            : safe("")}
+          ${isLeader && unit.status === "pending"
+            ? html`<div class="opv2-actions">
+                <form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/units/${unit.id}/accept"
+                  class="inline"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <button type="submit" class="btn btn-sm btn-green">Accept</button>
+                </form>
+                <form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/units/${unit.id}/reject"
+                  class="inline"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                </form>
+              </div>`
+            : safe("")}
+          ${(user && unit.captainId === user.id) || canManage
+            ? html`<form
+                method="post"
+                action="${bp}/api/ops/${op.id}/units/${unit.id}/delete"
+                class="inline"
+              >
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                ${returnFields("fleet")}
+                <button
+                  type="submit"
+                  class="btn btn-sm btn-ghost"
+                  onclick="return confirm('Delete this unit?')"
+                >
+                  Delete
+                </button>
+              </form>`
+            : safe("")}
+        `;
+
+        return html`<details class="opv2-unit-card" open>
+          <summary class="opv2-unit-summary">
+            <div class="opv2-unit-main">
               <strong>${unitName(unit)}</strong>
               <span>Captain: ${unit.captain.username}</span>
             </div>
-            <div class="opv2-row-meta">
-              ${statusTag(unit.status)}
+            <div class="opv2-unit-facts">
+              <span class="tag ${unit.unitType === "ship" ? "tag-cyan" : "tag-gold"}"
+                >${unitTypeLabel(unit)}</span
+              >
+              <span class="opv2-unit-detail">${unitTypeDetail(unit)}</span>
+              <span class="tag ${free > 0 ? "tag-green" : "tag-dim"}">${free} free</span>
               <span class="text-mono">${assigned}/${seats.length} seats</span>
-              ${canManage && unit.status === "accepted"
-                ? html`<div class="opv2-actions">
-                    <form
-                      method="post"
-                      action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
-                      class="inline"
-                    >
-                      <input type="hidden" name="_csrf" value="${csrf}" />
-                      ${returnFields("fleet")}
-                      <input type="hidden" name="role" value="commander" />
-                      <button type="submit" class="btn btn-sm btn-gold">Commander</button>
-                    </form>
-                    <form
-                      method="post"
-                      action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
-                      class="inline"
-                    >
-                      <input type="hidden" name="_csrf" value="${csrf}" />
-                      ${returnFields("fleet")}
-                      <input type="hidden" name="role" value="admiral" />
-                      <button type="submit" class="btn btn-sm btn-gold">Admiral</button>
-                    </form>
-                  </div>`
-                : safe("")}
-              ${isLeader && unit.status === "pending"
-                ? html`<div class="opv2-actions">
-                    <form
-                      method="post"
-                      action="${bp}/api/ops/${op.id}/units/${unit.id}/accept"
-                      class="inline"
-                    >
-                      <input type="hidden" name="_csrf" value="${csrf}" />
-                      ${returnFields("fleet")}
-                      <button type="submit" class="btn btn-sm btn-green">Accept</button>
-                    </form>
-                    <form
-                      method="post"
-                      action="${bp}/api/ops/${op.id}/units/${unit.id}/reject"
-                      class="inline"
-                    >
-                      <input type="hidden" name="_csrf" value="${csrf}" />
-                      ${returnFields("fleet")}
-                      <button type="submit" class="btn btn-sm btn-danger">Reject</button>
-                    </form>
-                  </div>`
-                : safe("")}
-              ${(user && unit.captainId === user.id) || canManage
-                ? html`<form
-                    method="post"
-                    action="${bp}/api/ops/${op.id}/units/${unit.id}/delete"
-                    class="inline"
-                  >
-                    <input type="hidden" name="_csrf" value="${csrf}" />
-                    ${returnFields("fleet")}
-                    <button
-                      type="submit"
-                      class="btn btn-sm btn-ghost"
-                      onclick="return confirm('Delete this unit?')"
-                    >
-                      Delete
-                    </button>
-                  </form>`
-                : safe("")}
+              ${statusTag(unit.status)}
             </div>
+          </summary>
+          <div class="opv2-unit-body">
+            ${unitActions}
+            <div class="opv2-seat-list">${unit.seats.map((seat) => seatRow(unit, seat))}</div>
+            ${seatSetup(unit)}
           </div>
-          <div class="opv2-seat-list">${unit.seats.map((seat) => seatRow(unit, seat))}</div>
-          ${seatSetup(unit)}
-        </div>`;
+        </details>`;
       })
     : [html`<p class="text-dim text-sm">No registered units yet.</p>`];
 

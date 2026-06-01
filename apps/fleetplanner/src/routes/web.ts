@@ -375,7 +375,7 @@ export async function webRoutes(app: FastifyInstance) {
     ) {
       voiceControl = await buildOpVoiceControl(op).catch(() => null);
     }
-    const detailPage = req.query.ui === "new" ? opDetailPageV2 : opDetailPage;
+    const detailPage = req.query.ui === "classic" ? opDetailPage : opDetailPageV2;
     reply.header("Cache-Control", "no-store");
     htmlReply(
       reply,
@@ -605,7 +605,7 @@ export async function webRoutes(app: FastifyInstance) {
       if (scheduledAt && !parsedDate) {
         const target =
           req.body.ui === "new"
-            ? `/ops/${req.params.id}?ui=new&tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Invalid+date`
+            ? `/ops/${req.params.id}?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Invalid+date`
             : `/ops/${req.params.id}/edit?flash=error:Invalid+date`;
         return reply.redirect(basePath(target), 302);
       }
@@ -639,13 +639,13 @@ export async function webRoutes(app: FastifyInstance) {
 
         const target =
           req.body.ui === "new"
-            ? `/ops/${req.params.id}?ui=new&tab=${encodeURIComponent(req.body.tab || "overview")}&flash=ok:Saved.`
+            ? `/ops/${req.params.id}?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=ok:Saved.`
             : `/ops/${req.params.id}?flash=ok:Saved.`;
         return reply.redirect(basePath(target), 302);
       } catch {
         const target =
           req.body.ui === "new"
-            ? `/ops/${req.params.id}?ui=new&tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Save+failed`
+            ? `/ops/${req.params.id}?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Save+failed`
             : `/ops/${req.params.id}/edit?flash=error:Save+failed`;
         return reply.redirect(basePath(target), 302);
       }
