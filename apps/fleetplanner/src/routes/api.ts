@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireAuth, requireOpRole } from "../auth/middleware.js";
 import { effectiveOpRole } from "../services/guilds.js";
 import { basePath, getEnv } from "../config/env.js";
@@ -47,6 +47,14 @@ import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../serv
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 import { specForShip, specForSquad } from "../services/seats.js";
+
+function setCompanionCors(reply: FastifyReply, request: FastifyRequest): void {
+  const origin = request.headers.origin;
+  reply.header("access-control-allow-origin", typeof origin === "string" && origin ? origin : "null");
+  reply.header("vary", "Origin");
+  reply.header("access-control-allow-methods", "GET, OPTIONS");
+  reply.header("access-control-allow-headers", "authorization, content-type");
+}
 
 function csrfOk(body: Record<string, unknown>, csrfToken: string): boolean {
   return typeof body._csrf === "string" && body._csrf === csrfToken;
@@ -1237,7 +1245,13 @@ export async function apiRoutes(app: FastifyInstance) {
   // by /auth/discord/companion/callback. Returns the caller's active fleet
   // unit room token (if in an accepted unit in an active op) and, if they
   // hold the guild's globalVoiceRoleId Discord role, a global voice token.
+  app.options("/api/companion/voice", async (req, reply) => {
+    setCompanionCors(reply, req);
+    return reply.code(204).send();
+  });
+
   app.get("/api/companion/voice", async (req, reply) => {
+    setCompanionCors(reply, req);
     const authHeader = (req.headers as Record<string, string | undefined>).authorization;
     if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
     const userId = await loadCompanionSession(authHeader.slice(7));
@@ -1306,7 +1320,13 @@ export async function apiRoutes(app: FastifyInstance) {
   // ── Mission Voice Session — companion polling endpoint ──────────────
   // Returns the two mission voice rooms (global + optional commander)
   // for the user's currently active operation.
+  app.options("/api/companion/mission-voice", async (req, reply) => {
+    setCompanionCors(reply, req);
+    return reply.code(204).send();
+  });
+
   app.get("/api/companion/mission-voice", async (req, reply) => {
+    setCompanionCors(reply, req);
     const authHeader = (req.headers as Record<string, string | undefined>).authorization;
     if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
     const userId = await loadMissionVoiceSession(authHeader.slice(7));
