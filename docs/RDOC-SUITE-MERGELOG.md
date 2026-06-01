@@ -3,6 +3,14 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Composition-Rebuild — Plan-Dokument
+
+User: Composition-Teil "stellenweise unlogisch / nicht intuitiv". Pain (priorisiert):
+Darstellung/Übersicht, Zuordnung Units→Requirement, Gruppen/Requirements-Struktur. Tiefe:
+**erst Plan-Dokument** (kein Code). → `docs/composition-rebuild-plan.md` mit Ist-Analyse
+(CompositionGroup/CompositionRequirement/FleetUnit.requirementId, pages.ts groupsSection:639,
+registerForm:819), Soll-Modell, UI-Vorschlag, Migration, Rollout. Code-Umbau erst nach Freigabe.
+
 ## Queued / Planned Step - 2026-06-01: Fleetplanner Op-Detail — Commanders-Tab + Overview-Metriken
 
 Befund: `missionVoiceSection` (web/pages.ts:959, inkl. Copy-Button) war **toter Code** — nie in
