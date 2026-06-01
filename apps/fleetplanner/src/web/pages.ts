@@ -1554,6 +1554,10 @@ export function bridgeGuildConfigPage(opts: {
       <p class="page-subtitle text-mono">${opts.guildId}</p>
       <p style="margin-top:.5rem">
         <a href="${bp}/admin/bridge">← All guilds</a>
+        &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/dashboard">Dashboard</a>
+        &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/sessions">Sessions</a>
+        &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/discord-voice">Discord Voice</a>
+        &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/relay-bots">Relay Bots</a>
         &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/monitoring">Monitoring</a>
         &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/audit">Audit log</a>
       </p>
@@ -1688,6 +1692,382 @@ export function bridgeAuditPage(opts: {
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+// ── Bridge Phase 2 panels: Dashboard / Sessions / Relay Bots / Discord Voice ──
+
+function bridgeBackLink(bp: string, guildId: string, label: string): SafeHtml {
+  return html`<p style="margin-top:.5rem"><a href="${bp}/admin/bridge/${guildId}">← ${label}</a></p>`;
+}
+
+function healthDot(ok: boolean): SafeHtml {
+  return html`<span class="tag ${ok ? "tag-green" : "tag-red"}">${ok ? "OK" : "DOWN"}</span>`;
+}
+
+export function bridgeDashboardPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guildId: string;
+  guildName: string;
+  dashboard: {
+    enabled: boolean;
+    health: { bridgeOk: boolean; botOk: boolean; livekitOk: boolean };
+    activeCommanders: Array<{ userId: string; displayName?: string; speaking: boolean }>;
+    commanderRoleMembers: Array<{ userId: string; displayName: string; inVoice: boolean; inAllowedChannel: boolean }>;
+  } | null;
+  error?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const d = opts.dashboard;
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">DASHBOARD</h1>
+      <p class="page-subtitle text-mono">${opts.guildName}</p>
+      ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
+    </div>
+    ${!d
+      ? html`<div class="flash flash-error">Bridge unreachable${opts.error ? html`: ${opts.error}` : ""}</div>`
+      : html`
+        <div class="section">
+          <div class="section-title">Health</div>
+          <div class="card" style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap">
+            <div><span class="text-dim text-sm">Guild</span><br>${d.enabled ? html`<span class="tag tag-green">ENABLED</span>` : html`<span class="tag tag-dim">DISABLED</span>`}</div>
+            <div><span class="text-dim text-sm">Bridge</span><br>${healthDot(d.health.bridgeOk)}</div>
+            <div><span class="text-dim text-sm">Bot</span><br>${healthDot(d.health.botOk)}</div>
+            <div><span class="text-dim text-sm">LiveKit</span><br>${healthDot(d.health.livekitOk)}</div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">Active commanders (${String(d.activeCommanders.length)})</div>
+          ${d.activeCommanders.length === 0
+            ? html`<p class="text-dim">None connected.</p>`
+            : html`<div style="overflow-x:auto"><table class="user-table">
+                <thead><tr><th>User</th><th>Discord ID</th><th>Status</th></tr></thead>
+                <tbody>${d.activeCommanders.map((c) => html`
+                  <tr>
+                    <td>${c.displayName ?? c.userId}</td>
+                    <td class="text-mono text-sm text-dim">${c.userId}</td>
+                    <td>${c.speaking ? html`<span class="tag tag-cyan">SPEAKING</span>` : html`<span class="tag tag-dim">idle</span>`}</td>
+                  </tr>`)}</tbody>
+              </table></div>`}
+        </div>
+        <div class="section">
+          <div class="section-title">Commander roster (${String(d.commanderRoleMembers.length)})</div>
+          ${d.commanderRoleMembers.length === 0
+            ? html`<p class="text-dim">No members with a configured commander role (or bot can't read members).</p>`
+            : html`<div style="overflow-x:auto"><table class="user-table">
+                <thead><tr><th>User</th><th>Discord ID</th><th>Voice</th><th></th></tr></thead>
+                <tbody>${d.commanderRoleMembers.map((m) => html`
+                  <tr>
+                    <td>${m.displayName}</td>
+                    <td class="text-mono text-sm text-dim">${m.userId}</td>
+                    <td>${m.inAllowedChannel ? html`<span class="tag tag-green">in allowed ch</span>` : m.inVoice ? html`<span class="tag tag-gold">in voice</span>` : html`<span class="tag tag-dim">offline</span>`}</td>
+                    <td class="text-right">
+                      <form method="post" action="${bp}/admin/bridge/${opts.guildId}/commander-roles/${m.userId}/strip" class="inline" onsubmit="return confirm('Strip all commander roles from ${m.displayName}?')">
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        <button type="submit" class="btn btn-sm btn-danger">Strip roles</button>
+                      </form>
+                    </td>
+                  </tr>`)}</tbody>
+              </table></div>`}
+        </div>`}`;
+
+  return layout({
+    title: "Bridge Dashboard",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function bridgeSessionsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guildId: string;
+  guildName: string;
+  sessions: Array<{ id: string; label: string; status: string; createdAt: string; inviteCount?: number }>;
+  error?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">SESSIONS</h1>
+      <p class="page-subtitle text-mono">${opts.guildName}</p>
+      ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
+    </div>
+    ${opts.error ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>` : html`
+      <div class="section">
+        <div class="section-title">New session</div>
+        <div class="card" style="padding:1.25rem">
+          <form method="post" action="${bp}/admin/bridge/${opts.guildId}/sessions" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <label class="text-sm text-dim" style="flex:1 1 16rem">Label
+              <input type="text" name="label" placeholder="Op Nightfall" maxlength="80" required />
+            </label>
+            <button type="submit" class="btn btn-cyan">Create session</button>
+          </form>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Active sessions (${String(opts.sessions.length)})</div>
+        ${opts.sessions.length === 0
+          ? html`<p class="text-dim">No active sessions.</p>`
+          : html`<div style="overflow-x:auto"><table class="user-table">
+              <thead><tr><th>Label</th><th>Created</th><th>Invites</th><th></th></tr></thead>
+              <tbody>${opts.sessions.map((s) => html`
+                <tr>
+                  <td><a href="${bp}/admin/bridge/${opts.guildId}/sessions/${s.id}">${s.label}</a></td>
+                  <td class="text-dim text-sm">${s.createdAt}</td>
+                  <td class="text-mono">${String(s.inviteCount ?? 0)}</td>
+                  <td class="text-right">
+                    <form method="post" action="${bp}/admin/bridge/${opts.guildId}/sessions/${s.id}/end" class="inline" onsubmit="return confirm('End session ${s.label}?')">
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <button type="submit" class="btn btn-sm btn-danger">End</button>
+                    </form>
+                  </td>
+                </tr>`)}</tbody>
+            </table></div>`}
+      </div>`}`;
+
+  return layout({
+    title: "Bridge Sessions",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function bridgeSessionDetailPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guildId: string;
+  guildName: string;
+  session: { id: string; label: string; status: string; createdAt: string; livekitRoom: string };
+  invites: Array<{ id: string; label: string; createdAt: string; expiresAt: string; usedAt: string | null; usedBy: string | null }>;
+  freshInvite?: { plaintext: string; label: string };
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const s = opts.session;
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">${s.label}</h1>
+      <p class="page-subtitle text-mono">${s.status.toUpperCase()} · room ${s.livekitRoom}</p>
+      <p style="margin-top:.5rem"><a href="${bp}/admin/bridge/${opts.guildId}/sessions">← All sessions</a></p>
+    </div>
+    ${opts.freshInvite ? html`
+      <div class="flash flash-ok">
+        New invite "${opts.freshInvite.label}" — token (shown once): <span class="text-mono">${opts.freshInvite.plaintext}</span>
+      </div>` : ""}
+    <div class="section">
+      <div class="section-title">Mint invite</div>
+      <div class="card" style="padding:1.25rem">
+        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/sessions/${s.id}/invites" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <label class="text-sm text-dim" style="flex:1 1 12rem">Label
+            <input type="text" name="label" placeholder="Commander A" maxlength="80" required />
+          </label>
+          <label class="text-sm text-dim">TTL (hours)
+            <input type="number" name="ttlHours" min="1" max="168" value="24" style="width:6rem" />
+          </label>
+          <button type="submit" class="btn btn-cyan">Mint</button>
+        </form>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title">Invites (${String(opts.invites.length)})</div>
+      ${opts.invites.length === 0
+        ? html`<p class="text-dim">No invites yet.</p>`
+        : html`<div style="overflow-x:auto"><table class="user-table">
+            <thead><tr><th>Label</th><th>Expires</th><th>Status</th><th></th></tr></thead>
+            <tbody>${opts.invites.map((inv) => html`
+              <tr>
+                <td>${inv.label}</td>
+                <td class="text-dim text-sm">${inv.expiresAt}</td>
+                <td>${inv.usedAt ? html`<span class="tag tag-dim">used</span>` : html`<span class="tag tag-green">unused</span>`}</td>
+                <td class="text-right">
+                  ${inv.usedAt ? "" : html`<form method="post" action="${bp}/admin/bridge/${opts.guildId}/sessions/${s.id}/invites/${inv.id}/revoke" class="inline">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+                  </form>`}
+                </td>
+              </tr>`)}</tbody>
+          </table></div>`}
+    </div>`;
+
+  return layout({
+    title: "Bridge Session",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function bridgeRelayBotsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guildId: string;
+  guildName: string;
+  config: {
+    livekitUrl: string;
+    livekitApiKey: string;
+    livekitApiSecret: string;
+    roomName: string;
+    guildId: string;
+    bots: Array<{ name: string; token: string; channelId: string }>;
+  } | null;
+  error?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const c = opts.config;
+
+  // Bots are edited as a JSON textarea (keeps the SSR form simple, no
+  // client JS). Matches the relayConfigSchema the bridge validates.
+  const botsJson = c ? JSON.stringify(c.bots, null, 2) : "[]";
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">RELAY BOTS</h1>
+      <p class="page-subtitle text-mono">${opts.guildName} · singleton config</p>
+      ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
+    </div>
+    ${!c ? html`<div class="flash flash-error">Bridge unreachable${opts.error ? html`: ${opts.error}` : ""}</div>` : html`
+      <div class="section">
+        <div class="section-title">LiveKit + bots</div>
+        <div class="card" style="padding:1.5rem">
+          <form method="post" action="${bp}/admin/bridge/${opts.guildId}/relay-bots/config">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <div class="form-row">
+              <div class="form-group"><label>LiveKit URL</label><input type="text" name="livekitUrl" value="${c.livekitUrl}" placeholder="wss://voice.raumdock.org" /></div>
+              <div class="form-group"><label>Room name</label><input type="text" name="roomName" value="${c.roomName}" /></div>
+            </div>
+            <div class="form-row">
+              <div class="form-group"><label>LiveKit API key</label><input type="text" name="livekitApiKey" value="${c.livekitApiKey}" /></div>
+              <div class="form-group"><label>LiveKit API secret</label><input type="text" name="livekitApiSecret" value="${c.livekitApiSecret}" /></div>
+            </div>
+            <div class="form-group"><label>Relay guild ID</label><input type="text" name="guildId" value="${c.guildId}" placeholder="123456789012345678" /></div>
+            <div class="form-group">
+              <label>Bots (JSON array of {name, token, channelId})</label>
+              <textarea name="botsJson" rows="8" class="text-mono">${botsJson}</textarea>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-cyan">Save + reload</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-title">Service</div>
+        <div class="card" style="padding:1.25rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+          <form method="post" action="${bp}/admin/bridge/${opts.guildId}/relay-bots/restart" class="inline">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <button type="submit" class="btn btn-gold btn-sm">Restart relay-bots service</button>
+          </form>
+          <span class="text-dim text-sm">Live metrics are visible in the bridge admin UI; this panel manages config + restart.</span>
+        </div>
+      </div>`}`;
+
+  return layout({
+    title: "Bridge Relay Bots",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function bridgeDiscordVoicePage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guildId: string;
+  guildName: string;
+  channels: Array<{ id: string; name: string }>;
+  roles: Array<{ id: string; name: string }>;
+  members: Array<{ userId: string; displayName: string; channelId: string | null }>;
+  offline?: boolean;
+  error?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const channelName = new Map(opts.channels.map((c) => [c.id, c.name]));
+
+  const channelOptions = (selected: string | null): SafeHtml => html`
+    <option value="" ${selected === null ? safe("selected") : ""}>— disconnect —</option>
+    ${opts.channels.map((c) => html`<option value="${c.id}" ${selected === c.id ? safe("selected") : ""}>${c.name}</option>`)}`;
+
+  const memberRows = opts.members.map((m) => html`
+    <tr>
+      <td>${m.displayName}</td>
+      <td class="text-dim text-sm">${m.channelId ? channelName.get(m.channelId) ?? m.channelId : safe("—")}</td>
+      <td>
+        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/discord-voice/move/${m.userId}" style="display:flex;gap:.5rem;align-items:center">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <select name="channelId" style="width:auto">${channelOptions(m.channelId)}</select>
+          <button type="submit" class="btn btn-sm btn-ghost">Move</button>
+        </form>
+      </td>
+      <td>
+        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/discord-voice/role/${m.userId}" style="display:flex;gap:.5rem;align-items:center">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <select name="roleId" style="width:auto">
+            ${opts.roles.map((r) => html`<option value="${r.id}">${r.name}</option>`)}
+          </select>
+          <button type="submit" name="action" value="add" class="btn btn-sm btn-green">Add</button>
+          <button type="submit" name="action" value="remove" class="btn btn-sm btn-danger">Remove</button>
+        </form>
+      </td>
+    </tr>`);
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">DISCORD VOICE</h1>
+      <p class="page-subtitle text-mono">${opts.guildName}</p>
+      ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
+    </div>
+    ${opts.error ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>` : ""}
+    ${opts.offline ? html`<div class="flash flash-warn">Discord not configured on the bridge — live data unavailable.</div>` : ""}
+    <div class="section">
+      <div class="section-title">Members in voice (${String(opts.members.length)})</div>
+      ${opts.members.length === 0
+        ? html`<p class="text-dim">No members currently in tracked voice channels.</p>`
+        : html`<div style="overflow-x:auto"><table class="user-table">
+            <thead><tr><th>User</th><th>Channel</th><th>Move</th><th>Role</th></tr></thead>
+            <tbody>${memberRows}</tbody>
+          </table></div>`}
+      <p class="text-dim text-sm" style="margin-top:1rem">Server-rendered snapshot — reload the page to refresh. Live drag-drop stays in the bridge admin UI.</p>
+    </div>`;
+
+  return layout({
+    title: "Bridge Discord Voice",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
     body,
   });
 }

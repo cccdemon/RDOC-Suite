@@ -8,6 +8,11 @@ import {
   bridgeGuildConfigPage,
   bridgeMonitoringPage,
   bridgeAuditPage,
+  bridgeDashboardPage,
+  bridgeSessionsPage,
+  bridgeSessionDetailPage,
+  bridgeRelayBotsPage,
+  bridgeDiscordVoicePage,
 } from "../web/pages.js";
 import {
   bridgeConfigured,
@@ -18,7 +23,24 @@ import {
   removeBridgeAdmin,
   getBridgeMonitoring,
   getBridgeAudit,
+  getBridgeDashboard,
+  stripBridgeCommanderRoles,
+  listBridgeSessions,
+  createBridgeSession,
+  getBridgeSession,
+  endBridgeSession,
+  mintBridgeSessionInvite,
+  revokeBridgeSessionInvite,
+  getBridgeRelayConfig,
+  saveBridgeRelayConfig,
+  restartBridgeRelayBots,
+  getBridgeVoiceStates,
+  getBridgeDiscordRoles,
+  moveBridgeMember,
+  addBridgeMemberRole,
+  removeBridgeMemberRole,
   type AdminRole,
+  type RelayBotEntry,
 } from "../services/bridge.js";
 
 const SNOWFLAKE = /^[0-9]{17,20}$/;
@@ -278,4 +300,329 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       }
     },
   );
+
+  // ── Dashboard ────────────────────────────────────────────────────
+  app.get<{ Params: { guildId: string }; Querystring: { flash?: string } }>(
+    "/admin/bridge/:guildId/dashboard",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const name = await guildName(guildId);
+      try {
+        const dashboard = await getBridgeDashboard(guildId);
+        htmlReply(reply, bridgeDashboardPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name, dashboard,
+        }));
+      } catch (err) {
+        htmlReply(reply, bridgeDashboardPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name, dashboard: null,
+          error: errMsg(err),
+        }));
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; userId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/commander-roles/:userId/strip",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, userId } = req.params;
+      if (!SNOWFLAKE.test(guildId) || !SNOWFLAKE.test(userId)) return reply.code(400).send("Invalid ID");
+      try {
+        await stripBridgeCommanderRoles(guildId, userId);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/dashboard?flash=ok:Commander+roles+stripped.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge strip commander roles failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/dashboard?flash=error:Strip+failed.`), 302);
+      }
+    },
+  );
+
+  // ── Sessions ─────────────────────────────────────────────────────
+  app.get<{ Params: { guildId: string }; Querystring: { flash?: string } }>(
+    "/admin/bridge/:guildId/sessions",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const name = await guildName(guildId);
+      try {
+        const sessions = await listBridgeSessions(guildId);
+        htmlReply(reply, bridgeSessionsPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name,
+          sessions: sessions.map((s) => ({ id: s.id, label: s.label, status: s.status, createdAt: s.createdAt, inviteCount: s.inviteCount })),
+        }));
+      } catch (err) {
+        htmlReply(reply, bridgeSessionsPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name, sessions: [], error: errMsg(err),
+        }));
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/sessions",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const label = req.body.label?.trim().slice(0, 80) ?? "";
+      if (!label) return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions?flash=error:Label+required.`), 302);
+      try {
+        await createBridgeSession(guildId, label);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions?flash=ok:Session+created.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge create session failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions?flash=error:Create+failed.`), 302);
+      }
+    },
+  );
+
+  app.get<{ Params: { guildId: string; sessionId: string }; Querystring: { flash?: string; fresh_token?: string; fresh_label?: string } }>(
+    "/admin/bridge/:guildId/sessions/:sessionId",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      const { guildId, sessionId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      try {
+        const result = await getBridgeSession(guildId, sessionId);
+        if (!result) return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions?flash=error:Session+not+found.`), 302);
+        const fresh = req.query.fresh_token && req.query.fresh_label
+          ? { plaintext: req.query.fresh_token, label: decodeURIComponent(req.query.fresh_label) }
+          : undefined;
+        htmlReply(reply, bridgeSessionDetailPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken, flash: req.query.flash,
+          guildId, guildName: await guildName(guildId),
+          session: { id: result.session.id, label: result.session.label, status: result.session.status, createdAt: result.session.createdAt, livekitRoom: result.session.livekitRoom },
+          invites: result.invites,
+          freshInvite: fresh,
+        }));
+      } catch (err) {
+        app.log.error(err, "bridge session detail failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions?flash=error:Bridge+unreachable.`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; sessionId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/sessions/:sessionId/end",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, sessionId } = req.params;
+      try {
+        await endBridgeSession(guildId, sessionId);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions?flash=ok:Session+ended.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge end session failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions?flash=error:End+failed.`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; sessionId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/sessions/:sessionId/invites",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, sessionId } = req.params;
+      const label = req.body.label?.trim().slice(0, 80) ?? "";
+      const ttlHours = req.body.ttlHours ? Number.parseInt(req.body.ttlHours, 10) : undefined;
+      if (!label) return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions/${sessionId}?flash=error:Label+required.`), 302);
+      try {
+        const invite = await mintBridgeSessionInvite(guildId, sessionId, label, ttlHours && ttlHours > 0 ? ttlHours : undefined);
+        return reply.redirect(
+          basePath(`/admin/bridge/${guildId}/sessions/${sessionId}?fresh_token=${encodeURIComponent(invite.plaintext)}&fresh_label=${encodeURIComponent(invite.label)}`),
+          302,
+        );
+      } catch (err) {
+        app.log.error(err, "bridge mint invite failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions/${sessionId}?flash=error:Mint+failed.`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; sessionId: string; inviteId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/sessions/:sessionId/invites/:inviteId/revoke",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, sessionId, inviteId } = req.params;
+      try {
+        await revokeBridgeSessionInvite(guildId, sessionId, inviteId);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions/${sessionId}?flash=ok:Invite+revoked.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge revoke invite failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/sessions/${sessionId}?flash=error:Revoke+failed.`), 302);
+      }
+    },
+  );
+
+  // ── Relay bots ───────────────────────────────────────────────────
+  app.get<{ Params: { guildId: string }; Querystring: { flash?: string } }>(
+    "/admin/bridge/:guildId/relay-bots",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const name = await guildName(guildId);
+      try {
+        const config = await getBridgeRelayConfig();
+        htmlReply(reply, bridgeRelayBotsPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name, config,
+        }));
+      } catch (err) {
+        htmlReply(reply, bridgeRelayBotsPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name, config: null, error: errMsg(err),
+        }));
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/relay-bots/config",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      let bots: RelayBotEntry[];
+      try {
+        const parsed: unknown = JSON.parse(req.body.botsJson || "[]");
+        if (!Array.isArray(parsed)) throw new Error("bots must be an array");
+        bots = parsed.map((b) => {
+          const o = b as Record<string, unknown>;
+          if (typeof o.name !== "string" || typeof o.token !== "string" || typeof o.channelId !== "string") {
+            throw new Error("each bot needs name, token, channelId");
+          }
+          return { name: o.name, token: o.token, channelId: o.channelId };
+        });
+      } catch (e) {
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/relay-bots?flash=error:Invalid+bots+JSON.`), 302);
+      }
+      try {
+        await saveBridgeRelayConfig({
+          livekitUrl: req.body.livekitUrl?.trim() ?? "",
+          livekitApiKey: req.body.livekitApiKey?.trim() ?? "",
+          livekitApiSecret: req.body.livekitApiSecret?.trim() ?? "",
+          roomName: req.body.roomName?.trim() || "voice-relay",
+          guildId: req.body.guildId?.trim() ?? "",
+          bots,
+        });
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/relay-bots?flash=ok:Relay+config+saved.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge save relay config failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/relay-bots?flash=error:Save+failed+(check+LiveKit+URL).`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/relay-bots/restart",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      try {
+        await restartBridgeRelayBots();
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/relay-bots?flash=ok:Restart+requested.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge relay restart failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/relay-bots?flash=error:Restart+failed.`), 302);
+      }
+    },
+  );
+
+  // ── Discord voice ────────────────────────────────────────────────
+  app.get<{ Params: { guildId: string }; Querystring: { flash?: string } }>(
+    "/admin/bridge/:guildId/discord-voice",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const name = await guildName(guildId);
+      try {
+        const [voice, roles] = await Promise.all([
+          getBridgeVoiceStates(guildId),
+          getBridgeDiscordRoles(guildId),
+        ]);
+        htmlReply(reply, bridgeDiscordVoicePage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name,
+          channels: voice.channels, roles, members: voice.voiceStates, offline: voice.offline,
+        }));
+      } catch (err) {
+        htmlReply(reply, bridgeDiscordVoicePage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name,
+          channels: [], roles: [], members: [], error: errMsg(err),
+        }));
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; userId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/discord-voice/move/:userId",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, userId } = req.params;
+      if (!SNOWFLAKE.test(guildId) || !SNOWFLAKE.test(userId)) return reply.code(400).send("Invalid ID");
+      const channelId = req.body.channelId?.trim() || null;
+      try {
+        await moveBridgeMember(guildId, userId, channelId);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/discord-voice?flash=ok:Member+moved.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge move member failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/discord-voice?flash=error:Move+failed.`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; userId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/discord-voice/role/:userId",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, userId } = req.params;
+      if (!SNOWFLAKE.test(guildId) || !SNOWFLAKE.test(userId)) return reply.code(400).send("Invalid ID");
+      const roleId = req.body.roleId?.trim() ?? "";
+      const action = req.body.action === "remove" ? "remove" : "add";
+      if (!SNOWFLAKE.test(roleId)) return reply.redirect(basePath(`/admin/bridge/${guildId}/discord-voice?flash=error:Invalid+role.`), 302);
+      try {
+        if (action === "add") await addBridgeMemberRole(guildId, userId, roleId);
+        else await removeBridgeMemberRole(guildId, userId, roleId);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/discord-voice?flash=ok:Role+${action === "add" ? "added" : "removed"}.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge role change failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/discord-voice?flash=error:Role+change+failed.`), 302);
+      }
+    },
+  );
+}
+
+function errMsg(err: unknown): string {
+  return String(err instanceof Error ? err.message : err);
 }

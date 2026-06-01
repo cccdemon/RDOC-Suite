@@ -1,12 +1,33 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { getPrisma } from "@rdoc-suite/db";
-import { getEnv } from "../config/env.js";
+import { getEnv, getOAuthEnv } from "../config/env.js";
 import { logger } from "../services/logger.js";
 import { readGuildConfig, saveGuildConfig } from "../services/guildConfig.js";
 import { addAdmin, listAdmins } from "../services/admins.js";
 import { monitoringSnapshot } from "../services/monitoring.js";
 import { listRecentAudit, countAudit } from "../services/audit.js";
+import { fleetDashboard, stripCommanderRoles } from "../services/fleetAdmin.js";
+import {
+  createSession,
+  endSession,
+  getSession,
+  listActiveSessions,
+  mintSessionInvite,
+  listSessionInvites,
+  revokeSessionInvite,
+} from "../services/sessions.js";
+import {
+  getRelayBotsConfig,
+  setRelayBotsConfig,
+  notifyRelayBotsReload,
+} from "../services/relayBotsConfig.js";
+import { getCachedChannels, getCachedRoles } from "../services/discordMetaCache.js";
+import {
+  moveGuildMember,
+  addGuildMemberRole,
+  removeGuildMemberRole,
+} from "../auth/discord.js";
 
 const SNOWFLAKE = /^[0-9]{17,20}$/;
 
@@ -34,6 +55,44 @@ const auditQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(500).default(100),
   offset: z.coerce.number().int().nonnegative().default(0),
 });
+
+const createSessionBodySchema = z.object({ label: z.string().min(1).max(80) });
+const mintInviteBodySchema = z.object({
+  label: z.string().min(1).max(80),
+  ttlHours: z.coerce.number().int().min(1).max(168).optional(),
+});
+
+const botEntrySchema = z.object({
+  name: z.string().min(1).max(100),
+  token: z.string().min(1),
+  channelId: z.string().min(1),
+});
+const relayConfigSchema = z.object({
+  livekitUrl: z.string().url(),
+  livekitApiKey: z.string(),
+  livekitApiSecret: z.string(),
+  roomName: z.string().min(1).max(100),
+  guildId: z.string(),
+  bots: z.array(botEntrySchema),
+});
+
+const moveChannelBodySchema = z.object({
+  channelId: z.string().regex(SNOWFLAKE).nullable(),
+});
+
+const memberRoleParamsSchema = z.object({
+  guildId: z.string().regex(SNOWFLAKE),
+  userId: z.string().regex(SNOWFLAKE),
+  roleId: z.string().regex(SNOWFLAKE),
+});
+
+function mapDiscordError(status: number, missingPermissionCode: string): { code: string; status: number } {
+  if (status === 403) return { code: missingPermissionCode, status: 403 };
+  if (status === 404) return { code: "discord_not_found", status: 404 };
+  if (status === 400) return { code: "discord_bad_request", status: 400 };
+  if (status === 429) return { code: "discord_rate_limited", status: 429 };
+  return { code: "discord_api_error", status: 502 };
+}
 
 function badRequest(reply: FastifyReply, error: z.ZodError) {
   return reply.code(400).send({
@@ -186,6 +245,304 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
         countAudit(guildId),
       ]);
       return reply.code(200).send({ entries, total });
+    },
+  );
+
+  // ── Dashboard ────────────────────────────────────────────────────
+  app.get<{ Params: { guildId: string } }>(
+    "/internal/fleet/guilds/:guildId/dashboard",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      return reply.code(200).send(await fleetDashboard(params.data.guildId));
+    },
+  );
+
+  // Strip all configured commander roles from a user (manage roster).
+  app.delete<{ Params: { guildId: string; userId: string } }>(
+    "/internal/fleet/guilds/:guildId/commander-roles/:userId",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = adminParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const result = await stripCommanderRoles(params.data.guildId, params.data.userId);
+      if (!result.ok) {
+        const status =
+          result.reason === "user_not_in_guild" ? 404 :
+          result.reason === "oauth_not_configured" ? 503 :
+          result.reason === "no_commander_roles_configured" ? 409 :
+          result.reason === "partial_failure" ? 502 : 400;
+        return reply.code(status).send({ error: result.reason, removed: result.removed, failed: result.failed });
+      }
+      logger.info({ guildId: params.data.guildId, userId: params.data.userId, removed: result.removed }, "fleet api: stripped commander roles");
+      return reply.code(200).send({ ok: true, removed: result.removed });
+    },
+  );
+
+  // ── Sessions ─────────────────────────────────────────────────────
+  app.get<{ Params: { guildId: string } }>(
+    "/internal/fleet/guilds/:guildId/sessions",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const { guildId } = params.data;
+      const sessions = await listActiveSessions(guildId);
+      const inviteCounts = await Promise.all(
+        sessions.map((s) =>
+          listSessionInvites({ sessionId: s.id, guildId }).then((invs) => invs?.length ?? 0),
+        ),
+      );
+      return reply.code(200).send({
+        sessions: sessions.map((s, i) => ({ ...s, inviteCount: inviteCounts[i] })),
+      });
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/sessions",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = createSessionBodySchema.safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const created = await createSession({
+        guildId: params.data.guildId,
+        label: body.data.label,
+        createdBy: "fleetplanner",
+      });
+      return reply.code(200).send(created);
+    },
+  );
+
+  app.get<{ Params: { guildId: string; sessionId: string } }>(
+    "/internal/fleet/guilds/:guildId/sessions/:sessionId",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const guildId = params.data.guildId;
+      const sessionId = (request.params as { sessionId: string }).sessionId;
+      const [session, invites] = await Promise.all([
+        getSession({ sessionId, guildId }),
+        listSessionInvites({ sessionId, guildId }),
+      ]);
+      if (!session || !invites) return reply.code(404).send({ error: "session_not_found" });
+      return reply.code(200).send({ session, invites });
+    },
+  );
+
+  app.post<{ Params: { guildId: string; sessionId: string } }>(
+    "/internal/fleet/guilds/:guildId/sessions/:sessionId/end",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const sessionId = (request.params as { sessionId: string }).sessionId;
+      const result = await endSession({ sessionId, guildId: params.data.guildId });
+      if (!result.ok && result.reason === "not_found") {
+        return reply.code(404).send({ error: "session_not_found" });
+      }
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
+  app.post<{ Params: { guildId: string; sessionId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/sessions/:sessionId/invites",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = mintInviteBodySchema.safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const sessionId = (request.params as { sessionId: string }).sessionId;
+      const invite = await mintSessionInvite({
+        sessionId,
+        guildId: params.data.guildId,
+        label: body.data.label,
+        createdBy: "fleetplanner",
+        ttlHours: body.data.ttlHours,
+      });
+      if (!invite) return reply.code(404).send({ error: "session_not_found_or_ended" });
+      return reply.code(200).send(invite);
+    },
+  );
+
+  app.post<{ Params: { guildId: string; sessionId: string; inviteId: string } }>(
+    "/internal/fleet/guilds/:guildId/sessions/:sessionId/invites/:inviteId/revoke",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const p = request.params as { sessionId: string; inviteId: string };
+      const ok = await revokeSessionInvite({
+        inviteId: p.inviteId,
+        sessionId: p.sessionId,
+        guildId: params.data.guildId,
+      });
+      return reply.code(200).send({ ok });
+    },
+  );
+
+  // ── Relay bots (singleton config, not guild-scoped) ──────────────
+  app.get("/internal/fleet/relay-bots/config", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    return reply.code(200).send(await getRelayBotsConfig());
+  });
+
+  app.post<{ Body: unknown }>("/internal/fleet/relay-bots/config", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    const body = relayConfigSchema.safeParse(request.body);
+    if (!body.success) return badRequest(reply, body.error);
+    await setRelayBotsConfig(body.data, "fleetplanner");
+    await notifyRelayBotsReload();
+    logger.info("fleet api: saved relay-bots config");
+    return reply.code(200).send({ ok: true });
+  });
+
+  app.get("/internal/fleet/relay-bots/metrics", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    const env = getEnv();
+    if (!env.RELAY_BOTS_ADMIN_URL) return reply.code(200).send({ offline: true });
+    try {
+      const headers: Record<string, string> = {};
+      if (env.RELAY_BOTS_ADMIN_SECRET) {
+        headers.authorization = `Basic ${Buffer.from(`admin:${env.RELAY_BOTS_ADMIN_SECRET}`).toString("base64")}`;
+      }
+      const res = await fetch(`${env.RELAY_BOTS_ADMIN_URL}/api/metrics`, {
+        headers,
+        signal: AbortSignal.timeout(3000),
+      });
+      if (!res.ok) return reply.code(200).send({ offline: true, error: `bots service returned ${res.status}` });
+      return reply.code(200).send(await res.json() as unknown);
+    } catch (err) {
+      return reply.code(200).send({ offline: true, error: String(err) });
+    }
+  });
+
+  app.post("/internal/fleet/relay-bots/restart", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    const env = getEnv();
+    if (!env.RELAY_BOTS_ADMIN_URL) return reply.code(503).send({ error: "relay_bots_not_configured" });
+    try {
+      const headers: Record<string, string> = {};
+      if (env.RELAY_BOTS_ADMIN_SECRET) {
+        headers.authorization = `Basic ${Buffer.from(`admin:${env.RELAY_BOTS_ADMIN_SECRET}`).toString("base64")}`;
+      }
+      const res = await fetch(`${env.RELAY_BOTS_ADMIN_URL}/api/restart`, {
+        method: "POST",
+        headers,
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return reply.code(502).send({ error: `bots service returned ${res.status}` });
+      return reply.code(200).send({ ok: true });
+    } catch (err) {
+      return reply.code(502).send({ error: String(err) });
+    }
+  });
+
+  // ── Discord voice (live role / channel management) ───────────────
+  app.get<{ Params: { guildId: string } }>(
+    "/internal/fleet/guilds/:guildId/discord/voice-states",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const { guildId } = params.data;
+      const oauth = getOAuthEnv();
+      if (!oauth) return reply.code(200).send({ offline: true, channels: [], voiceStates: [] });
+      const [channels, voiceRows] = await Promise.all([
+        getCachedChannels(guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN),
+        getPrisma().userVoiceState.findMany({ where: { guildId, channelId: { not: null } } }),
+      ]);
+      const voiceChannels = channels.filter((c) => c.type === 2);
+      return reply.code(200).send({
+        channels: voiceChannels.map((c) => ({ id: c.id, name: c.name })),
+        voiceStates: voiceRows.map((r) => ({ userId: r.userId, displayName: r.userId, channelId: r.channelId })),
+      });
+    },
+  );
+
+  app.get<{ Params: { guildId: string } }>(
+    "/internal/fleet/guilds/:guildId/discord/roles",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const oauth = getOAuthEnv();
+      if (!oauth) return reply.code(200).send({ roles: [] });
+      const roles = await getCachedRoles(params.data.guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN);
+      return reply.code(200).send({ roles: roles.map((r) => ({ id: r.id, name: r.name })) });
+    },
+  );
+
+  app.patch<{ Params: { guildId: string; userId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/discord/members/:userId/channel",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = adminParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = moveChannelBodySchema.safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const oauth = getOAuthEnv();
+      if (!oauth) return reply.code(503).send({ error: "discord_not_configured" });
+      const res = await moveGuildMember({
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
+        guildId: params.data.guildId,
+        userId: params.data.userId,
+        channelId: body.data.channelId,
+      });
+      if (!res.ok) {
+        const { code, status } = mapDiscordError(res.error.status, "missing_move_members");
+        return reply.code(status).send({ error: code });
+      }
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
+  app.put<{ Params: { guildId: string; userId: string; roleId: string } }>(
+    "/internal/fleet/guilds/:guildId/discord/members/:userId/roles/:roleId",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = memberRoleParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const oauth = getOAuthEnv();
+      if (!oauth) return reply.code(503).send({ error: "discord_not_configured" });
+      const res = await addGuildMemberRole({
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
+        guildId: params.data.guildId,
+        userId: params.data.userId,
+        roleId: params.data.roleId,
+      });
+      if (!res.ok) {
+        const { code, status } = mapDiscordError(res.error.status, "missing_manage_roles");
+        return reply.code(status).send({ error: code });
+      }
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
+  app.delete<{ Params: { guildId: string; userId: string; roleId: string } }>(
+    "/internal/fleet/guilds/:guildId/discord/members/:userId/roles/:roleId",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = memberRoleParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const oauth = getOAuthEnv();
+      if (!oauth) return reply.code(503).send({ error: "discord_not_configured" });
+      const res = await removeGuildMemberRole({
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
+        guildId: params.data.guildId,
+        userId: params.data.userId,
+        roleId: params.data.roleId,
+      });
+      if (!res.ok) {
+        const { code, status } = mapDiscordError(res.error.status, "missing_manage_roles");
+        return reply.code(status).send({ error: code });
+      }
+      return reply.code(200).send({ ok: true });
     },
   );
 }

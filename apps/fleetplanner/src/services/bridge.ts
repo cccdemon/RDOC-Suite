@@ -186,3 +186,230 @@ export async function getBridgeAudit(
   await expectOk(res, "get audit");
   return (await res.json()) as { entries: AuditEntry[]; total: number };
 }
+
+// ── Phase 2: Dashboard ────────────────────────────────────────────────
+
+export type FleetDashboard = {
+  guildId: string;
+  guildName: string | null;
+  enabled: boolean;
+  health: { bridgeOk: boolean; botOk: boolean; livekitOk: boolean };
+  activeCommanders: Array<{ userId: string; displayName?: string; speaking: boolean }>;
+  commanderRoleMembers: Array<{
+    userId: string;
+    displayName: string;
+    inVoice: boolean;
+    inAllowedChannel: boolean;
+  }>;
+};
+
+export async function getBridgeDashboard(guildId: string): Promise<FleetDashboard> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/dashboard`);
+  await expectOk(res, "get dashboard");
+  return (await res.json()) as FleetDashboard;
+}
+
+export async function stripBridgeCommanderRoles(guildId: string, userId: string): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/commander-roles/${userId}`, {
+    method: "DELETE",
+  });
+  await expectOk(res, "strip commander roles");
+}
+
+// ── Phase 2: Sessions ─────────────────────────────────────────────────
+
+export type SessionRecord = {
+  id: string;
+  guildId: string;
+  label: string;
+  createdBy: string;
+  livekitRoom: string;
+  status: "active" | "ended";
+  createdAt: string;
+  endedAt: string | null;
+  inviteCount?: number;
+};
+
+export type SessionInvite = {
+  id: string;
+  label: string;
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  usedBy: string | null;
+};
+
+export type IssuedSessionInvite = {
+  id: string;
+  sessionId: string;
+  label: string;
+  expiresAt: string;
+  plaintext: string;
+};
+
+export async function listBridgeSessions(guildId: string): Promise<SessionRecord[]> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/sessions`);
+  await expectOk(res, "list sessions");
+  return ((await res.json()) as { sessions: SessionRecord[] }).sessions;
+}
+
+export async function createBridgeSession(guildId: string, label: string): Promise<SessionRecord> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/sessions`, {
+    method: "POST",
+    body: JSON.stringify({ label }),
+  });
+  await expectOk(res, "create session");
+  return (await res.json()) as SessionRecord;
+}
+
+export async function getBridgeSession(
+  guildId: string,
+  sessionId: string,
+): Promise<{ session: SessionRecord; invites: SessionInvite[] } | null> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/sessions/${sessionId}`);
+  if (res.status === 404) return null;
+  await expectOk(res, "get session");
+  return (await res.json()) as { session: SessionRecord; invites: SessionInvite[] };
+}
+
+export async function endBridgeSession(guildId: string, sessionId: string): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/sessions/${sessionId}/end`, {
+    method: "POST",
+  });
+  await expectOk(res, "end session");
+}
+
+export async function mintBridgeSessionInvite(
+  guildId: string,
+  sessionId: string,
+  label: string,
+  ttlHours?: number,
+): Promise<IssuedSessionInvite> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/sessions/${sessionId}/invites`, {
+    method: "POST",
+    body: JSON.stringify({ label, ...(ttlHours ? { ttlHours } : {}) }),
+  });
+  await expectOk(res, "mint session invite");
+  return (await res.json()) as IssuedSessionInvite;
+}
+
+export async function revokeBridgeSessionInvite(
+  guildId: string,
+  sessionId: string,
+  inviteId: string,
+): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(
+    `/internal/fleet/guilds/${guildId}/sessions/${sessionId}/invites/${inviteId}/revoke`,
+    { method: "POST" },
+  );
+  await expectOk(res, "revoke session invite");
+}
+
+// ── Phase 2: Relay bots (singleton, not guild-scoped) ─────────────────
+
+export type RelayBotEntry = { name: string; token: string; channelId: string };
+export type RelayBotsConfig = {
+  livekitUrl: string;
+  livekitApiKey: string;
+  livekitApiSecret: string;
+  roomName: string;
+  guildId: string;
+  bots: RelayBotEntry[];
+};
+
+export async function getBridgeRelayConfig(): Promise<RelayBotsConfig> {
+  const res = await bridgeFetch(`/internal/fleet/relay-bots/config`);
+  await expectOk(res, "get relay config");
+  return (await res.json()) as RelayBotsConfig;
+}
+
+export async function saveBridgeRelayConfig(config: RelayBotsConfig): Promise<void> {
+  const res = await bridgeFetch(`/internal/fleet/relay-bots/config`, {
+    method: "POST",
+    body: JSON.stringify(config),
+  });
+  await expectOk(res, "save relay config");
+}
+
+export async function getBridgeRelayMetrics(): Promise<unknown> {
+  const res = await bridgeFetch(`/internal/fleet/relay-bots/metrics`);
+  await expectOk(res, "get relay metrics");
+  return res.json();
+}
+
+export async function restartBridgeRelayBots(): Promise<void> {
+  const res = await bridgeFetch(`/internal/fleet/relay-bots/restart`, { method: "POST" });
+  await expectOk(res, "restart relay bots");
+}
+
+// ── Phase 2: Discord voice (live role / channel management) ───────────
+
+export type DiscordVoiceState = {
+  channels: Array<{ id: string; name: string }>;
+  voiceStates: Array<{ userId: string; displayName: string; channelId: string | null }>;
+  offline?: boolean;
+};
+
+export async function getBridgeVoiceStates(guildId: string): Promise<DiscordVoiceState> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/discord/voice-states`);
+  await expectOk(res, "get voice states");
+  return (await res.json()) as DiscordVoiceState;
+}
+
+export async function getBridgeDiscordRoles(
+  guildId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/discord/roles`);
+  await expectOk(res, "get discord roles");
+  return ((await res.json()) as { roles: Array<{ id: string; name: string }> }).roles;
+}
+
+export async function moveBridgeMember(
+  guildId: string,
+  userId: string,
+  channelId: string | null,
+): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(
+    `/internal/fleet/guilds/${guildId}/discord/members/${userId}/channel`,
+    { method: "PATCH", body: JSON.stringify({ channelId }) },
+  );
+  await expectOk(res, "move member");
+}
+
+export async function addBridgeMemberRole(
+  guildId: string,
+  userId: string,
+  roleId: string,
+): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(
+    `/internal/fleet/guilds/${guildId}/discord/members/${userId}/roles/${roleId}`,
+    { method: "PUT" },
+  );
+  await expectOk(res, "add member role");
+}
+
+export async function removeBridgeMemberRole(
+  guildId: string,
+  userId: string,
+  roleId: string,
+): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(
+    `/internal/fleet/guilds/${guildId}/discord/members/${userId}/roles/${roleId}`,
+    { method: "DELETE" },
+  );
+  await expectOk(res, "remove member role");
+}

@@ -3,6 +3,34 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin (Option B, Phase 2) — Dashboard, Sessions, Relay Bots, Discord Voice
+
+Phase 1 only ported config+admins+monitoring+audit; the bridge `/admin/*` UI still has
+more panels. Phase 2 ports four more into fleetplanner `/admin/bridge/:guildId` via the
+same `/internal/fleet/*` M2M API pattern. Raid Planer (real-time drag-drop + SSE + 1735-line
+admin.js) NOT ported — deferred (would duplicate a complex real-time UI; bridge admin keeps it).
+
+Bridge:
+- New `apps/bridge/src/services/fleetAdmin.ts`: `fleetDashboard(guildId)` (commander roster +
+  health, focused subset of admin loadDashboardData WITHOUT channelMirror) +
+  `stripCommanderRoles(guildId, userId)` (reuses fetchGuildMember + removeGuildMemberRole).
+- `apps/bridge/src/routes/fleetInternal.ts`: add endpoints —
+  - `GET  /internal/fleet/guilds/:g/dashboard`
+  - `DELETE /internal/fleet/guilds/:g/commander-roles/:userId`
+  - Sessions: `GET/POST .../sessions`, `GET .../sessions/:id`, `POST .../sessions/:id/end`,
+    `POST .../sessions/:id/invites` (returns plaintext once), `POST .../sessions/:id/invites/:inviteId/revoke`
+  - Relay bots (singleton, not guild-scoped): `GET/POST /internal/fleet/relay-bots/config`,
+    `GET /internal/fleet/relay-bots/metrics`, `POST /internal/fleet/relay-bots/restart`
+  - Discord voice: `GET .../discord/voice-states`, `GET .../discord/roles`,
+    `PATCH .../discord/members/:userId/channel`, `PUT/DELETE .../discord/members/:userId/roles/:roleId`
+
+Fleetplanner:
+- `apps/fleetplanner/src/services/bridge.ts`: client methods + inline types for all of the above.
+- `apps/fleetplanner/src/routes/bridgeAdmin.ts`: superadmin-gated routes + SSR pages. Discord
+  Voice is server-rendered (form POST → redirect), NOT the live-polling JS the bridge uses.
+- `apps/fleetplanner/src/web/pages.ts`: dashboard / sessions list+detail / relay-bots / discord-voice
+  render fns + links on the guild detail page.
+
 ## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin config (Option B, Phase 1)
 
 Two web UIs / two logins (bridge `/admin/*` on SQLite vs. fleetplanner `/fleetplanner`
