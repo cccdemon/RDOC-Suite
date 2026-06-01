@@ -18,6 +18,7 @@ import {
   loginPage,
   accountPage,
   howToPage,
+  changelogPage,
   licensePage,
 } from "../web/pages.js";
 import {
@@ -788,6 +789,18 @@ export async function webRoutes(app: FastifyInstance) {
     htmlReply(
       reply,
       howToPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+      }),
+    );
+  });
+
+  app.get("/changelog", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(
+      reply,
+      changelogPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,

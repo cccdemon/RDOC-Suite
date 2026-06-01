@@ -3,6 +3,7 @@ import type { User, Operation, Ship, Location } from "@prisma/client";
 import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/discordDiagnostics.js";
 import { fmtDateTz, fmtDateLocalTz, TIMEZONE_OPTIONS, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { getEnv } from "../config/env.js";
+import { CHANGELOG } from "../lib/changelog.js";
 
 // ── Re-export layout for routes ─────────────────────────────────────
 export { layout, rawHtml } from "./render.js";
@@ -5123,6 +5124,86 @@ export function howToPage(opts: {
     </div>
 
     <div class="section">
+      <div class="section-title">Operation visibility</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p>
+          Every operation has a visibility setting, independent of its status. Set it when creating
+          the op, or change it any time from the op detail page (Admiral or an Event Leader of that
+          op).
+        </p>
+        <table class="user-table" style="width:100%;margin-top:.75rem">
+          <thead>
+            <tr><th>Visibility</th><th>Who can see &amp; join</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-dim">🔒 Private</span></td>
+              <td>Only members of this Discord server. Default for new ops.</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-gold">🤝 Partners</span></td>
+              <td>Your server + any linked partner servers (see Partnerships below).</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-green">🌐 Public</span></td>
+              <td>
+                Any logged-in user, and a read-only preview even without login. Anyone authenticated
+                can register a unit and claim seats.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p style="margin-top:.5rem">
+          Cross-server participants are always treated as <strong>Crew</strong> — they can join but
+          never manage the op.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Server partnerships</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p>
+          Link two Discord servers so both sides can see each other's
+          <span class="tag tag-gold">🤝 Partners</span> operations. Partnerships are mutual and use a
+          single-use token.
+        </p>
+        <ol style="margin:.5rem 0 0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem">
+          <li>
+            Server A: <strong>Servers → Settings → Partnerships</strong>, enter a label and
+            <strong>Create invite token</strong>. The link is shown once — copy it.
+          </li>
+          <li>Send the token/link to the Admiral of Server B (out of band).</li>
+          <li>
+            Server B: open <strong>Partnerships</strong>, paste the token under
+            <strong>Accept an invite</strong>. Both servers are now partners.
+          </li>
+          <li>
+            Either side can <strong>Revoke</strong> at any time — that is permanent; mint a fresh
+            token to re-link.
+          </li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Removing or banning a server</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p>
+          <strong>Remove a server</strong> (server owner or instance SuperAdmin): in
+          <strong>Servers → Settings</strong>, the Danger zone hides the server from Fleetplanner
+          (<em>active = off</em>). Operations, members and partnerships are kept — adding the bot
+          again reactivates everything. Nothing is deleted.
+        </p>
+        <p style="margin-top:.5rem">
+          <strong>Ban a server</strong> (SuperAdmin only): in <strong>Admin → Discord Servers</strong>,
+          Ban forces a server inactive and blocks it from being (re)added until Unban. Use it to keep
+          an abusive server out.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
       <div class="section-title">Ship catalog</div>
       <div class="card" style="padding:1rem;max-width:52rem">
         <p>
@@ -5138,6 +5219,39 @@ export function howToPage(opts: {
 
   return layout({
     title: "How to",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+export function changelogPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const entries = CHANGELOG.map(
+    (e) => html`<div class="card" style="padding:1rem 1.25rem;max-width:52rem;margin-bottom:1rem">
+      <div class="card-header" style="margin-bottom:.75rem;padding-bottom:.6rem">
+        <span class="card-title" style="flex:1">${e.title}</span>
+        <span class="tag tag-cyan">${e.date}</span>
+      </div>
+      <ul style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.45rem">
+        ${e.changes.map((c) => html`<li>${c}</li>`)}
+      </ul>
+    </div>`,
+  );
+
+  const body = html`<div class="page-header">
+      <h1 class="page-title">CHANGELOG</h1>
+      <div class="page-subtitle">What's new in RDOC Fleetplanner.</div>
+    </div>
+    <div class="section">${entries}</div>`;
+
+  return layout({
+    title: "Changelog",
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

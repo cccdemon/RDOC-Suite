@@ -35,6 +35,11 @@ Deploy: `prisma migrate deploy` läuft im Fleetplanner-Container-Start. Migratio
 - Services: `deactivateGuild`, `banGuild`, `unbanGuild`, `listAllGuildsForAdmin`; `installGuild` Return-Shape → `InstallResult` ({ok}|{reason: unreadable|banned}).
 - Tests: guilds.test um public/partners/ban-relevante effectiveOpRole-Fälle erweitert.
 
+### Nachtrag 2: Docs + UI-Changelog
+
+- HowTo-Seite ([web/pages.ts](apps/fleetplanner/src/web/pages.ts) `howToPage`) um 3 Sektionen erweitert: Operation visibility, Server partnerships, Removing/banning a server.
+- UI-Changelog: neue [lib/changelog.ts](apps/fleetplanner/src/lib/changelog.ts) (Datenarray) + `changelogPage` + Route `/changelog` (public) + Nav-Link. Erste Entry = dieses Tenant-Release.
+
 Stand: 2026-05-30
 
 ## Fleetplanner / Fleetmanager
