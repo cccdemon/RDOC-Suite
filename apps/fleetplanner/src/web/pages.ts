@@ -218,6 +218,7 @@ type OpDetailPageOptions = {
   op: NonNullable<OpFull>;
   ownedShips: Ship[];
   assignableUsers: Pick<User, "id" | "username" | "role">[];
+  guildVoiceChannels?: Array<{ id: string; name: string }>;
   availableVoiceBotCount: number;
   voiceEnabled: boolean;
   missionVoice?: { globalVoiceRoom: string | null; commanderVoiceRoom: string | null } | null;
@@ -1640,6 +1641,26 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             </div>
             <label>Description</label>
             <textarea name="description" rows="5">${op.description ?? ""}</textarea>
+            ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
+              ? html`<label
+                    >Discord Event Voice Channel
+                    <span style="font-weight:normal;opacity:.65">
+                      (optional - Discord scheduled event location)
+                    </span></label
+                  >
+                  <select name="eventVoiceChannelId">
+                    <option value="">No voice channel</option>
+                    ${opts.guildVoiceChannels.map(
+                      (channel) =>
+                        html`<option
+                          value="${channel.id}"
+                          ${op.eventVoiceChannelId === channel.id ? safe("selected") : ""}
+                        >
+                          ${channel.name}
+                        </option>`,
+                    )}
+                  </select>`
+              : safe("")}
             <button type="submit" class="btn btn-sm mt-1">Save Overview</button>
           </form>`
         : op.description
@@ -1663,6 +1684,13 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       <div class="detail-row">
         <span>Leaders</span>
         <strong>${op.leaders.length || "None"}</strong>
+      </div>
+      <div class="detail-row">
+        <span>Discord Event Voice</span>
+        <strong
+          >${opts.guildVoiceChannels?.find((channel) => channel.id === op.eventVoiceChannelId)
+            ?.name ?? "Not set"}</strong
+        >
       </div>
       ${statusControls}
     </section>

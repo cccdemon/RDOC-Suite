@@ -294,11 +294,13 @@ export async function webRoutes(app: FastifyInstance) {
           })
         ).map((m) => ({ id: m.user.id, username: m.user.username, role: m.role }))
       : [];
-    const [availableVoiceBotCount, voiceEnabled, opGuildRow] = await Promise.all([
-      prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
-      hasVoicePermission(op.guildId),
-      prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } }),
-    ]);
+    const [availableVoiceBotCount, voiceEnabled, opGuildRow, guildVoiceChannels] =
+      await Promise.all([
+        prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
+        hasVoicePermission(op.guildId),
+        prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } }),
+        fetchGuildVoiceChannels(op.guildId).catch(() => []),
+      ]);
     const opGuildTz = (opGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
     const opRole = ctx ? await effectiveOpRole(ctx.user.id, ctx.user.role, op.id) : null;
     const globalVoiceRoom =
@@ -363,6 +365,7 @@ export async function webRoutes(app: FastifyInstance) {
         op,
         ownedShips,
         assignableUsers,
+        guildVoiceChannels,
         availableVoiceBotCount,
         voiceEnabled,
         guildTimezone: opGuildTz,

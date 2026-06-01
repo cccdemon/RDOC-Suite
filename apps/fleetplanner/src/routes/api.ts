@@ -537,11 +537,17 @@ export async function apiRoutes(app: FastifyInstance) {
           const skipped = cleanup.skippedDiscordUsers
             ? `+${cleanup.skippedDiscordUsers}+users+had+no+Discord+identity.`
             : "";
+          const occupied = cleanup.skippedOccupied
+            ? `+${cleanup.skippedOccupied}+voice+channels+were+left+because+members+are+still+connected.`
+            : "";
+          const unknown = cleanup.skippedUnknown
+            ? `+${cleanup.skippedUnknown}+voice+channels+were+left+because+voice+occupancy+could+not+be+verified.`
+            : "";
           return reply.redirect(
             opReturnUrl(
               req.params.id,
               req.body,
-              `ok:Status+updated.+Deleted+${cleanup.deleted}+voice+channels,+disconnected+${cleanup.disconnected}+crew,+removed+${removableCaptainIds.length}+captain+voice+roles.${skipped}`,
+              `ok:Status+updated.+Deleted+${cleanup.deleted}+empty+voice+channels,+removed+${removableCaptainIds.length}+captain+voice+roles.${occupied}${unknown}${skipped}`,
               "overview",
             ),
             302,

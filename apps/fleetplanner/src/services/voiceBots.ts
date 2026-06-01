@@ -2,11 +2,11 @@ import { prisma } from "../db.js";
 import {
   createGuildVoiceChannel,
   deleteDiscordChannel,
-  disconnectGuildMemberFromVoice,
   discordUserIdForFleetplannerUser,
   moveGuildMemberToVoice,
   updateDiscordChannelName,
 } from "./discord.js";
+import { bridgeConfigured, getBridgeVoiceStates } from "./bridge.js";
 import { syncFleetplannerRelayBots } from "./relayBots.js";
 import { decryptSecret, encryptSecret } from "./secrets.js";
 
@@ -26,7 +26,6 @@ function cleanSnowflake(raw: string, field: string): string {
   if (!SNOWFLAKE.test(value)) throw new Error(`${field} must be a Discord snowflake ID`);
   return value;
 }
-
 
 function cleanChannelName(raw: string): string {
   const name = raw.trim().slice(0, 100);
@@ -169,7 +168,9 @@ export async function launchOperationVoiceChannels(operationId: string): Promise
     orderBy: { createdAt: "asc" },
   });
   if (availableBots.length < unitsToCreate.length) {
-    throw new Error(`Not enough available voice bots (${availableBots.length}/${unitsToCreate.length})`);
+    throw new Error(
+      `Not enough available voice bots (${availableBots.length}/${unitsToCreate.length})`,
+    );
   }
 
   let botCursor = 0;
@@ -186,11 +187,14 @@ export async function launchOperationVoiceChannels(operationId: string): Promise
     const bot = availableBots[botCursor++];
     const botToken = decryptVoiceBotToken(bot);
     const channelName = bot.label;
-    const permissionOverwrites: Array<{ id: string; type: 0 | 1; allow?: string; deny?: string }> = [{
-      id: op.guildId,
-      type: 0,
-      deny: VOICE_ACCESS,
-    }];
+    const permissionOverwrites: Array<{ id: string; type: 0 | 1; allow?: string; deny?: string }> =
+      [
+        {
+          id: op.guildId,
+          type: 0,
+          deny: VOICE_ACCESS,
+        },
+      ];
     permissionOverwrites.push({ id: bot.botUserId, type: 1, allow: VOICE_ACCESS });
     for (const userId of userIds) {
       try {
@@ -295,6 +299,8 @@ export async function cleanupOperationVoiceChannels(operationId: string): Promis
   deleted: number;
   disconnected: number;
   skippedDiscordUsers: number;
+  skippedOccupied: number;
+  skippedUnknown: number;
 }> {
   const channels = await prisma.fleetVoiceChannel.findMany({
     where: { operationId },
@@ -311,33 +317,40 @@ export async function cleanupOperationVoiceChannels(operationId: string): Promis
   let deleted = 0;
   let disconnected = 0;
   let skippedDiscordUsers = 0;
+  let skippedOccupied = 0;
+  let skippedUnknown = 0;
+
+  const guildId = channels[0]?.guildId;
+  let occupiedChannelIds: Set<string> | null = null;
+  if (guildId && bridgeConfigured()) {
+    try {
+      const voice = await getBridgeVoiceStates(guildId);
+      if (!voice.offline) {
+        occupiedChannelIds = new Set(
+          voice.voiceStates
+            .filter((state) => Boolean(state.channelId))
+            .map((state) => state.channelId!),
+        );
+      }
+    } catch {
+      occupiedChannelIds = null;
+    }
+  }
 
   for (const channel of channels) {
     if (!channel.voiceBot) {
       throw new Error(`Voice channel ${channel.channelId} has no assigned bot`);
     }
     const botToken = decryptVoiceBotToken(channel.voiceBot);
-    const userIds = new Set<string>([channel.unit.captainId]);
-    for (const seat of channel.unit.seats) {
-      if (seat.userId) userIds.add(seat.userId);
+
+    if (!occupiedChannelIds) {
+      skippedUnknown += 1;
+      continue;
     }
 
-    for (const userId of userIds) {
-      try {
-        await disconnectGuildMemberFromVoice({
-          guildId: channel.guildId,
-          userId: await discordUserIdForFleetplannerUser(userId),
-          botToken,
-        });
-        disconnected += 1;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "";
-        if (msg.includes("has no linked Discord identity")) {
-          skippedDiscordUsers += 1;
-          continue;
-        }
-        throw err;
-      }
+    if (occupiedChannelIds.has(channel.channelId)) {
+      skippedOccupied += 1;
+      continue;
     }
 
     await deleteDiscordChannel({
@@ -359,7 +372,7 @@ export async function cleanupOperationVoiceChannels(operationId: string): Promis
     await syncFleetplannerRelayBots(channels[0].guildId);
   }
 
-  return { deleted, disconnected, skippedDiscordUsers };
+  return { deleted, disconnected, skippedDiscordUsers, skippedOccupied, skippedUnknown };
 }
 
 export async function moveOperationCrewToVoiceChannels(operationId: string): Promise<{
