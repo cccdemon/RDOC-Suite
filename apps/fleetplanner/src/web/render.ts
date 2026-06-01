@@ -51,6 +51,7 @@ export type LayoutOptions = {
   currentUser?: { id: string; username: string; role: string } | null;
   csrfToken?: string;
   flash?: { kind: "ok" | "warn" | "error"; text: string } | null;
+  navSlot?: SafeHtml;
   body: SafeHtml;
 };
 
@@ -77,6 +78,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
       ? html`<a href="${bp}/admin/bridge">Bridge</a>`
       : ""}
     <span class="nav-spacer"></span>
+    ${opts.navSlot ?? ""}
     <span class="credit-mark">
       <span class="credit-mark-domain">raumdock.org</span>
       <span class="credit-mark-copy"
@@ -225,6 +227,24 @@ a:hover { color: #fff; }
 }
 .nav a:hover { color: var(--text); background: var(--cyan-08); }
 .nav-spacer { flex: 1; }
+.nav-ui-switch {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 0 0.75rem;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  flex-shrink: 0;
+}
+.nav-ui-switch a {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+.nav-ui-switch a.active {
+  color: var(--cyan);
+  background: var(--cyan-08);
+}
 .credit-mark {
   min-width: 318px;
   margin: 0 0.9rem;
@@ -274,6 +294,9 @@ a:hover { color: #fff; }
 }
 @media (max-width: 1120px) {
   .credit-mark { display: none; }
+}
+@media (max-width: 840px) {
+  .nav-ui-switch { display: none; }
 }
 .nav-user {
   display: flex; align-items: center; gap: 0.6rem;

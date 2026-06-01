@@ -85,6 +85,13 @@ function flashFromQuery(msg: string | undefined): LayoutOptions["flash"] {
   return { kind: "ok", text: msg };
 }
 
+function opUiSwitch(bp: string, opId: string, mode: "classic" | "new", tab = "overview"): SafeHtml {
+  return html`<span class="nav-ui-switch" aria-label="Operation UI switch">
+    <a href="${bp}/ops/${opId}" class="${mode === "classic" ? "active" : ""}">Classic</a>
+    <a href="${bp}/ops/${opId}?ui=new&tab=${tab}" class="${mode === "new" ? "active" : ""}">New</a>
+  </span>`;
+}
+
 // ── Home / Calendar ──────────────────────────────────────────────────
 
 function shipSizeLabel(ship: Pick<Ship, "size" | "rawJson">): string {
@@ -1284,6 +1291,7 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
     flash: flashFromQuery(opts.flash),
+    navSlot: opUiSwitch(bp, op.id, "classic"),
     body,
   });
 }
@@ -1605,6 +1613,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
     flash: flashFromQuery(opts.flash),
+    navSlot: opUiSwitch(bp, op.id, "new", activeTab),
     body,
   });
 }
