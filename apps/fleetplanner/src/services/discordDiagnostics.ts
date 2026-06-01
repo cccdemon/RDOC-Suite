@@ -18,6 +18,7 @@ const SPEAK = 1n << 21n;
 const MOVE_MEMBERS = 1n << 24n;
 const MANAGE_ROLES = 1n << 28n;
 const MANAGE_EVENTS = 1n << 33n;
+const ADD_EVENTS = 1n << 44n;
 
 export type BotDiagnostic = {
   key: string;
@@ -57,7 +58,7 @@ const FLEETPLANNER_PERMS: RequiredPermission[] = [
   { key: "READ_MESSAGE_HISTORY", label: "Read Message History", bit: READ_MESSAGE_HISTORY },
   { key: "MANAGE_ROLES", label: "Manage Roles", bit: MANAGE_ROLES },
   { key: "MANAGE_EVENTS", label: "Manage Events", bit: MANAGE_EVENTS },
-  { key: "CREATE_EVENTS", label: "Create Events", bit: CREATE_EVENTS },
+  { key: "ADD_EVENTS", label: "Add Events", bit: ADD_EVENTS },
 ];
 
 const VOICEBOT_PERMS: RequiredPermission[] = [
