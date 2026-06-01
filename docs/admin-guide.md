@@ -72,49 +72,64 @@ pnpm --filter @rdoc-suite/bot   build && node apps/bot/dist/index.js
 
 The bot should log `bot ready` once it connects to Discord.
 
-## 7. Configure your server
+## 7. Bootstrap the first admin + configure your server
 
-In any text channel on your Discord server, run the slash commands as the admin:
+The `/cc` slash command has been **removed**. Guild config and admin management now
+live entirely in the **bridge admin web UI** (`https://suite.raumdock.org/admin`).
+
+### Bootstrap the first admin (env seed)
+
+Set both in `/opt/RDOC-Suite/.env`, then recreate the bridge:
 
 ```
-/cc setup mode:external_voice
-/cc role add @ChannelCommander       (← the role(s) that should be allowed to PTT)
-/cc channel add #team-alpha-voice    (← each voice channel that participates)
-/cc channel add #team-bravo-voice
-/cc enable
-/cc status                            (← double-check)
+BRIDGE_SUPERADMIN_DISCORD_ID=<your Discord user id>
+BRIDGE_SUPERADMIN_GUILD_ID=<your Discord guild id>
 ```
 
-**About `/cc channel add`:** This list is now **enforced** by the bridge. A commander must be sitting in one of the listed voice channels to connect; the bridge re-checks every 60 s and kicks anyone who moves out (close code `4403`, reason `outside_allowed_voice_channel`). If you leave the list empty (no `/cc channel add` ever ran), all channels are allowed — this matches the historical pre-enforcement behaviour, so existing deployments are not broken.
+```
+docker compose -f docker-compose.prod.yml up -d --force-recreate bridge
+```
+
+On startup the bridge seeds a protected **admiral** AdminUser for that guild (idempotent —
+safe on every boot). This replaces the old `/cc admin add` bootstrap. After the first admin
+exists, additional admins are added via invite links in the web UI.
+
+### Configure the guild (web UI)
+
+1. Open `https://suite.raumdock.org/admin` → sign in with Discord (the seeded admiral).
+2. Go to **Konfig** (`/admin/config`):
+   - Tick **System aktiviert** (this is the `enabled` flag — without it, commander/companion
+     sign-in returns `guild_not_enabled`).
+   - Paste the **Commander role** snowflake(s), one per line.
+   - (Allowed voice channels are managed here too — leave empty to allow all channels.)
+   - Save.
+
+**About allowed voice channels:** this list is **enforced** by the bridge. A commander must
+be sitting in one of the listed voice channels to connect; the bridge re-checks every 60 s
+and kicks anyone who moves out (close code `4403`, reason `outside_allowed_voice_channel`).
+Empty list = all channels allowed.
 
 ## Phase B: managing Admins + issuing Admiral credentials
 
-Channel Commander now has three permission tiers:
+Channel Commander has three permission tiers:
 
 | Tier | Who | What they can do | How they're authorized |
 | --- | --- | --- | --- |
-| **Admin** | Discord user on your AdminUser whitelist | Will be able to sign into the web admin UI (Phase B2), manage other admins, issue + revoke Admiral credentials | `/cc admin add @user` (requires Manage Guild) |
-| **Admiral** | Anyone given a `key:secret` API credential by an Admin | Create sessions, invite Commanders to those sessions, end sessions | API credential from `/cc generate-credential` or the admin UI |
+| **Admin** | Discord user on your AdminUser whitelist | Sign into the web admin UI, manage other admins, issue + revoke Admiral credentials | First admin via `BRIDGE_SUPERADMIN_*` env seed; further admins via invite links in the web UI |
+| **Admiral** | Anyone given a `key:secret` API credential by an Admin | Create sessions, invite Commanders to those sessions, end sessions | API credential from the admin UI |
 | **Commander** | Anyone given a one-shot invite token by an Admiral | Join one specific session and talk in its LiveKit room | Invite token pasted into the Companion |
 
 ### Bootstrap
 
-1. Add yourself as an Admin:
-   ```
-   /cc admin add @yourself
-   ```
-   List current admins anytime with `/cc admin list`.
-2. Issue an Admiral credential. The `label` is just for your records — pick something like the person's name or laptop:
-   ```
-   /cc generate-credential label:Alice laptop
-   ```
-   The bot replies with a `key:secret` string in an ephemeral message (only you see it). **Copy it now** — it's shown once, never again.
-3. Hand the `key:secret` to whoever should be Admiral of a session (DM, Signal, whatever — out of band). They paste it into the Companion's ADMIRAL tab (coming in Phase B3 redesign).
-4. The Admiral uses the Companion to create a session, then mints a per-Commander invite for everyone they want to pull in — each Commander gets one one-shot token, also out of band, also pastes it into the Companion's COMMANDER tab.
+1. Seed the first admin via the `BRIDGE_SUPERADMIN_DISCORD_ID` / `BRIDGE_SUPERADMIN_GUILD_ID`
+   env vars (see section 7), then sign into `/admin`.
+2. Add further admins and issue Admiral credentials from the web admin UI.
+3. Hand the `key:secret` to whoever should be Admiral of a session (out of band). They paste
+   it into the Companion's ADMIRAL tab.
+4. The Admiral uses the Companion to create a session, then mints a per-Commander invite for
+   everyone they want to pull in — each Commander gets one one-shot token, also out of band.
 
-If a credential leaks: `/cc generate-credential` again to issue a new one, then revoke the old one via the web admin UI when B2 is live (for now: ask me, I can flip the `revokedAt` in the DB).
-
-If `/cc` does not show up: wait 1–2 minutes for Discord to propagate the global slash-command registration, then refresh the Discord client (`Ctrl+R` on desktop).
+If a credential leaks: issue a new one and revoke the old one in the web admin UI.
 
 ## 8. Hand out the Companion app
 
@@ -122,7 +137,7 @@ Every commander downloads / builds the Companion app and runs it. See [commander
 
 ## Operating notes
 
-- **Disable on the fly**: `/cc disable` immediately stops all active PTT sessions on the next 60-second permission recheck.
+- **Disable on the fly**: untick **System aktiviert** in `/admin/config` — stops all active PTT sessions on the next 60-second permission recheck.
 - **Remove a role mid-session**: same — server detects within 60 s and kicks the user.
 - **Check who is connected**: bridge logs every WS connect/disconnect at `info` level.
 - **Audio is never recorded**: this is enforced both in the bridge's LiveKit token (`roomRecord: false`) and by running LiveKit without any recording egress configured.
@@ -131,8 +146,9 @@ Every commander downloads / builds the Companion app and runs it. See [commander
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| `/cc` commands invisible | Global registration not propagated yet | Wait 2 min, restart Discord client |
-| Commander gets 403 on sign-in | `enabled=false` or role missing in `GuildConfig` | Run `/cc status` to verify |
+| Companion/Commander sign-in `guild_not_enabled` | Guild not enabled in the bridge | Tick **System aktiviert** in `/admin/config` |
+| Cannot reach `/admin` (not on admin list) | No AdminUser seeded yet | Set `BRIDGE_SUPERADMIN_DISCORD_ID` + `BRIDGE_SUPERADMIN_GUILD_ID`, recreate bridge |
+| Commander gets 403 on sign-in | `enabled=false` or role missing in `GuildConfig` | Check `/admin/config` (enabled + commander roles) |
 | Bridge crashes on startup | `SESSION_SECRET` < 32 chars | Set a longer secret |
 | LiveKit "connection failed" | Container not running | `docker compose up -d livekit`, check `docker logs dccc-livekit` |
 | OAuth redirect mismatch | The redirect URL in DDP must match `OAUTH_REDIRECT_URI` exactly | Copy-paste, no trailing slash |

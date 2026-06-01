@@ -3,6 +3,26 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Remove `/cc` bot command — bridge guild-enable via web UI + env admin seed
+
+Bridge guild config (`guildConfig.enabled`, commander roles) was only settable via the
+Discord `/cc` slash command. Companion login `guild_not_enabled` for Raumdock because no
+`/cc enable` was run. Move management to the bridge admin web UI (which already does
+enable + commander roles) and remove `/cc` entirely.
+
+- Bridge env: add `BRIDGE_SUPERADMIN_DISCORD_ID` + `BRIDGE_SUPERADMIN_GUILD_ID`
+  ([apps/bridge/src/config/env.ts](apps/bridge/src/config/env.ts)).
+- `seedSuperadmin()` in [apps/bridge/src/services/admins.ts](apps/bridge/src/services/admins.ts):
+  idempotent `addAdmin({role:"admiral",protected:true})` on boot — replaces `/cc admin add`
+  bootstrap. Called from bridge startup.
+- Delete `/cc`: remove [apps/bot/src/commands/cc.ts](apps/bot/src/commands/cc.ts) +
+  [apps/bot/src/services/guildConfig.ts](apps/bot/src/services/guildConfig.ts) (only cc imported it);
+  `registerSlashCommands` PUTs empty body (deregisters global cmd); drop InteractionCreate handler
+  in [apps/bot/src/index.ts](apps/bot/src/index.ts).
+- Docs: CLAUDE.md admin section, docs/admin-guide.md, .env.example, .env.prod.template.
+- Operator flow: set the two env vars → log into `suite.raumdock.org/admin` → enable guild +
+  set commander roles in web UI. Plan: `.claude/plans/snappy-drifting-phoenix.md`.
+
 ## Queued / Planned Step - 2026-05-31: Remaining Codex items (#2 token scope, #4 capabilities, #6/#7 deep link) + env doc
 
 - **#2 voice-link token scope:** `POST /api/ops/:opId/voice-links` + `/api/companion/generate-voice-link/:userId`

@@ -30,6 +30,18 @@ const baseEnvSchema = z.object({
   // deployments still work. Set this in production to give the admin
   // surface its own credential.
   ADMIN_SESSION_SECRET: z.string().min(32).optional(),
+  // First-admin seed. With the `/cc admin add` bot command removed, the
+  // first AdminUser (a protected admiral) is created from these env vars on
+  // bridge startup so the admin web UI is reachable without Discord slash
+  // commands. Both must be set for the seed to run; idempotent per boot.
+  BRIDGE_SUPERADMIN_DISCORD_ID: z
+    .string()
+    .regex(/^[0-9]{17,20}$/, "BRIDGE_SUPERADMIN_DISCORD_ID must be a Discord snowflake")
+    .optional(),
+  BRIDGE_SUPERADMIN_GUILD_ID: z
+    .string()
+    .regex(/^[0-9]{17,20}$/, "BRIDGE_SUPERADMIN_GUILD_ID must be a Discord snowflake")
+    .optional(),
   // Companion session-JWT TTL in days. The bridge re-checks Discord
   // roles every 60s while a WS is alive, so a long TTL doesn't extend
   // the window during which a kicked-out user can still talk — only

@@ -1,4 +1,6 @@
 import { getPrisma } from "@rdoc-suite/db";
+import { getEnv } from "../config/env.js";
+import { logger } from "./logger.js";
 
 /**
  * Admin = a Discord user authorized to sign into the web admin UI for
@@ -71,6 +73,31 @@ export async function addAdmin(opts: {
     update: {}, // idempotent: re-adding an existing admin is a no-op
                 // (does NOT promote / unprotect an existing row)
   });
+}
+
+/**
+ * Seeds the first admin (a protected admiral) from env on startup. Replaces
+ * the removed `/cc admin add` bootstrap: without this, a fresh guild would
+ * have no AdminUser and nobody could sign into the admin web UI.
+ *
+ * Idempotent — `addAdmin` upserts with `update: {}`, so an existing row is
+ * never modified (no re-protect / re-promote). Runs on every boot; no-op when
+ * the env vars are unset or the row already exists.
+ */
+export async function seedSuperadmin(): Promise<void> {
+  const env = getEnv();
+  const userId = env.BRIDGE_SUPERADMIN_DISCORD_ID;
+  const guildId = env.BRIDGE_SUPERADMIN_GUILD_ID;
+  if (!userId || !guildId) {
+    logger.info("superadmin seed skipped: BRIDGE_SUPERADMIN_DISCORD_ID/GUILD_ID not set");
+    return;
+  }
+  const existing = await getAdminRecord({ guildId, userId });
+  await addAdmin({ guildId, userId, role: "admiral", protected: true });
+  logger.info(
+    { guildId, userId, created: !existing },
+    existing ? "superadmin seed: already present" : "superadmin seed: created protected admiral",
+  );
 }
 
 export async function getAdminRecord(opts: {

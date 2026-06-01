@@ -1,8 +1,7 @@
-import { Client, Events, GatewayIntentBits, Interaction } from "discord.js";
+import { Client, Events, GatewayIntentBits } from "discord.js";
 import { getEnv } from "./config/env.js";
 import { logger } from "./services/logger.js";
 import { registerSlashCommands } from "./commands/index.js";
-import { handleCc } from "./commands/cc.js";
 import { registerVoiceStateEvents } from "./events/voiceState.js";
 import { disconnectPrisma } from "@rdoc-suite/db";
 
@@ -47,11 +46,7 @@ async function main(): Promise<void> {
     logger.error({ err }, "discord client error");
   });
 
-  client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-    if (interaction.commandName !== "cc") return;
-    await handleCc(interaction);
-  });
+  // No slash-command handlers — `/cc` removed; bot is gateway/voice-state only.
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, "shutting down");
