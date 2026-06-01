@@ -184,7 +184,7 @@ export async function webRoutes(app: FastifyInstance) {
         operatorGuilds,
         selectedOperatorGuildId,
         guildVoiceChannels,
-        locations: await searchLocations(undefined, "", 2000),
+        locations: await searchLocations(undefined, "", 0, true),
         guildTimezone:
           (newOpGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
       }),
@@ -556,7 +556,7 @@ export async function webRoutes(app: FastifyInstance) {
           flash: req.query.flash,
           op,
           guildVoiceChannels,
-          locations: await searchLocations(undefined, "", 2000),
+          locations: await searchLocations(undefined, "", 0, true),
           guildTimezone:
             (editGuildRow2 as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
         }),

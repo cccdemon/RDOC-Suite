@@ -47,15 +47,23 @@ function normalizeLocation(raw: WikiLocation): Omit<Location, "id" | "syncedAt">
   };
 }
 
-export async function searchLocations(systemSlug?: string, query = "", limit = 300): Promise<Location[]> {
+export async function searchLocations(
+  systemSlug?: string,
+  query = "",
+  limit = 300,
+  onlyManmade = false,
+): Promise<Location[]> {
   const q = query.trim().slice(0, 80);
   return prisma.location.findMany({
     where: {
       hidden: false,
       ...(systemSlug ? { systemSlug } : {}),
       ...(q ? { name: { contains: q, mode: "insensitive" } } : {}),
+      ...(onlyManmade ? { classification: { equals: "Manmade", mode: "insensitive" } } : {}),
     },
-    take: Math.min(Math.max(limit, 1), 500),
+    // No hard cap — manmade filter keeps result sets small enough.
+    // Caller may still pass a limit for search-as-you-type UX.
+    ...(limit > 0 ? { take: Math.min(limit, 5000) } : {}),
     orderBy: [{ system: "asc" }, { name: "asc" }],
   });
 }
