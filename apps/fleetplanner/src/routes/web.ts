@@ -40,6 +40,7 @@ import {
   deleteScheduledEvent,
   fetchGuildVoiceChannels,
   sendDiscordChannelMessage,
+  updateScheduledEvent,
 } from "../services/discord.js";
 import { hasVoicePermission } from "../services/voiceSession.js";
 import { bridgeConfigured } from "../services/bridge.js";
@@ -598,6 +599,22 @@ export async function webRoutes(app: FastifyInstance) {
           ...(parsedDate && { scheduledAt: parsedDate }),
           eventVoiceChannelId: eventVoiceChannelId?.trim() || undefined,
         });
+
+        const updatedOp = await getOperation(req.params.id);
+        if (updatedOp?.discordEventId && updatedOp.status === "open") {
+          updateScheduledEvent({
+            id: updatedOp.id,
+            guildId: updatedOp.guildId,
+            title: updatedOp.title,
+            description: updatedOp.description,
+            scheduledAt: updatedOp.scheduledAt,
+            eventVoiceChannelId: updatedOp.eventVoiceChannelId,
+            discordEventId: updatedOp.discordEventId,
+          }).catch((err) =>
+            app.log.warn(err, "Discord event update failed after operation edit"),
+          );
+        }
+
         const target =
           req.body.ui === "new"
             ? `/ops/${req.params.id}?ui=new&tab=${encodeURIComponent(req.body.tab || "overview")}&flash=ok:Saved.`

@@ -323,6 +323,80 @@ export async function createScheduledEvent(op: {
   return data;
 }
 
+async function getEventChannelId(op: {
+  guildId: string;
+  eventVoiceChannelId?: string | null;
+}) {
+  const guild = await prisma.guild.findUnique({
+    where: { id: op.guildId },
+    select: { eventChannelId: true },
+  });
+  return op.eventVoiceChannelId ?? guild?.eventChannelId ?? null;
+}
+
+function buildEventDescription(guildId: string, eventId: string, description?: string) {
+  const eventUrl = `https://discord.com/events/${guildId}/${eventId}`;
+  return description ? `${eventUrl}\n${description}` : eventUrl;
+}
+
+export async function updateScheduledEvent(op: {
+  id: string;
+  guildId: string;
+  title: string;
+  description: string;
+  scheduledAt: Date;
+  eventVoiceChannelId?: string | null;
+  discordEventId: string;
+}): Promise<void> {
+  const env = getEnv();
+  const token = fleetplannerBotToken();
+  if (!token) return;
+
+  const voiceChannelId = await getEventChannelId(op);
+  const startTime = op.scheduledAt.toISOString();
+  const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
+  const updatedDescription = buildEventDescription(op.guildId, op.discordEventId, op.description).slice(0, 1000);
+
+  const body = voiceChannelId
+    ? {
+        name: op.title,
+        description: updatedDescription,
+        privacy_level: 2,
+        scheduled_start_time: startTime,
+        entity_type: 2, // VOICE
+        channel_id: voiceChannelId,
+      }
+    : {
+        name: op.title,
+        description: updatedDescription,
+        privacy_level: 2,
+        scheduled_start_time: startTime,
+        scheduled_end_time: endTime,
+        entity_type: 3, // EXTERNAL
+        entity_metadata: {
+          location: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${op.id}`,
+        },
+      };
+
+  const res = await fetch(
+    `${DISCORD_API}/guilds/${op.guildId}/scheduled-events/${op.discordEventId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bot ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    },
+  );
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Discord event update failed (${res.status}): ${err}`);
+  }
+}
+
 export async function deleteScheduledEvent(guildId: string, eventId: string): Promise<void> {
   const token = fleetplannerBotToken();
   if (!token) return;
