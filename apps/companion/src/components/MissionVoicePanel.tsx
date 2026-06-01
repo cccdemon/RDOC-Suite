@@ -51,7 +51,7 @@ export function MissionVoicePanel({
               <span className="mission-room-hotkey text-dim">
                 {localHotkey}
                 {commanderStatus === "connected"
-                  ? ` · ${commanderParticipants} im Kanal`
+                  ? ` · ${commanderParticipants + 1} im Kanal (inkl. dir)`
                   : ""}
               </span>
             </div>
