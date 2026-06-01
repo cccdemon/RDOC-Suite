@@ -95,11 +95,6 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
     "/updater/companion/check",
     async (request, reply) => {
       setCors(reply, request);
-      const auth = await authenticate(request, request.query.token);
-      if (!auth.ok) {
-        reply.code(auth.status).send({ error: auth.reason });
-        return;
-      }
       const env = getEnv();
       if (!env.GITHUB_REPO) {
         reply.code(503).send({ error: "updater_not_configured" });
@@ -112,7 +107,7 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
       }
       // Strip "v" prefix so 0.5.0 compares cleanly to APP_VERSION
       // baked into the EXE.
-      const version = release.tagName.replace(/^v/i, "");
+      const version = release.tagName.replace(/^companion-v/i, "").replace(/^v/i, "");
       reply.send({
         version,
         tagName: release.tagName,
@@ -132,10 +127,7 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
     setCors(reply, request);
     const parsed = mintBodySchema.safeParse(request.body ?? {});
     const auth = await authenticate(request, parsed.success ? parsed.data?.token : undefined);
-    if (!auth.ok) {
-      reply.code(auth.status).send({ error: auth.reason });
-      return;
-    }
+    const userId = auth.ok ? auth.userId : "auto-update";
     const env = getEnv();
     if (!env.GITHUB_REPO) {
       reply.code(503).send({ error: "updater_not_configured" });
@@ -147,13 +139,13 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
     // is at worst "attacker downloads our EXE that's already on
     // GitHub").
     const token = await mintDownloadToken({
-      label: `[auto-update] ${auth.userId}`,
-      createdBy: auth.userId,
+      label: `[auto-update] ${userId}`,
+      createdBy: userId,
       ttlDays: 1,
     });
     const url = `${publicOrigin()}${env.PUBLIC_BASE_PATH}/download/companion/${token.plaintext}`;
     logger.info(
-      { userId: auth.userId, tokenId: token.id },
+      { userId, tokenId: token.id, authenticated: auth.ok },
       "updater: minted single-use download token for auto-update",
     );
     reply.send({

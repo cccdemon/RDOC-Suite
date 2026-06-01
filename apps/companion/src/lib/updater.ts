@@ -48,14 +48,17 @@ export async function checkForUpdate(opts: {
   bridgeUrl: string;
   sessionToken: string | null;
 }): Promise<UpdateCheckResult> {
-  if (!opts.bridgeUrl || !opts.sessionToken) {
+  if (!opts.bridgeUrl) {
     return { kind: "no_update" };
   }
   try {
     const { bridgeHttpUrl } = buildConfig(opts.bridgeUrl);
+    const headers = opts.sessionToken
+      ? { authorization: `Bearer ${opts.sessionToken}` }
+      : undefined;
     const res = await fetch(
       `${bridgeHttpUrl}/updater/companion/check`,
-      { cache: "no-store", headers: { authorization: `Bearer ${opts.sessionToken}` } },
+      { cache: "no-store", headers },
     );
     if (res.status === 401) {
       void warn("[updater] check rejected — session token invalid/expired");
@@ -95,7 +98,7 @@ export async function checkForUpdate(opts: {
  *  system browser. */
 export async function startDownloadInBrowser(opts: {
   bridgeUrl: string;
-  sessionToken: string;
+  sessionToken: string | null;
 }): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     const { bridgeHttpUrl } = buildConfig(opts.bridgeUrl);
@@ -103,7 +106,7 @@ export async function startDownloadInBrowser(opts: {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${opts.sessionToken}`,
+        ...(opts.sessionToken ? { authorization: `Bearer ${opts.sessionToken}` } : {}),
       },
       body: "{}",
     });

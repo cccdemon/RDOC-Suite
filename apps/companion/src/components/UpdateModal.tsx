@@ -6,7 +6,7 @@ type Props = {
   remote: RemoteVersion;
   /** Bridge URL + active session token — needed to mint the download URL. */
   bridgeUrl: string;
-  sessionToken: string;
+  sessionToken: string | null;
   /** User clicked "Später" — defer until next launch. */
   onPostpone: () => void;
 };

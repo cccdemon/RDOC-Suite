@@ -318,7 +318,7 @@ export function App(): JSX.Element {
   // of the admin's single-use-token mechanism. Slight delay so the
   // initial UI can render first.
   useEffect(() => {
-    if (!state.bridgeUrl || !state.token) return;
+    if (!state.bridgeUrl) return;
     const timer = setTimeout(async () => {
       const res = await checkForUpdate({
         bridgeUrl: state.bridgeUrl,
@@ -1802,7 +1802,7 @@ export function App(): JSX.Element {
         />
       ) : null}
 
-      {updateOffer && state.token ? (
+      {updateOffer ? (
         <UpdateModal
           remote={updateOffer.remote}
           bridgeUrl={state.bridgeUrl}
