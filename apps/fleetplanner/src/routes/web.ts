@@ -19,6 +19,8 @@ import {
   accountPage,
   howToPage,
   changelogPage,
+  impressumPage,
+  datenschutzPage,
   licensePage,
 } from "../web/pages.js";
 import {
@@ -802,6 +804,30 @@ export async function webRoutes(app: FastifyInstance) {
     htmlReply(
       reply,
       changelogPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+      }),
+    );
+  });
+
+  app.get("/impressum", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(
+      reply,
+      impressumPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+      }),
+    );
+  });
+
+  app.get("/privacy", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(
+      reply,
+      datenschutzPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,

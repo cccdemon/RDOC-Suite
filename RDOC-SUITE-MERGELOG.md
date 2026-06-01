@@ -47,6 +47,13 @@ Deploy: `prisma migrate deploy` läuft im Fleetplanner-Container-Start. Migratio
 - **Beta-Banner:** im Header (layout, [render.ts](apps/fleetplanner/src/web/render.ts)) auf allen Seiten: "Still in development — Beta — feedback tab".
 - **Changelog:** Hinweis "Discord Channelcommander & Discord Voicebridge still untested" ergänzt.
 
+### Nachtrag 4: Impressum / Privacy / License (Footer)
+
+- Neue Seiten + Routen: `/impressum` (zweisprachig — Pflichtangaben § 5 DDG deutsch + englische Übersetzung), `/privacy` (englisch, faktentreu zu tatsächlich gespeicherten/geloggten Daten: Account/Identity inkl. Email nur bei GitHub/Google, Guild-IDs, Content, verschlüsselte VoiceBot-Tokens, Sessions; KEINE OAuth-Tokens/Audio/Passwörter; IP+Pfad in Server-Logs). `/license` existierte schon (PolyForm).
+- Inhalte aus RDOC-Website (raumdock.org) übernommen: Verantwortlich Torsten Ennenbach, Europaring 90, 53757 Sankt Augustin, tower@raumdock.org.
+- Footer-Links Impressum · Privacy · License auf allen Seiten ([render.ts](apps/fleetplanner/src/web/render.ts)).
+- Partnerships-Page-Title de→en ("Partnerships").
+
 Stand: 2026-05-30
 
 ## Fleetplanner / Fleetmanager

@@ -6021,11 +6021,204 @@ export function partnershipsPage(opts: {
     </div>`;
 
   return layout({
-    title: `Partnerschaften - ${opts.activeGuildName}`,
+    title: `Partnerships - ${opts.activeGuildName}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
     flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+// ── Legal Notice / Impressum (English — mirrors raumdock.org) ───────
+export function impressumPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html`<div class="page-header">
+      <h1 class="page-title">IMPRESSUM</h1>
+      <div class="page-subtitle">Angaben gemäß § 5 DDG (Digitale-Dienste-Gesetz).</div>
+    </div>
+
+    <div class="section">
+      <div class="card" style="padding:1.25rem;max-width:52rem">
+        <div class="card-title">Verantwortlich für den Inhalt</div>
+        <p style="margin-top:.5rem;line-height:1.8">
+          JustCallMeDeimos - Torsten Ennenbach<br />
+          c/o Online-Impressum.de #4910<br />
+          Europaring 90<br />
+          53757 Sankt Augustin<br />
+          Deutschland<br />
+          E-Mail: <a href="mailto:tower@raumdock.org">tower@raumdock.org</a>
+        </p>
+      </div>
+      <div class="card" style="padding:1.25rem;max-width:52rem;margin-top:1rem">
+        <div class="card-title">Hinweise</div>
+        <p class="text-dim text-sm mt-1">
+          Diese Seite enthält Links zu externen Webseiten Dritter, auf deren Inhalte wir keinen
+          Einfluss haben und für die wir keine Haftung übernehmen. Raumdock ist eine private,
+          nicht-kommerzielle Online-Gemeinschaft ohne Gewinnabsicht – wir sind Spieler, die
+          zufällig dasselbe Spiel spielen.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">English translation (non-binding)</div>
+      <div class="card" style="padding:1.25rem;max-width:52rem">
+        <div class="card-title">Responsible for the content</div>
+        <p style="margin-top:.5rem;line-height:1.8">
+          JustCallMeDeimos - Torsten Ennenbach<br />
+          c/o Online-Impressum.de #4910<br />
+          Europaring 90<br />
+          53757 Sankt Augustin<br />
+          Germany<br />
+          Email: <a href="mailto:tower@raumdock.org">tower@raumdock.org</a>
+        </p>
+        <p class="text-dim text-sm" style="margin-top:.75rem">
+          This site contains links to external third-party websites over whose content we have no
+          influence and for which we accept no liability. Raumdock is a private, non-commercial
+          online community with no profit motive – we are players who happen to play the same game.
+          The German version above is the legally binding one.
+        </p>
+      </div>
+    </div>`;
+  return layout({
+    title: "Impressum",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+// ── Privacy policy (English — mirrors raumdock.org + app data) ──────
+export function datenschutzPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html`<div class="page-header">
+      <h1 class="page-title">PRIVACY POLICY</h1>
+    </div>
+    <div class="section" style="max-width:52rem">
+      <p class="text-dim">
+        This describes exactly what data RDOC Fleetplanner stores and logs. We keep it to the minimum
+        needed to run the service. There are no tracking or advertising scripts and no advertising
+        cookies.
+      </p>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Controller</div>
+        <p class="mt-1">
+          <strong>Raumdock – Star Citizen Orga</strong><br />
+          Email: <a href="mailto:tower@raumdock.org">tower@raumdock.org</a><br />
+          Full details in the <a href="${bp}/impressum">Legal Notice</a>.
+        </p>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Account &amp; login data we store</div>
+        <ul class="text-dim text-sm mt-1" style="padding-left:1.25rem;line-height:1.7">
+          <li>An internal account ID, your instance role and an active flag, plus join and last-seen timestamps.</li>
+          <li>
+            For each linked login (Discord, and optionally GitHub or Google): the external account ID,
+            display name, avatar URL, and an email address <em>if the provider returns one</em>. Our
+            Discord login requests only <span class="text-mono">identify</span> and
+            <span class="text-mono">guilds</span> — it does <strong>not</strong> request your Discord
+            email. GitHub and Google logins do include your email.
+          </li>
+          <li>
+            The list of Discord server IDs you share with the bot (from the
+            <span class="text-mono">guilds</span> scope) and your role per server, so we can scope
+            your access.
+          </li>
+        </ul>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Content &amp; configuration we store</div>
+        <ul class="text-dim text-sm mt-1" style="padding-left:1.25rem;line-height:1.7">
+          <li>Operations, fleet units / ships, seat assignments and crew requests you create or join.</li>
+          <li>Ships you save to your hangar.</li>
+          <li>
+            For servers you administer: Discord guild, role and channel IDs, timezone and voice
+            settings, and server partnerships.
+          </li>
+          <li>
+            Relay voice-bot tokens you enter are stored <strong>encrypted</strong> (AES with a
+            per-token salt) and are never shown back in the browser.
+          </li>
+        </ul>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Sessions &amp; cookies</div>
+        <p class="text-dim text-sm mt-1">
+          A login session (with a CSRF token) and, for the companion app, a bearer token stored on
+          <em>your own device</em>. These expire automatically and can be cleared by logging out.
+          We use no third-party or advertising cookies.
+        </p>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">What we do NOT store</div>
+        <ul class="text-dim text-sm mt-1" style="padding-left:1.25rem;line-height:1.7">
+          <li>No passwords — login is OAuth only.</li>
+          <li>
+            No OAuth access tokens — they are used once during sign-in to read your profile and guild
+            list, then discarded (never written to the database).
+          </li>
+          <li>No voice or audio data.</li>
+        </ul>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Server logs</div>
+        <p class="text-dim text-sm mt-1">
+          The application and its hosting provider write operational access logs containing your IP
+          address, timestamp, HTTP method and requested path, and the response status — used only for
+          debugging and system security. Secrets and tokens are not logged. Logs are rotated and
+          deleted according to the host's retention policy.
+        </p>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Third parties</div>
+        <p class="text-dim text-sm mt-1">
+          Login is handled via <strong>Discord</strong> (and optionally GitHub or Google). When you
+          authenticate, your IP address is transmitted to that provider. The bot reads your Discord
+          guild list and posts scheduled events to servers you administer. Legal basis: Art. 6(1)(b)
+          GDPR (performance of the service you request) and Art. 6(1)(f) GDPR (legitimate interest in
+          operating it).
+        </p>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Retention &amp; deletion</div>
+        <p class="text-dim text-sm mt-1">
+          Account and content data is kept until you ask us to delete it or your server is removed.
+          Sessions expire on their own. To request access, correction or deletion of your data, email
+          <a href="mailto:tower@raumdock.org">tower@raumdock.org</a>.
+        </p>
+      </div>
+
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <div class="card-title">Your rights</div>
+        <ul class="text-dim text-sm mt-1" style="padding-left:1.25rem;line-height:1.7">
+          <li>Access, rectification, erasure / restriction</li>
+          <li>Data portability and objection where legally permitted</li>
+        </ul>
+      </div>
+    </div>`;
+  return layout({
+    title: "Privacy",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
     body,
   });
 }

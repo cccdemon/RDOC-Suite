@@ -155,6 +155,11 @@ export function layout(opts: LayoutOptions): SafeHtml {
           <a href="https://robertsspaceindustries.com/orgs/VFAR" target="_blank" rel="noopener"
             >Voidforge Armaments</a
           >
+          <div class="footer-legal">
+            <a href="${bp}/impressum">Impressum</a> ·
+            <a href="${bp}/privacy">Privacy</a> ·
+            <a href="${bp}/license">License</a>
+          </div>
         </footer>
       </body>
     </html>`;
@@ -358,6 +363,9 @@ a:hover { color: #fff; }
   border-top: 1px solid var(--border);
   margin-top: 5rem;
 }
+.footer-legal { margin-top: 0.75rem; }
+.footer-legal a { color: var(--dim); }
+.footer-legal a:hover { color: var(--cyan); }
 
 /* ── Flash ───────────────────────────────────────────────────── */
 .flash {
