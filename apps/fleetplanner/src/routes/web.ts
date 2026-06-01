@@ -127,6 +127,20 @@ async function resolveMeetingFields(
 }
 
 export async function webRoutes(app: FastifyInstance) {
+  app.get<{ Params: { file: string } }>("/assets/mission-images/:file", async (req, reply) => {
+    const file = req.params.file;
+    if (!/^[a-z0-9-]+\.png$/.test(file)) {
+      return reply.code(404).send("Not found");
+    }
+    const fullPath = join(PUBLIC_DIR, "mission-images", file);
+    try {
+      await stat(fullPath);
+      return reply.type("image/png").send(createReadStream(fullPath));
+    } catch {
+      return reply.code(404).send("Not found");
+    }
+  });
+
   // ── Home — shows ops from ALL user's guilds with server marker ──────────
   app.get<{ Querystring: { flash?: string; past?: string } }>("/", async (req, reply) => {
     const ctx = await optionalAuth(req);

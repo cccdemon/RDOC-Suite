@@ -236,7 +236,7 @@ model Operation {
   guildId         String // tenant — which Discord server this op belongs to
   title           String
   description     String   @default("")
-  opType          String   @default("combat") // combat | pve | training | mixed | exploration
+  opType          String   @default("combat") // combat | pve | mining | salvage | training | mixed | exploration | transport | social
   meetingSystem   String   @default("stanton")
   meetingLocation String   @default("")
   scheduledAt     DateTime
