@@ -3750,8 +3750,62 @@ export function bridgeAdminOverviewPage(opts: {
   csrfToken?: string;
   flash?: string;
   guilds: BridgeGuildRow[];
+  /** Raumdock-wide global gates. Only passed for the protected/initial
+   *  superadmin; absent → the settings card is hidden. */
+  globalSettings?: {
+    raumdockGuildId: string | null;
+    bridgeRequiredRoleId: string | null;
+    relayRequiredRoleId: string | null;
+    updatedAt: string | null;
+  } | null;
 }): SafeHtml {
   const bp = opts.basePath;
+  const gs = opts.globalSettings;
+
+  const globalSettingsCard = gs
+    ? html` <div class="section">
+        <div class="section-title">Raumdock Global Gates</div>
+        <p class="text-dim text-sm" style="margin-bottom:0.75rem">
+          Server-weite Discord-Rollen-Gates (NICHT pro Tenant). Geprüft gegen die unten gesetzte
+          Raumdock-Guild. Leer lassen = Gate aus.
+        </p>
+        <form method="post" action="${bp}/admin/bridge/global-settings" class="opv2-form">
+          <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+          <label>Raumdock Guild ID</label>
+          <input
+            type="text"
+            name="raumdockGuildId"
+            value="${gs.raumdockGuildId ?? ""}"
+            placeholder="z.B. 1500000000000000000"
+            pattern="[0-9]{17,20}"
+          />
+          <label>Bridge-Rolle (Squad Link Zugang)</label>
+          <input
+            type="text"
+            name="bridgeRequiredRoleId"
+            value="${gs.bridgeRequiredRoleId ?? ""}"
+            placeholder="Discord Role-ID"
+            pattern="[0-9]{17,20}"
+          />
+          <label>Relay-Rolle (Voice-to-All Publisher)</label>
+          <input
+            type="text"
+            name="relayRequiredRoleId"
+            value="${gs.relayRequiredRoleId ?? ""}"
+            placeholder="Discord Role-ID"
+            pattern="[0-9]{17,20}"
+          />
+          <div style="margin-top:0.75rem">
+            <button type="submit" class="btn btn-cyan">Speichern</button>
+            ${gs.updatedAt
+              ? html`<span class="text-dim text-sm" style="margin-left:0.75rem"
+                  >Zuletzt geändert: ${gs.updatedAt}</span
+                >`
+              : safe("")}
+          </div>
+        </form>
+      </div>`
+    : safe("");
 
   const rows = opts.guilds.map((g) => {
     const status =
@@ -3779,6 +3833,7 @@ export function bridgeAdminOverviewPage(opts: {
         admins — without opening the bridge admin UI.
       </p>
     </div>
+    ${globalSettingsCard}
     <div class="section">
       <div class="section-title">Guilds (${opts.guilds.length})</div>
       ${opts.guilds.length === 0

@@ -36,6 +36,8 @@ import {
   endBridgeSession,
   mintBridgeSessionInvite,
   revokeBridgeSessionInvite,
+  getBridgeGlobalSettings,
+  saveBridgeGlobalSettings,
   getBridgeRelayConfig,
   saveBridgeRelayConfig,
   restartBridgeRelayBots,
@@ -113,13 +115,54 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
         }
       }),
     );
+    let globalSettings: Awaited<ReturnType<typeof getBridgeGlobalSettings>> | null = null;
+    try {
+      globalSettings = await getBridgeGlobalSettings();
+    } catch {
+      globalSettings = null; // bridge unreachable — hide the card
+    }
     htmlReply(reply, bridgeAdminOverviewPage({
       basePath: basePath(),
       currentUser: ctx.user,
       csrfToken: ctx.csrfToken,
       flash: req.query.flash,
       guilds: rows,
+      globalSettings,
     }));
+  });
+
+  // ── Raumdock global gates (save) ─────────────────────────────────
+  app.post<{ Body: Record<string, string> }>("/admin/bridge/global-settings", async (req, reply) => {
+    const ctx = await requireRole(req, reply, "superadmin");
+    if (!ctx) return;
+    if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+    const pick = (v: string | undefined): string | null => {
+      const t = (v ?? "").trim();
+      return t === "" ? null : t;
+    };
+    // Validate snowflakes (empty allowed → clears the gate).
+    for (const key of ["raumdockGuildId", "bridgeRequiredRoleId", "relayRequiredRoleId"] as const) {
+      const v = pick(req.body[key]);
+      if (v !== null && !SNOWFLAKE.test(v)) {
+        return reply.redirect(basePath(`/admin/bridge?flash=error:Invalid+${key}.`), 302);
+      }
+    }
+    try {
+      await saveBridgeGlobalSettings(
+        {
+          raumdockGuildId: pick(req.body.raumdockGuildId),
+          bridgeRequiredRoleId: pick(req.body.bridgeRequiredRoleId),
+          relayRequiredRoleId: pick(req.body.relayRequiredRoleId),
+        },
+        ctx.user.id,
+      );
+      return reply.redirect(basePath(`/admin/bridge?flash=ok:Global+settings+saved.`), 302);
+    } catch {
+      return reply.redirect(
+        basePath(`/admin/bridge?flash=error:Save+failed+(bridge+unreachable).`),
+        302,
+      );
+    }
   });
 
   // ── Guild detail ─────────────────────────────────────────────────

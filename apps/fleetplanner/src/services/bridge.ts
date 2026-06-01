@@ -386,6 +386,35 @@ export type RelayBotsConfig = {
   bots: RelayBotEntry[];
 };
 
+export type BridgeGlobalSettings = {
+  raumdockGuildId: string | null;
+  bridgeRequiredRoleId: string | null;
+  relayRequiredRoleId: string | null;
+  updatedAt: string | null;
+  updatedById: string | null;
+};
+
+export async function getBridgeGlobalSettings(): Promise<BridgeGlobalSettings> {
+  const res = await bridgeFetch(`/internal/fleet/global-settings`);
+  await expectOk(res, "get global settings");
+  return (await res.json()) as BridgeGlobalSettings;
+}
+
+export async function saveBridgeGlobalSettings(
+  patch: {
+    raumdockGuildId?: string | null;
+    bridgeRequiredRoleId?: string | null;
+    relayRequiredRoleId?: string | null;
+  },
+  updatedById: string,
+): Promise<void> {
+  const res = await bridgeFetch(`/internal/fleet/global-settings`, {
+    method: "POST",
+    body: JSON.stringify({ ...patch, updatedById }),
+  });
+  await expectOk(res, "save global settings");
+}
+
 export async function getBridgeRelayConfig(guildId: string): Promise<RelayBotsConfig> {
   assertGuildId(guildId);
   const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/relay-bots/config`);

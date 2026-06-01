@@ -4,6 +4,7 @@ import { getPrisma } from "@rdoc-suite/db";
 import { getEnv, getOAuthEnv } from "../config/env.js";
 import { logger } from "../services/logger.js";
 import { readGuildConfig, saveGuildConfig } from "../services/guildConfig.js";
+import { getGlobalSettings, saveGlobalSettings } from "../services/globalSettings.js";
 import { addAdmin, listAdmins } from "../services/admins.js";
 import { monitoringSnapshot } from "../services/monitoring.js";
 import { listRecentAudit, countAudit } from "../services/audit.js";
@@ -531,6 +532,33 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
       return reply.code(200).send({ ok: true });
     },
   );
+
+  // ── Global settings (Raumdock-wide, non-tenant) ──────────────────
+  app.get("/internal/fleet/global-settings", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    return reply.code(200).send(await getGlobalSettings());
+  });
+
+  const globalSettingsBodySchema = z.object({
+    raumdockGuildId: z.string().regex(/^[0-9]{17,20}$/).nullable().optional(),
+    bridgeRequiredRoleId: z.string().regex(/^[0-9]{17,20}$/).nullable().optional(),
+    relayRequiredRoleId: z.string().regex(/^[0-9]{17,20}$/).nullable().optional(),
+    updatedById: z.string().optional(),
+  });
+  app.post<{ Body: unknown }>("/internal/fleet/global-settings", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    const parsed = globalSettingsBodySchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({
+        error: "invalid_body",
+        issues: parsed.error.issues.map((i) => `${i.path.join(".") || "<root>"}: ${i.message}`),
+      });
+    }
+    const { updatedById, ...patch } = parsed.data;
+    const saved = await saveGlobalSettings(patch, updatedById ?? "fleet-admin");
+    logger.info({ updatedById: updatedById ?? "fleet-admin" }, "fleet api: saved global settings");
+    return reply.code(200).send(saved);
+  });
 
   app.get("/internal/fleet/relay-bots/config", async (request, reply) => {
     if (!authorize(request, reply)) return;

@@ -3,6 +3,26 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Bridge-Zugang per Raumdock-Rolle (DB-konfigurierbar)
+
+Bridge-mode (Squad Link) nur nutzbar mit bestimmter Discord-rolle auf dem **Raumdock-server**
+(global, NICHT per-tenant). Rolle + Raumdock-guild + relay-rolle **DB-backed** (nicht .env),
+konfigurierbar im bridge-admin nur durch den **protected/bootstrap-admiral** (initialer superadmin).
+
+- **Schema** (root `prisma/schema.prisma`): neues singleton `GlobalSettings`
+  (id @default("global"), raumdockGuildId?, bridgeRequiredRoleId?, relayRequiredRoleId?,
+  updatedAt, updatedById). Migration unter root `prisma/migrations/`.
+- **Service** `apps/bridge/src/services/globalSettings.ts`: get/save singleton (`prisma as any`).
+- **oauth.ts** callback: nach userId → wenn bridgeRequiredRoleId+raumdockGuildId gesetzt →
+  fetchGuildMember(RDOCRTC-bot, raumdockGuildId, userId) → rolle prüfen → sonst 403
+  `missing_bridge_role`. Globaler gate vor tenant-commander-check.
+- **relay.ts**: relay-rolle aus GlobalSettings statt `env.RELAY_REQUIRED_ROLE_ID`, geprüft
+  gegen raumdockGuildId (global). env-var wird nicht mehr gelesen.
+- **Admin-UI** (admin/routes.ts + views): "Global / Bridge Settings"-seite, gate
+  `session.protected === true`. Form: raumdockGuildId, bridgeRequiredRoleId, relayRequiredRoleId.
+- Rolle aktuell: 1511124797445247096 (wird per UI gesetzt, nicht hardcoded).
+- Caveat: gate greift bei OAuth (wie commander-role); session-JWT-TTL → entzug erst bei ablauf.
+
 ## Queued / Planned Step - 2026-06-01: Bugfixes + Composition Schritt 1+2
 
 - **Bug 1 (Companion):** mission-deeplink wechselte LiveKit-channel nicht — bridge-`audioRef`

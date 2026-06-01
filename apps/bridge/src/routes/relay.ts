@@ -1,10 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
-import { getEnv } from "../config/env.js";
+import { getEnv, getOAuthEnv } from "../config/env.js";
 import { verifySessionToken } from "../auth/sessionToken.js";
 import { issueRelayToken } from "../services/livekit.js";
-import { getRelayBotsConfig } from "../services/relayBotsConfig.js";
+import { getGlobalSettings } from "../services/globalSettings.js";
 
 const roleSchema = z.enum(["publisher", "subscriber"]);
 
@@ -101,16 +101,23 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "guildId_required" });
     }
     const guildId = queryGuildId;
-    const config = await getRelayBotsConfig(guildId);
-    const requiredRoleId = env.RELAY_REQUIRED_ROLE_ID;
-    const botToken = env.DISCORD_RELAY_BOT_TOKEN ?? config.bots[0]?.token;
 
-    // If RELAY_REQUIRED_ROLE_ID is set, the user must hold that Discord role.
-    if (requiredRoleId) {
-      if (!guildId || !botToken) {
-        return reply.code(503).send({ error: "relay_not_configured" });
+    // Relay publisher role gate. The required role + the guild it is
+    // checked against live in GlobalSettings (DB, Raumdock-wide) — NOT in
+    // .env, and NOT per-tenant. Active only once a role is configured.
+    const settings = await getGlobalSettings();
+    if (settings.relayRequiredRoleId) {
+      const checkGuildId = settings.raumdockGuildId;
+      const botToken = getOAuthEnv()?.DISCORD_RDOCRTC_BOT_TOKEN;
+      if (!checkGuildId || !botToken) {
+        return reply.code(503).send({ error: "relay_role_gate_misconfigured" });
       }
-      const allowed = await hasRelayRole(botToken, guildId, userId, requiredRoleId);
+      const allowed = await hasRelayRole(
+        botToken,
+        checkGuildId,
+        userId,
+        settings.relayRequiredRoleId,
+      );
       if (!allowed) {
         return reply.code(403).send({ error: "missing_relay_role" });
       }

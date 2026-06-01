@@ -227,3 +227,18 @@ model RelayBotsConfig {
   updatedAt        DateTime @updatedAt
   updatedById      String?
 }
+
+// Singleton (id = "global") for Raumdock-wide gates that are NOT part of
+// the per-guild tenant system. Configured by the protected/bootstrap
+// admiral via the bridge admin UI.
+model GlobalSettings {
+  id                   String   @id @default("global")
+  // Discord guild whose membership/roles the global gates check against.
+  raumdockGuildId      String?
+  // Role a user must hold in raumdockGuildId to use bridge mode (Squad Link).
+  bridgeRequiredRoleId String?
+  // Role a user must hold in raumdockGuildId to get a relay publisher token.
+  relayRequiredRoleId  String?
+  updatedAt            DateTime @updatedAt
+  updatedById          String?
+}
