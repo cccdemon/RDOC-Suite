@@ -139,8 +139,8 @@ export function layout(opts: LayoutOptions): SafeHtml {
       <body>
         ${nav}
         <div class="beta-banner">
-          Still in development — this is a Beta. Found a bug? Use the
-          <a href="${bp}/feedback">feedback tab</a>.
+          Beta — RDOC Fleetplanner is still under active development. Spotted a bug or have an idea?
+          Let us know on the <a href="${bp}/feedback">feedback tab</a>.
         </div>
         <main class="main">${flash} ${opts.body}</main>
         <footer class="footer">
