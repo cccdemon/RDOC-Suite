@@ -4814,7 +4814,7 @@ export function guildDiagnosticsPage(opts: {
         </div>`;
     const action = check.inviteUrl
       ? html`<a href="${check.inviteUrl}" class="btn btn-cyan btn-sm" target="_blank" rel="noopener"
-          >Invite / Fix Permissions</a
+          >${check.installed ? "Reinvite / Fix Permissions" : "Invite / Fix Permissions"}</a
         >`
       : html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm"
           >Configure in Server Settings</a
@@ -4842,7 +4842,7 @@ export function guildDiagnosticsPage(opts: {
           </div>
         </div>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-          ${check.ok ? safe("") : action}
+          ${action}
         </div>
       </div>
     </div>`;
