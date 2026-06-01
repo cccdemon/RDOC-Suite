@@ -5005,6 +5005,8 @@ export function howToPage(opts: {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
+  /** Free-text SuperAdmin contact. */
+  superadminContact?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const body = html` <div class="page-header">
@@ -5213,6 +5215,25 @@ export function howToPage(opts: {
           >
           and cached locally. The catalog refreshes weekly automatically. Admins can trigger a
           manual sync in the Admin panel.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Contact &amp; support</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p>
+          Found a bug or have a feature request? Use the
+          <a href="${bp}/feedback">Feedback</a> tab.
+        </p>
+        <p style="margin-top:.5rem">
+          To reach the instance SuperAdmin directly (e.g. to request Voice Permission for your
+          server):
+          ${
+            opts.superadminContact
+              ? html`<strong class="text-mono">${opts.superadminContact}</strong>`
+              : safe("ask in your community's Discord.")
+          }
         </p>
       </div>
     </div>`;
@@ -5442,6 +5463,8 @@ export function guildSettingsPage(opts: {
   activeGuildName: string;
   /** Whether the viewer may remove this server (owner or superadmin). */
   canRemove?: boolean;
+  /** Free-text SuperAdmin contact (shown when voice is disabled). */
+  superadminContact?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
@@ -5628,42 +5651,59 @@ export function guildSettingsPage(opts: {
       g.voiceEnabled
         ? html` <div class="section">
             <div class="section-title">Voice relay bots (${opts.voiceBots.length}/6)</div>
+            <form method="post" action="${bp}/guilds/voice-bots" class="card" style="padding:1rem;display:grid;grid-template-columns:1fr 1.2fr 1.8fr auto;gap:.75rem;align-items:flex-end">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <label class="text-sm text-dim">Label
+                <input type="text" name="label" maxlength="60" placeholder="Funkrelais 1" required />
+              </label>
+              <label class="text-sm text-dim">Bot user ID
+                <input type="text" name="botUserId" placeholder="1509191397264064689" required />
+              </label>
+              <label class="text-sm text-dim">Bot token
+                <input type="password" name="botToken" autocomplete="new-password" placeholder="Stored encrypted with per-token salt" required />
+              </label>
+              <button type="submit" class="btn btn-cyan btn-sm">Save Bot</button>
+            </form>
+            <p class="text-dim text-sm" style="margin-top:.5rem">
+              Tokens are encrypted before storage and never rendered back to the browser. Use six entries for the six Funkrelais bots.
+            </p>
+            <div style="overflow-x:auto;margin-top:1rem">
+              <table class="user-table">
+                <thead><tr><th>Label</th><th>Bot ID</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>
+                <tbody>${
+                  voiceBotRows.length
+                    ? voiceBotRows
+                    : html`<tr>
+                        <td colspan="5" class="text-dim">No relay bots configured.</td>
+                      </tr>`
+                }</tbody>
+              </table>
+            </div>
           </div>`
-        : html` <div class="section" style="opacity:.45;pointer-events:none">
+        : html` <div class="section">
             <div class="section-title">
               Voice relay bots <span class="tag tag-dim">RDOC Voice Permission required</span>
             </div>
+            <div class="card">
+              <p class="text-dim text-sm">
+                Voice features (relay bots, the RTC voice bridge and Mission Voice Sessions) are
+                <strong>disabled</strong> for this server. A SuperAdmin must grant
+                <strong>RDOC Voice Permission</strong> before the voice bot configuration becomes
+                available.
+              </p>
+              ${
+                opts.superadminContact
+                  ? html`<p class="text-sm" style="margin-top:.5rem">
+                      Request access from the SuperAdmin:
+                      <strong class="text-mono">${opts.superadminContact}</strong>
+                    </p>`
+                  : html`<p class="text-sm" style="margin-top:.5rem">
+                      Contact the instance SuperAdmin to request access.
+                    </p>`
+              }
+            </div>
           </div>`
     }
-      <form method="post" action="${bp}/guilds/voice-bots" class="card" style="padding:1rem;display:grid;grid-template-columns:1fr 1.2fr 1.8fr auto;gap:.75rem;align-items:flex-end">
-        <input type="hidden" name="_csrf" value="${csrf}" />
-        <label class="text-sm text-dim">Label
-          <input type="text" name="label" maxlength="60" placeholder="Funkrelais 1" required />
-        </label>
-        <label class="text-sm text-dim">Bot user ID
-          <input type="text" name="botUserId" placeholder="1509191397264064689" required />
-        </label>
-        <label class="text-sm text-dim">Bot token
-          <input type="password" name="botToken" autocomplete="new-password" placeholder="Stored encrypted with per-token salt" required />
-        </label>
-        <button type="submit" class="btn btn-cyan btn-sm">Save Bot</button>
-      </form>
-      <p class="text-dim text-sm" style="margin-top:.5rem">
-        Tokens are encrypted before storage and never rendered back to the browser. Use six entries for the six Funkrelais bots.
-      </p>
-      <div style="overflow-x:auto;margin-top:1rem">
-        <table class="user-table">
-          <thead><tr><th>Label</th><th>Bot ID</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>
-          <tbody>${
-            voiceBotRows.length
-              ? voiceBotRows
-              : html`<tr>
-                  <td colspan="5" class="text-dim">No relay bots configured.</td>
-                </tr>`
-          }</tbody>
-        </table>
-      </div>
-    </div>
 
     <div class="section">
       <div class="section-title">Members (${opts.memberships.length})</div>

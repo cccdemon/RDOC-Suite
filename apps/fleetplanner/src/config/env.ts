@@ -18,6 +18,9 @@ const schema = z.object({
   DISCORD_RDOCRTC_BOT_TOKEN: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
   SUPERADMIN_DISCORD_ID: z.string().optional(),
+  // Free-text contact shown to users who need to reach the instance SuperAdmin
+  // (e.g. to request Voice Permission). Discord handle, email, or URL.
+  SUPERADMIN_CONTACT: z.string().optional(),
 
   // GitHub OAuth (optional — leave unset to hide GitHub login button)
   GITHUB_CLIENT_ID: z.string().optional(),

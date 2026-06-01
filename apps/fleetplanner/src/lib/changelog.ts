@@ -21,6 +21,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Server owners can remove their server from Fleetplanner (Servers → Settings → Danger zone). Data is kept and reactivates when the bot is re-added.",
       "SuperAdmins can ban/unban Discord servers from the Admin panel.",
       "Fixed: seat claiming is now properly scoped to people who can access the operation.",
+      "Voice bot configuration is now hidden until a server is granted Voice Permission.",
+      "Known status: Discord Channelcommander & Discord Voicebridge still untested.",
     ],
   },
 ];

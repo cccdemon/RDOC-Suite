@@ -189,6 +189,7 @@ export async function guildRoutes(app: FastifyInstance) {
         activeGuildId: gctx.guildId,
         activeGuildName: gctx.guildName,
         canRemove,
+        superadminContact: env.SUPERADMIN_CONTACT,
       }));
     }
   );

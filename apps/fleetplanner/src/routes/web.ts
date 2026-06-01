@@ -792,6 +792,7 @@ export async function webRoutes(app: FastifyInstance) {
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,
+        superadminContact: getEnv().SUPERADMIN_CONTACT,
       }),
     );
   });

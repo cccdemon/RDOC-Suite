@@ -40,6 +40,13 @@ Deploy: `prisma migrate deploy` läuft im Fleetplanner-Container-Start. Migratio
 - HowTo-Seite ([web/pages.ts](apps/fleetplanner/src/web/pages.ts) `howToPage`) um 3 Sektionen erweitert: Operation visibility, Server partnerships, Removing/banning a server.
 - UI-Changelog: neue [lib/changelog.ts](apps/fleetplanner/src/lib/changelog.ts) (Datenarray) + `changelogPage` + Route `/changelog` (public) + Nav-Link. Erste Entry = dieses Tenant-Release.
 
+### Nachtrag 3: Voice-Gating, Superadmin-Kontakt, Beta-Banner
+
+- **Voice-Gating-Fix:** Voice-Bot-Formular + Tabelle in [guildSettingsPage](apps/fleetplanner/src/web/pages.ts) standen außerhalb des `voiceEnabled`-Conditionals → immer sichtbar. Jetzt komplett gated: ohne RDOC Voice Permission nur Hinweis + Superadmin-Kontakt, kein Voice-Bot/RTC-Config-UI.
+- **Superadmin-Kontakt:** neue env `SUPERADMIN_CONTACT` (free text). Angezeigt im Voice-disabled-Hinweis + neuer "Contact & support"-Sektion in How-to.
+- **Beta-Banner:** im Header (layout, [render.ts](apps/fleetplanner/src/web/render.ts)) auf allen Seiten: "Still in development — Beta — feedback tab".
+- **Changelog:** Hinweis "Discord Channelcommander & Discord Voicebridge still untested" ergänzt.
+
 Stand: 2026-05-30
 
 ## Fleetplanner / Fleetmanager

@@ -138,6 +138,10 @@ export function layout(opts: LayoutOptions): SafeHtml {
       </head>
       <body>
         ${nav}
+        <div class="beta-banner">
+          Still in development — this is a Beta. Found a bug? Use the
+          <a href="${bp}/feedback">feedback tab</a>.
+        </div>
         <main class="main">${flash} ${opts.body}</main>
         <footer class="footer">
           <a href="https://robertsspaceindustries.com/orgs/RDOC" target="_blank" rel="noopener"
@@ -363,6 +367,20 @@ a:hover { color: #fff; }
   font-size: 0.85rem;
   border-left: 3px solid;
 }
+/* ── Beta banner ─────────────────────────────────────────────── */
+.beta-banner {
+  background: var(--gold-08);
+  border-bottom: 1px solid var(--gold-38);
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-align: center;
+  padding: 0.5rem 1rem;
+}
+.beta-banner a { color: var(--gold); text-decoration: underline; }
+.beta-banner a:hover { color: #fff; }
+
 .flash-ok    { background: var(--green-08); border-color: var(--green); color: var(--green); }
 .flash-warn  { background: var(--gold-08);  border-color: var(--gold);  color: var(--gold); }
 .flash-error { background: var(--red-08);   border-color: var(--red);   color: var(--red); }
