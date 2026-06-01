@@ -6,6 +6,8 @@ type Props = {
   commanderStatus: FleetStatus;
   commanderPttActive: boolean;
   hasCommanderRoom: boolean;
+  /** Other commanders currently in the commander room (LiveKit, excl. self). */
+  commanderParticipants: number;
   onCommanderPtt: (pressed: boolean) => void;
   onDisconnect: () => void;
   /** PTT-1 hotkey — drives the commander room in mission mode. */
@@ -27,6 +29,7 @@ export function MissionVoicePanel({
   commanderStatus,
   commanderPttActive,
   hasCommanderRoom,
+  commanderParticipants,
   onCommanderPtt,
   onDisconnect,
   localHotkey,
@@ -45,7 +48,12 @@ export function MissionVoicePanel({
             <div className={`mission-room-status ${statusColor(commanderStatus)}`} />
             <div className="mission-room-info">
               <span className="mission-room-name">COMMANDER</span>
-              <span className="mission-room-hotkey text-dim">{localHotkey}</span>
+              <span className="mission-room-hotkey text-dim">
+                {localHotkey}
+                {commanderStatus === "connected"
+                  ? ` · ${commanderParticipants} im Kanal`
+                  : ""}
+              </span>
             </div>
             <button
               type="button"

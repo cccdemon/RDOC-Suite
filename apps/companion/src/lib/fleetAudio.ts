@@ -14,6 +14,8 @@ export class FleetAudio {
   private audio = new LivekitAudio();
   private status: FleetStatus = "idle";
   private statusListener: StatusListener | null = null;
+  private participantsListener: ((count: number) => void) | null = null;
+  private participantCount = 0;
 
   setStatusListener(fn: StatusListener): void {
     this.statusListener = fn;
@@ -28,7 +30,20 @@ export class FleetAudio {
           this.statusListener?.(mapped, detail);
         }
       },
+      participantsChanged: (count) => {
+        this.participantCount = count;
+        this.participantsListener?.(count);
+      },
     });
+  }
+
+  /** Number of OTHER participants in the room (excludes self). */
+  setParticipantsListener(fn: (count: number) => void): void {
+    this.participantsListener = fn;
+  }
+
+  getParticipantCount(): number {
+    return this.participantCount;
   }
 
   getStatus(): FleetStatus {
@@ -41,6 +56,8 @@ export class FleetAudio {
 
   async disconnect(): Promise<void> {
     await this.audio.disconnect();
+    this.participantCount = 0;
+    this.participantsListener?.(0);
     this.setStatus("idle");
   }
 

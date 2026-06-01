@@ -108,6 +108,10 @@ type AppState = {
   /** missionCommanderRef connection status. */
   commanderStatus: FleetStatus;
   commanderPttActive: boolean;
+  /** Number of OTHER participants in the mission commander room (LiveKit,
+   *  excludes self). Reflects who is actually in the mission channel —
+   *  distinct from the bridge guild roster (activeCommanders). */
+  commanderParticipants: number;
   missionToken: string | null;
   missionUrl: string | null;
   missionEnded: boolean;
@@ -148,6 +152,7 @@ const INITIAL: AppState = {
   missionHasCommander: false,
   commanderStatus: "idle",
   commanderPttActive: false,
+  commanderParticipants: 0,
   missionToken: null,
   missionUrl: null,
   missionEnded: false,
@@ -814,6 +819,7 @@ export function App(): JSX.Element {
       missionHasCommander: false,
       commanderStatus: "idle",
       commanderPttActive: false,
+      commanderParticipants: 0,
       missionToken: null,
       missionUrl: null,
       missionEnded: false,
@@ -917,6 +923,7 @@ export function App(): JSX.Element {
               missionHasCommander: false,
               commanderStatus: "idle",
               commanderPttActive: false,
+              commanderParticipants: 0,
               missionToken: null,
               missionUrl: null,
               missionEnded: true,
@@ -940,6 +947,9 @@ export function App(): JSX.Element {
             if (!missionCommanderRef.current) {
               const fa = new FleetAudio();
               fa.setStatusListener((s) => setState((st) => ({ ...st, commanderStatus: s })));
+              fa.setParticipantsListener((count) =>
+                setState((st) => ({ ...st, commanderParticipants: count })),
+              );
               missionCommanderRef.current = fa;
             }
             await missionCommanderRef.current.connect(livekitUrl, commanderRoom.token);
@@ -1386,6 +1396,7 @@ export function App(): JSX.Element {
             commanderStatus={state.commanderStatus}
             commanderPttActive={state.commanderPttActive}
             hasCommanderRoom={state.missionHasCommander}
+            commanderParticipants={state.commanderParticipants}
             onCommanderPtt={onCommanderPtt}
             onDisconnect={() => void onMissionDisconnect()}
             localHotkey={state.localHotkey}
@@ -1451,8 +1462,12 @@ export function App(): JSX.Element {
               </button>
             </div>
           </section>
-        ) : (
+        ) : missionOwnsLocal ? null : (
           // ────────── Connected: mic + roster ──────────
+          // Hidden while a mission commander room owns LOCAL voice — that
+          // roster is the BRIDGE guild roster, not the mission channel, so
+          // showing it in mission mode is misleading. Mission membership is
+          // shown in the MissionVoicePanel instead.
           <section className="cc-2col cc-fade-in">
             <div className="cc-card">
               <span className="cc-card-tick"></span>

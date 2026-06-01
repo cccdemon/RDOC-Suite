@@ -3,6 +3,19 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-02: Companion zeigt im Mission-Mode falschen (Bridge-)Roster
+
+Bug: in MISSION MODE rendert die app parallel die bridge-connected-pane → SQUAD ROSTER zeigt
+`activeCommanders` (bridge-guild-roster), nicht die mission-commander-room-teilnehmer. User sah
+Leute (Headwig) "im Kanal" die nur am bridge hängen.
+
+Fix (companion-only):
+- Bridge-connected-pane (roster + bridge-PTT) wird ausgeblendet wenn `missionOwnsLocal`
+  (missionActive && missionHasCommander) — die mission besitzt dann LOCAL.
+- Echte mission-channel-präsenz: `FleetAudio` reicht `participantsChanged` (room.numParticipants)
+  durch → `setParticipantsListener`/`getParticipantCount`. App-state `commanderParticipants`.
+  MissionVoicePanel zeigt "N im Kanal" am COMMANDER-room (verbunden). Reset bei disconnect/ende.
+
 ## Queued / Planned Step - 2026-06-02: Companion Mission-Close kickt statt zu switchen
 
 Bug: mission-token ist nicht op-gebunden; `/api/companion/mission-voice` liefert dynamisch
