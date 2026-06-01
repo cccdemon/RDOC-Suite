@@ -46,6 +46,7 @@ import {
 import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../services/discord.js";
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
+import { specForShip, specForSquad } from "../services/seats.js";
 
 function csrfOk(body: Record<string, unknown>, csrfToken: string): boolean {
   return typeof body._csrf === "string" && body._csrf === csrfToken;
@@ -58,7 +59,8 @@ function opReturnUrl(
   fallbackTab = "overview",
 ): string {
   const tab = body.tab?.trim() || fallbackTab;
-  const ui = body.ui === "new" ? `?tab=${encodeURIComponent(tab)}&flash=${flash}` : `?flash=${flash}`;
+  const ui =
+    body.ui === "new" ? `?tab=${encodeURIComponent(tab)}&flash=${flash}` : `?flash=${flash}`;
   return basePath(`/ops/${opId}${ui}`);
 }
 
@@ -96,6 +98,53 @@ function shipSizeLabel(ship: Pick<Ship, "size" | "rawJson">): string {
   return "";
 }
 
+async function assertRequirementFitsUnit(
+  operationId: string,
+  requirementId: string | undefined,
+  unitType: string,
+  selectedShipId: string | undefined,
+  currentUnitId?: string,
+) {
+  if (!requirementId) return;
+  const requirement = await prisma.compositionRequirement.findUnique({
+    where: { id: requirementId },
+    include: {
+      group: { select: { operationId: true } },
+      fleetUnits: { select: { id: true, status: true } },
+    },
+  });
+  if (!requirement || requirement.group.operationId !== operationId) {
+    throw new Error("Composition slot does not belong to this operation");
+  }
+  const filled = requirement.fleetUnits.filter(
+    (unit) => unit.id !== currentUnitId && unit.status !== "rejected",
+  ).length;
+  if (filled >= requirement.count) {
+    throw new Error("Composition slot is already full");
+  }
+  if (
+    !REQUIREMENT_CATEGORIES.includes(
+      requirement.category as (typeof REQUIREMENT_CATEGORIES)[number],
+    )
+  ) {
+    throw new Error("Composition slot has an invalid category");
+  }
+  if (requirement.category === "any") return;
+  if (unitType === "squad" && requirement.category !== "ground") {
+    throw new Error("FPS squads can only fill ground or any slots");
+  }
+  if (unitType === "ship" && selectedShipId) {
+    const ship = await prisma.ship.findUnique({ where: { id: selectedShipId } });
+    if (!ship) throw new Error("Ship not found");
+    const category = shipCategory(ship);
+    if (category !== "any" && category !== requirement.category) {
+      throw new Error(
+        `Ship category ${category} does not match slot category ${requirement.category}`,
+      );
+    }
+  }
+}
+
 async function captainsWhoseEventRolesCanBeRemoved(operationId: string): Promise<string[]> {
   const op = await prisma.operation.findUnique({
     where: { id: operationId },
@@ -124,6 +173,17 @@ async function captainsWhoseEventRolesCanBeRemoved(operationId: string): Promise
     if (!otherActiveUnit) removable.push(captainId);
   }
   return removable;
+}
+
+async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
+  const opRole = await effectiveOpRole(userId, instanceRole, operationId);
+  if (opRole === "fleetoperator") return true;
+  if (!opRole) return false;
+  const leader = await prisma.operationLeader.findUnique({
+    where: { operationId_userId: { operationId, userId } },
+    select: { id: true },
+  });
+  return !!leader;
 }
 
 export async function apiRoutes(app: FastifyInstance) {
@@ -170,6 +230,8 @@ export async function apiRoutes(app: FastifyInstance) {
       // Verify operation exists and is open
       const op = await prisma.operation.findUnique({ where: { id: req.params.id } });
       if (!op) return reply.code(404).send({ error: "Operation not found" });
+      const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id);
+      if (!opRole) return reply.code(403).send({ error: "Forbidden" });
       if (op.status !== "open" && op.status !== "draft") {
         return reply.code(409).send({ error: "Operation is not open for registration" });
       }
@@ -191,44 +253,12 @@ export async function apiRoutes(app: FastifyInstance) {
         ) {
           throw new Error("Squad size must be between 2 and 8");
         }
-        if (requirementId) {
-          const requirement = await prisma.compositionRequirement.findUnique({
-            where: { id: requirementId },
-            include: {
-              group: { select: { operationId: true } },
-              fleetUnits: { select: { status: true } },
-            },
-          });
-          if (!requirement || requirement.group.operationId !== req.params.id) {
-            throw new Error("Composition slot does not belong to this operation");
-          }
-          const filled = requirement.fleetUnits.filter((u) => u.status !== "rejected").length;
-          if (filled >= requirement.count) {
-            throw new Error("Composition slot is already full");
-          }
-          if (
-            !REQUIREMENT_CATEGORIES.includes(
-              requirement.category as (typeof REQUIREMENT_CATEGORIES)[number],
-            )
-          ) {
-            throw new Error("Composition slot has an invalid category");
-          }
-          if (requirement.category !== "any") {
-            if (unitType === "squad" && requirement.category !== "ground") {
-              throw new Error("FPS squads can only fill ground or any slots");
-            }
-            if (unitType === "ship" && selectedShipId) {
-              const ship = await prisma.ship.findUnique({ where: { id: selectedShipId } });
-              if (!ship) throw new Error("Ship not found");
-              const category = shipCategory(ship);
-              if (category !== "any" && category !== requirement.category) {
-                throw new Error(
-                  `Ship category ${category} does not match slot category ${requirement.category}`,
-                );
-              }
-            }
-          }
-        }
+        await assertRequirementFitsUnit(
+          req.params.id,
+          requirementId || undefined,
+          unitType,
+          selectedShipId,
+        );
         if (unitType === "ship" && selectedShipId && storeOwnedShip === "1") {
           await prisma.userShip.upsert({
             where: { userId_shipId: { userId: ctx.user.id, shipId: selectedShipId } },
@@ -250,6 +280,143 @@ export async function apiRoutes(app: FastifyInstance) {
         );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to register unit";
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
+          302,
+        );
+      }
+    },
+  );
+
+  // ── Edit fleet unit ──────────────────────────────────────────────────
+  app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/units/:unitId/edit",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+
+      const unit = await prisma.fleetUnit.findFirst({
+        where: { id: req.params.unitId, operationId: req.params.id },
+        include: {
+          operation: { select: { guildId: true, status: true, leaders: true } },
+          seats: { orderBy: { order: "asc" } },
+        },
+      });
+      if (!unit) return reply.code(404).send({ error: "Unit not found" });
+      if (unit.operation.status === "completed" || unit.operation.status === "cancelled") {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Closed+operations+cannot+be+edited", "fleet"),
+          302,
+        );
+      }
+
+      const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id);
+      const canEdit =
+        unit.captainId === ctx.user.id ||
+        opRole === "fleetoperator" ||
+        unit.operation.leaders.some((leader) => leader.userId === ctx.user.id);
+      if (!canEdit) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Forbidden", "fleet"),
+          302,
+        );
+      }
+
+      try {
+        const unitType = req.body.unitType || unit.unitType;
+        if (!UNIT_TYPES.includes(unitType as (typeof UNIT_TYPES)[number])) {
+          throw new Error("Invalid unit type");
+        }
+
+        const selectedShipId =
+          unitType === "ship" ? req.body.shipId || req.body.ownedShipId || unit.shipId || "" : "";
+        if (unitType === "ship") {
+          if (!selectedShipId) throw new Error("Select a ship");
+          const ship = await prisma.ship.findUnique({ where: { id: selectedShipId } });
+          if (!ship) throw new Error("Ship not found");
+        }
+
+        const squadName =
+          unitType === "squad"
+            ? req.body.squadName?.trim().slice(0, 80) || unit.squadName || "FPS Team"
+            : null;
+        const squadSize =
+          unitType === "squad" ? parsePositiveInt(req.body.squadSize, unit.squadSize ?? 4) : null;
+        if (unitType === "squad" && (!squadSize || squadSize < 2 || squadSize > 8)) {
+          throw new Error("Squad size must be between 2 and 8");
+        }
+
+        const requirementId = req.body.requirementId?.trim() || undefined;
+        await assertRequirementFitsUnit(
+          req.params.id,
+          requirementId,
+          unitType,
+          selectedShipId || undefined,
+          unit.id,
+        );
+
+        const structuralChange =
+          unit.unitType !== unitType ||
+          (unitType === "ship" && unit.shipId !== selectedShipId) ||
+          (unitType === "squad" && (unit.squadName !== squadName || unit.squadSize !== squadSize));
+        const approvalRelevantChange =
+          structuralChange ||
+          (unit.requirementId ?? "") !== (requirementId ?? "") ||
+          (unit.captainNote ?? "") !== (req.body.captainNote?.trim().slice(0, 240) ?? "");
+        const nextStatus =
+          unit.status === "accepted" && approvalRelevantChange ? "pending" : unit.status;
+        const specs =
+          structuralChange && unitType === "ship"
+            ? specForShip((await prisma.ship.findUnique({ where: { id: selectedShipId } }))!)
+            : structuralChange && squadSize
+              ? specForSquad(squadSize)
+              : null;
+
+        await prisma.$transaction(async (tx) => {
+          await tx.fleetUnit.update({
+            where: { id: unit.id },
+            data: {
+              unitType,
+              shipId: unitType === "ship" ? selectedShipId : null,
+              squadName,
+              squadSize,
+              requirementId: requirementId ?? null,
+              captainNote: req.body.captainNote?.trim().slice(0, 240) || null,
+              status: nextStatus,
+              ...(nextStatus === "pending" ? { leaderNote: null } : {}),
+            },
+          });
+
+          if (specs) {
+            await tx.seatAssignment.deleteMany({ where: { unitId: unit.id } });
+            for (const spec of specs) {
+              await tx.seatAssignment.create({
+                data: {
+                  unitId: unit.id,
+                  label: spec.label,
+                  seatType: spec.seatType,
+                  order: spec.order,
+                  ...(spec.order === 0 ? { userId: unit.captainId } : {}),
+                },
+              });
+            }
+          }
+        });
+
+        if (unit.status === "accepted" && nextStatus === "pending") {
+          removeCaptainDiscordRoles(unit.captainId, unit.operation.guildId).catch((err) =>
+            app.log.warn(err, "Captain Discord role removal after unit edit failed"),
+          );
+        }
+
+        const flash =
+          unit.status === "accepted" && nextStatus === "pending"
+            ? "warn:Unit+updated+and+needs+acceptance+again."
+            : "ok:Unit+updated.";
+        return reply.redirect(opReturnUrl(req.params.id, req.body, flash, "fleet"), 302);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to update unit";
         return reply.redirect(
           opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
           302,
@@ -290,9 +457,15 @@ export async function apiRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
     "/api/ops/:id/units/:unitId/accept",
     async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      const ctx = await requireAuth(req, reply);
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      if (!(await canApproveUnits(ctx.user.id, ctx.user.role, req.params.id))) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Forbidden", "fleet"),
+          302,
+        );
+      }
       const unit = await prisma.fleetUnit.findFirst({
         where: { id: req.params.unitId, operationId: req.params.id },
         include: {
@@ -334,9 +507,15 @@ export async function apiRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
     "/api/ops/:id/units/:unitId/reject",
     async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      const ctx = await requireAuth(req, reply);
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      if (!(await canApproveUnits(ctx.user.id, ctx.user.role, req.params.id))) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Forbidden", "fleet"),
+          302,
+        );
+      }
       const unit = await prisma.fleetUnit.findFirst({
         where: { id: req.params.unitId, operationId: req.params.id },
         select: { id: true },
