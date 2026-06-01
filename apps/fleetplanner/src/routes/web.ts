@@ -429,6 +429,77 @@ export async function webRoutes(app: FastifyInstance) {
         /* non-fatal */
       }
     }
+    // Commander roster for the Commanders tab: accepted-unit captains +
+    // guild fleetoperators (implicit commanders) + manually-added
+    // participants. Mission deep-links are generated per person when a
+    // voice session is live (globalVoiceRoom set).
+    type CommanderEntry = {
+      userId: string;
+      username: string;
+      kind: "captain" | "fleetoperator" | "participant";
+      link: string | null;
+    };
+    let commanderRoster: { entries: CommanderEntry[]; voiceActive: boolean } | null = null;
+    if (opRole === "fleetoperator" && voiceEnabled && ctx) {
+      try {
+        const env = getEnv();
+        const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+        const fpMembers = await prisma.guildMembership.findMany({
+          where: { guildId: op.guildId, role: "fleetoperator" },
+          include: { user: true },
+        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const participants = (await (prisma as any).missionVoiceParticipant.findMany({
+          where: { operationId: op.id },
+          include: { user: true },
+          orderBy: { createdAt: "asc" },
+        })) as Array<{ userId: string; user: { id: string; username: string } }>;
+
+        // Build a deduped ordered roster. Priority: captain > fleetoperator
+        // > participant (a person already a captain isn't shown as participant).
+        const byId = new Map<string, CommanderEntry>();
+        for (const u of op.units.filter((x) => x.status === "accepted")) {
+          if (!byId.has(u.captainId))
+            byId.set(u.captainId, {
+              userId: u.captainId,
+              username: u.captain.username,
+              kind: "captain",
+              link: null,
+            });
+        }
+        for (const m of fpMembers) {
+          if (!byId.has(m.userId))
+            byId.set(m.userId, {
+              userId: m.userId,
+              username: m.user.username,
+              kind: "fleetoperator",
+              link: null,
+            });
+        }
+        for (const p of participants) {
+          if (!byId.has(p.userId))
+            byId.set(p.userId, {
+              userId: p.userId,
+              username: p.user.username,
+              kind: "participant",
+              link: null,
+            });
+        }
+        const voiceActive = Boolean(globalVoiceRoom) && Boolean(env.LIVEKIT_URL);
+        const entries = [...byId.values()];
+        if (voiceActive) {
+          const { createMissionVoiceSession } = await import("../auth/companionSession.js");
+          for (const e of entries) {
+            const token = await createMissionVoiceSession(e.userId);
+            const params = new URLSearchParams({ token, url: fleetplannerUrl });
+            e.link = `rdoc://mission?${params.toString()}`;
+          }
+        }
+        commanderRoster = { entries, voiceActive };
+      } catch {
+        /* non-fatal */
+      }
+    }
     // Option B: live Discord voice control, per unit. Gated to
     // fleetoperator + voice-enabled + bridge configured + op live +
     // units actually have Discord voice channels.
@@ -464,6 +535,7 @@ export async function webRoutes(app: FastifyInstance) {
             ((op as Record<string, unknown>).commanderVoiceRoom as string | null) ?? null,
         },
         fleetVoiceLinks,
+        commanderRoster,
         voiceControl,
         viewAsRole: req.query.viewAs,
         tab: req.query.tab,

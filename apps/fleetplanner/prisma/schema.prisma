@@ -28,6 +28,7 @@ model User {
   seatAssignments  SeatAssignment[]
   guildMemberships GuildMembership[]
   ownedGuilds      Guild[]                 @relation("GuildOwner")
+  missionVoiceParticipations MissionVoiceParticipant[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -278,13 +279,33 @@ model Operation {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  guild         Guild                   @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  createdBy     User                    @relation(fields: [createdById], references: [id])
-  leaders       OperationLeader[]
-  groups        CompositionGroup[]
-  units         FleetUnit[]
-  crewRequests  CrewAssignmentRequest[]
-  voiceChannels FleetVoiceChannel[]
+  guild                    Guild                     @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  createdBy                User                      @relation(fields: [createdById], references: [id])
+  leaders                  OperationLeader[]
+  groups                   CompositionGroup[]
+  units                    FleetUnit[]
+  crewRequests             CrewAssignmentRequest[]
+  voiceChannels            FleetVoiceChannel[]
+  missionVoiceParticipants MissionVoiceParticipant[]
+}
+
+// Manually-added mission voice commanders. Captains of accepted units and
+// guild fleetoperators get the commander room implicitly; this table grants
+// the same commander-room access to people who aren't captains but the
+// fleetoperator wants on the führungs-funk for this operation.
+model MissionVoiceParticipant {
+  id          String   @id @default(cuid())
+  operationId String
+  userId      String
+  addedById   String // fleetplanner user who added them
+  createdAt   DateTime @default(now())
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, userId])
+  @@index([operationId])
+  @@index([userId])
 }
 
 model CrewAssignmentRequest {

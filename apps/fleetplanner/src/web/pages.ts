@@ -384,6 +384,18 @@ type OpDetailPageOptions = {
   guildTimezone?: string;
   /** Fleet voice links per eligible user — only passed for fleetoperator+ views */
   fleetVoiceLinks?: Array<{ userId: string; username: string; link: string }> | null;
+  /** Commander roster for the Commanders tab: accepted-unit captains +
+   *  guild fleetoperators + manually-added participants. Links are present
+   *  only when a voice session is live. */
+  commanderRoster?: {
+    entries: Array<{
+      userId: string;
+      username: string;
+      kind: "captain" | "fleetoperator" | "participant";
+      link: string | null;
+    }>;
+    voiceActive: boolean;
+  } | null;
   /** Per-unit live Discord voice control (Option B). Only passed when the
    *  bridge is configured, voice is enabled, the op is open/in_progress, the
    *  viewer is fleetoperator+, and units have Discord voice channels. */
@@ -1521,6 +1533,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const acceptedUnits = op.units.filter((unit) => unit.status === "accepted");
   const activeSeats = activeUnits.flatMap((unit) => unit.seats.filter((seat) => seat.active));
   const assignedSeats = activeSeats.filter((seat) => seat.userId);
+  // Fleet strength split: ships vs FPS squads (accepted units only), with
+  // filled / total active seats per category for the mission overview.
+  const seatStats = (units: typeof acceptedUnits) => {
+    const seats = units.flatMap((u) => u.seats.filter((s) => s.active));
+    const filled = seats.filter((s) => s.userId).length;
+    return { total: seats.length, filled, open: seats.length - filled };
+  };
+  const shipUnits = acceptedUnits.filter((u) => u.unitType === "ship");
+  const fpsUnits = acceptedUnits.filter((u) => u.unitType !== "ship");
+  const shipSeatStats = seatStats(shipUnits);
+  const fpsSeatStats = seatStats(fpsUnits);
   const crewWaiting = op.crewRequests.length;
   const compositionTotal = op.groups.reduce(
     (sum, group) =>
@@ -1541,7 +1564,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       ),
     0,
   );
-  const tabNames = ["overview", "fleet", "crew", "voice", "admin"];
+  const tabNames = ["overview", "fleet", "crew", "voice", "commanders", "admin"];
   const activeTab = tabNames.includes(opts.tab ?? "") ? opts.tab! : "overview";
   const tabUrl = (tab: string) => `${bp}/ops/${op.id}?tab=${tab}`;
   const classicUrl = `${bp}/ops/${op.id}?ui=classic`;
@@ -2064,6 +2087,99 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
+  const commanderKindLabel = (k: "captain" | "fleetoperator" | "participant") =>
+    k === "captain" ? "Captain" : k === "fleetoperator" ? "Fleet Operator" : "Added";
+  const commanderKindTone = (k: "captain" | "fleetoperator" | "participant") =>
+    k === "participant" ? "tag-gold" : "tag-cyan";
+  const rosterIds = new Set((opts.commanderRoster?.entries ?? []).map((e) => e.userId));
+  const addableUsers = opts.assignableUsers.filter((u) => !rosterIds.has(u.id));
+
+  const commandersPanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Commanders</div>
+      ${!opts.voiceEnabled
+        ? html`<p class="text-dim text-sm">Voice integration is not enabled for this server.</p>`
+        : html`
+            <p class="text-dim text-sm" style="margin-bottom:.75rem">
+              Captains of accepted units and fleet operators are commanders automatically. Add
+              anyone else who should be on the commander channel. Each person gets a personal
+              mission deep-link.
+            </p>
+            ${opts.commanderRoster && !opts.commanderRoster.voiceActive
+              ? html`<div class="banner banner-dim text-sm" style="margin-bottom:.75rem">
+                  No active voice session — links appear once the operation is set to
+                  <strong>open</strong> or <strong>in progress</strong>.
+                </div>`
+              : safe("")}
+            <div class="opv2-stack">
+              ${(opts.commanderRoster?.entries ?? []).length
+                ? opts.commanderRoster!.entries.map(
+                    (e) => html`<div class="opv2-row" style="flex-wrap:wrap;gap:.5rem">
+                      <div>
+                        <strong>${e.username}</strong>
+                        <span class="tag ${commanderKindTone(e.kind)}"
+                          >${commanderKindLabel(e.kind)}</span
+                        >
+                      </div>
+                      <div
+                        class="opv2-row-meta"
+                        style="flex:1;justify-content:flex-end;gap:.4rem;min-width:16rem"
+                      >
+                        ${e.link
+                          ? html`<input
+                                type="text"
+                                readonly
+                                value="${e.link}"
+                                class="text-mono text-sm"
+                                style="flex:1;min-width:8rem;padding:.2rem .4rem;font-size:.7rem"
+                                onclick="this.select()"
+                              />
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-cyan"
+                                onclick="const i=this.previousElementSibling;i.select();navigator.clipboard.writeText(i.value).then(()=>{const b=this,t=b.textContent;b.textContent='Kopiert';b.disabled=true;setTimeout(()=>{b.textContent=t;b.disabled=false;},1200);}).catch(()=>{document.execCommand('copy');});"
+                              >
+                                Kopieren
+                              </button>`
+                          : safe("")}
+                        ${e.kind === "participant"
+                          ? html`<form
+                              method="post"
+                              action="${bp}/api/ops/${op.id}/voice-participants/${e.userId}/remove"
+                              class="inline"
+                            >
+                              <input type="hidden" name="_csrf" value="${csrf}" />
+                              ${returnFields("commanders")}
+                              <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                            </form>`
+                          : safe("")}
+                      </div>
+                    </div>`,
+                  )
+                : html`<p class="text-dim text-sm">No commanders yet.</p>`}
+            </div>
+            ${addableUsers.length
+              ? html`<form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/voice-participants/add"
+                  class="mt-1 flex gap-1"
+                  style="align-items:center"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("commanders")}
+                  <select name="userId" required style="flex:1">
+                    <option value="">Add commander…</option>
+                    ${addableUsers.map(
+                      (u) => html`<option value="${u.id}">${u.username} (${u.role})</option>`,
+                    )}
+                  </select>
+                  <button type="submit" class="btn btn-sm btn-green">Add</button>
+                </form>`
+              : safe("")}
+          `}
+    </section>
+  </div>`;
+
   const overviewPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
       <div class="opv2-panel-title">${canManage ? "Edit Briefing" : "Briefing"}</div>
@@ -2437,9 +2553,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ? crewPanel
         : activeTab === "voice"
           ? voicePanel
-          : activeTab === "admin"
-            ? adminPanel
-            : overviewPanel;
+          : activeTab === "commanders"
+            ? commandersPanel
+            : activeTab === "admin"
+              ? adminPanel
+              : overviewPanel;
 
   const body = html`<div class="opv2-shell">
       <header
@@ -2501,16 +2619,28 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       </header>
 
       <div class="opv2-metrics">
-        ${metric("Accepted Units", acceptedUnits.length, "good")}
+        ${metric("Ships", shipUnits.length)}
+        ${metric(
+          "Ship Seats",
+          `${shipSeatStats.filled}/${shipSeatStats.total}`,
+          shipSeatStats.open ? "warn" : "good",
+        )}
+        ${metric("FPS Teams", fpsUnits.length)}
+        ${metric(
+          "FPS Seats",
+          `${fpsSeatStats.filled}/${fpsSeatStats.total}`,
+          fpsSeatStats.open ? "warn" : "good",
+        )}
         ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
-        ${metric("Crew Seats", `${assignedSeats.length}/${activeSeats.length}`)}
         ${metric("Compositions", `${compositionFilled}/${compositionTotal}`)}
         ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
       </div>
 
       <nav class="opv2-tabs">
         ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
-        ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")} ${shellLink("admin", "Admin")}
+        ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")}
+        ${canManage ? shellLink("commanders", "Commanders") : safe("")}
+        ${shellLink("admin", "Admin")}
       </nav>
 
       ${activePanel}

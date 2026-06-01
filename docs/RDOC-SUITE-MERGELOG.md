@@ -3,13 +3,35 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-01: Fleetplanner Op-Detail — Copy-Button je Mission-Link
+## Queued / Planned Step - 2026-06-01: Fleetplanner Op-Detail — Commanders-Tab + Overview-Metriken
 
-`web/pages.ts` `opDetailPageV2` (`missionVoiceSection`, ~Z.982): Fleet-Voice-Links werden
-aktuell als readonly-Inputs gerendert (klick = markieren), kein Copy-Button. Ergänze pro Link
-einen "Kopieren"-Button (navigator.clipboard.writeText aus dem Sibling-Input, kurzes
-"Kopiert"-Feedback). Reine UX-Politur, keine neue Token-Logik. Classic-Page rendert keine
-Links → nur V2 betroffen.
+Befund: `missionVoiceSection` (web/pages.ts:959, inkl. Copy-Button) war **toter Code** — nie in
+einem Panel eingebunden. V2-`voicePanel` zeigte nur Room-Namen, keine Links. Darum sah der
+User nie Links.
+
+Neues Feature (entschieden mit User): voller Commander-Zugriff für manuell hinzugefügte Leute,
+Persistenz via DB, neuer Tab "Commanders".
+
+- **Schema** (`prisma/schema.prisma`): neues Model `MissionVoiceParticipant`
+  (operationId, userId, addedById, createdAt; `@@unique([operationId,userId])`). Back-Relations
+  auf `Operation.missionVoiceParticipants` + `User.missionVoiceParticipations`.
+- **Migration**: `prisma/migrations/20260601120000_mission_voice_participant/migration.sql`
+  (CREATE TABLE + FKs + indexes). Entrypoint `docker-entrypoint.sh` macht `migrate deploy`.
+- **Backend** `routes/api.ts` mission-voice (`isCommander`, ~Z.1343): erweitern um
+  MissionVoiceParticipant → hinzugefügte Leute kriegen `commanderRoom`. Neue Routes:
+  `POST /api/ops/:id/voice-participants/add` (body userId) + `POST /api/ops/:id/voice-participants/:userId/remove`
+  (beide fleetoperator + CSRF). Prisma-Zugriff via `(prisma as any)` (Client lokal noch ohne Model).
+- **web.ts** Op-Detail-GET: Participants laden, `commanderLinks` bauen (captains ∪ fleetoperators
+  ∪ participants → `createMissionVoiceSession` → `rdoc://mission`-Link), an Page übergeben.
+- **pages.ts** `opDetailPageV2`: Tab "commanders" zu `tabNames` + `shellLink` + `activePanel`.
+  `commandersPanel`: assigned Captains (mit Link+Copy), hinzugefügte Commanders (Link+Copy+Remove),
+  Add-Form (assignableUsers-select). Gated canManage + voiceEnabled + globalVoiceRoom.
+  Copy-Button-Pattern wie zuvor (clipboard aus Sibling-Input).
+- **Mission-Overview** (overviewPanel-Metriken): Anzahl Schiffe + besetzte/unbesetzte Plätze;
+  Anzahl FPS-Teams + besetzte/unbesetzte Plätze.
+
+Composition-Umbau (User-Wunsch, "unlogisch/nicht intuitiv") = separater Schritt, erst nach
+Rückfrage was konkret stört.
 
 ## Queued / Planned Step - 2026-06-01: Companion Neuarchitektur (Mission-First, 2 PTT)
 

@@ -1339,11 +1339,17 @@ export async function apiRoutes(app: FastifyInstance) {
     const env = getEnv();
     if (!env.LIVEKIT_URL) return reply.send({ op: null });
 
-    // Commander room eligibility: captains of accepted units OR fleetoperators
+    // Commander room eligibility: captains of accepted units, guild
+    // fleetoperators, OR people manually added as mission voice participants.
     const isCommander = !!(
       captainUnit ||
       (await prisma.guildMembership.findFirst({
         where: { userId, guildId: activeOp.guildId, role: "fleetoperator" },
+        select: { id: true },
+      })) ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (await (prisma as any).missionVoiceParticipant.findFirst({
+        where: { operationId: activeOp.id, userId },
         select: { id: true },
       }))
     );
@@ -1412,4 +1418,60 @@ export async function apiRoutes(app: FastifyInstance) {
 
     return reply.send({ links });
   });
+
+  // ── Mission voice participants (add/remove manual commanders) ────────
+  // Grants the commander room to someone who isn't a captain. Persisted so
+  // the mission-voice endpoint's isCommander check recognises them.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/voice-participants/add",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const userId = req.body.userId?.trim();
+      if (!userId)
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:User+required", "commanders"),
+          302,
+        );
+      const op = await prisma.operation.findUnique({
+        where: { id: req.params.id },
+        select: { guildId: true },
+      });
+      if (!op) return reply.code(404).send({ error: "Not found" });
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
+      if (!user)
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Unknown+user", "commanders"),
+          302,
+        );
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (prisma as any).missionVoiceParticipant.upsert({
+        where: { operationId_userId: { operationId: req.params.id, userId } },
+        update: {},
+        create: { operationId: req.params.id, userId, addedById: ctx.user.id },
+      });
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Commander+added.", "commanders"),
+        302,
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string; userId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/voice-participants/:userId/remove",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (prisma as any).missionVoiceParticipant.deleteMany({
+        where: { operationId: req.params.id, userId: req.params.userId },
+      });
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Commander+removed.", "commanders"),
+        302,
+      );
+    },
+  );
 }
