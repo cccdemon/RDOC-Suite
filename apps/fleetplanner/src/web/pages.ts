@@ -106,6 +106,10 @@ function missionImageUrl(bp: string, opType: string): string {
   return `${bp}/assets/mission-images/${missionImageType(opType)}.png`;
 }
 
+function opTypeClass(opType: string): string {
+  return `op-type-${opType.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
+}
+
 function opUiSwitch(bp: string, opId: string, mode: "classic" | "new", tab = "overview"): SafeHtml {
   return html`<span class="nav-ui-switch" aria-label="Operation UI switch">
     <a href="${bp}/ops/${opId}" class="${mode === "classic" ? "active" : ""}">Classic</a>
@@ -154,6 +158,21 @@ export function homePage(opts: {
 }): SafeHtml {
   const bp = opts.basePath;
   const canCreate = (opts.operatorGuilds?.length ?? 0) > 0;
+  const dayFormatter = new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const timeFormatter = new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   // Assign a consistent CSS class per guild for the colored badge
   const guildIndex = new Map<string, number>();
@@ -164,22 +183,57 @@ export function homePage(opts: {
     return GUILD_COLORS[guildIndex.get(guildId)!];
   }
 
-  const rows = opts.ops.length
-    ? html` <div class="op-list">
-        ${opts.ops.map((op) => {
-          const accepted = op.units.filter((u) => u.status === "accepted").length;
-          const total = op.units.length;
-          return html` <a
-            href="${bp}/ops/${op.id}"
-            class="op-row"
-            style="color:inherit;text-decoration:none;"
-          >
-            <span class="op-guild-badge ${guildClass(op.guild.id)}">${op.guild.name}</span>
-            <span class="op-time">${fmtDate(op.scheduledAt)}</span>
-            <span class="op-title">${op.title}</span>
-            ${opTypeTag(op.opType)} ${statusTag(op.status)}
-            <span class="op-count">${accepted}/${total} units</span>
-          </a>`;
+  const groupedOps = opts.ops.reduce<Array<{ key: string; label: string; ops: OpListItem[] }>>(
+    (groups, op) => {
+      const key = dayKeyFormatter.format(op.scheduledAt);
+      let group = groups.find((item) => item.key === key);
+      if (!group) {
+        group = { key, label: dayFormatter.format(op.scheduledAt), ops: [] };
+        groups.push(group);
+      }
+      group.ops.push(op);
+      return groups;
+    },
+    [],
+  );
+
+  const rows = groupedOps.length
+    ? html` <div class="op-date-board">
+        ${groupedOps.map((group) => {
+          const [weekday, day, month, year] = group.label.replace(",", "").split(" ");
+          return html`<section class="op-day-group">
+            <div class="op-day-label">
+              <span>${weekday}</span>
+              <strong>${day}</strong>
+              <span>${month} ${year}</span>
+            </div>
+            <div class="op-card-grid">
+              ${group.ops.map((op) => {
+                const accepted = op.units.filter((u) => u.status === "accepted").length;
+                const total = op.units.length;
+                const leaders = op.leaders.map((leader) => leader.user.username).join(", ");
+                return html` <a
+                  href="${bp}/ops/${op.id}"
+                  class="op-card ${opTypeClass(op.opType)}"
+                  style="color:inherit;text-decoration:none;"
+                >
+                  <div class="op-card-top">
+                    <span class="op-card-time">${timeFormatter.format(op.scheduledAt)}</span>
+                    <span class="op-type-pill">${op.opType.toUpperCase()}</span>
+                  </div>
+                  <div class="op-card-title">${op.title}</div>
+                  <div class="op-card-meta">
+                    <span class="op-guild-badge ${guildClass(op.guild.id)}">${op.guild.name}</span>
+                    ${statusTag(op.status)}
+                  </div>
+                  <div class="op-card-footer">
+                    <span>${accepted}/${total} units</span>
+                    <span>${leaders || op.createdBy.username}</span>
+                  </div>
+                </a>`;
+              })}
+            </div>
+          </section>`;
         })}
       </div>`
     : html`<p class="text-dim text-sm">

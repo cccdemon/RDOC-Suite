@@ -44,6 +44,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/fleetplanner/package.json apps/fleetplanner/package.json
 COPY --from=builder /app/apps/fleetplanner/node_modules apps/fleetplanner/node_modules
 COPY --from=builder /app/apps/fleetplanner/dist apps/fleetplanner/dist
+COPY --from=builder /app/apps/fleetplanner/public apps/fleetplanner/public
 COPY --from=builder /app/apps/fleetplanner/prisma apps/fleetplanner/prisma
 
 # Data volume mount point — keep it outside prisma/ to avoid shadowing migrations.

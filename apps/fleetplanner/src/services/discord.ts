@@ -18,7 +18,8 @@ function opTypeImageDataUri(opType: string | null | undefined): string | undefin
     const file = new URL(`../../public/mission-images/${safe}.png`, import.meta.url);
     const data = readFileSync(file);
     return `data:image/png;base64,${data.toString("base64")}`;
-  } catch {
+  } catch (err) {
+    console.warn(`[discord] opTypeImageDataUri: failed to load ${safe}.png —`, err instanceof Error ? err.message : err);
     return undefined;
   }
 }
