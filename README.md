@@ -63,6 +63,107 @@ Plus a self-hosted **LiveKit** SFU for the actual cross-channel audio.
 
 Modifying the Discord client, using selfbots, or hooking audio out of the Discord process all **violate Discord's Terms of Service**. This project deliberately avoids that path: only the official Bot API and OAuth2 are used, no audio is captured from Discord itself, and the system is fully visible to server admins. See [CLAUDE.md §Wichtige rechtliche und technische Rahmenbedingungen](CLAUDE.md).
 
+## Minimum requirements
+
+These requirements apply to the full server stack:
+
+- `caddy-rdoc`
+- `livekit`
+- `bridge`
+- `bot`
+- `fleetplanner`
+- `fleetplanner-db`
+- `relay-bots`
+- `monitoring` / Prometheus
+- Grafana
+
+### Server requirements
+
+| Resource | Minimum | Recommended |
+| --- | ---: | ---: |
+| CPU | 2 vCPU | 4 vCPU |
+| RAM | 4 GB | 8 GB |
+| Disk | 20 GB free | 40-80 GB SSD |
+| Bandwidth | 10 Mbps symmetric | 50+ Mbps symmetric |
+| OS | Linux x86_64 with Docker | Ubuntu 22.04/24.04 or Debian 12 |
+| Network | Public IP, HTTPS, UDP reachable | Public IPv4, low latency, stable UDP |
+
+The suite can probably start on **2 vCPU / 4 GB RAM**, but that is the floor. It includes Node services, LiveKit, Postgres, Prometheus, Grafana, Caddy, and Discord relay bots.
+
+For real voice use, **4 vCPU / 8 GB RAM** is the safer baseline.
+
+Disk usage is not only databases. Docker images, build cache, logs, Prometheus metrics, Grafana data, Postgres data, SQLite bridge data, and Companion downloads all consume space.
+
+Do not deploy this on less than **20 GB free**. Use **40 GB+** if the host builds Docker images locally.
+
+### Bandwidth estimate
+
+Voice traffic is the important part. LiveKit forwards Opus audio streams, so bandwidth scales with active speakers and listeners.
+
+```text
+egress ~= active_speakers * listeners * 0.08-0.12 Mbps
+ingress ~= active_speakers * 0.08-0.12 Mbps
+```
+
+| Scenario | Approx server bandwidth |
+| --- | ---: |
+| 10 users, 1 active speaker | ~1 Mbps outbound |
+| 20 users, 1 active speaker | ~2 Mbps outbound |
+| 50 users, 1 active speaker | ~5 Mbps outbound |
+| 50 users, 2 active speakers | ~10 Mbps outbound |
+
+Relay bots add more CPU and outbound traffic because they subscribe to LiveKit audio and push it into Discord voice channels.
+
+### Required server OS / runtime
+
+Server side should run on:
+
+```text
+Linux x86_64
+Docker Engine + Docker Compose plugin
+Public HTTPS reverse proxy
+Reachable LiveKit WebRTC ports
+```
+
+Production is Docker-first. The server does **not** need local Node, pnpm, Rust, or Cargo if you build and run through Docker.
+
+### Required public ports
+
+| Port | Purpose |
+| --- | --- |
+| `443/tcp` | HTTPS reverse proxy for suite UI/API |
+| `7880/tcp` | LiveKit signaling, usually behind proxy as `wss://...` |
+| `7881/tcp` | LiveKit WebRTC TCP |
+| `7882/udp` | LiveKit WebRTC UDP, important for good voice quality |
+
+### Companion client requirements
+
+The Companion app is effectively **Windows-first right now**. The Tauri/Rust config has Windows-specific hotkey/audio handling, and mouse hotkeys are Windows-only for now.
+
+| Resource | Minimum |
+| --- | --- |
+| OS | Windows 10/11 |
+| CPU | Any modern dual-core |
+| RAM | 4 GB |
+| Network | Stable internet, Discord reachable |
+| Devices | Microphone + audio output |
+
+### Recommended deployment
+
+For a small RDOC deployment, use:
+
+```text
+4 vCPU
+8 GB RAM
+60 GB SSD
+Ubuntu 24.04 LTS or Debian 12
+50 Mbps symmetric bandwidth
+Public IPv4
+Docker Engine + Compose
+```
+
+This gives enough headroom for LiveKit voice, relay bots, monitoring, builds, logs, and future growth.
+
 ## Quickstart (local development)
 
 ### 1. Prerequisites
