@@ -991,6 +991,13 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
                                 style="flex:1;padding:.2rem .4rem;font-size:.7rem"
                                 onclick="this.select()"
                               />
+                              <button
+                                type="button"
+                                class="btn btn-sm btn-cyan"
+                                onclick="const i=this.previousElementSibling;i.select();navigator.clipboard.writeText(i.value).then(()=>{const b=this,t=b.textContent;b.textContent='Kopiert';b.disabled=true;setTimeout(()=>{b.textContent=t;b.disabled=false;},1200);}).catch(()=>{document.execCommand('copy');});"
+                              >
+                                Kopieren
+                              </button>
                             </div>`,
                         )}
                       </div>

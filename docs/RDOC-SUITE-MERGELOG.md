@@ -3,6 +3,14 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Fleetplanner Op-Detail — Copy-Button je Mission-Link
+
+`web/pages.ts` `opDetailPageV2` (`missionVoiceSection`, ~Z.982): Fleet-Voice-Links werden
+aktuell als readonly-Inputs gerendert (klick = markieren), kein Copy-Button. Ergänze pro Link
+einen "Kopieren"-Button (navigator.clipboard.writeText aus dem Sibling-Input, kurzes
+"Kopiert"-Feedback). Reine UX-Politur, keine neue Token-Logik. Classic-Page rendert keine
+Links → nur V2 betroffen.
+
 ## Queued / Planned Step - 2026-06-01: Companion Neuarchitektur (Mission-First, 2 PTT)
 
 Plan: `docs/companion-app-opus.md`. Reduce companion (`apps/companion/`) from 6 audio paths /
