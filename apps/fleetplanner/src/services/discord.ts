@@ -311,8 +311,8 @@ export async function createScheduledEvent(op: {
   // Prepend the Fleetplanner event link to the description.
   const eventUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${op.id}`;
   const updatedDescription = op.description
-    ? `${eventUrl}\n${op.description}`
-    : eventUrl;
+    ? `### Fleetplanner Link\n${eventUrl}\n### Missionsbeschreibung\n${op.description}`
+    : `### Fleetplanner Link\n${eventUrl}`;
   await fetch(`${DISCORD_API}/guilds/${op.guildId}/scheduled-events/${data.id}`, {
     method: "PATCH",
     headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
@@ -336,7 +336,9 @@ async function getEventChannelId(op: {
 
 function buildEventDescription(opId: string, description?: string) {
   const eventUrl = `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH}/ops/${opId}`;
-  return description ? `${eventUrl}\n${description}` : eventUrl;
+  return description
+    ? `### Fleetplanner Link\n${eventUrl}\n### Missionsbeschreibung\n${description}`
+    : `### Fleetplanner Link\n${eventUrl}`;
 }
 
 export async function updateScheduledEvent(op: {
