@@ -65,22 +65,27 @@ export function layout(opts: LayoutOptions): SafeHtml {
   const bp = opts.basePath;
   const u = opts.currentUser;
 
-  const nav = html`
-    <nav class="nav">
-      <span class="nav-brand">RDOC // FLEETPLANNER</span>
-      <a href="${bp}/">Operations</a>
-      ${u ? html`<a href="${bp}/guilds">Servers</a>` : ""}
-      <a href="${bp}/how-to">How to</a>
-      <a href="${bp}/feedback">Feedback</a>
-      ${u ? html`<a href="${bp}/profile">Profile</a>` : ""}
-      ${u && u.role === "superadmin"
-        ? html`<a href="${bp}/admin">Admin</a>` : ""}
-      ${u && u.role === "superadmin" && bridgeConfigured()
-        ? html`<a href="${bp}/admin/bridge">Bridge</a>` : ""}
-      <span class="nav-spacer"></span>
-      ${u
-        ? html`
-          <span class="nav-user">
+  const nav = html` <nav class="nav">
+    <span class="nav-brand">RDOC // FLEETPLANNER</span>
+    <a href="${bp}/">Operations</a>
+    ${u ? html`<a href="${bp}/guilds">Servers</a>` : ""}
+    <a href="${bp}/how-to">How to</a>
+    <a href="${bp}/feedback">Feedback</a>
+    ${u ? html`<a href="${bp}/profile">Profile</a>` : ""}
+    ${u && u.role === "superadmin" ? html`<a href="${bp}/admin">Admin</a>` : ""}
+    ${u && u.role === "superadmin" && bridgeConfigured()
+      ? html`<a href="${bp}/admin/bridge">Bridge</a>`
+      : ""}
+    <span class="nav-spacer"></span>
+    <span class="credit-mark">
+      <span class="credit-mark-domain">raumdock.org</span>
+      <span class="credit-mark-copy"
+        >made by xheadwigx &amp; justcallmedeimos · infrastructure powered by
+        twitch.tv/justcallmedeimos</span
+      >
+    </span>
+    ${u
+      ? html` <span class="nav-user">
             <span class="tag tag-role">${ROLE_LABEL[u.role] ?? u.role}</span>
             ${u.username}
           </span>
@@ -88,35 +93,41 @@ export function layout(opts: LayoutOptions): SafeHtml {
             <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
             <button type="submit" class="btn-link">Logout</button>
           </form>`
-        : html`<a href="${bp}/login" class="btn btn-sm">Login</a>`}
-    </nav>`;
+      : html`<a href="${bp}/login" class="btn btn-sm">Login</a>`}
+  </nav>`;
 
   const flash = opts.flash
     ? html`<div class="flash flash-${opts.flash.kind}">${opts.flash.text}</div>`
     : "";
 
   return html`<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${opts.title} — RDOC Fleetplanner</title>
-  <style>${safe(CSS)}</style>
-</head>
-<body>
-  ${nav}
-  <main class="main">
-    ${flash}
-    ${opts.body}
-  </main>
-  <footer class="footer">
-    <a href="https://robertsspaceindustries.com/orgs/RDOC" target="_blank" rel="noopener">RDOC</a> // FLEETPLANNER // RAUMDOCK.ORG // Tested by:
-    <a href="https://twitch.tv/smorxel" target="_blank" rel="noopener">smorxel</a>,
-    <a href="https://robertsspaceindustries.com/en/orgs/INFHOR" target="_blank" rel="noopener">Infinite Horizon</a>,
-    <a href="https://robertsspaceindustries.com/orgs/VFAR" target="_blank" rel="noopener">Voidforge Armaments</a>
-  </footer>
-</body>
-</html>`;
+    <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>${opts.title} — RDOC Fleetplanner</title>
+        <style>
+          ${safe(CSS)}
+        </style>
+      </head>
+      <body>
+        ${nav}
+        <main class="main">${flash} ${opts.body}</main>
+        <footer class="footer">
+          <a href="https://robertsspaceindustries.com/orgs/RDOC" target="_blank" rel="noopener"
+            >RDOC</a
+          >
+          // FLEETPLANNER // RAUMDOCK.ORG // Tested by:
+          <a href="https://twitch.tv/smorxel" target="_blank" rel="noopener">smorxel</a>,
+          <a href="https://robertsspaceindustries.com/en/orgs/INFHOR" target="_blank" rel="noopener"
+            >Infinite Horizon</a
+          >,
+          <a href="https://robertsspaceindustries.com/orgs/VFAR" target="_blank" rel="noopener"
+            >Voidforge Armaments</a
+          >
+        </footer>
+      </body>
+    </html>`;
 }
 
 // ── DCCC Design System CSS ───────────────────────────────────────────
@@ -214,6 +225,56 @@ a:hover { color: #fff; }
 }
 .nav a:hover { color: var(--text); background: var(--cyan-08); }
 .nav-spacer { flex: 1; }
+.credit-mark {
+  min-width: 318px;
+  margin: 0 0.9rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.28rem;
+  position: relative;
+  flex-shrink: 0;
+  padding: 0.42rem 0;
+  animation: creditFadeIn 0.42s cubic-bezier(.19,1,.22,1) both;
+}
+.credit-mark::before,
+.credit-mark::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.38), rgba(240,165,0,0.42));
+}
+.credit-mark::before { top: 0; }
+.credit-mark::after { bottom: 0; opacity: 0.68; }
+.credit-mark-domain {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  color: #fff;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px rgba(0,212,255,0.22);
+}
+.credit-mark-copy {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: rgba(200,220,232,0.72);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+@keyframes creditFadeIn {
+  0% { opacity: 0; transform: translateX(14px); }
+  100% { opacity: .92; transform: translateX(0); }
+}
+@media (max-width: 1120px) {
+  .credit-mark { display: none; }
+}
 .nav-user {
   display: flex; align-items: center; gap: 0.6rem;
   padding: 0 1rem;

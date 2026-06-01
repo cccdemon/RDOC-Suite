@@ -42,7 +42,12 @@ import {
   saveSession,
   type SavedGuild,
 } from "./lib/store";
-import { DEFAULT_BRIDGE_URL, DEFAULT_FLEETPLANNER_URL, DEFAULT_HOTKEY, DEFAULT_RELAY_HOTKEY } from "./lib/config";
+import {
+  DEFAULT_BRIDGE_URL,
+  DEFAULT_FLEETPLANNER_URL,
+  DEFAULT_HOTKEY,
+  DEFAULT_RELAY_HOTKEY,
+} from "./lib/config";
 import { LivekitAudio, type AudioStatus, type DeviceConfig } from "./lib/livekit";
 import {
   DEFAULT_SUITE_CAPABILITIES,
@@ -180,9 +185,10 @@ export function App(): JSX.Element {
   const [savedGuilds, setSavedGuilds] = useState<SavedGuild[]>([]);
   const [lastGuildId, setLastGuildId] = useState<string | undefined>(undefined);
   const [remoteVolumes, setRemoteVolumes] = useState<Record<string, number>>({});
-  const [updateOffer, setUpdateOffer] = useState<
-    Extract<UpdateCheckResult, { kind: "available" }> | null
-  >(null);
+  const [updateOffer, setUpdateOffer] = useState<Extract<
+    UpdateCheckResult,
+    { kind: "available" }
+  > | null>(null);
 
   const [showSessionJoin, setShowSessionJoin] = useState(false);
   const [sessionJoinError, setSessionJoinError] = useState<string | null>(null);
@@ -429,9 +435,9 @@ export function App(): JSX.Element {
               lastError: null,
             }));
             if (msg.livekitUrl && msg.livekitToken) {
-              audio.connect(msg.livekitUrl, msg.livekitToken).catch((err) =>
-                setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })),
-              );
+              audio
+                .connect(msg.livekitUrl, msg.livekitToken)
+                .catch((err) => setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })));
             }
             // Push the persisted output-mute / afk state to the bridge
             // so peers see the same flags we're carrying locally. Skip
@@ -446,9 +452,9 @@ export function App(): JSX.Element {
             }
           } else if (msg.type === "audio:enable") {
             setState((s) => ({ ...s, lastError: null }));
-            audio.connect(msg.livekitUrl, msg.livekitToken).catch((err) =>
-              setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })),
-            );
+            audio
+              .connect(msg.livekitUrl, msg.livekitToken)
+              .catch((err) => setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })));
           } else if (msg.type === "audio:disable") {
             void audio.disconnect();
             setState((s) => ({
@@ -463,9 +469,7 @@ export function App(): JSX.Element {
             // remote talk-start / talk-stop. Skip self so our own PTT
             // doesn't trigger an incoming-chirp on top of the
             // press/release sound that handlePttEvent already played.
-            const myUserId = stateRef.current.token
-              ? jwtSubject(stateRef.current.token)
-              : null;
+            const myUserId = stateRef.current.token ? jwtSubject(stateRef.current.token) : null;
             const nextSpeaking = new Set<string>();
             for (const c of msg.commanders) {
               if (c.speaking && c.userId !== myUserId) nextSpeaking.add(c.userId);
@@ -600,7 +604,13 @@ export function App(): JSX.Element {
       // reconnects the WS to the right room.
       if (state.token) {
         await saveSession(state.token, guildId);
-        setState((s) => ({ ...s, guildId, guildName: null, activeCommanders: [], lastError: null }));
+        setState((s) => ({
+          ...s,
+          guildId,
+          guildName: null,
+          activeCommanders: [],
+          lastError: null,
+        }));
         return;
       }
       try {
@@ -626,23 +636,20 @@ export function App(): JSX.Element {
   /** Adjust playback level for one remote commander. Applies live to
    *  the GainNode for that user and persists the new map to the Tauri
    *  store so it sticks across reconnects + EXE restarts. */
-  const onRemoteVolumeChange = useCallback(
-    (userId: string, pct: number) => {
-      audioRef.current?.setRemoteVolume(userId, pct);
-      setRemoteVolumes((prev) => {
-        // Drop the entry when reverting to unity, so the store stays
-        // small and an unset value naturally means "100%".
-        const next = { ...prev };
-        if (pct === 100) delete next[userId];
-        else next[userId] = pct;
-        // Fire-and-forget; debouncing during slider drag is overkill
-        // since saveRemoteVolumes is just a single Tauri-store write.
-        void saveRemoteVolumes(next);
-        return next;
-      });
-    },
-    [],
-  );
+  const onRemoteVolumeChange = useCallback((userId: string, pct: number) => {
+    audioRef.current?.setRemoteVolume(userId, pct);
+    setRemoteVolumes((prev) => {
+      // Drop the entry when reverting to unity, so the store stays
+      // small and an unset value naturally means "100%".
+      const next = { ...prev };
+      if (pct === 100) delete next[userId];
+      else next[userId] = pct;
+      // Fire-and-forget; debouncing during slider drag is overkill
+      // since saveRemoteVolumes is just a single Tauri-store write.
+      void saveRemoteVolumes(next);
+      return next;
+    });
+  }, []);
 
   /** Toggle the local "output mute" flag (we stop hearing peers).
    *  Persists the new state, mutes/unmutes already-attached remote
@@ -705,9 +712,9 @@ export function App(): JSX.Element {
     wsRef.current?.disconnect();
     wsRef.current?.connectSession(cur.token, result.sessionId);
     // Connect LiveKit with session token
-    audioRef.current?.connect(result.livekitUrl, result.livekitToken).catch((err) =>
-      setState((s) => ({ ...s, lastError: `LiveKit (session): ${String(err)}` })),
-    );
+    audioRef.current
+      ?.connect(result.livekitUrl, result.livekitToken)
+      .catch((err) => setState((s) => ({ ...s, lastError: `LiveKit (session): ${String(err)}` })));
     setState((s) => ({
       ...s,
       sessionId: result.sessionId,
@@ -752,10 +759,16 @@ export function App(): JSX.Element {
     const onDown = (e: KeyboardEvent): void => {
       if (e.repeat) return;
       const formatted = formatKeyboardAccelerator(e);
-      if (formatted === hotkey) { e.preventDefault(); onRelayPttEvent({ state: "pressed", accelerator: hotkey }); }
+      if (formatted === hotkey) {
+        e.preventDefault();
+        onRelayPttEvent({ state: "pressed", accelerator: hotkey });
+      }
     };
     const onUp = (e: KeyboardEvent): void => {
-      if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onRelayPttEvent({ state: "released", accelerator: hotkey }); }
+      if (keyReleaseMatchesAccelerator(e, hotkey)) {
+        e.preventDefault();
+        onRelayPttEvent({ state: "released", accelerator: hotkey });
+      }
     };
     window.addEventListener("keydown", onDown, true);
     window.addEventListener("keyup", onUp, true);
@@ -792,11 +805,17 @@ export function App(): JSX.Element {
           headers: { Authorization: `Bearer ${state.fleetplannerToken}` },
         });
         if (!res.ok) return;
-        const data = await res.json() as { unitRoom: VoiceRoom | null; globalVoice: VoiceRoom | null };
+        const data = (await res.json()) as {
+          unitRoom: VoiceRoom | null;
+          globalVoice: VoiceRoom | null;
+        };
 
         // Unit room
         if (data.unitRoom) {
-          if (currentFleetRoomRef.current !== data.unitRoom.room || fleetRef.current?.getStatus() === "idle") {
+          if (
+            currentFleetRoomRef.current !== data.unitRoom.room ||
+            fleetRef.current?.getStatus() === "idle"
+          ) {
             if (!fleetRef.current) {
               const fa = new FleetAudio();
               fa.setStatusListener((s) => setState((st) => ({ ...st, fleetStatus: s })));
@@ -804,7 +823,11 @@ export function App(): JSX.Element {
             }
             await fleetRef.current.connect(data.unitRoom.livekitUrl, data.unitRoom.token);
             currentFleetRoomRef.current = data.unitRoom.room;
-            setState((s) => ({ ...s, fleetRoomName: data.unitRoom!.room, fleetOpTitle: data.unitRoom!.opTitle ?? null }));
+            setState((s) => ({
+              ...s,
+              fleetRoomName: data.unitRoom!.room,
+              fleetOpTitle: data.unitRoom!.opTitle ?? null,
+            }));
           }
         } else if (fleetRef.current?.getStatus() !== "idle") {
           await fleetRef.current?.disconnect();
@@ -814,13 +837,19 @@ export function App(): JSX.Element {
 
         // Global voice
         if (data.globalVoice) {
-          if (currentGlobalRoomRef.current !== data.globalVoice.room || globalFleetRef.current?.getStatus() === "idle") {
+          if (
+            currentGlobalRoomRef.current !== data.globalVoice.room ||
+            globalFleetRef.current?.getStatus() === "idle"
+          ) {
             if (!globalFleetRef.current) {
               const gfa = new FleetAudio();
               gfa.setStatusListener((s) => setState((st) => ({ ...st, globalFleetStatus: s })));
               globalFleetRef.current = gfa;
             }
-            await globalFleetRef.current.connect(data.globalVoice.livekitUrl, data.globalVoice.token);
+            await globalFleetRef.current.connect(
+              data.globalVoice.livekitUrl,
+              data.globalVoice.token,
+            );
             currentGlobalRoomRef.current = data.globalVoice.room;
           }
         } else if (globalFleetRef.current?.getStatus() !== "idle") {
@@ -972,7 +1001,7 @@ export function App(): JSX.Element {
           headers: { Authorization: `Bearer ${state.missionToken}` },
         });
         if (!res.ok) return;
-        const data = await res.json() as MissionVoiceResponse;
+        const data = (await res.json()) as MissionVoiceResponse;
 
         if (!data.op) {
           // No active session — disconnect + mark ended if we were active
@@ -999,8 +1028,10 @@ export function App(): JSX.Element {
         const { opTitle, livekitUrl, globalRoom, commanderRoom } = data.op;
 
         // Global room
-        if (currentMissionGlobalRoomRef.current !== globalRoom.room ||
-            missionGlobalRef.current?.getStatus() === "idle") {
+        if (
+          currentMissionGlobalRoomRef.current !== globalRoom.room ||
+          missionGlobalRef.current?.getStatus() === "idle"
+        ) {
           if (!missionGlobalRef.current) {
             const fa = new FleetAudio();
             fa.setStatusListener((s) => setState((st) => ({ ...st, globalMissionStatus: s })));
@@ -1012,8 +1043,10 @@ export function App(): JSX.Element {
 
         // Commander room (only if returned)
         if (commanderRoom) {
-          if (currentMissionCommanderRoomRef.current !== commanderRoom.room ||
-              missionCommanderRef.current?.getStatus() === "idle") {
+          if (
+            currentMissionCommanderRoomRef.current !== commanderRoom.room ||
+            missionCommanderRef.current?.getStatus() === "idle"
+          ) {
             if (!missionCommanderRef.current) {
               const fa = new FleetAudio();
               fa.setStatusListener((s) => setState((st) => ({ ...st, commanderStatus: s })));
@@ -1067,11 +1100,17 @@ export function App(): JSX.Element {
     })();
     const onDown = (e: KeyboardEvent): void => {
       if (e.repeat || isMouseHotkey(hotkey)) return;
-      if (formatKeyboardAccelerator(e) === hotkey) { e.preventDefault(); onCommanderPtt(true); }
+      if (formatKeyboardAccelerator(e) === hotkey) {
+        e.preventDefault();
+        onCommanderPtt(true);
+      }
     };
     const onUp = (e: KeyboardEvent): void => {
       if (isMouseHotkey(hotkey)) return;
-      if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onCommanderPtt(false); }
+      if (keyReleaseMatchesAccelerator(e, hotkey)) {
+        e.preventDefault();
+        onCommanderPtt(false);
+      }
     };
     window.addEventListener("keydown", onDown, true);
     window.addEventListener("keyup", onUp, true);
@@ -1101,11 +1140,17 @@ export function App(): JSX.Element {
     })();
     const onDown = (e: KeyboardEvent): void => {
       if (e.repeat || isMouseHotkey(hotkey)) return;
-      if (formatKeyboardAccelerator(e) === hotkey) { e.preventDefault(); onGlobalMissionPtt(true); }
+      if (formatKeyboardAccelerator(e) === hotkey) {
+        e.preventDefault();
+        onGlobalMissionPtt(true);
+      }
     };
     const onUp = (e: KeyboardEvent): void => {
       if (isMouseHotkey(hotkey)) return;
-      if (keyReleaseMatchesAccelerator(e, hotkey)) { e.preventDefault(); onGlobalMissionPtt(false); }
+      if (keyReleaseMatchesAccelerator(e, hotkey)) {
+        e.preventDefault();
+        onGlobalMissionPtt(false);
+      }
     };
     window.addEventListener("keydown", onDown, true);
     window.addEventListener("keyup", onUp, true);
@@ -1288,6 +1333,11 @@ export function App(): JSX.Element {
           <span className="brand-gd">SQUAD LINK</span>
         </div>
         <div className="cc-modebar-right">
+          <img
+            className="cc-credit-stamp"
+            src="/credits-stamp.svg"
+            alt="raumdock.org - made by xheadwigx & justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos"
+          />
           {hasStoredToken ? (
             <button
               type="button"
@@ -1314,7 +1364,10 @@ export function App(): JSX.Element {
             <button
               type="button"
               className="cc-btn ghost sm"
-              onClick={() => { setSessionJoinError(null); setShowSessionJoin(true); }}
+              onClick={() => {
+                setSessionJoinError(null);
+                setShowSessionJoin(true);
+              }}
               title="Session via Invite-Token beitreten"
             >
               <Icon.key size={12} />
@@ -1342,7 +1395,9 @@ export function App(): JSX.Element {
                     title={`Fleet Voice · ${state.fleetOpTitle ?? state.fleetRoomName ?? "connected"}`}
                     onMouseDown={() => onFleetPttEvent(true)}
                     onMouseUp={() => onFleetPttEvent(false)}
-                    onMouseLeave={() => { if (state.fleetPttActive) onFleetPttEvent(false); }}
+                    onMouseLeave={() => {
+                      if (state.fleetPttActive) onFleetPttEvent(false);
+                    }}
                   >
                     <Icon.radio size={12} />
                     {state.fleetPttActive ? "FLEET AKTIV" : "FLEET VOICE"}
@@ -1355,7 +1410,9 @@ export function App(): JSX.Element {
                     title="Global Fleet Voice — alle Units"
                     onMouseDown={() => onGlobalFleetPttEvent(true)}
                     onMouseUp={() => onGlobalFleetPttEvent(false)}
-                    onMouseLeave={() => { if (state.globalFleetPttActive) onGlobalFleetPttEvent(false); }}
+                    onMouseLeave={() => {
+                      if (state.globalFleetPttActive) onGlobalFleetPttEvent(false);
+                    }}
                   >
                     <Icon.radio size={12} />
                     {state.globalFleetPttActive ? "GLOBAL AKTIV" : "GLOBAL"}
@@ -1408,8 +1465,12 @@ export function App(): JSX.Element {
               type="button"
               className={`cc-btn ${state.relayPttActive ? "green" : state.relayStatus === "connected" ? "cyan" : "ghost"} sm`}
               title={`Voice-to-All · Hotkey ${state.relayHotkey} · ${state.relayStatus}`}
-              onMouseDown={() => onRelayPttEvent({ state: "pressed", accelerator: state.relayHotkey })}
-              onMouseUp={() => onRelayPttEvent({ state: "released", accelerator: state.relayHotkey })}
+              onMouseDown={() =>
+                onRelayPttEvent({ state: "pressed", accelerator: state.relayHotkey })
+              }
+              onMouseUp={() =>
+                onRelayPttEvent({ state: "released", accelerator: state.relayHotkey })
+              }
             >
               <Icon.radio size={12} />
               {state.relayPttActive ? "RELAY AKTIV" : "VOICE TO ALL"}
@@ -1446,7 +1507,12 @@ export function App(): JSX.Element {
             </button>
           ) : null}
           {hasStoredToken ? (
-            <button type="button" className="cc-btn ghost sm" onClick={onSignOut} title="Gespeicherte Sitzung löschen">
+            <button
+              type="button"
+              className="cc-btn ghost sm"
+              onClick={onSignOut}
+              title="Gespeicherte Sitzung löschen"
+            >
               <Icon.power size={12} />
               ABMELDEN
             </button>
@@ -1495,19 +1561,32 @@ export function App(): JSX.Element {
             style={{ padding: "4px 9px", fontSize: 11 }}
             title={state.sessionId ?? state.guildId ?? undefined}
           >
-            {state.sessionId ? (state.sessionLabel ?? state.sessionId) : (state.guildName ?? state.guildId ?? "—")}
+            {state.sessionId
+              ? (state.sessionLabel ?? state.sessionId)
+              : (state.guildName ?? state.guildId ?? "—")}
           </span>
         </div>
       </section>
 
       {/* ── Body ───────────────────────────────────────────── */}
       <main className="cc-window-body">
-        {state.lastError ? <div className="cc-banner error"><Icon.x size={12} />{state.lastError}</div> : null}
+        {state.lastError ? (
+          <div className="cc-banner error">
+            <Icon.x size={12} />
+            {state.lastError}
+          </div>
+        ) : null}
         {!state.lastError && audioTransmit ? (
-          <div className="cc-banner info"><Icon.radio size={12} />Squad Link aktiv — die anderen Commander hören dich.</div>
+          <div className="cc-banner info">
+            <Icon.radio size={12} />
+            Squad Link aktiv — die anderen Commander hören dich.
+          </div>
         ) : null}
         {state.missionEnded && !state.missionActive ? (
-          <div className="cc-banner info"><Icon.x size={12} />MISSION BEENDET — Voice-Session wurde getrennt.</div>
+          <div className="cc-banner info">
+            <Icon.x size={12} />
+            MISSION BEENDET — Voice-Session wurde getrennt.
+          </div>
         ) : null}
         {state.missionActive ? (
           <MissionVoicePanel
@@ -1529,13 +1608,18 @@ export function App(): JSX.Element {
           // ────────── Disconnected: sign-in panel ──────────
           <section className="cc-card cc-fade-in">
             <span className="cc-card-tick"></span>
-            <div className="cc-card-title"><span>VERBINDUNG // BRIDGE</span></div>
+            <div className="cc-card-title">
+              <span>VERBINDUNG // BRIDGE</span>
+            </div>
 
             <div className="cc-field">
               <label className="cc-label">Bridge</label>
               <span className="cc-readout" title={state.bridgeUrl}>
                 <span className="lbl">URL</span>
-                <span className="val" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span
+                  className="val"
+                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >
                   {state.bridgeUrl}
                 </span>
                 <button
@@ -1554,7 +1638,10 @@ export function App(): JSX.Element {
                 <label className="cc-label">Letzter Server</label>
                 <span className="cc-readout" title={lastGuildId}>
                   <span className="lbl">ID</span>
-                  <span className="val" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span
+                    className="val"
+                    style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
                     {savedGuilds.find((g) => g.id === lastGuildId)?.label ?? lastGuildId}
                   </span>
                 </span>
@@ -1579,7 +1666,10 @@ export function App(): JSX.Element {
           <section className="cc-2col cc-fade-in">
             <div className="cc-card">
               <span className="cc-card-tick"></span>
-              <div className="cc-card-title"><span>SQUAD ROSTER</span><span className="cc-badge dim">{state.activeCommanders.length}</span></div>
+              <div className="cc-card-title">
+                <span>SQUAD ROSTER</span>
+                <span className="cc-badge dim">{state.activeCommanders.length}</span>
+              </div>
               {state.activeCommanders.length === 0 ? (
                 <div className="cc-hint" style={{ padding: "12px 0", textAlign: "center" }}>
                   — niemand verbunden —
@@ -1617,10 +1707,14 @@ export function App(): JSX.Element {
                         ) : null}
                         <div className="cc-prow-state">
                           {c.afk ? (
-                            <span className="cc-badge cyan" style={{ marginRight: 6 }}>AFK</span>
+                            <span className="cc-badge cyan" style={{ marginRight: 6 }}>
+                              AFK
+                            </span>
                           ) : null}
                           {c.outputMuted ? (
-                            <span className="cc-badge gold" style={{ marginRight: 6 }}>MUTED</span>
+                            <span className="cc-badge gold" style={{ marginRight: 6 }}>
+                              MUTED
+                            </span>
                           ) : null}
                           {c.speaking ? "TALKING" : "IDLE"}
                         </div>
@@ -1633,16 +1727,33 @@ export function App(): JSX.Element {
 
             <div className="cc-card">
               <span className="cc-card-tick"></span>
-              <div className="cc-card-title"><span>PTT</span></div>
+              <div className="cc-card-title">
+                <span>PTT</span>
+              </div>
               <div className="cc-col" style={{ alignItems: "center", gap: 14, padding: "8px 0" }}>
-                <div className={`cc-mic-orb ${audioTransmit ? "live" : state.audioStatus === "error" ? "muted" : ""}`}>
+                <div
+                  className={`cc-mic-orb ${audioTransmit ? "live" : state.audioStatus === "error" ? "muted" : ""}`}
+                >
                   {audioTransmit ? <Icon.mic size={36} /> : <Icon.micOff size={36} />}
                 </div>
-                <div className="cc-ptt-key" style={{ padding: "4px 9px", border: "1px solid var(--border)", background: "var(--bg3)", fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "1.5px", color: "var(--dim)" }}>
+                <div
+                  className="cc-ptt-key"
+                  style={{
+                    padding: "4px 9px",
+                    border: "1px solid var(--border)",
+                    background: "var(--bg3)",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11,
+                    letterSpacing: "1.5px",
+                    color: "var(--dim)",
+                  }}
+                >
                   HOLD <span style={{ color: "var(--cyan)" }}>{state.hotkey}</span>
                 </div>
                 {state.wsDetail ? (
-                  <div className="cc-hint" style={{ fontSize: 10 }}>{state.wsDetail}</div>
+                  <div className="cc-hint" style={{ fontSize: 10 }}>
+                    {state.wsDetail}
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -1714,7 +1825,6 @@ export function App(): JSX.Element {
           onClose={() => setShowMissionModal(false)}
         />
       ) : null}
-
     </div>
   );
 }
