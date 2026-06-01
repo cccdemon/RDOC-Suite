@@ -83,7 +83,7 @@ const OP_TYPES = [
   "transport",
   "social",
 ] as const;
-const MISSION_IMAGE_TYPES = new Set(["combat", "pve", "mining", "salvage", "training"]);
+const MISSION_IMAGE_TYPES = new Set<string>(OP_TYPES);
 
 function systemLabel(system: string): string {
   return system ? system[0].toUpperCase() + system.slice(1) : "Stanton";
