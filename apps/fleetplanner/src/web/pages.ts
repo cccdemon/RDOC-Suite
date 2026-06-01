@@ -1442,7 +1442,20 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const op = opts.op;
   const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const csrf = opts.csrfToken ?? "";
-  const user = opts.currentUser;
+  const realUser = opts.currentUser;
+  const previewRoles = ["guest", "crew", "captain", "fleetoperator", "superadmin"];
+  const canRealManage =
+    !!realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
+  const viewAsRole =
+    canRealManage && opts.viewAsRole && previewRoles.includes(opts.viewAsRole)
+      ? opts.viewAsRole
+      : "";
+  const user =
+    viewAsRole === "guest"
+      ? null
+      : viewAsRole && realUser
+        ? ({ ...realUser, role: viewAsRole } as typeof realUser)
+        : realUser;
   const canManage = !!user && (user.role === "superadmin" || user.role === "fleetoperator");
   const isLeader = !!user && (canManage || op.leaders.some((leader) => leader.user.id === user.id));
   const activeUnits = op.units.filter((unit) => unit.status !== "rejected");
@@ -1500,7 +1513,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   const seatRow = (unit: UnitFull, seat: UnitFull["seats"][number]) => {
     const claimed = !!seat.userId;
-    const isMe = user && seat.userId === user.id;
+    const isMe = realUser && seat.userId === realUser.id;
     const canClaim =
       user &&
       seat.active &&
@@ -2387,6 +2400,30 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </p>
         </div>
         <div class="opv2-switch">
+          ${canRealManage
+            ? html`<form
+                method="get"
+                action="${bp}/ops/${op.id}"
+                class="flex gap-1"
+                style="align-items:center"
+              >
+                <input type="hidden" name="tab" value="${activeTab}" />
+                <span class="text-dim text-sm">View as</span>
+                <select
+                  name="viewAs"
+                  onchange="this.form.submit()"
+                  style="width:auto;min-width:9rem;padding:.3rem .5rem"
+                >
+                  <option value="">Actual Role</option>
+                  ${previewRoles.map(
+                    (role) =>
+                      html`<option value="${role}" ${viewAsRole === role ? safe("selected") : ""}
+                        >${role}</option
+                      >`,
+                  )}
+                </select>
+              </form>`
+            : ""}
           <a href="${classicUrl}" class="btn btn-sm btn-ghost">Classic UI</a>
           <a href="${tabUrl(activeTab)}" class="btn btn-sm">New UI</a>
         </div>
