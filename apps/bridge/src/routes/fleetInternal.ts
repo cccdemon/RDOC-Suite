@@ -32,7 +32,14 @@ import {
   moveGuildMember,
   addGuildMemberRole,
   removeGuildMemberRole,
+  sendDirectMessage,
 } from "../auth/discord.js";
+import {
+  mintDownloadToken,
+  listDownloadTokens,
+  revokeDownloadToken,
+} from "../services/companionDownloads.js";
+import { fetchLatestCompanionRelease } from "../services/githubReleases.js";
 
 const SNOWFLAKE = /^[0-9]{17,20}$/;
 
@@ -98,19 +105,29 @@ const inviteCreateBodySchema = z.object({
   ttlDays: z.coerce.number().int().min(1).max(90).optional(),
 });
 
+/** Public origin (scheme+host) of the bridge, from OAUTH_REDIRECT_URI. */
+function bridgeOrigin(): string {
+  const oauth = getOAuthEnv();
+  if (!oauth) return "";
+  try {
+    return new URL(oauth.OAUTH_REDIRECT_URI).origin;
+  } catch {
+    return "";
+  }
+}
+
 /** Absolute bridge URL where an admin invite link is consumed. */
 function adminInviteUrl(token: string): string {
-  const origin = (() => {
-    const oauth = getOAuthEnv();
-    if (!oauth) return "";
-    try {
-      return new URL(oauth.OAUTH_REDIRECT_URI).origin;
-    } catch {
-      return "";
-    }
-  })();
-  return `${origin}${getEnv().PUBLIC_BASE_PATH}/admin/invite/${token}`;
+  return `${bridgeOrigin()}${getEnv().PUBLIC_BASE_PATH}/admin/invite/${token}`;
 }
+
+/** Absolute bridge URL that serves the companion EXE for a download token. */
+function downloadUrl(token: string): string {
+  return `${bridgeOrigin()}${getEnv().PUBLIC_BASE_PATH}/download/companion/${token}`;
+}
+
+const dmLinkBodySchema = z.object({ label: z.string().min(1).max(120).optional() });
+const downloadCreateBodySchema = z.object({ label: z.string().min(1).max(120) });
 
 function mapDiscordError(status: number, missingPermissionCode: string): { code: string; status: number } {
   if (status === 403) return { code: missingPermissionCode, status: 403 };
@@ -642,6 +659,76 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
         return reply.code(status).send({ error: code });
       }
       return reply.code(200).send({ ok: true });
+    },
+  );
+
+  // ── Companion download tokens (global, not guild-scoped) ─────────
+  app.get("/internal/fleet/companion-downloads", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    const tokens = await listDownloadTokens();
+    return reply.code(200).send({ tokens, configured: !!getEnv().GITHUB_REPO });
+  });
+
+  app.post<{ Body: unknown }>("/internal/fleet/companion-downloads", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    if (!getEnv().GITHUB_REPO) return reply.code(503).send({ error: "downloads_not_configured" });
+    const body = downloadCreateBodySchema.safeParse(request.body);
+    if (!body.success) return badRequest(reply, body.error);
+    const token = await mintDownloadToken({ label: body.data.label, createdBy: "fleetplanner" });
+    logger.info({ id: token.id }, "fleet api: minted companion download token");
+    return reply.code(200).send({
+      id: token.id,
+      label: token.label,
+      expiresAt: token.expiresAt,
+      url: downloadUrl(token.plaintext),
+    });
+  });
+
+  app.delete<{ Params: { id: string } }>(
+    "/internal/fleet/companion-downloads/:id",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const ok = await revokeDownloadToken((request.params as { id: string }).id);
+      return reply.code(200).send({ ok });
+    },
+  );
+
+  // Diagnostic: which GitHub release does the bridge currently see?
+  app.get("/internal/fleet/companion-release", async (request, reply) => {
+    if (!authorize(request, reply)) return;
+    const release = await fetchLatestCompanionRelease();
+    return reply.code(200).send({ configured: !!getEnv().GITHUB_REPO, release });
+  });
+
+  // Mint a download token and DM the link to a Discord user.
+  app.post<{ Params: { guildId: string; userId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/members/:userId/dm-download-link",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = adminParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = dmLinkBodySchema.safeParse(request.body ?? {});
+      if (!body.success) return badRequest(reply, body.error);
+      const oauth = getOAuthEnv();
+      if (!oauth) return reply.code(503).send({ error: "discord_not_configured" });
+      if (!getEnv().GITHUB_REPO) return reply.code(503).send({ error: "downloads_not_configured" });
+      const minted = await mintDownloadToken({
+        label: body.data.label ?? `[dm] to ${params.data.userId} via fleetplanner`,
+        createdBy: "fleetplanner",
+      });
+      const content =
+        `Hey! Hier dein Companion-Download für RDOC Squad Link:\n${downloadUrl(minted.plaintext)}\n\n` +
+        `Der Link ist einmalig gültig (7 Tage). Falls er nicht funktioniert, melde dich bei einem Admin.`;
+      const sent = await sendDirectMessage({
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
+        userId: params.data.userId,
+        content,
+      });
+      if (!sent.ok) {
+        const { code, status } = mapDiscordError(sent.error.status, "dm_closed_by_user");
+        return reply.code(status).send({ error: code });
+      }
+      return reply.code(200).send({ ok: true, tokenId: minted.id });
     },
   );
 }

@@ -473,3 +473,60 @@ export async function removeBridgeMemberRole(
   );
   await expectOk(res, "remove member role");
 }
+
+// ── Companion download tokens (global, not guild-scoped) ──────────────
+
+export type DownloadToken = {
+  id: string;
+  label: string;
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  usedFrom: string | null;
+};
+
+export type CompanionRelease = {
+  configured: boolean;
+  release: {
+    tagName: string;
+    name: string | null;
+    publishedAt: string | null;
+    asset: { name: string; size: number } | null;
+  } | null;
+};
+
+export async function listCompanionDownloads(): Promise<{ tokens: DownloadToken[]; configured: boolean }> {
+  const res = await bridgeFetch(`/internal/fleet/companion-downloads`);
+  await expectOk(res, "list download tokens");
+  return (await res.json()) as { tokens: DownloadToken[]; configured: boolean };
+}
+
+export async function mintCompanionDownload(label: string): Promise<{ id: string; label: string; expiresAt: string; url: string }> {
+  const res = await bridgeFetch(`/internal/fleet/companion-downloads`, {
+    method: "POST",
+    body: JSON.stringify({ label }),
+  });
+  await expectOk(res, "mint download token");
+  return (await res.json()) as { id: string; label: string; expiresAt: string; url: string };
+}
+
+export async function revokeCompanionDownload(id: string): Promise<void> {
+  const res = await bridgeFetch(`/internal/fleet/companion-downloads/${id}`, { method: "DELETE" });
+  await expectOk(res, "revoke download token");
+}
+
+export async function getCompanionRelease(): Promise<CompanionRelease> {
+  const res = await bridgeFetch(`/internal/fleet/companion-release`);
+  await expectOk(res, "get companion release");
+  return (await res.json()) as CompanionRelease;
+}
+
+export async function dmBridgeDownloadLink(guildId: string, userId: string, label?: string): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/members/${userId}/dm-download-link`, {
+    method: "POST",
+    body: JSON.stringify(label ? { label } : {}),
+  });
+  await expectOk(res, "dm download link");
+}

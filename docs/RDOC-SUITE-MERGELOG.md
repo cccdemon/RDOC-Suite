@@ -3,6 +3,27 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin (Option B, Phase 4) — companion downloads, relay metrics, refresh
+
+Ports the remaining medium/low items. Only **Raid Planer** (real-time drag-drop) now stays
+on the bridge admin UI; everything else is covered in fleetplanner `/admin/bridge`.
+
+Bridge `routes/fleetInternal.ts`:
+- Companion download tokens (global): `GET/POST /internal/fleet/companion-downloads`,
+  `DELETE .../companion-downloads/:id`, `GET /internal/fleet/companion-release` (diagnostic).
+  Mint returns the absolute bridge `/download/companion/<token>` URL.
+- `POST /internal/fleet/guilds/:g/members/:userId/dm-download-link` — mint + DM via bot.
+
+Fleetplanner:
+- `services/bridge.ts`: list/mint/revoke companion downloads, getCompanionRelease, dm link.
+- `routes/bridgeAdmin.ts`: `/admin/bridge/:g/downloads` (+ /dm, /:id/revoke); relay-bots GET now
+  also fetches metrics (best-effort).
+- `web/pages.ts`: new `bridgeDownloadsPage` (release info + mint + DM + token list); relay-bots
+  page renders a metrics snapshot block; "Downloads" link in guild header; "↻ Refresh" links on
+  dashboard + discord-voice (server-rendered snapshots, no SSE).
+
+Remaining: Raid Planer port (deferred), then sunset bridge `/admin/*` HTML.
+
 ## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin (Option B, Phase 3) — complete the Admins panel
 
 Phase 1 only did add/remove admin. Phase 3 finishes the Admins panel: role change

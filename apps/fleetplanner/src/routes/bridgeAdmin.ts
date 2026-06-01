@@ -13,6 +13,7 @@ import {
   bridgeSessionDetailPage,
   bridgeRelayBotsPage,
   bridgeDiscordVoicePage,
+  bridgeDownloadsPage,
 } from "../web/pages.js";
 import {
   bridgeConfigured,
@@ -38,6 +39,12 @@ import {
   getBridgeRelayConfig,
   saveBridgeRelayConfig,
   restartBridgeRelayBots,
+  getBridgeRelayMetrics,
+  listCompanionDownloads,
+  mintCompanionDownload,
+  revokeCompanionDownload,
+  getCompanionRelease,
+  dmBridgeDownloadLink,
   getBridgeVoiceStates,
   getBridgeDiscordRoles,
   moveBridgeMember,
@@ -565,9 +572,11 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       const name = await guildName(guildId);
       try {
         const config = await getBridgeRelayConfig();
+        // Metrics are best-effort — never fail the page if the service is down.
+        const metrics = await getBridgeRelayMetrics().catch(() => ({ offline: true }));
         htmlReply(reply, bridgeRelayBotsPage({
           basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
-          flash: req.query.flash, guildId, guildName: name, config,
+          flash: req.query.flash, guildId, guildName: name, config, metrics,
         }));
       } catch (err) {
         htmlReply(reply, bridgeRelayBotsPage({
@@ -699,6 +708,91 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       } catch (err) {
         app.log.error(err, "bridge role change failed");
         return reply.redirect(basePath(`/admin/bridge/${guildId}/discord-voice?flash=error:Role+change+failed.`), 302);
+      }
+    },
+  );
+
+  // ── Companion downloads ──────────────────────────────────────────
+  app.get<{ Params: { guildId: string }; Querystring: { flash?: string; fresh_url?: string } }>(
+    "/admin/bridge/:guildId/downloads",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const name = await guildName(guildId);
+      try {
+        const [{ tokens, configured }, release] = await Promise.all([
+          listCompanionDownloads(),
+          getCompanionRelease().catch(() => ({ configured: false, release: null })),
+        ]);
+        htmlReply(reply, bridgeDownloadsPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name,
+          configured, tokens, release: release.release,
+          freshUrl: req.query.fresh_url ? decodeURIComponent(req.query.fresh_url) : undefined,
+        }));
+      } catch (err) {
+        htmlReply(reply, bridgeDownloadsPage({
+          basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
+          flash: req.query.flash, guildId, guildName: name,
+          configured: false, tokens: [], release: null, error: errMsg(err),
+        }));
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/downloads",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      const label = req.body.label?.trim().slice(0, 120) ?? "";
+      if (!label) return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=error:Label+required.`), 302);
+      try {
+        const minted = await mintCompanionDownload(label);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?fresh_url=${encodeURIComponent(minted.url)}`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge mint download failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=error:Mint+failed+(GITHUB_REPO+set%3F).`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/downloads/dm",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      const userId = req.body.userId?.trim() ?? "";
+      if (!SNOWFLAKE.test(userId)) return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=error:Invalid+user+ID.`), 302);
+      try {
+        await dmBridgeDownloadLink(guildId, userId);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=ok:Download+link+DMed.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge dm download failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=error:DM+failed+(user+DMs+closed%3F).`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; id: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/downloads/:id/revoke",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, id } = req.params;
+      try {
+        await revokeCompanionDownload(id);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=ok:Token+revoked.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge revoke download failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=error:Revoke+failed.`), 302);
       }
     },
   );
