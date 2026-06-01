@@ -21,6 +21,7 @@ import {
   setStatus,
   addLeader,
   removeLeader,
+  listPublicOperations,
   listAllUserOperations,
   deleteOperation,
 } from "../../services/operations.js";
@@ -173,6 +174,30 @@ describe("removeLeader", () => {
 });
 
 // ── listAllUserOperations ─────────────────────────────────────────────────────
+
+describe("listPublicOperations", () => {
+  it("only returns published active operations", async () => {
+    db.operation.findMany.mockResolvedValue([]);
+    await listPublicOperations();
+    const { where } = db.operation.findMany.mock.calls[0][0];
+    expect(where.status).toEqual({ in: ["open", "locked", "in_progress"] });
+  });
+
+  it("filters out past operations by default", async () => {
+    db.operation.findMany.mockResolvedValue([]);
+    await listPublicOperations();
+    const { where } = db.operation.findMany.mock.calls[0][0];
+    expect(where.scheduledAt).toBeDefined();
+    expect(where.scheduledAt.gte).toBeInstanceOf(Date);
+  });
+
+  it("includes past public operations when includePast=true", async () => {
+    db.operation.findMany.mockResolvedValue([]);
+    await listPublicOperations(true);
+    const { where } = db.operation.findMany.mock.calls[0][0];
+    expect(where.scheduledAt).toBeUndefined();
+  });
+});
 
 describe("listAllUserOperations", () => {
   it("returns [] immediately for empty guildIds (no DB call)", async () => {

@@ -36,6 +36,7 @@ import {
   createOperation,
   getOperation,
   listOperations,
+  listPublicOperations,
   listAllUserOperations,
   updateOperation,
   deleteOperation,
@@ -145,10 +146,24 @@ export async function webRoutes(app: FastifyInstance) {
   // ── Home — shows ops from ALL user's guilds with server marker ──────────
   app.get<{ Querystring: { flash?: string; past?: string } }>("/", async (req, reply) => {
     const ctx = await optionalAuth(req);
-    if (!ctx) return reply.redirect(basePath("/login"), 302);
+    const includePast = !!req.query.past;
+    if (!ctx) {
+      const ops = await listPublicOperations(includePast);
+      htmlReply(
+        reply,
+        homePage({
+          basePath: basePath(),
+          currentUser: null,
+          flash: req.query.flash,
+          ops,
+          includePast,
+          operatorGuilds: [],
+        }),
+      );
+      return;
+    }
     const memberships = await listUserGuilds(ctx.user.id);
     if (memberships.length === 0) return reply.redirect(basePath("/guilds/none"), 302);
-    const includePast = !!req.query.past;
     const guildIds = memberships.map((m) => m.guildId);
     const ops = await listAllUserOperations(guildIds, includePast);
     // Operator guilds for the "New Op" picker
