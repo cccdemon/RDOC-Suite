@@ -3,6 +3,37 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin config (Option B, Phase 1)
+
+Two web UIs / two logins (bridge `/admin/*` on SQLite vs. fleetplanner `/fleetplanner`
+on PostgreSQL) confuse operators. Decision: fleetplanner superadmin manages bridge guild
+config without opening the bridge admin UI. Bridge exposes a machine-to-machine API; bridge
+admin UI kept running (phased sunset later). Plan: `docs/handover.to.opus-model.md`.
+
+Bridge side (Phase 1):
+- `apps/bridge/src/config/env.ts`: add `BRIDGE_FLEET_SECRET` (min 32, optional). When set,
+  enables `/internal/fleet/*`. Separate from `INTERNAL_BRIDGE_SECRET` (bot-only, min 16).
+- New `apps/bridge/src/routes/fleetInternal.ts`: Bearer-auth (`BRIDGE_FLEET_SECRET`) M2M API.
+  503 when secret unset, 401 on wrong secret. Endpoints: GET/POST guild config, GET/POST/DELETE
+  guild admins, GET monitoring, GET audit. Zod-validated, snowflake regex `/^[0-9]{17,20}$/`.
+  Admin DELETE bypasses the "byUserId must be admiral" check via direct `deleteMany`
+  (guards `protected: false` so the seeded admiral can't be removed by fleetplanner).
+- `apps/bridge/src/app.ts`: register `registerFleetInternalRoutes`.
+
+Fleetplanner side (Phase 2):
+- `apps/fleetplanner/src/config/env.ts`: add `BRIDGE_INTERNAL_URL` (default `http://bridge:8787`)
+  + `BRIDGE_FLEET_SECRET` (min 32, optional; hides Bridge section when unset).
+- New `apps/fleetplanner/src/services/bridge.ts`: fetch+bearer client (pattern from
+  `services/relayBots.ts`). Types redeclared inline (no bridge package dep).
+- New `apps/fleetplanner/src/routes/bridgeAdmin.ts`: superadmin-gated `/admin/bridge*` routes.
+  Registered in `app.ts`.
+- `apps/fleetplanner/src/web/pages.ts`: bridge overview/config/monitoring/audit render fns;
+  "Bridge" nav link shown only when `bridgeConfigured()`.
+
+Phase 3: `.env.example` / `.env.prod.template` (user must edit if permission-blocked),
+CLAUDE.md admin section + Quirks (same secret in BOTH .env entries). Raid Planer + bridge
+sessions NOT touched (deferred). Verification sequence in handover §8.
+
 ## Queued / Planned Step - 2026-06-01: Remove `/cc` bot command — bridge guild-enable via web UI + env admin seed
 
 Bridge guild config (`guildConfig.enabled`, commander roles) was only settable via the

@@ -1,6 +1,8 @@
 // Tagged-template HTML renderer — no framework, no EJS, no Handlebars.
 // Use html`...${expr}...` for auto-escaping. Wrap already-safe HTML in safe().
 
+import { bridgeConfigured } from "../services/bridge.js";
+
 export function escape(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value)
@@ -73,6 +75,8 @@ export function layout(opts: LayoutOptions): SafeHtml {
       ${u ? html`<a href="${bp}/profile">Profile</a>` : ""}
       ${u && u.role === "superadmin"
         ? html`<a href="${bp}/admin">Admin</a>` : ""}
+      ${u && u.role === "superadmin" && bridgeConfigured()
+        ? html`<a href="${bp}/admin/bridge">Bridge</a>` : ""}
       <span class="nav-spacer"></span>
       ${u
         ? html`

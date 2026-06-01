@@ -6,6 +6,7 @@ import { authRoutes } from "./routes/auth.js";
 import { webRoutes } from "./routes/web.js";
 import { apiRoutes } from "./routes/api.js";
 import { guildRoutes } from "./routes/guilds.js";
+import { bridgeAdminRoutes } from "./routes/bridgeAdmin.js";
 
 export async function buildApp() {
   const env = getEnv();
@@ -24,6 +25,7 @@ export async function buildApp() {
   await app.register(authRoutes);
   await app.register(guildRoutes);
   await app.register(webRoutes);
+  await app.register(bridgeAdminRoutes);
   await app.register(apiRoutes);
 
   return app;

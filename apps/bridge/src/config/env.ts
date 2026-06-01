@@ -25,6 +25,13 @@ const baseEnvSchema = z.object({
   // 503s when unset); required in production for instant voice-channel
   // enforcement to work — otherwise we fall back to the 60s recheck loop.
   INTERNAL_BRIDGE_SECRET: z.string().min(16).optional(),
+  // Shared secret for the fleetplanner → bridge internal HTTP API
+  // (/internal/fleet/*) that lets the fleetplanner superadmin manage
+  // bridge guild config + admins without the bridge admin web UI.
+  // Separate from INTERNAL_BRIDGE_SECRET (bot-only voice-state push).
+  // When unset the /internal/fleet/* endpoints return 503. Must match
+  // the BRIDGE_FLEET_SECRET set in the fleetplanner service.
+  BRIDGE_FLEET_SECRET: z.string().min(32).optional(),
   // Separate secret for the admin web-UI session cookie. Optional —
   // when unset we fall back to SESSION_SECRET so single-secret
   // deployments still work. Set this in production to give the admin

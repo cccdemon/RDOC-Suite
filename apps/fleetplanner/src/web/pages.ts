@@ -1395,6 +1395,303 @@ export function adminPage(opts: {
   });
 }
 
+// ── Bridge admin (voice-bridge config absorbed from bridge /admin) ───
+
+type BridgeGuildRow = {
+  guildId: string;
+  name: string;
+  enabled: boolean | null; // null = bridge unreachable / status unknown
+  error?: string;
+};
+
+export function bridgeAdminOverviewPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guilds: BridgeGuildRow[];
+}): SafeHtml {
+  const bp = opts.basePath;
+
+  const rows = opts.guilds.map((g) => {
+    const status = g.enabled === null
+      ? html`<span class="tag tag-red">UNREACHABLE</span>`
+      : g.enabled
+        ? html`<span class="tag tag-green">ENABLED</span>`
+        : html`<span class="tag tag-dim">DISABLED</span>`;
+    return html`
+      <tr>
+        <td class="text-mono" style="font-size:0.72rem;color:var(--dim)">${g.guildId}</td>
+        <td>${g.name}</td>
+        <td>${status}${g.error ? html`<br><span class="text-dim text-sm">${g.error}</span>` : ""}</td>
+        <td class="text-right"><a class="btn btn-sm" href="${bp}/admin/bridge/${g.guildId}">Manage</a></td>
+      </tr>`;
+  });
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">VOICE BRIDGE</h1>
+      <p class="page-subtitle">Manage the voice-bridge guild config (enable, commander roles, allowed channels) and bridge admins — without opening the bridge admin UI.</p>
+    </div>
+    <div class="section">
+      <div class="section-title">Guilds (${opts.guilds.length})</div>
+      ${opts.guilds.length === 0
+        ? html`<p class="text-dim">No fleetplanner guilds yet. Install the bot on a Discord server first.</p>`
+        : html`<div style="overflow-x:auto"><table class="user-table">
+            <thead><tr><th>Guild ID</th><th>Name</th><th>Bridge status</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>`}
+    </div>`;
+
+  return layout({
+    title: "Voice Bridge",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+type BridgeAdminRow = {
+  userId: string;
+  role: string;
+  protected: boolean;
+  addedBy: string | null;
+};
+
+export function bridgeGuildConfigPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  guildId: string;
+  guildName: string;
+  config: {
+    enabled: boolean;
+    commanderRoleIds: string[];
+    allowedVoiceChannelIds: string[];
+    bridgeMode: string;
+  };
+  admins: BridgeAdminRow[];
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const cfg = opts.config;
+
+  const configPanel = html`
+    <div class="section">
+      <div class="section-title">Guild Config</div>
+      <div class="card" style="padding:1.5rem">
+        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/config">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.5rem">
+              <input type="checkbox" name="enabled" value="1" ${cfg.enabled ? safe("checked") : safe("")} style="width:auto" />
+              Guild enabled (commanders may connect the companion)
+            </label>
+          </div>
+          <div class="form-group">
+            <label>Commander role IDs (one per line, or comma-separated)</label>
+            <textarea name="commanderRoleIds" rows="3" placeholder="123456789012345678">${cfg.commanderRoleIds.join("\n")}</textarea>
+          </div>
+          <div class="form-group">
+            <label>Allowed voice channel IDs (one per line, or comma-separated)</label>
+            <textarea name="allowedVoiceChannelIds" rows="3" placeholder="123456789012345678">${cfg.allowedVoiceChannelIds.join("\n")}</textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-cyan">Save config</button>
+          </div>
+        </form>
+        <p class="text-dim text-sm" style="margin:.75rem 0 0">Bridge mode: <span class="text-mono">${cfg.bridgeMode}</span></p>
+      </div>
+    </div>`;
+
+  const adminRows = opts.admins.map((a) => html`
+    <tr>
+      <td class="text-mono" style="font-size:0.72rem;color:var(--dim)">${a.userId}</td>
+      <td><span class="tag ${a.role === "admiral" ? "tag-gold" : "tag-dim"}">${a.role}</span>${a.protected ? html` <span class="tag tag-cyan">protected</span>` : ""}</td>
+      <td class="text-dim text-sm">${a.addedBy ?? safe("—")}</td>
+      <td class="text-right">
+        ${a.protected
+          ? html`<span class="text-dim text-sm">locked</span>`
+          : html`<form method="post" action="${bp}/admin/bridge/${opts.guildId}/admins/${a.userId}/delete" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+            </form>`}
+      </td>
+    </tr>`);
+
+  const adminPanel = html`
+    <div class="section">
+      <div class="section-title">Bridge Admins (${opts.admins.length})</div>
+      <div style="overflow-x:auto">
+        <table class="user-table">
+          <thead><tr><th>Discord ID</th><th>Role</th><th>Added by</th><th></th></tr></thead>
+          <tbody>${adminRows}</tbody>
+        </table>
+      </div>
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/admins" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <label class="text-sm text-dim" style="flex:1 1 16rem">Discord user ID
+            <input type="text" name="userId" placeholder="123456789012345678" required />
+          </label>
+          <label class="text-sm text-dim">Role
+            <select name="role" style="width:auto">
+              <option value="vice_admiral">vice_admiral</option>
+              <option value="admiral">admiral</option>
+            </select>
+          </label>
+          <button type="submit" class="btn btn-ghost btn-sm">Add admin</button>
+        </form>
+      </div>
+    </div>`;
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">${opts.guildName}</h1>
+      <p class="page-subtitle text-mono">${opts.guildId}</p>
+      <p style="margin-top:.5rem">
+        <a href="${bp}/admin/bridge">← All guilds</a>
+        &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/monitoring">Monitoring</a>
+        &nbsp;·&nbsp; <a href="${bp}/admin/bridge/${opts.guildId}/audit">Audit log</a>
+      </p>
+    </div>
+    ${configPanel}
+    ${adminPanel}`;
+
+  return layout({
+    title: "Bridge Guild",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+export function bridgeMonitoringPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  guildId: string;
+  guildName: string;
+  snapshot: {
+    generatedAt: string;
+    uptimeSeconds: number;
+    activeRooms: number;
+    activeCommanders: number;
+    speakingCommanders: number;
+    system: { cpuPercent: number | null; memory: { processRssBytes: number; systemUsedBytes: number; systemTotalBytes: number } };
+    bandwidth: { source: string; bitrateIn: number | null; bitrateOut: number | null };
+  } | null;
+  error?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const s = opts.snapshot;
+  const mb = (n: number) => `${(n / 1024 / 1024).toFixed(0)} MB`;
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">MONITORING</h1>
+      <p class="page-subtitle text-mono">${opts.guildName}</p>
+      <p style="margin-top:.5rem"><a href="${bp}/admin/bridge/${opts.guildId}">← Back to guild</a></p>
+    </div>
+    ${!s
+      ? html`<div class="flash flash-error">Bridge unreachable${opts.error ? html`: ${opts.error}` : ""}</div>`
+      : html`
+        <div class="section">
+          <div class="section-title">Live</div>
+          <div class="card" style="padding:1.25rem">
+            <div style="display:flex;flex-wrap:wrap;gap:1.5rem">
+              <div><span class="text-dim text-sm">Active rooms</span><br><strong class="text-mono">${String(s.activeRooms)}</strong></div>
+              <div><span class="text-dim text-sm">Commanders</span><br><strong class="text-mono">${String(s.activeCommanders)}</strong></div>
+              <div><span class="text-dim text-sm">Speaking</span><br><strong class="text-mono">${String(s.speakingCommanders)}</strong></div>
+              <div><span class="text-dim text-sm">Uptime</span><br><strong class="text-mono">${String(Math.round(s.uptimeSeconds / 60))} min</strong></div>
+              <div><span class="text-dim text-sm">CPU</span><br><strong class="text-mono">${s.system.cpuPercent === null ? safe("—") : `${s.system.cpuPercent}%`}</strong></div>
+              <div><span class="text-dim text-sm">Memory (sys)</span><br><strong class="text-mono">${mb(s.system.memory.systemUsedBytes)} / ${mb(s.system.memory.systemTotalBytes)}</strong></div>
+            </div>
+            <p class="text-dim text-sm" style="margin:1rem 0 0">Bandwidth (${s.bandwidth.source}): in ${s.bandwidth.bitrateIn ?? safe("—")} / out ${s.bandwidth.bitrateOut ?? safe("—")} bps</p>
+            <p class="text-dim text-sm" style="margin:.35rem 0 0">Snapshot ${s.generatedAt}</p>
+          </div>
+        </div>`}`;
+
+  return layout({
+    title: "Bridge Monitoring",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+export function bridgeAuditPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  guildId: string;
+  guildName: string;
+  entries: Array<{
+    id: string;
+    actorLabel: string | null;
+    actorUserId: string | null;
+    action: string;
+    target: string | null;
+    createdAt: string;
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+  error?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+
+  const rows = opts.entries.map((e) => html`
+    <tr>
+      <td class="text-dim text-sm">${e.createdAt}</td>
+      <td>${e.actorLabel ?? e.actorUserId ?? safe("—")}</td>
+      <td class="text-mono text-sm">${e.action}</td>
+      <td class="text-dim text-sm">${e.target ?? safe("—")}</td>
+    </tr>`);
+
+  const prevOffset = Math.max(0, opts.offset - opts.limit);
+  const nextOffset = opts.offset + opts.limit;
+  const hasPrev = opts.offset > 0;
+  const hasNext = nextOffset < opts.total;
+
+  const body = html`
+    <div class="page-header">
+      <h1 class="page-title">AUDIT LOG</h1>
+      <p class="page-subtitle text-mono">${opts.guildName}</p>
+      <p style="margin-top:.5rem"><a href="${bp}/admin/bridge/${opts.guildId}">← Back to guild</a></p>
+    </div>
+    ${opts.error
+      ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>`
+      : html`
+        <div class="section">
+          <div class="section-title">Entries (${String(opts.total)})</div>
+          <div style="overflow-x:auto">
+            <table class="user-table">
+              <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Target</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+          <div style="display:flex;gap:.75rem;margin-top:1rem">
+            ${hasPrev ? html`<a class="btn btn-sm btn-ghost" href="${bp}/admin/bridge/${opts.guildId}/audit?limit=${String(opts.limit)}&offset=${String(prevOffset)}">← Newer</a>` : ""}
+            ${hasNext ? html`<a class="btn btn-sm btn-ghost" href="${bp}/admin/bridge/${opts.guildId}/audit?limit=${String(opts.limit)}&offset=${String(nextOffset)}">Older →</a>` : ""}
+          </div>
+        </div>`}`;
+
+  return layout({
+    title: "Bridge Audit",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
 // ── Login / error pages ──────────────────────────────────────────────
 
 export function loginPage(opts: {

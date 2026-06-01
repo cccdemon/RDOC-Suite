@@ -49,6 +49,12 @@ const schema = z.object({
   RELAY_LIVEKIT_ROOM: z.string().default("voice-relay"),
   RELAY_BOTS_ADMIN_URL: z.string().optional(),
   RELAY_BOTS_ADMIN_SECRET: z.string().optional(),
+  // Internal Docker-network URL of the bridge service. Default works in the
+  // prod compose (services share a network → `bridge` resolves).
+  BRIDGE_INTERNAL_URL: z.string().url().default("http://bridge:8787"),
+  // Shared secret matching the bridge's BRIDGE_FLEET_SECRET. When unset the
+  // Bridge admin section in the fleetplanner UI is hidden (bridgeConfigured()).
+  BRIDGE_FLEET_SECRET: z.string().min(32).optional(),
 });
 
 export type Env = z.infer<typeof schema>;

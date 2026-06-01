@@ -4,6 +4,7 @@ import cookie from "@fastify/cookie";
 import { registerWsRoute } from "./signaling/ws.js";
 import { registerOAuthRoutes } from "./auth/oauth.js";
 import { registerInternalRoutes } from "./routes/internal.js";
+import { registerFleetInternalRoutes } from "./routes/fleetInternal.js";
 import { registerDownloadRoutes } from "./routes/download.js";
 import { registerUpdaterRoutes } from "./routes/updater.js";
 import { registerSuiteRoutes } from "./routes/suite.js";
@@ -54,6 +55,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await registerOAuthRoutes(app);
   await registerInternalRoutes(app);
+  await registerFleetInternalRoutes(app);
   await registerDownloadRoutes(app);
   await registerUpdaterRoutes(app);
   await registerSuiteRoutes(app);
