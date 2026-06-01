@@ -475,6 +475,9 @@ export async function apiRoutes(app: FastifyInstance) {
         const op = await getOperation(req.params.id);
         if (op) {
           try {
+            app.log.info(
+              `Creating Discord scheduled event for guild ${op.guildId} op ${req.params.id}`,
+            );
             const event = await createScheduledEvent(op);
             if (event?.id) {
               await prisma.operation.update({
@@ -484,7 +487,7 @@ export async function apiRoutes(app: FastifyInstance) {
             }
           } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : "Discord event creation failed";
-            app.log.warn(err, "Discord event creation failed (non-fatal)");
+            app.log.warn(err, `Discord event creation failed for guild ${op.guildId} (non-fatal)`);
             discordEventCreationFlash = `warn:Status+updated,+Discord+event+failed:+${encodeURIComponent(msg)}`;
           }
         }

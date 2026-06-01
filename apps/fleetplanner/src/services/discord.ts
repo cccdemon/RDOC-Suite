@@ -303,7 +303,9 @@ export async function createScheduledEvent(op: {
 
   if (!res.ok) {
     const err = await res.text().catch(() => res.statusText);
-    throw new Error(`Discord event creation failed (${res.status}): ${err}`);
+    throw new Error(
+      `Discord event creation failed for guild ${op.guildId} (${res.status}): ${err}`,
+    );
   }
 
   const data = await res.json() as { id: string };
