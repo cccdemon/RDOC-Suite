@@ -50,6 +50,7 @@ const RDOC_RTC_PERMS: RequiredPermission[] = [
   { key: "READ_MESSAGE_HISTORY", label: "Read Message History", bit: READ_MESSAGE_HISTORY },
   { key: "MANAGE_CHANNELS", label: "Manage Channels", bit: MANAGE_CHANNELS },
   { key: "MOVE_MEMBERS", label: "Move Members", bit: MOVE_MEMBERS },
+  { key: "ADD_EVENTS", label: "Add Events", bit: ADD_EVENTS },
 ];
 
 const FLEETPLANNER_PERMS: RequiredPermission[] = [
