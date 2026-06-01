@@ -47,24 +47,28 @@ beforeEach(() => {
 
 describe("registerUnit", () => {
   it("throws if ship type has no shipId", async () => {
-    await expect(registerUnit("op-1", "cap-1", { unitType: "ship" }))
-      .rejects.toThrow("shipId required");
+    await expect(registerUnit("op-1", "cap-1", { unitType: "ship" })).rejects.toThrow(
+      "shipId required",
+    );
   });
 
   it("throws if squad type has no squadName", async () => {
-    await expect(registerUnit("op-1", "cap-1", { unitType: "squad", squadSize: 4 }))
-      .rejects.toThrow("squadName and squadSize required");
+    await expect(
+      registerUnit("op-1", "cap-1", { unitType: "squad", squadSize: 4 }),
+    ).rejects.toThrow("squadName and squadSize required");
   });
 
   it("throws if squad type has no squadSize", async () => {
-    await expect(registerUnit("op-1", "cap-1", { unitType: "squad", squadName: "Alpha" }))
-      .rejects.toThrow("squadName and squadSize required");
+    await expect(
+      registerUnit("op-1", "cap-1", { unitType: "squad", squadName: "Alpha" }),
+    ).rejects.toThrow("squadName and squadSize required");
   });
 
   it("throws when ship not found in DB", async () => {
     db.ship.findUnique.mockResolvedValue(null);
-    await expect(registerUnit("op-1", "cap-1", { unitType: "ship", shipId: "ship-999" }))
-      .rejects.toThrow("Ship not found");
+    await expect(
+      registerUnit("op-1", "cap-1", { unitType: "ship", shipId: "ship-999" }),
+    ).rejects.toThrow("Ship not found");
   });
 
   it("creates unit + seats for ship type", async () => {
@@ -79,7 +83,11 @@ describe("registerUnit", () => {
     expect(result).toEqual(unit);
     expect(db.fleetUnit.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ operationId: "op-1", captainId: "cap-1", status: "pending" }),
+        data: expect.objectContaining({
+          operationId: "op-1",
+          captainId: "cap-1",
+          status: "pending",
+        }),
       }),
     );
     // maxCrew=2, weaponCrew=0, operationCrew=0 → Pilot + 1 flex = 2 seats
@@ -87,7 +95,12 @@ describe("registerUnit", () => {
   });
 
   it("auto-assigns captain to the first seat (order=0)", async () => {
-    db.ship.findUnique.mockResolvedValue({ id: "ship-1", maxCrew: 2, weaponCrew: 0, operationCrew: 0 });
+    db.ship.findUnique.mockResolvedValue({
+      id: "ship-1",
+      maxCrew: 2,
+      weaponCrew: 0,
+      operationCrew: 0,
+    });
     db.fleetUnit.create.mockResolvedValue({ id: "unit-1" });
     db.seatAssignment.create.mockResolvedValue({});
 
@@ -102,7 +115,12 @@ describe("registerUnit", () => {
 
   it("does not assign captain to non-first seats", async () => {
     // 3-seat ship: Pilot + Gunner + flex
-    db.ship.findUnique.mockResolvedValue({ id: "ship-1", maxCrew: 3, weaponCrew: 1, operationCrew: 0 });
+    db.ship.findUnique.mockResolvedValue({
+      id: "ship-1",
+      maxCrew: 3,
+      weaponCrew: 1,
+      operationCrew: 0,
+    });
     db.fleetUnit.create.mockResolvedValue({ id: "unit-1" });
     db.seatAssignment.create.mockResolvedValue({});
 
@@ -129,7 +147,12 @@ describe("registerUnit", () => {
   });
 
   it("passes optional requirementId and captainNote to unit", async () => {
-    db.ship.findUnique.mockResolvedValue({ id: "ship-1", maxCrew: 1, weaponCrew: 0, operationCrew: 0 });
+    db.ship.findUnique.mockResolvedValue({
+      id: "ship-1",
+      maxCrew: 1,
+      weaponCrew: 0,
+      operationCrew: 0,
+    });
     db.fleetUnit.create.mockResolvedValue({ id: "unit-1" });
     db.seatAssignment.create.mockResolvedValue({});
 
@@ -142,7 +165,10 @@ describe("registerUnit", () => {
 
     expect(db.fleetUnit.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ requirementId: "req-5", captainNote: "I'll take the Pilot seat" }),
+        data: expect.objectContaining({
+          requirementId: "req-5",
+          captainNote: "I'll take the Pilot seat",
+        }),
       }),
     );
   });
@@ -229,6 +255,7 @@ function makeSeat(overrides: {
     fleetUnit: {
       id: "unit-1",
       operationId: "op-1",
+      captainId: "captain-1",
       unitType: "ship",
       status: overrides.unitStatus ?? "accepted",
       requirement: null,
@@ -248,9 +275,21 @@ describe("claimSeat", () => {
     await expect(claimSeat("seat-1", "user-1")).rejects.toThrow("Unit not yet accepted");
   });
 
-  it("throws for the captain seat (order=0)", async () => {
+  it("throws for the captain seat when the user is not the unit captain", async () => {
     db.seatAssignment.findUnique.mockResolvedValue(makeSeat({ order: 0 }));
-    await expect(claimSeat("seat-1", "user-1")).rejects.toThrow("Captain seat cannot be claimed");
+    await expect(claimSeat("seat-1", "user-1")).rejects.toThrow(
+      "Captain seat can only be claimed by the unit captain",
+    );
+  });
+
+  it("allows the unit captain to reclaim an empty captain seat", async () => {
+    db.seatAssignment.findUnique.mockResolvedValue(makeSeat({ order: 0 }));
+    db.seatAssignment.findMany.mockResolvedValue([]);
+    db.seatAssignment.updateMany.mockResolvedValue({ count: 1 });
+    await claimSeat("seat-1", "captain-1");
+    expect(db.seatAssignment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { userId: "captain-1" } }),
+    );
   });
 
   it("throws when seat is disabled (active=false)", async () => {
@@ -293,7 +332,9 @@ describe("claimSeat", () => {
         },
       },
     ]);
-    await expect(claimSeat("seat-1", "user-1")).rejects.toThrow("Already assigned to a primary seat");
+    await expect(claimSeat("seat-1", "user-1")).rejects.toThrow(
+      "Already assigned to a primary seat",
+    );
   });
 });
 
@@ -310,21 +351,31 @@ describe("assignSeat", () => {
     await expect(assignSeat("seat-1", "user-1")).rejects.toThrow("Unit not yet accepted");
   });
 
-  it("throws for the captain seat (order=0)", async () => {
+  it("allows assigning an empty captain seat", async () => {
     db.seatAssignment.findUnique.mockResolvedValue(makeSeat({ order: 0 }));
-    await expect(assignSeat("seat-1", "user-1")).rejects.toThrow("Captain seat cannot be assigned");
+    db.user.findUnique.mockResolvedValue({ id: "user-1", active: true });
+    db.seatAssignment.findMany.mockResolvedValue([]);
+    db.seatAssignment.updateMany.mockResolvedValue({ count: 1 });
+    await assignSeat("seat-1", "user-1");
+    expect(db.seatAssignment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { userId: "user-1" } }),
+    );
   });
 
   it("throws when target user not found or inactive", async () => {
     db.seatAssignment.findUnique.mockResolvedValue(makeSeat({}));
     db.user.findUnique.mockResolvedValue(null);
-    await expect(assignSeat("seat-1", "user-1")).rejects.toThrow("User account not found or inactive");
+    await expect(assignSeat("seat-1", "user-1")).rejects.toThrow(
+      "User account not found or inactive",
+    );
   });
 
   it("throws when target user is inactive", async () => {
     db.seatAssignment.findUnique.mockResolvedValue(makeSeat({}));
     db.user.findUnique.mockResolvedValue({ id: "user-1", active: false });
-    await expect(assignSeat("seat-1", "user-1")).rejects.toThrow("User account not found or inactive");
+    await expect(assignSeat("seat-1", "user-1")).rejects.toThrow(
+      "User account not found or inactive",
+    );
   });
 
   it("assigns seat to active user", async () => {
@@ -349,7 +400,9 @@ describe("unclaimSeat", () => {
 
   it("throws when crew member tries to release another user's seat", async () => {
     db.seatAssignment.findUnique.mockResolvedValue({
-      id: "seat-1", userId: "other-user", order: 1,
+      id: "seat-1",
+      userId: "other-user",
+      order: 1,
       fleetUnit: { id: "unit-1" },
     });
     await expect(unclaimSeat("seat-1", "user-1", "crew")).rejects.toThrow("Forbidden");
@@ -357,15 +410,21 @@ describe("unclaimSeat", () => {
 
   it("throws when crew tries to release the captain seat (order=0)", async () => {
     db.seatAssignment.findUnique.mockResolvedValue({
-      id: "seat-1", userId: "user-1", order: 0,
+      id: "seat-1",
+      userId: "user-1",
+      order: 0,
       fleetUnit: { id: "unit-1" },
     });
-    await expect(unclaimSeat("seat-1", "user-1", "crew")).rejects.toThrow("Cannot release captain seat");
+    await expect(unclaimSeat("seat-1", "user-1", "crew")).rejects.toThrow(
+      "Cannot release captain seat",
+    );
   });
 
   it("seat owner can release a non-captain seat", async () => {
     db.seatAssignment.findUnique.mockResolvedValue({
-      id: "seat-1", userId: "user-1", order: 1,
+      id: "seat-1",
+      userId: "user-1",
+      order: 1,
       fleetUnit: { id: "unit-1" },
     });
     db.seatAssignment.update.mockResolvedValue({});
@@ -378,7 +437,9 @@ describe("unclaimSeat", () => {
 
   it("fleetoperator can release the captain seat", async () => {
     db.seatAssignment.findUnique.mockResolvedValue({
-      id: "seat-1", userId: "cap-1", order: 0,
+      id: "seat-1",
+      userId: "cap-1",
+      order: 0,
       fleetUnit: { id: "unit-1" },
     });
     db.seatAssignment.update.mockResolvedValue({});
@@ -391,7 +452,9 @@ describe("unclaimSeat", () => {
 
   it("superadmin can release any seat including captain seat", async () => {
     db.seatAssignment.findUnique.mockResolvedValue({
-      id: "seat-1", userId: "cap-1", order: 0,
+      id: "seat-1",
+      userId: "cap-1",
+      order: 0,
       fleetUnit: { id: "unit-1" },
     });
     db.seatAssignment.update.mockResolvedValue({});
@@ -401,7 +464,9 @@ describe("unclaimSeat", () => {
 
   it("fleetoperator can release another user's non-captain seat", async () => {
     db.seatAssignment.findUnique.mockResolvedValue({
-      id: "seat-1", userId: "some-user", order: 2,
+      id: "seat-1",
+      userId: "some-user",
+      order: 2,
       fleetUnit: { id: "unit-1" },
     });
     db.seatAssignment.update.mockResolvedValue({});

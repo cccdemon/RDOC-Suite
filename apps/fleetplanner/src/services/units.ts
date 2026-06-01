@@ -11,7 +11,11 @@ export type RegisterUnitInput = {
   captainNote?: string;
 };
 
-export async function registerUnit(operationId: string, captainId: string, input: RegisterUnitInput) {
+export async function registerUnit(
+  operationId: string,
+  captainId: string,
+  input: RegisterUnitInput,
+) {
   if (input.unitType === "ship" && !input.shipId) throw new Error("shipId required for ship units");
   if (input.unitType === "squad" && (!input.squadName || !input.squadSize)) {
     throw new Error("squadName and squadSize required for squad units");
@@ -70,7 +74,11 @@ export async function deleteUnit(unitId: string, userId: string, userRole: strin
   await prisma.fleetUnit.delete({ where: { id: unitId } });
 }
 
-export async function setUnitStatus(unitId: string, status: "accepted" | "rejected", note?: string) {
+export async function setUnitStatus(
+  unitId: string,
+  status: "accepted" | "rejected",
+  note?: string,
+) {
   return prisma.fleetUnit.update({
     where: { id: unitId },
     data: { status, ...(note !== undefined && { leaderNote: note }) },
@@ -79,7 +87,11 @@ export async function setUnitStatus(unitId: string, status: "accepted" | "reject
 
 const SECONDARY_ASSIGNMENT_CATEGORIES = new Set(["ground", "mining", "salvage", "transport"]);
 
-function categoryForUnit(unit: { unitType: string; requirement?: { category: string } | null; ship?: Ship | null }): string {
+function categoryForUnit(unit: {
+  unitType: string;
+  requirement?: { category: string } | null;
+  ship?: Ship | null;
+}): string {
   if (unit.requirement?.category) return unit.requirement.category;
   if (unit.unitType === "squad") return "ground";
   const career = unit.ship?.career.toLowerCase() ?? "";
@@ -123,7 +135,9 @@ export async function claimSeat(seatId: string, userId: string) {
   });
   if (!seat) throw new Error("Seat not found");
   if (seat.fleetUnit.status !== "accepted") throw new Error("Unit not yet accepted");
-  if (seat.order === 0) throw new Error("Captain seat cannot be claimed");
+  if (seat.order === 0 && seat.fleetUnit.captainId !== userId) {
+    throw new Error("Captain seat can only be claimed by the unit captain");
+  }
   if (!seat.active) throw new Error("Seat is disabled");
   if (seat.userId) throw new Error("Seat already taken");
 
@@ -153,7 +167,6 @@ export async function assignSeat(seatId: string, targetUserId: string) {
   });
   if (!seat) throw new Error("Seat not found");
   if (seat.fleetUnit.status !== "accepted") throw new Error("Unit not yet accepted");
-  if (seat.order === 0) throw new Error("Captain seat cannot be assigned");
   if (!seat.active) throw new Error("Seat is disabled");
   if (seat.userId) throw new Error("Seat already taken");
 
@@ -182,7 +195,8 @@ export async function unclaimSeat(seatId: string, userId: string, userRole: stri
   const canForce = userRole === "superadmin" || userRole === "fleetoperator";
   if (seat.userId !== userId && !canForce) throw new Error("Forbidden");
   // Captain seat (order 0) can only be freed by admin/fleetop (would orphan the unit otherwise)
-  if (seat.order === 0 && !canForce) throw new Error("Cannot release captain seat; delete the unit instead");
+  if (seat.order === 0 && !canForce)
+    throw new Error("Cannot release captain seat; delete the unit instead");
   await prisma.seatAssignment.update({ where: { id: seatId }, data: { userId: null } });
 }
 

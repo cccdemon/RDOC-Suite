@@ -285,9 +285,12 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
       const claimed = !!seat.userId;
       const isMe = u && seat.userId === u.id;
       const canClaim =
-        u && seat.active && seat.order !== 0 && !claimed && unit.status === "accepted";
-      const canAssign =
-        isLeader && seat.active && seat.order !== 0 && !claimed && unit.status === "accepted";
+        u &&
+        seat.active &&
+        !claimed &&
+        unit.status === "accepted" &&
+        (seat.order !== 0 || unit.captainId === u.id);
+      const canAssign = isLeader && seat.active && !claimed && unit.status === "accepted";
       const canUnclaim = claimed && (isMe || isLeader);
 
       return html` <div class="seat-row ${seat.active ? "" : "seat-disabled"}">
