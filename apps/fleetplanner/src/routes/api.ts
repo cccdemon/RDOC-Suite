@@ -71,6 +71,7 @@ function opReturnUrl(
 
 const UNIT_TYPES = ["ship", "squad"] as const;
 const REQUIREMENT_CATEGORIES = [
+  "fps",
   "capital",
   "subcapital",
   "fighter",
@@ -135,8 +136,8 @@ async function assertRequirementFitsUnit(
     throw new Error("Composition slot has an invalid category");
   }
   if (requirement.category === "any") return;
-  if (unitType === "squad" && requirement.category !== "ground") {
-    throw new Error("FPS squads can only fill ground or any slots");
+  if (unitType === "squad" && !["fps", "ground"].includes(requirement.category)) {
+    throw new Error("FPS squads can only fill FPS, ground or any slots");
   }
   if (unitType === "ship" && selectedShipId) {
     const ship = await prisma.ship.findUnique({ where: { id: selectedShipId } });
@@ -1169,6 +1170,90 @@ export async function apiRoutes(app: FastifyInstance) {
         opReturnUrl(req.params.id, req.body, "ok:Requirement+added.", "fleet"),
         302,
       );
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/requirements",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const { label, category, count, note } = req.body;
+      if (!label?.trim() || !category) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Need+and+type+required", "fleet"),
+          302,
+        );
+      }
+      if (!REQUIREMENT_CATEGORIES.includes(category as (typeof REQUIREMENT_CATEGORIES)[number])) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Invalid+need+type", "fleet"),
+          302,
+        );
+      }
+      const group =
+        (await prisma.compositionGroup.findFirst({
+          where: { operationId: req.params.id, name: "Fleet Needs" },
+          select: { id: true },
+        })) ??
+        (await prisma.compositionGroup.create({
+          data: { operationId: req.params.id, name: "Fleet Needs", order: 0 },
+          select: { id: true },
+        }));
+      const last = await prisma.compositionRequirement.aggregate({
+        where: { groupId: group.id },
+        _max: { order: true },
+      });
+      await prisma.compositionRequirement.create({
+        data: {
+          groupId: group.id,
+          label: label.trim(),
+          category,
+          count: Math.min(20, Math.max(1, parsePositiveInt(count, 1))),
+          note: note?.trim() || null,
+          order: (last._max.order ?? -1) + 1,
+        },
+      });
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Need+added.", "fleet"), 302);
+    },
+  );
+
+  app.post<{ Params: { id: string; reqId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/requirements/:reqId/edit",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const { label, category, count, note } = req.body;
+      if (!label?.trim() || !category) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Need+and+type+required", "fleet"),
+          302,
+        );
+      }
+      if (!REQUIREMENT_CATEGORIES.includes(category as (typeof REQUIREMENT_CATEGORIES)[number])) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Invalid+need+type", "fleet"),
+          302,
+        );
+      }
+      const requirement = await prisma.compositionRequirement.findFirst({
+        where: { id: req.params.reqId, group: { operationId: req.params.id } },
+        include: { fleetUnits: { select: { status: true } } },
+      });
+      if (!requirement) return reply.code(404).send({ error: "Requirement not found" });
+      const filled = requirement.fleetUnits.filter((unit) => unit.status !== "rejected").length;
+      await prisma.compositionRequirement.update({
+        where: { id: req.params.reqId },
+        data: {
+          label: label.trim(),
+          category,
+          count: Math.min(20, Math.max(filled, parsePositiveInt(count, requirement.count))),
+          note: note?.trim() || null,
+        },
+      });
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Need+updated.", "fleet"), 302);
     },
   );
 

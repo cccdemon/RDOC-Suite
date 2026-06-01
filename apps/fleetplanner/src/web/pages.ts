@@ -15,6 +15,38 @@ type UnitFull = NonNullable<OpFull>["units"][number];
 
 // ── Shared helpers ───────────────────────────────────────────────────
 
+const REQUIREMENT_CATEGORIES = [
+  "fps",
+  "capital",
+  "subcapital",
+  "fighter",
+  "support",
+  "ground",
+  "transport",
+  "mining",
+  "salvage",
+  "exploration",
+  "any",
+] as const;
+
+function categoryLabel(category: string): string {
+  return (
+    {
+      fps: "FPS Squad",
+      capital: "Capital Ship",
+      subcapital: "Large / Subcapital Ship",
+      fighter: "Fighter",
+      support: "Support Ship",
+      ground: "Ground / Vehicle",
+      transport: "Transport Ship",
+      mining: "Mining Ship",
+      salvage: "Salvage Ship",
+      exploration: "Exploration Ship",
+      any: "Any Unit",
+    }[category] ?? category
+  );
+}
+
 function fmtDate(d: Date, tz = DEFAULT_TIMEZONE): string {
   return fmtDateTz(d, tz);
 }
@@ -624,28 +656,15 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
   }
 
   // ── Composition groups ─────────────────────────────────────────────
-  const CATEGORIES = [
-    "capital",
-    "subcapital",
-    "fighter",
-    "support",
-    "ground",
-    "transport",
-    "mining",
-    "salvage",
-    "exploration",
-    "any",
-  ];
-
   const groupsSection = html` <div class="section">
     <div
       class="section-title"
       style="display:flex;align-items:center;justify-content:space-between"
     >
-      <span>Composition</span>
+      <span>Fleet Needs</span>
       ${canManage
         ? html`<button class="btn btn-sm" onclick="toggleForm('add-group-form')">
-            + Add Group
+            + Group
           </button>`
         : ""}
     </div>
@@ -718,18 +737,20 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
                         style="display:grid;grid-template-columns:2fr 1fr 4rem 3fr auto;gap:0.5rem;align-items:flex-end"
                       >
                         <div class="form-group" style="margin:0">
-                          <label>Label</label>
+                          <label>Need</label>
                           <input
                             type="text"
                             name="label"
-                            placeholder="e.g. Orion, Fighter Wing"
+                            placeholder="e.g. 4-man Squad, Capital Ship, Fighter"
                             required
                           />
                         </div>
                         <div class="form-group" style="margin:0">
                           <label>Category</label>
                           <select name="category">
-                            ${CATEGORIES.map((c) => html`<option value="${c}">${c}</option>`)}
+                            ${REQUIREMENT_CATEGORIES.map(
+                              (c) => html`<option value="${c}">${categoryLabel(c)}</option>`,
+                            )}
                           </select>
                         </div>
                         <div class="form-group" style="margin:0">
@@ -738,7 +759,11 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
                         </div>
                         <div class="form-group" style="margin:0">
                           <label>Note (optional)</label>
-                          <input type="text" name="note" placeholder="Ship type, notes…" />
+                          <input
+                            type="text"
+                            name="note"
+                            placeholder="e.g. 4 people each, medical, cargo"
+                          />
                         </div>
                         <div>
                           <label style="visibility:hidden">x</label
@@ -798,8 +823,8 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
             </div>`,
         )
       : html`<p class="text-dim text-sm">
-          No composition
-          defined.${canManage ? html` Click <b>+ Add Group</b> to structure the fleet.` : ""}
+          No fleet needs
+          defined.${canManage ? html` Add what you need in the new Fleet view.` : ""}
         </p>`}
   </div>`;
 
@@ -1808,7 +1833,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 ${returnFields("fleet")}
-                <label>Composition slot</label>
+                <label>Fleet need</label>
                 <select name="requirementId">
                   <option value="">Unslotted</option>
                   ${unitSlots.map(
@@ -1933,15 +1958,97 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     (unit) => unit.status !== "rejected",
                   ).length;
                   return html`<div class="opv2-requirement">
-                    <span>${requirement.label}</span>
-                    <span class="tag tag-dim">${requirement.category}</span>
+                    <div>
+                      <span>${requirement.label}</span>
+                      ${requirement.note
+                        ? html`<span class="text-dim text-sm">${requirement.note}</span>`
+                        : safe("")}
+                    </div>
+                    <span class="tag tag-dim">${categoryLabel(requirement.category)}</span>
                     <strong>${filled}/${requirement.count}</strong>
+                    ${canManage
+                      ? html`<details class="opv2-edit-block">
+                          <summary class="btn btn-sm btn-ghost">Edit</summary>
+                          <form
+                            method="post"
+                            action="${bp}/api/ops/${op.id}/requirements/${requirement.id}/edit"
+                            class="opv2-form mt-1"
+                          >
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            ${returnFields("fleet")}
+                            <div class="opv2-form-grid">
+                              <div>
+                                <label>What do you need?</label>
+                                <input
+                                  type="text"
+                                  name="label"
+                                  maxlength="80"
+                                  value="${requirement.label}"
+                                  required
+                                />
+                              </div>
+                              <div>
+                                <label>Type</label>
+                                <select name="category">
+                                  ${REQUIREMENT_CATEGORIES.map(
+                                    (category) =>
+                                      html`<option
+                                        value="${category}"
+                                        ${requirement.category === category ? safe("selected") : ""}
+                                      >
+                                        ${categoryLabel(category)}
+                                      </option>`,
+                                  )}
+                                </select>
+                              </div>
+                            </div>
+                            <div class="opv2-form-grid">
+                              <div>
+                                <label>How many?</label>
+                                <input
+                                  type="number"
+                                  name="count"
+                                  value="${requirement.count}"
+                                  min="${Math.max(1, filled)}"
+                                  max="20"
+                                />
+                              </div>
+                              <div>
+                                <label>Details</label>
+                                <input
+                                  type="text"
+                                  name="note"
+                                  maxlength="160"
+                                  value="${requirement.note ?? ""}"
+                                  placeholder="e.g. 4 people each, medical, cargo"
+                                />
+                              </div>
+                            </div>
+                            <button type="submit" class="btn btn-sm mt-1">Save Need</button>
+                          </form>
+                          <form
+                            method="post"
+                            action="${bp}/api/ops/${op.id}/requirements/${requirement.id}/delete"
+                            class="inline mt-1"
+                          >
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            ${returnFields("fleet")}
+                            <button
+                              type="submit"
+                              class="btn btn-sm btn-danger"
+                              onclick="return confirm('Delete this need?')"
+                            >
+                              Delete Need
+                            </button>
+                          </form>
+                        </details>`
+                      : safe("")}
                   </div>`;
                 })
               : html`<p class="text-dim text-sm">No requirements.</p>`}
           </div>`,
       )
-    : [html`<p class="text-dim text-sm">No composition has been defined yet.</p>`];
+    : [html`<p class="text-dim text-sm">No fleet needs have been defined yet.</p>`];
   const statusControls = canManage
     ? html`<div class="opv2-actions">
         ${["draft", "open", "locked", "in_progress", "completed", "cancelled"].map((status) =>
@@ -2181,7 +2288,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
-  // ── Composition Board (read-only soll/ist/offen overview) ───────────
+  // ── Fleet Needs Board (read-only soll/ist/offen overview) ───────────
   type CompRow = {
     group: string;
     label: string;
@@ -2224,14 +2331,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const compTone = (r: CompRow) =>
     r.open === 0 ? "tag-green" : r.filled === 0 ? "tag-dim" : "tag-gold";
   const compositionBoard = html`<section class="opv2-panel">
-    <div class="opv2-panel-title">Composition Board</div>
+    <div class="opv2-panel-title">Fleet Needs</div>
     ${compRows.length
       ? html`<div class="opv2-stack">
             ${compRows.map(
               (r) => html`<div class="comp-row">
                 <div class="comp-row-head">
                   <strong>${r.label}</strong>
-                  <span class="tag tag-dim">${r.category}</span>
+                  <span class="tag tag-dim">${categoryLabel(r.category)}</span>
                   <span class="tag ${compTone(r)}">${r.filled}/${r.count}</span>
                   ${r.mismatches
                     ? html`<span class="tag tag-gold" title="Units not matching the category"
@@ -2253,7 +2360,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             </div>
           </div>`
       : html`<p class="text-dim text-sm">
-          No composition defined.${canManage ? " Add groups & requirements in the Fleet tab." : ""}
+          No fleet needs defined.${canManage ? " Add the ships and squads you need in the Fleet tab." : ""}
         </p>`}
   </section>`;
 
@@ -2381,7 +2488,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form mt-1">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <label>Composition slot</label>
+              <label>Fleet need</label>
               <select name="requirementId">
                 <option value="">Unslotted</option>
                 ${availableSlots.map(
@@ -2473,11 +2580,57 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ),
         )}
       </div>
-      <div class="opv2-panel-title mt-2">Composition</div>
+      <div class="opv2-panel-title mt-2">Fleet Needs</div>
+      ${canManage
+        ? html`<details class="opv2-edit-block mt-1" open>
+            <summary class="btn btn-sm">Add Need</summary>
+            <form method="post" action="${bp}/api/ops/${op.id}/requirements" class="opv2-form mt-1">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              ${returnFields("fleet")}
+              <div class="opv2-form-grid">
+                <div>
+                  <label>What do you need?</label>
+                  <input
+                    type="text"
+                    name="label"
+                    maxlength="80"
+                    placeholder="e.g. 4-man Squad, Capital Ship, Fighter"
+                    required
+                  />
+                </div>
+                <div>
+                  <label>Type</label>
+                  <select name="category">
+                    ${REQUIREMENT_CATEGORIES.map(
+                      (category) =>
+                        html`<option value="${category}">${categoryLabel(category)}</option>`,
+                    )}
+                  </select>
+                </div>
+              </div>
+              <div class="opv2-form-grid">
+                <div>
+                  <label>How many?</label>
+                  <input type="number" name="count" value="1" min="1" max="20" />
+                </div>
+                <div>
+                  <label>Details</label>
+                  <input
+                    type="text"
+                    name="note"
+                    maxlength="160"
+                    placeholder="e.g. 4 people each, medical, cargo, bomber loadout"
+                  />
+                </div>
+              </div>
+              <button type="submit" class="btn btn-sm mt-1">Add Need</button>
+            </form>
+          </details>`
+        : safe("")}
       <div class="opv2-stack">${compositionRows}</div>
       ${canManage
         ? html`<details class="opv2-edit-block mt-1">
-            <summary class="btn btn-sm">Edit Composition</summary>
+            <summary class="btn btn-sm btn-ghost">Advanced: Groups</summary>
             <form
               method="post"
               action="${bp}/api/ops/${op.id}/groups"
@@ -2501,25 +2654,15 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     ${returnFields("fleet")}
                     <div class="opv2-form-grid">
                       <div>
-                        <label>Requirement</label>
+                        <label>Need</label>
                         <input type="text" name="label" maxlength="80" required />
                       </div>
                       <div>
-                        <label>Category</label>
+                        <label>Type</label>
                         <select name="category">
-                          ${[
-                            "capital",
-                            "subcapital",
-                            "fighter",
-                            "support",
-                            "ground",
-                            "transport",
-                            "mining",
-                            "salvage",
-                            "exploration",
-                            "any",
-                          ].map(
-                            (category) => html`<option value="${category}">${category}</option>`,
+                          ${REQUIREMENT_CATEGORIES.map(
+                            (category) =>
+                              html`<option value="${category}">${categoryLabel(category)}</option>`,
                           )}
                         </select>
                       </div>
@@ -2534,7 +2677,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         <input type="text" name="note" maxlength="160" />
                       </div>
                     </div>
-                    <button type="submit" class="btn btn-sm mt-1">Add Requirement</button>
+                    <button type="submit" class="btn btn-sm mt-1">Add Need</button>
                   </form>
                 </div>`,
             )}

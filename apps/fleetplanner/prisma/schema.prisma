@@ -349,7 +349,7 @@ model CompositionGroup {
 model CompositionRequirement {
   id       String  @id @default(cuid())
   groupId  String
-  category String // capital | subcapital | fighter | support | ground | transport | any
+  category String // fps | capital | subcapital | fighter | support | ground | transport | mining | salvage | exploration | any
   label    String
   count    Int     @default(1)
   note     String?
