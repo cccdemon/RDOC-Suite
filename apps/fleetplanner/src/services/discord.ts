@@ -308,8 +308,8 @@ export async function createScheduledEvent(op: {
 
   const data = await res.json() as { id: string };
 
-  // Prepend the Discord event link to the description.
-  const eventUrl = `https://discord.com/events/${op.guildId}/${data.id}`;
+  // Prepend the Fleetplanner event link to the description.
+  const eventUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${op.id}`;
   const updatedDescription = op.description
     ? `${eventUrl}\n${op.description}`
     : eventUrl;
@@ -334,8 +334,8 @@ async function getEventChannelId(op: {
   return op.eventVoiceChannelId ?? guild?.eventChannelId ?? null;
 }
 
-function buildEventDescription(guildId: string, eventId: string, description?: string) {
-  const eventUrl = `https://discord.com/events/${guildId}/${eventId}`;
+function buildEventDescription(opId: string, description?: string) {
+  const eventUrl = `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH}/ops/${opId}`;
   return description ? `${eventUrl}\n${description}` : eventUrl;
 }
 
@@ -355,7 +355,7 @@ export async function updateScheduledEvent(op: {
   const voiceChannelId = await getEventChannelId(op);
   const startTime = op.scheduledAt.toISOString();
   const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
-  const updatedDescription = buildEventDescription(op.guildId, op.discordEventId, op.description).slice(0, 1000);
+  const updatedDescription = buildEventDescription(op.id, op.description).slice(0, 1000);
 
   const body = voiceChannelId
     ? {
