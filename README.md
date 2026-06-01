@@ -1,71 +1,63 @@
-# Discord Channel Commander Voice Bridge
+# RDOC-Suite
 
-Cross-channel push-to-talk for selected Discord users ("Channel Commanders"), built **without** selfbots, client modifications, or token abuse — fully compliant with Discord's Terms of Service.
+RDOC-Suite is a self-hosted Discord operations and voice coordination suite. It combines a Discord bot, a backend bridge, a Windows companion push-to-talk app, Fleetplanner, LiveKit voice rooms, Discord relay bots, and monitoring.
+
+The project avoids Discord selfbots, client modifications, and Discord audio capture. It uses Discord's Bot API, OAuth2, and a separate LiveKit audio path.
 
 ## What it does
 
-Multiple teams sit in separate Discord voice channels. Each team has one or more designated **commanders**. When a commander holds their hotkey, they can talk to commanders from **other** voice channels through a side audio bridge — without leaving their own voice channel. When they release, the bridge closes.
+- Lets selected Discord users use cross-channel push-to-talk through the RDOC Squad Link companion app.
+- Provides `/cc` Discord commands for server setup, commander roles, allowed voice channels, enable/disable state, and admin access.
+- Hosts a bridge backend for OAuth, sessions, WebSocket signaling, LiveKit tokens, downloads, admin UI, relay config, and metrics.
+- Provides Fleetplanner for fleet operations, ships, seats, crew assignments, Discord auth, scheduled events, and mission voice sessions.
+- Runs optional relay bots that subscribe to LiveKit audio and transmit it into Discord voice channels.
+- Provides Prometheus and Grafana configuration for production monitoring.
 
-```
-┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
-│  Team Alpha      │   │  Team Bravo      │   │  Team Charlie    │
-│  Voice Channel   │   │  Voice Channel   │   │  Voice Channel   │
-│                  │   │                  │   │                  │
-│   Commander A    │   │   Commander B    │   │   Commander C    │
-│   (with PTT) ────┼───┼────────┐         │   │                  │
-│                  │   │        │         │   │                  │
-└──────────────────┘   │        ▼         │   │                  │
-                       │  ╔══════════╗    │   │                  │
-                       │  ║ Commander║◄───┼───┼── Commander C    │
-                       │  ║ Bridge   ║    │   │   (with PTT)     │
-                       │  ║ (LiveKit)║    │   │                  │
-                       │  ╚══════════╝    │   │                  │
-                       └──────────────────┘   └──────────────────┘
-```
+## Apps
+
+| App                 | Purpose                                                                                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/bot`          | Discord bot for `/cc` setup, roles, channel configuration, admin management, and voice-state pushes.                                                          |
+| `apps/bridge`       | Main backend service: OAuth, JWT sessions, WebSockets, LiveKit tokens, admin UI, downloads, relay config, metrics, and internal APIs.                         |
+| `apps/companion`    | Tauri + React desktop app, currently Windows-first. Handles login, global hotkeys, microphone/audio devices, LiveKit audio, updates, and mission voice links. |
+| `apps/fleetplanner` | Web app for planning operations, ships, seats, crew, guild membership, Discord events, and mission voice sessions.                                            |
+| `apps/relay-bots`   | Worker that runs Discord voice bots, subscribes to a LiveKit relay room, and forwards audio into Discord voice channels.                                      |
+| `apps/monitoring`   | Prometheus image/config for scraping RDOC-Suite services. Grafana config lives under `deploy/grafana`.                                                        |
 
 ## Architecture
 
 ```mermaid
 graph LR
-    subgraph "On the commander's PC"
-        Companion["Companion App<br/>(Tauri + React)"]
-    end
-    subgraph "Self-hosted"
-        Bot["Discord Bot<br/>(/cc commands)"]
-        Bridge["Bridge Server<br/>(Fastify + WS)"]
-        LiveKit["LiveKit SFU<br/>(audio routing)"]
-        DB[(SQLite / Postgres)]
-    end
+    Companion["Companion App<br/>Tauri + React"]
+    Bot["Discord Bot<br/>discord.js"]
+    Bridge["Bridge<br/>Fastify + WS"]
+    Fleetplanner["Fleetplanner<br/>Fastify + Prisma"]
+    RelayBots["Relay Bots<br/>Discord Voice"]
+    LiveKit["LiveKit SFU"]
+    BridgeDB[(Bridge DB<br/>SQLite/Postgres)]
+    FleetDB[(Fleetplanner DB<br/>Postgres)]
     Discord["Discord API"]
+    Monitoring["Prometheus/Grafana"]
 
-    Companion -- "OAuth2 login" --> Bridge
-    Companion -- "WebSocket signaling<br/>(ptt:start/stop, heartbeat)" --> Bridge
-    Companion <-- "WebRTC audio" --> LiveKit
-
-    Bot <-- "slash commands<br/>role lookups" --> Discord
-    Bridge -- "OAuth callback<br/>membership check" --> Discord
-    Bridge --> DB
-    Bot --> DB
-    Bridge -- "mints access tokens" --> LiveKit
+    Companion -->|OAuth + WS| Bridge
+    Companion <-->|WebRTC audio| LiveKit
+    Bot <-->|slash commands + guild state| Discord
+    Bot --> Bridge
+    Bridge --> BridgeDB
+    Bridge --> LiveKit
+    Fleetplanner --> FleetDB
+    Fleetplanner --> Discord
+    Fleetplanner --> LiveKit
+    RelayBots -->|subscribe| LiveKit
+    RelayBots -->|voice output| Discord
+    Monitoring --> Bridge
+    Monitoring --> LiveKit
+    Monitoring --> RelayBots
 ```
-
-Three components, each ToS-compliant:
-
-| Component | Role | Stack |
-| --- | --- | --- |
-| **Bot** ([apps/bot/](apps/bot/)) | Slash commands (`/cc setup`, `/cc role add`, …), permission checks, persists configuration | TypeScript, discord.js |
-| **Bridge** ([apps/bridge/](apps/bridge/)) | OAuth2, session tokens, WebSocket signaling, LiveKit room management, periodic permission rechecks | TypeScript, Fastify, jose, livekit-server-sdk |
-| **Companion** ([apps/companion/](apps/companion/)) | Global hotkey (keyboard or mouse), Discord login flow, microphone, LiveKit audio client | Tauri (Rust + TypeScript + React) |
-
-Plus a self-hosted **LiveKit** SFU for the actual cross-channel audio.
-
-## Why not just a Discord client plugin?
-
-Modifying the Discord client, using selfbots, or hooking audio out of the Discord process all **violate Discord's Terms of Service**. This project deliberately avoids that path: only the official Bot API and OAuth2 are used, no audio is captured from Discord itself, and the system is fully visible to server admins. See [CLAUDE.md §Wichtige rechtliche und technische Rahmenbedingungen](CLAUDE.md).
 
 ## Minimum requirements
 
-These requirements apply to the full server stack:
+These requirements apply to the full production server stack:
 
 - `caddy-rdoc`
 - `livekit`
@@ -79,14 +71,14 @@ These requirements apply to the full server stack:
 
 ### Server requirements
 
-| Resource | Minimum | Recommended |
-| --- | ---: | ---: |
-| CPU | 2 vCPU | 4 vCPU |
-| RAM | 4 GB | 8 GB |
-| Disk | 20 GB free | 40-80 GB SSD |
-| Bandwidth | 10 Mbps symmetric | 50+ Mbps symmetric |
-| OS | Linux x86_64 with Docker | Ubuntu 22.04/24.04 or Debian 12 |
-| Network | Public IP, HTTPS, UDP reachable | Public IPv4, low latency, stable UDP |
+| Resource  |                         Minimum |                          Recommended |
+| --------- | ------------------------------: | -----------------------------------: |
+| CPU       |                          2 vCPU |                               4 vCPU |
+| RAM       |                            4 GB |                                 8 GB |
+| Disk      |                      20 GB free |                         40-80 GB SSD |
+| Bandwidth |               10 Mbps symmetric |                   50+ Mbps symmetric |
+| OS        |        Linux x86_64 with Docker |      Ubuntu 22.04/24.04 or Debian 12 |
+| Network   | Public IP, HTTPS, UDP reachable | Public IPv4, low latency, stable UDP |
 
 The suite can probably start on **2 vCPU / 4 GB RAM**, but that is the floor. It includes Node services, LiveKit, Postgres, Prometheus, Grafana, Caddy, and Discord relay bots.
 
@@ -105,151 +97,243 @@ egress ~= active_speakers * listeners * 0.08-0.12 Mbps
 ingress ~= active_speakers * 0.08-0.12 Mbps
 ```
 
-| Scenario | Approx server bandwidth |
-| --- | ---: |
-| 10 users, 1 active speaker | ~1 Mbps outbound |
-| 20 users, 1 active speaker | ~2 Mbps outbound |
-| 50 users, 1 active speaker | ~5 Mbps outbound |
-| 50 users, 2 active speakers | ~10 Mbps outbound |
+| Scenario                    | Approx server bandwidth |
+| --------------------------- | ----------------------: |
+| 10 users, 1 active speaker  |        ~1 Mbps outbound |
+| 20 users, 1 active speaker  |        ~2 Mbps outbound |
+| 50 users, 1 active speaker  |        ~5 Mbps outbound |
+| 50 users, 2 active speakers |       ~10 Mbps outbound |
 
 Relay bots add more CPU and outbound traffic because they subscribe to LiveKit audio and push it into Discord voice channels.
 
-### Required server OS / runtime
-
-Server side should run on:
-
-```text
-Linux x86_64
-Docker Engine + Docker Compose plugin
-Public HTTPS reverse proxy
-Reachable LiveKit WebRTC ports
-```
-
-Production is Docker-first. The server does **not** need local Node, pnpm, Rust, or Cargo if you build and run through Docker.
-
 ### Required public ports
 
-| Port | Purpose |
-| --- | --- |
-| `443/tcp` | HTTPS reverse proxy for suite UI/API |
+| Port       | Purpose                                                |
+| ---------- | ------------------------------------------------------ |
+| `443/tcp`  | HTTPS reverse proxy for suite UI/API                   |
 | `7880/tcp` | LiveKit signaling, usually behind proxy as `wss://...` |
-| `7881/tcp` | LiveKit WebRTC TCP |
-| `7882/udp` | LiveKit WebRTC UDP, important for good voice quality |
+| `7881/tcp` | LiveKit WebRTC TCP                                     |
+| `7882/udp` | LiveKit WebRTC UDP, important for good voice quality   |
 
 ### Companion client requirements
 
-The Companion app is effectively **Windows-first right now**. The Tauri/Rust config has Windows-specific hotkey/audio handling, and mouse hotkeys are Windows-only for now.
+The Companion app is currently Windows-first. The Tauri/Rust layer contains Windows-specific hotkey and audio handling; mouse hotkeys are Windows-only for now.
 
-| Resource | Minimum |
-| --- | --- |
-| OS | Windows 10/11 |
-| CPU | Any modern dual-core |
-| RAM | 4 GB |
-| Network | Stable internet, Discord reachable |
-| Devices | Microphone + audio output |
+| Resource | Minimum                            |
+| -------- | ---------------------------------- |
+| OS       | Windows 10/11                      |
+| CPU      | Any modern dual-core               |
+| RAM      | 4 GB                               |
+| Network  | Stable internet, Discord reachable |
+| Devices  | Microphone + audio output          |
 
-### Recommended deployment
+## Local development
 
-For a small RDOC deployment, use:
+### Prerequisites
 
-```text
-4 vCPU
-8 GB RAM
-60 GB SSD
-Ubuntu 24.04 LTS or Debian 12
-50 Mbps symmetric bandwidth
-Public IPv4
-Docker Engine + Compose
+- Node.js >= 20 LTS
+- pnpm 10.33.x
+- Docker Desktop or Docker Engine
+- Rust + Visual Studio Build Tools, only for `apps/companion`
+
+On Windows for Companion builds:
+
+```powershell
+winget install Rustlang.Rustup
+winget install Microsoft.VisualStudio.2022.BuildTools
 ```
 
-This gives enough headroom for LiveKit voice, relay bots, monitoring, builds, logs, and future growth.
-
-## Quickstart (local development)
-
-### 1. Prerequisites
-
-- **Node.js** ≥ 20 LTS
-- **pnpm** 10 (`npm i -g pnpm`)
-- **Docker Desktop** (for the local LiveKit container)
-- **Rust** + **Visual Studio Build Tools** (only to build the Companion app)
-  - Windows: `winget install Rustlang.Rustup` and `winget install Microsoft.VisualStudio.2022.BuildTools`
-
-### 2. Install + configure
+### Clone and install
 
 ```bash
-git clone https://github.com/head87x/rdcc.git
-cd rdcc
+git clone git@github.com:cccdemon/RDOC-Suite.git
+cd RDOC-Suite
 pnpm install
 cp .env.example .env
-# Edit .env and fill in your DISCORD_* values — see docs/admin-guide.md
+```
+
+Edit `.env` before starting the services. At minimum, local bridge/bot login requires:
+
+```text
+SESSION_SECRET=32_or_more_random_characters
+DISCORD_RDOCRTC_BOT_TOKEN=...
+DISCORD_RDOCRTC_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
+OAUTH_REDIRECT_URI=http://localhost:8787/auth/callback
+COMPANION_REDIRECT_URI=dccc://auth
+LIVEKIT_URL=ws://localhost:7880
+LIVEKIT_API_KEY=devkey
+LIVEKIT_API_SECRET=secret
+```
+
+Fleetplanner also needs a login provider. For Discord login, configure:
+
+```text
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
+DISCORD_FLEETPLANNER_BOT_TOKEN=...
+WEB_PUBLIC_URL=http://localhost:3200
+```
+
+### Prepare local databases
+
+The bridge/bot use the root Prisma schema. Generate the Prisma client and apply local SQLite migrations:
+
+```bash
 pnpm db:generate
 pnpm db:migrate
 ```
 
-### 3. Start the supporting services
+Fleetplanner has its own Prisma schema. For local development it defaults to `file:./data/fleetplanner.db` unless `DATABASE_URL` is set:
+
+```bash
+pnpm --filter @rdoc-suite/fleetplanner db:generate
+pnpm --filter @rdoc-suite/fleetplanner db:push
+```
+
+### Start LiveKit
+
+The local compose file only starts LiveKit with dev credentials:
 
 ```bash
 docker compose up -d livekit
 ```
 
-### 4. Run each app in its own terminal
+### Run services
+
+Use separate terminals:
 
 ```bash
-# Terminal 1 — Bridge
-pnpm --filter @rdoc-suite/bridge build && node apps/bridge/dist/index.js
+# Bridge API/admin UI on http://localhost:8787
+pnpm --filter @rdoc-suite/bridge build
+node apps/bridge/dist/index.js
+```
 
-# Terminal 2 — Bot (needs DISCORD_BOT_TOKEN + DISCORD_CLIENT_ID in .env)
-pnpm --filter @rdoc-suite/bot build && node apps/bot/dist/index.js
+```bash
+# Discord bot
+pnpm --filter @rdoc-suite/bot build
+node apps/bot/dist/index.js
+```
 
-# Terminal 3 — Companion (live UI, hot-reloads on changes)
+```bash
+# Fleetplanner on http://localhost:3200
+pnpm --filter @rdoc-suite/fleetplanner dev
+```
+
+```bash
+# Companion desktop app
 pnpm --filter @rdoc-suite/companion tauri:dev
 ```
 
-For a step-by-step admin walkthrough (creating the Discord application, inviting the bot, configuring roles), see [docs/admin-guide.md](docs/admin-guide.md).
+Relay bots are optional in local development. They need a config file and Discord bot token/channel setup:
 
-For a commander-side walkthrough (sign in, hotkey, audio), see [docs/commander-guide.md](docs/commander-guide.md).
+```bash
+pnpm --filter @rdoc-suite/relay-bots dev
+```
+
+## Production deployment
+
+Production is Docker-first. The server does not need local Node, pnpm, Rust, or Cargo when building/running through Docker.
+
+1. Create `.env` from `.env.example`.
+2. Fill in Discord app credentials, secrets, LiveKit credentials, database passwords, domain URLs, and Grafana credentials.
+3. Make sure `LIVEKIT_NODE_IP` is set to the host's public IP.
+4. Create `data/relay-bots/config.json` if using relay bots. See `apps/relay-bots/config.example.json`.
+5. Start the stack:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+The production compose file runs:
+
+- Caddy reverse proxy
+- LiveKit
+- Bridge
+- Discord bot
+- Fleetplanner
+- Postgres for Fleetplanner
+- Relay bots
+- Prometheus
+- Grafana
+
+Bridge migrations and Fleetplanner migrations are applied by their container entrypoints on startup.
+
+## Important environment groups
+
+| Group                       | Variables                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Shared                      | `SESSION_SECRET`, `DATABASE_URL`, `LOG_LEVEL`                                                                         |
+| Bridge public URLs          | `BRIDGE_SERVER_URL`, `BRIDGE_HOST`, `BRIDGE_PORT`, `OAUTH_REDIRECT_URI`, `COMPANION_REDIRECT_URI`, `PUBLIC_BASE_PATH` |
+| RDOC-RTC Discord app        | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY`, `DISCORD_CLIENT_SECRET`       |
+| LiveKit                     | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_NODE_IP`                                             |
+| Fleetplanner                | `FLEETPLANNER_DB_PASSWORD`, `FLEETPLANNER_PUBLIC_URL`, `WEB_PUBLIC_URL`, `SUPERADMIN_DISCORD_ID`                      |
+| Fleetplanner Discord bot    | `DISCORD_FLEETPLANNER_CLIENT_ID`, `DISCORD_FLEETPLANNER_BOT_TOKEN`                                                    |
+| Relay bots                  | `RELAY_LIVEKIT_ROOM`, `RELAY_BOTS_SECRET`, `RELAY_BOTS_ADMIN_URL`, `RELAY_BOTS_ADMIN_SECRET`                          |
+| Internal APIs               | `INTERNAL_BRIDGE_SECRET`, `BRIDGE_INTERNAL_URL`, `BRIDGE_FLEET_SECRET`                                                |
+| Companion downloads/updates | `GITHUB_REPO`, `GITHUB_TOKEN`, `COMPANION_ASSET_PATTERN`, `COMPANION_UPDATER_PATTERN`                                 |
+| Monitoring                  | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`, `LIVEKIT_PROMETHEUS_URL`                                              |
+
+See `.env.example` for the full list and comments.
 
 ## Repository layout
 
-```
+```text
 .
-├── apps/
-│   ├── bot/         # Discord bot (discord.js)
-│   ├── bridge/      # Backend server (Fastify + WebSocket + OAuth + LiveKit tokens)
-│   └── companion/   # Desktop app (Tauri + React)
-├── packages/
-│   ├── shared/      # Domain types, WS protocol, Zod validators
-│   └── db/          # Prisma client wrapper
-├── prisma/          # Database schema + migrations
-├── docker-compose.yml
-├── CLAUDE.md        # Full design document
-├── CHANGELOG.md
-└── docs/            # Admin and commander guides
+|-- apps/
+|   |-- bot/           # Discord bot
+|   |-- bridge/        # Backend API, admin UI, WebSocket signaling
+|   |-- companion/     # Tauri + React desktop client
+|   |-- fleetplanner/  # Operations planning web app
+|   |-- monitoring/    # Prometheus image/config
+|   `-- relay-bots/    # LiveKit-to-Discord voice relay worker
+|-- deploy/
+|   |-- caddy-rdoc/    # Caddy build/config
+|   `-- grafana/       # Grafana provisioning and dashboards
+|-- docs/              # Admin, commander, privacy, backlog, handover notes
+|-- packages/
+|   |-- db/            # Shared Prisma client wrapper for bridge/bot
+|   `-- shared/        # Shared protocol/types/validation
+|-- prisma/            # Bridge/bot Prisma schema and migrations
+|-- docker-compose.yml
+|-- docker-compose.prod.yml
+|-- livekit.yaml
+`-- package.json
 ```
 
 ## Scripts
 
-| Command | What it does |
-| --- | --- |
-| `pnpm build` | Builds every workspace package |
-| `pnpm test` | Runs every workspace's vitest suite |
-| `pnpm lint` | ESLint across all workspaces |
-| `pnpm format` | Prettier auto-format |
-| `pnpm db:generate` | Generate Prisma client |
-| `pnpm db:migrate` | Apply pending migrations |
-| `pnpm db:studio` | Open Prisma's web-based DB browser |
+| Command                                         | What it does                                         |
+| ----------------------------------------------- | ---------------------------------------------------- |
+| `pnpm build`                                    | Builds every workspace package.                      |
+| `pnpm test`                                     | Runs every workspace test suite that defines `test`. |
+| `pnpm lint`                                     | Runs ESLint across the repo.                         |
+| `pnpm format`                                   | Formats the repo with Prettier.                      |
+| `pnpm format:check`                             | Checks formatting without writing changes.           |
+| `pnpm db:generate`                              | Generates the root Prisma client for bridge/bot.     |
+| `pnpm db:migrate`                               | Applies root Prisma migrations locally.              |
+| `pnpm db:studio`                                | Opens Prisma Studio for the root database.           |
+| `pnpm --filter @rdoc-suite/bridge test`         | Runs bridge tests.                                   |
+| `pnpm --filter @rdoc-suite/fleetplanner test`   | Runs Fleetplanner tests.                             |
+| `pnpm --filter @rdoc-suite/companion tauri:dev` | Starts the Companion desktop app in dev mode.        |
+
+## Documentation
+
+- Admin walkthrough: [docs/admin-guide.md](docs/admin-guide.md)
+- Commander walkthrough: [docs/commander-guide.md](docs/commander-guide.md)
+- Privacy/data inventory: [docs/privacy.md](docs/privacy.md)
+- Design and implementation notes: [CLAUDE.md](CLAUDE.md)
+- Fleetplanner backlog: [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md)
 
 ## Privacy and security
 
-See [docs/privacy.md](docs/privacy.md) for the data inventory and [CLAUDE.md §Sicherheitsregeln](CLAUDE.md) for the design constraints.
-
-In short:
-- **Audio is never persisted** anywhere — neither by the bridge nor by LiveKit (`roomRecord: false`).
-- Discord OAuth access tokens are **used once, never logged, never stored**.
-- Session tokens are short-lived JWTs (15 min default), revocable.
-- Server admins can disable the system per-guild with `/cc disable` at any time.
-- All API inputs are Zod-validated at the boundary.
+- Audio is not persisted by the bridge or LiveKit (`roomRecord: false`).
+- Discord OAuth access tokens are used for login and are not stored as long-term credentials.
+- Session tokens are JWTs and can be expired/revoked by deployment policy.
+- Server admins can disable Channel Commander per guild.
+- API inputs are validated at service boundaries with Zod.
+- Relay bot credentials and service secrets belong in `.env` or mounted config, not in git.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE)
