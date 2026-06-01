@@ -3,6 +3,7 @@ import { RoomServiceClient } from "livekit-server-sdk";
 import { getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import { discordUserIdForFleetplannerUser } from "./discord.js";
+import { missionVoiceAccessUsers } from "./missionCommanders.js";
 
 type Logger = { info: (msg: string) => void; error: (e: unknown, msg: string) => void };
 
@@ -115,11 +116,6 @@ type OpForVoice = {
     globalVoiceRoleId: string | null;
     commanderVoiceRoleId: string | null;
   };
-  units: Array<{
-    captainId: string;
-    status: string;
-    seats: Array<{ userId: string | null; active: boolean }>;
-  }>;
 };
 
 async function getOpForVoice(operationId: string): Promise<OpForVoice | null> {
@@ -132,32 +128,8 @@ async function getOpForVoice(operationId: string): Promise<OpForVoice | null> {
       globalVoiceRoom: true,
       commanderVoiceRoom: true,
       guild: { select: { globalVoiceRoleId: true, commanderVoiceRoleId: true } },
-      units: {
-        select: {
-          captainId: true,
-          status: true,
-          seats: { select: { userId: true, active: true } },
-        },
-      },
     },
   }) as Promise<OpForVoice | null>;
-}
-
-function collectUsers(op: OpForVoice): {
-  allCrew: Set<string>;
-  captains: Set<string>;
-} {
-  const allCrew = new Set<string>();
-  const captains = new Set<string>();
-  for (const unit of op.units) {
-    if (unit.status !== "accepted") continue;
-    captains.add(unit.captainId);
-    allCrew.add(unit.captainId);
-    for (const seat of unit.seats) {
-      if (seat.active && seat.userId) allCrew.add(seat.userId);
-    }
-  }
-  return { allCrew, captains };
 }
 
 export async function openMissionVoiceSession(operationId: string): Promise<void> {
@@ -177,31 +149,38 @@ export async function openMissionVoiceSession(operationId: string): Promise<void
   }
 
   // Grant Discord roles (non-fatal per user)
-  const { allCrew, captains } = collectUsers(op);
-
-  // fleetoperators for this guild also get commander role
-  const fleetopMembers = await prisma.guildMembership.findMany({
-    where: { guildId: op.guildId, role: "fleetoperator" },
-    select: { userId: true },
-  });
-  const commanderUsers = new Set<string>([...captains, ...fleetopMembers.map((m) => m.userId)]);
+  const { commanderUserIds, globalVoiceUserIds } = await missionVoiceAccessUsers(operationId);
 
   let granted = 0;
   let grantFailed = 0;
   if (op.guild.globalVoiceRoleId) {
-    for (const userId of allCrew) {
+    for (const userId of globalVoiceUserIds) {
       if (await grantDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId)) granted++;
       else grantFailed++;
     }
   }
   if (op.guild.commanderVoiceRoleId) {
-    for (const userId of commanderUsers) {
+    for (const userId of commanderUserIds) {
       if (await grantDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId)) granted++;
       else grantFailed++;
     }
   }
   if (grantFailed > 0) {
     console.warn(`[voiceSession] openMissionVoiceSession op ${operationId}: ${granted} role grant(s) ok, ${grantFailed} failed — Discord voice permissions may be incomplete`);
+  }
+}
+
+export async function setMissionGlobalVoiceRole(
+  operationId: string,
+  userId: string,
+  enabled: boolean,
+): Promise<void> {
+  const op = await getOpForVoice(operationId);
+  if (!op?.globalVoiceRoom || !op.guild.globalVoiceRoleId) return;
+  if (enabled) {
+    await grantDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId);
+  } else {
+    await revokeDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId);
   }
 }
 
@@ -221,23 +200,18 @@ export async function closeMissionVoiceSession(operationId: string): Promise<voi
   });
 
   // Revoke Discord roles
-  const { allCrew, captains } = collectUsers(op);
-  const fleetopMembers = await prisma.guildMembership.findMany({
-    where: { guildId: op.guildId, role: "fleetoperator" },
-    select: { userId: true },
-  });
-  const commanderUsers = new Set<string>([...captains, ...fleetopMembers.map((m) => m.userId)]);
+  const { commanderUserIds, globalVoiceUserIds } = await missionVoiceAccessUsers(operationId);
 
   let revoked = 0;
   let revokeFailed = 0;
   if (op.guild.globalVoiceRoleId) {
-    for (const userId of allCrew) {
+    for (const userId of globalVoiceUserIds) {
       if (await revokeDiscordRole(op.guildId, userId, op.guild.globalVoiceRoleId)) revoked++;
       else revokeFailed++;
     }
   }
   if (op.guild.commanderVoiceRoleId) {
-    for (const userId of commanderUsers) {
+    for (const userId of commanderUserIds) {
       if (await revokeDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId)) revoked++;
       else revokeFailed++;
     }

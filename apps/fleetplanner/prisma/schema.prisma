@@ -298,6 +298,7 @@ model MissionVoiceParticipant {
   operationId String
   userId      String
   addedById   String // fleetplanner user who added them
+  globalVoice Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)

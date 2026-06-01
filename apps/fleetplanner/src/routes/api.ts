@@ -18,6 +18,7 @@ import {
   deleteScheduledEvent,
   removeCaptainDiscordRoles,
   sendAcceptedCaptainVoiceDm,
+  sendDiscordDm,
   sendSeatAssignmentDm,
 } from "../services/discord.js";
 import {
@@ -31,6 +32,7 @@ import {
   closeMissionVoiceSession,
   hasVoicePermission,
   openMissionVoiceSession,
+  setMissionGlobalVoiceRole,
 } from "../services/voiceSession.js";
 import {
   issueUnitLivekitToken,
@@ -44,6 +46,7 @@ import {
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 import { specForShip, specForSquad } from "../services/seats.js";
+import { isMissionCommander, listMissionCommanders } from "../services/missionCommanders.js";
 
 function setCompanionCors(reply: FastifyReply, request: FastifyRequest): void {
   const origin = request.headers.origin;
@@ -179,6 +182,51 @@ async function captainsWhoseEventRolesCanBeRemoved(operationId: string): Promise
     if (!otherActiveUnit) removable.push(captainId);
   }
   return removable;
+}
+
+function missionDeepLink(token: string): string {
+  const env = getEnv();
+  const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+  const params = new URLSearchParams({ token, url: fleetplannerUrl });
+  return `rdoc://mission?${params.toString()}`;
+}
+
+async function sendMissionCommanderStartDms(operationId: string): Promise<{
+  sent: number;
+  failed: number;
+}> {
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    select: { title: true },
+  });
+  if (!op) return { sent: 0, failed: 0 };
+  const commanders = await listMissionCommanders(operationId);
+  const env = getEnv();
+  const operationUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${operationId}`;
+  let sent = 0;
+  let failed = 0;
+  for (const commander of commanders) {
+    const token = await createMissionVoiceSession(commander.userId);
+    const lines = [
+      "Mission started.",
+      `You are commander for "${op.title}".`,
+      "",
+      `Operation: ${operationUrl}`,
+    ];
+    if (env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL) {
+      lines.push(`Download companion app: ${env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL}`);
+    }
+    lines.push(`Companion configuration link: ${missionDeepLink(token)}`);
+    lines.push("");
+    lines.push("This mission-scoped configuration link can be revoked by removing commander access.");
+    try {
+      await sendDiscordDm(commander.userId, lines.join("\n"));
+      sent++;
+    } catch {
+      failed++;
+    }
+  }
+  return { sent, failed };
 }
 
 async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
@@ -642,14 +690,26 @@ export async function apiRoutes(app: FastifyInstance) {
       const valid = ["draft", "open", "locked", "in_progress", "completed", "cancelled"];
       const newStatus = req.body.status;
       if (!valid.includes(newStatus)) return reply.code(400).send({ error: "Invalid status" });
+      const previous = await prisma.operation.findUnique({
+        where: { id: req.params.id },
+        select: { status: true },
+      });
       const updated = await setStatus(req.params.id, newStatus);
 
       // Mission voice session: open/in_progress → create rooms + grant roles
       if (newStatus === "open" || newStatus === "in_progress") {
         if (await hasVoicePermission(updated.guildId)) {
-          openMissionVoiceSession(req.params.id).catch((err) =>
-            app.log.warn(err, "Mission voice session open failed (non-fatal)"),
-          );
+          if (newStatus === "in_progress") {
+            try {
+              await openMissionVoiceSession(req.params.id);
+            } catch (err) {
+              app.log.warn(err, "Mission voice session open failed (non-fatal)");
+            }
+          } else {
+            openMissionVoiceSession(req.params.id).catch((err) =>
+              app.log.warn(err, "Mission voice session open failed (non-fatal)"),
+            );
+          }
         }
       }
       // Mission voice session: completed/cancelled → close rooms + revoke roles
@@ -695,17 +755,25 @@ export async function apiRoutes(app: FastifyInstance) {
       if (newStatus === "in_progress") {
         try {
           const moved = await moveOperationCrewToVoiceChannels(req.params.id);
+          const commanderDms =
+            previous?.status !== "in_progress"
+              ? await sendMissionCommanderStartDms(req.params.id)
+              : { sent: 0, failed: 0 };
           const skipped = moved.skippedDiscordUsers
             ? `+${moved.skippedDiscordUsers}+users+had+no+Discord+identity.`
             : "";
           const notConnected = moved.notConnected
             ? `+${moved.notConnected}+users+were+not+connected+to+voice.`
             : "";
+          const dmFlash =
+            previous?.status !== "in_progress"
+              ? `+Commander+DMs:+${commanderDms.sent}+sent,+${commanderDms.failed}+failed.`
+              : "";
           return reply.redirect(
             opReturnUrl(
               req.params.id,
               req.body,
-              `ok:Status+updated.+Moved+${moved.moved}+crew+into+${moved.channels}+voice+channels.${notConnected}${skipped}`,
+              `ok:Status+updated.+Moved+${moved.moved}+crew+into+${moved.channels}+voice+channels.${notConnected}${skipped}${dmFlash}`,
               "overview",
             ),
             302,
@@ -1355,12 +1423,13 @@ export async function apiRoutes(app: FastifyInstance) {
 
     const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
 
-    // Find op where user is accepted captain or has a claimed seat
+    // Find op where user is automatic squadleader or manually added commander.
     let activeOp: Awaited<ReturnType<typeof prisma.operation.findFirst>> | null = null;
     const captainUnit = await prisma.fleetUnit.findFirst({
       where: {
         captainId: userId,
         status: "accepted",
+        unitType: "squad",
         operation: { status: { in: [...ACTIVE_STATUSES] } },
       },
       include: { operation: true },
@@ -1369,29 +1438,15 @@ export async function apiRoutes(app: FastifyInstance) {
     if (captainUnit) activeOp = captainUnit.operation;
 
     if (!activeOp) {
-      const crewSeat = await prisma.seatAssignment.findFirst({
+      const participant = (await (prisma as any).missionVoiceParticipant.findFirst({
         where: {
           userId,
-          active: true,
-          fleetUnit: { status: "accepted", operation: { status: { in: [...ACTIVE_STATUSES] } } },
+          operation: { status: { in: [...ACTIVE_STATUSES] } },
         },
-        include: { fleetUnit: { include: { operation: true } } },
-      });
-      if (crewSeat) activeOp = crewSeat.fleetUnit.operation;
-    }
-
-    // Fleetoperators without a specific unit also get access
-    if (!activeOp) {
-      const fpMembership = await prisma.guildMembership.findFirst({
-        where: { userId, role: "fleetoperator" },
-        select: { guildId: true },
-      });
-      if (fpMembership) {
-        activeOp = await prisma.operation.findFirst({
-          where: { guildId: fpMembership.guildId, status: { in: [...ACTIVE_STATUSES] } },
-          orderBy: { updatedAt: "desc" },
-        });
-      }
+        include: { operation: true },
+        orderBy: { createdAt: "desc" },
+      })) as { operation: typeof activeOp } | null;
+      if (participant) activeOp = participant.operation;
     }
 
     if (!activeOp) return reply.send({ op: null });
@@ -1424,20 +1479,7 @@ export async function apiRoutes(app: FastifyInstance) {
     const env = getEnv();
     if (!env.LIVEKIT_URL) return reply.send({ op: null });
 
-    // Commander room eligibility: captains of accepted units, guild
-    // fleetoperators, OR people manually added as mission voice participants.
-    const isCommander = !!(
-      captainUnit ||
-      (await prisma.guildMembership.findFirst({
-        where: { userId, guildId: activeOp.guildId, role: "fleetoperator" },
-        select: { id: true },
-      })) ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (await (prisma as any).missionVoiceParticipant.findFirst({
-        where: { operationId: activeOp.id, userId },
-        select: { id: true },
-      }))
-    );
+    const isCommander = await isMissionCommander(activeOp.id, userId);
     const commanderToken =
       isCommander && commanderRoom ? await issueMissionVoiceToken(userId, commanderRoom) : null;
 
@@ -1468,35 +1510,17 @@ export async function apiRoutes(app: FastifyInstance) {
     const env = getEnv();
     if (!env.LIVEKIT_URL) return reply.code(400).send({ error: "LiveKit not configured" });
 
-    // Collect eligible users: accepted captains + guild fleetoperators
-    const captainIds = new Set<string>(
-      op.units.filter((u) => u.status === "accepted").map((u) => u.captainId),
-    );
-    const fleetopMembers = await prisma.guildMembership.findMany({
-      where: { guildId: op.guildId, role: "fleetoperator" },
-      include: { user: { select: { id: true, username: true } } },
-    });
-    const allUserIds = new Set<string>([...captainIds, ...fleetopMembers.map((m) => m.userId)]);
-
-    // Fetch usernames for captains
-    const captainUsers = await prisma.user.findMany({
-      where: { id: { in: [...captainIds] } },
-      select: { id: true, username: true },
-    });
-    const usernameMap = new Map<string, string>(captainUsers.map((u) => [u.id, u.username]));
-    for (const m of fleetopMembers) usernameMap.set(m.userId, m.user.username);
-
-    const baseUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
-    const fleetplannerUrl = baseUrl;
+    const commanders = await listMissionCommanders(op.id);
+    const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
 
     // Create companion sessions + build links
     const links: Array<{ userId: string; username: string; link: string }> = [];
-    for (const uid of allUserIds) {
-      const token = await createMissionVoiceSession(uid);
+    for (const commander of commanders) {
+      const token = await createMissionVoiceSession(commander.userId);
       const params = new URLSearchParams({ token, url: fleetplannerUrl });
       links.push({
-        userId: uid,
-        username: usernameMap.get(uid) ?? uid,
+        userId: commander.userId,
+        username: commander.username,
         link: `rdoc://mission?${params.toString()}`,
       });
     }
@@ -1530,14 +1554,60 @@ export async function apiRoutes(app: FastifyInstance) {
           opReturnUrl(req.params.id, req.body, "error:Unknown+user", "commanders"),
           302,
         );
+      const globalVoice = req.body.globalVoice === "1";
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (prisma as any).missionVoiceParticipant.upsert({
         where: { operationId_userId: { operationId: req.params.id, userId } },
-        update: {},
-        create: { operationId: req.params.id, userId, addedById: ctx.user.id },
+        update: { globalVoice },
+        create: { operationId: req.params.id, userId, addedById: ctx.user.id, globalVoice },
       });
+      if (globalVoice) {
+        await setMissionGlobalVoiceRole(req.params.id, userId, true).catch((err) =>
+          req.log.warn(err, "Global Voice role sync failed (non-fatal)"),
+        );
+      }
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Commander+added.", "commanders"),
+        302,
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string; userId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/voice-participants/:userId/global-voice",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const user = await prisma.user.findUnique({
+        where: { id: req.params.userId },
+        select: { id: true },
+      });
+      if (!user) return reply.code(404).send({ error: "User not found" });
+      const isCommander = await isMissionCommander(req.params.id, req.params.userId);
+      if (!isCommander) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:User+is+not+a+commander", "commanders"),
+          302,
+        );
+      }
+      const globalVoice = req.body.globalVoice === "1";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (prisma as any).missionVoiceParticipant.upsert({
+        where: { operationId_userId: { operationId: req.params.id, userId: req.params.userId } },
+        update: { globalVoice },
+        create: {
+          operationId: req.params.id,
+          userId: req.params.userId,
+          addedById: ctx.user.id,
+          globalVoice,
+        },
+      });
+      await setMissionGlobalVoiceRole(req.params.id, req.params.userId, globalVoice).catch((err) =>
+        req.log.warn(err, "Global Voice role sync failed (non-fatal)"),
+      );
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Global+Voice+updated.", "commanders"),
         302,
       );
     },
@@ -1549,6 +1619,9 @@ export async function apiRoutes(app: FastifyInstance) {
       const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await setMissionGlobalVoiceRole(req.params.id, req.params.userId, false).catch((err) =>
+        req.log.warn(err, "Global Voice role revoke failed (non-fatal)"),
+      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (prisma as any).missionVoiceParticipant.deleteMany({
         where: { operationId: req.params.id, userId: req.params.userId },

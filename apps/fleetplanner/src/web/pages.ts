@@ -417,14 +417,14 @@ type OpDetailPageOptions = {
   guildTimezone?: string;
   /** Fleet voice links per eligible user — only passed for fleetoperator+ views */
   fleetVoiceLinks?: Array<{ userId: string; username: string; link: string }> | null;
-  /** Commander roster for the Commanders tab: accepted-unit captains +
-   *  guild fleetoperators + manually-added participants. Links are present
-   *  only when a voice session is live. */
+  /** Commander roster for the Commanders tab: accepted FPS squadleaders +
+   *  manually-added participants. Links are present only when a voice session is live. */
   commanderRoster?: {
     entries: Array<{
       userId: string;
       username: string;
-      kind: "captain" | "fleetoperator" | "participant";
+      kind: "squadleader" | "participant";
+      globalVoice: boolean;
       link: string | null;
     }>;
     voiceActive: boolean;
@@ -2195,9 +2195,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
-  const commanderKindLabel = (k: "captain" | "fleetoperator" | "participant") =>
-    k === "captain" ? "Captain" : k === "fleetoperator" ? "Fleet Operator" : "Added";
-  const commanderKindTone = (k: "captain" | "fleetoperator" | "participant") =>
+  const commanderKindLabel = (k: "squadleader" | "participant") =>
+    k === "squadleader" ? "Squadleader" : "Added";
+  const commanderKindTone = (k: "squadleader" | "participant") =>
     k === "participant" ? "tag-gold" : "tag-cyan";
   const rosterIds = new Set((opts.commanderRoster?.entries ?? []).map((e) => e.userId));
   const addableUsers = opts.assignableUsers.filter((u) => !rosterIds.has(u.id));
@@ -2209,9 +2209,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ? html`<p class="text-dim text-sm">Voice integration is not enabled for this server.</p>`
         : html`
             <p class="text-dim text-sm" style="margin-bottom:.75rem">
-              Captains of accepted units and fleet operators are commanders automatically. Add
-              anyone else who should be on the commander channel. Each person gets a personal
-              mission deep-link.
+              Squadleaders of accepted FPS squads are commanders automatically. Add anyone else
+              who should be on the commander channel, and grant Global Voice only where needed.
             </p>
             ${opts.commanderRoster && !opts.commanderRoster.voiceActive
               ? html`<div class="banner banner-dim text-sm" style="margin-bottom:.75rem">
@@ -2250,6 +2249,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                                 Kopieren
                               </button>`
                           : safe("")}
+                        <form
+                          method="post"
+                          action="${bp}/api/ops/${op.id}/voice-participants/${e.userId}/global-voice"
+                          class="inline"
+                        >
+                          <input type="hidden" name="_csrf" value="${csrf}" />
+                          ${returnFields("commanders")}
+                          <input type="hidden" name="globalVoice" value="${e.globalVoice ? "0" : "1"}" />
+                          <button
+                            type="submit"
+                            class="btn btn-sm ${e.globalVoice ? "btn-gold" : "btn-ghost"}"
+                            title="Global Voice via relay bots"
+                          >
+                            Global Voice ${e.globalVoice ? "On" : "Off"}
+                          </button>
+                        </form>
                         ${e.kind === "participant"
                           ? html`<form
                               method="post"
@@ -2281,6 +2296,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       (u) => html`<option value="${u.id}">${u.username} (${u.role})</option>`,
                     )}
                   </select>
+                  <label class="seat-toggle text-sm">
+                    <input type="checkbox" name="globalVoice" value="1" />
+                    Global Voice
+                  </label>
                   <button type="submit" class="btn btn-sm btn-green">Add</button>
                 </form>`
               : safe("")}
@@ -5995,10 +6014,10 @@ export function guildSettingsPage(opts: {
         <label class="text-sm text-dim">Captain role ID (Discord role → captain)
           <input type="text" name="captainRoleId" value="${g.captainRoleId ?? ""}" placeholder="optional" />
         </label>
-        <label class="text-sm text-dim">Global Voice role ID <span style="opacity:.65">(Discord role → granted to all crew when mission opens)</span>
+        <label class="text-sm text-dim">Global Voice role ID <span style="opacity:.65">(Discord role -> granted only to commanders with Global Voice enabled)</span>
           <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
         </label>
-        <label class="text-sm text-dim">Commander Voice role ID <span style="opacity:.65">(Discord role → granted to fleetoperators + captains when mission opens)</span>
+        <label class="text-sm text-dim">Commander Voice role ID <span style="opacity:.65">(Discord role -> granted to mission commanders when mission opens)</span>
           <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
         </label>
         <label class="text-sm text-dim">Timezone <span style="opacity:.65">(used for scheduling dates — shown to all members)</span>

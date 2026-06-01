@@ -62,6 +62,7 @@ import {
   updateScheduledEvent,
 } from "../services/discord.js";
 import { hasVoicePermission } from "../services/voiceSession.js";
+import { listMissionCommanders } from "../services/missionCommanders.js";
 import { bridgeConfigured } from "../services/bridge.js";
 import {
   buildOpVoiceControl,
@@ -393,34 +394,21 @@ export async function webRoutes(app: FastifyInstance) {
     const opRole = ctx ? await effectiveOpRole(ctx.user.id, ctx.user.role, op.id) : null;
     const globalVoiceRoom =
       ((op as Record<string, unknown>).globalVoiceRoom as string | null) ?? null;
-    // Generate fleet voice links for fleetoperators when voice session is active
+    // Generate mission commander links when voice session is active.
     let fleetVoiceLinks: Array<{ userId: string; username: string; link: string }> | null = null;
     if (opRole === "fleetoperator" && voiceEnabled && globalVoiceRoom && ctx) {
       try {
         const env = getEnv();
         const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
-        const captainIds = new Set<string>(
-          op.units.filter((u) => u.status === "accepted").map((u) => u.captainId),
-        );
-        const fpMembers = await prisma.guildMembership.findMany({
-          where: { guildId: op.guildId, role: "fleetoperator" },
-          include: { user: true },
-        });
-        const allUserIds = new Set<string>([...captainIds, ...fpMembers.map((m) => m.userId)]);
-        const captainUsers = await prisma.user.findMany({
-          where: { id: { in: [...captainIds] } },
-          select: { id: true, username: true },
-        });
-        const usernameMap = new Map(captainUsers.map((u) => [u.id, u.username]));
-        for (const m of fpMembers) usernameMap.set(m.userId, m.user.username);
+        const commanders = await listMissionCommanders(op.id);
         const { createMissionVoiceSession } = await import("../auth/companionSession.js");
         fleetVoiceLinks = await Promise.all(
-          [...allUserIds].map(async (uid) => {
-            const token = await createMissionVoiceSession(uid);
+          commanders.map(async (commander) => {
+            const token = await createMissionVoiceSession(commander.userId);
             const params = new URLSearchParams({ token, url: fleetplannerUrl });
             return {
-              userId: uid,
-              username: usernameMap.get(uid) ?? uid,
+              userId: commander.userId,
+              username: commander.username,
               link: `rdoc://mission?${params.toString()}`,
             };
           }),
@@ -440,7 +428,8 @@ export async function webRoutes(app: FastifyInstance) {
     type CommanderEntry = {
       userId: string;
       username: string;
-      kind: "captain" | "fleetoperator" | "participant";
+      kind: "squadleader" | "participant";
+      globalVoice: boolean;
       link: string | null;
     };
     let commanderRoster: { entries: CommanderEntry[]; voiceActive: boolean } | null = null;
@@ -448,36 +437,11 @@ export async function webRoutes(app: FastifyInstance) {
       try {
         const env = getEnv();
         const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const participants = (await (prisma as any).missionVoiceParticipant.findMany({
-          where: { operationId: op.id },
-          include: { user: true },
-          orderBy: { createdAt: "asc" },
-        })) as Array<{ userId: string; user: { id: string; username: string } }>;
-
-        // Build a deduped ordered roster. Captains first, then manually
-        // added participants (someone already a captain isn't re-listed).
-        const byId = new Map<string, CommanderEntry>();
-        for (const u of op.units.filter((x) => x.status === "accepted")) {
-          if (!byId.has(u.captainId))
-            byId.set(u.captainId, {
-              userId: u.captainId,
-              username: u.captain.username,
-              kind: "captain",
-              link: null,
-            });
-        }
-        for (const p of participants) {
-          if (!byId.has(p.userId))
-            byId.set(p.userId, {
-              userId: p.userId,
-              username: p.user.username,
-              kind: "participant",
-              link: null,
-            });
-        }
+        const entries: CommanderEntry[] = (await listMissionCommanders(op.id)).map((commander) => ({
+          ...commander,
+          link: null,
+        }));
         const voiceActive = Boolean(globalVoiceRoom) && Boolean(env.LIVEKIT_URL);
-        const entries = [...byId.values()];
         if (voiceActive) {
           const { createMissionVoiceSession } = await import("../auth/companionSession.js");
           for (const e of entries) {
