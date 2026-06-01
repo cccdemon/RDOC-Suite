@@ -8,6 +8,7 @@ import {
   homePage,
   opDetailPage,
   opDetailPageV2,
+  opPublicPreviewPage,
   opFormPage,
   profilePage,
   shipsPage,
@@ -277,8 +278,13 @@ export async function webRoutes(app: FastifyInstance) {
         }),
       );
     }
-    // Tenant isolation: only members of the op's guild may view it.
-    if (!ctx) return reply.redirect(basePath("/login"), 302);
+    // Unauthenticated: serve a public preview with OG tags instead of redirecting
+    // to login (Discordbot and other scrapers follow redirects to the login page
+    // and find no OG meta there).
+    if (!ctx) {
+      reply.header("Cache-Control", "no-store");
+      return htmlReply(reply, opPublicPreviewPage({ basePath: basePath(), op }));
+    }
     const membership =
       ctx.user.role === "superadmin" ? true : !!(await getMembership(ctx.user.id, op.guildId));
     if (!membership) {

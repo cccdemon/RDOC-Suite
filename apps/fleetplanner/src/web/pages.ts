@@ -107,6 +107,40 @@ function missionImageUrl(bp: string, opType: string): string {
   return `${bp}/assets/mission-images/${missionImageType(opType)}.png`;
 }
 
+export function opPublicPreviewPage(opts: {
+  basePath: string;
+  op: { id: string; title: string; description: string; opType: string; scheduledAt: Date };
+}): SafeHtml {
+  const bp = opts.basePath;
+  const op = opts.op;
+  const { WEB_PUBLIC_URL } = getEnv();
+  const body = html`
+    <div style="max-width:42rem;margin:4rem auto;text-align:center">
+      <div
+        class="mission-banner"
+        style="background-image:linear-gradient(90deg,rgba(5,8,16,.92),rgba(5,8,16,.55),rgba(5,8,16,.18)),url('${missionImageUrl(bp, op.opType)}');margin-bottom:2rem"
+      ></div>
+      <h1 style="font-family:var(--font-mono);color:var(--cyan);font-size:1.5rem;letter-spacing:.08em;margin-bottom:.75rem">${op.title}</h1>
+      ${op.description
+        ? html`<p style="color:var(--dim);margin-bottom:1.5rem;font-size:.92rem;line-height:1.7">${op.description.slice(0, 300)}</p>`
+        : ""}
+      <p style="color:var(--dim);font-size:.82rem;margin-bottom:2rem">Login um diese Operation zu sehen.</p>
+      <a href="${bp}/login" class="btn">Login</a>
+    </div>`;
+  return layout({
+    title: op.title,
+    basePath: bp,
+    currentUser: null,
+    ogMeta: {
+      title: op.title,
+      description: op.description ? op.description.slice(0, 200) : undefined,
+      imageUrl: `${WEB_PUBLIC_URL}${missionImageUrl(bp, op.opType)}`,
+      pageUrl: `${WEB_PUBLIC_URL}${bp}/ops/${op.id}`,
+    },
+    body,
+  });
+}
+
 function opTypeClass(opType: string): string {
   return `op-type-${opType.toLowerCase().replace(/[^a-z0-9-]/g, "-")}`;
 }
