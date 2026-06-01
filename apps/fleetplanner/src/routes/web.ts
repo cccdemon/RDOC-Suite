@@ -18,6 +18,7 @@ import { deleteScheduledEvent, fetchGuildVoiceChannels, sendDiscordChannelMessag
 import { hasVoicePermission } from "../services/voiceSession.js";
 import { bridgeConfigured } from "../services/bridge.js";
 import { buildOpVoiceControl, moveUnitCrewToChannel, moveOpMemberToUnit } from "../services/opVoice.js";
+import { parseDateLocalTz, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
 import { getLocationSyncState, runLocationSync, searchLocations, updateLocationSyncConfig } from "../services/locations.js";
 import { getSetting, setSetting } from "../services/settings.js";
@@ -117,9 +118,12 @@ export async function webRoutes(app: FastifyInstance) {
       const selectedOperatorGuildId = operatorGuilds.some((g) => g.id === req.query._guild)
         ? req.query._guild
         : operatorGuilds.length === 1 ? operatorGuilds[0].id : undefined;
-      const guildVoiceChannels = selectedOperatorGuildId
-        ? await fetchGuildVoiceChannels(selectedOperatorGuildId)
-        : [];
+      const [guildVoiceChannels, newOpGuildRow] = await Promise.all([
+        selectedOperatorGuildId ? fetchGuildVoiceChannels(selectedOperatorGuildId) : Promise.resolve([]),
+        selectedOperatorGuildId
+          ? prisma.guild.findUnique({ where: { id: selectedOperatorGuildId }, select: { timezone: true } })
+          : Promise.resolve(null),
+      ]);
       htmlReply(reply, opFormPage({
         basePath: basePath(),
         currentUser: ctx.user,
@@ -130,6 +134,7 @@ export async function webRoutes(app: FastifyInstance) {
         selectedOperatorGuildId,
         guildVoiceChannels,
         locations: await searchLocations(undefined, "", 2000),
+        guildTimezone: (newOpGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
       }));
     }
   );
@@ -153,7 +158,9 @@ export async function webRoutes(app: FastifyInstance) {
         return reply.redirect(basePath("/ops/new?flash=error:Select+a+valid+server+where+you+are+Admiral"), 302);
       }
       const { title, description, opType, scheduledAt, eventVoiceChannelId } = req.body;
-      const parsedDate = parseUtcDateTimeLocal(scheduledAt);
+      const guildRow = await prisma.guild.findUnique({ where: { id: targetMembership.guildId }, select: { timezone: true } });
+      const guildTz = (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+      const parsedDate = parseDateLocalTz(scheduledAt, guildTz);
       if (!title?.trim() || !parsedDate) {
         return reply.redirect(basePath("/ops/new?flash=error:Title+and+date+are+required"), 302);
       }
@@ -216,10 +223,12 @@ export async function webRoutes(app: FastifyInstance) {
             orderBy: { user: { username: "asc" } },
           })).map((m) => ({ id: m.user.id, username: m.user.username, role: m.role }))
         : [];
-      const [availableVoiceBotCount, voiceEnabled] = await Promise.all([
+      const [availableVoiceBotCount, voiceEnabled, opGuildRow] = await Promise.all([
         prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
         hasVoicePermission(op.guildId),
+        prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } }),
       ]);
+      const opGuildTz = (opGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
       const opRole = ctx ? await effectiveOpRole(ctx.user.id, ctx.user.role, op.id) : null;
       const globalVoiceRoom = (op as Record<string, unknown>).globalVoiceRoom as string | null ?? null;
       // Generate fleet voice links for fleetoperators when voice session is active
@@ -268,6 +277,7 @@ export async function webRoutes(app: FastifyInstance) {
         assignableUsers,
         availableVoiceBotCount,
         voiceEnabled,
+        guildTimezone: opGuildTz,
         missionVoice: { globalVoiceRoom, commanderVoiceRoom: (op as Record<string, unknown>).commanderVoiceRoom as string | null ?? null },
         fleetVoiceLinks,
         voiceControl,
@@ -423,7 +433,10 @@ export async function webRoutes(app: FastifyInstance) {
       if (!ctx) return;
       const op = await getOperation(req.params.id);
       if (!op) return reply.code(404).send("Not found");
-      const guildVoiceChannels = await fetchGuildVoiceChannels(op.guildId);
+      const [guildVoiceChannels, editGuildRow2] = await Promise.all([
+        fetchGuildVoiceChannels(op.guildId),
+        prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } }),
+      ]);
       htmlReply(reply, opFormPage({
         basePath: basePath(),
         currentUser: ctx.user,
@@ -432,6 +445,7 @@ export async function webRoutes(app: FastifyInstance) {
         op,
         guildVoiceChannels,
         locations: await searchLocations(undefined, "", 2000),
+        guildTimezone: (editGuildRow2 as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
       }));
     }
   );
@@ -443,7 +457,12 @@ export async function webRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       const { title, description, opType, scheduledAt, eventVoiceChannelId } = req.body;
-      const parsedDate = scheduledAt ? parseUtcDateTimeLocal(scheduledAt) : null;
+      const existingOp = await getOperation(req.params.id);
+      const editGuildRow = existingOp
+        ? await prisma.guild.findUnique({ where: { id: existingOp.guildId }, select: { timezone: true } })
+        : null;
+      const editGuildTz = (editGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+      const parsedDate = scheduledAt ? parseDateLocalTz(scheduledAt, editGuildTz) : null;
       if (scheduledAt && !parsedDate) {
         return reply.redirect(basePath(`/ops/${req.params.id}/edit?flash=error:Invalid+date`), 302);
       }

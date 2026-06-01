@@ -3,6 +3,24 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Per-guild timezone (default Europe/Berlin)
+
+Fleetplanner previously parsed and displayed all operation dates in UTC. Operators
+schedule ops in their local timezone; UTC dates were confusing.
+
+- Schema: `Guild.timezone String @default("Europe/Berlin")` + migration
+  `20260601000000_guild_timezone`.
+- `apps/fleetplanner/src/lib/timezone.ts`: new IANA tz helpers —
+  `TIMEZONE_OPTIONS` (18 common zones), `isValidTimezone`, `fmtDateTz` (display),
+  `fmtDateLocalTz` (datetime-local input value), `parseDateLocalTz` (parse input
+  as wall-clock in guild tz). Uses only `Intl.DateTimeFormat` — no extra deps.
+- `web/pages.ts`: `fmtDate(d, tz?)` + `fmtDateLocal(d, tz?)` delegate to tz helpers
+  (default Europe/Berlin). Op detail page + form use `opts.guildTimezone`. Guild
+  settings form: timezone `<select>` with 18 options.
+- `routes/guilds.ts`: read + save `timezone` in GET/POST `/guilds/settings`.
+- `routes/web.ts`: fetch guild timezone for op-detail GET, new-op GET/POST,
+  edit-op GET/POST; replace `parseUtcDateTimeLocal` with `parseDateLocalTz`.
+
 ## Queued / Planned Step - 2026-06-01: Raid Planer → op-native "Voice Control" (Option B)
 
 Decision: the bridge Raid Planer (live Discord voice member control) is NOT ported as a

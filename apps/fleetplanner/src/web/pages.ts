@@ -1,6 +1,7 @@
 import { html, safe, rawHtml, layout, type SafeHtml, type LayoutOptions } from "./render.js";
 import type { User, Operation, Ship, Location } from "@prisma/client";
 import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/discordDiagnostics.js";
+import { fmtDateTz, fmtDateLocalTz, TIMEZONE_OPTIONS, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 
 // ── Re-export layout for routes ─────────────────────────────────────
 export { layout, rawHtml } from "./render.js";
@@ -11,13 +12,12 @@ type UnitFull = NonNullable<OpFull>["units"][number];
 
 // ── Shared helpers ───────────────────────────────────────────────────
 
-function fmtDate(d: Date): string {
-  return d.toISOString().replace("T", " ").substring(0, 16) + " UTC";
+function fmtDate(d: Date, tz = DEFAULT_TIMEZONE): string {
+  return fmtDateTz(d, tz);
 }
 
-function fmtDateLocal(d: Date): string {
-  // datetime-local input format YYYY-MM-DDTHH:MM
-  return d.toISOString().substring(0, 16);
+function fmtDateLocal(d: Date, tz = DEFAULT_TIMEZONE): string {
+  return fmtDateLocalTz(d, tz);
 }
 
 function statusTag(status: string): SafeHtml {
@@ -203,7 +203,7 @@ export function homePage(opts: {
 
 // ── Operation detail ─────────────────────────────────────────────────
 
-export function opDetailPage(opts: {
+type OpDetailPageOptions = {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
@@ -214,6 +214,8 @@ export function opDetailPage(opts: {
   availableVoiceBotCount: number;
   voiceEnabled: boolean;
   missionVoice?: { globalVoiceRoom: string | null; commanderVoiceRoom: string | null } | null;
+  /** IANA timezone of the guild — used to display/parse scheduledAt. */
+  guildTimezone?: string;
   /** Fleet voice links per eligible user — only passed for fleetoperator+ views */
   fleetVoiceLinks?: Array<{ userId: string; username: string; link: string }> | null;
   /** Per-unit live Discord voice control (Option B). Only passed when the
@@ -231,9 +233,12 @@ export function opDetailPage(opts: {
     }>;
   }> | null;
   viewAsRole?: string;
-}): SafeHtml {
+};
+
+export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
+  const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const realUser = opts.currentUser;
   const previewRoles = ["guest", "crew", "captain", "fleetoperator", "superadmin"];
   const canPreview =
@@ -1024,7 +1029,7 @@ export function opDetailPage(opts: {
     </div>
     <div class="detail-row">
       <span>Zeit</span>
-      <strong>${fmtDate(op.scheduledAt)}</strong>
+      <strong>${fmtDate(op.scheduledAt, gtz)}</strong>
     </div>
     <div class="raidlead">
       ${raidLeadAvatar
@@ -1092,7 +1097,7 @@ export function opDetailPage(opts: {
             </form>`
           : ""}
       </div>
-      <p class="page-subtitle">${fmtDate(op.scheduledAt)}</p>
+      <p class="page-subtitle">${fmtDate(op.scheduledAt, gtz)}</p>
       ${op.description ? html`<p class="text-sm mt-1">${op.description}</p>` : ""} ${statusControls}
       ${canRealManage
         ? html` <form
@@ -1454,9 +1459,12 @@ export function opFormPage(opts: {
   selectedOperatorGuildId?: string;
   /** Discord voice channels for the selected guild (type 2) */
   guildVoiceChannels?: Array<{ id: string; name: string }>;
+  /** IANA timezone for display/parse of scheduledAt. Defaults to Europe/Berlin. */
+  guildTimezone?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
+  const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const action = op ? `${bp}/ops/${op.id}/edit` : `${bp}/ops/new`;
   const csrf = opts.csrfToken ?? "";
 
@@ -1516,11 +1524,11 @@ export function opFormPage(opts: {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Scheduled Date/Time (UTC)</label>
+            <label>Scheduled Date/Time (${gtz})</label>
             <input
               type="datetime-local"
               name="scheduledAt"
-              value="${op ? fmtDateLocal(op.scheduledAt) : ""}"
+              value="${op ? fmtDateLocal(op.scheduledAt, gtz) : ""}"
               required
             />
           </div>
@@ -3858,6 +3866,7 @@ export function guildSettingsPage(opts: {
     globalVoiceRoleId: string | null;
     commanderVoiceRoleId: string | null;
     voiceEnabled: boolean;
+    timezone: string;
   };
   voiceBots: Array<{
     id: string;
@@ -3981,6 +3990,14 @@ export function guildSettingsPage(opts: {
         </label>
         <label class="text-sm text-dim">Commander Voice role ID <span style="opacity:.65">(Discord role → granted to fleetoperators + captains when mission opens)</span>
           <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
+        </label>
+        <label class="text-sm text-dim">Timezone <span style="opacity:.65">(used for scheduling dates — shown to all members)</span>
+          <select name="timezone">
+            ${TIMEZONE_OPTIONS.map(
+              (opt) =>
+                html`<option value="${opt.value}" ${g.timezone === opt.value ? safe("selected") : ""}>${opt.label}</option>`,
+            )}
+          </select>
         </label>
         <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>
       </form>

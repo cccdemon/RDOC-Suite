@@ -141,8 +141,8 @@ export async function guildRoutes(app: FastifyInstance) {
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
           id: true, name: true, eventChannelId: true, voiceChannelCategoryId: true,
           admiralRoleId: true, captainRoleId: true, globalVoiceRoleId: true,
-          commanderVoiceRoleId: true, voiceEnabled: true,
-        } }) as Promise<{ id: string; name: string; eventChannelId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean } | null>,
+          commanderVoiceRoleId: true, voiceEnabled: true, timezone: true,
+        } }) as Promise<{ id: string; name: string; eventChannelId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: { user: true },
@@ -201,6 +201,9 @@ export async function guildRoutes(app: FastifyInstance) {
       if (!gctx) return;
       if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       const snowflake = (v: string | undefined) => (v && /^\d{16,25}$/.test(v.trim()) ? v.trim() : null);
+      const { isValidTimezone, DEFAULT_TIMEZONE } = await import("../lib/timezone.js");
+      const tz = req.body.timezone?.trim() ?? "";
+      const validatedTz = isValidTimezone(tz) ? tz : DEFAULT_TIMEZONE;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (prisma.guild.update as any)({
         where: { id: gctx.guildId },
@@ -211,6 +214,7 @@ export async function guildRoutes(app: FastifyInstance) {
           captainRoleId: snowflake(req.body.captainRoleId),
           globalVoiceRoleId: snowflake(req.body.globalVoiceRoleId),
           commanderVoiceRoleId: snowflake(req.body.commanderVoiceRoleId),
+          timezone: validatedTz,
         },
       });
       return reply.redirect(basePath("/guilds/settings?flash=ok:Server+settings+saved."), 302);
