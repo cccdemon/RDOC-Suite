@@ -3,19 +3,64 @@ import { requireAuth, requireOpRole } from "../auth/middleware.js";
 import { effectiveOpRole } from "../services/guilds.js";
 import { basePath, getEnv } from "../config/env.js";
 import { searchLocalShips, shipCategory } from "../services/scwiki.js";
-import { registerUnit, deleteUnit, setUnitStatus, claimSeat, assignSeat, unclaimSeat } from "../services/units.js";
+import {
+  registerUnit,
+  deleteUnit,
+  setUnitStatus,
+  claimSeat,
+  assignSeat,
+  unclaimSeat,
+} from "../services/units.js";
 import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
-import { assignCaptainDiscordRole, createScheduledEvent, deleteScheduledEvent, removeCaptainDiscordRoles, sendAcceptedCaptainVoiceDm, sendSeatAssignmentDm } from "../services/discord.js";
-import { cleanupOperationVoiceChannels, deleteOperationVoiceChannel, launchOperationVoiceChannels, moveOperationCrewToVoiceChannels, renameOperationVoiceChannel } from "../services/voiceBots.js";
-import { closeMissionVoiceSession, hasVoicePermission, openMissionVoiceSession } from "../services/voiceSession.js";
-import { issueUnitLivekitToken, issueGlobalVoiceToken, issueMissionVoiceToken } from "../services/livekit.js";
-import { createCompanionSession, createMissionVoiceSession, loadCompanionSession, loadMissionVoiceSession } from "../auth/companionSession.js";
+import {
+  assignCaptainDiscordRole,
+  createScheduledEvent,
+  deleteScheduledEvent,
+  removeCaptainDiscordRoles,
+  sendAcceptedCaptainVoiceDm,
+  sendSeatAssignmentDm,
+} from "../services/discord.js";
+import {
+  cleanupOperationVoiceChannels,
+  deleteOperationVoiceChannel,
+  launchOperationVoiceChannels,
+  moveOperationCrewToVoiceChannels,
+  renameOperationVoiceChannel,
+} from "../services/voiceBots.js";
+import {
+  closeMissionVoiceSession,
+  hasVoicePermission,
+  openMissionVoiceSession,
+} from "../services/voiceSession.js";
+import {
+  issueUnitLivekitToken,
+  issueGlobalVoiceToken,
+  issueMissionVoiceToken,
+} from "../services/livekit.js";
+import {
+  createCompanionSession,
+  createMissionVoiceSession,
+  loadCompanionSession,
+  loadMissionVoiceSession,
+} from "../auth/companionSession.js";
 import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../services/discord.js";
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 
 function csrfOk(body: Record<string, unknown>, csrfToken: string): boolean {
   return typeof body._csrf === "string" && body._csrf === csrfToken;
+}
+
+function opReturnUrl(
+  opId: string,
+  body: Record<string, string>,
+  flash: string,
+  fallbackTab = "overview",
+): string {
+  const tab = body.tab?.trim() || fallbackTab;
+  const ui =
+    body.ui === "new" ? `?ui=new&tab=${encodeURIComponent(tab)}&flash=${flash}` : `?flash=${flash}`;
+  return basePath(`/ops/${opId}${ui}`);
 }
 
 const UNIT_TYPES = ["ship", "squad"] as const;
@@ -83,22 +128,26 @@ async function captainsWhoseEventRolesCanBeRemoved(operationId: string): Promise
 }
 
 export async function apiRoutes(app: FastifyInstance) {
-
   // ── Ship search ──────────────────────────────────────────────────────
-  app.get<{ Querystring: { q?: string } }>(
-    "/api/ships",
-    async (req, reply) => {
-      const q = req.query.q?.trim().slice(0, 80) ?? "";
-      if (!q) return reply.send([]);
-      const ships = await searchLocalShips(q, 20);
-      return reply.send(ships.map((s) => ({
-        id: s.id, slug: s.slug, name: s.name,
-        manufacturer: s.manufacturer, size: shipSizeLabel(s), career: s.career,
-        minCrew: s.minCrew, maxCrew: s.maxCrew,
-        weaponCrew: s.weaponCrew, operationCrew: s.operationCrew,
-      })));
-    }
-  );
+  app.get<{ Querystring: { q?: string } }>("/api/ships", async (req, reply) => {
+    const q = req.query.q?.trim().slice(0, 80) ?? "";
+    if (!q) return reply.send([]);
+    const ships = await searchLocalShips(q, 20);
+    return reply.send(
+      ships.map((s) => ({
+        id: s.id,
+        slug: s.slug,
+        name: s.name,
+        manufacturer: s.manufacturer,
+        size: shipSizeLabel(s),
+        career: s.career,
+        minCrew: s.minCrew,
+        maxCrew: s.maxCrew,
+        weaponCrew: s.weaponCrew,
+        operationCrew: s.operationCrew,
+      })),
+    );
+  });
 
   // ── Register fleet unit ──────────────────────────────────────────────
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
@@ -108,7 +157,16 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
 
-      const { unitType, shipId, ownedShipId, storeOwnedShip, squadName, squadSize, requirementId, captainNote } = req.body;
+      const {
+        unitType,
+        shipId,
+        ownedShipId,
+        storeOwnedShip,
+        squadName,
+        squadSize,
+        requirementId,
+        captainNote,
+      } = req.body;
 
       // Verify operation exists and is open
       const op = await prisma.operation.findUnique({ where: { id: req.params.id } });
@@ -121,14 +179,17 @@ export async function apiRoutes(app: FastifyInstance) {
         if (!UNIT_TYPES.includes(unitType as (typeof UNIT_TYPES)[number])) {
           throw new Error("Invalid unit type");
         }
-        const selectedShipId = unitType === "ship" ? (shipId || ownedShipId) : undefined;
+        const selectedShipId = unitType === "ship" ? shipId || ownedShipId : undefined;
         if (unitType === "ship") {
           if (!selectedShipId) throw new Error("Select or search a ship");
           const ship = await prisma.ship.findUnique({ where: { id: selectedShipId } });
           if (!ship) throw new Error("Ship not found");
         }
         const parsedSquadSize = squadSize ? parsePositiveInt(squadSize, 0) : undefined;
-        if (unitType === "squad" && (!parsedSquadSize || parsedSquadSize < 2 || parsedSquadSize > 8)) {
+        if (
+          unitType === "squad" &&
+          (!parsedSquadSize || parsedSquadSize < 2 || parsedSquadSize > 8)
+        ) {
           throw new Error("Squad size must be between 2 and 8");
         }
         if (requirementId) {
@@ -146,7 +207,11 @@ export async function apiRoutes(app: FastifyInstance) {
           if (filled >= requirement.count) {
             throw new Error("Composition slot is already full");
           }
-          if (!REQUIREMENT_CATEGORIES.includes(requirement.category as (typeof REQUIREMENT_CATEGORIES)[number])) {
+          if (
+            !REQUIREMENT_CATEGORIES.includes(
+              requirement.category as (typeof REQUIREMENT_CATEGORIES)[number],
+            )
+          ) {
             throw new Error("Composition slot has an invalid category");
           }
           if (requirement.category !== "any") {
@@ -158,7 +223,9 @@ export async function apiRoutes(app: FastifyInstance) {
               if (!ship) throw new Error("Ship not found");
               const category = shipCategory(ship);
               if (category !== "any" && category !== requirement.category) {
-                throw new Error(`Ship category ${category} does not match slot category ${requirement.category}`);
+                throw new Error(
+                  `Ship category ${category} does not match slot category ${requirement.category}`,
+                );
               }
             }
           }
@@ -178,12 +245,18 @@ export async function apiRoutes(app: FastifyInstance) {
           requirementId: requirementId || undefined,
           captainNote: captainNote || undefined,
         });
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Unit+registered.`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "ok:Unit+registered.", "fleet"),
+          302,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to register unit";
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
+          302,
+        );
       }
-    }
+    },
   );
 
   // ── Delete fleet unit ────────────────────────────────────────────────
@@ -200,12 +273,18 @@ export async function apiRoutes(app: FastifyInstance) {
         });
         if (!unit) return reply.code(404).send({ error: "Unit not found" });
         await deleteUnit(req.params.unitId, ctx.user.id, ctx.user.role);
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Unit+removed.`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "ok:Unit+removed.", "fleet"),
+          302,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed";
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
+          302,
+        );
       }
-    }
+    },
   );
 
   // ── Accept / reject unit ─────────────────────────────────────────────
@@ -225,7 +304,10 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       await setUnitStatus(req.params.unitId, "accepted");
       const env = getEnv();
-      const unitName = unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+      const unitName =
+        unit.unitType === "ship"
+          ? (unit.ship?.name ?? "Unknown Ship")
+          : (unit.squadName ?? "Squad");
       const operationUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${unit.operation.id}`;
       const companionToken = await createCompanionSession(unit.captainId);
       const companionConfigUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/companion/configure?token=${encodeURIComponent(companionToken)}`;
@@ -239,11 +321,15 @@ export async function apiRoutes(app: FastifyInstance) {
         }),
       ]).then((results) => {
         for (const result of results) {
-          if (result.status === "rejected") app.log.warn(result.reason, "Accepted captain Discord follow-up failed");
+          if (result.status === "rejected")
+            app.log.warn(result.reason, "Accepted captain Discord follow-up failed");
         }
       });
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Unit+accepted.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Unit+accepted.", "fleet"),
+        302,
+      );
+    },
   );
 
   app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
@@ -258,8 +344,11 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       await setUnitStatus(req.params.unitId, "rejected", req.body.note);
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=warn:Unit+rejected.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "warn:Unit+rejected.", "fleet"),
+        302,
+      );
+    },
   );
 
   // ── Operation status change ──────────────────────────────────────────
@@ -272,7 +361,10 @@ export async function apiRoutes(app: FastifyInstance) {
 
       const role = req.body.role;
       if (role !== "commander" && role !== "admiral") {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Invalid+Discord+role`), 302);
+        return reply.redirect(
+          basePath(`/ops/${req.params.id}?flash=error:Invalid+Discord+role`),
+          302,
+        );
       }
 
       const unit = await prisma.fleetUnit.findFirst({
@@ -281,17 +373,28 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       if (unit.status !== "accepted") {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Only+accepted+captains+can+receive+Discord+roles`), 302);
+        return reply.redirect(
+          basePath(
+            `/ops/${req.params.id}?flash=error:Only+accepted+captains+can+receive+Discord+roles`,
+          ),
+          302,
+        );
       }
 
       try {
         await assignCaptainDiscordRole(unit.captainId, unit.operation.guildId, role);
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Discord+role+assigned.`), 302);
+        return reply.redirect(
+          basePath(`/ops/${req.params.id}?flash=ok:Discord+role+assigned.`),
+          302,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to assign Discord role";
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`),
+          302,
+        );
       }
-    }
+    },
   );
 
   app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
@@ -308,33 +411,36 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
 
       const seatOpRole = await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id);
-      const canEditSeats =
-        unit.captainId === ctx.user.id ||
-        seatOpRole === "fleetoperator";
+      const canEditSeats = unit.captainId === ctx.user.id || seatOpRole === "fleetoperator";
       if (!canEditSeats) {
         return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Forbidden`), 302);
       }
 
       try {
-        await prisma.$transaction(unit.seats.map((seat) => {
-          const rawLabel = req.body[`label_${seat.id}`]?.trim();
-          const label = rawLabel ? rawLabel.slice(0, 40) : seat.label;
-          const active = seat.order === 0 || req.body[`active_${seat.id}`] === "1";
-          return prisma.seatAssignment.update({
-            where: { id: seat.id },
-            data: {
-              label,
-              active,
-              ...(active ? {} : { userId: null }),
-            },
-          });
-        }));
+        await prisma.$transaction(
+          unit.seats.map((seat) => {
+            const rawLabel = req.body[`label_${seat.id}`]?.trim();
+            const label = rawLabel ? rawLabel.slice(0, 40) : seat.label;
+            const active = seat.order === 0 || req.body[`active_${seat.id}`] === "1";
+            return prisma.seatAssignment.update({
+              where: { id: seat.id },
+              data: {
+                label,
+                active,
+                ...(active ? {} : { userId: null }),
+              },
+            });
+          }),
+        );
         return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Seat+setup+saved.`), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to save seat setup";
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`),
+          302,
+        );
       }
-    }
+    },
   );
 
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
@@ -400,33 +506,64 @@ export async function apiRoutes(app: FastifyInstance) {
             ? `+${moved.notConnected}+users+were+not+connected+to+voice.`
             : "";
           return reply.redirect(
-            basePath(`/ops/${req.params.id}?flash=ok:Status+updated.+Moved+${moved.moved}+crew+into+${moved.channels}+voice+channels.${notConnected}${skipped}`),
+            opReturnUrl(
+              req.params.id,
+              req.body,
+              `ok:Status+updated.+Moved+${moved.moved}+crew+into+${moved.channels}+voice+channels.${notConnected}${skipped}`,
+              "overview",
+            ),
             302,
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Voice move failed";
-          return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Status+updated,+voice+move+failed:+${encodeURIComponent(msg)}`), 302);
+          return reply.redirect(
+            opReturnUrl(
+              req.params.id,
+              req.body,
+              `error:Status+updated,+voice+move+failed:+${encodeURIComponent(msg)}`,
+              "overview",
+            ),
+            302,
+          );
         }
       }
       if (newStatus === "completed" || newStatus === "cancelled") {
         try {
           const cleanup = await cleanupOperationVoiceChannels(req.params.id);
           const removableCaptainIds = await captainsWhoseEventRolesCanBeRemoved(req.params.id);
-          await Promise.allSettled(removableCaptainIds.map((userId) => removeCaptainDiscordRoles(userId, updated.guildId)));
+          await Promise.allSettled(
+            removableCaptainIds.map((userId) => removeCaptainDiscordRoles(userId, updated.guildId)),
+          );
           const skipped = cleanup.skippedDiscordUsers
             ? `+${cleanup.skippedDiscordUsers}+users+had+no+Discord+identity.`
             : "";
           return reply.redirect(
-            basePath(`/ops/${req.params.id}?flash=ok:Status+updated.+Deleted+${cleanup.deleted}+voice+channels,+disconnected+${cleanup.disconnected}+crew,+removed+${removableCaptainIds.length}+captain+voice+roles.${skipped}`),
+            opReturnUrl(
+              req.params.id,
+              req.body,
+              `ok:Status+updated.+Deleted+${cleanup.deleted}+voice+channels,+disconnected+${cleanup.disconnected}+crew,+removed+${removableCaptainIds.length}+captain+voice+roles.${skipped}`,
+              "overview",
+            ),
             302,
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "Voice cleanup failed";
-          return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Status+updated,+voice+cleanup+failed:+${encodeURIComponent(msg)}`), 302);
+          return reply.redirect(
+            opReturnUrl(
+              req.params.id,
+              req.body,
+              `error:Status+updated,+voice+cleanup+failed:+${encodeURIComponent(msg)}`,
+              "overview",
+            ),
+            302,
+          );
         }
       }
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Status+updated.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Status+updated.", "overview"),
+        302,
+      );
+    },
   );
 
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
@@ -441,14 +578,22 @@ export async function apiRoutes(app: FastifyInstance) {
           ? `+${result.skippedDiscordUsers}+users+had+no+Discord+identity.`
           : "";
         return reply.redirect(
-          basePath(`/ops/${req.params.id}?flash=ok:Created+${result.created}+voice+channels,+assigned+${result.botsAssigned}+bots.${skipped}`),
+          opReturnUrl(
+            req.params.id,
+            req.body,
+            `ok:Created+${result.created}+voice+channels,+assigned+${result.botsAssigned}+bots.${skipped}`,
+            "voice",
+          ),
           302,
         );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to launch voice channels";
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "voice"),
+          302,
+        );
       }
-    }
+    },
   );
 
   app.post<{ Params: { id: string; voiceChannelId: string }; Body: Record<string, string> }>(
@@ -463,12 +608,18 @@ export async function apiRoutes(app: FastifyInstance) {
           voiceChannelId: req.params.voiceChannelId,
           name: req.body.name ?? "",
         });
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Voice+channel+renamed.`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "ok:Voice+channel+renamed.", "voice"),
+          302,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to rename voice channel";
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "voice"),
+          302,
+        );
       }
-    }
+    },
   );
 
   app.post<{ Params: { id: string; voiceChannelId: string }; Body: Record<string, string> }>(
@@ -482,12 +633,18 @@ export async function apiRoutes(app: FastifyInstance) {
           operationId: req.params.id,
           voiceChannelId: req.params.voiceChannelId,
         });
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Voice+channel+deleted.`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "ok:Voice+channel+deleted.", "voice"),
+          302,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to delete voice channel";
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "voice"),
+          302,
+        );
       }
-    }
+    },
   );
 
   // ── Claim / unclaim seat ─────────────────────────────────────────────
@@ -513,7 +670,7 @@ export async function apiRoutes(app: FastifyInstance) {
         const msg = err instanceof Error ? err.message : "Failed";
         return reply.redirect(basePath(`/ops/${opId}?flash=error:${encodeURIComponent(msg)}`), 302);
       }
-    }
+    },
   );
 
   app.post<{ Params: { seatId: string }; Body: Record<string, string> }>(
@@ -569,9 +726,10 @@ export async function apiRoutes(app: FastifyInstance) {
           await prisma.crewAssignmentRequest.deleteMany({
             where: { operationId: assignedSeat.fleetUnit.operationId, userId: targetUserId },
           });
-          const unitName = assignedSeat.fleetUnit.unitType === "ship"
-            ? (assignedSeat.fleetUnit.ship?.name ?? "Unknown Ship")
-            : (assignedSeat.fleetUnit.squadName ?? "Squad");
+          const unitName =
+            assignedSeat.fleetUnit.unitType === "ship"
+              ? (assignedSeat.fleetUnit.ship?.name ?? "Unknown Ship")
+              : (assignedSeat.fleetUnit.squadName ?? "Squad");
           sendSeatAssignmentDm(targetUserId, {
             operationTitle: assignedSeat.fleetUnit.operation.title,
             operationUrl: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${assignedSeat.fleetUnit.operation.id}`,
@@ -585,7 +743,7 @@ export async function apiRoutes(app: FastifyInstance) {
         const msg = err instanceof Error ? err.message : "Failed";
         return reply.redirect(basePath(`/ops/${opId}?flash=error:${encodeURIComponent(msg)}`), 302);
       }
-    }
+    },
   );
 
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
@@ -594,10 +752,16 @@ export async function apiRoutes(app: FastifyInstance) {
       const ctx = await requireAuth(req, reply);
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      const op = await prisma.operation.findUnique({ where: { id: req.params.id }, select: { id: true, status: true } });
+      const op = await prisma.operation.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, status: true },
+      });
       if (!op) return reply.code(404).send({ error: "Operation not found" });
       if (op.status !== "open" && op.status !== "draft") {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Operation+is+not+open+for+registration`), 302);
+        return reply.redirect(
+          basePath(`/ops/${req.params.id}?flash=error:Operation+is+not+open+for+registration`),
+          302,
+        );
       }
       const note = req.body.note?.trim().slice(0, 240) || null;
       await prisma.crewAssignmentRequest.upsert({
@@ -605,8 +769,11 @@ export async function apiRoutes(app: FastifyInstance) {
         create: { operationId: req.params.id, userId: ctx.user.id, note },
         update: { note },
       });
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Crew+assignment+request+saved.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Crew+assignment+request+saved.", "crew"),
+        302,
+      );
+    },
   );
 
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
@@ -616,13 +783,19 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       const targetUserId = req.body.userId || ctx.user.id;
-      const canRemoveOther = (await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id)) === "fleetoperator";
+      const canRemoveOther =
+        (await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id)) === "fleetoperator";
       if (targetUserId !== ctx.user.id && !canRemoveOther) {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Forbidden`), 302);
+        return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Forbidden", "crew"), 302);
       }
-      await prisma.crewAssignmentRequest.deleteMany({ where: { operationId: req.params.id, userId: targetUserId } });
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Crew+request+removed.`), 302);
-    }
+      await prisma.crewAssignmentRequest.deleteMany({
+        where: { operationId: req.params.id, userId: targetUserId },
+      });
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Crew+request+removed.", "crew"),
+        302,
+      );
+    },
   );
 
   app.post<{ Params: { seatId: string }; Body: Record<string, string> }>(
@@ -646,7 +819,7 @@ export async function apiRoutes(app: FastifyInstance) {
         const msg = err instanceof Error ? err.message : "Failed";
         return reply.redirect(basePath(`/ops/${opId}?flash=error:${encodeURIComponent(msg)}`), 302);
       }
-    }
+    },
   );
 
   // ── Leader management ────────────────────────────────────────────────
@@ -658,14 +831,24 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       const { userId, leaderRole } = req.body;
       if (!userId) return reply.code(400).send({ error: "userId required" });
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, active: true } });
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, active: true },
+      });
       if (!user || !user.active) {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:User+account+not+found+or+inactive`), 302);
+        return reply.redirect(
+          basePath(`/ops/${req.params.id}?flash=error:User+account+not+found+or+inactive`),
+          302,
+        );
       }
       const validRoles = ["event_leader", "fleet_commander", "raid_leader", "wing_commander"];
-      await addLeader(req.params.id, userId, validRoles.includes(leaderRole) ? leaderRole : "event_leader");
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Leader+added.`), 302);
-    }
+      await addLeader(
+        req.params.id,
+        userId,
+        validRoles.includes(leaderRole) ? leaderRole : "event_leader",
+      );
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Leader+added.", "admin"), 302);
+    },
   );
 
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
@@ -677,8 +860,11 @@ export async function apiRoutes(app: FastifyInstance) {
       const { userId } = req.body;
       if (!userId) return reply.code(400).send({ error: "userId required" });
       await removeLeader(req.params.id, userId);
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Leader+removed.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Leader+removed.", "admin"),
+        302,
+      );
+    },
   );
 
   // ── Composition groups ───────────────────────────────────────────────
@@ -689,15 +875,20 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       const name = req.body.name?.trim();
-      if (!name) return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Group+name+required`), 302);
+      if (!name)
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Group+name+required", "fleet"),
+          302,
+        );
       const last = await prisma.compositionGroup.aggregate({
-        where: { operationId: req.params.id }, _max: { order: true },
+        where: { operationId: req.params.id },
+        _max: { order: true },
       });
       await prisma.compositionGroup.create({
         data: { operationId: req.params.id, name, order: (last._max.order ?? -1) + 1 },
       });
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Group+added.`), 302);
-    }
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Group+added.", "fleet"), 302);
+    },
   );
 
   app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
@@ -712,8 +903,11 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!group) return reply.code(404).send({ error: "Group not found" });
       await prisma.compositionGroup.delete({ where: { id: req.params.groupId } });
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Group+deleted.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Group+deleted.", "fleet"),
+        302,
+      );
+    },
   );
 
   // ── Composition requirements ─────────────────────────────────────────
@@ -725,10 +919,16 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       const { label, category, count, note } = req.body;
       if (!label?.trim() || !category) {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Label+and+category+required`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Label+and+category+required", "fleet"),
+          302,
+        );
       }
       if (!REQUIREMENT_CATEGORIES.includes(category as (typeof REQUIREMENT_CATEGORIES)[number])) {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Invalid+category`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Invalid+category", "fleet"),
+          302,
+        );
       }
       const group = await prisma.compositionGroup.findFirst({
         where: { id: req.params.groupId, operationId: req.params.id },
@@ -736,7 +936,8 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!group) return reply.code(404).send({ error: "Group not found" });
       const last = await prisma.compositionRequirement.aggregate({
-        where: { groupId: req.params.groupId }, _max: { order: true },
+        where: { groupId: req.params.groupId },
+        _max: { order: true },
       });
       await prisma.compositionRequirement.create({
         data: {
@@ -748,8 +949,11 @@ export async function apiRoutes(app: FastifyInstance) {
           order: (last._max.order ?? -1) + 1,
         },
       });
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Requirement+added.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Requirement+added.", "fleet"),
+        302,
+      );
+    },
   );
 
   app.post<{ Params: { id: string; reqId: string }; Body: Record<string, string> }>(
@@ -764,8 +968,11 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!requirement) return reply.code(404).send({ error: "Requirement not found" });
       await prisma.compositionRequirement.delete({ where: { id: req.params.reqId } });
-      return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Requirement+deleted.`), 302);
-    }
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Requirement+deleted.", "fleet"),
+        302,
+      );
+    },
   );
 
   // ── Fleet voice token ────────────────────────────────────────────────
@@ -803,7 +1010,10 @@ export async function apiRoutes(app: FastifyInstance) {
         }
       }
 
-      if (!unitId) return reply.code(403).send({ error: "No accepted unit found for this user in this operation" });
+      if (!unitId)
+        return reply
+          .code(403)
+          .send({ error: "No accepted unit found for this user in this operation" });
 
       const unit = await prisma.fleetUnit.findFirst({
         where: { id: unitId, operationId: op.id, status: "accepted" },
@@ -812,10 +1022,11 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!unit) return reply.code(404).send({ error: "Unit not found or not accepted" });
 
       const result = await issueUnitLivekitToken(userId, op.id, unit.id);
-      if (!result) return reply.code(503).send({ error: "LiveKit is not configured on this server" });
+      if (!result)
+        return reply.code(503).send({ error: "LiveKit is not configured on this server" });
 
       return reply.send({ ...result, opTitle: op.title });
-    }
+    },
   );
 
   // ── Companion auto-voice endpoint ────────────────────────────────────
@@ -823,209 +1034,221 @@ export async function apiRoutes(app: FastifyInstance) {
   // by /auth/discord/companion/callback. Returns the caller's active fleet
   // unit room token (if in an accepted unit in an active op) and, if they
   // hold the guild's globalVoiceRoleId Discord role, a global voice token.
-  app.get(
-    "/api/companion/voice",
-    async (req, reply) => {
-      const authHeader = (req.headers as Record<string, string | undefined>).authorization;
-      if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
-      const userId = await loadCompanionSession(authHeader.slice(7));
-      if (!userId) return reply.code(401).send({ error: "unauthorized" });
+  app.get("/api/companion/voice", async (req, reply) => {
+    const authHeader = (req.headers as Record<string, string | undefined>).authorization;
+    if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
+    const userId = await loadCompanionSession(authHeader.slice(7));
+    if (!userId) return reply.code(401).send({ error: "unauthorized" });
 
-      const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
+    const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
 
-      // Find active accepted unit as captain
-      let activeUnit = await prisma.fleetUnit.findFirst({
+    // Find active accepted unit as captain
+    let activeUnit = await prisma.fleetUnit.findFirst({
+      where: {
+        captainId: userId,
+        status: "accepted",
+        operation: { status: { in: [...ACTIVE_STATUSES] } },
+      },
+      include: { operation: { include: { guild: true } } },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Fall back to crew seat
+    if (!activeUnit) {
+      const crewSeat = await prisma.seatAssignment.findFirst({
         where: {
-          captainId: userId,
-          status: "accepted",
-          operation: { status: { in: [...ACTIVE_STATUSES] } },
-        },
-        include: { operation: { include: { guild: true } } },
-        orderBy: { createdAt: "desc" },
-      });
-
-      // Fall back to crew seat
-      if (!activeUnit) {
-        const crewSeat = await prisma.seatAssignment.findFirst({
-          where: {
-            userId,
-            active: true,
-            fleetUnit: {
-              status: "accepted",
-              operation: { status: { in: [...ACTIVE_STATUSES] } },
-            },
+          userId,
+          active: true,
+          fleetUnit: {
+            status: "accepted",
+            operation: { status: { in: [...ACTIVE_STATUSES] } },
           },
-          include: { fleetUnit: { include: { operation: { include: { guild: true } } } } },
-        });
-        if (crewSeat) activeUnit = crewSeat.fleetUnit;
-      }
+        },
+        include: { fleetUnit: { include: { operation: { include: { guild: true } } } } },
+      });
+      if (crewSeat) activeUnit = crewSeat.fleetUnit;
+    }
 
-      let unitRoom: { livekitUrl: string; token: string; room: string; opTitle: string } | null = null;
-      let globalVoice: { livekitUrl: string; token: string; room: string } | null = null;
+    let unitRoom: { livekitUrl: string; token: string; room: string; opTitle: string } | null =
+      null;
+    let globalVoice: { livekitUrl: string; token: string; room: string } | null = null;
 
-      if (activeUnit) {
-        const op = activeUnit.operation;
-        const guild = op.guild;
+    if (activeUnit) {
+      const op = activeUnit.operation;
+      const guild = op.guild;
 
-        const ut = await issueUnitLivekitToken(userId, op.id, activeUnit.id);
-        if (ut) unitRoom = { ...ut, opTitle: op.title };
+      const ut = await issueUnitLivekitToken(userId, op.id, activeUnit.id);
+      if (ut) unitRoom = { ...ut, opTitle: op.title };
 
-        // Global voice: dedicated Globaltalk role if configured; otherwise
-        // fall back to the Admiral mapping role for older guild settings.
-        const globalVoiceRoleId = guild.globalVoiceRoleId ?? guild.admiralRoleId;
-        if (globalVoiceRoleId) {
-          try {
-            const discordId = await discordUserIdForFleetplannerUser(userId);
-            const roles = await fetchGuildMemberRoles(op.guildId, discordId);
-            if (roles?.includes(globalVoiceRoleId)) {
-              const gvt = await issueGlobalVoiceToken(userId, op.id);
-              if (gvt) globalVoice = gvt;
-            }
-          } catch {
-            // no Discord identity or role lookup failed → no global voice
+      // Global voice: dedicated Globaltalk role if configured; otherwise
+      // fall back to the Admiral mapping role for older guild settings.
+      const globalVoiceRoleId = guild.globalVoiceRoleId ?? guild.admiralRoleId;
+      if (globalVoiceRoleId) {
+        try {
+          const discordId = await discordUserIdForFleetplannerUser(userId);
+          const roles = await fetchGuildMemberRoles(op.guildId, discordId);
+          if (roles?.includes(globalVoiceRoleId)) {
+            const gvt = await issueGlobalVoiceToken(userId, op.id);
+            if (gvt) globalVoice = gvt;
           }
+        } catch {
+          // no Discord identity or role lookup failed → no global voice
         }
       }
-
-      return reply.send({ unitRoom, globalVoice });
     }
-  );
+
+    return reply.send({ unitRoom, globalVoice });
+  });
 
   // ── Mission Voice Session — companion polling endpoint ──────────────
   // Returns the two mission voice rooms (global + optional commander)
   // for the user's currently active operation.
-  app.get(
-    "/api/companion/mission-voice",
-    async (req, reply) => {
-      const authHeader = (req.headers as Record<string, string | undefined>).authorization;
-      if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
-      const userId = await loadMissionVoiceSession(authHeader.slice(7));
-      if (!userId) return reply.code(401).send({ error: "unauthorized" });
+  app.get("/api/companion/mission-voice", async (req, reply) => {
+    const authHeader = (req.headers as Record<string, string | undefined>).authorization;
+    if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
+    const userId = await loadMissionVoiceSession(authHeader.slice(7));
+    if (!userId) return reply.code(401).send({ error: "unauthorized" });
 
-      const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
+    const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
 
-      // Find op where user is accepted captain or has a claimed seat
-      let activeOp: Awaited<ReturnType<typeof prisma.operation.findFirst>> | null = null;
-      const captainUnit = await prisma.fleetUnit.findFirst({
-        where: { captainId: userId, status: "accepted", operation: { status: { in: [...ACTIVE_STATUSES] } } },
-        include: { operation: true },
-        orderBy: { createdAt: "desc" },
+    // Find op where user is accepted captain or has a claimed seat
+    let activeOp: Awaited<ReturnType<typeof prisma.operation.findFirst>> | null = null;
+    const captainUnit = await prisma.fleetUnit.findFirst({
+      where: {
+        captainId: userId,
+        status: "accepted",
+        operation: { status: { in: [...ACTIVE_STATUSES] } },
+      },
+      include: { operation: true },
+      orderBy: { createdAt: "desc" },
+    });
+    if (captainUnit) activeOp = captainUnit.operation;
+
+    if (!activeOp) {
+      const crewSeat = await prisma.seatAssignment.findFirst({
+        where: {
+          userId,
+          active: true,
+          fleetUnit: { status: "accepted", operation: { status: { in: [...ACTIVE_STATUSES] } } },
+        },
+        include: { fleetUnit: { include: { operation: true } } },
       });
-      if (captainUnit) activeOp = captainUnit.operation;
+      if (crewSeat) activeOp = crewSeat.fleetUnit.operation;
+    }
 
-      if (!activeOp) {
-        const crewSeat = await prisma.seatAssignment.findFirst({
-          where: { userId, active: true, fleetUnit: { status: "accepted", operation: { status: { in: [...ACTIVE_STATUSES] } } } },
-          include: { fleetUnit: { include: { operation: true } } },
+    // Fleetoperators without a specific unit also get access
+    if (!activeOp) {
+      const fpMembership = await prisma.guildMembership.findFirst({
+        where: { userId, role: "fleetoperator" },
+        select: { guildId: true },
+      });
+      if (fpMembership) {
+        activeOp = await prisma.operation.findFirst({
+          where: { guildId: fpMembership.guildId, status: { in: [...ACTIVE_STATUSES] } },
+          orderBy: { updatedAt: "desc" },
         });
-        if (crewSeat) activeOp = crewSeat.fleetUnit.operation;
       }
+    }
 
-      // Fleetoperators without a specific unit also get access
-      if (!activeOp) {
-        const fpMembership = await prisma.guildMembership.findFirst({
-          where: { userId, role: "fleetoperator" },
-          select: { guildId: true },
-        });
-        if (fpMembership) {
-          activeOp = await prisma.operation.findFirst({
-            where: { guildId: fpMembership.guildId, status: { in: [...ACTIVE_STATUSES] } },
-            orderBy: { updatedAt: "desc" },
-          });
-        }
-      }
+    if (!activeOp) return reply.send({ op: null });
 
-      if (!activeOp) return reply.send({ op: null });
-
-      // Voice permission check
-      if (!await (async () => {
+    // Voice permission check
+    if (
+      !(await (async () => {
         const env = getEnv();
         if (env.RAUMDOCK_GUILD_ID && activeOp!.guildId === env.RAUMDOCK_GUILD_ID) return true;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const g = await (prisma.guild.findUnique as any)({ where: { id: activeOp!.guildId }, select: { voiceEnabled: true } }) as { voiceEnabled: boolean } | null;
+        const g = (await (prisma.guild.findUnique as any)({
+          where: { id: activeOp!.guildId },
+          select: { voiceEnabled: true },
+        })) as { voiceEnabled: boolean } | null;
         return g?.voiceEnabled ?? false;
-      })()) return reply.send({ op: null });
+      })())
+    )
+      return reply.send({ op: null });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const globalRoom = (activeOp as any).globalVoiceRoom as string | null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const commanderRoom = (activeOp as any).commanderVoiceRoom as string | null;
-      if (!globalRoom) return reply.send({ op: null });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const globalRoom = (activeOp as any).globalVoiceRoom as string | null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const commanderRoom = (activeOp as any).commanderVoiceRoom as string | null;
+    if (!globalRoom) return reply.send({ op: null });
 
-      const env = getEnv();
-      const globalToken = await issueMissionVoiceToken(userId, globalRoom);
-      if (!globalToken || !env.LIVEKIT_URL) return reply.send({ op: null });
+    const env = getEnv();
+    const globalToken = await issueMissionVoiceToken(userId, globalRoom);
+    if (!globalToken || !env.LIVEKIT_URL) return reply.send({ op: null });
 
-      // Commander room eligibility: captains of accepted units OR fleetoperators
-      const isCommander = !!(captainUnit || await prisma.guildMembership.findFirst({
+    // Commander room eligibility: captains of accepted units OR fleetoperators
+    const isCommander = !!(
+      captainUnit ||
+      (await prisma.guildMembership.findFirst({
         where: { userId, guildId: activeOp.guildId, role: "fleetoperator" },
         select: { id: true },
-      }));
-      const commanderToken = (isCommander && commanderRoom)
-        ? await issueMissionVoiceToken(userId, commanderRoom)
-        : null;
+      }))
+    );
+    const commanderToken =
+      isCommander && commanderRoom ? await issueMissionVoiceToken(userId, commanderRoom) : null;
 
-      return reply.send({
-        op: {
-          opId: activeOp.id,
-          opTitle: activeOp.title,
-          livekitUrl: env.LIVEKIT_URL,
-          globalRoom: { room: globalRoom, token: globalToken },
-          commanderRoom: (commanderToken && commanderRoom) ? { room: commanderRoom, token: commanderToken } : null,
-        },
-      });
-    }
-  );
+    return reply.send({
+      op: {
+        opId: activeOp.id,
+        opTitle: activeOp.title,
+        livekitUrl: env.LIVEKIT_URL,
+        globalRoom: { room: globalRoom, token: globalToken },
+        commanderRoom:
+          commanderToken && commanderRoom ? { room: commanderRoom, token: commanderToken } : null,
+      },
+    });
+  });
 
   // ── Generate fleet voice links (fleetoperator → distribute to crew) ─
-  app.post<{ Params: { opId: string } }>(
-    "/api/ops/:opId/voice-links",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.opId, "fleetoperator");
-      if (!ctx) return;
+  app.post<{ Params: { opId: string } }>("/api/ops/:opId/voice-links", async (req, reply) => {
+    const ctx = await requireOpRole(req, reply, req.params.opId, "fleetoperator");
+    if (!ctx) return;
 
-      const op = await getOperation(req.params.opId);
-      if (!op) return reply.code(404).send({ error: "Not found" });
+    const op = await getOperation(req.params.opId);
+    if (!op) return reply.code(404).send({ error: "Not found" });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const globalRoom = (op as any).globalVoiceRoom as string | null;
-      if (!globalRoom) return reply.code(400).send({ error: "No active voice session for this operation" });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const globalRoom = (op as any).globalVoiceRoom as string | null;
+    if (!globalRoom)
+      return reply.code(400).send({ error: "No active voice session for this operation" });
 
-      const env = getEnv();
-      if (!env.LIVEKIT_URL) return reply.code(400).send({ error: "LiveKit not configured" });
+    const env = getEnv();
+    if (!env.LIVEKIT_URL) return reply.code(400).send({ error: "LiveKit not configured" });
 
-      // Collect eligible users: accepted captains + guild fleetoperators
-      const captainIds = new Set<string>(op.units.filter((u) => u.status === "accepted").map((u) => u.captainId));
-      const fleetopMembers = await prisma.guildMembership.findMany({
-        where: { guildId: op.guildId, role: "fleetoperator" },
-        include: { user: { select: { id: true, username: true } } },
+    // Collect eligible users: accepted captains + guild fleetoperators
+    const captainIds = new Set<string>(
+      op.units.filter((u) => u.status === "accepted").map((u) => u.captainId),
+    );
+    const fleetopMembers = await prisma.guildMembership.findMany({
+      where: { guildId: op.guildId, role: "fleetoperator" },
+      include: { user: { select: { id: true, username: true } } },
+    });
+    const allUserIds = new Set<string>([...captainIds, ...fleetopMembers.map((m) => m.userId)]);
+
+    // Fetch usernames for captains
+    const captainUsers = await prisma.user.findMany({
+      where: { id: { in: [...captainIds] } },
+      select: { id: true, username: true },
+    });
+    const usernameMap = new Map<string, string>(captainUsers.map((u) => [u.id, u.username]));
+    for (const m of fleetopMembers) usernameMap.set(m.userId, m.user.username);
+
+    const baseUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+    const fleetplannerUrl = baseUrl;
+
+    // Create companion sessions + build links
+    const links: Array<{ userId: string; username: string; link: string }> = [];
+    for (const uid of allUserIds) {
+      const token = await createMissionVoiceSession(uid);
+      const params = new URLSearchParams({ token, url: fleetplannerUrl });
+      links.push({
+        userId: uid,
+        username: usernameMap.get(uid) ?? uid,
+        link: `dccc://fleet-voice?${params.toString()}`,
       });
-      const allUserIds = new Set<string>([...captainIds, ...fleetopMembers.map((m) => m.userId)]);
-
-      // Fetch usernames for captains
-      const captainUsers = await prisma.user.findMany({
-        where: { id: { in: [...captainIds] } },
-        select: { id: true, username: true },
-      });
-      const usernameMap = new Map<string, string>(captainUsers.map((u) => [u.id, u.username]));
-      for (const m of fleetopMembers) usernameMap.set(m.userId, m.user.username);
-
-      const baseUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
-      const fleetplannerUrl = baseUrl;
-
-      // Create companion sessions + build links
-      const links: Array<{ userId: string; username: string; link: string }> = [];
-      for (const uid of allUserIds) {
-        const token = await createMissionVoiceSession(uid);
-        const params = new URLSearchParams({ token, url: fleetplannerUrl });
-        links.push({
-          userId: uid,
-          username: usernameMap.get(uid) ?? uid,
-          link: `dccc://fleet-voice?${params.toString()}`,
-        });
-      }
-
-      return reply.send({ links });
     }
-  );
+
+    return reply.send({ links });
+  });
 }

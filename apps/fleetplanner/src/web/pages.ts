@@ -1317,6 +1317,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const activeTab = tabNames.includes(opts.tab ?? "") ? opts.tab! : "overview";
   const tabUrl = (tab: string) => `${bp}/ops/${op.id}?ui=new&tab=${tab}`;
   const classicUrl = `${bp}/ops/${op.id}`;
+  const returnFields = (tab: string) => html`
+    <input type="hidden" name="ui" value="new" />
+    <input type="hidden" name="tab" value="${tab}" />
+  `;
 
   const shellLink = (tab: string, label: string) =>
     html`<a class="opv2-tab ${activeTab === tab ? "active" : ""}" href="${tabUrl(tab)}"
@@ -1344,6 +1348,45 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           <div class="opv2-row-meta">
             ${statusTag(unit.status)}
             <span class="text-mono">${assigned}/${seats.length} seats</span>
+            ${isLeader && unit.status === "pending"
+              ? html`<div class="opv2-actions">
+                  <form
+                    method="post"
+                    action="${bp}/api/ops/${op.id}/units/${unit.id}/accept"
+                    class="inline"
+                  >
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <button type="submit" class="btn btn-sm btn-green">Accept</button>
+                  </form>
+                  <form
+                    method="post"
+                    action="${bp}/api/ops/${op.id}/units/${unit.id}/reject"
+                    class="inline"
+                  >
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                  </form>
+                </div>`
+              : safe("")}
+            ${(user && unit.captainId === user.id) || canManage
+              ? html`<form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/units/${unit.id}/delete"
+                  class="inline"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-ghost"
+                    onclick="return confirm('Delete this unit?')"
+                  >
+                    Delete
+                  </button>
+                </form>`
+              : safe("")}
           </div>
         </div>`;
       })
@@ -1369,6 +1412,21 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </div>`,
       )
     : [html`<p class="text-dim text-sm">No composition has been defined yet.</p>`];
+  const availableSlots = op.groups.flatMap((group) =>
+    group.requirements
+      .filter(
+        (requirement) =>
+          requirement.fleetUnits.filter((unit) => unit.status !== "rejected").length <
+          requirement.count,
+      )
+      .map((requirement) => {
+        const filled = requirement.fleetUnits.filter((unit) => unit.status !== "rejected").length;
+        return {
+          id: requirement.id,
+          label: `${group.name}: ${requirement.label} (${filled}/${requirement.count})`,
+        };
+      }),
+  );
 
   const statusControls = canManage
     ? html`<div class="opv2-actions">
@@ -1377,6 +1435,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ? html`<form method="post" action="${bp}/api/ops/${op.id}/status" class="inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <input type="hidden" name="status" value="${status}" />
+                ${returnFields(activeTab)}
                 <button type="submit" class="btn btn-sm btn-ghost">
                   ${status.replace("_", " ")}
                 </button>
@@ -1405,6 +1464,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     >
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="userId" value="${request.user.id}" />
+                      ${returnFields("crew")}
                       <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
                     </form>`
                   : safe("")}
@@ -1417,6 +1477,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       ${user && (op.status === "open" || op.status === "draft")
         ? html`<form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
             <input type="hidden" name="_csrf" value="${csrf}" />
+            ${returnFields("crew")}
             <label>Assignment note</label>
             <input
               type="text"
@@ -1466,7 +1527,36 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <strong>${name}</strong>
                 <span>Captain: ${channel.unit.captain.username}</span>
               </div>
-              <span class="tag tag-cyan">${channel.voiceBot?.label ?? "Discord"}</span>
+              <div class="opv2-row-meta">
+                <span class="tag tag-cyan">${channel.voiceBot?.label ?? "Discord"}</span>
+                ${canManage
+                  ? html`<form
+                        method="post"
+                        action="${bp}/api/ops/${op.id}/voice-channels/${channel.id}/rename"
+                        class="opv2-inline-form"
+                      >
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        ${returnFields("voice")}
+                        <input type="text" name="name" value="${name}" maxlength="100" required />
+                        <button type="submit" class="btn btn-sm btn-ghost">Rename</button>
+                      </form>
+                      <form
+                        method="post"
+                        action="${bp}/api/ops/${op.id}/voice-channels/${channel.id}/delete"
+                        class="inline"
+                      >
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        ${returnFields("voice")}
+                        <button
+                          type="submit"
+                          class="btn btn-sm btn-danger"
+                          onclick="return confirm('Delete this Discord voice channel?')"
+                        >
+                          Delete
+                        </button>
+                      </form>`
+                  : safe("")}
+              </div>
             </div>`;
           })
         : html`<p class="text-dim text-sm">No generated unit voice channels.</p>`}
@@ -1477,6 +1567,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             class="mt-1"
           >
             <input type="hidden" name="_csrf" value="${csrf}" />
+            ${returnFields("voice")}
             <button type="submit" class="btn btn-sm btn-cyan">Launch Voice Channels</button>
           </form>`
         : safe("")}
@@ -1485,11 +1576,75 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   const overviewPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Briefing</div>
-      ${op.description
-        ? html`<p>${op.description}</p>`
-        : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
-      ${statusControls}
+      <div class="opv2-panel-title">${canManage ? "Edit Briefing" : "Briefing"}</div>
+      ${canManage
+        ? html`<form method="post" action="${bp}/ops/${op.id}/edit" class="opv2-form">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            ${returnFields("overview")}
+            <label>Title</label>
+            <input type="text" name="title" value="${op.title}" maxlength="120" required />
+            <div class="opv2-form-grid">
+              <div>
+                <label>Type</label>
+                <select name="opType">
+                  ${[
+                    "combat",
+                    "mining",
+                    "salvage",
+                    "transport",
+                    "exploration",
+                    "training",
+                    "social",
+                  ].map(
+                    (type) =>
+                      html`<option value="${type}" ${op.opType === type ? safe("selected") : ""}>
+                        ${type}
+                      </option>`,
+                  )}
+                </select>
+              </div>
+              <div>
+                <label>When</label>
+                <input
+                  type="datetime-local"
+                  name="scheduledAt"
+                  value="${fmtDateLocal(op.scheduledAt, gtz)}"
+                  required
+                />
+              </div>
+            </div>
+            <div class="opv2-form-grid">
+              <div>
+                <label>System</label>
+                <select name="meetingSystem">
+                  ${SYSTEMS.map(
+                    (system) =>
+                      html`<option
+                        value="${system}"
+                        ${(op.meetingSystem ?? "stanton") === system ? safe("selected") : ""}
+                      >
+                        ${systemLabel(system)}
+                      </option>`,
+                  )}
+                </select>
+              </div>
+              <div>
+                <label>Rendezvous</label>
+                <input
+                  type="text"
+                  name="meetingLocation"
+                  value="${op.meetingLocation ?? ""}"
+                  maxlength="120"
+                />
+              </div>
+            </div>
+            <label>Description</label>
+            <textarea name="description" rows="5">${op.description ?? ""}</textarea>
+            <button type="submit" class="btn btn-sm mt-1">Save Overview</button>
+          </form>`
+        : op.description
+          ? html`<p>${op.description}</p>`
+          : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
     </section>
     <section class="opv2-panel">
       <div class="opv2-panel-title">Action Details</div>
@@ -1509,6 +1664,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         <span>Leaders</span>
         <strong>${op.leaders.length || "None"}</strong>
       </div>
+      ${statusControls}
     </section>
   </div>`;
 
@@ -1516,13 +1672,122 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     <section class="opv2-panel">
       <div class="opv2-panel-title">Fleet Units</div>
       <div class="opv2-stack">${unitRows}</div>
-      <a href="${classicUrl}" class="btn btn-sm btn-ghost mt-1"
-        >Register or edit units in Classic UI</a
-      >
+      ${user && (op.status === "open" || op.status === "draft")
+        ? html`<details class="opv2-edit-block mt-1">
+            <summary class="btn btn-sm">Register Unit</summary>
+            <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form mt-1">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              ${returnFields("fleet")}
+              <label>Composition slot</label>
+              <select name="requirementId">
+                <option value="">Unslotted</option>
+                ${availableSlots.map(
+                  (slot) => html`<option value="${slot.id}">${slot.label}</option>`,
+                )}
+              </select>
+              <label>Unit type</label>
+              <select name="unitType">
+                <option value="ship">Ship</option>
+                <option value="squad">FPS Squad</option>
+              </select>
+              <label>Owned ship</label>
+              <select name="ownedShipId">
+                <option value="">Select owned ship for ship units...</option>
+                ${opts.ownedShips.map(
+                  (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
+                )}
+              </select>
+              <div class="opv2-form-grid">
+                <div>
+                  <label>Squad name</label>
+                  <input type="text" name="squadName" maxlength="80" placeholder="FPS Team" />
+                </div>
+                <div>
+                  <label>Squad size</label>
+                  <input type="number" name="squadSize" min="2" max="8" value="4" />
+                </div>
+              </div>
+              <label>Captain note</label>
+              <input
+                type="text"
+                name="captainNote"
+                maxlength="240"
+                placeholder="Role, loadout, crew preference..."
+              />
+              <button type="submit" class="btn btn-sm mt-1">Register</button>
+              <a href="${classicUrl}" class="btn btn-sm btn-ghost mt-1">Advanced ship search</a>
+            </form>
+          </details>`
+        : safe("")}
     </section>
     <section class="opv2-panel">
       <div class="opv2-panel-title">Composition</div>
       <div class="opv2-stack">${compositionRows}</div>
+      ${canManage
+        ? html`<details class="opv2-edit-block mt-1">
+            <summary class="btn btn-sm">Edit Composition</summary>
+            <form
+              method="post"
+              action="${bp}/api/ops/${op.id}/groups"
+              class="opv2-inline-form mt-1"
+            >
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              ${returnFields("fleet")}
+              <input type="text" name="name" placeholder="Group name" maxlength="80" required />
+              <button type="submit" class="btn btn-sm">Add Group</button>
+            </form>
+            ${op.groups.map(
+              (group) =>
+                html`<div class="opv2-composition-group mt-1">
+                  <div class="opv2-panel-title">${group.name}</div>
+                  <form
+                    method="post"
+                    action="${bp}/api/ops/${op.id}/groups/${group.id}/requirements"
+                    class="opv2-form"
+                  >
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <div class="opv2-form-grid">
+                      <div>
+                        <label>Requirement</label>
+                        <input type="text" name="label" maxlength="80" required />
+                      </div>
+                      <div>
+                        <label>Category</label>
+                        <select name="category">
+                          ${[
+                            "capital",
+                            "subcapital",
+                            "fighter",
+                            "support",
+                            "ground",
+                            "transport",
+                            "mining",
+                            "salvage",
+                            "exploration",
+                            "any",
+                          ].map(
+                            (category) => html`<option value="${category}">${category}</option>`,
+                          )}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="opv2-form-grid">
+                      <div>
+                        <label>Count</label>
+                        <input type="number" name="count" value="1" min="1" max="20" />
+                      </div>
+                      <div>
+                        <label>Note</label>
+                        <input type="text" name="note" maxlength="160" />
+                      </div>
+                    </div>
+                    <button type="submit" class="btn btn-sm mt-1">Add Requirement</button>
+                  </form>
+                </div>`,
+            )}
+          </details>`
+        : safe("")}
     </section>
   </div>`;
 
@@ -1531,7 +1796,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       <div class="opv2-panel-title">Operation Control</div>
       <div class="opv2-actions">
         ${canManage
-          ? html`<a href="${bp}/ops/${op.id}/edit" class="btn btn-sm">Edit Operation</a>`
+          ? html`<a href="${tabUrl("overview")}" class="btn btn-sm">Edit Overview</a>`
           : ""}
         <a href="${classicUrl}" class="btn btn-sm btn-ghost">Classic Full Controls</a>
         ${canManage
@@ -1559,9 +1824,51 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   <strong>${leader.user.username}</strong>
                   <span>${roleLabel(leader.leaderRole)}</span>
                 </div>
+                ${canManage
+                  ? html`<form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/leaders/remove"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="userId" value="${leader.user.id}" />
+                      ${returnFields("admin")}
+                      <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
+                    </form>`
+                  : safe("")}
               </div>`,
           )
         : html`<p class="text-dim text-sm">No leaders assigned.</p>`}
+      ${canManage
+        ? html`<form method="post" action="${bp}/api/ops/${op.id}/leaders" class="opv2-form mt-1">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            ${returnFields("admin")}
+            <div class="opv2-form-grid">
+              <div>
+                <label>Add leader</label>
+                <select name="userId" required>
+                  <option value="">Select user...</option>
+                  ${opts.assignableUsers.map(
+                    (assignableUser) =>
+                      html`<option value="${assignableUser.id}">
+                        ${assignableUser.username} (${assignableUser.role})
+                      </option>`,
+                  )}
+                </select>
+              </div>
+              <div>
+                <label>Role</label>
+                <select name="leaderRole">
+                  <option value="event_leader">Event Leader</option>
+                  <option value="fleet_commander">Fleet Commander</option>
+                  <option value="raid_leader">Raid Leader</option>
+                  <option value="wing_commander">Wing Commander</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm mt-1">Add Leader</button>
+          </form>`
+        : safe("")}
     </section>
   </div>`;
 

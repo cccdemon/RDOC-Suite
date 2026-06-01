@@ -578,7 +578,11 @@ export async function webRoutes(app: FastifyInstance) {
         (editGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
       const parsedDate = scheduledAt ? parseDateLocalTz(scheduledAt, editGuildTz) : null;
       if (scheduledAt && !parsedDate) {
-        return reply.redirect(basePath(`/ops/${req.params.id}/edit?flash=error:Invalid+date`), 302);
+        const target =
+          req.body.ui === "new"
+            ? `/ops/${req.params.id}?ui=new&tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Invalid+date`
+            : `/ops/${req.params.id}/edit?flash=error:Invalid+date`;
+        return reply.redirect(basePath(target), 302);
       }
       try {
         const meeting = await resolveMeetingFields(req.body);
@@ -591,9 +595,17 @@ export async function webRoutes(app: FastifyInstance) {
           ...(parsedDate && { scheduledAt: parsedDate }),
           eventVoiceChannelId: eventVoiceChannelId?.trim() || undefined,
         });
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Saved.`), 302);
+        const target =
+          req.body.ui === "new"
+            ? `/ops/${req.params.id}?ui=new&tab=${encodeURIComponent(req.body.tab || "overview")}&flash=ok:Saved.`
+            : `/ops/${req.params.id}?flash=ok:Saved.`;
+        return reply.redirect(basePath(target), 302);
       } catch {
-        return reply.redirect(basePath(`/ops/${req.params.id}/edit?flash=error:Save+failed`), 302);
+        const target =
+          req.body.ui === "new"
+            ? `/ops/${req.params.id}?ui=new&tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Save+failed`
+            : `/ops/${req.params.id}/edit?flash=error:Save+failed`;
+        return reply.redirect(basePath(target), 302);
       }
     },
   );

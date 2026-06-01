@@ -921,6 +921,38 @@ select option { background: var(--bg3); }
 .opv2-requirement span:first-child {
   overflow-wrap: anywhere;
 }
+.opv2-form,
+.opv2-inline-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.opv2-inline-form {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.opv2-inline-form input[type=text] {
+  width: auto;
+  min-width: 12rem;
+}
+.opv2-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.opv2-edit-block {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+.opv2-edit-block summary {
+  display: inline-block;
+  list-style: none;
+  cursor: pointer;
+}
+.opv2-edit-block summary::-webkit-details-marker {
+  display: none;
+}
 
 .ship-results { margin-top: 1.25rem; }
 .ship-row {
@@ -1018,6 +1050,15 @@ select option { background: var(--bg3); }
   }
   .opv2-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .opv2-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .opv2-inline-form {
+    align-items: stretch;
+  }
+  .opv2-inline-form input[type=text] {
+    width: 100%;
   }
   .opv2-tab {
     flex: 1 1 50%;
