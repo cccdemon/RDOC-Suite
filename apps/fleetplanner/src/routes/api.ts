@@ -362,7 +362,7 @@ export async function apiRoutes(app: FastifyInstance) {
       const role = req.body.role;
       if (role !== "commander" && role !== "admiral") {
         return reply.redirect(
-          basePath(`/ops/${req.params.id}?flash=error:Invalid+Discord+role`),
+          opReturnUrl(req.params.id, req.body, "error:Invalid+Discord+role", "fleet"),
           302,
         );
       }
@@ -374,8 +374,11 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       if (unit.status !== "accepted") {
         return reply.redirect(
-          basePath(
-            `/ops/${req.params.id}?flash=error:Only+accepted+captains+can+receive+Discord+roles`,
+          opReturnUrl(
+            req.params.id,
+            req.body,
+            "error:Only+accepted+captains+can+receive+Discord+roles",
+            "fleet",
           ),
           302,
         );
@@ -384,13 +387,13 @@ export async function apiRoutes(app: FastifyInstance) {
       try {
         await assignCaptainDiscordRole(unit.captainId, unit.operation.guildId, role);
         return reply.redirect(
-          basePath(`/ops/${req.params.id}?flash=ok:Discord+role+assigned.`),
+          opReturnUrl(req.params.id, req.body, "ok:Discord+role+assigned.", "fleet"),
           302,
         );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to assign Discord role";
         return reply.redirect(
-          basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`),
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
           302,
         );
       }
@@ -432,11 +435,14 @@ export async function apiRoutes(app: FastifyInstance) {
             });
           }),
         );
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=ok:Seat+setup+saved.`), 302);
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "ok:Seat+setup+saved.", "fleet"),
+          302,
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to save seat setup";
         return reply.redirect(
-          basePath(`/ops/${req.params.id}?flash=error:${encodeURIComponent(msg)}`),
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
           302,
         );
       }
@@ -572,10 +578,7 @@ export async function apiRoutes(app: FastifyInstance) {
         }
       }
       const finalFlash = discordEventCreationFlash ?? "ok:Status+updated.";
-      return reply.redirect(
-        opReturnUrl(req.params.id, req.body, finalFlash, "overview"),
-        302,
-      );
+      return reply.redirect(opReturnUrl(req.params.id, req.body, finalFlash, "overview"), 302);
     },
   );
 
@@ -678,10 +681,13 @@ export async function apiRoutes(app: FastifyInstance) {
 
       try {
         await claimSeat(req.params.seatId, ctx.user.id);
-        return reply.redirect(basePath(`/ops/${opId}?flash=ok:Seat+claimed.`), 302);
+        return reply.redirect(opReturnUrl(opId, req.body, "ok:Seat+claimed.", "fleet"), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed";
-        return reply.redirect(basePath(`/ops/${opId}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(opId, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
+          302,
+        );
       }
     },
   );
@@ -712,12 +718,12 @@ export async function apiRoutes(app: FastifyInstance) {
         assignOpRole === "fleetoperator" ||
         seat.fleetUnit.operation.leaders.some((leader) => leader.userId === ctx.user.id);
       if (!canAssign) {
-        return reply.redirect(basePath(`/ops/${opId}?flash=error:Forbidden`), 302);
+        return reply.redirect(opReturnUrl(opId, req.body, "error:Forbidden", "fleet"), 302);
       }
 
       const targetUserId = req.body.userId;
       if (!targetUserId) {
-        return reply.redirect(basePath(`/ops/${opId}?flash=error:User+required`), 302);
+        return reply.redirect(opReturnUrl(opId, req.body, "error:User+required", "fleet"), 302);
       }
 
       try {
@@ -751,10 +757,13 @@ export async function apiRoutes(app: FastifyInstance) {
             seatLabel: assignedSeat.label,
           }).catch((err) => app.log.warn(err, "Seat assignment DM failed"));
         }
-        return reply.redirect(basePath(`/ops/${opId}?flash=ok:Seat+assigned.`), 302);
+        return reply.redirect(opReturnUrl(opId, req.body, "ok:Seat+assigned.", "fleet"), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed";
-        return reply.redirect(basePath(`/ops/${opId}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(opId, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
+          302,
+        );
       }
     },
   );
@@ -827,10 +836,13 @@ export async function apiRoutes(app: FastifyInstance) {
 
       try {
         await unclaimSeat(req.params.seatId, ctx.user.id, ctx.user.role);
-        return reply.redirect(basePath(`/ops/${opId}?flash=ok:Seat+released.`), 302);
+        return reply.redirect(opReturnUrl(opId, req.body, "ok:Seat+released.", "fleet"), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed";
-        return reply.redirect(basePath(`/ops/${opId}?flash=error:${encodeURIComponent(msg)}`), 302);
+        return reply.redirect(
+          opReturnUrl(opId, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
+          302,
+        );
       }
     },
   );

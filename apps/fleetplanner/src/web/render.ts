@@ -938,6 +938,86 @@ select option { background: var(--bg3); }
 .opv2-requirement span:first-child {
   overflow-wrap: anywhere;
 }
+.opv2-unit-card {
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  padding: 0.75rem;
+}
+.opv2-unit-card > .opv2-row {
+  padding-top: 0;
+}
+.opv2-seat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.65rem;
+}
+.opv2-seat-row {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) minmax(7rem, 0.8fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border);
+  background: rgba(5,8,16,0.42);
+}
+.opv2-seat-row.disabled {
+  opacity: 0.55;
+}
+.opv2-seat-row strong {
+  display: block;
+  font-family: var(--font-mono);
+  color: var(--text);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+.opv2-seat-row span {
+  color: var(--dim);
+  font-size: 0.75rem;
+}
+.opv2-seat-user {
+  color: var(--text);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+.opv2-seat-user.empty {
+  color: var(--dim);
+  font-style: italic;
+}
+.opv2-seat-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.35rem;
+}
+.opv2-seat-assign {
+  position: relative;
+}
+.opv2-seat-assign summary {
+  display: inline-block;
+  list-style: none;
+  cursor: pointer;
+}
+.opv2-seat-assign summary::-webkit-details-marker {
+  display: none;
+}
+.opv2-seat-assign form {
+  min-width: 18rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  margin-top: 0.35rem;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+}
+.opv2-seat-setup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
 .opv2-form,
 .opv2-inline-form {
   display: flex;
@@ -1076,6 +1156,14 @@ select option { background: var(--bg3); }
   }
   .opv2-inline-form input[type=text] {
     width: 100%;
+  }
+  .opv2-seat-row,
+  .opv2-seat-assign form,
+  .opv2-seat-setup-row {
+    grid-template-columns: 1fr;
+  }
+  .opv2-seat-actions {
+    justify-content: flex-start;
   }
   .opv2-tab {
     flex: 1 1 50%;

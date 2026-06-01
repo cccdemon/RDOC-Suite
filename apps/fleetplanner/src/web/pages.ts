@@ -1368,58 +1368,189 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const unitName = (unit: UnitFull) =>
     unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
 
+  const seatRow = (unit: UnitFull, seat: UnitFull["seats"][number]) => {
+    const claimed = !!seat.userId;
+    const isMe = user && seat.userId === user.id;
+    const canClaim =
+      user &&
+      seat.active &&
+      !claimed &&
+      unit.status === "accepted" &&
+      (seat.order !== 0 || unit.captainId === user.id);
+    const canAssign = isLeader && seat.active && !claimed && unit.status === "accepted";
+    const canUnclaim = claimed && (isMe || isLeader) && !(seat.order === 0 && !canManage);
+
+    return html`<div class="opv2-seat-row ${seat.active ? "" : "disabled"}">
+      <div>
+        <strong>${seat.label}</strong>
+        <span>${seat.seatType}</span>
+      </div>
+      <div class="opv2-seat-user ${claimed ? "" : "empty"}">
+        ${claimed ? (seat.user?.username ?? "?") : "open"}
+      </div>
+      <div class="opv2-seat-actions">
+        ${!seat.active ? html`<span class="tag tag-dim">disabled</span>` : safe("")}
+        ${canClaim
+          ? html`<form method="post" action="${bp}/api/seats/${seat.id}/claim" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              ${returnFields("fleet")}
+              <button type="submit" class="btn btn-sm btn-green">Claim</button>
+            </form>`
+          : safe("")}
+        ${canAssign
+          ? html`<details class="opv2-seat-assign">
+              <summary class="btn btn-sm btn-ghost">Assign</summary>
+              <form method="post" action="${bp}/api/seats/${seat.id}/assign">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                ${returnFields("fleet")}
+                <select name="userId" required>
+                  <option value="">Select user...</option>
+                  ${opts.assignableUsers.map(
+                    (assignableUser) =>
+                      html`<option value="${assignableUser.id}">
+                        ${assignableUser.username} (${assignableUser.role})
+                      </option>`,
+                  )}
+                </select>
+                <button type="submit" class="btn btn-sm">Add</button>
+              </form>
+            </details>`
+          : safe("")}
+        ${canUnclaim
+          ? html`<form method="post" action="${bp}/api/seats/${seat.id}/unclaim" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              ${returnFields("fleet")}
+              <button type="submit" class="btn btn-sm btn-ghost">Release</button>
+            </form>`
+          : safe("")}
+      </div>
+    </div>`;
+  };
+
+  const seatSetup = (unit: UnitFull) => {
+    const canConfigureSeats = !!(user && unit.captainId === user.id) || canManage;
+    if (!canConfigureSeats) return safe("");
+
+    return html`<details class="opv2-edit-block mt-1">
+      <summary class="btn btn-sm btn-ghost">Seat Setup</summary>
+      <form
+        method="post"
+        action="${bp}/api/ops/${op.id}/units/${unit.id}/seats"
+        class="opv2-form mt-1"
+      >
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        ${returnFields("fleet")}
+        ${unit.seats.map((seat) => {
+          const placeholder =
+            seat.seatType === "fps"
+              ? "Boomtuber, Railgunner, Medic, Soldier, Sniper"
+              : "Turret top, Turret bottom, Engineer, Scanner";
+          return html`<div class="opv2-seat-setup-row">
+            <input
+              type="text"
+              name="label_${seat.id}"
+              value="${seat.label}"
+              maxlength="40"
+              placeholder="${placeholder}"
+            />
+            <span class="tag tag-dim">${seat.seatType}</span>
+            <label class="seat-toggle">
+              <input
+                type="checkbox"
+                name="active_${seat.id}"
+                value="1"
+                ${seat.active ? safe("checked") : ""}
+                ${seat.order === 0 ? safe("checked disabled") : ""}
+              />
+              Active
+            </label>
+          </div>`;
+        })}
+        <button type="submit" class="btn btn-sm">Save Seats</button>
+      </form>
+    </details>`;
+  };
+
   const unitRows = activeUnits.length
     ? activeUnits.map((unit) => {
         const seats = unit.seats.filter((seat) => seat.active);
         const assigned = seats.filter((seat) => seat.userId).length;
-        return html`<div class="opv2-row">
-          <div>
-            <strong>${unitName(unit)}</strong>
-            <span>Captain: ${unit.captain.username}</span>
-          </div>
-          <div class="opv2-row-meta">
-            ${statusTag(unit.status)}
-            <span class="text-mono">${assigned}/${seats.length} seats</span>
-            ${isLeader && unit.status === "pending"
-              ? html`<div class="opv2-actions">
-                  <form
+        return html`<div class="opv2-unit-card">
+          <div class="opv2-row">
+            <div>
+              <strong>${unitName(unit)}</strong>
+              <span>Captain: ${unit.captain.username}</span>
+            </div>
+            <div class="opv2-row-meta">
+              ${statusTag(unit.status)}
+              <span class="text-mono">${assigned}/${seats.length} seats</span>
+              ${canManage && unit.status === "accepted"
+                ? html`<div class="opv2-actions">
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <input type="hidden" name="role" value="commander" />
+                      <button type="submit" class="btn btn-sm btn-gold">Commander</button>
+                    </form>
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <input type="hidden" name="role" value="admiral" />
+                      <button type="submit" class="btn btn-sm btn-gold">Admiral</button>
+                    </form>
+                  </div>`
+                : safe("")}
+              ${isLeader && unit.status === "pending"
+                ? html`<div class="opv2-actions">
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/units/${unit.id}/accept"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <button type="submit" class="btn btn-sm btn-green">Accept</button>
+                    </form>
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/units/${unit.id}/reject"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                    </form>
+                  </div>`
+                : safe("")}
+              ${(user && unit.captainId === user.id) || canManage
+                ? html`<form
                     method="post"
-                    action="${bp}/api/ops/${op.id}/units/${unit.id}/accept"
+                    action="${bp}/api/ops/${op.id}/units/${unit.id}/delete"
                     class="inline"
                   >
                     <input type="hidden" name="_csrf" value="${csrf}" />
                     ${returnFields("fleet")}
-                    <button type="submit" class="btn btn-sm btn-green">Accept</button>
-                  </form>
-                  <form
-                    method="post"
-                    action="${bp}/api/ops/${op.id}/units/${unit.id}/reject"
-                    class="inline"
-                  >
-                    <input type="hidden" name="_csrf" value="${csrf}" />
-                    ${returnFields("fleet")}
-                    <button type="submit" class="btn btn-sm btn-danger">Reject</button>
-                  </form>
-                </div>`
-              : safe("")}
-            ${(user && unit.captainId === user.id) || canManage
-              ? html`<form
-                  method="post"
-                  action="${bp}/api/ops/${op.id}/units/${unit.id}/delete"
-                  class="inline"
-                >
-                  <input type="hidden" name="_csrf" value="${csrf}" />
-                  ${returnFields("fleet")}
-                  <button
-                    type="submit"
-                    class="btn btn-sm btn-ghost"
-                    onclick="return confirm('Delete this unit?')"
-                  >
-                    Delete
-                  </button>
-                </form>`
-              : safe("")}
+                    <button
+                      type="submit"
+                      class="btn btn-sm btn-ghost"
+                      onclick="return confirm('Delete this unit?')"
+                    >
+                      Delete
+                    </button>
+                  </form>`
+                : safe("")}
+            </div>
           </div>
+          <div class="opv2-seat-list">${unit.seats.map((seat) => seatRow(unit, seat))}</div>
+          ${seatSetup(unit)}
         </div>`;
       })
     : [html`<p class="text-dim text-sm">No registered units yet.</p>`];
@@ -1742,12 +1873,21 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <option value="squad">FPS Squad</option>
               </select>
               <label>Owned ship</label>
-              <select name="ownedShipId">
+              <select name="ownedShipId" id="opv2-owned-ship-select">
                 <option value="">Select owned ship for ship units...</option>
                 ${opts.ownedShips.map(
                   (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
                 )}
               </select>
+              <label>Ship search</label>
+              <input
+                type="search"
+                id="opv2-ship-search"
+                placeholder="Search ship catalog..."
+                autocomplete="off"
+              />
+              <input type="hidden" name="shipId" id="opv2-ship-id-field" />
+              <div id="opv2-ship-results" class="ship-results"></div>
               <div class="opv2-form-grid">
                 <div>
                   <label>Squad name</label>
@@ -1935,41 +2075,106 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             : overviewPanel;
 
   const body = html`<div class="opv2-shell">
-    <header
-      class="opv2-hero opv2-hero-mission"
-      style="background-image:linear-gradient(90deg, rgba(5,8,16,.97), rgba(5,8,16,.72), rgba(5,8,16,.2)), url('${missionImageUrl(
-        bp,
-        op.opType,
-      )}')"
-    >
-      <div>
-        <div class="opv2-eyebrow">${opTypeTag(op.opType)} ${statusTag(op.status)}</div>
-        <h1>${op.title}</h1>
-        <p>
-          ${fmtDate(op.scheduledAt, gtz)} at
-          ${op.meetingLocation || systemLabel(op.meetingSystem ?? "stanton")}
-        </p>
-      </div>
-      <div class="opv2-switch">
-        <a href="${classicUrl}" class="btn btn-sm btn-ghost">Classic UI</a>
-        <a href="${tabUrl(activeTab)}" class="btn btn-sm">New UI</a>
-      </div>
-    </header>
+      <header
+        class="opv2-hero opv2-hero-mission"
+        style="background-image:linear-gradient(90deg, rgba(5,8,16,.97), rgba(5,8,16,.72), rgba(5,8,16,.2)), url('${missionImageUrl(
+          bp,
+          op.opType,
+        )}')"
+      >
+        <div>
+          <div class="opv2-eyebrow">${opTypeTag(op.opType)} ${statusTag(op.status)}</div>
+          <h1>${op.title}</h1>
+          <p>
+            ${fmtDate(op.scheduledAt, gtz)} at
+            ${op.meetingLocation || systemLabel(op.meetingSystem ?? "stanton")}
+          </p>
+        </div>
+        <div class="opv2-switch">
+          <a href="${classicUrl}" class="btn btn-sm btn-ghost">Classic UI</a>
+          <a href="${tabUrl(activeTab)}" class="btn btn-sm">New UI</a>
+        </div>
+      </header>
 
-    <div class="opv2-metrics">
-      ${metric("Accepted Units", acceptedUnits.length, "good")}
-      ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
-      ${metric("Crew Seats", `${assignedSeats.length}/${activeSeats.length}`)}
-      ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
+      <div class="opv2-metrics">
+        ${metric("Accepted Units", acceptedUnits.length, "good")}
+        ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
+        ${metric("Crew Seats", `${assignedSeats.length}/${activeSeats.length}`)}
+        ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
+      </div>
+
+      <nav class="opv2-tabs">
+        ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
+        ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")} ${shellLink("admin", "Admin")}
+      </nav>
+
+      ${activePanel}
     </div>
-
-    <nav class="opv2-tabs">
-      ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
-      ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")} ${shellLink("admin", "Admin")}
-    </nav>
-
-    ${activePanel}
-  </div>`;
+    <script>
+      const opv2ShipSearch = document.getElementById("opv2-ship-search");
+      const opv2ShipResults = document.getElementById("opv2-ship-results");
+      const opv2ShipIdField = document.getElementById("opv2-ship-id-field");
+      const opv2OwnedShipSelect = document.getElementById("opv2-owned-ship-select");
+      let opv2SearchTimer;
+      if (opv2OwnedShipSelect && opv2ShipIdField) {
+        opv2OwnedShipSelect.addEventListener("change", () => {
+          if (opv2OwnedShipSelect.value) {
+            opv2ShipIdField.value = "";
+            if (opv2ShipSearch) opv2ShipSearch.value = "";
+            if (opv2ShipResults) opv2ShipResults.innerHTML = "";
+          }
+        });
+      }
+      if (opv2ShipSearch && opv2ShipResults && opv2ShipIdField) {
+        opv2ShipSearch.addEventListener("input", () => {
+          clearTimeout(opv2SearchTimer);
+          const q = opv2ShipSearch.value.trim();
+          opv2ShipIdField.value = "";
+          if (opv2OwnedShipSelect) opv2OwnedShipSelect.value = "";
+          if (q.length < 2) {
+            opv2ShipResults.innerHTML = "";
+            return;
+          }
+          opv2SearchTimer = setTimeout(async () => {
+            const res = await fetch("${bp}/api/ships?q=" + encodeURIComponent(q));
+            const ships = await res.json();
+            opv2ShipResults.innerHTML = ships
+              .map(
+                (s) =>
+                  '<button type="button" class="ship-row" data-id="' +
+                  opv2EscHtml(s.id) +
+                  '" data-name="' +
+                  opv2EscHtml(s.name) +
+                  '" onclick="opv2SelectShip(this)"><strong>' +
+                  opv2EscHtml(s.name) +
+                  "</strong><span>" +
+                  opv2EscHtml(s.manufacturer || "") +
+                  " // " +
+                  opv2EscHtml(s.size || "") +
+                  "</span></button>",
+              )
+              .join("");
+          }, 180);
+        });
+      }
+      function opv2SelectShip(el) {
+        document
+          .querySelectorAll("#opv2-ship-results .ship-row")
+          .forEach((row) => row.classList.remove("selected"));
+        el.classList.add("selected");
+        if (opv2ShipIdField) opv2ShipIdField.value = el.dataset.id || "";
+        if (opv2ShipSearch) opv2ShipSearch.value = el.dataset.name || "";
+        if (opv2OwnedShipSelect) opv2OwnedShipSelect.value = "";
+      }
+      function opv2EscHtml(s) {
+        return String(s)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+    </script>`;
 
   return layout({
     title: op.title,
@@ -4867,9 +5072,7 @@ export function guildDiagnosticsPage(opts: {
             ${check.requiredPermissions.map((perm) => html`<span class="tag">${perm.key}</span>`)}
           </div>
         </div>
-        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-          ${action}
-        </div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">${action}</div>
       </div>
     </div>`;
   });

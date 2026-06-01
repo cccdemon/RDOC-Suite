@@ -3,6 +3,23 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Fleetplanner Discord event header image from opType
+
+`createScheduledEvent` and `updateScheduledEvent` in `services/discord.ts` never sent an
+`image` field — assets existed in `public/mission-images/` but were unused for Discord events.
+
+- `discord.ts`: add `opTypeImageDataUri()` helper (reads PNG from `public/mission-images/`,
+  returns base64 data URI); add `opType?` to both function signatures; spread `image` into
+  both body variants (VOICE + EXTERNAL).
+- `routes/web.ts`: pass `opType: updatedOp.opType` in the `updateScheduledEvent` call.
+
+## Queued / Planned Step - 2026-06-01: Fleetplanner security review → docs/security-review.md
+
+Static security audit of `apps/fleetplanner/src/`. No code changes — documentation only.
+Findings: 0 critical, 3 medium (no rate limiting, bot token in diagnostics object, missing
+guild membership check on fleetoperator voice-token), 4 low/info. SQL injection and XSS
+vectors: none. Dependencies: no known CVEs.
+
 ## Queued / Planned Step - 2026-06-01: Per-guild timezone (default Europe/Berlin)
 
 Fleetplanner previously parsed and displayed all operation dates in UTC. Operators

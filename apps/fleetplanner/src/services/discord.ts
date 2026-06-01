@@ -1,9 +1,27 @@
+import { readFileSync } from "node:fs";
 import { getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 
 const DISCORD_API = "https://discord.com/api/v10";
 
 export type DiscordEventResult = { id: string } | null;
+
+const OP_IMAGE_TYPES = new Set([
+  "combat", "pve", "mining", "salvage", "training",
+  "mixed", "exploration", "transport", "social",
+]);
+
+function opTypeImageDataUri(opType: string | null | undefined): string | undefined {
+  const type = opType?.toLowerCase() ?? "combat";
+  const safe = OP_IMAGE_TYPES.has(type) ? type : "combat";
+  try {
+    const file = new URL(`../../public/mission-images/${safe}.png`, import.meta.url);
+    const data = readFileSync(file);
+    return `data:image/png;base64,${data.toString("base64")}`;
+  } catch {
+    return undefined;
+  }
+}
 
 function fleetplannerBotToken(): string | undefined {
   const env = getEnv();
@@ -254,6 +272,7 @@ export async function createScheduledEvent(op: {
   description: string;
   scheduledAt: Date;
   eventVoiceChannelId?: string | null;
+  opType?: string | null;
 }): Promise<DiscordEventResult> {
   const env = getEnv();
   const token = fleetplannerBotToken();
@@ -269,6 +288,7 @@ export async function createScheduledEvent(op: {
   // Discord requires events to be at least 1h long; use 3h as default
   const startTime = op.scheduledAt.toISOString();
   const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
+  const image = opTypeImageDataUri(op.opType);
 
   const body = voiceChannelId
     ? {
@@ -278,6 +298,7 @@ export async function createScheduledEvent(op: {
         scheduled_start_time: startTime,
         entity_type: 2, // VOICE
         channel_id: voiceChannelId,
+        ...(image ? { image } : {}),
       }
     : {
         name: op.title,
@@ -289,6 +310,7 @@ export async function createScheduledEvent(op: {
         entity_metadata: {
           location: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${op.id}`,
         },
+        ...(image ? { image } : {}),
       };
 
   const res = await fetch(`${DISCORD_API}/guilds/${op.guildId}/scheduled-events`, {
@@ -351,6 +373,7 @@ export async function updateScheduledEvent(op: {
   scheduledAt: Date;
   eventVoiceChannelId?: string | null;
   discordEventId: string;
+  opType?: string | null;
 }): Promise<void> {
   const env = getEnv();
   const token = fleetplannerBotToken();
@@ -360,6 +383,7 @@ export async function updateScheduledEvent(op: {
   const startTime = op.scheduledAt.toISOString();
   const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
   const updatedDescription = buildEventDescription(op.id, op.description).slice(0, 1000);
+  const image = opTypeImageDataUri(op.opType);
 
   const body = voiceChannelId
     ? {
@@ -369,6 +393,7 @@ export async function updateScheduledEvent(op: {
         scheduled_start_time: startTime,
         entity_type: 2, // VOICE
         channel_id: voiceChannelId,
+        ...(image ? { image } : {}),
       }
     : {
         name: op.title,
@@ -380,6 +405,7 @@ export async function updateScheduledEvent(op: {
         entity_metadata: {
           location: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${op.id}`,
         },
+        ...(image ? { image } : {}),
       };
 
   const res = await fetch(

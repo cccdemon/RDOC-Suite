@@ -630,6 +630,7 @@ export async function webRoutes(app: FastifyInstance) {
             scheduledAt: updatedOp.scheduledAt,
             eventVoiceChannelId: updatedOp.eventVoiceChannelId,
             discordEventId: updatedOp.discordEventId,
+            opType: updatedOp.opType,
           }).catch((err) =>
             app.log.warn(err, "Discord event update failed after operation edit"),
           );
