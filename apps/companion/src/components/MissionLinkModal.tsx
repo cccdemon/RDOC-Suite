@@ -5,13 +5,10 @@ type Props = {
   onClose: () => void;
 };
 
-function parseFleetVoiceLink(raw: string): { token: string; url: string } | null {
+function parseMissionLink(raw: string): { token: string; url: string } | null {
   try {
-    const normalized = raw.trim().replace(/^dccc:\/\//, "https://dccc.local/");
+    const normalized = raw.trim().replace(/^(dccc|rdoc):\/\//i, "https://link.local/");
     const u = new URL(normalized);
-    if (!u.pathname.startsWith("/fleet-voice") && !u.hostname.includes("fleet-voice")) {
-      // also accept raw query string without host check
-    }
     const token = u.searchParams.get("token");
     const url = u.searchParams.get("url");
     if (!token || !url) return null;
@@ -26,9 +23,9 @@ export function MissionLinkModal({ onApply, onClose }: Props): JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = (): void => {
-    const parsed = parseFleetVoiceLink(value);
+    const parsed = parseMissionLink(value);
     if (!parsed) {
-      setError("Ungültiger Link. Erwartet: dccc://fleet-voice?token=...&url=...");
+      setError("Ungültiger Link. Erwartet: rdoc://mission?token=...&url=...");
       return;
     }
     setError(null);
@@ -40,12 +37,12 @@ export function MissionLinkModal({ onApply, onClose }: Props): JSX.Element {
       <div className="modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="modal-title">MISSION VOICE LINK EINFÜGEN</div>
         <p className="text-dim text-sm" style={{ marginBottom: "1rem" }}>
-          Füge den dccc://fleet-voice?… Link ein, den dir der Flottenleitende geschickt hat.
+          Füge den rdoc://mission?… Link ein, den dir der Flottenleitende geschickt hat.
         </p>
         <textarea
           className="modal-input text-mono"
           rows={3}
-          placeholder="dccc://fleet-voice?token=...&url=..."
+          placeholder="rdoc://mission?token=...&url=..."
           value={value}
           onChange={(e) => setValue(e.target.value)}
           style={{ width: "100%", fontSize: ".75rem", padding: ".4rem" }}

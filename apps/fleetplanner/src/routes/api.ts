@@ -34,16 +34,13 @@ import {
 } from "../services/voiceSession.js";
 import {
   issueUnitLivekitToken,
-  issueGlobalVoiceToken,
   issueMissionVoiceToken,
 } from "../services/livekit.js";
 import {
   createCompanionSession,
   createMissionVoiceSession,
-  loadCompanionSession,
   loadMissionVoiceSession,
 } from "../auth/companionSession.js";
-import { discordUserIdForFleetplannerUser, fetchGuildMemberRoles } from "../services/discord.js";
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 import { specForShip, specForSquad } from "../services/seats.js";
@@ -1248,82 +1245,13 @@ export async function apiRoutes(app: FastifyInstance) {
     },
   );
 
-  // ── Companion auto-voice endpoint ────────────────────────────────────
-  // Used by the companion app's 20s polling loop. Bearer token issued
-  // by /auth/discord/companion/callback. Returns the caller's active fleet
-  // unit room token (if in an accepted unit in an active op) and, if they
-  // hold the guild's globalVoiceRoleId Discord role, a global voice token.
-  app.options("/api/companion/voice", async (req, reply) => {
-    setCompanionCors(reply, req);
-    return reply.code(204).send();
-  });
-
-  app.get("/api/companion/voice", async (req, reply) => {
-    setCompanionCors(reply, req);
-    const authHeader = (req.headers as Record<string, string | undefined>).authorization;
-    if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
-    const userId = await loadCompanionSession(authHeader.slice(7));
-    if (!userId) return reply.code(401).send({ error: "unauthorized" });
-
-    const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
-
-    // Find active accepted unit as captain
-    let activeUnit = await prisma.fleetUnit.findFirst({
-      where: {
-        captainId: userId,
-        status: "accepted",
-        operation: { status: { in: [...ACTIVE_STATUSES] } },
-      },
-      include: { operation: { include: { guild: true } } },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Fall back to crew seat
-    if (!activeUnit) {
-      const crewSeat = await prisma.seatAssignment.findFirst({
-        where: {
-          userId,
-          active: true,
-          fleetUnit: {
-            status: "accepted",
-            operation: { status: { in: [...ACTIVE_STATUSES] } },
-          },
-        },
-        include: { fleetUnit: { include: { operation: { include: { guild: true } } } } },
-      });
-      if (crewSeat) activeUnit = crewSeat.fleetUnit;
-    }
-
-    let unitRoom: { livekitUrl: string; token: string; room: string; opTitle: string } | null =
-      null;
-    let globalVoice: { livekitUrl: string; token: string; room: string } | null = null;
-
-    if (activeUnit) {
-      const op = activeUnit.operation;
-      const guild = op.guild;
-
-      const ut = await issueUnitLivekitToken(userId, op.id, activeUnit.id);
-      if (ut) unitRoom = { ...ut, opTitle: op.title };
-
-      // Global voice: dedicated Globaltalk role if configured; otherwise
-      // fall back to the Admiral mapping role for older guild settings.
-      const globalVoiceRoleId = guild.globalVoiceRoleId ?? guild.admiralRoleId;
-      if (globalVoiceRoleId) {
-        try {
-          const discordId = await discordUserIdForFleetplannerUser(userId);
-          const roles = await fetchGuildMemberRoles(op.guildId, discordId);
-          if (roles?.includes(globalVoiceRoleId)) {
-            const gvt = await issueGlobalVoiceToken(userId, op.id);
-            if (gvt) globalVoice = gvt;
-          }
-        } catch {
-          // no Discord identity or role lookup failed → no global voice
-        }
-      }
-    }
-
-    return reply.send({ unitRoom, globalVoice });
-  });
+  // ── Companion auto-voice endpoint — RETIRED ──────────────────────────
+  // The old companion polled GET /api/companion/voice (20s loop) for a
+  // fleet unit room + global voice token via a separate Fleetplanner OAuth
+  // token. The mission-first companion removed that flow: LOCAL voice comes
+  // from /api/companion/mission-voice (commander room) and GLOBAL voice is
+  // the Discord relay. The endpoint is gone; old apps fail silently and
+  // retry on their next tick. See docs/companion-app-opus.md.
 
   // ── Mission Voice Session — companion polling endpoint ──────────────
   // Returns the two mission voice rooms (global + optional commander)
@@ -1398,15 +1326,18 @@ export async function apiRoutes(app: FastifyInstance) {
     )
       return reply.send({ op: null });
 
+    // `globalVoiceRoom` is the server-side marker that a voice session is
+    // live for this op. The companion no longer joins a global LiveKit room
+    // (global = Discord relay), so we use it only as the activity gate and
+    // do NOT return it. The commander room is the authoritative LiveKit room.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const globalRoom = (activeOp as any).globalVoiceRoom as string | null;
+    const voiceSessionLive = (activeOp as any).globalVoiceRoom as string | null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const commanderRoom = (activeOp as any).commanderVoiceRoom as string | null;
-    if (!globalRoom) return reply.send({ op: null });
+    if (!voiceSessionLive) return reply.send({ op: null });
 
     const env = getEnv();
-    const globalToken = await issueMissionVoiceToken(userId, globalRoom);
-    if (!globalToken || !env.LIVEKIT_URL) return reply.send({ op: null });
+    if (!env.LIVEKIT_URL) return reply.send({ op: null });
 
     // Commander room eligibility: captains of accepted units OR fleetoperators
     const isCommander = !!(
@@ -1424,7 +1355,6 @@ export async function apiRoutes(app: FastifyInstance) {
         opId: activeOp.id,
         opTitle: activeOp.title,
         livekitUrl: env.LIVEKIT_URL,
-        globalRoom: { room: globalRoom, token: globalToken },
         commanderRoom:
           commanderToken && commanderRoom ? { room: commanderRoom, token: commanderToken } : null,
       },
@@ -1476,7 +1406,7 @@ export async function apiRoutes(app: FastifyInstance) {
       links.push({
         userId: uid,
         username: usernameMap.get(uid) ?? uid,
-        link: `dccc://fleet-voice?${params.toString()}`,
+        link: `rdoc://mission?${params.toString()}`,
       });
     }
 

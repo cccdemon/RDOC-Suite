@@ -4,15 +4,16 @@ import { Icon } from "./kit/Icon";
 type Props = {
   opTitle: string | null;
   commanderStatus: FleetStatus;
-  globalStatus: FleetStatus;
   commanderPttActive: boolean;
-  globalPttActive: boolean;
   hasCommanderRoom: boolean;
   onCommanderPtt: (pressed: boolean) => void;
-  onGlobalPtt: (pressed: boolean) => void;
   onDisconnect: () => void;
-  commanderHotkey: string;
+  /** PTT-1 hotkey — drives the commander room in mission mode. */
+  localHotkey: string;
+  /** PTT-2 hotkey — Discord relay (global). */
   globalHotkey: string;
+  /** Whether the relay/global path is available for this user. */
+  relayAvailable: boolean;
 };
 
 function statusColor(s: FleetStatus): string {
@@ -24,15 +25,13 @@ function statusColor(s: FleetStatus): string {
 export function MissionVoicePanel({
   opTitle,
   commanderStatus,
-  globalStatus,
   commanderPttActive,
-  globalPttActive,
   hasCommanderRoom,
   onCommanderPtt,
-  onGlobalPtt,
   onDisconnect,
-  commanderHotkey,
+  localHotkey,
   globalHotkey,
+  relayAvailable,
 }: Props): JSX.Element {
   return (
     <div className="mission-panel">
@@ -46,7 +45,7 @@ export function MissionVoicePanel({
             <div className={`mission-room-status ${statusColor(commanderStatus)}`} />
             <div className="mission-room-info">
               <span className="mission-room-name">COMMANDER</span>
-              <span className="mission-room-hotkey text-dim">{commanderHotkey}</span>
+              <span className="mission-room-hotkey text-dim">{localHotkey}</span>
             </div>
             <button
               type="button"
@@ -55,33 +54,27 @@ export function MissionVoicePanel({
               onMouseUp={() => onCommanderPtt(false)}
               onMouseLeave={() => { if (commanderPttActive) onCommanderPtt(false); }}
               disabled={commanderStatus !== "connected"}
-              title={`Commander Channel · Hotkey: ${commanderHotkey}`}
+              title={`Commander Channel · Hotkey: ${localHotkey}`}
             >
               <Icon.radio size={14} />
               {commanderPttActive ? "SENDEN" : "PTT"}
             </button>
           </div>
-        ) : null}
-
-        <div className="mission-room">
-          <div className={`mission-room-status ${statusColor(globalStatus)}`} />
-          <div className="mission-room-info">
-            <span className="mission-room-name">GLOBAL</span>
-            <span className="mission-room-hotkey text-dim">{globalHotkey}</span>
+        ) : (
+          <div className="mission-room">
+            <div className="mission-room-info">
+              <span className="mission-room-name">GLOBAL</span>
+              <span className="mission-room-hotkey text-dim">
+                {relayAvailable ? globalHotkey : "—"}
+              </span>
+            </div>
+            <span className="text-dim text-sm" style={{ alignSelf: "center" }}>
+              {relayAvailable
+                ? "Sprich über VOICE TO ALL (Global)"
+                : "Kein Commander-Kanal — nur zuhören"}
+            </span>
           </div>
-          <button
-            type="button"
-            className={`cc-btn ${globalPttActive ? "green" : globalStatus === "connected" ? "cyan" : "ghost"} mission-ptt`}
-            onMouseDown={() => onGlobalPtt(true)}
-            onMouseUp={() => onGlobalPtt(false)}
-            onMouseLeave={() => { if (globalPttActive) onGlobalPtt(false); }}
-            disabled={globalStatus !== "connected"}
-            title={`Global Channel · Hotkey: ${globalHotkey}`}
-          >
-            <Icon.radio size={14} />
-            {globalPttActive ? "SENDEN" : "PTT"}
-          </button>
-        </div>
+        )}
       </div>
 
       <button

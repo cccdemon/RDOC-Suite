@@ -11,8 +11,6 @@ import {
   setupHotkey,
   teardownHotkey,
   type HotkeyEventPayload,
-  setExtraHotkey,
-  clearExtraHotkey,
 } from "./lib/hotkey";
 import { jwtSubject, startOAuthInWebview } from "./lib/auth";
 import { info as logInfo } from "@tauri-apps/plugin-log";
@@ -21,7 +19,6 @@ import { checkForUpdate, type UpdateCheckResult } from "./lib/updater";
 import { UpdateModal } from "./components/UpdateModal";
 import {
   clearSession,
-  clearFleetplannerToken,
   clearMissionConfig,
   loadSettings,
   saveAfk,
@@ -29,16 +26,13 @@ import {
   saveBridgeUrl,
   saveDucking,
   saveFeedbackSounds,
-  saveFleetplannerToken,
   saveFleetplannerUrl,
   saveGuilds,
-  saveHotkey,
+  saveLocalHotkey,
   saveMissionConfig,
-  saveCommanderHotkey,
   saveGlobalHotkey,
   saveOutputMuted,
   saveRemoteVolumes,
-  saveRelayHotkey,
   saveSession,
   type SavedGuild,
 } from "./lib/store";
@@ -62,7 +56,6 @@ import { SessionJoinModal } from "./components/SessionJoinModal";
 import { joinSession } from "./lib/sessionApi";
 import { RelayAudio, type RelayStatus } from "./lib/relayAudio";
 import { FleetAudio, type FleetStatus } from "./lib/fleetAudio";
-import { startFleetOAuthInWebview } from "./lib/fleetplannerAuth";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { MissionVoicePanel } from "./components/MissionVoicePanel";
 import { MissionLinkModal } from "./components/MissionLinkModal";
@@ -74,8 +67,6 @@ type AppState = {
    *  it from Discord. Falls back to guildId at render time. */
   guildName: string | null;
   token: string | null;
-  hotkey: string;
-  relayHotkey: string;
   suiteCapabilities: SuiteCapabilities;
   /** Mirror of the persisted audio prefs — kept in state so a Settings
    *  save can re-apply live without re-loading from disk. */
@@ -107,27 +98,24 @@ type AppState = {
   sessionLabel: string | null;
   relayStatus: RelayStatus;
   relayPttActive: boolean;
-  fleetStatus: FleetStatus;
-  fleetPttActive: boolean;
-  fleetRoomName: string | null;
-  fleetOpTitle: string | null;
+  /** Fleetplanner / Mission origin — default mission URL. */
   fleetplannerUrl: string;
-  fleetplannerToken: string | null;
-  globalFleetStatus: FleetStatus;
-  globalFleetPttActive: boolean;
   // ── Mission Voice (Fleetcommander mode) ─────────────────────────────
   missionActive: boolean;
   missionOpTitle: string | null;
+  /** commanderRoom delivered by the backend for this user? */
   missionHasCommander: boolean;
+  /** missionCommanderRef connection status. */
   commanderStatus: FleetStatus;
-  globalMissionStatus: FleetStatus;
   commanderPttActive: boolean;
-  globalMissionPttActive: boolean;
-  commanderHotkey: string;
-  globalHotkey: string;
   missionToken: string | null;
   missionUrl: string | null;
   missionEnded: boolean;
+  // ── Hotkeys (consolidated: 2 PTTs) ──────────────────────────────────
+  /** PTT-1: without mission → bridge; with mission → commanderRoom. */
+  localHotkey: string;
+  /** PTT-2: Discord relay (when canUseRelay). */
+  globalHotkey: string;
 };
 
 const INITIAL: AppState = {
@@ -135,8 +123,6 @@ const INITIAL: AppState = {
   guildId: null,
   guildName: null,
   token: null,
-  hotkey: DEFAULT_HOTKEY,
-  relayHotkey: DEFAULT_RELAY_HOTKEY,
   suiteCapabilities: DEFAULT_SUITE_CAPABILITIES,
   device: { outputVolumePct: 100, micGainPct: 100 },
   wsStatus: "idle",
@@ -156,26 +142,17 @@ const INITIAL: AppState = {
   sessionLabel: null,
   relayStatus: "idle",
   relayPttActive: false,
-  fleetStatus: "idle",
-  fleetPttActive: false,
-  fleetRoomName: null,
-  fleetOpTitle: null,
   fleetplannerUrl: DEFAULT_FLEETPLANNER_URL,
-  fleetplannerToken: null,
-  globalFleetStatus: "idle",
-  globalFleetPttActive: false,
   missionActive: false,
   missionOpTitle: null,
   missionHasCommander: false,
   commanderStatus: "idle",
-  globalMissionStatus: "idle",
   commanderPttActive: false,
-  globalMissionPttActive: false,
-  commanderHotkey: "Mouse5",
-  globalHotkey: "F9",
   missionToken: null,
   missionUrl: null,
   missionEnded: false,
+  localHotkey: DEFAULT_HOTKEY,
+  globalHotkey: DEFAULT_RELAY_HOTKEY,
 };
 
 export function App(): JSX.Element {
@@ -197,15 +174,9 @@ export function App(): JSX.Element {
   const wsRef = useRef<BridgeWs | null>(null);
   const audioRef = useRef<LivekitAudio | null>(null);
   const relayRef = useRef<RelayAudio | null>(null);
-  const fleetRef = useRef<FleetAudio | null>(null);
-  const globalFleetRef = useRef<FleetAudio | null>(null);
-  const currentFleetRoomRef = useRef<string | null>(null);
-  const currentGlobalRoomRef = useRef<string | null>(null);
-  // Mission voice refs
+  // Mission voice: commander room only (global is handled via the relay path).
   const missionCommanderRef = useRef<FleetAudio | null>(null);
-  const missionGlobalRef = useRef<FleetAudio | null>(null);
   const currentMissionCommanderRoomRef = useRef<string | null>(null);
-  const currentMissionGlobalRoomRef = useRef<string | null>(null);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const stateRef = useRef<AppState>(INITIAL);
   stateRef.current = state;
@@ -253,23 +224,38 @@ export function App(): JSX.Element {
     }
   }, []);
 
+  // PTT-1 (LOCAL). Context-dependent target:
+  //  - mission active + commander room → send into the mission commanderRoom
+  //  - otherwise                       → guild bridge room (Squad Link)
+  // Ducking + feedback chirps fire in both branches.
   const handlePttEvent = useCallback((e: HotkeyEventPayload) => {
-    setState((s) => ({ ...s, pttActive: e.state === "pressed" }));
-    const wsLocal = wsRef.current;
-    const audioLocal = audioRef.current;
+    const pressed = e.state === "pressed";
     const cur = stateRef.current;
-    if (audioLocal) void audioLocal.setMuted(e.state !== "pressed");
-    // Local audio feedback — even if WS is offline. Helps the user
-    // know the hotkey at least registered with the Companion.
-    if (e.state === "pressed") {
+
+    // Local audio feedback — even if everything else is offline. Helps the
+    // user know the hotkey at least registered with the Companion.
+    if (pressed) {
       feedbackAudio.playPttPress();
       duckingActivate();
     } else {
       feedbackAudio.playPttRelease();
       duckingDeactivate();
     }
+
+    // Mission mode: route PTT-1 to the commander room.
+    if (cur.missionActive && cur.missionHasCommander) {
+      setState((s) => ({ ...s, commanderPttActive: pressed }));
+      void missionCommanderRef.current?.setPttActive(pressed);
+      return;
+    }
+
+    // Bridge mode: drive the guild LiveKit session + WS ptt signalling.
+    setState((s) => ({ ...s, pttActive: pressed }));
+    const wsLocal = wsRef.current;
+    const audioLocal = audioRef.current;
+    if (audioLocal) void audioLocal.setMuted(!pressed);
     if (!wsLocal || !cur.token || !cur.guildId) return;
-    if (e.state === "pressed") {
+    if (pressed) {
       wsLocal.send({ type: "ptt:start", guildId: cur.guildId });
     } else {
       wsLocal.send({ type: "ptt:stop", guildId: cur.guildId });
@@ -288,7 +274,7 @@ export function App(): JSX.Element {
   // delivered twice (rdev + window-handler) is idempotent: the mute
   // state simply gets re-set to the same value.
   useEffect(() => {
-    const hotkey = state.hotkey;
+    const hotkey = state.localHotkey;
     if (!hotkey || isMouseHotkey(hotkey)) return;
 
     const onDown = (e: KeyboardEvent): void => {
@@ -311,7 +297,7 @@ export function App(): JSX.Element {
       window.removeEventListener("keydown", onDown, true);
       window.removeEventListener("keyup", onUp, true);
     };
-  }, [state.hotkey, handlePttEvent]);
+  }, [state.localHotkey, handlePttEvent]);
 
   // Check for an auto-update once we have BOTH bridgeUrl + sessionToken.
   // The bridge requires the JWT to peek the release — no public bypass
@@ -360,7 +346,7 @@ export function App(): JSX.Element {
       // started with (without revealing the token itself).
       void logInfo(`[boot] ${longVersion()}`);
       void logInfo(
-        `[boot] settings loaded: bridgeUrl=${settings.bridgeUrl} hasToken=${!!settings.token} guildId=${settings.guildId ?? "-"} hotkey=${settings.hotkey} relayHotkey=${settings.relayHotkey} micGain=${settings.micGainPct}% outputVol=${settings.outputVolumePct}% micDevice=${settings.micDeviceId ?? "default"} outputDevice=${settings.outputDeviceId ?? "default"} remoteVolumes=${Object.keys(settings.remoteVolumes).length} entries`,
+        `[boot] settings loaded: bridgeUrl=${settings.bridgeUrl} hasToken=${!!settings.token} guildId=${settings.guildId ?? "-"} localHotkey=${settings.localHotkey} globalHotkey=${settings.globalHotkey} micGain=${settings.micGainPct}% outputVol=${settings.outputVolumePct}% micDevice=${settings.micDeviceId ?? "default"} outputDevice=${settings.outputDeviceId ?? "default"} remoteVolumes=${Object.keys(settings.remoteVolumes).length} entries`,
       );
 
       const deviceCfg: DeviceConfig = {
@@ -505,7 +491,7 @@ export function App(): JSX.Element {
         },
       });
 
-      await setupHotkey(settings.hotkey, handlePttEvent);
+      await setupHotkey(settings.localHotkey, handlePttEvent);
 
       if (!mounted) return;
       // setState LAST so the useEffect that connects WS finds the
@@ -521,8 +507,6 @@ export function App(): JSX.Element {
         bridgeUrl: settings.bridgeUrl,
         token: settings.token ?? null,
         guildId: settings.guildId ?? null,
-        hotkey: settings.hotkey,
-        relayHotkey: settings.relayHotkey,
         device: deviceCfg,
         outputMuted: settings.outputMuted,
         afk: settings.afk,
@@ -531,10 +515,9 @@ export function App(): JSX.Element {
         duckingEnabled: settings.duckingEnabled,
         duckingTargetVolumePct: settings.duckingTargetVolumePct,
         fleetplannerUrl: settings.fleetplannerUrl,
-        fleetplannerToken: settings.fleetplannerToken ?? null,
         missionToken: settings.missionToken ?? null,
         missionUrl: settings.missionUrl ?? null,
-        commanderHotkey: settings.commanderHotkey,
+        localHotkey: settings.localHotkey,
         globalHotkey: settings.globalHotkey,
       }));
     })();
@@ -544,10 +527,8 @@ export function App(): JSX.Element {
       void teardownHotkey();
       wsRef.current?.disconnect();
       void audioRef.current?.disconnect();
-      void fleetRef.current?.disconnect();
-      void globalFleetRef.current?.disconnect();
+      void relayRef.current?.disconnect();
       void missionCommanderRef.current?.disconnect();
-      void missionGlobalRef.current?.disconnect();
     };
   }, []);
 
@@ -690,12 +671,6 @@ export function App(): JSX.Element {
     void openUrl(`${cur.bridgeUrl.replace(/\/+$/, "")}/admin/sessions`).catch(() => {});
   }, []);
 
-  const onFleetplannerDiagnosticsClick = useCallback(() => {
-    const cur = stateRef.current;
-    const base = (cur.fleetplannerUrl || DEFAULT_FLEETPLANNER_URL).replace(/\/+$/, "");
-    void openUrl(`${base}/guilds/diagnostics`).catch(() => {});
-  }, []);
-
   const onSessionJoinConfirm = useCallback(async (inviteToken: string) => {
     const cur = stateRef.current;
     if (!cur.token || !cur.bridgeUrl) return;
@@ -741,20 +716,15 @@ export function App(): JSX.Element {
     }
   }, []);
 
-  const onFleetPttEvent = useCallback((pressed: boolean) => {
-    setState((s) => ({ ...s, fleetPttActive: pressed }));
-    void fleetRef.current?.setPttActive(pressed);
-  }, []);
-
   const onRelayPttEvent = useCallback((e: HotkeyEventPayload) => {
     const active = e.state === "pressed";
     setState((s) => ({ ...s, relayPttActive: active }));
     void relayRef.current?.setPttActive(active);
   }, []);
 
-  // Relay hotkey window-level listener (keyboard only, same pattern as PTT).
+  // Relay (PTT-2 / GLOBAL) hotkey window-level listener (keyboard only).
   useEffect(() => {
-    const hotkey = state.relayHotkey;
+    const hotkey = state.globalHotkey;
     if (!hotkey || isMouseHotkey(hotkey) || !state.suiteCapabilities.canUseRelay) return;
     const onDown = (e: KeyboardEvent): void => {
       if (e.repeat) return;
@@ -776,7 +746,7 @@ export function App(): JSX.Element {
       window.removeEventListener("keydown", onDown, true);
       window.removeEventListener("keyup", onUp, true);
     };
-  }, [state.relayHotkey, state.suiteCapabilities.canUseRelay, onRelayPttEvent]);
+  }, [state.globalHotkey, state.suiteCapabilities.canUseRelay, onRelayPttEvent]);
 
   // Connect / disconnect relay audio when canUseRelay changes.
   useEffect(() => {
@@ -800,131 +770,16 @@ export function App(): JSX.Element {
     void relayRef.current.connect(state.bridgeUrl, state.token, state.guildId);
   }, [state.suiteCapabilities.canUseRelay, state.token, state.bridgeUrl, state.guildId]);
 
-  // Poll fleetplanner every 20s — auto-connect unit room + global voice.
-  useEffect(() => {
-    if (!state.fleetplannerToken || !state.fleetplannerUrl) return;
-
-    type VoiceRoom = { livekitUrl: string; token: string; room: string; opTitle?: string };
-
-    const poll = async (): Promise<void> => {
-      const base = state.fleetplannerUrl.replace(/\/+$/, "");
-      try {
-        const res = await fetch(`${base}/api/companion/voice`, {
-          headers: { Authorization: `Bearer ${state.fleetplannerToken}` },
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          unitRoom: VoiceRoom | null;
-          globalVoice: VoiceRoom | null;
-        };
-
-        // Unit room
-        if (data.unitRoom) {
-          if (
-            currentFleetRoomRef.current !== data.unitRoom.room ||
-            fleetRef.current?.getStatus() === "idle"
-          ) {
-            if (!fleetRef.current) {
-              const fa = new FleetAudio();
-              fa.setStatusListener((s) => setState((st) => ({ ...st, fleetStatus: s })));
-              fleetRef.current = fa;
-            }
-            await fleetRef.current.connect(data.unitRoom.livekitUrl, data.unitRoom.token);
-            currentFleetRoomRef.current = data.unitRoom.room;
-            setState((s) => ({
-              ...s,
-              fleetRoomName: data.unitRoom!.room,
-              fleetOpTitle: data.unitRoom!.opTitle ?? null,
-            }));
-          }
-        } else if (fleetRef.current?.getStatus() !== "idle") {
-          await fleetRef.current?.disconnect();
-          currentFleetRoomRef.current = null;
-          setState((s) => ({ ...s, fleetRoomName: null, fleetOpTitle: null }));
-        }
-
-        // Global voice
-        if (data.globalVoice) {
-          if (
-            currentGlobalRoomRef.current !== data.globalVoice.room ||
-            globalFleetRef.current?.getStatus() === "idle"
-          ) {
-            if (!globalFleetRef.current) {
-              const gfa = new FleetAudio();
-              gfa.setStatusListener((s) => setState((st) => ({ ...st, globalFleetStatus: s })));
-              globalFleetRef.current = gfa;
-            }
-            await globalFleetRef.current.connect(
-              data.globalVoice.livekitUrl,
-              data.globalVoice.token,
-            );
-            currentGlobalRoomRef.current = data.globalVoice.room;
-          }
-        } else if (globalFleetRef.current?.getStatus() !== "idle") {
-          await globalFleetRef.current?.disconnect();
-          currentGlobalRoomRef.current = null;
-          setState((s) => ({ ...s, globalFleetStatus: "idle", globalFleetPttActive: false }));
-        }
-      } catch {
-        // network error — silent retry on next tick
-      }
-    };
-
-    void poll();
-    const interval = setInterval(() => void poll(), 20_000);
-    return () => clearInterval(interval);
-  }, [state.fleetplannerToken, state.fleetplannerUrl]);
-
-  const onFleetOAuth = useCallback(async () => {
-    const cur = stateRef.current;
-    if (!cur.fleetplannerUrl) return;
-    try {
-      const result = await startFleetOAuthInWebview(cur.fleetplannerUrl);
-      await saveFleetplannerToken(result.token);
-      setState((s) => ({ ...s, fleetplannerToken: result.token }));
-    } catch (e) {
-      setState((s) => ({ ...s, lastError: `Fleet Auth: ${String(e)}` }));
-    }
-  }, []);
-
-  const onFleetSignOut = useCallback(async () => {
-    await clearFleetplannerToken();
-    await fleetRef.current?.disconnect();
-    await globalFleetRef.current?.disconnect();
-    currentFleetRoomRef.current = null;
-    currentGlobalRoomRef.current = null;
-    setState((s) => ({
-      ...s,
-      fleetplannerToken: null,
-      fleetRoomName: null,
-      fleetOpTitle: null,
-      globalFleetStatus: "idle",
-      globalFleetPttActive: false,
-    }));
-  }, []);
-
-  const onGlobalFleetPttEvent = useCallback((pressed: boolean) => {
-    setState((s) => ({ ...s, globalFleetPttActive: pressed }));
-    void globalFleetRef.current?.setPttActive(pressed);
-  }, []);
-
-  // ── Mission voice PTT ────────────────────────────────────────────────
+  // ── Mission voice PTT (commander room = PTT-1 in mission mode) ────────
   const onCommanderPtt = useCallback((pressed: boolean) => {
     setState((s) => ({ ...s, commanderPttActive: pressed }));
     void missionCommanderRef.current?.setPttActive(pressed);
   }, []);
 
-  const onGlobalMissionPtt = useCallback((pressed: boolean) => {
-    setState((s) => ({ ...s, globalMissionPttActive: pressed }));
-    void missionGlobalRef.current?.setPttActive(pressed);
-  }, []);
-
   // ── Mission disconnect ───────────────────────────────────────────────
   const onMissionDisconnect = useCallback(async () => {
     await missionCommanderRef.current?.disconnect();
-    await missionGlobalRef.current?.disconnect();
     currentMissionCommanderRoomRef.current = null;
-    currentMissionGlobalRoomRef.current = null;
     await clearMissionConfig();
     setState((s) => ({
       ...s,
@@ -932,9 +787,7 @@ export function App(): JSX.Element {
       missionOpTitle: null,
       missionHasCommander: false,
       commanderStatus: "idle",
-      globalMissionStatus: "idle",
       commanderPttActive: false,
-      globalMissionPttActive: false,
       missionToken: null,
       missionUrl: null,
       missionEnded: false,
@@ -948,22 +801,24 @@ export function App(): JSX.Element {
     setShowMissionModal(false);
   }, []);
 
-  // ── OS deep-link: dccc://fleet-voice?token=…&url=… ───────────────────
-  // Clicking a fleet-voice link (from Discord DM / browser) launches or
+  // ── OS deep-link: rdoc://mission?token=…&url=… (or legacy dccc://) ────
+  // Clicking a mission link (from Discord DM / browser) launches or
   // focuses the Companion and auto-applies the mission config — no paste.
   // Covers cold start (getCurrent) and while-running (onOpenUrl, forwarded
-  // by the single-instance plugin on Windows).
+  // by the single-instance plugin on Windows). Both the new `rdoc://` and
+  // the legacy `dccc://` schemes are accepted during the transition.
   useEffect(() => {
     let active = true;
     let unlisten: (() => void) | null = null;
     const applyRaw = (raw: string): void => {
       try {
-        const u = new URL(raw.trim().replace(/^dccc:\/\//, "https://dccc.local/"));
+        const normalized = raw.trim().replace(/^(dccc|rdoc):\/\//i, "https://link.local/");
+        const u = new URL(normalized);
         const token = u.searchParams.get("token");
         const url = u.searchParams.get("url");
         if (token && url) void onMissionLinkApply(token, url);
       } catch {
-        // not a fleet-voice link — ignore
+        // not a mission link — ignore
       }
     };
     void (async () => {
@@ -997,7 +852,6 @@ export function App(): JSX.Element {
         opId: string;
         opTitle: string;
         livekitUrl: string;
-        globalRoom: MissionRoom;
         commanderRoom: MissionRoom | null;
       };
     };
@@ -1015,39 +869,21 @@ export function App(): JSX.Element {
           // No active session — disconnect + mark ended if we were active
           if (stateRef.current.missionActive) {
             await missionCommanderRef.current?.disconnect();
-            await missionGlobalRef.current?.disconnect();
             currentMissionCommanderRoomRef.current = null;
-            currentMissionGlobalRoomRef.current = null;
             setState((s) => ({
               ...s,
               missionActive: false,
               missionOpTitle: null,
               missionHasCommander: false,
               commanderStatus: "idle",
-              globalMissionStatus: "idle",
               commanderPttActive: false,
-              globalMissionPttActive: false,
               missionEnded: true,
             }));
           }
           return;
         }
 
-        const { opTitle, livekitUrl, globalRoom, commanderRoom } = data.op;
-
-        // Global room
-        if (
-          currentMissionGlobalRoomRef.current !== globalRoom.room ||
-          missionGlobalRef.current?.getStatus() === "idle"
-        ) {
-          if (!missionGlobalRef.current) {
-            const fa = new FleetAudio();
-            fa.setStatusListener((s) => setState((st) => ({ ...st, globalMissionStatus: s })));
-            missionGlobalRef.current = fa;
-          }
-          await missionGlobalRef.current.connect(livekitUrl, globalRoom.token);
-          currentMissionGlobalRoomRef.current = globalRoom.room;
-        }
+        const { opTitle, livekitUrl, commanderRoom } = data.op;
 
         // Commander room (only if returned)
         if (commanderRoom) {
@@ -1085,96 +921,15 @@ export function App(): JSX.Element {
     return () => clearInterval(interval);
   }, [state.missionToken, state.missionUrl]);
 
-  // ── Commander hotkey (keyboard + mouse via native rdev/raw-input) ────
-  // Registers the accelerator with the native listener so it fires
-  // globally — incl. mouse side-buttons (the Mouse5 default) and even
-  // while a fullscreen game owns input. A window-level keyboard listener
-  // stays as a focused-window fallback, mirroring the bridge PTT path.
-  useEffect(() => {
-    const hotkey = state.commanderHotkey;
-    // Commander PTT only exists when the user holds a commander room
-    // (Admiral / captain). Plain crew = global voice only = 1 PTT.
-    if (!hotkey || !state.missionActive || !state.missionHasCommander) return;
-    let active = true;
-    let unlisten: (() => void) | null = null;
-    void setExtraHotkey("mission-commander", hotkey).catch(() => {});
-    void (async () => {
-      const fn = await listen<HotkeyEventPayload>("hotkey", (e) => {
-        if (e.payload.accelerator !== hotkey) return;
-        onCommanderPtt(e.payload.state === "pressed");
-      });
-      if (active) unlisten = fn;
-      else fn();
-    })();
-    const onDown = (e: KeyboardEvent): void => {
-      if (e.repeat || isMouseHotkey(hotkey)) return;
-      if (formatKeyboardAccelerator(e) === hotkey) {
-        e.preventDefault();
-        onCommanderPtt(true);
-      }
-    };
-    const onUp = (e: KeyboardEvent): void => {
-      if (isMouseHotkey(hotkey)) return;
-      if (keyReleaseMatchesAccelerator(e, hotkey)) {
-        e.preventDefault();
-        onCommanderPtt(false);
-      }
-    };
-    window.addEventListener("keydown", onDown, true);
-    window.addEventListener("keyup", onUp, true);
-    return () => {
-      active = false;
-      unlisten?.();
-      void clearExtraHotkey("mission-commander");
-      window.removeEventListener("keydown", onDown, true);
-      window.removeEventListener("keyup", onUp, true);
-    };
-  }, [state.commanderHotkey, state.missionActive, state.missionHasCommander, onCommanderPtt]);
-
-  // ── Global mission hotkey (keyboard + mouse via native rdev/raw-input) ─
-  useEffect(() => {
-    const hotkey = state.globalHotkey;
-    if (!hotkey || !state.missionActive) return;
-    let active = true;
-    let unlisten: (() => void) | null = null;
-    void setExtraHotkey("mission-global", hotkey).catch(() => {});
-    void (async () => {
-      const fn = await listen<HotkeyEventPayload>("hotkey", (e) => {
-        if (e.payload.accelerator !== hotkey) return;
-        onGlobalMissionPtt(e.payload.state === "pressed");
-      });
-      if (active) unlisten = fn;
-      else fn();
-    })();
-    const onDown = (e: KeyboardEvent): void => {
-      if (e.repeat || isMouseHotkey(hotkey)) return;
-      if (formatKeyboardAccelerator(e) === hotkey) {
-        e.preventDefault();
-        onGlobalMissionPtt(true);
-      }
-    };
-    const onUp = (e: KeyboardEvent): void => {
-      if (isMouseHotkey(hotkey)) return;
-      if (keyReleaseMatchesAccelerator(e, hotkey)) {
-        e.preventDefault();
-        onGlobalMissionPtt(false);
-      }
-    };
-    window.addEventListener("keydown", onDown, true);
-    window.addEventListener("keyup", onUp, true);
-    return () => {
-      active = false;
-      unlisten?.();
-      void clearExtraHotkey("mission-global");
-      window.removeEventListener("keydown", onDown, true);
-      window.removeEventListener("keyup", onUp, true);
-    };
-  }, [state.globalHotkey, state.missionActive, onGlobalMissionPtt]);
+  // NOTE: In mission mode PTT-1 (the commander room) is driven by the
+  // primary `localHotkey` path — `handlePttEvent` branches to
+  // `missionCommanderRef` when a mission with a commander room is active.
+  // No separate mission hotkey registration is needed. PTT-2 (GLOBAL) is
+  // the relay path handled by the relay hotkey listener above.
 
   const onSignOut = useCallback(async () => {
     await clearSession();
     void relayRef.current?.disconnect();
-    void fleetRef.current?.disconnect();
     setState((s) => ({
       ...s,
       token: null,
@@ -1191,9 +946,7 @@ export function App(): JSX.Element {
     async (next: SettingsDraft) => {
       let nextBridgeUrl = state.bridgeUrl;
       let nextFleetplannerUrl = state.fleetplannerUrl;
-      let nextHotkey = state.hotkey;
-      let nextRelayHotkey = state.relayHotkey;
-      let nextCommanderHotkey = state.commanderHotkey;
+      let nextLocalHotkey = state.localHotkey;
       let nextGlobalHotkey = state.globalHotkey;
       if (next.bridgeUrl !== state.bridgeUrl) {
         await saveBridgeUrl(next.bridgeUrl);
@@ -1204,24 +957,16 @@ export function App(): JSX.Element {
         await saveFleetplannerUrl(next.fleetplannerUrl);
         nextFleetplannerUrl = next.fleetplannerUrl;
       }
-      if (next.hotkey && next.hotkey !== state.hotkey) {
+      if (next.localHotkey && next.localHotkey !== state.localHotkey) {
         try {
-          await setupHotkey(next.hotkey, handlePttEvent);
-          await saveHotkey(next.hotkey);
-          nextHotkey = next.hotkey;
+          await setupHotkey(next.localHotkey, handlePttEvent);
+          await saveLocalHotkey(next.localHotkey);
+          nextLocalHotkey = next.localHotkey;
         } catch (err) {
           setState((s) => ({ ...s, lastError: `Hotkey: ${String(err)}` }));
           setShowSettings(false);
           return;
         }
-      }
-      if (next.relayHotkey && next.relayHotkey !== state.relayHotkey) {
-        await saveRelayHotkey(next.relayHotkey);
-        nextRelayHotkey = next.relayHotkey;
-      }
-      if (next.commanderHotkey && next.commanderHotkey !== state.commanderHotkey) {
-        await saveCommanderHotkey(next.commanderHotkey);
-        nextCommanderHotkey = next.commanderHotkey;
       }
       if (next.globalHotkey && next.globalHotkey !== state.globalHotkey) {
         await saveGlobalHotkey(next.globalHotkey);
@@ -1284,9 +1029,7 @@ export function App(): JSX.Element {
         ...s,
         bridgeUrl: nextBridgeUrl,
         fleetplannerUrl: nextFleetplannerUrl,
-        hotkey: nextHotkey,
-        relayHotkey: nextRelayHotkey,
-        commanderHotkey: nextCommanderHotkey,
+        localHotkey: nextLocalHotkey,
         globalHotkey: nextGlobalHotkey,
         device: nextDevice,
         feedbackSoundsEnabled: next.feedbackSoundsEnabled,
@@ -1299,9 +1042,8 @@ export function App(): JSX.Element {
     },
     [
       state.bridgeUrl,
-      state.hotkey,
-      state.relayHotkey,
-      state.commanderHotkey,
+      state.fleetplannerUrl,
+      state.localHotkey,
       state.globalHotkey,
       state.device,
       state.feedbackSoundsEnabled,
@@ -1393,91 +1135,16 @@ export function App(): JSX.Element {
               SESSION VERLASSEN
             </button>
           ) : null}
-          {state.fleetplannerUrl ? (
-            state.fleetplannerToken ? (
-              <>
-                {state.fleetStatus === "connected" ? (
-                  <button
-                    type="button"
-                    className={`cc-btn ${state.fleetPttActive ? "green" : "cyan"} sm`}
-                    title={`Fleet Voice · ${state.fleetOpTitle ?? state.fleetRoomName ?? "connected"}`}
-                    onMouseDown={() => onFleetPttEvent(true)}
-                    onMouseUp={() => onFleetPttEvent(false)}
-                    onMouseLeave={() => {
-                      if (state.fleetPttActive) onFleetPttEvent(false);
-                    }}
-                  >
-                    <Icon.radio size={12} />
-                    {state.fleetPttActive ? "FLEET AKTIV" : "FLEET VOICE"}
-                  </button>
-                ) : null}
-                {state.globalFleetStatus === "connected" ? (
-                  <button
-                    type="button"
-                    className={`cc-btn ${state.globalFleetPttActive ? "green" : "cyan"} sm`}
-                    title="Global Fleet Voice — alle Units"
-                    onMouseDown={() => onGlobalFleetPttEvent(true)}
-                    onMouseUp={() => onGlobalFleetPttEvent(false)}
-                    onMouseLeave={() => {
-                      if (state.globalFleetPttActive) onGlobalFleetPttEvent(false);
-                    }}
-                  >
-                    <Icon.radio size={12} />
-                    {state.globalFleetPttActive ? "GLOBAL AKTIV" : "GLOBAL"}
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="cc-btn ghost sm"
-                  onClick={onFleetplannerDiagnosticsClick}
-                  title="Fleetplanner Bot- und Rechteprüfung öffnen"
-                >
-                  <Icon.settings size={12} />
-                  BOT TEST
-                </button>
-                <button
-                  type="button"
-                  className="cc-btn ghost sm"
-                  onClick={() => void onFleetSignOut()}
-                  title="Fleet Voice abmelden"
-                >
-                  <Icon.power size={12} />
-                  FLEET ABMELDEN
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="cc-btn ghost sm"
-                  onClick={() => void onFleetOAuth()}
-                  title="Mit Fleetplanner per Discord anmelden"
-                >
-                  <Icon.radio size={12} />
-                  FLEET LOGIN
-                </button>
-                <button
-                  type="button"
-                  className="cc-btn ghost sm"
-                  onClick={onFleetplannerDiagnosticsClick}
-                  title="Fleetplanner Bot- und Rechteprüfung öffnen"
-                >
-                  <Icon.settings size={12} />
-                  BOT TEST
-                </button>
-              </>
-            )
-          ) : null}
           {state.suiteCapabilities.canUseRelay ? (
             <button
               type="button"
               className={`cc-btn ${state.relayPttActive ? "green" : state.relayStatus === "connected" ? "cyan" : "ghost"} sm`}
-              title={`Voice-to-All · Hotkey ${state.relayHotkey} · ${state.relayStatus}`}
+              title={`Voice-to-All (Global) · Hotkey ${state.globalHotkey} · ${state.relayStatus}`}
               onMouseDown={() =>
-                onRelayPttEvent({ state: "pressed", accelerator: state.relayHotkey })
+                onRelayPttEvent({ state: "pressed", accelerator: state.globalHotkey })
               }
               onMouseUp={() =>
-                onRelayPttEvent({ state: "released", accelerator: state.relayHotkey })
+                onRelayPttEvent({ state: "released", accelerator: state.globalHotkey })
               }
             >
               <Icon.radio size={12} />
@@ -1600,15 +1267,13 @@ export function App(): JSX.Element {
           <MissionVoicePanel
             opTitle={state.missionOpTitle}
             commanderStatus={state.commanderStatus}
-            globalStatus={state.globalMissionStatus}
             commanderPttActive={state.commanderPttActive}
-            globalPttActive={state.globalMissionPttActive}
             hasCommanderRoom={state.missionHasCommander}
             onCommanderPtt={onCommanderPtt}
-            onGlobalPtt={onGlobalMissionPtt}
             onDisconnect={() => void onMissionDisconnect()}
-            commanderHotkey={state.commanderHotkey}
+            localHotkey={state.localHotkey}
             globalHotkey={state.globalHotkey}
+            relayAvailable={state.suiteCapabilities.canUseRelay}
           />
         ) : null}
 
@@ -1756,7 +1421,7 @@ export function App(): JSX.Element {
                     color: "var(--dim)",
                   }}
                 >
-                  HOLD <span style={{ color: "var(--cyan)" }}>{state.hotkey}</span>
+                  HOLD <span style={{ color: "var(--cyan)" }}>{state.localHotkey}</span>
                 </div>
                 {state.wsDetail ? (
                   <div className="cc-hint" style={{ fontSize: 10 }}>
@@ -1779,9 +1444,7 @@ export function App(): JSX.Element {
           initial={{
             bridgeUrl: state.bridgeUrl,
             fleetplannerUrl: state.fleetplannerUrl,
-            hotkey: state.hotkey,
-            relayHotkey: state.relayHotkey,
-            commanderHotkey: state.commanderHotkey,
+            localHotkey: state.localHotkey,
             globalHotkey: state.globalHotkey,
             micDeviceId: state.device.micDeviceId,
             outputDeviceId: state.device.outputDeviceId,

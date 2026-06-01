@@ -11,9 +11,9 @@ import {
 export type SettingsDraft = {
   bridgeUrl: string;
   fleetplannerUrl: string;
-  hotkey: string;
-  relayHotkey: string;
-  commanderHotkey: string;
+  /** PTT-1 (LOCAL): bridge w/o mission, commander room with mission. */
+  localHotkey: string;
+  /** PTT-2 (GLOBAL): Discord relay. */
   globalHotkey: string;
   micDeviceId?: string;
   outputDeviceId?: string;
@@ -125,13 +125,13 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
       await onSave({
         ...draft,
         bridgeUrl: trimmed,
-        hotkey: draft.hotkey.trim() || initial.hotkey,
-        relayHotkey: draft.relayHotkey.trim() || initial.relayHotkey,
+        localHotkey: draft.localHotkey.trim() || initial.localHotkey,
+        globalHotkey: draft.globalHotkey.trim() || initial.globalHotkey,
       });
     } finally {
       setSaving(false);
     }
-  }, [draft, initial.hotkey, onSave]);
+  }, [draft, initial.localHotkey, initial.globalHotkey, onSave]);
 
   const needPerm = permState !== "granted" && (devices.inputs.length === 0 || !devices.inputs[0]?.label);
 
@@ -173,9 +173,9 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
           </div>
         </div>
 
-        {/* ── Fleetplanner URL ───────────────────────────── */}
+        {/* ── Mission / Fleetplanner URL ─────────────────── */}
         <div className="cc-field">
-          <label className="cc-label" htmlFor="fleetplanner-url">Fleetplanner-URL</label>
+          <label className="cc-label" htmlFor="fleetplanner-url">Mission/Fleetplanner-URL</label>
           <input
             id="fleetplanner-url"
             className="cc-input mono"
@@ -187,54 +187,38 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
             spellCheck={false}
           />
           <span className="cc-hint">
-            Fleetplanner-Origin für Fleet Voice. Leer lassen wenn nicht genutzt.
+            Fleetplanner-Origin — Default für Mission-Links. Leer lassen wenn nicht genutzt.
           </span>
         </div>
 
-        {/* ── Hotkey ─────────────────────────────────────── */}
+        {/* ── PTT-1 (LOCAL) ──────────────────────────────── */}
         <div className="cc-field">
-          <label className="cc-label">PTT-Hotkey</label>
+          <label className="cc-label">PTT-Hotkey (Lokal)</label>
           <HotkeyCapture
-            value={draft.hotkey}
-            onChange={(v) => setDraft((d) => ({ ...d, hotkey: v }))}
+            value={draft.localHotkey}
+            onChange={(v) => setDraft((d) => ({ ...d, localHotkey: v }))}
           />
           <span className="cc-hint">
-            ERFASSEN drücken, dann gewünschte Taste / Maustaste betätigen.
-            Mouse4 / Mouse5 = die Seitentasten an Gaming-Mäusen. Esc bricht ab.
+            Sprechtaste für deinen lokalen Kanal — ohne Mission die Bridge (Squad Link),
+            mit aktiver Mission der Commander-Kanal. Mouse4 / Mouse5 = Seitentasten an
+            Gaming-Mäusen. Esc bricht ab.
           </span>
         </div>
 
+        {/* ── PTT-2 (GLOBAL / Relay) ─────────────────────── */}
         {canUseRelay ? (
           <div className="cc-field">
-            <label className="cc-label">Voice-to-All Hotkey</label>
+            <label className="cc-label">PTT-Hotkey (Global / Voice-to-All)</label>
             <HotkeyCapture
-              value={draft.relayHotkey}
-              onChange={(v) => setDraft((d) => ({ ...d, relayHotkey: v }))}
+              value={draft.globalHotkey}
+              onChange={(v) => setDraft((d) => ({ ...d, globalHotkey: v }))}
             />
             <span className="cc-hint">
-              Separater Hotkey für den Discord-Relay-Kanal. Sichtbar nur, wenn dein Server
-              Voice-to-All freigeschaltet hat.
+              Sprechtaste für den Discord-Relay-Kanal (Global). Sichtbar nur, wenn dein
+              Server Voice-to-All freigeschaltet hat.
             </span>
           </div>
         ) : null}
-
-        {/* ── Mission Voice hotkeys ───────────────────────── */}
-        <div className="cc-field">
-          <label className="cc-label">Mission // Commander-Kanal PTT</label>
-          <HotkeyCapture
-            value={draft.commanderHotkey}
-            onChange={(v) => setDraft((d) => ({ ...d, commanderHotkey: v }))}
-          />
-          <span className="cc-hint">PTT für den Commander-Kanal im Mission Mode (nur Flottenleiter + Kapitäne).</span>
-        </div>
-        <div className="cc-field">
-          <label className="cc-label">Mission // Global-Kanal PTT</label>
-          <HotkeyCapture
-            value={draft.globalHotkey}
-            onChange={(v) => setDraft((d) => ({ ...d, globalHotkey: v }))}
-          />
-          <span className="cc-hint">PTT für den Globalkanal im Mission Mode (alle Besatzungsmitglieder + Relay-Bots).</span>
-        </div>
 
         {/* ── Audio: Devices + Volume ────────────────────── */}
         <div className="cc-card" style={{ padding: "12px 14px", marginTop: 4 }}>

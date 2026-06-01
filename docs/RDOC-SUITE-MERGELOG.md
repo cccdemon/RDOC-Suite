@@ -3,6 +3,30 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Companion Neuarchitektur (Mission-First, 2 PTT)
+
+Plan: `docs/companion-app-opus.md`. Reduce companion (`apps/companion/`) from 6 audio paths /
+4 hotkeys / 3 auth flows to **2 PTTs**: `localHotkey` (LOCAL: guild bridge w/o mission,
+mission `commanderRoom` with mission) + `globalHotkey` (RELAY: Discord relay bots, always when
+`canUseRelay`). Fleetplanner OAuth + voice polling loop removed. Deep link `dccc://fleet-voice`
+→ `rdoc://mission` (both schemes parsed during transition).
+
+- `lib/config.ts`: defaults unchanged (`DEFAULT_HOTKEY`=Mouse4 → localHotkey, `DEFAULT_RELAY_HOTKEY`=R → globalHotkey).
+- `lib/store.ts`: Settings type drops `hotkey`/`relayHotkey`/`commanderHotkey`/`fleetplannerToken`,
+  adds `localHotkey`. `loadSettings` fallback chain `localHotkey ?? hotkey`, `globalHotkey ?? relayHotkey`.
+  New `saveLocalHotkey`; remove `saveHotkey`/`saveRelayHotkey`/`saveCommanderHotkey`/`saveFleetplannerToken`/`clearFleetplannerToken`.
+- `App.tsx`: remove fleet-voice polling effect, onFleetOAuth/onFleetSignOut/onFleetPttEvent/
+  onGlobalFleetPttEvent/onGlobalMissionPtt + global-mission-hotkey effect + commander-hotkey effect.
+  `handlePttEvent` branches: mission-active → `missionCommanderRef.setPttActive`, else bridge path.
+  Mission polling response reduced to `commanderRoom` only. Header Fleetplanner block removed.
+- `components/MissionVoicePanel.tsx`: single-room (commander) only.
+- `components/SettingsModal.tsx` + `MissionLinkModal.tsx`: hotkey fields 4→2, link placeholder rdoc://.
+- `src-tauri/tauri.conf.json` + `src-tauri/src/lib.rs`: register both `rdoc` + `dccc` schemes.
+- Backend `apps/fleetplanner/src/routes/api.ts`: `mission-voice` drops `globalRoom` (commanderRoom
+  is authoritative); `/api/companion/voice` retired; link gen → `rdoc://mission`. `web.ts:424` same.
+- **Hard ordering dep:** backend `globalRoom` drop must release together with frontend mission-poll
+  change (old app reads `data.op.globalRoom.room`).
+
 ## Queued / Planned Step - 2026-06-01: Fleetplanner Discord event header image from opType
 
 `createScheduledEvent` and `updateScheduledEvent` in `services/discord.ts` never sent an

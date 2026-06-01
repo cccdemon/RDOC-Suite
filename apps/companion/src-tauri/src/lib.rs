@@ -739,7 +739,9 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
-                let _ = app.deep_link().register("dccc");
+                let _ = app.deep_link().register("rdoc");
+                let _ = app.deep_link().register("dccc"); // legacy — transition
+
             }
 
             let registry = HotkeyRegistry::default();

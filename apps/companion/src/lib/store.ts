@@ -12,14 +12,11 @@ export type SavedGuild = { id: string; label?: string };
 export type Settings = {
   /** Bridge HTTPS origin (no trailing slash) — formerly VITE_BRIDGE_URL. */
   bridgeUrl: string;
-  /** Fleetplanner origin — empty until user configures it in Settings. */
+  /** Fleetplanner / Mission origin — used as the default mission URL. */
   fleetplannerUrl: string;
-  /** Companion bearer token from fleetplanner Discord OAuth. Null = not authenticated. */
-  fleetplannerToken?: string;
-  /** PTT hotkey accelerator (e.g. "Mouse4", "Alt+F1"). */
-  hotkey: string;
-  /** Future Voice-to-All relay hotkey. Hidden until relay capability exists. */
-  relayHotkey: string;
+  /** PTT-1 (LOCAL) hotkey. Without a mission → guild bridge room;
+   *  with a mission → mission commander room. Migrated from old `hotkey`. */
+  localHotkey: string;
   /** Last session token (JWT). Optional — absent = signed out. */
   token?: string;
   /** Guild ID the session token is valid for. */
@@ -62,20 +59,19 @@ export type Settings = {
   missionToken?: string;
   /** Fleetplanner URL for mission voice (from dccc://fleet-voice link). */
   missionUrl?: string;
-  /** PTT hotkey for the Commander Channel (mission mode). */
-  commanderHotkey: string;
-  /** PTT hotkey for the Global Channel (mission mode). */
+  /** PTT-2 (RELAY) hotkey — Discord relay channel. Active when the
+   *  server grants relay capability. Migrated from old `relayHotkey`. */
   globalHotkey: string;
 };
 
 const STORE_FILE = "settings.json";
 const store = new LazyStore(STORE_FILE);
 
-const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceId" | "outputDeviceId" | "fleetplannerToken" | "missionToken" | "missionUrl"> = {
+const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceId" | "outputDeviceId" | "missionToken" | "missionUrl"> = {
   bridgeUrl: DEFAULT_BRIDGE_URL,
   fleetplannerUrl: DEFAULT_FLEETPLANNER_URL,
-  hotkey: DEFAULT_HOTKEY,
-  relayHotkey: DEFAULT_RELAY_HOTKEY,
+  localHotkey: DEFAULT_HOTKEY,
+  globalHotkey: DEFAULT_RELAY_HOTKEY,
   savedGuilds: [],
   outputVolumePct: 100,
   micGainPct: 100,
@@ -86,8 +82,6 @@ const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceI
   feedbackSoundsVolumePct: 50,
   duckingEnabled: true,
   duckingTargetVolumePct: 25,
-  commanderHotkey: "Mouse5",
-  globalHotkey: "F9",
 };
 
 /**
@@ -97,17 +91,17 @@ const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceI
  */
 export async function loadSettings(): Promise<Settings> {
   const [
-    bridgeUrl, fleetplannerUrl, fleetplannerToken,
-    hotkey, relayHotkey, token, guildId, savedGuilds, lastGuildId,
+    bridgeUrl, fleetplannerUrl,
+    localHotkey, hotkey, relayHotkey, token, guildId, savedGuilds, lastGuildId,
     micDeviceId, outputDeviceId, outputVolumePct, micGainPct, remoteVolumes,
     outputMuted, afk,
     feedbackSoundsEnabled, feedbackSoundsVolumePct,
     duckingEnabled, duckingTargetVolumePct,
-    missionToken, missionUrl, commanderHotkey, globalHotkey,
+    missionToken, missionUrl, globalHotkey,
   ] = await Promise.all([
     store.get<string>("bridgeUrl"),
     store.get<string>("fleetplannerUrl"),
-    store.get<string>("fleetplannerToken"),
+    store.get<string>("localHotkey"),
     store.get<string>("hotkey"),
     store.get<string>("relayHotkey"),
     store.get<string>("token"),
@@ -127,15 +121,13 @@ export async function loadSettings(): Promise<Settings> {
     store.get<number>("duckingTargetVolumePct"),
     store.get<string>("missionToken"),
     store.get<string>("missionUrl"),
-    store.get<string>("commanderHotkey"),
     store.get<string>("globalHotkey"),
   ]);
   return {
     bridgeUrl: bridgeUrl ?? DEFAULTS.bridgeUrl,
     fleetplannerUrl: fleetplannerUrl ?? DEFAULTS.fleetplannerUrl,
-    fleetplannerToken: fleetplannerToken ?? undefined,
-    hotkey: hotkey ?? DEFAULTS.hotkey,
-    relayHotkey: relayHotkey ?? DEFAULTS.relayHotkey,
+    // Migration: localHotkey falls back to the old `hotkey` key (Bridge PTT).
+    localHotkey: localHotkey ?? hotkey ?? DEFAULTS.localHotkey,
     token: token ?? undefined,
     guildId: guildId ?? undefined,
     savedGuilds: Array.isArray(savedGuilds) ? savedGuilds : [],
@@ -164,8 +156,8 @@ export async function loadSettings(): Promise<Settings> {
         : DEFAULTS.duckingTargetVolumePct,
     missionToken: missionToken ?? undefined,
     missionUrl: missionUrl ?? undefined,
-    commanderHotkey: commanderHotkey ?? DEFAULTS.commanderHotkey,
-    globalHotkey: globalHotkey ?? DEFAULTS.globalHotkey,
+    // Migration: globalHotkey falls back to the old `relayHotkey` key.
+    globalHotkey: globalHotkey ?? relayHotkey ?? DEFAULTS.globalHotkey,
   };
 }
 
@@ -182,13 +174,8 @@ export async function clearSession(): Promise<void> {
   await store.save();
 }
 
-export async function saveHotkey(accelerator: string): Promise<void> {
-  await store.set("hotkey", accelerator);
-  await store.save();
-}
-
-export async function saveRelayHotkey(accelerator: string): Promise<void> {
-  await store.set("relayHotkey", accelerator);
+export async function saveLocalHotkey(accelerator: string): Promise<void> {
+  await store.set("localHotkey", accelerator);
   await store.save();
 }
 
@@ -199,16 +186,6 @@ export async function saveBridgeUrl(url: string): Promise<void> {
 
 export async function saveFleetplannerUrl(url: string): Promise<void> {
   await store.set("fleetplannerUrl", url);
-  await store.save();
-}
-
-export async function saveFleetplannerToken(token: string): Promise<void> {
-  await store.set("fleetplannerToken", token);
-  await store.save();
-}
-
-export async function clearFleetplannerToken(): Promise<void> {
-  await store.delete("fleetplannerToken");
   await store.save();
 }
 
@@ -268,11 +245,6 @@ export async function saveMissionConfig(token: string, url: string): Promise<voi
 export async function clearMissionConfig(): Promise<void> {
   await store.delete("missionToken");
   await store.delete("missionUrl");
-  await store.save();
-}
-
-export async function saveCommanderHotkey(accelerator: string): Promise<void> {
-  await store.set("commanderHotkey", accelerator);
   await store.save();
 }
 

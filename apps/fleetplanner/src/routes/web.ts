@@ -421,7 +421,7 @@ export async function webRoutes(app: FastifyInstance) {
             return {
               userId: uid,
               username: usernameMap.get(uid) ?? uid,
-              link: `dccc://fleet-voice?${params.toString()}`,
+              link: `rdoc://mission?${params.toString()}`,
             };
           }),
         );
