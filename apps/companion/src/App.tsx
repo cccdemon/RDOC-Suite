@@ -1118,6 +1118,26 @@ export function App(): JSX.Element {
     return "dim";
   }, [audioLive, audioTransmit, state.audioStatus]);
 
+  // ── Voice routing readout ──────────────────────────────────────────
+  // LOCAL = PTT-1 target: the mission commander room when a mission with a
+  // commander room is active, otherwise the session/guild bridge room.
+  // GLOBAL = PTT-2 target: the Discord relay (independent of mission).
+  const missionOwnsLocal = state.missionActive && state.missionHasCommander;
+  const localRoomLabel = missionOwnsLocal
+    ? `Commander · ${state.missionOpTitle ?? "Mission"}`
+    : state.sessionId
+      ? (state.sessionLabel ?? "Session")
+      : (state.guildName ?? state.guildId ?? "Squad Link");
+  const localConnected = missionOwnsLocal
+    ? state.commanderStatus === "connected"
+    : state.audioStatus === "connected";
+  const localSpeaking = missionOwnsLocal ? state.commanderPttActive : state.pttActive;
+  const relayAvailable = state.suiteCapabilities.canUseRelay;
+  const globalConnected = state.relayStatus === "connected";
+  const globalSpeaking = state.relayPttActive;
+  const routingTone = (connected: boolean, speaking: boolean): string =>
+    speaking ? "green" : connected ? "cyan" : "dim";
+
   return (
     <div className="cc-window">
       {/* ── Brand bar (replaces native chrome for now) ────── */}
@@ -1287,6 +1307,33 @@ export function App(): JSX.Element {
           </span>
         </div>
       </section>
+
+      {/* ── Voice routing: connected room + speaking target ─── */}
+      {signedIn || state.missionActive ? (
+        <section className="cc-status-strip" style={{ flexWrap: "wrap", gap: 8 }}>
+          <span className="cc-name-label">FUNK</span>
+          <span
+            className={`cc-badge ${routingTone(localConnected, localSpeaking)}`}
+            title={`PTT-1 (${state.localHotkey}) → ${localRoomLabel}`}
+          >
+            {localSpeaking ? <Icon.mic size={11} /> : <Icon.radio size={11} />}
+            LOKAL · {localRoomLabel}
+            {localSpeaking ? " · SENDEND" : localConnected ? " · verbunden" : " · —"}
+            <span style={{ opacity: 0.6, marginLeft: 4 }}>[{state.localHotkey}]</span>
+          </span>
+          {relayAvailable ? (
+            <span
+              className={`cc-badge ${routingTone(globalConnected, globalSpeaking)}`}
+              title={`PTT-2 (${state.globalHotkey}) → Discord-Relay (alle Kanäle)`}
+            >
+              {globalSpeaking ? <Icon.mic size={11} /> : <Icon.radio size={11} />}
+              GLOBAL · Discord-Relay
+              {globalSpeaking ? " · SENDEND" : globalConnected ? " · verbunden" : " · —"}
+              <span style={{ opacity: 0.6, marginLeft: 4 }}>[{state.globalHotkey}]</span>
+            </span>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* ── Body ───────────────────────────────────────────── */}
       <main className="cc-window-body">

@@ -3,6 +3,14 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-02: Companion Funk-Routing-Anzeige
+
+App.tsx: neue "FUNK"-strip-zeile unter dem status-strip zeigt verbundenen raum + sprech-ziel.
+LOKAL (PTT-1) = commander-room bei mission sonst session/guild-bridge; GLOBAL (PTT-2) =
+Discord-relay. Farbe: green=sendend, cyan=verbunden, dim=–. Hotkey je kanal angezeigt. Derived
+vars (missionOwnsLocal/localRoomLabel/localConnected/localSpeaking/global*). Nur UI, reuse
+cc-badge/cc-status-strip. Build separat.
+
 ## Queued / Planned Step - 2026-06-01: Bridge-Zugang per Raumdock-Rolle (DB-konfigurierbar)
 
 Bridge-mode (Squad Link) nur nutzbar mit bestimmter Discord-rolle auf dem **Raumdock-server**
