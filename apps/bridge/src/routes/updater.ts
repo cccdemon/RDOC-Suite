@@ -139,6 +139,7 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
     // is at worst "attacker downloads our EXE that's already on
     // GitHub").
     const token = await mintDownloadToken({
+      guildId: "auto-update",
       label: `[auto-update] ${userId}`,
       createdBy: userId,
       ttlDays: 1,

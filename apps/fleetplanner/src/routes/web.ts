@@ -29,7 +29,14 @@ import {
   requireOpRole,
 } from "../auth/middleware.js";
 import { discordEnabled, githubEnabled, googleEnabled } from "../auth/providers.js";
-import { getMembership, listUserGuilds, effectiveOpRole } from "../services/guilds.js";
+import {
+  getMembership,
+  listUserGuilds,
+  effectiveOpRole,
+  listAllGuildsForAdmin,
+  banGuild,
+  unbanGuild,
+} from "../services/guilds.js";
 import { basePath, getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import {
@@ -37,9 +44,12 @@ import {
   getOperation,
   listOperations,
   listPublicOperations,
+  listPartnerOperations,
   listAllUserOperations,
   updateOperation,
   deleteOperation,
+  setOperationVisibility,
+  isOpVisibility,
 } from "../services/operations.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import {
@@ -165,7 +175,20 @@ export async function webRoutes(app: FastifyInstance) {
     const memberships = await listUserGuilds(ctx.user.id);
     if (memberships.length === 0) return reply.redirect(basePath("/guilds/none"), 302);
     const guildIds = memberships.map((m) => m.guildId);
-    const ops = await listAllUserOperations(guildIds, includePast);
+    // Own-guild ops + partner-guild ops (visibility partners/public) +
+    // any public op across the instance. Dedupe by id, member-guild ops win.
+    const [ownOps, partnerOpLists, publicOps] = await Promise.all([
+      listAllUserOperations(guildIds, includePast),
+      Promise.all(guildIds.map((gid) => listPartnerOperations(gid, includePast))),
+      listPublicOperations(includePast),
+    ]);
+    const opById = new Map<string, (typeof ownOps)[number]>();
+    for (const op of [...partnerOpLists.flat(), ...publicOps]) opById.set(op.id, op);
+    // Own ops overwrite partner/public entries so the user keeps full context.
+    for (const op of ownOps) opById.set(op.id, op);
+    const ops = [...opById.values()].sort(
+      (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime(),
+    );
     // Operator guilds for the "New Op" picker
     const operatorGuilds = memberships
       .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
@@ -259,11 +282,16 @@ export async function webRoutes(app: FastifyInstance) {
     }
     try {
       const meeting = await resolveMeetingFields(req.body);
+      const visibility =
+        req.body.visibility && isOpVisibility(req.body.visibility)
+          ? req.body.visibility
+          : "private";
       const op = await createOperation(ctx.user.id, {
         guildId: targetMembership.guildId,
         title: title.trim(),
         description: description ?? "",
         opType: opType ?? "combat",
+        visibility,
         meetingSystem: meeting.meetingSystem,
         meetingLocation: meeting.meetingLocation,
         scheduledAt: parsedDate,
@@ -293,16 +321,29 @@ export async function webRoutes(app: FastifyInstance) {
         }),
       );
     }
-    // Unauthenticated: serve a public preview with OG tags instead of redirecting
-    // to login (Discordbot and other scrapers follow redirects to the login page
-    // and find no OG meta there).
+    const opVisibility = (op as Record<string, unknown>).visibility as string | undefined;
+    // Unauthenticated: only PUBLIC ops get a preview (with OG tags for
+    // scrapers). Private/partner ops 404 to non-logged-in visitors.
     if (!ctx) {
+      if (opVisibility !== "public") {
+        return htmlReply(
+          reply,
+          errorPage({
+            basePath: basePath(),
+            currentUser: null,
+            status: 404,
+            message: "Operation not found",
+          }),
+        );
+      }
       reply.header("Cache-Control", "no-store");
       return htmlReply(reply, opPublicPreviewPage({ basePath: basePath(), op }));
     }
-    const membership =
-      ctx.user.role === "superadmin" ? true : !!(await getMembership(ctx.user.id, op.guildId));
-    if (!membership) {
+    // Authenticated: access if member of the op's guild OR the op is
+    // public OR partner-visible to a guild the user belongs to. This is
+    // exactly what effectiveOpRole encodes (null = no access).
+    const opRoleForView = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+    if (!opRoleForView) {
       return htmlReply(
         reply,
         errorPage({
@@ -322,10 +363,12 @@ export async function webRoutes(app: FastifyInstance) {
           })
         ).map((owned) => owned.ship)
       : [];
-    const opRoleForView = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
     const canAssignSeats =
       opRoleForView === "fleetoperator" ||
       op.leaders.some((leader) => leader.user.id === ctx.user.id);
+    // Only op leaders (fleetoperator in the op's guild or a listed
+    // OperationLeader) may change visibility — captains/crew cannot.
+    const canEditVisibility = canAssignSeats;
     // Assignable users are scoped to the op's guild (tenant isolation).
     const assignableUsers = canAssignSeats
       ? (
@@ -421,9 +464,35 @@ export async function webRoutes(app: FastifyInstance) {
         voiceControl,
         viewAsRole: req.query.viewAs,
         tab: req.query.tab,
+        visibility: opVisibility ?? "private",
+        canEditVisibility,
       }),
     );
   });
+
+  // ── Change operation visibility (op leaders only) ─────────────────────
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/ops/:id/visibility",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const op = await getOperation(req.params.id);
+      if (!op) return reply.redirect(basePath("/?flash=error:Operation+not+found."), 302);
+      // Authorize: fleetoperator in the op's guild OR a listed OperationLeader.
+      const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+      const isLeader = op.leaders.some((l) => l.user.id === ctx.user.id);
+      if (opRole !== "fleetoperator" && !isLeader) {
+        return reply.code(403).send({ error: "forbidden" });
+      }
+      const visibility = req.body.visibility;
+      if (!visibility || !isOpVisibility(visibility)) {
+        return reply.redirect(basePath(`/ops/${op.id}?flash=error:Invalid+visibility.`), 302);
+      }
+      await setOperationVisibility(op.id, visibility);
+      return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Visibility+updated.`), 302);
+    },
+  );
 
   // ── Option B: live Discord voice control (move op crew into channels) ──
   app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
@@ -780,7 +849,7 @@ export async function webRoutes(app: FastifyInstance) {
   app.get<{ Querystring: { flash?: string } }>("/admin", async (req, reply) => {
     const ctx = await requireRole(req, reply, "superadmin");
     if (!ctx) return;
-    const [users, sync, locationSync, feedbackChannelId] = await Promise.all([
+    const [users, sync, locationSync, feedbackChannelId, guilds] = await Promise.all([
       prisma.user.findMany({
         orderBy: { joinedAt: "asc" },
         include: {
@@ -801,6 +870,7 @@ export async function webRoutes(app: FastifyInstance) {
       getSyncState(),
       getLocationSyncState(),
       getSetting("feedback.discordChannelId"),
+      listAllGuildsForAdmin(),
     ]);
     htmlReply(
       reply,
@@ -813,9 +883,39 @@ export async function webRoutes(app: FastifyInstance) {
         sync,
         locationSync,
         feedbackChannelId,
+        guilds,
       }),
     );
   });
+
+  // ── SuperAdmin: ban / unban a Discord server ───────────────────────
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/admin/guilds/:id/ban",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      if (!/^\d{16,25}$/.test(req.params.id)) {
+        return reply.redirect(basePath("/admin?flash=error:Invalid+guild+id"), 302);
+      }
+      await banGuild(req.params.id);
+      return reply.redirect(basePath("/admin?flash=ok:Server+banned."), 302);
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/admin/guilds/:id/unban",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      if (!/^\d{16,25}$/.test(req.params.id)) {
+        return reply.redirect(basePath("/admin?flash=error:Invalid+guild+id"), 302);
+      }
+      await unbanGuild(req.params.id);
+      return reply.redirect(basePath("/admin?flash=ok:Server+unbanned+(still+inactive+until+re-added)."), 302);
+    },
+  );
 
   app.post<{ Body: Record<string, string> }>("/admin/ships/sync", async (req, reply) => {
     const ctx = await requireRole(req, reply, "superadmin");

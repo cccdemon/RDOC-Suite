@@ -12,10 +12,8 @@ export type RelayBotsConfigData = {
   bots: BotEntry[];
 };
 
-const SINGLETON_ID = "singleton";
-
-export async function getRelayBotsConfig(): Promise<RelayBotsConfigData> {
-  const row = await getPrisma().relayBotsConfig.findUnique({ where: { id: SINGLETON_ID } });
+export async function getRelayBotsConfig(guildId: string): Promise<RelayBotsConfigData> {
+  const row = await getPrisma().relayBotsConfig.findUnique({ where: { guildId } });
   const env = getEnv();
   if (!row) {
     return {
@@ -23,7 +21,7 @@ export async function getRelayBotsConfig(): Promise<RelayBotsConfigData> {
       livekitApiKey: "",
       livekitApiSecret: "",
       roomName: env.RELAY_LIVEKIT_ROOM,
-      guildId: env.RELAY_GUILD_ID ?? "",
+      guildId,
       bots: [],
     };
   }
@@ -38,18 +36,18 @@ export async function getRelayBotsConfig(): Promise<RelayBotsConfigData> {
 }
 
 export async function setRelayBotsConfig(
+  guildId: string,
   data: RelayBotsConfigData,
   updatedById: string,
 ): Promise<void> {
   await getPrisma().relayBotsConfig.upsert({
-    where: { id: SINGLETON_ID },
+    where: { guildId },
     create: {
-      id: SINGLETON_ID,
+      guildId,
       livekitUrl: data.livekitUrl,
       livekitApiKey: data.livekitApiKey,
       livekitApiSecret: data.livekitApiSecret,
       roomName: data.roomName,
-      guildId: data.guildId,
       botsJson: JSON.stringify(data.bots),
       updatedById,
     },
@@ -58,7 +56,6 @@ export async function setRelayBotsConfig(
       livekitApiKey: data.livekitApiKey,
       livekitApiSecret: data.livekitApiSecret,
       roomName: data.roomName,
-      guildId: data.guildId,
       botsJson: JSON.stringify(data.bots),
       updatedById,
     },
@@ -66,13 +63,15 @@ export async function setRelayBotsConfig(
 }
 
 /** Effective LiveKit credentials: DB config takes priority over env. */
-export async function getRelayLivekitCredentials(): Promise<{
+export async function getRelayLivekitCredentials(guildId?: string): Promise<{
   url: string;
   apiKey: string;
   apiSecret: string;
 }> {
   const env = getEnv();
-  const row = await getPrisma().relayBotsConfig.findUnique({ where: { id: SINGLETON_ID } });
+  const row = guildId
+    ? await getPrisma().relayBotsConfig.findUnique({ where: { guildId } })
+    : null;
   if (row?.livekitApiKey) {
     return {
       url: row.livekitUrl || env.LIVEKIT_URL,
@@ -84,8 +83,10 @@ export async function getRelayLivekitCredentials(): Promise<{
 }
 
 /** Effective relay room name: DB config takes priority over env. */
-export async function getRelayRoomName(): Promise<string> {
-  const row = await getPrisma().relayBotsConfig.findUnique({ where: { id: SINGLETON_ID } });
+export async function getRelayRoomName(guildId?: string): Promise<string> {
+  const row = guildId
+    ? await getPrisma().relayBotsConfig.findUnique({ where: { guildId } })
+    : null;
   if (row?.roomName) return row.roomName;
   return getEnv().RELAY_LIVEKIT_ROOM;
 }

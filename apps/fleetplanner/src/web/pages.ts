@@ -41,6 +41,43 @@ function opTypeTag(opType: string): SafeHtml {
   return html`<span class="tag">${opType.toUpperCase()}</span>`;
 }
 
+const VISIBILITY_META: Record<string, { cls: string; icon: string; label: string }> = {
+  private: { cls: "tag-dim", icon: "🔒", label: "PRIVATE" },
+  partners: { cls: "tag-gold", icon: "🤝", label: "PARTNERS" },
+  public: { cls: "tag-green", icon: "🌐", label: "PUBLIC" },
+};
+
+function visibilityTag(visibility: string): SafeHtml {
+  const m = VISIBILITY_META[visibility] ?? VISIBILITY_META.private;
+  return html`<span class="tag ${m.cls}">${m.icon} ${m.label}</span>`;
+}
+
+/**
+ * Visibility control: a select + save button for op leaders, or a plain
+ * badge for everyone else. `action` is the POST target.
+ */
+function visibilityControl(opts: {
+  visibility: string;
+  canEdit: boolean;
+  action: string;
+  csrfToken?: string;
+}): SafeHtml {
+  if (!opts.canEdit) return visibilityTag(opts.visibility);
+  const option = (value: string, label: string): SafeHtml =>
+    html`<option value="${value}" ${opts.visibility === value ? safe("selected") : ""}>
+      ${label}
+    </option>`;
+  return html`<form method="post" action="${opts.action}" class="opv2-inline-form">
+    <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+    <select name="visibility" aria-label="Visibility">
+      ${option("private", "🔒 Private (this Discord only)")}
+      ${option("partners", "🤝 Partners (this Discord + linked ones)")}
+      ${option("public", "🌐 Public (any logged-in user)")}
+    </select>
+    <button type="submit" class="btn btn-sm">Set visibility</button>
+  </form>`;
+}
+
 function roleLabel(role: string): string {
   return role.replace(/_/g, " ");
 }
@@ -361,6 +398,10 @@ type OpDetailPageOptions = {
     }>;
   }> | null;
   viewAsRole?: string;
+  /** Op visibility: private | partners | public. */
+  visibility?: string;
+  /** Whether the current viewer may change the op's visibility. */
+  canEditVisibility?: boolean;
 };
 
 export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
@@ -1212,6 +1253,15 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
       <div class="flex gap-2" style="align-items:center;flex-wrap:wrap">
         <h1 class="page-title">${op.title}</h1>
         ${opTypeTag(op.opType)} ${statusTag(op.status)}
+        ${visibilityTag(opts.visibility ?? "private")}
+        ${opts.canEditVisibility
+          ? visibilityControl({
+              visibility: opts.visibility ?? "private",
+              canEdit: true,
+              action: `${bp}/ops/${op.id}/visibility`,
+              csrfToken: csrf,
+            })
+          : ""}
         ${canManage
           ? html`<a href="${bp}/ops/${op.id}/edit" class="btn btn-sm btn-ghost">Edit</a>`
           : ""}
@@ -2392,12 +2442,25 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         )}')"
       >
         <div>
-          <div class="opv2-eyebrow">${opTypeTag(op.opType)} ${statusTag(op.status)}</div>
+          <div class="opv2-eyebrow">
+            ${opTypeTag(op.opType)} ${statusTag(op.status)}
+            ${visibilityTag(opts.visibility ?? "private")}
+          </div>
           <h1>${op.title}</h1>
           <p>
             ${fmtDate(op.scheduledAt, gtz)} at
             ${op.meetingLocation || systemLabel(op.meetingSystem ?? "stanton")}
           </p>
+          ${opts.canEditVisibility
+            ? html`<div class="mt-2">
+                ${visibilityControl({
+                  visibility: opts.visibility ?? "private",
+                  canEdit: true,
+                  action: `${bp}/ops/${op.id}/visibility`,
+                  csrfToken: opts.csrfToken,
+                })}
+              </div>`
+            : safe("")}
         </div>
         <div class="opv2-switch">
           ${canRealManage
@@ -2825,6 +2888,16 @@ export function opFormPage(opts: {
               )}
             </select>
           </div>
+          ${!op
+            ? html`<div class="form-group">
+                <label>Visibility</label>
+                <select name="visibility">
+                  <option value="private" selected>🔒 Private (this Discord only)</option>
+                  <option value="partners">🤝 Partners (this Discord + linked ones)</option>
+                  <option value="public">🌐 Public (any logged-in user)</option>
+                </select>
+              </div>`
+            : safe("")}
           <div class="form-group">
             <label>Meeting System</label>
             <select name="meetingSystem" id="meeting-system-select">
@@ -3094,6 +3167,14 @@ export function adminPage(opts: {
   sync: ShipSyncView;
   locationSync: LocationSyncView;
   feedbackChannelId: string;
+  guilds?: Array<{
+    id: string;
+    name: string;
+    active: boolean;
+    bannedAt: Date | null;
+    ownerUserId: string | null;
+    memberCount: number;
+  }>;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
@@ -3360,10 +3441,51 @@ export function adminPage(opts: {
     },
   );
 
+  const guildsPanel =
+    isSuperAdmin && opts.guilds
+      ? html`<div class="section">
+          <div class="section-title">Discord Servers (${opts.guilds.length})</div>
+          <div class="card" style="padding:0">
+            <table>
+              <thead>
+                <tr><th>Server</th><th>ID</th><th>Members</th><th>Status</th><th></th></tr>
+              </thead>
+              <tbody>
+                ${opts.guilds.map((srv) => {
+                  const statusTagHtml = srv.bannedAt
+                    ? html`<span class="tag tag-red">BANNED</span>`
+                    : srv.active
+                      ? html`<span class="tag tag-green">active</span>`
+                      : html`<span class="tag tag-dim">inactive</span>`;
+                  return html`<tr>
+                    <td><strong>${srv.name}</strong></td>
+                    <td class="text-mono text-sm text-dim">${srv.id}</td>
+                    <td class="text-mono text-sm">${String(srv.memberCount)}</td>
+                    <td>${statusTagHtml}</td>
+                    <td class="text-right">
+                      ${srv.bannedAt
+                        ? html`<form method="post" action="${bp}/admin/guilds/${srv.id}/unban" class="inline">
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            <button type="submit" class="btn btn-ghost btn-sm">Unban</button>
+                          </form>`
+                        : html`<form method="post" action="${bp}/admin/guilds/${srv.id}/ban" class="inline"
+                            onsubmit="return confirm('Ban ${srv.name}? It is forced inactive and cannot be re-added until unbanned.');">
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            <button type="submit" class="btn btn-danger btn-sm">Ban</button>
+                          </form>`}
+                    </td>
+                  </tr>`;
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>`
+      : safe("");
+
   const body = html` <div class="page-header">
       <h1 class="page-title">ADMIN PANEL</h1>
     </div>
-    ${syncPanel} ${locationSyncPanel} ${isFleetOp ? feedbackPanel : ""}
+    ${syncPanel} ${locationSyncPanel} ${isFleetOp ? feedbackPanel : ""} ${guildsPanel}
     <div class="section">
       <div class="section-title">Users (${opts.users.length})</div>
       <div style="overflow-x:auto">
@@ -5175,6 +5297,7 @@ export function guildSettingsPage(opts: {
   guild: {
     id: string;
     name: string;
+    ownerUserId?: string | null;
     eventChannelId: string | null;
     voiceChannelCategoryId: string | null;
     admiralRoleId: string | null;
@@ -5203,6 +5326,8 @@ export function guildSettingsPage(opts: {
   }>;
   activeGuildId: string;
   activeGuildName: string;
+  /** Whether the viewer may remove this server (owner or superadmin). */
+  canRemove?: boolean;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
@@ -5299,6 +5424,7 @@ export function guildSettingsPage(opts: {
     <div class="page-header">
       <h1 class="page-title">SERVER SETTINGS<span class="sep"> // </span><em>${g.name}</em></h1>
       <div class="page-actions">
+        <a href="${bp}/guilds/partnerships" class="btn btn-gold btn-sm">Partnerships</a>
         <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">Run Install Tests</a>
       </div>
     </div>
@@ -5447,7 +5573,26 @@ export function guildSettingsPage(opts: {
       var row = document.getElementById('bot-edit-' + id);
       if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
     }
-    </script>`;
+    </script>
+    ${opts.canRemove
+      ? html`<div class="section">
+          <div class="section-title">Danger zone</div>
+          <div class="card" style="border-color:rgba(255,68,68,0.38)">
+            <div class="card-title" style="color:var(--red)">Remove this server from Fleetplanner</div>
+            <p class="text-dim text-sm mt-1">
+              The server is hidden from Fleetplanner and stops appearing in all lists. Operations,
+              members and partnerships are kept in the database — adding the bot again reactivates
+              everything. Nothing is deleted.
+            </p>
+            <form method="post" action="${bp}/guilds/remove" class="mt-2"
+              onsubmit="return confirm('Remove ${g.name} from Fleetplanner? It disappears from all lists until the bot is added again.');">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="guildId" value="${g.id}" />
+              <button type="submit" class="btn btn-danger">Remove server</button>
+            </form>
+          </div>
+        </div>`
+      : safe("")}`;
 
   return layout({
     title: `Settings — ${g.name}`,
@@ -5573,6 +5718,156 @@ export function guildDiagnosticsPage(opts: {
 
   return layout({
     title: `Install Tests - ${d.guild.name}`,
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+// ── Guild partnerships ──────────────────────────────────────────────
+export type PartnershipView = {
+  id: string;
+  label: string;
+  status: string;
+  partnerGuildName: string | null;
+  isInitiator: boolean;
+  activatedAt: Date | null;
+  createdAt: Date;
+};
+
+export function partnershipsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  activeGuildId: string;
+  activeGuildName: string;
+  partnerships: PartnershipView[];
+  freshInviteUrl?: string;
+  prefillToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const active = opts.partnerships.filter((p) => p.status === "active");
+  const pending = opts.partnerships.filter((p) => p.status === "pending");
+
+  const activeRows = active.length
+    ? active.map(
+        (p) => html`<tr>
+          <td><strong>${p.partnerGuildName ?? "—"}</strong></td>
+          <td><span class="text-dim text-sm">${p.label}</span></td>
+          <td><span class="text-mono text-sm">${p.activatedAt ? fmtDate(p.activatedAt) : "—"}</span></td>
+          <td class="text-right">
+            <form method="post" action="${bp}/guilds/partnerships/${p.id}/revoke" class="inline"
+              onsubmit="return confirm('Really end the partnership with ${p.partnerGuildName ?? "this Discord"}? This is permanent.');">
+              <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+              <button type="submit" class="btn btn-danger btn-sm">Revoke</button>
+            </form>
+          </td>
+        </tr>`,
+      )
+    : [html`<tr><td colspan="4"><span class="text-dim text-sm">No active partnerships.</span></td></tr>`];
+
+  const pendingRows = pending.map(
+    (p) => html`<tr>
+      <td><strong>${p.label}</strong></td>
+      <td>
+        <span class="tag ${p.isInitiator ? "tag-gold" : "tag-dim"}">
+          ${p.isInitiator ? "issued by us" : "incoming"}
+        </span>
+      </td>
+      <td><span class="text-mono text-sm">${fmtDate(p.createdAt)}</span></td>
+      <td class="text-right">
+        ${p.isInitiator
+          ? html`<form method="post" action="${bp}/guilds/partnerships/${p.id}/revoke" class="inline">
+              <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+              <button type="submit" class="btn btn-ghost btn-sm">Withdraw</button>
+            </form>`
+          : safe("")}
+      </td>
+    </tr>`,
+  );
+
+  const fresh = opts.freshInviteUrl
+    ? html`<div class="card" style="border-color:var(--gold-38);margin-bottom:1.25rem">
+        <div class="card-title" style="color:var(--gold)">NEW PARTNER LINK — shown only once</div>
+        <p class="text-dim text-sm mt-1">
+          Send this link to the fleetoperator of the other Discord. It can be redeemed once.
+        </p>
+        <div class="text-mono" style="background:var(--bg3);border:1px solid var(--border);padding:.75rem;margin-top:.75rem;word-break:break-all;font-size:.8rem">
+          ${opts.freshInviteUrl}
+        </div>
+      </div>`
+    : safe("");
+
+  const body = html`<div class="page-header">
+      <h1 class="page-title">PARTNERSHIPS<span class="sep"> // </span><em>${opts.activeGuildName}</em></h1>
+      <div class="page-subtitle">
+        Link this Discord with others so both sides can see operations with
+        <span class="tag tag-gold">🤝 PARTNERS</span> visibility. Public operations are visible to
+        every logged-in user without a partnership.
+      </div>
+    </div>
+
+    ${fresh}
+
+    <div class="section">
+      <div class="section-title">Active partners</div>
+      <div class="card" style="padding:0">
+        <table>
+          <thead><tr><th>Discord</th><th>Label</th><th>Since</th><th></th></tr></thead>
+          <tbody>${activeRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    ${pending.length
+      ? html`<div class="section">
+          <div class="section-title">Pending invites</div>
+          <div class="card" style="padding:0">
+            <table>
+              <thead><tr><th>Label</th><th>Direction</th><th>Created</th><th></th></tr></thead>
+              <tbody>${pendingRows}</tbody>
+            </table>
+          </div>
+        </div>`
+      : safe("")}
+
+    <div class="section">
+      <div class="section-title">Invite a partner</div>
+      <div class="card">
+        <form method="post" action="${bp}/guilds/partnerships/invite" class="opv2-form" style="max-width:32rem">
+          <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+          <div class="form-group">
+            <label for="label">Label (e.g. alliance name)</label>
+            <input type="text" id="label" name="label" maxlength="80" required placeholder="Raumdock Alliance" />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-gold">Create invite token</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Accept an invite</div>
+      <div class="card">
+        <form method="post" action="${bp}/guilds/partnerships/accept" class="opv2-form" style="max-width:32rem">
+          <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+          <div class="form-group">
+            <label for="token">Partner token</label>
+            <input type="text" id="token" name="token" required value="${opts.prefillToken ?? ""}" placeholder="Paste the token from the other Discord" />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-green">Accept</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+
+  return layout({
+    title: `Partnerschaften - ${opts.activeGuildName}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

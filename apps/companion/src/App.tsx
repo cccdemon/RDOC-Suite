@@ -780,7 +780,15 @@ export function App(): JSX.Element {
 
   // Connect / disconnect relay audio when canUseRelay changes.
   useEffect(() => {
-    if (!state.suiteCapabilities.canUseRelay || !state.token || !state.bridgeUrl) {
+    // guildId is required: the bridge now scopes relay tokens per guild
+    // and 400s without it. Skip connecting until a guild is selected,
+    // otherwise the relay flips to "error" for a signed-in-but-no-guild user.
+    if (
+      !state.suiteCapabilities.canUseRelay ||
+      !state.token ||
+      !state.bridgeUrl ||
+      !state.guildId
+    ) {
       void relayRef.current?.disconnect();
       return;
     }
@@ -789,7 +797,7 @@ export function App(): JSX.Element {
       r.setStatusListener((status) => setState((s) => ({ ...s, relayStatus: status })));
       relayRef.current = r;
     }
-    void relayRef.current.connect(state.bridgeUrl, state.token, state.guildId ?? undefined);
+    void relayRef.current.connect(state.bridgeUrl, state.token, state.guildId);
   }, [state.suiteCapabilities.canUseRelay, state.token, state.bridgeUrl, state.guildId]);
 
   // Poll fleetplanner every 20s — auto-connect unit room + global voice.

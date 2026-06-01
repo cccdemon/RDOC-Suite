@@ -1,10 +1,19 @@
 import { prisma } from "../db.js";
+import { getActivePartnerGuildIds } from "./partnerships.js";
+
+export type OpVisibility = "private" | "partners" | "public";
+export const OP_VISIBILITIES: readonly OpVisibility[] = ["private", "partners", "public"];
+
+export function isOpVisibility(v: string): v is OpVisibility {
+  return (OP_VISIBILITIES as readonly string[]).includes(v);
+}
 
 export type CreateOperationInput = {
   guildId: string;
   title: string;
   description?: string;
   opType?: string;
+  visibility?: OpVisibility;
   meetingSystem?: string;
   meetingLocation?: string;
   scheduledAt: Date;
@@ -18,6 +27,7 @@ export async function createOperation(createdById: string, input: CreateOperatio
     title: input.title,
     description: input.description ?? "",
     opType: input.opType ?? "combat",
+    visibility: input.visibility ?? "private",
     meetingSystem: input.meetingSystem ?? "stanton",
     meetingLocation: input.meetingLocation ?? "",
     scheduledAt: input.scheduledAt,
@@ -26,6 +36,19 @@ export async function createOperation(createdById: string, input: CreateOperatio
     eventVoiceChannelId: input.eventVoiceChannelId || null,
   };
   return prisma.operation.create({ data });
+}
+
+/**
+ * Change an operation's visibility. Authorization is enforced by the
+ * caller (fleetoperator in the op's guild OR an OperationLeader). Returns
+ * the updated row.
+ */
+export async function setOperationVisibility(id: string, visibility: OpVisibility) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (prisma.operation.update as any)({
+    where: { id },
+    data: { visibility },
+  });
 }
 
 export async function getOperation(id: string) {
@@ -89,12 +112,43 @@ export async function listOperations(guildId: string, includePast = false) {
   });
 }
 
-/** List published operations visible without a login. */
+/**
+ * List operations visible without a login. ONLY operations explicitly
+ * marked visibility "public" — status is irrelevant. This is the one
+ * operation query allowed to omit a guildId scope.
+ */
 export async function listPublicOperations(includePast = false) {
   const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  return prisma.operation.findMany({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (prisma.operation.findMany as any)({
     where: {
-      status: { in: ["open", "locked", "in_progress"] },
+      visibility: "public",
+      ...(includePast ? {} : { scheduledAt: { gte: cutoff } }),
+    },
+    orderBy: { scheduledAt: "asc" },
+    include: {
+      guild: { select: { id: true, name: true, iconHash: true } },
+      createdBy: true,
+      leaders: { include: { user: true } },
+      units: { select: { id: true, status: true } },
+    },
+  });
+}
+
+/**
+ * List operations from a guild's active partner guilds that are visible
+ * to partners (visibility "partners" or "public"). Empty when the guild
+ * has no active partnerships.
+ */
+export async function listPartnerOperations(guildId: string, includePast = false) {
+  const partnerIds = await getActivePartnerGuildIds(guildId);
+  if (partnerIds.length === 0) return [];
+  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (prisma.operation.findMany as any)({
+    where: {
+      guildId: { in: partnerIds },
+      visibility: { in: ["partners", "public"] },
       ...(includePast ? {} : { scheduledAt: { gte: cutoff } }),
     },
     orderBy: { scheduledAt: "asc" },

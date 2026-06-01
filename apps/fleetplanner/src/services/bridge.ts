@@ -386,16 +386,18 @@ export type RelayBotsConfig = {
   bots: RelayBotEntry[];
 };
 
-export async function getBridgeRelayConfig(): Promise<RelayBotsConfig> {
-  const res = await bridgeFetch(`/internal/fleet/relay-bots/config`);
+export async function getBridgeRelayConfig(guildId: string): Promise<RelayBotsConfig> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/relay-bots/config`);
   await expectOk(res, "get relay config");
   return (await res.json()) as RelayBotsConfig;
 }
 
-export async function saveBridgeRelayConfig(config: RelayBotsConfig): Promise<void> {
-  const res = await bridgeFetch(`/internal/fleet/relay-bots/config`, {
+export async function saveBridgeRelayConfig(guildId: string, config: RelayBotsConfig): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/relay-bots/config`, {
     method: "POST",
-    body: JSON.stringify(config),
+    body: JSON.stringify({ ...config, guildId }),
   });
   await expectOk(res, "save relay config");
 }
@@ -478,6 +480,7 @@ export async function removeBridgeMemberRole(
 
 export type DownloadToken = {
   id: string;
+  guildId: string;
   label: string;
   createdBy: string;
   createdAt: string;
@@ -496,14 +499,16 @@ export type CompanionRelease = {
   } | null;
 };
 
-export async function listCompanionDownloads(): Promise<{ tokens: DownloadToken[]; configured: boolean }> {
-  const res = await bridgeFetch(`/internal/fleet/companion-downloads`);
+export async function listCompanionDownloads(guildId: string): Promise<{ tokens: DownloadToken[]; configured: boolean }> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/companion-downloads`);
   await expectOk(res, "list download tokens");
   return (await res.json()) as { tokens: DownloadToken[]; configured: boolean };
 }
 
-export async function mintCompanionDownload(label: string): Promise<{ id: string; label: string; expiresAt: string; url: string }> {
-  const res = await bridgeFetch(`/internal/fleet/companion-downloads`, {
+export async function mintCompanionDownload(guildId: string, label: string): Promise<{ id: string; label: string; expiresAt: string; url: string }> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/companion-downloads`, {
     method: "POST",
     body: JSON.stringify({ label }),
   });
@@ -511,8 +516,9 @@ export async function mintCompanionDownload(label: string): Promise<{ id: string
   return (await res.json()) as { id: string; label: string; expiresAt: string; url: string };
 }
 
-export async function revokeCompanionDownload(id: string): Promise<void> {
-  const res = await bridgeFetch(`/internal/fleet/companion-downloads/${id}`, { method: "DELETE" });
+export async function revokeCompanionDownload(guildId: string, id: string): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/companion-downloads/${id}`, { method: "DELETE" });
   await expectOk(res, "revoke download token");
 }
 

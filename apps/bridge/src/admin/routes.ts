@@ -980,6 +980,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       return;
     }
     const token = await mintDownloadToken({
+      guildId: session.guildId,
       label: parsed.data.label,
       createdBy: session.sub,
     });
@@ -995,7 +996,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   app.get(`${ROUTE_PREFIX}/api/companion-downloads`, async (request, reply) => {
     const session = await requireAdminSession(request, reply);
     if (!session) return;
-    const rows = await listDownloadTokens();
+    const rows = await listDownloadTokens(session.guildId);
     reply.send({ tokens: rows });
   });
 
@@ -1004,7 +1005,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     async (request, reply) => {
       const session = await requireAdminSession(request, reply);
       if (!session) return;
-      const ok = await revokeDownloadToken(request.params.id);
+      const ok = await revokeDownloadToken(request.params.id, session.guildId);
       reply.send({ ok });
     },
   );
@@ -1236,7 +1237,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       const session = await requireAdminSession(request, reply);
       if (!session) return;
       const [config, nav] = await Promise.all([
-        getRelayBotsConfig(),
+        getRelayBotsConfig(session.guildId),
         getAdminNavGuilds(session.sub, session.guildId),
       ]);
       reply.type("text/html").send(
@@ -1458,6 +1459,7 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       // Mint a single-use token labelled with the recipient + sender
       // so the admin audit list stays self-explanatory.
       const minted = await mintDownloadToken({
+        guildId: session.guildId,
         label:
           parsed.data.label ??
           `[dm] to ${request.params.userId} by ${session.sub}`,

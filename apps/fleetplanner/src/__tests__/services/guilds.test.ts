@@ -11,6 +11,7 @@ vi.mock("../../db.js", () => ({
       upsert: vi.fn(),
     },
     guild: { findMany: vi.fn() },
+    guildPartnership: { findMany: vi.fn() },
   },
 }));
 
@@ -34,6 +35,7 @@ const db = prisma as {
     findUnique: ReturnType<typeof vi.fn>;
     findFirst: ReturnType<typeof vi.fn>;
   };
+  guildPartnership: { findMany: ReturnType<typeof vi.fn> };
 };
 
 beforeEach(() => vi.clearAllMocks());
@@ -103,6 +105,28 @@ describe("effectiveOpRole", () => {
     db.operation.findUnique.mockResolvedValue({ guildId: "guild-1" });
     db.guildMembership.findUnique.mockResolvedValue({ role: "crew" });
     expect(await effectiveOpRole("user-1", "crew", "op-1")).toBe("crew");
+  });
+
+  it("grants crew to any non-member when the op is public", async () => {
+    db.operation.findUnique.mockResolvedValue({ guildId: "guild-1", visibility: "public" });
+    db.guildMembership.findUnique.mockResolvedValue(null);
+    expect(await effectiveOpRole("outsider", "crew", "op-1")).toBe("crew");
+  });
+
+  it("grants crew to a partner-guild member when the op is partner-visible", async () => {
+    db.operation.findUnique.mockResolvedValue({ guildId: "guild-1", visibility: "partners" });
+    db.guildMembership.findUnique.mockResolvedValue(null); // not a member of the host guild
+    db.guildPartnership.findMany.mockResolvedValue([{ guildAId: "guild-1", guildBId: "guild-2" }]);
+    db.guildMembership.findFirst.mockResolvedValue({ id: "m-1" }); // member of partner guild-2
+    expect(await effectiveOpRole("partner-user", "crew", "op-1")).toBe("crew");
+  });
+
+  it("denies a non-member when partner-visible but user is in no partner guild", async () => {
+    db.operation.findUnique.mockResolvedValue({ guildId: "guild-1", visibility: "partners" });
+    db.guildMembership.findUnique.mockResolvedValue(null);
+    db.guildPartnership.findMany.mockResolvedValue([{ guildAId: "guild-1", guildBId: "guild-2" }]);
+    db.guildMembership.findFirst.mockResolvedValue(null);
+    expect(await effectiveOpRole("stranger", "crew", "op-1")).toBeNull();
   });
 });
 

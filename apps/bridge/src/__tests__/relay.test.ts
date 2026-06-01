@@ -39,7 +39,7 @@ describe("GET /relay/token", () => {
   });
 
   it("subscriber role: 503 when RELAY_BOTS_SECRET is unset", async () => {
-    const res = await fetch(`${httpUrl}/relay/token?role=subscriber`, {
+    const res = await fetch(`${httpUrl}/relay/token?role=subscriber&guildId=123456789012345678`, {
       headers: { authorization: "Bearer anything" },
     });
     expect(res.status).toBe(503);
@@ -49,7 +49,7 @@ describe("GET /relay/token", () => {
     setRelaySecret();
     // A perfectly valid companion JWT must NOT unlock a subscriber token.
     const jwt = await issueSessionToken(SECRET, { sub: USER_ID });
-    const res = await fetch(`${httpUrl}/relay/token?role=subscriber`, {
+    const res = await fetch(`${httpUrl}/relay/token?role=subscriber&guildId=123456789012345678`, {
       headers: { authorization: `Bearer ${jwt}` },
     });
     expect(res.status).toBe(401);
@@ -57,7 +57,7 @@ describe("GET /relay/token", () => {
 
   it("subscriber role: 200 + token when the service secret matches", async () => {
     setRelaySecret();
-    const res = await fetch(`${httpUrl}/relay/token?role=subscriber`, {
+    const res = await fetch(`${httpUrl}/relay/token?role=subscriber&guildId=123456789012345678`, {
       headers: { authorization: `Bearer ${RELAY_SECRET}` },
     });
     expect(res.status).toBe(200);
@@ -68,7 +68,7 @@ describe("GET /relay/token", () => {
 
   it("publisher role: 200 with a valid companion JWT (no role gate configured)", async () => {
     const jwt = await issueSessionToken(SECRET, { sub: USER_ID });
-    const res = await fetch(`${httpUrl}/relay/token`, {
+    const res = await fetch(`${httpUrl}/relay/token?guildId=123456789012345678`, {
       headers: { authorization: `Bearer ${jwt}` },
     });
     expect(res.status).toBe(200);
@@ -77,7 +77,7 @@ describe("GET /relay/token", () => {
   });
 
   it("publisher role: 401 with an invalid JWT", async () => {
-    const res = await fetch(`${httpUrl}/relay/token`, {
+    const res = await fetch(`${httpUrl}/relay/token?guildId=123456789012345678`, {
       headers: { authorization: "Bearer not.a.jwt" },
     });
     expect(res.status).toBe(401);

@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { basePath, getEnv } from "../config/env.js";
 import { requireAuth, requireGuildRole } from "../auth/middleware.js";
-import { installGuild, getMembership, listUserGuilds } from "../services/guilds.js";
+import { installGuild, getMembership, listUserGuilds, deactivateGuild } from "../services/guilds.js";
 import { addGuildVoiceBot, deleteGuildVoiceBot, updateGuildVoiceBot } from "../services/voiceBots.js";
 import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
 import { prisma } from "../db.js";
@@ -67,8 +67,12 @@ export async function guildRoutes(app: FastifyInstance) {
         return reply.redirect(basePath("/?flash=error:Bot+install+cancelled."), 302);
       }
       const installed = await installGuild(guildId, ctx.user.id);
-      if (!installed) {
-        return reply.redirect(basePath("/?flash=error:Could+not+read+guild+(is+the+bot+in+it?)."), 302);
+      if (!installed.ok) {
+        const msg =
+          installed.reason === "banned"
+            ? "This+Discord+is+banned+from+Fleetplanner."
+            : "Could+not+read+guild+(is+the+bot+in+it?).";
+        return reply.redirect(basePath(`/?flash=error:${msg}`), 302);
       }
       setActiveGuild(reply, installed.id);
       return reply.redirect(basePath(`/guilds/settings?flash=ok:${encodeURIComponent(installed.name)}+added.`), 302);
@@ -140,10 +144,10 @@ export async function guildRoutes(app: FastifyInstance) {
       const [guild, memberships, voiceBots] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
-          id: true, name: true, eventChannelId: true, voiceChannelCategoryId: true,
+          id: true, name: true, ownerUserId: true, eventChannelId: true, voiceChannelCategoryId: true,
           admiralRoleId: true, captainRoleId: true, globalVoiceRoleId: true,
           commanderVoiceRoleId: true, voiceEnabled: true, timezone: true,
-        } }) as Promise<{ id: string; name: string; eventChannelId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
+        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; eventChannelId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: {
@@ -173,6 +177,7 @@ export async function guildRoutes(app: FastifyInstance) {
         }),
       ]);
       if (!guild) return reply.redirect(basePath("/guilds/none"), 302);
+      const canRemove = guild.ownerUserId === gctx.user.id || gctx.user.role === "superadmin";
       htmlReply(reply, guildSettingsPage({
         basePath: basePath(),
         currentUser: gctx.user,
@@ -183,6 +188,7 @@ export async function guildRoutes(app: FastifyInstance) {
         voiceBots,
         activeGuildId: gctx.guildId,
         activeGuildName: gctx.guildName,
+        canRemove,
       }));
     }
   );
@@ -299,6 +305,36 @@ export async function guildRoutes(app: FastifyInstance) {
       await deleteGuildVoiceBot(gctx.guildId, req.params.id);
       return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+removed."), 302);
     }
+  );
+
+  // ── Remove (soft-deactivate) a server from Fleetplanner ─────────────
+  // Owner of the guild or instance superadmin only. Data is retained
+  // (active=false); re-adding the bot reactivates it unless banned.
+  app.post<{ Body: Record<string, string> }>(
+    "/guilds/remove",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const guildId = req.body.guildId?.trim();
+      if (!guildId) return reply.redirect(basePath("/guilds/settings?flash=error:Missing+guild+id"), 302);
+      const guild = await prisma.guild.findUnique({
+        where: { id: guildId },
+        select: { ownerUserId: true, name: true },
+      });
+      if (!guild) return reply.redirect(basePath("/guilds?flash=error:Server+not+found."), 302);
+      const allowed = guild.ownerUserId === ctx.user.id || ctx.user.role === "superadmin";
+      if (!allowed) return reply.code(403).send({ error: "forbidden" });
+      await deactivateGuild(guildId);
+      // Drop the active-guild cookie if it pointed at the removed server.
+      if ((req.cookies as Record<string, string | undefined>)[ACTIVE_GUILD_COOKIE] === guildId) {
+        reply.clearCookie(ACTIVE_GUILD_COOKIE, { path: "/" });
+      }
+      return reply.redirect(
+        basePath(`/guilds?flash=ok:${encodeURIComponent(`${guild.name} removed.`)}`),
+        302,
+      );
+    },
   );
 
   // ── Set a member's role within the active guild ─────────────────────

@@ -571,7 +571,7 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
       const name = await guildName(guildId);
       try {
-        const config = await getBridgeRelayConfig();
+        const config = await getBridgeRelayConfig(guildId);
         // Metrics are best-effort — never fail the page if the service is down.
         const metrics = await getBridgeRelayMetrics().catch(() => ({ offline: true }));
         htmlReply(reply, bridgeRelayBotsPage({
@@ -609,12 +609,12 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
         return reply.redirect(basePath(`/admin/bridge/${guildId}/relay-bots?flash=error:Invalid+bots+JSON.`), 302);
       }
       try {
-        await saveBridgeRelayConfig({
+        await saveBridgeRelayConfig(guildId, {
           livekitUrl: req.body.livekitUrl?.trim() ?? "",
           livekitApiKey: req.body.livekitApiKey?.trim() ?? "",
           livekitApiSecret: req.body.livekitApiSecret?.trim() ?? "",
           roomName: req.body.roomName?.trim() || "voice-relay",
-          guildId: req.body.guildId?.trim() ?? "",
+          guildId,
           bots,
         });
         return reply.redirect(basePath(`/admin/bridge/${guildId}/relay-bots?flash=ok:Relay+config+saved.`), 302);
@@ -723,7 +723,7 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       const name = await guildName(guildId);
       try {
         const [{ tokens, configured }, release] = await Promise.all([
-          listCompanionDownloads(),
+          listCompanionDownloads(guildId),
           getCompanionRelease().catch(() => ({ configured: false, release: null })),
         ]);
         htmlReply(reply, bridgeDownloadsPage({
@@ -752,7 +752,7 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       const label = req.body.label?.trim().slice(0, 120) ?? "";
       if (!label) return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=error:Label+required.`), 302);
       try {
-        const minted = await mintCompanionDownload(label);
+        const minted = await mintCompanionDownload(guildId, label);
         return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?fresh_url=${encodeURIComponent(minted.url)}`), 302);
       } catch (err) {
         app.log.error(err, "bridge mint download failed");
@@ -788,7 +788,7 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       const { guildId, id } = req.params;
       try {
-        await revokeCompanionDownload(id);
+        await revokeCompanionDownload(guildId, id);
         return reply.redirect(basePath(`/admin/bridge/${guildId}/downloads?flash=ok:Token+revoked.`), 302);
       } catch (err) {
         app.log.error(err, "bridge revoke download failed");

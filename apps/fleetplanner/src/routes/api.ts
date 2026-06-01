@@ -865,6 +865,14 @@ export async function apiRoutes(app: FastifyInstance) {
       const opId = seat?.fleetUnit.operationId;
       if (!opId) return reply.code(404).send({ error: "Seat not found" });
 
+      // Tenant gate: only members of the op's guild — or any logged-in
+      // user when the op is public / partner-visible — may claim a seat.
+      // effectiveOpRole returns null otherwise. This both closes a prior
+      // hole (claim was requireAuth-only) and enables cross-guild
+      // participation on public ops.
+      const claimRole = await effectiveOpRole(ctx.user.id, ctx.user.role, opId);
+      if (!claimRole) return reply.code(403).send({ error: "Forbidden" });
+
       try {
         await claimSeat(req.params.seatId, ctx.user.id);
         return reply.redirect(opReturnUrl(opId, req.body, "ok:Seat+claimed.", "fleet"), 302);

@@ -4,6 +4,7 @@
 
 import { prisma } from "../db.js";
 import { discordUserIdForFleetplannerUser, fetchGuildBasic, fetchGuildMemberRoles } from "./discord.js";
+import { getActivePartnerGuildIds } from "./partnerships.js";
 
 export type GuildRole = "fleetoperator" | "captain" | "crew";
 
@@ -18,9 +19,24 @@ export function guildRoleAtLeast(role: string, min: GuildRole): boolean {
  * Install (or refresh) a guild after the bot was added to it. The
  * installing user becomes the guild owner + a fleetoperator member.
  */
-export async function installGuild(guildId: string, ownerUserId: string): Promise<{ id: string; name: string } | null> {
+export type InstallResult =
+  | { ok: true; id: string; name: string }
+  | { ok: false; reason: "unreadable" | "banned" };
+
+export async function installGuild(
+  guildId: string,
+  ownerUserId: string,
+): Promise<InstallResult> {
+  // Refuse (re)install of a banned guild — SuperAdmin ban is sticky.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const existing = (await (prisma.guild.findUnique as any)({
+    where: { id: guildId },
+    select: { bannedAt: true },
+  })) as { bannedAt: Date | null } | null;
+  if (existing?.bannedAt) return { ok: false, reason: "banned" };
+
   const basic = await fetchGuildBasic(guildId);
-  if (!basic) return null;
+  if (!basic) return { ok: false, reason: "unreadable" };
 
   const guild = await prisma.guild.upsert({
     where: { id: guildId },
@@ -49,7 +65,75 @@ export async function installGuild(guildId: string, ownerUserId: string): Promis
     update: { role: "fleetoperator" },
   });
 
-  return { id: guild.id, name: guild.name };
+  return { ok: true, id: guild.id, name: guild.name };
+}
+
+/**
+ * Soft-remove a guild from Fleetplanner: active=false. Ops, memberships,
+ * partnerships and bots stay in the DB; the guild vanishes from all lists
+ * and can be reactivated by adding the bot again (unless banned).
+ */
+export async function deactivateGuild(guildId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (prisma.guild.update as any)({ where: { id: guildId }, data: { active: false } });
+}
+
+/** SuperAdmin ban: force inactive + set bannedAt so it cannot be re-added. */
+export async function banGuild(guildId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (prisma.guild.update as any)({
+    where: { id: guildId },
+    data: { active: false, bannedAt: new Date() },
+  });
+}
+
+/** SuperAdmin unban: clear bannedAt. Stays inactive until re-added. */
+export async function unbanGuild(guildId: string): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (prisma.guild.update as any)({
+    where: { id: guildId },
+    data: { bannedAt: null },
+  });
+}
+
+/** All guilds for the SuperAdmin panel, incl. inactive + banned. */
+export async function listAllGuildsForAdmin(): Promise<
+  Array<{
+    id: string;
+    name: string;
+    active: boolean;
+    bannedAt: Date | null;
+    ownerUserId: string | null;
+    memberCount: number;
+  }>
+> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (await (prisma.guild.findMany as any)({
+    orderBy: [{ bannedAt: "asc" }, { name: "asc" }],
+    select: {
+      id: true,
+      name: true,
+      active: true,
+      bannedAt: true,
+      ownerUserId: true,
+      _count: { select: { memberships: true } },
+    },
+  })) as Array<{
+    id: string;
+    name: string;
+    active: boolean;
+    bannedAt: Date | null;
+    ownerUserId: string | null;
+    _count: { memberships: number };
+  }>;
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    active: r.active,
+    bannedAt: r.bannedAt,
+    ownerUserId: r.ownerUserId,
+    memberCount: r._count.memberships,
+  }));
 }
 
 /** Map a member's Discord role ids to a fleetplanner role via the guild's mapping. */
@@ -122,27 +206,51 @@ export async function getMembership(userId: string, guildId: string) {
 
 /**
  * Effective guild role of a user FOR a specific operation's guild.
- * Instance superadmins are treated as fleetoperator everywhere. Returns
- * null if the operation doesn't exist or the user isn't a member of its
- * guild. Used by op-scoped API routes (which act on an op id, not the
- * active-guild cookie).
+ *
+ * Resolution order:
+ *   1. superadmin → fleetoperator everywhere.
+ *   2. Member of the op's guild → their membership role.
+ *   3. Op visibility "public" → any authenticated user gets "crew".
+ *   4. Op visibility "partners" → member of an active partner guild gets
+ *      "crew".
+ *   5. Otherwise null (no access).
+ *
+ * Cross-guild participants never exceed "crew" — they can register units
+ * and claim seats but cannot manage the op. Used by op-scoped API routes
+ * (which act on an op id, not the active-guild cookie).
  */
 export async function effectiveOpRole(
   userId: string,
   instanceRole: string,
   operationId: string,
 ): Promise<GuildRole | null> {
-  const op = await prisma.operation.findUnique({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const op = (await (prisma.operation.findUnique as any)({
     where: { id: operationId },
-    select: { guildId: true },
-  });
+    select: { guildId: true, visibility: true },
+  })) as { guildId: string; visibility: string } | null;
   if (!op) return null;
   if (instanceRole === "superadmin") return "fleetoperator";
+
   const m = await prisma.guildMembership.findUnique({
     where: { guildId_userId: { guildId: op.guildId, userId } },
     select: { role: true },
   });
-  return (m?.role as GuildRole) ?? null;
+  if (m) return m.role as GuildRole;
+
+  // Not a member of the hosting guild — fall back to visibility.
+  if (op.visibility === "public") return "crew";
+  if (op.visibility === "partners") {
+    const partnerIds = await getActivePartnerGuildIds(op.guildId);
+    if (partnerIds.length > 0) {
+      const partnerMembership = await prisma.guildMembership.findFirst({
+        where: { userId, guildId: { in: partnerIds } },
+        select: { id: true },
+      });
+      if (partnerMembership) return "crew";
+    }
+  }
+  return null;
 }
 
 /**

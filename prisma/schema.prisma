@@ -120,6 +120,7 @@ model AdminInviteLink {
 // table after consume for audit purposes.
 model CompanionDownloadToken {
   id        String    @id @default(cuid())
+  guildId   String    @default("legacy")
   tokenHash String    @unique // sha256-hex of the raw token (lookup)
   /** Raw token, stored alongside the hash so the admin UI can show a
    *  "COPY URL" button for unused links later. Set to null when the
@@ -137,6 +138,8 @@ model CompanionDownloadToken {
   usedFrom  String?
   createdAt DateTime  @default(now())
 
+  @@index([guildId])
+  @@index([guildId, createdAt])
   @@index([createdBy])
 }
 
@@ -209,18 +212,17 @@ model EphemeralChannel {
   @@index([guildId])
 }
 
-// Per-deployment relay-bots configuration. Singleton row (id = "singleton").
+// Per-guild relay-bots configuration.
 // Stores LiveKit credentials + per-bot Discord tokens so the relay bots
 // service can fetch its full config from one authenticated endpoint instead
 // of needing its own .env copy. botsJson is a JSON array of
 // { name, token, channelId }.
 model RelayBotsConfig {
-  id               String   @id @default("singleton")
+  guildId          String   @id
   livekitUrl       String   @default("")
   livekitApiKey    String   @default("")
   livekitApiSecret String   @default("")
   roomName         String   @default("voice-relay")
-  guildId          String   @default("")
   botsJson         String   @default("[]")
   updatedAt        DateTime @updatedAt
   updatedById      String?

@@ -503,19 +503,43 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
   );
 
   // ── Relay bots (singleton config, not guild-scoped) ──────────────
+  app.get<{ Params: { guildId: string } }>(
+    "/internal/fleet/guilds/:guildId/relay-bots/config",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      return reply.code(200).send(await getRelayBotsConfig(params.data.guildId));
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/relay-bots/config",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = relayConfigSchema.safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      await setRelayBotsConfig(
+        params.data.guildId,
+        { ...body.data, guildId: params.data.guildId },
+        "fleetplanner",
+      );
+      await notifyRelayBotsReload();
+      logger.info({ guildId: params.data.guildId }, "fleet api: saved relay-bots config");
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
   app.get("/internal/fleet/relay-bots/config", async (request, reply) => {
     if (!authorize(request, reply)) return;
-    return reply.code(200).send(await getRelayBotsConfig());
+    return reply.code(410).send({ error: "use_guild_scoped_endpoint" });
   });
 
   app.post<{ Body: unknown }>("/internal/fleet/relay-bots/config", async (request, reply) => {
     if (!authorize(request, reply)) return;
-    const body = relayConfigSchema.safeParse(request.body);
-    if (!body.success) return badRequest(reply, body.error);
-    await setRelayBotsConfig(body.data, "fleetplanner");
-    await notifyRelayBotsReload();
-    logger.info("fleet api: saved relay-bots config");
-    return reply.code(200).send({ ok: true });
+    return reply.code(410).send({ error: "use_guild_scoped_endpoint" });
   });
 
   app.get("/internal/fleet/relay-bots/metrics", async (request, reply) => {
@@ -663,33 +687,72 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
   );
 
   // ── Companion download tokens (global, not guild-scoped) ─────────
+  app.get<{ Params: { guildId: string } }>(
+    "/internal/fleet/guilds/:guildId/companion-downloads",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const tokens = await listDownloadTokens(params.data.guildId);
+      return reply.code(200).send({ tokens, configured: !!getEnv().GITHUB_REPO });
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/companion-downloads",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      if (!getEnv().GITHUB_REPO) return reply.code(503).send({ error: "downloads_not_configured" });
+      const body = downloadCreateBodySchema.safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const token = await mintDownloadToken({
+        guildId: params.data.guildId,
+        label: body.data.label,
+        createdBy: "fleetplanner",
+      });
+      logger.info(
+        { id: token.id, guildId: params.data.guildId },
+        "fleet api: minted companion download token",
+      );
+      return reply.code(200).send({
+        id: token.id,
+        label: token.label,
+        expiresAt: token.expiresAt,
+        url: downloadUrl(token.plaintext),
+      });
+    },
+  );
+
+  app.delete<{ Params: { guildId: string; id: string } }>(
+    "/internal/fleet/guilds/:guildId/companion-downloads/:id",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = z
+        .object({ guildId: z.string().regex(SNOWFLAKE), id: z.string().min(1) })
+        .safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const ok = await revokeDownloadToken(params.data.id, params.data.guildId);
+      return reply.code(200).send({ ok });
+    },
+  );
+
   app.get("/internal/fleet/companion-downloads", async (request, reply) => {
     if (!authorize(request, reply)) return;
-    const tokens = await listDownloadTokens();
-    return reply.code(200).send({ tokens, configured: !!getEnv().GITHUB_REPO });
+    return reply.code(410).send({ error: "use_guild_scoped_endpoint" });
   });
 
   app.post<{ Body: unknown }>("/internal/fleet/companion-downloads", async (request, reply) => {
     if (!authorize(request, reply)) return;
-    if (!getEnv().GITHUB_REPO) return reply.code(503).send({ error: "downloads_not_configured" });
-    const body = downloadCreateBodySchema.safeParse(request.body);
-    if (!body.success) return badRequest(reply, body.error);
-    const token = await mintDownloadToken({ label: body.data.label, createdBy: "fleetplanner" });
-    logger.info({ id: token.id }, "fleet api: minted companion download token");
-    return reply.code(200).send({
-      id: token.id,
-      label: token.label,
-      expiresAt: token.expiresAt,
-      url: downloadUrl(token.plaintext),
-    });
+    return reply.code(410).send({ error: "use_guild_scoped_endpoint" });
   });
 
   app.delete<{ Params: { id: string } }>(
     "/internal/fleet/companion-downloads/:id",
     async (request, reply) => {
       if (!authorize(request, reply)) return;
-      const ok = await revokeDownloadToken((request.params as { id: string }).id);
-      return reply.code(200).send({ ok });
+      return reply.code(410).send({ error: "use_guild_scoped_endpoint" });
     },
   );
 
@@ -713,6 +776,7 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
       if (!oauth) return reply.code(503).send({ error: "discord_not_configured" });
       if (!getEnv().GITHUB_REPO) return reply.code(503).send({ error: "downloads_not_configured" });
       const minted = await mintDownloadToken({
+        guildId: params.data.guildId,
         label: body.data.label ?? `[dm] to ${params.data.userId} via fleetplanner`,
         createdBy: "fleetplanner",
       });

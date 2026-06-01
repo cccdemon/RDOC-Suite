@@ -35,7 +35,7 @@ export async function registerRelayBotsRoutes(app: FastifyInstance): Promise<voi
   app.get("/admin/relay-bots/config", async (request, reply) => {
     const session = await requireAdminSession(request, reply);
     if (!session) return;
-    const config = await getRelayBotsConfig();
+    const config = await getRelayBotsConfig(session.guildId);
     // Redact bot tokens for vice admirals; only admirals see full tokens.
     const bots =
       session.role === "admiral"
@@ -51,7 +51,7 @@ export async function registerRelayBotsRoutes(app: FastifyInstance): Promise<voi
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid_body", issues: parsed.error.issues });
     }
-    await setRelayBotsConfig(parsed.data, session.sub);
+    await setRelayBotsConfig(session.guildId, { ...parsed.data, guildId: session.guildId }, session.sub);
     await notifyRelayBotsReload();
     return reply.send({ ok: true });
   });
@@ -117,7 +117,11 @@ export async function registerRelayBotsRoutes(app: FastifyInstance): Promise<voi
     if (auth !== `Bearer ${secret}`) {
       return reply.code(401).send({ error: "unauthorized" });
     }
-    const config = await getRelayBotsConfig();
+    const guildId = (request.query as Record<string, string | undefined>).guildId?.trim();
+    if (!guildId) {
+      return reply.code(400).send({ error: "guildId_required" });
+    }
+    const config = await getRelayBotsConfig(guildId);
     return reply.send(config);
   });
 }

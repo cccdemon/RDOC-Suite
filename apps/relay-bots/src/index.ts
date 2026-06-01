@@ -12,7 +12,8 @@ const ADMIN_PORT = Number(process.env.ADMIN_PORT ?? "8788");
 async function applyBridgeConfig(cfg: Config): Promise<Config> {
   if (!cfg.bridge) return cfg;
   try {
-    const res = await fetch(`${cfg.bridge.url}/relay-bots/service-config`, {
+    const guildId = encodeURIComponent(cfg.discord.guildId);
+    const res = await fetch(`${cfg.bridge.url}/relay-bots/service-config?guildId=${guildId}`, {
       headers: { Authorization: `Bearer ${cfg.bridge.serviceSecret}` },
       signal: AbortSignal.timeout(8000),
     });

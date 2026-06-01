@@ -69,6 +69,7 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
     }
 
     const env = getEnv();
+    const queryGuildId = (request.query as Record<string, string | undefined>).guildId?.trim();
 
     if (roleParsed.data === "subscriber") {
       const expected = env.RELAY_BOTS_SECRET;
@@ -78,8 +79,12 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
       if (!timingSafeEqualStr(rawToken, expected)) {
         return reply.code(401).send({ error: "invalid_service_secret" });
       }
+      if (!queryGuildId) {
+        return reply.code(400).send({ error: "guildId_required" });
+      }
       const { token, roomName, url } = await issueRelayToken({
         userId: "relay-bot-service",
+        guildId: queryGuildId,
         role: "subscriber",
       });
       return reply.send({ token, roomName, url });
@@ -92,10 +97,11 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
     }
     const userId = verified.payload.sub;
 
-    const config = await getRelayBotsConfig();
-    // guildId: from query param, then config, then env
-    const queryGuildId = (request.query as Record<string, string>).guildId;
-    const guildId = queryGuildId || config.guildId || env.RELAY_GUILD_ID;
+    if (!queryGuildId) {
+      return reply.code(400).send({ error: "guildId_required" });
+    }
+    const guildId = queryGuildId;
+    const config = await getRelayBotsConfig(guildId);
     const requiredRoleId = env.RELAY_REQUIRED_ROLE_ID;
     const botToken = env.DISCORD_RELAY_BOT_TOKEN ?? config.bots[0]?.token;
 
@@ -110,7 +116,7 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
       }
     }
 
-    const { token, roomName, url } = await issueRelayToken({ userId, role: "publisher" });
+    const { token, roomName, url } = await issueRelayToken({ userId, guildId, role: "publisher" });
     return reply.send({ token, roomName, url });
   });
 }

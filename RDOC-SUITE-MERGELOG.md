@@ -1,5 +1,40 @@
 # RDOC-Suite Mergelog
 
+Stand: 2026-06-01
+
+## Op Visibility + Guild Partnerships (Tenant Overhaul)
+
+### Status: Implemented — pending server build/test + migration deploy
+
+Spec: [docs/opus-tennant-architecture.md](docs/opus-tennant-architecture.md)
+
+Fleetplanner bekommt Op-Visibility (`private | partners | public`, default private, unabhängig vom Status) + Guild-Partnerships (single-use Token-Flow, bidirektional, Revoke permanent). Cross-Guild-Teilnahme für public Ops; Partner-Guilds sehen gegenseitige `partners`-Ops. UI durchgehend Englisch.
+
+Geändert/neu:
+- `apps/fleetplanner/prisma/schema.prisma` — `Operation.visibility`, neues Model `GuildPartnership`, 2 Guild-Relationen
+- `apps/fleetplanner/prisma/migrations/20260601100000_visibility_partnerships/migration.sql` (NEU)
+- `apps/fleetplanner/src/services/partnerships.ts` (NEU) — mint/accept/list/getActivePartnerGuildIds/revoke
+- `apps/fleetplanner/src/services/operations.ts` — visibility in createOperation, setOperationVisibility, listPublicOperations (jetzt `visibility=public`), listPartnerOperations (NEU)
+- `apps/fleetplanner/src/services/guilds.ts` — effectiveOpRole: member → public → partner Fallback
+- `apps/fleetplanner/src/routes/partnerships.ts` (NEU) — /guilds/partnerships CRUD (fleetoperator-gated)
+- `apps/fleetplanner/src/routes/web.ts` — Home (own+partner+public, dedupe), op-detail Zugang via effectiveOpRole, POST /ops/:id/visibility, visibility in create
+- `apps/fleetplanner/src/routes/api.ts` — claim-seat jetzt effectiveOpRole-gated (schließt Alt-Lücke: war requireAuth-only)
+- `apps/fleetplanner/src/web/pages.ts` — visibilityTag/visibilityControl, partnershipsPage, badge+toggle in op-detail (V2+classic), visibility-Selector in op-create, Partnerships-Link in Server-Settings
+- `apps/fleetplanner/src/app.ts` — partnershipRoutes registriert
+- `apps/fleetplanner/src/__tests__/services/operations.test.ts` — listPublicOperations-Test angepasst
+- `apps/fleetplanner/src/__tests__/services/partnerships.test.ts` (NEU)
+- `apps/companion/src/App.tsx` — relay-guard: `guildId` jetzt Pflicht (Bridge scoped relay-token per guild)
+
+Deploy: `prisma migrate deploy` läuft im Fleetplanner-Container-Start. Migration ist additiv (default 'private'), keine bestehende Op wird sichtbar.
+
+### Nachtrag: Server entfernen + Superadmin-Ban
+
+- Schema: `Guild.bannedAt DateTime?` (Migration `20260601110000_guild_remove_ban`)
+- Remove = Soft-Deactivate (`active=false`), Daten bleiben, reaktivierbar durch Bot-Neuhinzufügen. Gate: Guild-Owner ODER Superadmin. Danger-Zone auf Server-Settings-Seite, leert aktives-Guild-Cookie.
+- Ban (Superadmin-only): `bannedAt=now + active=false`. `installGuild` verweigert (re)install gebannter Guilds. Unban setzt `bannedAt=null` (bleibt inaktiv bis Neuhinzufügen). UI im Admin-Panel (neue "Discord Servers"-Sektion mit Ban/Unban).
+- Services: `deactivateGuild`, `banGuild`, `unbanGuild`, `listAllGuildsForAdmin`; `installGuild` Return-Shape → `InstallResult` ({ok}|{reason: unreadable|banned}).
+- Tests: guilds.test um public/partners/ban-relevante effectiveOpRole-Fälle erweitert.
+
 Stand: 2026-05-30
 
 ## Fleetplanner / Fleetmanager

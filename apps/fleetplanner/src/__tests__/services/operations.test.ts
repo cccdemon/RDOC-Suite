@@ -176,11 +176,13 @@ describe("removeLeader", () => {
 // ── listAllUserOperations ─────────────────────────────────────────────────────
 
 describe("listPublicOperations", () => {
-  it("only returns published active operations", async () => {
+  it("only returns operations explicitly marked public", async () => {
     db.operation.findMany.mockResolvedValue([]);
     await listPublicOperations();
     const { where } = db.operation.findMany.mock.calls[0][0];
-    expect(where.status).toEqual({ in: ["open", "locked", "in_progress"] });
+    expect(where.visibility).toBe("public");
+    // status is no longer part of the public filter — visibility is independent
+    expect(where.status).toBeUndefined();
   });
 
   it("filters out past operations by default", async () => {

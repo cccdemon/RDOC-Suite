@@ -47,6 +47,7 @@ model Guild {
   voiceEnabled           Boolean   @default(false) // SuperAdmin-gated feature flag for LiveKit voice sessions
   botInstalledAt         DateTime?
   active                 Boolean   @default(true)
+  bannedAt               DateTime? // SuperAdmin ban: blocks (re)install + hides everywhere. null = not banned.
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -55,6 +56,32 @@ model Guild {
   operations    Operation[]
   voiceBots     GuildVoiceBot[]
   voiceChannels FleetVoiceChannel[]
+  partnershipsSent     GuildPartnership[] @relation("PartnershipA")
+  partnershipsReceived GuildPartnership[] @relation("PartnershipB")
+}
+
+// ── Guild partnerships (tenant federation) ─────────────────────────
+// Guild A mints a single-use token; Guild B redeems it. Once active,
+// both guilds see each other's operations with visibility "partners".
+// Only sha256(token) is stored. Revocation is permanent.
+model GuildPartnership {
+  id          String    @id @default(cuid())
+  guildAId    String // inviting guild (token issuer)
+  guildBId    String? // null until the token is redeemed
+  tokenHash   String    @unique // sha256-hex of the raw token
+  label       String // human label, e.g. "Raumdock Alliance"
+  status      String    @default("pending") // pending | active | revoked
+  createdBy   String // fleetplanner userId of the minting user
+  createdAt   DateTime  @default(now())
+  activatedAt DateTime?
+
+  guildA Guild  @relation("PartnershipA", fields: [guildAId], references: [id], onDelete: Cascade)
+  guildB Guild? @relation("PartnershipB", fields: [guildBId], references: [id], onDelete: Cascade)
+
+  @@unique([guildAId, guildBId])
+  @@index([guildAId])
+  @@index([guildBId])
+  @@index([status])
 }
 
 model GuildVoiceBot {
@@ -237,6 +264,7 @@ model Operation {
   title           String
   description     String   @default("")
   opType          String   @default("combat") // combat | pve | mining | salvage | training | mixed | exploration | transport | social
+  visibility      String   @default("private") // private | partners | public — independent of status
   meetingSystem   String   @default("stanton")
   meetingLocation String   @default("")
   scheduledAt     DateTime

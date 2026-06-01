@@ -79,10 +79,11 @@ export async function issueSessionLivekitToken(opts: {
  */
 export async function issueRelayToken(opts: {
   userId: string;
+  guildId: string;
   role: "publisher" | "subscriber";
 }): Promise<{ token: string; roomName: string; url: string }> {
-  const { url, apiKey, apiSecret } = await getRelayLivekitCredentials();
-  const roomName = await getRelayRoomName();
+  const { url, apiKey, apiSecret } = await getRelayLivekitCredentials(opts.guildId);
+  const roomName = await getRelayRoomName(opts.guildId);
   const suffix = randomBytes(4).toString("hex");
   const identity =
     opts.role === "subscriber"
@@ -119,4 +120,3 @@ export async function deleteSessionRoom(livekitRoom: string): Promise<void> {
     logger.warn({ err, livekitRoom }, "deleteSessionRoom: LiveKit deleteRoom failed (ignored)");
   }
 }
-

@@ -26,6 +26,7 @@ function sha256Hex(input: string): string {
 
 export type IssuedDownloadToken = {
   id: string;
+  guildId: string;
   label: string;
   createdBy: string;
   expiresAt: Date;
@@ -34,6 +35,7 @@ export type IssuedDownloadToken = {
 };
 
 export async function mintDownloadToken(opts: {
+  guildId: string;
   label: string;
   createdBy: string;
   ttlDays?: number;
@@ -45,6 +47,7 @@ export async function mintDownloadToken(opts: {
   );
   const row = await getPrisma().companionDownloadToken.create({
     data: {
+      guildId: opts.guildId,
       tokenHash,
       // Never persist the raw token. Only sha256(token) is stored, so a
       // DB compromise cannot recover usable download links. The legacy
@@ -58,6 +61,7 @@ export async function mintDownloadToken(opts: {
   });
   return {
     id: row.id,
+    guildId: row.guildId,
     label: row.label,
     createdBy: row.createdBy,
     expiresAt: row.expiresAt,
@@ -117,9 +121,10 @@ export async function consumeDownloadToken(opts: {
   return { ok: true, id: row.id };
 }
 
-export async function listDownloadTokens(): Promise<
+export async function listDownloadTokens(guildId: string): Promise<
   Array<{
     id: string;
+    guildId: string;
     label: string;
     createdBy: string;
     createdAt: Date;
@@ -132,10 +137,12 @@ export async function listDownloadTokens(): Promise<
   }>
 > {
   const rows = await getPrisma().companionDownloadToken.findMany({
+    where: { guildId },
     orderBy: { createdAt: "desc" },
   });
   return rows.map((r) => ({
     id: r.id,
+    guildId: r.guildId,
     label: r.label,
     createdBy: r.createdBy,
     createdAt: r.createdAt,
@@ -148,9 +155,9 @@ export async function listDownloadTokens(): Promise<
 
 /** Revoke an UNUSED download token. Used ones stay in the audit log;
  *  the boolean is true when a row was actually deleted. */
-export async function revokeDownloadToken(id: string): Promise<boolean> {
+export async function revokeDownloadToken(id: string, guildId: string): Promise<boolean> {
   const res = await getPrisma().companionDownloadToken.deleteMany({
-    where: { id, usedAt: null },
+    where: { id, guildId, usedAt: null },
   });
   return res.count > 0;
 }
