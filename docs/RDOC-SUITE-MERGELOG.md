@@ -3,6 +3,26 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin (Option B, Phase 3) — complete the Admins panel
+
+Phase 1 only did add/remove admin. Phase 3 finishes the Admins panel: role change
+(promote/demote, guarded) + admin invite links (mint/list/revoke). Companion-download
+tokens, relay-bots live metrics, dashboard SSE refresh, and Raid Planer still NOT ported.
+
+Bridge:
+- `services/fleetAdmin.ts`: `setAdminRoleSystem(guildId, userId, role)` — mirrors setAdminRole
+  guards (no protected target, never demote last admiral) without the caller-admiral check.
+- `routes/fleetInternal.ts`: `POST .../admins/:userId/role`, `GET/POST .../invites`,
+  `DELETE .../invites/:id`. Mint returns the absolute bridge `/admin/invite/<token>` URL
+  (built from OAUTH_REDIRECT_URI origin) so fleetplanner needn't know the bridge public host.
+
+Fleetplanner:
+- `services/bridge.ts`: setBridgeAdminRole, listBridgeInvites, mintBridgeInvite, revokeBridgeInvite.
+- `routes/bridgeAdmin.ts`: role/invite routes; guild-detail GET now fetches invites + shows
+  fresh-invite banner via `?fresh_url=`.
+- `web/pages.ts`: admin rows gain a role <select>; new "Admin invite links" panel (list + mint
+  form + revoke). Invite link is consumed on the bridge (Discord OAuth), single-use.
+
 ## Queued / Planned Step - 2026-06-01: Fleetplanner absorbs bridge admin (Option B, Phase 2) — Dashboard, Sessions, Relay Bots, Discord Voice
 
 Phase 1 only ported config+admins+monitoring+audit; the bridge `/admin/*` UI still has

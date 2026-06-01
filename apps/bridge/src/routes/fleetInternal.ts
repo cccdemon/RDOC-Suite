@@ -7,7 +7,12 @@ import { readGuildConfig, saveGuildConfig } from "../services/guildConfig.js";
 import { addAdmin, listAdmins } from "../services/admins.js";
 import { monitoringSnapshot } from "../services/monitoring.js";
 import { listRecentAudit, countAudit } from "../services/audit.js";
-import { fleetDashboard, stripCommanderRoles } from "../services/fleetAdmin.js";
+import { fleetDashboard, stripCommanderRoles, setAdminRoleSystem } from "../services/fleetAdmin.js";
+import {
+  mintAdminInviteLink,
+  listInviteLinks,
+  revokeInviteLink,
+} from "../services/adminInviteLinks.js";
 import {
   createSession,
   endSession,
@@ -85,6 +90,27 @@ const memberRoleParamsSchema = z.object({
   userId: z.string().regex(SNOWFLAKE),
   roleId: z.string().regex(SNOWFLAKE),
 });
+
+const setRoleBodySchema = z.object({ role: z.enum(["admiral", "vice_admiral"]) });
+const inviteCreateBodySchema = z.object({
+  label: z.string().min(1).max(120),
+  role: z.enum(["admiral", "vice_admiral"]),
+  ttlDays: z.coerce.number().int().min(1).max(90).optional(),
+});
+
+/** Absolute bridge URL where an admin invite link is consumed. */
+function adminInviteUrl(token: string): string {
+  const origin = (() => {
+    const oauth = getOAuthEnv();
+    if (!oauth) return "";
+    try {
+      return new URL(oauth.OAUTH_REDIRECT_URI).origin;
+    } catch {
+      return "";
+    }
+  })();
+  return `${origin}${getEnv().PUBLIC_BASE_PATH}/admin/invite/${token}`;
+}
 
 function mapDiscordError(status: number, missingPermissionCode: string): { code: string; status: number } {
   if (status === 403) return { code: missingPermissionCode, status: 403 };
@@ -212,6 +238,79 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
       });
       logger.info({ guildId, userId, removed: result.count }, "fleet api: removed admin");
       return reply.code(200).send({ ok: true, removed: result.count });
+    },
+  );
+
+  // Change an admin's role (promote/demote). Guards protected target +
+  // last-admiral, no caller-admiral check (system call).
+  app.post<{ Params: { guildId: string; userId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/admins/:userId/role",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = adminParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = setRoleBodySchema.safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const result = await setAdminRoleSystem(params.data.guildId, params.data.userId, body.data.role);
+      if (!result.ok) {
+        const status =
+          result.reason === "target_not_found" ? 404 :
+          result.reason === "target_protected" ? 409 :
+          result.reason === "would_remove_last_admiral" ? 409 : 400;
+        return reply.code(status).send({ error: result.reason });
+      }
+      logger.info({ guildId: params.data.guildId, userId: params.data.userId, role: body.data.role }, "fleet api: set admin role");
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
+  // ── Admin invite links ───────────────────────────────────────────
+  app.get<{ Params: { guildId: string } }>(
+    "/internal/fleet/guilds/:guildId/invites",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const invites = await listInviteLinks(params.data.guildId);
+      return reply.code(200).send(invites);
+    },
+  );
+
+  app.post<{ Params: { guildId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/invites",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = inviteCreateBodySchema.safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const invite = await mintAdminInviteLink({
+        guildId: params.data.guildId,
+        label: body.data.label,
+        role: body.data.role,
+        createdBy: "fleetplanner",
+        ttlDays: body.data.ttlDays,
+      });
+      logger.info({ guildId: params.data.guildId, role: invite.role }, "fleet api: minted admin invite link");
+      return reply.code(200).send({
+        id: invite.id,
+        label: invite.label,
+        role: invite.role,
+        expiresAt: invite.expiresAt,
+        url: adminInviteUrl(invite.plaintext),
+      });
+    },
+  );
+
+  app.delete<{ Params: { guildId: string; id: string } }>(
+    "/internal/fleet/guilds/:guildId/invites/:id",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const id = (request.params as { id: string }).id;
+      const ok = await revokeInviteLink({ id, guildId: params.data.guildId });
+      return reply.code(200).send({ ok });
     },
   );
 

@@ -166,6 +166,66 @@ export async function removeBridgeAdmin(guildId: string, userId: string): Promis
   await expectOk(res, "remove admin");
 }
 
+export async function setBridgeAdminRole(guildId: string, userId: string, role: AdminRole): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/admins/${userId}/role`, {
+    method: "POST",
+    body: JSON.stringify({ role }),
+  });
+  await expectOk(res, "set admin role");
+}
+
+// ── Admin invite links ────────────────────────────────────────────────
+
+export type AdminInviteLink = {
+  id: string;
+  label: string;
+  role: AdminRole;
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  usedBy: string | null;
+};
+
+export type MintedInviteLink = {
+  id: string;
+  label: string;
+  role: AdminRole;
+  expiresAt: string;
+  url: string;
+};
+
+export async function listBridgeInvites(guildId: string): Promise<AdminInviteLink[]> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/invites`);
+  await expectOk(res, "list invites");
+  return (await res.json()) as AdminInviteLink[];
+}
+
+export async function mintBridgeInvite(
+  guildId: string,
+  label: string,
+  role: AdminRole,
+  ttlDays?: number,
+): Promise<MintedInviteLink> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/invites`, {
+    method: "POST",
+    body: JSON.stringify({ label, role, ...(ttlDays ? { ttlDays } : {}) }),
+  });
+  await expectOk(res, "mint invite");
+  return (await res.json()) as MintedInviteLink;
+}
+
+export async function revokeBridgeInvite(guildId: string, id: string): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/invites/${id}`, {
+    method: "DELETE",
+  });
+  await expectOk(res, "revoke invite");
+}
+
 export async function getBridgeMonitoring(guildId: string): Promise<MonitoringSnapshot> {
   assertGuildId(guildId);
   const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/monitoring`);

@@ -6,6 +6,7 @@ import { bridgeRoomName } from "./livekit.js";
 import { readGuildConfig } from "./guildConfig.js";
 import { getGuildInfo } from "./guildInfo.js";
 import { fetchGuildMember, removeGuildMemberRole } from "../auth/discord.js";
+import { ADMIN_ROLES, type AdminRole, getAdminRecord, countAdmirals } from "./admins.js";
 
 /**
  * Read/action helpers backing the fleetplanner-hosted bridge admin panels
@@ -148,4 +149,33 @@ export async function stripCommanderRoles(guildId: string, userId: string): Prom
     return { ok: false, reason: "partial_failure", removed, failed };
   }
   return { ok: true, removed };
+}
+
+export type SetRoleResult =
+  | { ok: true }
+  | { ok: false; reason: "invalid_role" | "target_not_found" | "target_protected" | "would_remove_last_admiral" };
+
+/**
+ * System-level admin role change for the fleetplanner-hosted panel.
+ * Mirrors setAdminRole's safety guards (no protected target, never demote
+ * the last admiral) but skips the "caller must be admiral" check — the
+ * fleetplanner superadmin has no bridge AdminUser identity.
+ */
+export async function setAdminRoleSystem(
+  guildId: string,
+  userId: string,
+  newRole: AdminRole,
+): Promise<SetRoleResult> {
+  if (!(ADMIN_ROLES as readonly string[]).includes(newRole)) return { ok: false, reason: "invalid_role" };
+  const target = await getAdminRecord({ guildId, userId });
+  if (!target) return { ok: false, reason: "target_not_found" };
+  if (target.protected) return { ok: false, reason: "target_protected" };
+  if (newRole === "vice_admiral" && target.role === "admiral") {
+    if ((await countAdmirals(guildId)) <= 1) return { ok: false, reason: "would_remove_last_admiral" };
+  }
+  await getPrisma().adminUser.update({
+    where: { guildId_userId: { guildId, userId } },
+    data: { role: newRole },
+  });
+  return { ok: true };
 }

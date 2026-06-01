@@ -21,6 +21,10 @@ import {
   listBridgeAdmins,
   addBridgeAdmin,
   removeBridgeAdmin,
+  setBridgeAdminRole,
+  listBridgeInvites,
+  mintBridgeInvite,
+  revokeBridgeInvite,
   getBridgeMonitoring,
   getBridgeAudit,
   getBridgeDashboard,
@@ -112,7 +116,7 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ── Guild detail ─────────────────────────────────────────────────
-  app.get<{ Params: { guildId: string }; Querystring: { flash?: string } }>(
+  app.get<{ Params: { guildId: string }; Querystring: { flash?: string; fresh_url?: string; fresh_role?: string } }>(
     "/admin/bridge/:guildId",
     async (req, reply) => {
       const ctx = await requireRole(req, reply, "superadmin");
@@ -120,11 +124,15 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       const { guildId } = req.params;
       if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
       try {
-        const [cfg, admins, name] = await Promise.all([
+        const [cfg, admins, invites, name] = await Promise.all([
           getBridgeGuildConfig(guildId),
           listBridgeAdmins(guildId),
+          listBridgeInvites(guildId),
           guildName(guildId),
         ]);
+        const freshInvite = req.query.fresh_url
+          ? { url: decodeURIComponent(req.query.fresh_url), role: req.query.fresh_role ?? "vice_admiral" }
+          : undefined;
         htmlReply(reply, bridgeGuildConfigPage({
           basePath: basePath(),
           currentUser: ctx.user,
@@ -144,10 +152,83 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
             protected: a.protected,
             addedBy: a.addedBy,
           })),
+          invites: invites.map((inv) => ({
+            id: inv.id,
+            label: inv.label,
+            role: inv.role,
+            expiresAt: inv.expiresAt,
+            usedAt: inv.usedAt,
+            usedBy: inv.usedBy,
+          })),
+          freshInvite,
         }));
       } catch (err) {
         app.log.error(err, "bridge guild detail failed");
         return reply.redirect(basePath(`/admin/bridge?flash=error:Bridge+unreachable`), 302);
+      }
+    },
+  );
+
+  // ── Change admin role ────────────────────────────────────────────
+  app.post<{ Params: { guildId: string; userId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/admins/:userId/role",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, userId } = req.params;
+      if (!SNOWFLAKE.test(guildId) || !SNOWFLAKE.test(userId)) return reply.code(400).send("Invalid ID");
+      const role: AdminRole = req.body.role === "admiral" ? "admiral" : "vice_admiral";
+      try {
+        await setBridgeAdminRole(guildId, userId, role);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}?flash=ok:Role+updated.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge set admin role failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}?flash=error:Role+change+failed.`), 302);
+      }
+    },
+  );
+
+  // ── Admin invite links ───────────────────────────────────────────
+  app.post<{ Params: { guildId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/invites",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const label = req.body.label?.trim().slice(0, 120) ?? "";
+      const role: AdminRole = req.body.role === "admiral" ? "admiral" : "vice_admiral";
+      const ttlDays = req.body.ttlDays ? Number.parseInt(req.body.ttlDays, 10) : undefined;
+      if (!label) return reply.redirect(basePath(`/admin/bridge/${guildId}?flash=error:Label+required.`), 302);
+      try {
+        const invite = await mintBridgeInvite(guildId, label, role, ttlDays && ttlDays > 0 ? ttlDays : undefined);
+        return reply.redirect(
+          basePath(`/admin/bridge/${guildId}?fresh_url=${encodeURIComponent(invite.url)}&fresh_role=${invite.role}`),
+          302,
+        );
+      } catch (err) {
+        app.log.error(err, "bridge mint invite failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}?flash=error:Mint+failed.`), 302);
+      }
+    },
+  );
+
+  app.post<{ Params: { guildId: string; id: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/invites/:id/revoke",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId, id } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      try {
+        await revokeBridgeInvite(guildId, id);
+        return reply.redirect(basePath(`/admin/bridge/${guildId}?flash=ok:Invite+revoked.`), 302);
+      } catch (err) {
+        app.log.error(err, "bridge revoke invite failed");
+        return reply.redirect(basePath(`/admin/bridge/${guildId}?flash=error:Revoke+failed.`), 302);
       }
     },
   );

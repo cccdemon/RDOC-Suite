@@ -1474,6 +1474,8 @@ export function bridgeGuildConfigPage(opts: {
     bridgeMode: string;
   };
   admins: BridgeAdminRow[];
+  invites: Array<{ id: string; label: string; role: string; expiresAt: string; usedAt: string | null; usedBy: string | null }>;
+  freshInvite?: { url: string; role: string };
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
@@ -1510,7 +1512,17 @@ export function bridgeGuildConfigPage(opts: {
   const adminRows = opts.admins.map((a) => html`
     <tr>
       <td class="text-mono" style="font-size:0.72rem;color:var(--dim)">${a.userId}</td>
-      <td><span class="tag ${a.role === "admiral" ? "tag-gold" : "tag-dim"}">${a.role}</span>${a.protected ? html` <span class="tag tag-cyan">protected</span>` : ""}</td>
+      <td>
+        ${a.protected
+          ? html`<span class="tag ${a.role === "admiral" ? "tag-gold" : "tag-dim"}">${a.role}</span> <span class="tag tag-cyan">protected</span>`
+          : html`<form method="post" action="${bp}/admin/bridge/${opts.guildId}/admins/${a.userId}/role" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <select name="role" onchange="this.form.submit()" style="width:auto">
+                <option value="vice_admiral" ${a.role === "vice_admiral" ? safe("selected") : ""}>vice_admiral</option>
+                <option value="admiral" ${a.role === "admiral" ? safe("selected") : ""}>admiral</option>
+              </select>
+            </form>`}
+      </td>
       <td class="text-dim text-sm">${a.addedBy ?? safe("—")}</td>
       <td class="text-right">
         ${a.protected
@@ -1521,6 +1533,52 @@ export function bridgeGuildConfigPage(opts: {
             </form>`}
       </td>
     </tr>`);
+
+  const inviteRows = opts.invites.map((inv) => html`
+    <tr>
+      <td>${inv.label}</td>
+      <td><span class="tag ${inv.role === "admiral" ? "tag-gold" : "tag-dim"}">${inv.role}</span></td>
+      <td class="text-dim text-sm">${inv.expiresAt}</td>
+      <td>${inv.usedAt ? html`<span class="tag tag-dim">used</span>` : html`<span class="tag tag-green">unused</span>`}</td>
+      <td class="text-right">
+        ${inv.usedAt ? "" : html`<form method="post" action="${bp}/admin/bridge/${opts.guildId}/invites/${inv.id}/revoke" class="inline">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+        </form>`}
+      </td>
+    </tr>`);
+
+  const invitePanel = html`
+    <div class="section">
+      <div class="section-title">Admin invite links (${opts.invites.length})</div>
+      ${opts.freshInvite ? html`
+        <div class="flash flash-ok">
+          New ${opts.freshInvite.role} invite (shown once): <span class="text-mono">${opts.freshInvite.url}</span>
+        </div>` : ""}
+      ${opts.invites.length > 0 ? html`<div style="overflow-x:auto"><table class="user-table">
+        <thead><tr><th>Label</th><th>Role</th><th>Expires</th><th>Status</th><th></th></tr></thead>
+        <tbody>${inviteRows}</tbody>
+      </table></div>` : html`<p class="text-dim">No invite links.</p>`}
+      <div class="card" style="padding:1.25rem;margin-top:1rem">
+        <form method="post" action="${bp}/admin/bridge/${opts.guildId}/invites" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <label class="text-sm text-dim" style="flex:1 1 14rem">Label
+            <input type="text" name="label" placeholder="New admiral onboarding" maxlength="120" required />
+          </label>
+          <label class="text-sm text-dim">Role
+            <select name="role" style="width:auto">
+              <option value="vice_admiral">vice_admiral</option>
+              <option value="admiral">admiral</option>
+            </select>
+          </label>
+          <label class="text-sm text-dim">TTL (days)
+            <input type="number" name="ttlDays" min="1" max="90" value="7" style="width:5rem" />
+          </label>
+          <button type="submit" class="btn btn-cyan btn-sm">Mint invite</button>
+        </form>
+        <p class="text-dim text-sm" style="margin:.5rem 0 0">The invite link is consumed on the bridge (Discord OAuth). Single-use, time-limited.</p>
+      </div>
+    </div>`;
 
   const adminPanel = html`
     <div class="section">
@@ -1563,7 +1621,8 @@ export function bridgeGuildConfigPage(opts: {
       </p>
     </div>
     ${configPanel}
-    ${adminPanel}`;
+    ${adminPanel}
+    ${invitePanel}`;
 
   return layout({
     title: "Bridge Guild",
