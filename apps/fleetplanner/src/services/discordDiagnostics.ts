@@ -57,6 +57,7 @@ const FLEETPLANNER_PERMS: RequiredPermission[] = [
   { key: "READ_MESSAGE_HISTORY", label: "Read Message History", bit: READ_MESSAGE_HISTORY },
   { key: "MANAGE_ROLES", label: "Manage Roles", bit: MANAGE_ROLES },
   { key: "MANAGE_EVENTS", label: "Manage Events", bit: MANAGE_EVENTS },
+  { key: "CREATE_EVENTS", label: "Create Events", bit: CREATE_EVENTS },
 ];
 
 const VOICEBOT_PERMS: RequiredPermission[] = [

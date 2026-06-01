@@ -123,7 +123,7 @@ Bot tokens should be stored encrypted or referenced via env vars, not plaintext 
 4. Write `EphemeralChannel` row (already in bridge schema) or a new
    `FleetChannel` row to track for cleanup.
 
-**Permissions needed (bot):** `MANAGE_CHANNELS`, `MOVE_MEMBERS`, `CONNECT`.
+**Permissions needed (bot):** `MANAGE_CHANNELS`, `MOVE_MEMBERS`, `CONNECT`, `MANAGE_EVENTS`, `CREATE_EVENTS`.
 Add to bot invite permission bitmask in `routes/guilds.ts`.
 
 **Guild settings needed:**

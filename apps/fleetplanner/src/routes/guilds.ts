@@ -9,10 +9,11 @@ import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage, guildDiagnosti
 
 // Discord bot permissions bitfield:
 // MANAGE_CHANNELS(4) | VIEW_CHANNEL(10) | SEND_MESSAGES(11) | READ_MESSAGE_HISTORY(16) |
-// CONNECT(20) | MOVE_MEMBERS(24) | MANAGE_ROLES(28) | MANAGE_EVENTS(33)
+// CONNECT(20) | MOVE_MEMBERS(24) | MANAGE_ROLES(28) | MANAGE_EVENTS(33) | CREATE_EVENTS(44)
 const BOT_PERMISSIONS =
   (1n << 4n) | (1n << 10n) | (1n << 11n) | (1n << 16n) |
-  (1n << 20n) | (1n << 24n) | (1n << 28n) | (1n << 33n);
+  (1n << 20n) | (1n << 24n) | (1n << 28n) | (1n << 33n) |
+  (1n << 44n);
 const ACTIVE_GUILD_COOKIE = "fp_guild";
 
 function setActiveGuild(reply: FastifyReply, guildId: string): void {
