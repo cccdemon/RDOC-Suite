@@ -3062,7 +3062,10 @@ export function feedbackPage(opts: {
   });
 }
 
-type UserRow = Pick<User, "id" | "username" | "role" | "active" | "joinedAt" | "lastSeenAt">;
+type UserRow = Pick<User, "id" | "username" | "role" | "active" | "joinedAt" | "lastSeenAt"> & {
+  identities?: Array<{ provider: string; providerId: string; username: string | null }>;
+  guildMemberships?: Array<{ guildId: string; role: string; guild: { name: string } }>;
+};
 
 export type ShipSyncView = {
   enabled: boolean;
@@ -3294,10 +3297,37 @@ export function adminPage(opts: {
   </div>`;
 
   const rows = opts.users.map(
-    (u) =>
-      html` <tr>
+    (u) => {
+      const discordIdentity = u.identities?.find((identity) => identity.provider === "discord");
+      const linkedProviders =
+        u.identities && u.identities.length > 0
+          ? u.identities.map((identity) => identity.provider).join(", ")
+          : "none";
+      const guilds = u.guildMemberships ?? [];
+      return html` <tr>
         <td class="text-mono" style="font-size:0.72rem;color:var(--dim)">${u.id}</td>
         <td>${u.username}</td>
+        <td class="text-mono text-sm">
+          ${discordIdentity
+            ? html`${discordIdentity.providerId}
+                ${discordIdentity.username
+                  ? html`<br /><span class="text-dim">${discordIdentity.username}</span>`
+                  : safe("")}`
+            : html`<span class="tag tag-red">not linked</span>`}
+        </td>
+        <td class="text-sm">
+          ${guilds.length
+            ? guilds.map(
+                (membership) =>
+                  html`<div>
+                    ${membership.guild.name}
+                    <span class="tag tag-role">${membership.role}</span>
+                    <span class="text-mono text-dim">${membership.guildId}</span>
+                  </div>`,
+              )
+            : html`<span class="text-dim">none</span>`}
+        </td>
+        <td class="text-sm">${linkedProviders}</td>
         <td>
           ${isSuperAdmin
             ? html` <form method="post" action="${bp}/admin/users/${u.id}/role" class="inline">
@@ -3326,7 +3356,8 @@ export function adminPage(opts: {
               >`}
         </td>
         <td class="text-dim text-sm">${fmtDate(u.lastSeenAt)}</td>
-      </tr>`,
+      </tr>`;
+    },
   );
 
   const body = html` <div class="page-header">
@@ -3339,8 +3370,11 @@ export function adminPage(opts: {
         <table class="user-table">
           <thead>
             <tr>
-              <th>Discord ID</th>
+              <th>Internal ID</th>
               <th>Username</th>
+              <th>Discord</th>
+              <th>Guilds</th>
+              <th>Providers</th>
               <th>Role</th>
               <th>Status</th>
               <th>Last Seen</th>
@@ -5158,7 +5192,15 @@ export function guildSettingsPage(opts: {
     createdAt: Date;
     updatedAt: Date;
   }>;
-  memberships: Array<{ userId: string; role: string; user: { username: string }; createdAt: Date }>;
+  memberships: Array<{
+    userId: string;
+    role: string;
+    user: {
+      username: string;
+      identities?: Array<{ providerId: string; username: string | null }>;
+    };
+    createdAt: Date;
+  }>;
   activeGuildId: string;
   activeGuildName: string;
 }): SafeHtml {
@@ -5168,10 +5210,19 @@ export function guildSettingsPage(opts: {
   const relayBotInvitePermissions = "282574843809040";
 
   const memberRows = opts.memberships.map(
-    (m) =>
-      html` <tr>
+    (m) => {
+      const discordIdentity = m.user.identities?.[0] ?? null;
+      return html` <tr>
         <td>${m.user.username}</td>
         <td class="text-mono text-sm text-dim">${m.userId}</td>
+        <td class="text-mono text-sm">
+          ${discordIdentity
+            ? html`${discordIdentity.providerId}
+                ${discordIdentity.username
+                  ? html`<br /><span class="text-dim">${discordIdentity.username}</span>`
+                  : safe("")}`
+            : html`<span class="tag tag-red">not linked</span>`}
+        </td>
         <td>
           <form method="post" action="${bp}/guilds/members/${m.userId}/role" class="inline">
             <input type="hidden" name="_csrf" value="${csrf}" />
@@ -5184,7 +5235,8 @@ export function guildSettingsPage(opts: {
           </form>
         </td>
         <td class="text-dim text-sm">${fmtDate(m.createdAt)}</td>
-      </tr>`,
+      </tr>`;
+    },
   );
 
   const voiceBotRows = opts.voiceBots.map(
@@ -5377,7 +5429,15 @@ export function guildSettingsPage(opts: {
       <div class="section-title">Members (${opts.memberships.length})</div>
       <div style="overflow-x:auto">
         <table class="user-table">
-          <thead><tr><th>User</th><th>ID</th><th>Role (this server)</th><th>Joined</th></tr></thead>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Internal ID</th>
+              <th>Discord</th>
+              <th>Role (this server)</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
           <tbody>${memberRows}</tbody>
         </table>
       </div>

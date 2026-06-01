@@ -146,7 +146,17 @@ export async function guildRoutes(app: FastifyInstance) {
         } }) as Promise<{ id: string; name: string; eventChannelId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
-          include: { user: true },
+          include: {
+            user: {
+              include: {
+                identities: {
+                  where: { provider: "discord" },
+                  select: { providerId: true, username: true },
+                  take: 1,
+                },
+              },
+            },
+          },
           orderBy: { createdAt: "asc" },
         }),
         prisma.guildVoiceBot.findMany({

@@ -781,7 +781,23 @@ export async function webRoutes(app: FastifyInstance) {
     const ctx = await requireRole(req, reply, "superadmin");
     if (!ctx) return;
     const [users, sync, locationSync, feedbackChannelId] = await Promise.all([
-      prisma.user.findMany({ orderBy: { joinedAt: "asc" } }),
+      prisma.user.findMany({
+        orderBy: { joinedAt: "asc" },
+        include: {
+          identities: {
+            select: { provider: true, providerId: true, username: true },
+            orderBy: { createdAt: "asc" },
+          },
+          guildMemberships: {
+            select: {
+              guildId: true,
+              role: true,
+              guild: { select: { name: true } },
+            },
+            orderBy: { createdAt: "asc" },
+          },
+        },
+      }),
       getSyncState(),
       getLocationSyncState(),
       getSetting("feedback.discordChannelId"),
