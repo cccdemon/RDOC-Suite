@@ -68,6 +68,9 @@ const ROLE_LABEL: Record<string, string> = {
   crew: "CREW",
 };
 
+const RAUMDOCK_FAVICON =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='black' stroke-width='0'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230a0a0a'/%3E%3Cpath d='M22 62 q28 14 56 0 l-6-22 q-24-10-44 0 z' fill='%23444'/%3E%3Cellipse cx='50' cy='46' rx='26' ry='18' fill='%23f6c200'/%3E%3Cellipse cx='62' cy='40' rx='8' ry='5' fill='%23fff7'/%3E%3C/g%3E%3C/svg%3E";
+
 export function layout(opts: LayoutOptions): SafeHtml {
   const bp = opts.basePath;
   const u = opts.currentUser;
@@ -116,11 +119,14 @@ export function layout(opts: LayoutOptions): SafeHtml {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>${opts.title} — RDOC Fleetplanner</title>
+        <link rel="icon" href="${safe(RAUMDOCK_FAVICON)}" />
         ${og
           ? html`<meta property="og:type" content="website" />
               <meta property="og:site_name" content="RDOC Fleetplanner" />
               <meta property="og:title" content="${og.title}" />
-              ${og.description ? html`<meta property="og:description" content="${og.description}" />` : ""}
+              ${og.description
+                ? html`<meta property="og:description" content="${og.description}" />`
+                : ""}
               ${og.imageUrl ? html`<meta property="og:image" content="${og.imageUrl}" />` : ""}
               <meta property="og:url" content="${og.pageUrl}" />
               <meta name="twitter:card" content="summary_large_image" />`
@@ -1158,6 +1164,13 @@ select option { background: var(--bg3); }
   border: 1px solid var(--border);
   background: rgba(5,8,16,0.42);
 }
+.opv2-seat-row[data-drop-seat] {
+  border-style: dashed;
+}
+.opv2-seat-row.drop-ready {
+  border-color: var(--green);
+  background: var(--green-08);
+}
 .opv2-seat-row.disabled {
   opacity: 0.55;
 }
@@ -1187,6 +1200,37 @@ select option { background: var(--bg3); }
   justify-content: flex-end;
   align-items: center;
   gap: 0.35rem;
+}
+.opv2-crew-drag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.opv2-crew-chip {
+  border: 1px solid var(--border);
+  background: rgba(5,8,16,0.42);
+  padding: 0.6rem 0.7rem;
+  cursor: grab;
+}
+.opv2-crew-chip[draggable="false"] {
+  cursor: default;
+  opacity: 0.7;
+}
+.opv2-crew-chip.dragging {
+  opacity: 0.45;
+  border-color: var(--cyan-50);
+}
+.opv2-crew-chip strong {
+  display: block;
+  font-family: var(--font-mono);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+.opv2-crew-chip span {
+  display: block;
+  color: var(--dim);
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
 }
 .opv2-seat-assign {
   position: relative;

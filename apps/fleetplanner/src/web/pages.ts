@@ -1491,7 +1491,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     const canAssign = isLeader && seat.active && !claimed && unit.status === "accepted";
     const canUnclaim = claimed && (isMe || isLeader) && !(seat.order === 0 && !canManage);
 
-    return html`<div class="opv2-seat-row ${seat.active ? "" : "disabled"}">
+    const dropAttrs =
+      canAssign && op.crewRequests.length
+        ? safe(` data-seat-id="${seat.id}" data-drop-seat="1"`)
+        : safe("");
+
+    return html`<div class="opv2-seat-row ${seat.active ? "" : "disabled"}" ${dropAttrs}>
       <div>
         <strong>${seat.label}</strong>
         <span>${seat.seatType}</span>
@@ -2144,7 +2149,47 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         : safe("")}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Composition</div>
+      <div class="opv2-panel-title">Need Assignment</div>
+      ${op.crewRequests.length
+        ? html`<div class="opv2-crew-drag-list">
+            ${op.crewRequests.map(
+              (request) =>
+                html`<div
+                  class="opv2-crew-chip"
+                  draggable="${isLeader ? "true" : "false"}"
+                  data-crew-user-id="${request.user.id}"
+                  title="${request.note || "No note"}"
+                >
+                  <strong>${request.user.username}</strong>
+                  <span>${request.note || "No note"}</span>
+                </div>`,
+            )}
+          </div>`
+        : html`<p class="text-dim text-sm">No unassigned crewmembers.</p>`}
+      ${isLeader && op.crewRequests.length
+        ? html`<p class="text-dim text-sm mt-1">
+            Drag a crewmember onto an open accepted seat to assign them.
+          </p>`
+        : safe("")}
+      <div id="opv2-dnd-assign-forms" hidden>
+        ${activeUnits.flatMap((unit) =>
+          unit.seats
+            .filter((seat) => seat.active && !seat.userId && unit.status === "accepted")
+            .map(
+              (seat) =>
+                html`<form
+                  method="post"
+                  action="${bp}/api/seats/${seat.id}/assign"
+                  data-seat-assign-form="${seat.id}"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <input type="hidden" name="userId" value="" />
+                </form>`,
+            ),
+        )}
+      </div>
+      <div class="opv2-panel-title mt-2">Composition</div>
       <div class="opv2-stack">${compositionRows}</div>
       ${canManage
         ? html`<details class="opv2-edit-block mt-1">
@@ -2401,6 +2446,45 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             if (ownedShipSelect) ownedShipSelect.value = "";
           });
         }
+      });
+      let opv2DraggedCrewUserId = "";
+      document.querySelectorAll("[data-crew-user-id]").forEach((chip) => {
+        chip.addEventListener("dragstart", (event) => {
+          opv2DraggedCrewUserId = chip.dataset.crewUserId || "";
+          if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("text/plain", opv2DraggedCrewUserId);
+          }
+          chip.classList.add("dragging");
+        });
+        chip.addEventListener("dragend", () => {
+          chip.classList.remove("dragging");
+          opv2DraggedCrewUserId = "";
+        });
+      });
+      document.querySelectorAll("[data-drop-seat]").forEach((seat) => {
+        seat.addEventListener("dragover", (event) => {
+          if (!opv2DraggedCrewUserId) return;
+          event.preventDefault();
+          seat.classList.add("drop-ready");
+          if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+        });
+        seat.addEventListener("dragleave", () => {
+          seat.classList.remove("drop-ready");
+        });
+        seat.addEventListener("drop", (event) => {
+          event.preventDefault();
+          seat.classList.remove("drop-ready");
+          const userId =
+            (event.dataTransfer && event.dataTransfer.getData("text/plain")) ||
+            opv2DraggedCrewUserId;
+          const seatId = seat.dataset.seatId || "";
+          const form = document.querySelector('[data-seat-assign-form="' + seatId + '"]');
+          const input = form ? form.querySelector('input[name="userId"]') : null;
+          if (!form || !input || !userId) return;
+          input.value = userId;
+          form.submit();
+        });
       });
       function opv2EscHtml(s) {
         return String(s)

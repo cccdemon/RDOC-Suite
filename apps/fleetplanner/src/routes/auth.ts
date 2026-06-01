@@ -1,17 +1,31 @@
 import type { FastifyInstance } from "fastify";
 import { basePath, getEnv } from "../config/env.js";
 import {
-  issueState, consumeState, authorizeUrlFor, exchangeForProfile, redirectUriFor,
-  discordEnabled, discordOAuthClientId, githubEnabled, googleEnabled,
+  issueState,
+  consumeState,
+  authorizeUrlFor,
+  exchangeForProfile,
+  redirectUriFor,
+  discordEnabled,
+  discordOAuthClientId,
+  githubEnabled,
+  googleEnabled,
 } from "../auth/providers.js";
 import type { OAuthProvider } from "../auth/providers.js";
 import { resolveIdentity, linkIdentity } from "../auth/identity.js";
-import { createSession, destroySession, setSessionCookie, clearSessionCookie } from "../auth/session.js";
+import {
+  createSession,
+  destroySession,
+  setSessionCookie,
+  clearSessionCookie,
+} from "../auth/session.js";
 import { createCompanionSession, loadCompanionSession } from "../auth/companionSession.js";
 import { requireAuth } from "../auth/middleware.js";
 
 const STATE_COOKIE = "fp_oauth_state";
 const LINK_INTENT_COOKIE = "fp_link_provider";
+const RAUMDOCK_FAVICON =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='black' stroke-width='0'%3E%3Ccircle cx='50' cy='50' r='48' fill='%230a0a0a'/%3E%3Cpath d='M22 62 q28 14 56 0 l-6-22 q-24-10-44 0 z' fill='%23444'/%3E%3Cellipse cx='50' cy='46' rx='26' ry='18' fill='%23f6c200'/%3E%3Cellipse cx='62' cy='40' rx='8' ry='5' fill='%23fff7'/%3E%3C/g%3E%3C/svg%3E";
 
 function escapeHtml(value: string): string {
   return value
@@ -36,85 +50,82 @@ export async function authRoutes(app: FastifyInstance) {
 
   // ── Generic login start: /auth/:provider/start ─────────────────────
   // Redirects to the provider's OAuth authorize URL.
-  app.get<{ Params: { provider: string } }>(
-    "/auth/:provider/start",
-    async (req, reply) => {
-      const provider = req.params.provider as OAuthProvider;
-      if (!isEnabledProvider(provider)) {
-        return reply.redirect(basePath("/?flash=error:Provider+not+configured."), 302);
-      }
-      const state = issueState(provider);
-      const redirectUri = redirectUriFor(provider, env.WEB_PUBLIC_URL, env.PUBLIC_BASE_PATH);
-      reply.setCookie(STATE_COOKIE, state, cookieOpts(env));
-      return reply.redirect(authorizeUrlFor(provider, state, redirectUri), 302);
+  app.get<{ Params: { provider: string } }>("/auth/:provider/start", async (req, reply) => {
+    const provider = req.params.provider as OAuthProvider;
+    if (!isEnabledProvider(provider)) {
+      return reply.redirect(basePath("/?flash=error:Provider+not+configured."), 302);
     }
-  );
+    const state = issueState(provider);
+    const redirectUri = redirectUriFor(provider, env.WEB_PUBLIC_URL, env.PUBLIC_BASE_PATH);
+    reply.setCookie(STATE_COOKIE, state, cookieOpts(env));
+    return reply.redirect(authorizeUrlFor(provider, state, redirectUri), 302);
+  });
 
   // ── Generic OAuth callback: /auth/:provider/callback ──────────────
-  app.get<{ Params: { provider: string }; Querystring: { code?: string; state?: string; error?: string } }>(
-    "/auth/:provider/callback",
-    async (req, reply) => {
-      const { code, state, error } = req.query;
-      const cookieState = (req.cookies as Record<string, string | undefined>)[STATE_COOKIE];
+  app.get<{
+    Params: { provider: string };
+    Querystring: { code?: string; state?: string; error?: string };
+  }>("/auth/:provider/callback", async (req, reply) => {
+    const { code, state, error } = req.query;
+    const cookieState = (req.cookies as Record<string, string | undefined>)[STATE_COOKIE];
 
-      if (error || !code || !state || !cookieState || cookieState !== state) {
-        return reply.redirect(basePath("/?flash=error:Login+failed.+Try+again."), 302);
-      }
-
-      const consumed = consumeState(state);
-      if (!consumed) {
-        return reply.redirect(basePath("/?flash=error:Login+session+expired.+Try+again."), 302);
-      }
-
-      reply.clearCookie(STATE_COOKIE, { path: basePath("/auth") });
-
-      try {
-        const redirectUri = redirectUriFor(consumed.provider, env.WEB_PUBLIC_URL, env.PUBLIC_BASE_PATH);
-        const profile = await exchangeForProfile(consumed.provider, code, redirectUri);
-
-        const result = await resolveIdentity(profile);
-        if (!result.ok) {
-          const msg = result.reason === "account_disabled"
-            ? "Your+account+is+disabled."
-            : "Login+error.";
-          return reply.redirect(basePath(`/?flash=error:${msg}`), 302);
-        }
-
-        const session = await createSession(result.userId);
-        setSessionCookie(reply, session.id, session.expiresAt);
-        return reply.redirect(basePath("/?flash=ok:Welcome+back."), 302);
-      } catch (err) {
-        app.log.error(err, "OAuth callback error");
-        return reply.redirect(basePath("/?flash=error:Login+error.+Please+try+again."), 302);
-      }
+    if (error || !code || !state || !cookieState || cookieState !== state) {
+      return reply.redirect(basePath("/?flash=error:Login+failed.+Try+again."), 302);
     }
-  );
+
+    const consumed = consumeState(state);
+    if (!consumed) {
+      return reply.redirect(basePath("/?flash=error:Login+session+expired.+Try+again."), 302);
+    }
+
+    reply.clearCookie(STATE_COOKIE, { path: basePath("/auth") });
+
+    try {
+      const redirectUri = redirectUriFor(
+        consumed.provider,
+        env.WEB_PUBLIC_URL,
+        env.PUBLIC_BASE_PATH,
+      );
+      const profile = await exchangeForProfile(consumed.provider, code, redirectUri);
+
+      const result = await resolveIdentity(profile);
+      if (!result.ok) {
+        const msg =
+          result.reason === "account_disabled" ? "Your+account+is+disabled." : "Login+error.";
+        return reply.redirect(basePath(`/?flash=error:${msg}`), 302);
+      }
+
+      const session = await createSession(result.userId);
+      setSessionCookie(reply, session.id, session.expiresAt);
+      return reply.redirect(basePath("/?flash=ok:Welcome+back."), 302);
+    } catch (err) {
+      app.log.error(err, "OAuth callback error");
+      return reply.redirect(basePath("/?flash=error:Login+error.+Please+try+again."), 302);
+    }
+  });
 
   // ── Discord link start (must be logged in, no Discord yet) ─────────
   // /auth/discord/link/start — initiates the Discord OAuth for linking.
-  app.get(
-    "/auth/discord/link/start",
-    async (req, reply) => {
-      const ctx = await requireAuth(req, reply);
-      if (!ctx) return;
-      if (!discordEnabled()) {
-        return reply.redirect(basePath("/account?flash=error:Discord+not+configured."), 302);
-      }
-      const state = issueState("discord", ctx.user.id);
-      const redirectUri = redirectUriFor("discord", env.WEB_PUBLIC_URL, env.PUBLIC_BASE_PATH);
-      const linkRedirectUri = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/auth/discord/link/callback`;
-      reply.setCookie(STATE_COOKIE, state, cookieOpts(env));
-      // Separate redirect URI for the link flow so Discord knows this is linking
-      const p = new URLSearchParams({
-        client_id: discordOAuthClientId()!,
-        redirect_uri: linkRedirectUri,
-        response_type: "code",
-        scope: "identify",
-        state,
-      });
-      return reply.redirect(`https://discord.com/api/v10/oauth2/authorize?${p}`, 302);
+  app.get("/auth/discord/link/start", async (req, reply) => {
+    const ctx = await requireAuth(req, reply);
+    if (!ctx) return;
+    if (!discordEnabled()) {
+      return reply.redirect(basePath("/account?flash=error:Discord+not+configured."), 302);
     }
-  );
+    const state = issueState("discord", ctx.user.id);
+    const redirectUri = redirectUriFor("discord", env.WEB_PUBLIC_URL, env.PUBLIC_BASE_PATH);
+    const linkRedirectUri = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/auth/discord/link/callback`;
+    reply.setCookie(STATE_COOKIE, state, cookieOpts(env));
+    // Separate redirect URI for the link flow so Discord knows this is linking
+    const p = new URLSearchParams({
+      client_id: discordOAuthClientId()!,
+      redirect_uri: linkRedirectUri,
+      response_type: "code",
+      scope: "identify",
+      state,
+    });
+    return reply.redirect(`https://discord.com/api/v10/oauth2/authorize?${p}`, 302);
+  });
 
   // ── Discord link callback ──────────────────────────────────────────
   app.get<{ Querystring: { code?: string; state?: string; error?: string } }>(
@@ -138,9 +149,10 @@ export async function authRoutes(app: FastifyInstance) {
 
         const result = await linkIdentity(consumed.linkUserId, profile);
         if (!result.ok) {
-          const msg = result.reason === "already_linked_to_another"
-            ? "Discord+account+already+linked+to+another+user."
-            : "Linking+failed.";
+          const msg =
+            result.reason === "already_linked_to_another"
+              ? "Discord+account+already+linked+to+another+user."
+              : "Linking+failed.";
           return reply.redirect(basePath(`/account?flash=error:${msg}`), 302);
         }
         return reply.redirect(basePath("/account?flash=ok:Discord+linked+successfully."), 302);
@@ -148,7 +160,7 @@ export async function authRoutes(app: FastifyInstance) {
         app.log.error(err, "Discord link callback error");
         return reply.redirect(basePath("/account?flash=error:Discord+linking+error."), 302);
       }
-    }
+    },
   );
 
   // ── Backward-compat: /auth/start → /auth/discord/start ─────────────
@@ -176,6 +188,7 @@ export async function authRoutes(app: FastifyInstance) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>RDOC Squad Link Configuration</title>
+  <link rel="icon" href="${RAUMDOCK_FAVICON}" />
   ${deepLink ? `<meta http-equiv="refresh" content="0; url=${escapedDeepLink}" />` : ""}
   <style>
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #05080b; color: #e8f7ff; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
@@ -263,7 +276,7 @@ export async function authRoutes(app: FastifyInstance) {
           app.log.error({ status: tokenRes.status }, "Companion OAuth token exchange failed");
           return reply.redirect("dccc://fleet-auth?error=token_exchange_failed", 302);
         }
-        const tokenData = await tokenRes.json() as { access_token?: string };
+        const tokenData = (await tokenRes.json()) as { access_token?: string };
         if (!tokenData.access_token) {
           return reply.redirect("dccc://fleet-auth?error=token_exchange_failed", 302);
         }
@@ -275,7 +288,11 @@ export async function authRoutes(app: FastifyInstance) {
         if (!userRes.ok) {
           return reply.redirect("dccc://fleet-auth?error=user_fetch_failed", 302);
         }
-        const discordUser = await userRes.json() as { id?: string; username?: string; global_name?: string };
+        const discordUser = (await userRes.json()) as {
+          id?: string;
+          username?: string;
+          global_name?: string;
+        };
         if (!discordUser.id) {
           return reply.redirect("dccc://fleet-auth?error=user_fetch_failed", 302);
         }
@@ -296,7 +313,7 @@ export async function authRoutes(app: FastifyInstance) {
         app.log.error(err, "Companion OAuth callback error");
         return reply.redirect("dccc://fleet-auth?error=server_error", 302);
       }
-    }
+    },
   );
 
   // ── Logout ──────────────────────────────────────────────────────────
@@ -313,7 +330,7 @@ export async function authRoutes(app: FastifyInstance) {
 
 function isEnabledProvider(p: string): p is OAuthProvider {
   if (p === "discord") return discordEnabled();
-  if (p === "github")  return githubEnabled();
-  if (p === "google")  return googleEnabled();
+  if (p === "github") return githubEnabled();
+  if (p === "google") return googleEnabled();
   return false;
 }
