@@ -202,14 +202,12 @@ the following Discord IDs must be configurable:
 | Field | Purpose | Required |
 |---|---|---|
 | `admiralRoleId` | Discord role → fleetoperator (auto-sync on login) | optional |
-| `captainRoleId` | Discord role → captain (auto-sync on login) | optional |
 | `eventChannelId` | Voice channel for Discord scheduled events | optional |
 | `globalVoiceRoleId` | Discord role granted for cross-channel bridge access | needed for #4.4 |
 | `voiceChannelCategoryId` | Parent category for auto-created crew channels | needed for #4.2 |
 | `reminderOffsetMin` | Minutes before event to send reminder DM | optional (default 15) |
 
-Currently `admiralRoleId`, `captainRoleId`, `eventChannelId` are already in `Guild`
-schema and settable in `/guilds/settings`. The remaining fields need schema additions.
+Currently `admiralRoleId` is settable in `/guilds/settings`. `captainRoleId` was removed because there is no Fleetplanner captain rank.
 
 ---
 

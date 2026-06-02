@@ -1209,7 +1209,7 @@ User directive "finalize my fleetmanager". Scope:
 Multiple Discords share one Fleetplanner instance. Decisions:
 - Trennlinie: `Operation.guildId`. New `Guild` + `GuildMembership` (role per guild).
 - Roles per guild: installer=Admiral + manual mgmt + optional Discord-role mapping
-  (Guild stores admiralRoleId/captainRoleId, synced on login via bot REST).
+  (Guild stores admiralRoleId, synced on login via bot REST; captainRoleId was removed).
 - Bot invite: self-service — any logged-in user can add the bot to a Discord they
   manage (`/guilds/add` → Discord bot-invite → `/guilds/added` ?guild_id).
 - Access: must be a real Discord member (Discord OAuth gains `guilds` scope; on login

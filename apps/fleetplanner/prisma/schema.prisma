@@ -154,6 +154,7 @@ model UserSession {
 model CompanionSession {
   id        String   @id // 64-char hex bearer token — stored in Tauri settings store
   userId    String
+  operationId String?
   createdAt DateTime @default(now())
   expiresAt DateTime
   // "full" = companion app login token (valid for all companion endpoints).
@@ -164,6 +165,7 @@ model CompanionSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([operationId])
 }
 
 // ── Ship cache (SC wiki API) ───────────────────────────────────────

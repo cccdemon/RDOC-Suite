@@ -20,10 +20,9 @@ Zwei getrennte Subsysteme in einem Stack:
 |---|---|
 | `superadmin` | Alles; global |
 | `fleetoperator` | Ops erstellen/managen, Units accept/reject |
-| `captain` | Eigene Units registrieren, Seats konfigurieren |
-| `crew` | Default; kann Ops beitreten, Seats claimen |
+| `crew` | Default; kann Ops beitreten, Units registrieren, eigene Unit-Seats konfigurieren, Seats claimen |
 
-Zuweisung: Fleetplanner-Admin setzt `user.role` direkt im Admin-UI oder via Discord-Rolle-Mapping in Guild-Settings (`admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain`).
+Zuweisung: Fleetplanner-Admin setzt `user.role` direkt im Admin-UI oder via Discord-Rolle-Mapping in Guild-Settings (`admiralRoleId` -> `fleetoperator`).
 
 ### Bridge/Companion-Rollen (Channel Commander PTT)
 
@@ -83,7 +82,7 @@ Auf der Op-Detailseite (als `fleetoperator`):
 Status-Button **open** klicken:
 
 - [ ] Mission Voice Rooms Sektion zeigt "LIVE"
-- [ ] Discord-Rollen assignt: `globalVoiceRoleId` → alle Crew; `commanderVoiceRoleId` → fleetoperator + captain
+- [ ] Discord-Rollen assignt: `commanderVoiceRoleId` -> Command Net User; `globalVoiceRoleId` -> Global Radio Net User
 
 ### Schritt 4 — Unit registrieren (Crew-Perspektive)
 
@@ -180,10 +179,10 @@ App pollt `/api/companion/voice` alle 20 Sekunden. Wenn offene Op + accepted Uni
 | PTT-Nutzer | Discord Commander-Rolle | Discord selbst; Snowflake in Bridge Admin → Konfig |
 | Admiral (Session-Ersteller) | Bridge `Admiral` (key:secret) | Bridge Admin UI → Admirals → Credential ausstellen |
 | Fleet-Op-Ersteller | Fleetplanner `fleetoperator` | Fleetplanner Admin oder Discord `admiralRoleId`-Mapping in Guild-Settings |
-| Schiffs-Captain | Fleetplanner `captain` | Fleetplanner Admin oder Discord `captainRoleId`-Mapping |
-| Crew | Fleetplanner `crew` | Default; kein Handlungsbedarf |
-| Alle Crew (Mission Voice) | Discord `globalVoiceRoleId` | Automatisch assignt wenn Op → `open` (durch Bot) |
-| Commander-Tier in Mission | Discord `commanderVoiceRoleId` | Automatisch assignt (fleetoperator + captain) |
+| Unit-Captain | Mission Unit-Captain | Entsteht durch Unit-Registrierung und Accept, kein Fleetplanner-Rang |
+| Crew | Fleetplanner `crew` | Default; kann Units registrieren und Seats claimen |
+| Global Radio Net | Discord `globalVoiceRoleId` | Automatisch fuer Event/Raid/Wing Leader und explizit aktivierte Commanders |
+| Command Net | Discord `commanderVoiceRoleId` | Automatisch fuer accepted Unit-Captains, Event/Raid/Wing Leader und manuelle Commanders |
 
 ---
 
@@ -201,3 +200,4 @@ App pollt `/api/companion/voice` alle 20 Sekunden. Wenn offene Op + accepted Uni
 [ ] PTT-Test: Fleet Hotkey funktioniert (fleetPttActive)
 [ ] Bridge Admin → Monitoring: Sessions erscheinen
 ```
+
