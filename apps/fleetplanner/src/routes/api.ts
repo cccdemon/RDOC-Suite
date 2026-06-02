@@ -709,7 +709,7 @@ export async function apiRoutes(app: FastifyInstance) {
             opReturnUrl(
               req.params.id,
               req.body,
-              `ok:Status+updated.+Deleted+${cleanup.deleted}+empty+voice+channels,+removed+${removableCaptainIds.length}+captain+voice+roles.${occupied}${unknown}${skipped}`,
+              `ok:Status+updated.+Deleted+${cleanup.deleted}+empty+voice+channels.${occupied}${unknown}${skipped}`,
               "overview",
             ),
             302,
