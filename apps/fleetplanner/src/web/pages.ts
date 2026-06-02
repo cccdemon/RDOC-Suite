@@ -1,7 +1,13 @@
 import { html, safe, rawHtml, layout, type SafeHtml, type LayoutOptions } from "./render.js";
 import type { User, Operation, Ship, Location } from "@prisma/client";
 import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/discordDiagnostics.js";
-import { fmtDateTz, fmtDateLocalTz, TIMEZONE_OPTIONS, DEFAULT_TIMEZONE } from "../lib/timezone.js";
+import {
+  fmtDateTz,
+  fmtDateLocalTz,
+  isValidTimezone,
+  TIMEZONE_OPTIONS,
+  DEFAULT_TIMEZONE,
+} from "../lib/timezone.js";
 import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { matchesCategory } from "../services/composition.js";
@@ -274,21 +280,51 @@ export function homePage(opts: {
 }): SafeHtml {
   const bp = opts.basePath;
   const canCreate = (opts.operatorGuilds?.length ?? 0) > 0;
-  const dayFormatter = new Intl.DateTimeFormat("en-GB", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-  const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const timeFormatter = new Intl.DateTimeFormat("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  // The calendar mixes ops from several guilds, each with its own timezone.
+  // Render each op's day-grouping AND time in ITS guild's timezone (matching
+  // the op-detail page) instead of the server's system zone (UTC). Cache one
+  // set of Intl formatters per timezone.
+  const fmtCache = new Map<
+    string,
+    { day: Intl.DateTimeFormat; key: Intl.DateTimeFormat; time: Intl.DateTimeFormat }
+  >();
+  function fmtsFor(tz: string | null | undefined) {
+    const safe = tz && isValidTimezone(tz) ? tz : DEFAULT_TIMEZONE;
+    let f = fmtCache.get(safe);
+    if (!f) {
+      f = {
+        day: new Intl.DateTimeFormat("en-GB", {
+          timeZone: safe,
+          weekday: "short",
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        key: new Intl.DateTimeFormat("en-CA", {
+          timeZone: safe,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }),
+        time: new Intl.DateTimeFormat("en-GB", {
+          timeZone: safe,
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+          timeZoneName: "short",
+        }),
+      };
+      fmtCache.set(safe, f);
+    }
+    return f;
+  }
+  // "20:00 CEST" from the time formatter parts.
+  function fmtTime(op: OpListItem): string {
+    const parts = fmtsFor(op.guild.timezone).time.formatToParts(op.scheduledAt);
+    const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+    const tzName = get("timeZoneName");
+    return `${get("hour")}:${get("minute")}${tzName ? " " + tzName : ""}`;
+  }
 
   // Assign a consistent CSS class per guild for the colored badge
   const guildIndex = new Map<string, number>();
@@ -301,10 +337,11 @@ export function homePage(opts: {
 
   const groupedOps = opts.ops.reduce<Array<{ key: string; label: string; ops: OpListItem[] }>>(
     (groups, op) => {
-      const key = dayKeyFormatter.format(op.scheduledAt);
+      const f = fmtsFor(op.guild.timezone);
+      const key = f.key.format(op.scheduledAt);
       let group = groups.find((item) => item.key === key);
       if (!group) {
-        group = { key, label: dayFormatter.format(op.scheduledAt), ops: [] };
+        group = { key, label: f.day.format(op.scheduledAt), ops: [] };
         groups.push(group);
       }
       group.ops.push(op);
@@ -334,7 +371,7 @@ export function homePage(opts: {
                   style="color:inherit;text-decoration:none;"
                 >
                   <div class="op-card-top">
-                    <span class="op-card-time">${timeFormatter.format(op.scheduledAt)}</span>
+                    <span class="op-card-time">${fmtTime(op)}</span>
                     <span class="op-type-pill">${op.opType.toUpperCase()}</span>
                   </div>
                   <div class="op-card-title">${op.title}</div>

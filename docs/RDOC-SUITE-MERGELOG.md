@@ -28,6 +28,18 @@ Authoritative doc: `docs/companion-voice-architecture.md`.
 - RelayBots muessen im Kanal des sprechenden Fleetmanagers/Commanders still sein, um
   Doppel-Audio/Echo zu vermeiden.
 
+## Completed Step - 2026-06-02: Fleetplanner Calendar-Seite Zeitzone (war UTC)
+
+`homePage` (Operation Calendar, [apps/fleetplanner/src/web/pages.ts]) baute `dayFormatter`/
+`dayKeyFormatter`/`timeFormatter` OHNE `timeZone` → Server-System-TZ (UTC) statt Guild-TZ.
+Op-Detailseiten nutzten bereits `gtz`. Calendar mischt Ops mehrerer Guilds → jede Op jetzt in
+IHRER Guild-TZ (konsistent mit Detail).
+- `operations.ts`: `timezone: true` in alle 4 guild-selects (listOperations/Public/Partner/AllUser)
+- `pages.ts` OpListItem.guild: `timezone?: string | null`; per-TZ Intl-Formatter-Cache (`fmtsFor`),
+  Tag-Gruppierung + Zeit (`fmtTime` → "20:00 CEST") pro Op-TZ; import `isValidTimezone`
+Verifiziert: 18:00 UTC → 20:00 CEST (Sommer); 23:30 UTC → 00:30 CET nächster Tag-Bucket (Winter-DST).
+Nicht lokal gebaut (Docker baut server-seitig).
+
 ## Completed Step - 2026-06-02: Fleetplanner Mobile-Responsive
 
 `apps/fleetplanner/src/web/render.ts` CSS + HTML:
