@@ -148,6 +148,18 @@ services:
       fleetplanner-db:
         condition: service_healthy
 
+  error-page:
+    build:
+      context: .
+      dockerfile: apps/error-page/Dockerfile
+    image: rdoc-suite-error-page:latest
+    container_name: rdoc-suite-error-page
+    restart: unless-stopped
+    environment:
+      PORT: "9091"
+    ports:
+      - "127.0.0.1:9091:9091"
+
   relay-bots:
     build:
       context: apps/relay-bots

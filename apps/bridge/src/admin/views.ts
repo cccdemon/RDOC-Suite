@@ -1,4 +1,5 @@
 import { escape } from "node:querystring";
+import { getEnv } from "../config/env.js";
 
 /**
  * HTML page templates for the admin web UI. Plain template literals,
@@ -46,6 +47,13 @@ type LayoutOpts = {
 };
 
 function layout({ title, body, staticBase, bodyClass = "", scripts = "" }: LayoutOpts): string {
+  const legacyBanner =
+    getEnv().BRIDGE_ADMIN_UI_MODE === "legacy" && bodyClass !== "login-body"
+      ? html`
+  <div class="legacy-admin-banner">
+    Bridge Admin ist Legacy. Nutze Fleetplanner fuer normale Mission-Voice- und Operations-Steuerung.
+  </div>`
+      : "";
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -67,6 +75,7 @@ function layout({ title, body, staticBase, bodyClass = "", scripts = "" }: Layou
 </head>
 <body class="${esc(bodyClass)}">
   <div class="scanlines"></div>
+  ${legacyBanner}
   ${body}
   ${scripts}
   <script>if("serviceWorker" in navigator){navigator.serviceWorker.register("${staticBase}/sw.js").catch(function(){});}</script>

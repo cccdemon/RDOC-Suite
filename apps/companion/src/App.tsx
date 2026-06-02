@@ -707,7 +707,11 @@ export function App(): JSX.Element {
 
   const onAdmiralClick = useCallback(() => {
     const cur = stateRef.current;
-    void openUrl(`${cur.bridgeUrl.replace(/\/+$/, "")}/admin/sessions`).catch(() => {});
+    const target =
+      cur.fleetplannerUrl && cur.guildId
+        ? `${cur.fleetplannerUrl.replace(/\/+$/, "")}/admin/bridge/${encodeURIComponent(cur.guildId)}/sessions`
+        : `${cur.bridgeUrl.replace(/\/+$/, "")}/admin/sessions`;
+    void openUrl(target).catch(() => {});
   }, []);
 
   const onSessionJoinConfirm = useCallback(async (inviteToken: string) => {
@@ -1257,7 +1261,7 @@ export function App(): JSX.Element {
               type="button"
               className="cc-btn ghost sm"
               onClick={onAdmiralClick}
-              title="Session-Verwaltung im Web-Admin öffnen"
+              title="Session-Verwaltung im Fleetplanner öffnen"
             >
               <Icon.key size={12} />
               ADMIRAL

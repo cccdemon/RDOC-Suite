@@ -14,7 +14,7 @@ import { registerRelayBotsRoutes } from "./routes/relayBots.js";
 import { registerPrometheusMetricsRoute } from "./routes/prometheusMetrics.js";
 import { registerAdminRoutes } from "./admin/routes.js";
 import { startStrategyChannelGc } from "./services/strategyChannels.js";
-import { getEnv } from "./config/env.js";
+import { getEnv, type BridgeEnv } from "./config/env.js";
 
 const REDACT_PATHS = [
   "token",
@@ -24,10 +24,15 @@ const REDACT_PATHS = [
   "*.DISCORD_CLIENT_SECRET",
 ];
 
-export async function buildApp(): Promise<FastifyInstance> {
+export type BuildAppOptions = {
+  bridgeAdminUiMode?: BridgeEnv["BRIDGE_ADMIN_UI_MODE"];
+};
+
+export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyInstance> {
+  const env = getEnv();
   const app = Fastify({
     logger: {
-      level: getEnv().LOG_LEVEL,
+      level: env.LOG_LEVEL,
       base: { service: "bridge" },
       redact: { paths: REDACT_PATHS, censor: "[REDACTED]" },
     },
@@ -63,7 +68,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await registerRelayRoute(app);
   await registerRelayBotsRoutes(app);
   await registerPrometheusMetricsRoute(app);
-  await registerAdminRoutes(app);
+  if ((options.bridgeAdminUiMode ?? env.BRIDGE_ADMIN_UI_MODE) !== "disabled") {
+    await registerAdminRoutes(app);
+  }
   await registerWsRoute(app);
 
   startStrategyChannelGc();

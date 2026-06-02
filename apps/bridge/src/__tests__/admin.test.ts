@@ -215,6 +215,24 @@ describe("admin routes (smoke)", () => {
   });
 });
 
+describe("admin UI exposure mode", () => {
+  it("disabled mode skips only native /admin routes", async () => {
+    const disabledApp = await buildApp({ bridgeAdminUiMode: "disabled" });
+    try {
+      const disabledBaseUrl = await disabledApp.listen({ host: "127.0.0.1", port: 0 });
+
+      const adminRes = await fetch(`${disabledBaseUrl}/admin/login`);
+      expect(adminRes.status).toBe(404);
+
+      const healthRes = await fetch(`${disabledBaseUrl}/health`);
+      expect(healthRes.status).toBe(200);
+      await expect(healthRes.json()).resolves.toMatchObject({ ok: true, service: "bridge" });
+    } finally {
+      await disabledApp.close();
+    }
+  });
+});
+
 // Used to prove the admin gate accepts a forged-in-test session cookie
 // when paired with the proper AdminUser row. We can't easily perform
 // a real Discord OAuth round-trip in tests, so we mint a cookie

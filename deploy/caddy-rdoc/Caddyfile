@@ -6,7 +6,12 @@
 
 suite.raumdock.org:9443 {
 	handle_path /fleetplanner* {
-		reverse_proxy 127.0.0.1:3200
+		reverse_proxy 127.0.0.1:3200 {
+			@upstream_5xx status 5xx
+			handle_response @upstream_5xx {
+				error "upstream error" {http.reverse_proxy.status_code}
+			}
+		}
 	}
 
 	handle /monitoring* {
@@ -19,7 +24,21 @@ suite.raumdock.org:9443 {
 		}
 	}
 
-	reverse_proxy 127.0.0.1:8787
+	reverse_proxy 127.0.0.1:8787 {
+		@upstream_5xx status 5xx
+		handle_response @upstream_5xx {
+			error "upstream error" {http.reverse_proxy.status_code}
+		}
+	}
+
+	handle_errors {
+		@server_error expression `{err.status_code} >= 500`
+		handle @server_error {
+			reverse_proxy 127.0.0.1:9091 {
+				header_up X-Status-Code {err.status_code}
+			}
+		}
+	}
 }
 
 voice.raumdock.org:9443 {

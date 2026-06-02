@@ -9,6 +9,18 @@ RDOC-VoiceRelayBots into this repository.
 Unit-Accept ist durch `commanderVoiceRoleId` ersetzt. Schema-Migration + guilds.ts + discord.ts
 (`assignCaptainDiscordRole`, `removeCaptainDiscordRoles`, `configuredCaptainRoleIds`) + pages.ts.
 
+## Queued / Planned Step - 2026-06-02: apps/error-page Microservice
+
+Caveman-Fehlerseite als eigenständiger Node.js-Service (zero-deps, Port 9091).
+Caddy handle_response @5xx + handle_errors leitet alle 5xx aus Fleetplanner und Bridge
+an den Service weiter. docker-compose.prod.yml + Caddyfile angepasst.
+app.ts setErrorHandler vereinfacht: nur noch JSON für /api/*, browser bekommt 5xx → Caddy.
+
+## Queued / Planned Step - 2026-06-02: Caveman 500-Fehlerseite für Fleetplanner
+
+Fastify setErrorHandler in app.ts — HTML-Fehlerseite für Browser-Requests bei unbehandelten
+Fehlern (P2022, etc.). Caveman-Style. JSON bleibt für API-Requests (Accept: application/json).
+
 ## Queued / Planned Step - 2026-06-02: Mission Voice Roles — eigenes Panel in Guild Settings
 
 `commanderVoiceRoleId` + `globalVoiceRoleId` aus dem Discord-Integration-Panel heraus in eigenes

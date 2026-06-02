@@ -9,6 +9,7 @@ a:hover { color: var(--cyan-50); }
 
 /* ── Scanlines overlay (subtle, fixed) ───────────────── */
 .scanlines { position: fixed; inset: 0; background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,212,255,0.006) 3px, rgba(0,212,255,0.006) 4px); pointer-events: none; z-index: 100; }
+.legacy-admin-banner { position: relative; z-index: 1000; padding: 8px 18px; border-bottom: 1px solid rgba(250, 204, 21, .35); background: rgba(113, 63, 18, .92); color: #fef3c7; font-family: var(--font-body); font-size: 13px; text-align: center; }
 
 /* The `hidden` HTML attribute must beat any local display: rule (the
    guild switcher menu, e.g., sets display: flex). */

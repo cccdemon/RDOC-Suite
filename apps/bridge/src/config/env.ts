@@ -6,6 +6,10 @@ const baseEnvSchema = z.object({
   BRIDGE_HOST: z.string().default("0.0.0.0"),
   BRIDGE_PORT: z.coerce.number().int().nonnegative().default(8787),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  // Native Bridge Admin web UI exposure. This controls only `/admin/*`.
+  // Backend routes used by Fleetplanner, Companion, relay bots, downloads,
+  // updater, sessions, and WebSocket signaling remain independent.
+  BRIDGE_ADMIN_UI_MODE: z.enum(["full", "legacy", "disabled"]).default("full"),
   LIVEKIT_URL: z.string().default("ws://localhost:7880"),
   LIVEKIT_API_KEY: z.string().default("devkey"),
   LIVEKIT_API_SECRET: z.string().default("secret"),

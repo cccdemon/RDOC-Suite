@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetmanager: Bridge Admin legacy control plane (2026-06-02)
+
+- Fleetplanner is documented as the primary UI for normal Mission Voice and operation control, while Bridge remains the backend control plane for Discord, LiveKit, relay bots, sessions, downloads, updater, audit, monitoring, and internal APIs.
+- Bridge native Admin UI can now be gated with `BRIDGE_ADMIN_UI_MODE=full|legacy|disabled`; `disabled` skips only `/admin/*` UI registration and leaves Fleetplanner/Companion backend routes active.
+- Companion Admiral session management now opens Fleetplanner Bridge Sessions when `fleetplannerUrl` and `guildId` are known, with the old Bridge Admin sessions URL kept only as fallback.
+
 ### Changed - Fleetmanager: Mission Voice Companion enforcement (2026-06-02)
 
 - Mission voice links are now operation-bound and use the HTTPS `/companion/mission?token=...` wrapper, with `/companion/download` as the stable Fleetmanager download entry point for GitHub Actions-built Companion installers.
