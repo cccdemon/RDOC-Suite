@@ -52,8 +52,6 @@ import { feedbackAudio } from "./lib/audioFeedback";
 import { Icon } from "./components/kit/Icon";
 import { SettingsModal, type SettingsDraft } from "./components/SettingsModal";
 import { GuildPickerModal } from "./components/GuildPickerModal";
-import { SessionJoinModal } from "./components/SessionJoinModal";
-import { joinSession } from "./lib/sessionApi";
 import { RelayAudio, type RelayStatus } from "./lib/relayAudio";
 import { FleetAudio, type FleetStatus } from "./lib/fleetAudio";
 import { openUrl } from "@tauri-apps/plugin-opener";
@@ -93,9 +91,6 @@ type AppState = {
   duckingTargetVolumePct: number;
   activeCommanders: CommanderInfo[];
   lastError: string | null;
-  /** Non-null when connected to a session room via invite. */
-  sessionId: string | null;
-  sessionLabel: string | null;
   relayStatus: RelayStatus;
   relayPttActive: boolean;
   /** Fleetplanner / Mission origin — default mission URL. */
@@ -146,8 +141,6 @@ const INITIAL: AppState = {
   duckingTargetVolumePct: 25,
   activeCommanders: [],
   lastError: null,
-  sessionId: null,
-  sessionLabel: null,
   relayStatus: "idle",
   relayPttActive: false,
   fleetplannerUrl: DEFAULT_FLEETPLANNER_URL,
@@ -179,9 +172,6 @@ export function App(): JSX.Element {
     { kind: "available" }
   > | null>(null);
 
-  const [showSessionJoin, setShowSessionJoin] = useState(false);
-  const [sessionJoinError, setSessionJoinError] = useState<string | null>(null);
-  const [sessionJoinLoading, setSessionJoinLoading] = useState(false);
 
   const wsRef = useRef<BridgeWs | null>(null);
   const audioRef = useRef<LivekitAudio | null>(null);
@@ -709,60 +699,6 @@ export function App(): JSX.Element {
     setState((s) => ({ ...s, afk: next }));
   }, []);
 
-  const onAdmiralClick = useCallback(() => {
-    const cur = stateRef.current;
-    const target =
-      cur.fleetplannerUrl && cur.guildId
-        ? `${cur.fleetplannerUrl.replace(/\/+$/, "")}/admin/bridge/${encodeURIComponent(cur.guildId)}/sessions`
-        : `${cur.bridgeUrl.replace(/\/+$/, "")}/admin/sessions`;
-    void openUrl(target).catch(() => {});
-  }, []);
-
-  const onSessionJoinConfirm = useCallback(async (inviteToken: string) => {
-    const cur = stateRef.current;
-    if (!cur.token || !cur.bridgeUrl) return;
-    setSessionJoinLoading(true);
-    setSessionJoinError(null);
-    const result = await joinSession(cur.bridgeUrl, cur.token, inviteToken);
-    setSessionJoinLoading(false);
-    if (!result.ok) {
-      setSessionJoinError(result.reason);
-      return;
-    }
-    setShowSessionJoin(false);
-    // Disconnect guild WS, connect session WS
-    wsRef.current?.disconnect();
-    wsRef.current?.connectSession(cur.token, result.sessionId);
-    // Connect LiveKit with session token
-    audioRef.current
-      ?.connect(result.livekitUrl, result.livekitToken)
-      .catch((err) => setState((s) => ({ ...s, lastError: `LiveKit (session): ${String(err)}` })));
-    setState((s) => ({
-      ...s,
-      sessionId: result.sessionId,
-      sessionLabel: result.sessionLabel,
-      activeCommanders: [],
-      lastError: null,
-    }));
-  }, []);
-
-  const onLeaveSession = useCallback(() => {
-    const cur = stateRef.current;
-    wsRef.current?.disconnect();
-    void audioRef.current?.disconnect();
-    setState((s) => ({
-      ...s,
-      sessionId: null,
-      sessionLabel: null,
-      activeCommanders: [],
-      lastError: null,
-    }));
-    // Reconnect to guild room
-    if (cur.token && cur.guildId) {
-      wsRef.current?.connect(cur.token, cur.guildId);
-    }
-  }, []);
-
   const onRelayPttEvent = useCallback((e: HotkeyEventPayload) => {
     const active = e.state === "pressed";
     const cur = stateRef.current;
@@ -1095,8 +1031,6 @@ export function App(): JSX.Element {
       guildName: null,
       activeCommanders: [],
       suiteCapabilities: DEFAULT_SUITE_CAPABILITIES,
-      sessionId: null,
-      sessionLabel: null,
     }));
   }, []);
 
@@ -1233,14 +1167,12 @@ export function App(): JSX.Element {
 
   // ── Voice routing readout ──────────────────────────────────────────
   // LOCAL = PTT-1 target: the mission commander room when a mission with a
-  // commander room is active, otherwise the session/guild bridge room.
+  // commander room is active, otherwise the guild bridge room.
   // GLOBAL = PTT-2 target: mission-scoped Relay Voice.
   const missionOwnsLocal = state.missionActive && state.missionHasCommander;
   const localRoomLabel = missionOwnsLocal
     ? `Commander · ${state.missionOpTitle ?? "Mission"}`
-    : state.sessionId
-      ? (state.sessionLabel ?? "Session")
-      : (state.guildName ?? state.guildId ?? "Squad Link");
+    : (state.guildName ?? state.guildId ?? "Squad Link");
   const localConnected = missionOwnsLocal
     ? state.commanderStatus === "connected"
     : state.audioStatus === "connected";
@@ -1275,42 +1207,6 @@ export function App(): JSX.Element {
             >
               <Icon.users size={12} />
               SERVER WECHSELN
-            </button>
-          ) : null}
-          {state.suiteCapabilities.canManageSessions ? (
-            <button
-              type="button"
-              className="cc-btn ghost sm"
-              onClick={onAdmiralClick}
-              title="Session-Verwaltung im Fleetplanner öffnen"
-            >
-              <Icon.key size={12} />
-              ADMIRAL
-            </button>
-          ) : null}
-          {signedIn && !state.sessionId ? (
-            <button
-              type="button"
-              className="cc-btn ghost sm"
-              onClick={() => {
-                setSessionJoinError(null);
-                setShowSessionJoin(true);
-              }}
-              title="Session via Invite-Token beitreten"
-            >
-              <Icon.key size={12} />
-              SESSION
-            </button>
-          ) : null}
-          {state.sessionId ? (
-            <button
-              type="button"
-              className="cc-btn gold sm"
-              onClick={onLeaveSession}
-              title="Session verlassen und zurück zur Guild-Verbindung"
-            >
-              <Icon.power size={12} />
-              SESSION VERLASSEN
             </button>
           ) : null}
           {relayAvailable ? (
@@ -1409,15 +1305,13 @@ export function App(): JSX.Element {
           {audioTransmit ? "PTT AKTIV" : audioLive ? "AUDIO LIVE" : state.audioStatus.toUpperCase()}
         </span>
         <div className="cc-name-wrap">
-          <span className="cc-name-label">{state.sessionId ? "SESSION" : "SERVER"}</span>
+          <span className="cc-name-label">SERVER</span>
           <span
             className="cc-readout"
             style={{ padding: "4px 9px", fontSize: 11 }}
-            title={state.sessionId ?? state.guildId ?? undefined}
+            title={state.guildId ?? undefined}
           >
-            {state.sessionId
-              ? (state.sessionLabel ?? state.sessionId)
-              : (state.guildName ?? state.guildId ?? "—")}
+            {state.guildName ?? state.guildId ?? "—"}
           </span>
         </div>
       </section>
@@ -1695,14 +1589,6 @@ export function App(): JSX.Element {
         />
       ) : null}
 
-      {showSessionJoin ? (
-        <SessionJoinModal
-          onConfirm={onSessionJoinConfirm}
-          onClose={() => setShowSessionJoin(false)}
-          error={sessionJoinError}
-          loading={sessionJoinLoading}
-        />
-      ) : null}
       {showMissionModal ? (
         <MissionLinkModal
           onApply={(token, url) => void onMissionLinkApply(token, url)}
