@@ -417,18 +417,16 @@ export async function webRoutes(app: FastifyInstance) {
         /* non-fatal */
       }
     }
-    // Commander roster for the Commanders tab: accepted-unit captains +
-    // manually-added participants ONLY. Guild fleetoperators are NOT
-    // auto-listed — they already get the commander room via their role
-    // (mission-voice isCommander check); listing every guild fleetoperator
-    // here just clutters the roster. A fleetoperator who wants their own
-    // link adds themselves via the add form (→ participant).
+    // Commander roster for the Commanders tab: accepted-unit captains and
+    // manually-added participants only. Guild fleetoperators are not
+    // auto-listed and do not get mission voice by admin role alone. A
+    // fleetoperator who should join the Command Net is added explicitly.
     // Mission deep-links are generated per person when a voice session is
     // live (globalVoiceRoom set).
     type CommanderEntry = {
       userId: string;
       username: string;
-      kind: "squadleader" | "participant";
+      kind: "squadleader" | "leader" | "participant";
       globalVoice: boolean;
       link: string | null;
     };

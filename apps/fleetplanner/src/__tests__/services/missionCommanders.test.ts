@@ -19,7 +19,11 @@ vi.mock("../../db.js", () => ({
 }));
 
 import { prisma } from "../../db.js";
-import { isMissionCommander, listMissionCommanders } from "../../services/missionCommanders.js";
+import {
+  hasMissionRelayVoice,
+  isMissionCommander,
+  listMissionCommanders,
+} from "../../services/missionCommanders.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = prisma as any;
@@ -34,8 +38,21 @@ describe("listMissionCommanders", () => {
         { captainId: "leader-1", captain: { id: "leader-1", username: "Leader Captain" } },
       ],
       leaders: [
-        { userId: "leader-1", user: { id: "leader-1", username: "Leader Captain" } },
-        { userId: "leader-2", user: { id: "leader-2", username: "Leader Two" } },
+        {
+          userId: "leader-1",
+          leaderRole: "raid_leader",
+          user: { id: "leader-1", username: "Leader Captain" },
+        },
+        {
+          userId: "leader-2",
+          leaderRole: "event_leader",
+          user: { id: "leader-2", username: "Leader Two" },
+        },
+        {
+          userId: "leader-3",
+          leaderRole: "fleet_commander",
+          user: { id: "leader-3", username: "Fleet Commander" },
+        },
       ],
     });
     db.missionVoiceParticipant.findMany.mockResolvedValue([
@@ -56,7 +73,7 @@ describe("listMissionCommanders", () => {
     expect(commanders).toEqual([
       { userId: "captain-1", username: "Captain One", kind: "squadleader", globalVoice: true },
       { userId: "leader-1", username: "Leader Captain", kind: "squadleader", globalVoice: true },
-      { userId: "leader-2", username: "Leader Two", kind: "participant", globalVoice: true },
+      { userId: "leader-2", username: "Leader Two", kind: "leader", globalVoice: true },
       {
         userId: "participant-1",
         username: "Participant One",
@@ -73,12 +90,35 @@ describe("isMissionCommander", () => {
     await expect(isMissionCommander("op-1", "captain-1")).resolves.toBe(true);
 
     db.fleetUnit.findFirst.mockResolvedValueOnce(null);
-    db.operationLeader.findUnique.mockResolvedValueOnce({ id: "leader-1" });
+    db.operationLeader.findUnique.mockResolvedValueOnce({ leaderRole: "raid_leader" });
     await expect(isMissionCommander("op-1", "leader-1")).resolves.toBe(true);
 
     db.fleetUnit.findFirst.mockResolvedValueOnce(null);
     db.operationLeader.findUnique.mockResolvedValueOnce(null);
     db.missionVoiceParticipant.findFirst.mockResolvedValueOnce({ id: "participant-1" });
     await expect(isMissionCommander("op-1", "participant-1")).resolves.toBe(true);
+  });
+
+  it("does not accept fleet commanders for command net by role alone", async () => {
+    db.fleetUnit.findFirst.mockResolvedValueOnce(null);
+    db.operationLeader.findUnique.mockResolvedValueOnce({ leaderRole: "fleet_commander" });
+    db.missionVoiceParticipant.findFirst.mockResolvedValueOnce(null);
+
+    await expect(isMissionCommander("op-1", "fleet-commander-1")).resolves.toBe(false);
+  });
+});
+
+describe("hasMissionRelayVoice", () => {
+  it("accepts voice-bearing leaders and global radio participants only", async () => {
+    db.operationLeader.findUnique.mockResolvedValueOnce({ leaderRole: "wing_commander" });
+    await expect(hasMissionRelayVoice("op-1", "wing-1")).resolves.toBe(true);
+
+    db.operationLeader.findUnique.mockResolvedValueOnce({ leaderRole: "fleet_commander" });
+    db.missionVoiceParticipant.findFirst.mockResolvedValueOnce(null);
+    await expect(hasMissionRelayVoice("op-1", "fleet-commander-1")).resolves.toBe(false);
+
+    db.operationLeader.findUnique.mockResolvedValueOnce(null);
+    db.missionVoiceParticipant.findFirst.mockResolvedValueOnce({ id: "participant-1" });
+    await expect(hasMissionRelayVoice("op-1", "participant-1")).resolves.toBe(true);
   });
 });

@@ -22,7 +22,36 @@ In the data model these are represented by:
 - Mission Commander Voice: guild setting `commanderVoiceRoleId`.
 - Mission Relay Voice: guild setting `globalVoiceRoleId` / relay voice role setting.
 
-The UI wording should call the third role "Relay Voice" where possible. Older code and docs may still call it "Global Voice"; functionally it means Relay Voice permission.
+The UI wording should call the third role "Global Radio Net" where possible. Older code and docs may still call it "Global Voice"; functionally it means Relay Voice / Global Radio Net permission.
+
+## Mission Role Matrix
+
+Fleet roles and mission roles are separate layers. A Fleetadmin or Superadmin can administer the system, but does not automatically become a commander in every mission and does not automatically receive mission voice permissions.
+
+Voice terminology:
+
+- Command Net: mission command voice for leaders and commanders.
+- Global Radio Net: mission relay voice path for RelayBot broadcast into assigned Discord channels.
+
+| Scope | Role | Operation lifecycle | Need assignment / unit confirmation | Commanders tab | Command Net | Global Radio Net | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Fleet | Superadmin | Platform/admin scope | Admin scope only | No | No | No | No mission voice by fleet role alone. |
+| Fleet | Fleetadmin | Guild/fleet admin scope | Admin scope only | No | No | No | Can manage, but is not automatically in mission voice. |
+| Fleet | Crew | No | No | No | No | No | Mission access comes from assignment, not this base role. |
+| Mission Leader | Event Leader | Yes: open, close, delete, cancel, complete | Yes | Yes | Yes | Yes | Event Leader equals Raidleader plus operation administration. |
+| Mission Leader | Fleetcommander | No lifecycle by itself | Yes | No by default | No by default | No by default | Manages needs and confirms fleet units. Add explicitly or assign Event/Raid/Wing role for voice. |
+| Mission Leader | Raidleader | Raid leadership | Yes | Yes | Yes | Yes | Leads the raid and always has Channel Commander and RelayBot rights. |
+| Mission Leader | Wingcommander | Deputy raid leadership | Yes | Yes | Yes | Yes | Same voice rights as Raidleader. |
+| Mission Commander | Ship Captain | No | Own unit context | Yes | Yes | No by default | Commands an accepted ship/fleet unit. |
+| Mission Commander | CQB Captain | No | Own unit context | Yes | Yes | No by default | Commands an accepted FPS/CQB team. |
+| Mission Commander | Added Commander | No | No by default | Yes | Yes | Optional | Manual Command Net participant; Global Radio Net is a separate toggle. |
+
+Design rule:
+
+- The Commanders tab is a mission roster, not an admin roster.
+- It must not list every Fleetadmin, Superadmin, or guild Fleetoperator automatically.
+- Administrative permission to edit a mission does not imply Command Net or Global Radio Net permission.
+- Global Radio Net is intentionally narrower than Command Net. It should be granted only to users who may broadcast through RelayBots.
 
 ## Companion Modes
 
@@ -46,46 +75,47 @@ Behavior:
 
 Bridge Mode is not a mission fallback for users without the Raumdock Bridge role.
 
-### 2. Commander Mode
+### 2. Commander Mode / Command Net
 
-Commander Mode is mission-scoped command voice.
+Commander Mode is the Companion mode for the mission Command Net.
 
 Eligible users:
 
 - Mission Captain / accepted unit captain.
 - Mission Commander added through the mission Commanders UI.
-- Fleetmanager / Fleetoperator / operation leadership users that are part of the mission command group.
+- Event Leader, Raidleader, and Wingcommander.
 
 Requirements:
 
 - The mission is active.
 - Mission voice for the operation has been opened.
 - The mission has a dedicated Commander LiveKit room.
-- The user is eligible for command voice.
+- The user is eligible for Command Net.
 - The user receives temporary Discord role `1510192642997227602`.
 - The user has a mission Companion link/session.
 
 Behavior:
 
 - PTT-1 / LOCAL sends to the mission Commander LiveKit room.
-- The user can speak with all other mission Captains, Commanders, and Fleetmanagers in that mission.
+- The user can speak with all other Command Net users in that mission.
 - Commander Mode automatically takes over LOCAL and ends/suspends Bridge Mode.
 - The role `1510192642997227602` is revoked when the mission ends.
 
-### 3. Relay Mode
+### 3. Relay Mode / Global Radio Net
 
-Relay Mode is mission-scoped broadcast voice via RelayBots. It is an additional path beside Commander Mode and uses the second PTT button.
+Relay Mode is the Companion mode for the mission Global Radio Net. It is mission-scoped broadcast voice via RelayBots. It is an additional path beside Command Net and uses the second PTT button.
 
 Eligible users:
 
-- Mission users explicitly permitted to use Relay Voice, normally Fleetmanager/Commander users with the relay role for the mission.
+- Event Leader, Raidleader, and Wingcommander.
+- Mission Commanders explicitly permitted to use Global Radio Net.
 
 Requirements:
 
 - The mission is active.
 - Mission voice for the operation has been opened.
 - The mission has a dedicated Relay LiveKit publish room.
-- The user has Relay Voice permission.
+- The user has Global Radio Net permission.
 - The user receives temporary Discord role `1510192451808133210`.
 - RelayBots are running and assigned to mission groups/ships/squads.
 
@@ -108,8 +138,8 @@ Each mission owns dedicated LiveKit rooms that are created/prepared when the mis
 
 Required mission rooms:
 
-- Commander room: command net for mission Captains, Commanders, and Fleetmanagers.
-- Relay publish room: input room for Relay Voice. Companion publishes here with PTT-2; RelayBots subscribe here.
+- Commander room: Command Net for mission leaders, Captains, and Commanders.
+- Relay publish room: input room for Global Radio Net. Companion publishes here with PTT-2; RelayBots subscribe here.
 
 These rooms are mission-scoped. They are not shared between missions and must be cleaned up when the mission ends.
 
@@ -120,8 +150,8 @@ When the mission is opened:
 - Fleetplanner creates/prepares the mission Commander LiveKit room.
 - Fleetplanner creates/prepares the mission Relay LiveKit room.
 - Fleetplanner/RelayBots create mission-specific Discord voice channels for assigned ships/squads.
-- Eligible Commander users receive temporary role `1510192642997227602`.
-- Eligible Relay Voice users receive temporary role `1510192451808133210`.
+- Eligible Command Net users receive temporary role `1510192642997227602`.
+- Eligible Global Radio Net users receive temporary role `1510192451808133210`.
 - Mission Companion links are generated for eligible users.
 
 While the mission is active:
@@ -154,13 +184,13 @@ The Fleetmanager/Fleetplanner web UI must provide administration for:
 
 The Fleetmanager mission UI must make clear who has:
 
-- Commander Voice access.
-- Relay Voice access.
+- Command Net access.
+- Global Radio Net access.
 - Which RelayBot/channel they are assigned to.
 
 ## Implementation Notes
 
 - The Companion must not expose Bridge Mode during an active Commander Mode session.
 - Relay Mode is not the same thing as Bridge Mode.
-- Relay Mode is mission-scoped, role-gated by the mission Relay Voice role, and transported through RelayBots.
-- The old term "Global Voice" should be treated as legacy wording for Relay Voice unless explicitly discussing old code.
+- Relay Mode is mission-scoped, role-gated by the mission Global Radio Net role, and transported through RelayBots.
+- The old term "Global Voice" should be treated as legacy wording for Global Radio Net unless explicitly discussing old code.

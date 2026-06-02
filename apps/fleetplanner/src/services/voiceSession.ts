@@ -192,6 +192,20 @@ export async function setMissionGlobalVoiceRole(
   }
 }
 
+export async function setMissionCommanderVoiceRole(
+  operationId: string,
+  userId: string,
+  enabled: boolean,
+): Promise<void> {
+  const op = await getOpForVoice(operationId);
+  if (!op?.commanderVoiceRoom || !op.guild.commanderVoiceRoleId) return;
+  if (enabled) {
+    await grantDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId);
+  } else {
+    await revokeDiscordRole(op.guildId, userId, op.guild.commanderVoiceRoleId);
+  }
+}
+
 export async function closeMissionVoiceSession(operationId: string): Promise<void> {
   const op = await getOpForVoice(operationId);
   if (!op) return;

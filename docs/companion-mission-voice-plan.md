@@ -32,11 +32,12 @@ Relay bots must recover from process crashes by rejoining/recreating their opera
 On first transition to `in_progress`, Fleetplanner sends the mission start DM to:
 
 - Captains of all accepted units.
-- Operation leaders from the Leaders tab.
-- Users with the `fleet_commander` operation role.
+- Operation leaders with voice-bearing mission roles: `event_leader`, `raid_leader`, and `wing_commander`.
 - Mission Commanders from the Commanders tab.
 
 Each user should receive at most one DM per operation start, even if they qualify through multiple paths.
+
+`fleet_commander` is a mission management role for need assignment and unit confirmation. It does not grant Command Net or Global Radio Net by itself.
 
 ## Mission Start DM Content
 
@@ -45,7 +46,7 @@ The DM should communicate:
 ```text
 The Operation <Operation name> - Lead by <Leadername(s)> has started.
 
-- Please use this Voice Client to participate in the Commanders Voice <voice client link>
+- Please use this Voice Client to participate in the Command Net <voice client link>
 - If you've already installed SquadLink, here is your configuration Link: <https companion mission link>
 
 Raw configuration link, if needed: <rdoc://mission?...>

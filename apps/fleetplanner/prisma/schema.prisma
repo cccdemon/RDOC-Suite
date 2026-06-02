@@ -41,8 +41,8 @@ model Guild {
   admiralRoleId          String? // Discord role id → fleetoperator (optional mapping)
   reminderOffsetMin      Int       @default(15) // minutes before scheduledAt to send reminder DMs
   timezone               String    @default("Europe/Berlin") // IANA tz for scheduling UI (e.g. "America/New_York")
-  globalVoiceRoleId      String?   // Discord role id → granted to all crew when mission opens
-  commanderVoiceRoleId   String?   // Discord role id → granted to fleetoperators + captains when mission opens
+  globalVoiceRoleId      String?   // Discord role id for Global Radio Net users when mission voice is live
+  commanderVoiceRoleId   String?   // Discord role id for Command Net users when mission voice is live
   voiceEnabled           Boolean   @default(false) // SuperAdmin-gated feature flag for LiveKit voice sessions
   botInstalledAt         DateTime?
   active                 Boolean   @default(true)
@@ -273,8 +273,8 @@ model Operation {
   createdById     String
   discordEventId        String?   // id of the Discord scheduled event created when opened
   eventVoiceChannelId   String?   // Discord voice channel id to use as event location (overrides Guild.eventChannelId)
-  globalVoiceRoom       String?   // LiveKit room name for Global Channel (set when mission opens, random)
-  commanderVoiceRoom    String?   // LiveKit room name for Commander Channel (set when mission opens, random)
+  globalVoiceRoom       String?   // LiveKit room name for Global Radio Net publish room
+  commanderVoiceRoom    String?   // LiveKit room name for Command Net room
   reminderSentAt        DateTime? // set once reminder DMs have been dispatched; null = not yet sent
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -289,10 +289,9 @@ model Operation {
   missionVoiceParticipants MissionVoiceParticipant[]
 }
 
-// Manually-added mission voice commanders. Captains of accepted units and
-// guild fleetoperators get the commander room implicitly; this table grants
-// the same commander-room access to people who aren't captains but the
-// fleetoperator wants on the führungs-funk for this operation.
+// Manually-added Command Net participants. Captains of accepted units and
+// Event/Raid/Wing leaders are resolved from their mission records; fleet-level
+// admin roles do not grant mission voice by themselves.
 model MissionVoiceParticipant {
   id          String   @id @default(cuid())
   operationId String
@@ -328,7 +327,7 @@ model OperationLeader {
   id          String @id @default(cuid())
   operationId String
   userId      String
-  leaderRole  String @default("raid_leader") // fleet_commander | raid_leader | wing_commander
+  leaderRole  String @default("raid_leader") // event_leader | fleet_commander | raid_leader | wing_commander
 
   operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id])

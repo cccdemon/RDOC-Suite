@@ -13,6 +13,38 @@ The project avoids Discord selfbots, client modifications, and Discord audio cap
 - Runs optional relay bots that subscribe to LiveKit audio and transmit it into Discord voice channels.
 - Provides Prometheus and Grafana configuration for production monitoring.
 
+## Mission role and voice concept
+
+Fleet-level roles and mission roles are separate. A `Superadmin`, `Fleetadmin`, or `Crew` member can have fleet or platform permissions, but does not automatically receive mission voice access.
+
+Mission voice uses two named nets:
+
+- `Command Net`: mission commander voice for mission leaders and commanders.
+- `Global Radio Net`: RelayBot broadcast voice into assigned Discord voice channels.
+
+| Scope | Role | Operation lifecycle | Need assignment / unit confirmation | Commanders tab | Command Net | Global Radio Net |
+| --- | --- | --- | --- | --- | --- | --- |
+| Fleet | Superadmin | Platform/admin scope | Admin scope only | No | No | No |
+| Fleet | Fleetadmin | Guild/fleet admin scope | Admin scope only | No | No | No |
+| Fleet | Crew | No | No | No | No | No |
+| Mission Leader | Event Leader | Yes | Yes | Yes | Yes | Yes |
+| Mission Leader | Fleetcommander | No by itself | Yes | No by default | No by default | No by default |
+| Mission Leader | Raidleader | Raid leadership | Yes | Yes | Yes | Yes |
+| Mission Leader | Wingcommander | Deputy raid leadership | Yes | Yes | Yes | Yes |
+| Mission Commander | Ship Captain | No | Own unit context | Yes | Yes | No by default |
+| Mission Commander | CQB Captain | No | Own unit context | Yes | Yes | No by default |
+| Mission Commander | Added Commander | No | No by default | Yes | Yes | Optional |
+
+Design rules:
+
+- The Commanders tab is a mission roster, not an admin roster.
+- Fleet admins are not listed as mission commanders unless they are assigned to that mission role.
+- `fleet_commander` manages mission needs and confirms units, but is not automatically on the Command Net.
+- `event_leader`, `raid_leader`, and `wing_commander` are voice-bearing leader roles.
+- Global Radio Net access is intentionally narrower than Command Net and should be granted only to users who may broadcast through RelayBots.
+
+The detailed voice architecture is documented in `docs/companion-voice-architecture.md`.
+
 ## Apps
 
 | App                 | Purpose                                                                                                                                                       |

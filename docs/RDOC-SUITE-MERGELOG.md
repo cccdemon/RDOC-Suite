@@ -7,11 +7,19 @@ RDOC-VoiceRelayBots into this repository.
 
 Authoritative doc: `docs/companion-voice-architecture.md`.
 
+- Mission voice terms: `Command Net` is the mission commander voice path;
+  `Global Radio Net` is the RelayBot broadcast path.
+- Fleet-level roles (`Superadmin`, `Fleetadmin`, `Crew`) do not grant mission voice
+  by themselves. The Commanders tab is a mission roster, not an admin roster.
+- Mission voice access comes from accepted unit captain status, Event/Raid/Wing leader
+  roles, or explicit Command Net participant assignment.
+- `fleet_commander` is a mission management role for needs and unit confirmation unless
+  the user is also assigned to a voice-bearing role or added explicitly.
 - Bridge Mode: nur ohne aktive Mission, gated durch Raumdock Guild `1431307397842079777`
   und Rolle `1511124797445247096`.
-- Commander Mode: mission-scoped command net fuer Captains/Commanders/Fleetmanager,
+- Commander Mode: mission-scoped Command Net fuer Captains/Commanders/voice leaders,
   temporaere Rolle `1510192642997227602`, Rolle wird bei Missionsende entzogen.
-- Relay Mode: zweiter PTT, mission-scoped RelayBot broadcast, temporaere Rolle
+- Relay Mode / Global Radio Net: zweiter PTT, mission-scoped RelayBot broadcast, temporaere Rolle
   `1510192451808133210`, Rolle wird bei Missionsende entzogen.
 - Commander Mode beendet/suspendiert Bridge Mode automatisch.
 - Jede Mission hat dedizierte LiveKit-Raeume: Commander-Room und Relay-Publish-Room.
@@ -19,6 +27,13 @@ Authoritative doc: `docs/companion-voice-architecture.md`.
   zugewiesene User soweit moeglich in diese Kanaele.
 - RelayBots muessen im Kanal des sprechenden Fleetmanagers/Commanders still sein, um
   Doppel-Audio/Echo zu vermeiden.
+
+## Completed Step - 2026-06-02: Fleetplanner Mobile-Responsive
+
+`apps/fleetplanner/src/web/render.ts` CSS + HTML:
+- Nav: `overflow-x: auto` + nav-username span für hide-on-mobile
+- Neuer `@media (max-width: 900px)` Breakpoint: op-dashboard, opv2-grid, opv2-hero auf 1fr
+- Mobile (680px): Touch-Targets ≥44px, table horizontal-scroll, seat-assign min-width fix, page-title kleiner, form-actions flex-wrap
 
 ## Queued / Planned Step - 2026-06-02: captainRoleId entfernen
 
@@ -445,7 +460,7 @@ Companion:
 
 Schema:
 - `Guild.voiceEnabled Boolean @default(false)` — feature flag; only SuperAdmin can set
-- `Guild.commanderVoiceRoleId String?` — Discord role granted to fleetoperators + captains when mission opens
+- `Guild.commanderVoiceRoleId String?` — Discord role granted to Command Net users when mission voice is live
 - `Operation.globalVoiceRoom String?` — LiveKit room name (random, stored on first open/in_progress)
 - `Operation.commanderVoiceRoom String?` — LiveKit room name (random, stored on first open/in_progress)
 Migration: 20260531005000_voice_session
@@ -454,7 +469,7 @@ Env: `RAUMDOCK_GUILD_ID` — guild always permitted to use voice regardless of v
 
 New service `apps/fleetplanner/src/services/voiceSession.ts`:
 - `hasVoicePermission(guildId)` → Guild.voiceEnabled OR guildId === RAUMDOCK_GUILD_ID
-- `openMissionVoiceSession(operationId)` — stores random room names in DB, grants globalVoiceRoleId to all crew + captains, grants commanderVoiceRoleId to fleetoperators + captains
+- `openMissionVoiceSession(operationId)` — stores random room names in DB, grants Global Radio Net and Command Net roles based on the mission voice matrix
 - `closeMissionVoiceSession(operationId)` — deletes LiveKit rooms, revokes both roles, clears room names
 - `cleanupStaleVoiceSessions(log)` — called from scheduler: revoke+close ops older than 24h that still have rooms
 

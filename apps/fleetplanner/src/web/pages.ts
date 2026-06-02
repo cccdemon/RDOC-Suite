@@ -417,13 +417,14 @@ type OpDetailPageOptions = {
   guildTimezone?: string;
   /** Fleet voice links per eligible user — only passed for fleetoperator+ views */
   fleetVoiceLinks?: Array<{ userId: string; username: string; link: string }> | null;
-  /** Commander roster for the Commanders tab: accepted FPS squadleaders +
-   *  manually-added participants. Links are present only when a voice session is live. */
+  /** Commander roster for the Commanders tab: accepted captains, voice-bearing
+   *  leaders, and manually-added participants. Links are present only when a
+   *  voice session is live. */
   commanderRoster?: {
     entries: Array<{
       userId: string;
       username: string;
-      kind: "squadleader" | "participant";
+      kind: "squadleader" | "leader" | "participant";
       globalVoice: boolean;
       link: string | null;
     }>;
@@ -981,11 +982,11 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
           ${opts.missionVoice?.globalVoiceRoom
             ? html` <div class="fleet-row" style="flex-direction:column;gap:.25rem">
                   <div class="text-sm text-dim">
-                    Global Channel <span class="tag tag-green">LIVE</span>
+                    Global Radio Net <span class="tag tag-green">LIVE</span>
                   </div>
                   <div class="text-mono text-sm">${opts.missionVoice.globalVoiceRoom}</div>
                   <div class="text-sm text-dim">
-                    Commander Channel <span class="tag tag-green">LIVE</span>
+                    Command Net <span class="tag tag-green">LIVE</span>
                   </div>
                   <div class="text-mono text-sm">
                     ${opts.missionVoice.commanderVoiceRoom ?? "—"}
@@ -2077,11 +2078,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ? opts.missionVoice?.globalVoiceRoom
           ? html`<div class="opv2-stack">
               <div class="detail-row">
-                <span>Global</span>
+                <span>Global Radio Net</span>
                 <strong>${opts.missionVoice.globalVoiceRoom}</strong>
               </div>
               <div class="detail-row">
-                <span>Commander</span>
+                <span>Command Net</span>
                 <strong>${opts.missionVoice.commanderVoiceRoom ?? "None"}</strong>
               </div>
             </div>`
@@ -2195,10 +2196,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       : safe("")}
   </div>`;
 
-  const commanderKindLabel = (k: "squadleader" | "participant") =>
-    k === "squadleader" ? "Squadleader" : "Added";
-  const commanderKindTone = (k: "squadleader" | "participant") =>
-    k === "participant" ? "tag-gold" : "tag-cyan";
+  const commanderKindLabel = (k: "squadleader" | "leader" | "participant") =>
+    k === "squadleader" ? "Squadleader" : k === "leader" ? "Leader" : "Added";
+  const commanderKindTone = (k: "squadleader" | "leader" | "participant") =>
+    k === "participant" ? "tag-gold" : k === "leader" ? "tag-green" : "tag-cyan";
   const rosterIds = new Set((opts.commanderRoster?.entries ?? []).map((e) => e.userId));
   const addableUsers = opts.assignableUsers.filter((u) => !rosterIds.has(u.id));
 
@@ -2210,7 +2211,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         : html`
             <p class="text-dim text-sm" style="margin-bottom:.75rem">
               Squadleaders of accepted FPS squads are commanders automatically. Add anyone else
-              who should be on the commander channel, and grant Global Voice only where needed.
+              who should be on the Command Net, and grant Global Radio Net only where needed.
             </p>
             ${opts.commanderRoster && !opts.commanderRoster.voiceActive
               ? html`<div class="banner banner-dim text-sm" style="margin-bottom:.75rem">
@@ -2260,9 +2261,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           <button
                             type="submit"
                             class="btn btn-sm ${e.globalVoice ? "btn-gold" : "btn-ghost"}"
-                            title="Global Voice via relay bots"
+                            title="Global Radio Net via relay bots"
                           >
-                            Global Voice ${e.globalVoice ? "On" : "Off"}
+                            Global Radio ${e.globalVoice ? "On" : "Off"}
                           </button>
                         </form>
                         ${e.kind === "participant"
@@ -2298,7 +2299,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   </select>
                   <label class="seat-toggle text-sm">
                     <input type="checkbox" name="globalVoice" value="1" />
-                    Global Voice
+                    Global Radio Net
                   </label>
                   <button type="submit" class="btn btn-sm btn-green">Add</button>
                 </form>`
@@ -6144,12 +6145,12 @@ export function guildSettingsPage(opts: {
             </p>
             <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
               <input type="hidden" name="_csrf" value="${csrf}" />
-              <label class="text-sm text-dim">Commander Voice role ID
-                <span style="opacity:.65">(granted to mission commanders — enables Companion PTT into the commander channel)</span>
+              <label class="text-sm text-dim">Command Net role ID
+                <span style="opacity:.65">(granted to mission Command Net users; enables Companion PTT into the commander room)</span>
                 <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
               </label>
-              <label class="text-sm text-dim">Relay Voice role ID
-                <span style="opacity:.65">(granted only to commanders with Global Voice enabled — gates Discord relay bot access)</span>
+              <label class="text-sm text-dim">Global Radio Net role ID
+                <span style="opacity:.65">(granted only to commanders with Global Radio Net enabled; gates Discord relay bot access)</span>
                 <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
               </label>
               <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>

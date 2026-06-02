@@ -32,6 +32,7 @@ import {
   closeMissionVoiceSession,
   hasVoicePermission,
   openMissionVoiceSession,
+  setMissionCommanderVoiceRole,
   setMissionGlobalVoiceRole,
 } from "../services/voiceSession.js";
 import {
@@ -46,6 +47,8 @@ import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 import { specForShip, specForSquad } from "../services/seats.js";
 import { hasMissionRelayVoice, isMissionCommander, listMissionCommanders } from "../services/missionCommanders.js";
+
+const MISSION_VOICE_LEADER_ROLES = new Set(["event_leader", "raid_leader", "wing_commander"]);
 
 function setCompanionCors(reply: FastifyReply, request: FastifyRequest): void {
   const origin = request.headers.origin;
@@ -233,12 +236,6 @@ async function listMissionStartRecipients(operationId: string): Promise<{
       username: unit.captain.username,
     });
   }
-  for (const leader of op.leaders) {
-    recipients.set(leader.userId, {
-      userId: leader.userId,
-      username: leader.user.username,
-    });
-  }
   for (const commander of await listMissionCommanders(operationId)) {
     recipients.set(commander.userId, {
       userId: commander.userId,
@@ -272,7 +269,7 @@ async function sendMissionCommanderStartDms(operationId: string): Promise<{
       "",
     ];
     lines.push(
-      `- Please use this Voice Client to participate in the Commanders Voice ${companionDownloadLink()}`,
+      `- Please use this Voice Client to participate in the Command Net ${companionDownloadLink()}`,
     );
     lines.push(
       `- If you've already installed SquadLink, here is your configuration Link: ${wrapperLink}`,
@@ -344,12 +341,6 @@ async function activeMissionOperationForToken(
   });
   if (!op) return null;
 
-  const membership = await prisma.guildMembership.findUnique({
-    where: { guildId_userId: { guildId: op.guildId, userId } },
-    select: { role: true },
-  });
-  if (membership?.role === "fleetoperator") return op;
-
   const unit = await prisma.fleetUnit.findFirst({
     where: { operationId, captainId: userId, status: "accepted" },
     select: { id: true },
@@ -357,7 +348,7 @@ async function activeMissionOperationForToken(
   if (unit) return op;
 
   const leader = await prisma.operationLeader.findFirst({
-    where: { operationId, userId },
+    where: { operationId, userId, leaderRole: { in: ["event_leader", "raid_leader", "wing_commander"] } },
     select: { id: true },
   });
   if (leader) return op;
@@ -725,6 +716,14 @@ export async function apiRoutes(app: FastifyInstance) {
           }
         });
 
+        if (unit.status === "accepted" && nextStatus === "pending") {
+          if (!(await isMissionCommander(req.params.id, unit.captainId))) {
+            await setMissionCommanderVoiceRole(req.params.id, unit.captainId, false).catch((err) =>
+              req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
+            );
+          }
+        }
+
         const flash =
           unit.status === "accepted" && nextStatus === "pending"
             ? "warn:Unit+updated+and+needs+acceptance+again."
@@ -790,6 +789,9 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       await setUnitStatus(req.params.unitId, "accepted");
+      await setMissionCommanderVoiceRole(req.params.id, unit.captainId, true).catch((err) =>
+        req.log.warn(err, "Command Net role sync failed (non-fatal)"),
+      );
       const env = getEnv();
       const unitName =
         unit.unitType === "ship"
@@ -822,10 +824,15 @@ export async function apiRoutes(app: FastifyInstance) {
       }
       const unit = await prisma.fleetUnit.findFirst({
         where: { id: req.params.unitId, operationId: req.params.id },
-        select: { id: true },
+        select: { id: true, captainId: true },
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       await setUnitStatus(req.params.unitId, "rejected", req.body.note);
+      if (!(await isMissionCommander(req.params.id, unit.captainId))) {
+        await setMissionCommanderVoiceRole(req.params.id, unit.captainId, false).catch((err) =>
+          req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
+        );
+      }
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "warn:Unit+rejected.", "fleet"),
         302,
@@ -1324,11 +1331,27 @@ export async function apiRoutes(app: FastifyInstance) {
         );
       }
       const validRoles = ["event_leader", "fleet_commander", "raid_leader", "wing_commander"];
-      await addLeader(
-        req.params.id,
-        userId,
-        validRoles.includes(leaderRole) ? leaderRole : "event_leader",
-      );
+      const nextLeaderRole = validRoles.includes(leaderRole) ? leaderRole : "event_leader";
+      await addLeader(req.params.id, userId, nextLeaderRole);
+      if (MISSION_VOICE_LEADER_ROLES.has(nextLeaderRole)) {
+        await setMissionCommanderVoiceRole(req.params.id, userId, true).catch((err) =>
+          req.log.warn(err, "Command Net role sync failed (non-fatal)"),
+        );
+        await setMissionGlobalVoiceRole(req.params.id, userId, true).catch((err) =>
+          req.log.warn(err, "Global Radio Net role sync failed (non-fatal)"),
+        );
+      } else {
+        if (!(await isMissionCommander(req.params.id, userId))) {
+          await setMissionCommanderVoiceRole(req.params.id, userId, false).catch((err) =>
+            req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
+          );
+        }
+        if (!(await hasMissionRelayVoice(req.params.id, userId))) {
+          await setMissionGlobalVoiceRole(req.params.id, userId, false).catch((err) =>
+            req.log.warn(err, "Global Radio Net role revoke failed (non-fatal)"),
+          );
+        }
+      }
       return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Leader+added.", "admin"), 302);
     },
   );
@@ -1342,6 +1365,16 @@ export async function apiRoutes(app: FastifyInstance) {
       const { userId } = req.body;
       if (!userId) return reply.code(400).send({ error: "userId required" });
       await removeLeader(req.params.id, userId);
+      if (!(await isMissionCommander(req.params.id, userId))) {
+        await setMissionCommanderVoiceRole(req.params.id, userId, false).catch((err) =>
+          req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
+        );
+      }
+      if (!(await hasMissionRelayVoice(req.params.id, userId))) {
+        await setMissionGlobalVoiceRole(req.params.id, userId, false).catch((err) =>
+          req.log.warn(err, "Global Radio Net role revoke failed (non-fatal)"),
+        );
+      }
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Leader+removed.", "admin"),
         302,
@@ -1742,9 +1775,12 @@ export async function apiRoutes(app: FastifyInstance) {
         update: { globalVoice },
         create: { operationId: req.params.id, userId, addedById: ctx.user.id, globalVoice },
       });
+      await setMissionCommanderVoiceRole(req.params.id, userId, true).catch((err) =>
+        req.log.warn(err, "Command Net role sync failed (non-fatal)"),
+      );
       if (globalVoice) {
         await setMissionGlobalVoiceRole(req.params.id, userId, true).catch((err) =>
-          req.log.warn(err, "Global Voice role sync failed (non-fatal)"),
+          req.log.warn(err, "Global Radio Net role sync failed (non-fatal)"),
         );
       }
       return reply.redirect(
@@ -1785,10 +1821,10 @@ export async function apiRoutes(app: FastifyInstance) {
         },
       });
       await setMissionGlobalVoiceRole(req.params.id, req.params.userId, globalVoice).catch((err) =>
-        req.log.warn(err, "Global Voice role sync failed (non-fatal)"),
+        req.log.warn(err, "Global Radio Net role sync failed (non-fatal)"),
       );
       return reply.redirect(
-        opReturnUrl(req.params.id, req.body, "ok:Global+Voice+updated.", "commanders"),
+        opReturnUrl(req.params.id, req.body, "ok:Global+Radio+Net+updated.", "commanders"),
         302,
       );
     },
@@ -1800,13 +1836,20 @@ export async function apiRoutes(app: FastifyInstance) {
       const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      await setMissionGlobalVoiceRole(req.params.id, req.params.userId, false).catch((err) =>
-        req.log.warn(err, "Global Voice role revoke failed (non-fatal)"),
-      );
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (prisma as any).missionVoiceParticipant.deleteMany({
         where: { operationId: req.params.id, userId: req.params.userId },
       });
+      if (!(await hasMissionRelayVoice(req.params.id, req.params.userId))) {
+        await setMissionGlobalVoiceRole(req.params.id, req.params.userId, false).catch((err) =>
+          req.log.warn(err, "Global Radio Net role revoke failed (non-fatal)"),
+        );
+      }
+      if (!(await isMissionCommander(req.params.id, req.params.userId))) {
+        await setMissionCommanderVoiceRole(req.params.id, req.params.userId, false).catch((err) =>
+          req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
+        );
+      }
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Commander+removed.", "commanders"),
         302,

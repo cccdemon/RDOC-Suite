@@ -99,7 +99,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
     ${u
       ? html` <span class="nav-user">
             <span class="tag tag-role">${ROLE_LABEL[u.role] ?? u.role}</span>
-            ${u.username}
+            <span class="nav-username">${u.username}</span>
           </span>
           <form method="post" action="${bp}/auth/logout" class="inline">
             <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
@@ -330,6 +330,13 @@ a:hover { color: #fff; }
 }
 @media (max-width: 840px) {
   .nav-ui-switch { display: none; }
+}
+@media (max-width: 900px) {
+  .main { padding: 1.75rem 1.5rem; }
+  .op-dashboard { grid-template-columns: 1fr; }
+  .opv2-grid { grid-template-columns: 1fr; }
+  .opv2-hero { grid-template-columns: 1fr; }
+  .opv2-hero-mission { min-height: 10rem; }
 }
 .nav-user {
   display: flex; align-items: center; gap: 0.6rem;
@@ -1469,6 +1476,23 @@ select option { background: var(--bg3); }
   .ship-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0.75rem 0.9rem; }
   .ship-stat { display: none; }
   /* type tabs: full width on mobile */
-  .type-tab { padding: 0.5rem 0.85rem; font-size: 0.75rem; }
+  .type-tab { padding: 0.5rem 0.85rem; font-size: 0.75rem; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  /* Nav: horizontal scroll on narrow screens */
+  .nav { overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 0 0.5rem; }
+  .nav-brand { padding: 0.65rem 0.65rem 0.65rem 0.25rem; font-size: 0.78rem; letter-spacing: 0.08em; }
+  .nav a { padding: 0.65rem 0.5rem; font-size: 0.75rem; white-space: nowrap; }
+  .nav-username { display: none; }
+  .btn-link { padding: 0.65rem 0.55rem; font-size: 0.75rem; }
+  /* Tables: horizontal scroll */
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Touch targets ≥44px */
+  .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  .btn-sm { min-height: 36px; }
+  /* Fix min-width overflow in seat-assign */
+  .opv2-seat-assign form { min-width: 0; }
+  /* Page title smaller on mobile */
+  .page-title { font-size: 1.2rem; }
+  /* Form action buttons: allow wrap */
+  .form-actions { flex-wrap: wrap; }
 }
 `;
