@@ -3,6 +3,12 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-02: captainRoleId entfernen
+
+`captainRoleId` ist funktionslos — `captain`-GuildRole gated keinen Route-Guard, Discord-Badge auf
+Unit-Accept ist durch `commanderVoiceRoleId` ersetzt. Schema-Migration + guilds.ts + discord.ts
+(`assignCaptainDiscordRole`, `removeCaptainDiscordRoles`, `configuredCaptainRoleIds`) + pages.ts.
+
 ## Queued / Planned Step - 2026-06-02: Mission Voice Roles — eigenes Panel in Guild Settings
 
 `commanderVoiceRoleId` + `globalVoiceRoleId` aus dem Discord-Integration-Panel heraus in eigenes

@@ -13,10 +13,8 @@ import {
 } from "../services/units.js";
 import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
 import {
-  assignCaptainDiscordRole,
   createScheduledEvent,
   deleteScheduledEvent,
-  removeCaptainDiscordRoles,
   sendAcceptedCaptainVoiceDm,
   sendDiscordDm,
   sendSeatAssignmentDm,
@@ -153,35 +151,6 @@ async function assertRequirementFitsUnit(
   }
 }
 
-async function captainsWhoseEventRolesCanBeRemoved(operationId: string): Promise<string[]> {
-  const op = await prisma.operation.findUnique({
-    where: { id: operationId },
-    select: {
-      guildId: true,
-      units: { where: { status: "accepted" }, select: { captainId: true } },
-    },
-  });
-  if (!op) return [];
-
-  const captainIds = Array.from(new Set(op.units.map((unit) => unit.captainId)));
-  const removable: string[] = [];
-  for (const captainId of captainIds) {
-    const otherActiveUnit = await prisma.fleetUnit.findFirst({
-      where: {
-        captainId,
-        status: "accepted",
-        operationId: { not: operationId },
-        operation: {
-          guildId: op.guildId,
-          status: { in: ["open", "locked", "in_progress"] },
-        },
-      },
-      select: { id: true },
-    });
-    if (!otherActiveUnit) removable.push(captainId);
-  }
-  return removable;
-}
 
 function missionDeepLink(token: string): string {
   const env = getEnv();
@@ -457,12 +426,6 @@ export async function apiRoutes(app: FastifyInstance) {
           }
         });
 
-        if (unit.status === "accepted" && nextStatus === "pending") {
-          removeCaptainDiscordRoles(unit.captainId, unit.operation.guildId).catch((err) =>
-            app.log.warn(err, "Captain Discord role removal after unit edit failed"),
-          );
-        }
-
         const flash =
           unit.status === "accepted" && nextStatus === "pending"
             ? "warn:Unit+updated+and+needs+acceptance+again."
@@ -534,19 +497,11 @@ export async function apiRoutes(app: FastifyInstance) {
           ? (unit.ship?.name ?? "Unknown Ship")
           : (unit.squadName ?? "Squad");
       const operationUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${unit.operation.id}`;
-      Promise.allSettled([
-        assignCaptainDiscordRole(unit.captainId, unit.operation.guildId, "commander"),
-        sendAcceptedCaptainVoiceDm(unit.captainId, {
-          operationTitle: unit.operation.title,
-          unitName,
-          operationUrl,
-        }),
-      ]).then((results) => {
-        for (const result of results) {
-          if (result.status === "rejected")
-            app.log.warn(result.reason, "Accepted captain Discord follow-up failed");
-        }
-      });
+      sendAcceptedCaptainVoiceDm(unit.captainId, {
+        operationTitle: unit.operation.title,
+        unitName,
+        operationUrl,
+      }).catch((err) => app.log.warn(err, "Accepted captain DM failed"));
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Unit+accepted.", "fleet"),
         302,
@@ -576,55 +531,6 @@ export async function apiRoutes(app: FastifyInstance) {
         opReturnUrl(req.params.id, req.body, "warn:Unit+rejected.", "fleet"),
         302,
       );
-    },
-  );
-
-  // ── Operation status change ──────────────────────────────────────────
-  app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
-    "/api/ops/:id/units/:unitId/discord-role",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-
-      const role = req.body.role;
-      if (role !== "commander" && role !== "admiral") {
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "error:Invalid+Discord+role", "fleet"),
-          302,
-        );
-      }
-
-      const unit = await prisma.fleetUnit.findFirst({
-        where: { id: req.params.unitId, operationId: req.params.id },
-        select: { status: true, captainId: true, operation: { select: { guildId: true } } },
-      });
-      if (!unit) return reply.code(404).send({ error: "Unit not found" });
-      if (unit.status !== "accepted") {
-        return reply.redirect(
-          opReturnUrl(
-            req.params.id,
-            req.body,
-            "error:Only+accepted+captains+can+receive+Discord+roles",
-            "fleet",
-          ),
-          302,
-        );
-      }
-
-      try {
-        await assignCaptainDiscordRole(unit.captainId, unit.operation.guildId, role);
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "ok:Discord+role+assigned.", "fleet"),
-          302,
-        );
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to assign Discord role";
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
-          302,
-        );
-      }
     },
   );
 
@@ -790,10 +696,6 @@ export async function apiRoutes(app: FastifyInstance) {
       if (newStatus === "completed" || newStatus === "cancelled") {
         try {
           const cleanup = await cleanupOperationVoiceChannels(req.params.id);
-          const removableCaptainIds = await captainsWhoseEventRolesCanBeRemoved(req.params.id);
-          await Promise.allSettled(
-            removableCaptainIds.map((userId) => removeCaptainDiscordRoles(userId, updated.guildId)),
-          );
           const skipped = cleanup.skippedDiscordUsers
             ? `+${cleanup.skippedDiscordUsers}+users+had+no+Discord+identity.`
             : "";

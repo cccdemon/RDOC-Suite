@@ -41,9 +41,6 @@ const schema = z.object({
   // Companion app OAuth — uses the RDOC-RTC Bot (separate from the Fleetmanager Bot)
   DISCORD_COMPANION_BOT_ID: z.string().optional(),
   DISCORD_COMPANION_BOT_KEY: z.string().optional(),
-  DISCORD_COMMANDER_ROLE_ID: z.string().optional(),
-  DISCORD_ADMIRAL_ROLE_ID: z.string().optional(),
-  DISCORD_EVENT_CHANNEL_ID: z.string().optional(), // voice channel → in-voice events
   FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL: z.string().optional(),
   FLEETPLANNER_VOICE_CLIENT_CONFIG_URL: z.string().optional(),
   LIVEKIT_URL: z.string().optional(),

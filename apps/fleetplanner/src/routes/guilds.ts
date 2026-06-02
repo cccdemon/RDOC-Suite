@@ -145,9 +145,9 @@ export async function guildRoutes(app: FastifyInstance) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
           id: true, name: true, ownerUserId: true, voiceChannelCategoryId: true,
-          admiralRoleId: true, captainRoleId: true, globalVoiceRoleId: true,
+          admiralRoleId: true, globalVoiceRoleId: true,
           commanderVoiceRoleId: true, voiceEnabled: true, timezone: true,
-        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
+        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: {
@@ -228,7 +228,6 @@ export async function guildRoutes(app: FastifyInstance) {
         data: {
           voiceChannelCategoryId: snowflake(req.body.voiceChannelCategoryId),
           admiralRoleId: snowflake(req.body.admiralRoleId),
-          captainRoleId: snowflake(req.body.captainRoleId),
           globalVoiceRoleId: snowflake(req.body.globalVoiceRoleId),
           commanderVoiceRoleId: snowflake(req.body.commanderVoiceRoleId),
           timezone: validatedTz,

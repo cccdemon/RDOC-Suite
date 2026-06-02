@@ -586,26 +586,6 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
         <span class="unit-name">${unitName}</span>
         ${unit.unitType === "squad" ? html`<span class="tag">FPS</span>` : ""}
         ${statusTag(unit.status)}
-        ${canManage && unit.status === "accepted"
-          ? html` <form
-                method="post"
-                action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
-                class="inline"
-              >
-                <input type="hidden" name="_csrf" value="${csrf}" />
-                <input type="hidden" name="role" value="commander" />
-                <button type="submit" class="btn btn-sm btn-gold">Commander</button>
-              </form>
-              <form
-                method="post"
-                action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
-                class="inline"
-              >
-                <input type="hidden" name="_csrf" value="${csrf}" />
-                <input type="hidden" name="role" value="admiral" />
-                <button type="submit" class="btn btn-sm btn-gold">Admiral</button>
-              </form>`
-          : ""}
         ${isLeader && unit.status === "pending"
           ? html` <form
                 method="post"
@@ -1759,30 +1739,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         const canEditUnit = !!user && (unit.captainId === user.id || isLeader);
         const unitSlots = availableSlotsForUnit(unit.id);
         const unitActions = html`
-          ${canManage && unit.status === "accepted"
-            ? html`<div class="opv2-actions">
-                <form
-                  method="post"
-                  action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
-                  class="inline"
-                >
-                  <input type="hidden" name="_csrf" value="${csrf}" />
-                  ${returnFields("fleet")}
-                  <input type="hidden" name="role" value="commander" />
-                  <button type="submit" class="btn btn-sm btn-gold">Commander</button>
-                </form>
-                <form
-                  method="post"
-                  action="${bp}/api/ops/${op.id}/units/${unit.id}/discord-role"
-                  class="inline"
-                >
-                  <input type="hidden" name="_csrf" value="${csrf}" />
-                  ${returnFields("fleet")}
-                  <input type="hidden" name="role" value="admiral" />
-                  <button type="submit" class="btn btn-sm btn-gold">Admiral</button>
-                </form>
-              </div>`
-            : safe("")}
           ${isLeader && unit.status === "pending"
             ? html`<div class="opv2-actions">
                 <form
@@ -5867,7 +5823,6 @@ export function guildSettingsPage(opts: {
     ownerUserId?: string | null;
     voiceChannelCategoryId: string | null;
     admiralRoleId: string | null;
-    captainRoleId: string | null;
     globalVoiceRoleId: string | null;
     commanderVoiceRoleId: string | null;
     voiceEnabled: boolean;
@@ -6006,9 +5961,6 @@ export function guildSettingsPage(opts: {
         </label>
         <label class="text-sm text-dim">Admiral role ID (Discord role → fleetoperator)
           <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="optional" />
-        </label>
-        <label class="text-sm text-dim">Captain role ID (Discord role → captain)
-          <input type="text" name="captainRoleId" value="${g.captainRoleId ?? ""}" placeholder="optional" />
         </label>
         <label class="text-sm text-dim">Timezone <span style="opacity:.65">(used for scheduling dates — shown to all members)</span>
           <select name="timezone">

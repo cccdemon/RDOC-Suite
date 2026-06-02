@@ -138,11 +138,10 @@ export async function listAllGuildsForAdmin(): Promise<
 
 /** Map a member's Discord role ids to a fleetplanner role via the guild's mapping. */
 function mapDiscordRole(
-  guild: { admiralRoleId: string | null; captainRoleId: string | null },
+  guild: { admiralRoleId: string | null },
   discordRoleIds: string[],
 ): GuildRole | null {
   if (guild.admiralRoleId && discordRoleIds.includes(guild.admiralRoleId)) return "fleetoperator";
-  if (guild.captainRoleId && discordRoleIds.includes(guild.captainRoleId)) return "captain";
   return null;
 }
 
@@ -163,7 +162,7 @@ export async function syncUserGuildMemberships(userId: string, discordGuildIds: 
     const isOwner = guild.ownerUserId === userId;
     let role: GuildRole = isOwner ? "fleetoperator" : "crew";
 
-    if (!isOwner && (guild.admiralRoleId || guild.captainRoleId)) {
+    if (!isOwner && (guild.admiralRoleId)) {
       const discordUserId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
       const roleIds = discordUserId ? await fetchGuildMemberRoles(guild.id, discordUserId).catch(() => null) : null;
       if (roleIds) {
@@ -178,7 +177,7 @@ export async function syncUserGuildMemberships(userId: string, discordGuildIds: 
 
     if (!existing) {
       await prisma.guildMembership.create({ data: { guildId: guild.id, userId, role } });
-    } else if (!isOwner && (guild.admiralRoleId || guild.captainRoleId)) {
+    } else if (!isOwner && (guild.admiralRoleId)) {
       // Only auto-adjust role when a Discord mapping is configured; otherwise
       // keep whatever was set manually in-app.
       await prisma.guildMembership.update({

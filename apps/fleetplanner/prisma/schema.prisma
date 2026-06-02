@@ -39,7 +39,6 @@ model Guild {
   ownerUserId            String? // fleetplanner user who installed the bot
   voiceChannelCategoryId String? // Discord category for operation voice channels
   admiralRoleId          String? // Discord role id → fleetoperator (optional mapping)
-  captainRoleId          String? // Discord role id → captain (optional mapping)
   reminderOffsetMin      Int       @default(15) // minutes before scheduledAt to send reminder DMs
   timezone               String    @default("Europe/Berlin") // IANA tz for scheduling UI (e.g. "America/New_York")
   globalVoiceRoleId      String?   // Discord role id → granted to all crew when mission opens
