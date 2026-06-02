@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetmanager: Mission Voice Companion enforcement (2026-06-02)
+
+- Mission voice links are now operation-bound and use the HTTPS `/companion/mission?token=...` wrapper, with `/companion/download` as the stable Fleetmanager download entry point for GitHub Actions-built Companion installers.
+- Mission start DMs now target accepted Unit Captains, Operation Leaders/FleetCommanders, and Commanders-tab users, with a clickable configuration link plus raw `rdoc://mission?...` fallback.
+- Companion mission polling now receives Discord voice presence state, disconnects LiveKit, and disables Commander/Relay PTT when the user leaves the advised Discord voice channel.
+- Fleetmanager prevents duplicate squad names, blocks unit/squad structure changes after mission start, cleans up mission voice on operation delete, and exposes pull-crew voice controls in the new UI.
+- Relay Discord channel names now come from the assigned unit/squad while RelayBot display names stay on their configured bot labels.
+
+### Removed — Dead-code cleanup: Fleet-Auth, captainRoleId, eventChannelId (2026-06-02)
+
+- **Companion: removed dead Fleetplanner OAuth flow.** `src/lib/fleetplannerAuth.ts`, `src/components/FleetVoiceModal.tsx`, and the Rust `start_fleet_oauth_webview` Tauri command are deleted. The `dccc://fleet-auth` companion login was replaced by the mission-link system in the Companion overhaul but the backend and Rust shims were never cleaned up.
+- **Fleetplanner: removed dead companion OAuth routes.** `GET /auth/discord/companion/start`, `GET /auth/discord/companion/callback`, and `GET /companion/configure` are removed from `apps/fleetplanner/src/routes/auth.ts`. These generated `dccc://fleet-auth?token=…` deep links that the current Companion ignores (it only processes URLs with both `token` and `url` params).
+- **Fleetplanner: fixed unit-accept DM.** On unit accept, the server was creating a full-scope `CompanionSession` and sending the captain a `companion/configure` link — a dead link that the Companion silently dropped. Removed `createCompanionSession` call + `companionConfigUrl` from the accept flow; DM now fires without the dead link. `createCompanionSession` / `loadCompanionSession` (full-scope) and `FULL_TTL_MS` removed from `companionSession.ts`.
+- **Fleetplanner: removed `captainRoleId` guild setting.** The `captain` GuildRole gated no route guard in the codebase (all guards are `crew` or `fleetoperator`). The Discord role was only a visual badge on unit-accept; `commanderVoiceRoleId` + the voice session system now handle all Discord role lifecycle. Removed: `Guild.captainRoleId` (schema + migration `20260602020000_guild_remove_captain_role_id`), `assignCaptainDiscordRole`, `removeCaptainDiscordRoles`, `configuredCaptainRoleIds`, `CaptainDiscordRole` type, `captainsWhoseEventRolesCanBeRemoved`, and Commander/Admiral buttons in the fleet panel UI. Env vars `DISCORD_COMMANDER_ROLE_ID` and `DISCORD_ADMIRAL_ROLE_ID` removed.
+- **Fleetplanner: removed `eventChannelId` guild setting.** The guild-level default Discord event voice channel is superseded by the per-op `eventVoiceChannelId` selector (already implemented on the op create/edit forms). Removed from schema (migration `20260602010000_guild_remove_event_channel_id`), guild settings form, and Discord service. Env var `DISCORD_EVENT_CHANNEL_ID` removed.
+
+### Changed — Guild settings: Mission Voice panel (2026-06-02)
+
+- `commanderVoiceRoleId` and `globalVoiceRoleId` moved out of the generic "Discord integration" form into a dedicated **"Mission Voice — Companion & Relay"** section in guild settings. Panel is only rendered when `voiceEnabled = true`, making it clear these fields are voice-feature-specific and irrelevant until RDOC Voice Permission is granted.
+
+### Added — Bridge + Fleetplanner: DB-backed Raumdock role gates (2026-06-01)
+
+- **`GlobalSettings` singleton in bridge SQLite.** New model `GlobalSettings` (id `"global"`, `raumdockGuildId?`, `bridgeRequiredRoleId?`, `relayRequiredRoleId?`) stores cross-guild access gates.
+- **Bridge access gate:** when `bridgeRequiredRoleId` and `raumdockGuildId` are configured, the OAuth callback fetches the user's Raumdock guild member roles and rejects non-members with `403 missing_bridge_role` before any tenant-level check.
+- **Relay gate:** `RELAY_REQUIRED_ROLE_ID` env var replaced by `GlobalSettings.relayRequiredRoleId`, checked against the Raumdock guild. The env var is no longer read.
+- **Fleetplanner superadmin UI:** "Global / Bridge Settings" page at `/fleetplanner/admin/bridge` — form gated to the `protected` (bootstrap) admiral only. Fields: `raumdockGuildId`, `bridgeRequiredRoleId`, `relayRequiredRoleId`.
+- Bridge exposes `GET|POST /internal/fleet/global-settings` (M2M, Bearer `BRIDGE_FLEET_SECRET`).
+
+### Fixed — Companion: Mission voice lifecycle (builds 0.5.4–0.5.6, 2026-06-02)
+
+- **Mission close kicks instead of switching (build 0.5.5).** `missionOpIdRef` now pins the `opId` on the first successful poll. If the poll returns `op: null` or a different `opId`, the mission ends and the Companion returns to bridge mode — no silent switch to the "next active op". `missionOpIdRef` is reset on `onMissionDisconnect`.
+- **Mission-mode shows wrong roster (build 0.5.6).** In mission mode the bridge-connected pane (showing `activeCommanders`) was rendering in parallel with the mission panel. The bridge pane is now hidden when `missionOwnsLocal` (`missionActive && missionHasCommander`). Participant count for the mission commander room is surfaced via `FleetAudio.participantsChanged` → `commanderParticipants` app state and shown in `MissionVoicePanel` as "N im Kanal".
+- **Self excluded from mission presence count (build 0.5.6+).** `FleetAudio` now counts only remote participants (`room.numParticipants` excludes the local participant). Previously the count was off by one.
+
+### Added — Companion: Voice routing strip (build 0.5.4, 2026-06-02)
+
+- New FUNK strip below the status bar shows the connected room and speaking target for both PTTs at a glance. LOKAL lane: commander room (mission) or session/guild-bridge; GLOBAL lane: Discord relay. Colour: green = actively sending, cyan = connected, dim = disconnected. Hotkey label shown per lane. Derived from existing state (`missionOwnsLocal`, `localRoomLabel`, relay status) — no new protocol messages.
+
+### Changed — Fleetplanner: Mission Commander rules + DM + Global Voice (2026-06-01)
+
+- **Squad captains are now automatic mission commanders; ship captains are not.** `listMissionCommanders` and `isMissionCommander` in `services/missionCommanders.ts` check for `unitType = "squad"`. Ship-unit captains can be added manually as `MissionVoiceParticipant` by a fleetoperator.
+- **Global Voice per commander.** New `MissionVoiceParticipant.globalVoice` boolean (migration `20260602003000_mission_voice_global_voice`). Toggled via the Commanders tab; when a voice session is live the Discord `globalVoiceRoleId` is granted/revoked immediately.
+- **Mission start DM.** When op transitions to `in_progress`, each mission commander receives a Discord DM with: (a) download link if `FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL` is set, (b) personal `rdoc://mission?token=…&url=…` Companion link.
+- **New `missionCommanders.ts` service** extracted from `api.ts` — `listMissionCommanders`, `isMissionCommander`, `missionVoiceAccessUsers`.
+
+### Added — Fleetplanner: Commanders tab + mission metrics (2026-06-01)
+
+- **Commanders tab** on the op detail page — lists accepted squad captains and manually-added `MissionVoiceParticipant` entries, with add/remove controls and per-commander Global Voice toggle.
+- **Mission overview metrics** — ship count, FPS squad count, total seat count, filled/open breakdown shown in the op overview header.
+- **Copy button** on each mission voice link in the voice links panel.
+
+### Changed — Companion: Mission-First 2-PTT Architecture (build 0.5.3, 2026-05-31)
+
+Major architectural simplification. The old multi-mode companion (Bridge-PTT + Fleet-Voice-PTT + Fleet-Voice-Global + up to 4 hotkeys, 3 auth flows) is replaced by a focused 2-PTT design.
+
+- **Two hotkeys only.** `localHotkey` (default Mouse4) and `globalHotkey` (default R). Old `hotkey` and `relayHotkey` store keys migrated on load.
+- **PTT-LOCAL is context-dependent.** Without active mission → guild Bridge room (Squad Link, unchanged). With active mission + commander room → mission `commanderRoom` LiveKit room. Bridge WS + guild roster stay connected in mission mode; only the audio send-target switches.
+- **PTT-GLOBAL is always Discord relay.** Connects as soon as `canUseRelay` is granted — independent of mission state.
+- **Mission-link flow replaces Fleetplanner OAuth.** Separate Fleetplanner Discord login removed entirely. Entry point is `rdoc://mission?token=…&url=…` (deep link from Discord DM / op page). Legacy `dccc://fleet-voice?token=…` accepted during transition. App polls `GET /api/companion/mission-voice` (30s interval) to track op state.
+- **`missionOwnsLocalRef` transition guard** prevents double-connect/double-disconnect churn when the bridge:joined event fires while mission mode is active.
+- Old `/api/companion/voice` (20s polling, unit rooms + global LiveKit floor) removed from Fleetplanner.
+- Settings simplified: 2 hotkey fields instead of 4; Fleetplanner-Auth section removed from SettingsModal.
+- `docs/companion-app-opus.md` added — full architecture reference for the new design.
+
 ### Added — RDOC Squad Link app icon (build 125, 2026-05-27)
 
 - Companion EXE now ships with the real RDOC Squad Link brand mark (gold/silver astronaut helmet over "SL" wordmark, transparent background) instead of the 89-byte placeholder. Affects the EXE icon (taskbar, desktop shortcut, Alt-Tab) and the main window title-bar icon. Source PNG kept at `apps/companion/src-tauri/icons/squadlink.png` — re-run `pnpm tauri icon icons/squadlink.png` to regenerate the icon set after any brand update.

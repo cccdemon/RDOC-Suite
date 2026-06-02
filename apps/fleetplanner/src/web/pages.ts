@@ -2149,6 +2149,50 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </form>`
         : safe("")}
     </section>
+    ${canManage && opts.voiceEnabled && opts.voiceControl && opts.voiceControl.length
+      ? html`<section class="opv2-panel">
+          <div class="opv2-panel-title">Voice Control</div>
+          <p class="text-dim text-sm" style="margin-bottom:.75rem">
+            Pull assigned crew into their unit's Discord voice channel. Members must already be in
+            a Discord voice channel.
+          </p>
+          <div class="opv2-stack">
+            ${opts.voiceControl.map(
+              (unit) => html`<div class="opv2-row" style="flex-wrap:wrap;gap:.5rem">
+                <div>
+                  <strong>${unit.channelName}</strong>
+                  <span>${unit.crew.length} crew</span>
+                </div>
+                <div class="opv2-row-meta" style="gap:.4rem;flex-wrap:wrap">
+                  <form
+                    method="post"
+                    action="${bp}/ops/${op.id}/voice/move-unit/${unit.unitId}"
+                    class="inline"
+                  >
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <button type="submit" class="btn btn-sm btn-cyan">Pull all crew here</button>
+                  </form>
+                  ${unit.crew.map(
+                    (member) =>
+                      member.discordId && member.location === "elsewhere"
+                        ? html`<form
+                            method="post"
+                            action="${bp}/ops/${op.id}/voice/move-member/${unit.unitId}/${member.userId}"
+                            class="inline"
+                          >
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            <button type="submit" class="btn btn-sm btn-ghost">
+                              Move ${member.username}
+                            </button>
+                          </form>`
+                        : safe(""),
+                  )}
+                </div>
+              </div>`,
+            )}
+          </div>
+        </section>`
+      : safe("")}
   </div>`;
 
   const commanderKindLabel = (k: "squadleader" | "participant") =>

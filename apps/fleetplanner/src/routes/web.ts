@@ -61,9 +61,10 @@ import {
   sendDiscordChannelMessage,
   updateScheduledEvent,
 } from "../services/discord.js";
-import { hasVoicePermission } from "../services/voiceSession.js";
+import { closeMissionVoiceSession, hasVoicePermission } from "../services/voiceSession.js";
 import { listMissionCommanders } from "../services/missionCommanders.js";
 import { bridgeConfigured } from "../services/bridge.js";
+import { cleanupOperationVoiceChannels } from "../services/voiceBots.js";
 import {
   buildOpVoiceControl,
   moveUnitCrewToChannel,
@@ -399,17 +400,16 @@ export async function webRoutes(app: FastifyInstance) {
     if (opRole === "fleetoperator" && voiceEnabled && globalVoiceRoom && ctx) {
       try {
         const env = getEnv();
-        const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
         const commanders = await listMissionCommanders(op.id);
         const { createMissionVoiceSession } = await import("../auth/companionSession.js");
         fleetVoiceLinks = await Promise.all(
           commanders.map(async (commander) => {
-            const token = await createMissionVoiceSession(commander.userId);
-            const params = new URLSearchParams({ token, url: fleetplannerUrl });
+            const token = await createMissionVoiceSession(commander.userId, op.id);
+            const params = new URLSearchParams({ token });
             return {
               userId: commander.userId,
               username: commander.username,
-              link: `rdoc://mission?${params.toString()}`,
+              link: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/mission?${params.toString()}`,
             };
           }),
         );
@@ -436,7 +436,6 @@ export async function webRoutes(app: FastifyInstance) {
     if (opRole === "fleetoperator" && voiceEnabled && ctx) {
       try {
         const env = getEnv();
-        const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
         const entries: CommanderEntry[] = (await listMissionCommanders(op.id)).map((commander) => ({
           ...commander,
           link: null,
@@ -445,9 +444,9 @@ export async function webRoutes(app: FastifyInstance) {
         if (voiceActive) {
           const { createMissionVoiceSession } = await import("../auth/companionSession.js");
           for (const e of entries) {
-            const token = await createMissionVoiceSession(e.userId);
-            const params = new URLSearchParams({ token, url: fleetplannerUrl });
-            e.link = `rdoc://mission?${params.toString()}`;
+            const token = await createMissionVoiceSession(e.userId, op.id);
+            const params = new URLSearchParams({ token });
+            e.link = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/mission?${params.toString()}`;
           }
         }
         commanderRoster = { entries, voiceActive };
@@ -781,6 +780,12 @@ export async function webRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       try {
         const op = await prisma.operation.findUnique({ where: { id: req.params.id } });
+        await closeMissionVoiceSession(req.params.id).catch((err) =>
+          app.log.warn(err, "Mission voice session close failed before operation delete"),
+        );
+        await cleanupOperationVoiceChannels(req.params.id).catch((err) =>
+          app.log.warn(err, "Voice channel cleanup failed before operation delete"),
+        );
         await deleteOperation(req.params.id);
         if (op?.discordEventId) {
           deleteScheduledEvent(op.guildId, op.discordEventId).catch((err) =>

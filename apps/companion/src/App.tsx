@@ -115,6 +115,8 @@ type AppState = {
   missionToken: string | null;
   missionUrl: string | null;
   missionEnded: boolean;
+  missionDiscordVoiceOk: boolean;
+  missionExpectedChannelName: string | null;
   // ── Hotkeys (consolidated: 2 PTTs) ──────────────────────────────────
   /** PTT-1: without mission → bridge; with mission → commanderRoom. */
   localHotkey: string;
@@ -156,6 +158,8 @@ const INITIAL: AppState = {
   missionToken: null,
   missionUrl: null,
   missionEnded: false,
+  missionDiscordVoiceOk: true,
+  missionExpectedChannelName: null,
   localHotkey: DEFAULT_HOTKEY,
   globalHotkey: DEFAULT_RELAY_HOTKEY,
 };
@@ -261,6 +265,11 @@ export function App(): JSX.Element {
 
     // Mission mode: route PTT-1 to the commander room.
     if (cur.missionActive && cur.missionHasCommander) {
+      if (!cur.missionDiscordVoiceOk) {
+        setState((s) => ({ ...s, commanderPttActive: false }));
+        void missionCommanderRef.current?.setPttActive(false);
+        return;
+      }
       setState((s) => ({ ...s, commanderPttActive: pressed }));
       void missionCommanderRef.current?.setPttActive(pressed);
       return;
@@ -748,6 +757,12 @@ export function App(): JSX.Element {
 
   const onRelayPttEvent = useCallback((e: HotkeyEventPayload) => {
     const active = e.state === "pressed";
+    const cur = stateRef.current;
+    if (cur.missionActive && !cur.missionDiscordVoiceOk) {
+      setState((s) => ({ ...s, relayPttActive: false }));
+      void relayRef.current?.setPttActive(false);
+      return;
+    }
     setState((s) => ({ ...s, relayPttActive: active }));
     void relayRef.current?.setPttActive(active);
   }, []);
@@ -802,6 +817,12 @@ export function App(): JSX.Element {
 
   // ── Mission voice PTT (commander room = PTT-1 in mission mode) ────────
   const onCommanderPtt = useCallback((pressed: boolean) => {
+    const cur = stateRef.current;
+    if (cur.missionActive && !cur.missionDiscordVoiceOk) {
+      setState((s) => ({ ...s, commanderPttActive: false }));
+      void missionCommanderRef.current?.setPttActive(false);
+      return;
+    }
     setState((s) => ({ ...s, commanderPttActive: pressed }));
     void missionCommanderRef.current?.setPttActive(pressed);
   }, []);
@@ -823,13 +844,22 @@ export function App(): JSX.Element {
       missionToken: null,
       missionUrl: null,
       missionEnded: false,
+      missionDiscordVoiceOk: true,
+      missionExpectedChannelName: null,
     }));
   }, []);
 
   // ── Apply fleet-voice deep link ──────────────────────────────────────
   const onMissionLinkApply = useCallback(async (token: string, url: string) => {
     await saveMissionConfig(token, url);
-    setState((s) => ({ ...s, missionToken: token, missionUrl: url, missionEnded: false }));
+    setState((s) => ({
+      ...s,
+      missionToken: token,
+      missionUrl: url,
+      missionEnded: false,
+      missionDiscordVoiceOk: true,
+      missionExpectedChannelName: null,
+    }));
     setShowMissionModal(false);
   }, []);
 
@@ -879,11 +909,19 @@ export function App(): JSX.Element {
     if (!state.missionToken || !state.missionUrl) return;
 
     type MissionRoom = { room: string; token: string };
+    type MissionDiscordVoice = {
+      required: boolean;
+      ok: boolean;
+      status: string;
+      expectedChannel: { id: string; name: string } | null;
+      currentChannel: { id: string; name: string } | null;
+    };
     type MissionVoiceResponse = {
       op: null | {
         opId: string;
         opTitle: string;
         livekitUrl: string;
+        discordVoice?: MissionDiscordVoice;
         commanderRoom: MissionRoom | null;
       };
     };
@@ -927,19 +965,30 @@ export function App(): JSX.Element {
               missionToken: null,
               missionUrl: null,
               missionEnded: true,
+              missionDiscordVoiceOk: true,
+              missionExpectedChannelName: null,
             }));
           }
           return;
         }
         if (!data.op) return; // narrowing — handled above
 
-        const { opId, opTitle, livekitUrl, commanderRoom } = data.op;
+        const { opId, opTitle, livekitUrl, commanderRoom, discordVoice } = data.op;
+        const discordVoiceOk = discordVoice?.ok ?? true;
+        const expectedChannelName = discordVoice?.expectedChannel?.name ?? null;
         // Pin the op on first successful poll so later polls can detect a
         // close/switch instead of following the backend onto the next op.
         missionOpIdRef.current = opId;
 
+        if (!discordVoiceOk) {
+          await missionCommanderRef.current?.disconnect();
+          await missionCommanderRef.current?.setPttActive(false);
+          currentMissionCommanderRoomRef.current = null;
+          void relayRef.current?.setPttActive(false);
+        }
+
         // Commander room (only if returned)
-        if (commanderRoom) {
+        if (discordVoiceOk && commanderRoom) {
           if (
             currentMissionCommanderRoomRef.current !== commanderRoom.room ||
             missionCommanderRef.current?.getStatus() === "idle"
@@ -964,8 +1013,12 @@ export function App(): JSX.Element {
           ...s,
           missionActive: true,
           missionOpTitle: opTitle,
-          missionHasCommander: Boolean(commanderRoom),
+          missionHasCommander: Boolean(discordVoiceOk && commanderRoom),
           missionEnded: false,
+          missionDiscordVoiceOk: discordVoiceOk,
+          missionExpectedChannelName: expectedChannelName,
+          commanderPttActive: discordVoiceOk ? s.commanderPttActive : false,
+          relayPttActive: discordVoiceOk ? s.relayPttActive : false,
         }));
       } catch {
         // network error — retry on next tick
@@ -973,7 +1026,7 @@ export function App(): JSX.Element {
     };
 
     void poll();
-    const interval = setInterval(() => void poll(), 30_000);
+    const interval = setInterval(() => void poll(), 5_000);
     return () => clearInterval(interval);
   }, [state.missionToken, state.missionUrl]);
 
@@ -1246,6 +1299,7 @@ export function App(): JSX.Element {
               onMouseUp={() =>
                 onRelayPttEvent({ state: "released", accelerator: state.globalHotkey })
               }
+              disabled={state.missionActive && !state.missionDiscordVoiceOk}
             >
               <Icon.radio size={12} />
               {state.relayPttActive ? "RELAY AKTIV" : "VOICE TO ALL"}
@@ -1402,6 +1456,8 @@ export function App(): JSX.Element {
             localHotkey={state.localHotkey}
             globalHotkey={state.globalHotkey}
             relayAvailable={state.suiteCapabilities.canUseRelay}
+            discordVoiceOk={state.missionDiscordVoiceOk}
+            expectedChannelName={state.missionExpectedChannelName}
           />
         ) : null}
 

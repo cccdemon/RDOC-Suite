@@ -13,12 +13,14 @@ import {
 } from "../services/units.js";
 import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
 import {
+  discordUserIdForFleetplannerUser,
   createScheduledEvent,
   deleteScheduledEvent,
   sendAcceptedCaptainVoiceDm,
   sendDiscordDm,
   sendSeatAssignmentDm,
 } from "../services/discord.js";
+import { bridgeConfigured, getBridgeVoiceStates } from "../services/bridge.js";
 import {
   cleanupOperationVoiceChannels,
   deleteOperationVoiceChannel,
@@ -151,6 +153,27 @@ async function assertRequirementFitsUnit(
   }
 }
 
+async function assertUniqueSquadName(
+  operationId: string,
+  squadName: string | undefined,
+  currentUnitId?: string,
+): Promise<void> {
+  const normalized = squadName?.trim().toLocaleLowerCase();
+  if (!normalized) return;
+  const squads = await prisma.fleetUnit.findMany({
+    where: {
+      operationId,
+      unitType: "squad",
+      status: { not: "rejected" },
+      ...(currentUnitId ? { id: { not: currentUnitId } } : {}),
+    },
+    select: { squadName: true },
+  });
+  if (squads.some((unit) => unit.squadName?.trim().toLocaleLowerCase() === normalized)) {
+    throw new Error("Squad name already exists in this operation");
+  }
+}
+
 
 function missionDeepLink(token: string): string {
   const env = getEnv();
@@ -159,36 +182,107 @@ function missionDeepLink(token: string): string {
   return `rdoc://mission?${params.toString()}`;
 }
 
+function missionWrapperLink(token: string): string {
+  const env = getEnv();
+  const params = new URLSearchParams({ token });
+  return `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/mission?${params.toString()}`;
+}
+
+function companionDownloadLink(): string {
+  const env = getEnv();
+  return `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/download`;
+}
+
+type MissionStartRecipient = {
+  userId: string;
+  username: string;
+};
+
+async function listMissionStartRecipients(operationId: string): Promise<{
+  operationTitle: string;
+  leaderNames: string[];
+  recipients: MissionStartRecipient[];
+}> {
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    select: {
+      title: true,
+      leaders: {
+        select: {
+          userId: true,
+          user: { select: { username: true } },
+        },
+        orderBy: { userId: "asc" },
+      },
+      units: {
+        where: { status: "accepted" },
+        select: {
+          captainId: true,
+          captain: { select: { username: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+  if (!op) return { operationTitle: "", leaderNames: [], recipients: [] };
+
+  const recipients = new Map<string, MissionStartRecipient>();
+  for (const unit of op.units) {
+    recipients.set(unit.captainId, {
+      userId: unit.captainId,
+      username: unit.captain.username,
+    });
+  }
+  for (const leader of op.leaders) {
+    recipients.set(leader.userId, {
+      userId: leader.userId,
+      username: leader.user.username,
+    });
+  }
+  for (const commander of await listMissionCommanders(operationId)) {
+    recipients.set(commander.userId, {
+      userId: commander.userId,
+      username: commander.username,
+    });
+  }
+
+  return {
+    operationTitle: op.title,
+    leaderNames: op.leaders.map((leader) => leader.user.username),
+    recipients: [...recipients.values()],
+  };
+}
+
 async function sendMissionCommanderStartDms(operationId: string): Promise<{
   sent: number;
   failed: number;
 }> {
-  const op = await prisma.operation.findUnique({
-    where: { id: operationId },
-    select: { title: true },
-  });
-  if (!op) return { sent: 0, failed: 0 };
-  const commanders = await listMissionCommanders(operationId);
   const env = getEnv();
-  const operationUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${operationId}`;
+  const { operationTitle, leaderNames, recipients } = await listMissionStartRecipients(operationId);
+  if (!operationTitle) return { sent: 0, failed: 0 };
+  const leadBy = leaderNames.length > 0 ? leaderNames.join(", ") : "Mission Command";
   let sent = 0;
   let failed = 0;
-  for (const commander of commanders) {
-    const token = await createMissionVoiceSession(commander.userId);
+  for (const recipient of recipients) {
+    const token = await createMissionVoiceSession(recipient.userId, operationId);
+    const wrapperLink = missionWrapperLink(token);
+    const rawLink = missionDeepLink(token);
     const lines = [
-      "Mission started.",
-      `You are commander for "${op.title}".`,
+      `The Operation ${operationTitle} - Lead by ${leadBy} has started.`,
       "",
-      `Operation: ${operationUrl}`,
     ];
-    if (env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL) {
-      lines.push(`Download companion app: ${env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL}`);
-    }
-    lines.push(`Companion configuration link: ${missionDeepLink(token)}`);
+    lines.push(
+      `- Please use this Voice Client to participate in the Commanders Voice ${companionDownloadLink()}`,
+    );
+    lines.push(
+      `- If you've already installed SquadLink, here is your configuration Link: ${wrapperLink}`,
+    );
     lines.push("");
-    lines.push("This mission-scoped configuration link can be revoked by removing commander access.");
+    lines.push(`Raw configuration link, if needed: ${rawLink}`);
+    lines.push("");
+    lines.push("Good Hunt");
     try {
-      await sendDiscordDm(commander.userId, lines.join("\n"));
+      await sendDiscordDm(recipient.userId, lines.join("\n"));
       sent++;
     } catch {
       failed++;
@@ -206,6 +300,173 @@ async function canApproveUnits(userId: string, instanceRole: string, operationId
     select: { id: true },
   });
   return !!leader;
+}
+
+type MissionDiscordVoiceState = {
+  required: boolean;
+  ok: boolean;
+  status:
+    | "ok"
+    | "no_expected_channel"
+    | "not_linked"
+    | "bridge_unavailable"
+    | "not_in_voice"
+    | "wrong_channel";
+  expectedChannel: { id: string; name: string } | null;
+  currentChannel: { id: string; name: string } | null;
+};
+
+async function activeMissionOperationForToken(
+  userId: string,
+  operationId: string,
+  activeStatuses: readonly string[],
+): Promise<{ id: string; title: string; guildId: string; eventVoiceChannelId: string | null } | null> {
+  const op = await prisma.operation.findFirst({
+    where: {
+      id: operationId,
+      status: { in: [...activeStatuses] },
+    },
+    select: { id: true, title: true, guildId: true, eventVoiceChannelId: true },
+  });
+  if (!op) return null;
+
+  const unit = await prisma.fleetUnit.findFirst({
+    where: { operationId, captainId: userId, status: "accepted" },
+    select: { id: true },
+  });
+  if (unit) return op;
+
+  const leader = await prisma.operationLeader.findFirst({
+    where: { operationId, userId },
+    select: { id: true },
+  });
+  if (leader) return op;
+
+  const participant = (await (prisma as any).missionVoiceParticipant.findFirst({
+    where: { operationId, userId },
+    select: { id: true },
+  })) as { id: string } | null;
+  return participant ? op : null;
+}
+
+async function expectedMissionVoiceChannel(
+  operationId: string,
+  userId: string,
+): Promise<{ id: string; name: string } | null> {
+  const unit = await prisma.fleetUnit.findFirst({
+    where: {
+      operationId,
+      status: "accepted",
+      OR: [
+        { captainId: userId },
+        { seats: { some: { userId, active: true } } },
+      ],
+    },
+    select: {
+      voiceChannel: { select: { channelId: true, channelName: true } },
+      unitType: true,
+      squadName: true,
+      ship: { select: { name: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!unit?.voiceChannel) return null;
+  const fallbackName = unit.unitType === "ship" ? (unit.ship?.name ?? "Ship") : (unit.squadName ?? "Squad");
+  return {
+    id: unit.voiceChannel.channelId,
+    name: unit.voiceChannel.channelName || fallbackName,
+  };
+}
+
+async function missionDiscordVoiceState(
+  operation: { id: string; guildId: string; eventVoiceChannelId: string | null },
+  userId: string,
+): Promise<MissionDiscordVoiceState> {
+  const expected = (await expectedMissionVoiceChannel(operation.id, userId)) ??
+    (operation.eventVoiceChannelId
+      ? { id: operation.eventVoiceChannelId, name: "Event Voice" }
+      : null);
+  if (!expected) {
+    return {
+      required: false,
+      ok: true,
+      status: "no_expected_channel",
+      expectedChannel: null,
+      currentChannel: null,
+    };
+  }
+
+  const discordId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
+  if (!discordId) {
+    return {
+      required: true,
+      ok: false,
+      status: "not_linked",
+      expectedChannel: expected,
+      currentChannel: null,
+    };
+  }
+
+  if (!bridgeConfigured()) {
+    return {
+      required: true,
+      ok: false,
+      status: "bridge_unavailable",
+      expectedChannel: expected,
+      currentChannel: null,
+    };
+  }
+
+  try {
+    const voice = await getBridgeVoiceStates(operation.guildId);
+    if (voice.offline) {
+      return {
+        required: true,
+        ok: false,
+        status: "bridge_unavailable",
+        expectedChannel: expected,
+        currentChannel: null,
+      };
+    }
+    const channelNames = new Map(voice.channels.map((channel) => [channel.id, channel.name]));
+    const currentId = voice.voiceStates.find((state) => state.userId === discordId)?.channelId ?? null;
+    const current = currentId ? { id: currentId, name: channelNames.get(currentId) ?? currentId } : null;
+    const allowedChannelIds = new Set([expected.id]);
+    if (operation.eventVoiceChannelId) allowedChannelIds.add(operation.eventVoiceChannelId);
+    if (!currentId) {
+      return {
+        required: true,
+        ok: false,
+        status: "not_in_voice",
+        expectedChannel: expected,
+        currentChannel: null,
+      };
+    }
+    if (!allowedChannelIds.has(currentId)) {
+      return {
+        required: true,
+        ok: false,
+        status: "wrong_channel",
+        expectedChannel: expected,
+        currentChannel: current,
+      };
+    }
+    return {
+      required: true,
+      ok: true,
+      status: "ok",
+      expectedChannel: expected,
+      currentChannel: current,
+    };
+  } catch {
+    return {
+      required: true,
+      ok: false,
+      status: "bridge_unavailable",
+      expectedChannel: expected,
+      currentChannel: null,
+    };
+  }
 }
 
 export async function apiRoutes(app: FastifyInstance) {
@@ -274,6 +535,9 @@ export async function apiRoutes(app: FastifyInstance) {
           (!parsedSquadSize || parsedSquadSize < 2 || parsedSquadSize > 8)
         ) {
           throw new Error("Squad size must be between 2 and 8");
+        }
+        if (unitType === "squad") {
+          await assertUniqueSquadName(req.params.id, squadName);
         }
         await assertRequirementFitsUnit(
           req.params.id,
@@ -350,6 +614,9 @@ export async function apiRoutes(app: FastifyInstance) {
         if (!UNIT_TYPES.includes(unitType as (typeof UNIT_TYPES)[number])) {
           throw new Error("Invalid unit type");
         }
+        const missionLocked = ["in_progress", "completed", "cancelled"].includes(
+          unit.operation.status,
+        );
 
         const selectedShipId =
           unitType === "ship" ? req.body.shipId || req.body.ownedShipId || unit.shipId || "" : "";
@@ -367,6 +634,18 @@ export async function apiRoutes(app: FastifyInstance) {
           unitType === "squad" ? parsePositiveInt(req.body.squadSize, unit.squadSize ?? 4) : null;
         if (unitType === "squad" && (!squadSize || squadSize < 2 || squadSize > 8)) {
           throw new Error("Squad size must be between 2 and 8");
+        }
+        if (unitType === "squad") {
+          await assertUniqueSquadName(req.params.id, squadName ?? undefined, unit.id);
+        }
+        if (
+          missionLocked &&
+          (unit.unitType !== unitType ||
+            (unitType === "ship" && unit.shipId !== selectedShipId) ||
+            (unitType === "squad" &&
+              (unit.squadName !== squadName || unit.squadSize !== squadSize)))
+        ) {
+          throw new Error("Unit name and structure cannot be changed after mission start");
         }
 
         const requirementId = req.body.requirementId?.trim() || undefined;
@@ -1316,36 +1595,13 @@ export async function apiRoutes(app: FastifyInstance) {
     setCompanionCors(reply, req);
     const authHeader = (req.headers as Record<string, string | undefined>).authorization;
     if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
-    const userId = await loadMissionVoiceSession(authHeader.slice(7));
-    if (!userId) return reply.code(401).send({ error: "unauthorized" });
+    const session = await loadMissionVoiceSession(authHeader.slice(7));
+    if (!session) return reply.code(401).send({ error: "unauthorized" });
+    const { userId, operationId } = session;
 
     const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
 
-    // Find op where user is automatic squadleader or manually added commander.
-    let activeOp: Awaited<ReturnType<typeof prisma.operation.findFirst>> | null = null;
-    const captainUnit = await prisma.fleetUnit.findFirst({
-      where: {
-        captainId: userId,
-        status: "accepted",
-        unitType: "squad",
-        operation: { status: { in: [...ACTIVE_STATUSES] } },
-      },
-      include: { operation: true },
-      orderBy: { createdAt: "desc" },
-    });
-    if (captainUnit) activeOp = captainUnit.operation;
-
-    if (!activeOp) {
-      const participant = (await (prisma as any).missionVoiceParticipant.findFirst({
-        where: {
-          userId,
-          operation: { status: { in: [...ACTIVE_STATUSES] } },
-        },
-        include: { operation: true },
-        orderBy: { createdAt: "desc" },
-      })) as { operation: typeof activeOp } | null;
-      if (participant) activeOp = participant.operation;
-    }
+    const activeOp = await activeMissionOperationForToken(userId, operationId, ACTIVE_STATUSES);
 
     if (!activeOp) return reply.send({ op: null });
 
@@ -1377,15 +1633,19 @@ export async function apiRoutes(app: FastifyInstance) {
     const env = getEnv();
     if (!env.LIVEKIT_URL) return reply.send({ op: null });
 
+    const discordVoice = await missionDiscordVoiceState(activeOp, userId);
     const isCommander = await isMissionCommander(activeOp.id, userId);
     const commanderToken =
-      isCommander && commanderRoom ? await issueMissionVoiceToken(userId, commanderRoom) : null;
+      discordVoice.ok && isCommander && commanderRoom
+        ? await issueMissionVoiceToken(userId, commanderRoom)
+        : null;
 
     return reply.send({
       op: {
         opId: activeOp.id,
         opTitle: activeOp.title,
         livekitUrl: env.LIVEKIT_URL,
+        discordVoice,
         commanderRoom:
           commanderToken && commanderRoom ? { room: commanderRoom, token: commanderToken } : null,
       },
@@ -1409,17 +1669,15 @@ export async function apiRoutes(app: FastifyInstance) {
     if (!env.LIVEKIT_URL) return reply.code(400).send({ error: "LiveKit not configured" });
 
     const commanders = await listMissionCommanders(op.id);
-    const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
 
-    // Create companion sessions + build links
+    // Create mission-scoped companion sessions + build clickable wrapper links.
     const links: Array<{ userId: string; username: string; link: string }> = [];
     for (const commander of commanders) {
-      const token = await createMissionVoiceSession(commander.userId);
-      const params = new URLSearchParams({ token, url: fleetplannerUrl });
+      const token = await createMissionVoiceSession(commander.userId, op.id);
       links.push({
         userId: commander.userId,
         username: commander.username,
-        link: `rdoc://mission?${params.toString()}`,
+        link: missionWrapperLink(token),
       });
     }
 

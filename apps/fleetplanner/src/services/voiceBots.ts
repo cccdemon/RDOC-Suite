@@ -186,7 +186,8 @@ export async function launchOperationVoiceChannels(operationId: string): Promise
 
     const bot = availableBots[botCursor++];
     const botToken = decryptVoiceBotToken(bot);
-    const channelName = bot.label;
+    const channelName =
+      unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
     const permissionOverwrites: Array<{ id: string; type: 0 | 1; allow?: string; deny?: string }> =
       [
         {

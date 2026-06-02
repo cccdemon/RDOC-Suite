@@ -108,6 +108,7 @@ model GuildMembership {
   id        String   @id @default(cuid())
   guildId   String
   userId    String
+  operationId String?
   role      String   @default("crew") // fleetoperator | captain | crew (PER guild)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -117,6 +118,7 @@ model GuildMembership {
 
   @@unique([guildId, userId])
   @@index([userId])
+  @@index([operationId])
 }
 
 // ── OAuth identities ───────────────────────────────────────────────

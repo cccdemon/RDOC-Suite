@@ -16,6 +16,8 @@ type Props = {
   globalHotkey: string;
   /** Whether the relay/global path is available for this user. */
   relayAvailable: boolean;
+  discordVoiceOk: boolean;
+  expectedChannelName: string | null;
 };
 
 function statusColor(s: FleetStatus): string {
@@ -35,12 +37,20 @@ export function MissionVoicePanel({
   localHotkey,
   globalHotkey,
   relayAvailable,
+  discordVoiceOk,
+  expectedChannelName,
 }: Props): JSX.Element {
   return (
     <div className="mission-panel">
       <div className="mission-op-title">
         {opTitle ?? "MISSION ACTIVE"}
       </div>
+
+      {!discordVoiceOk ? (
+        <div className="cc-banner warn">
+          Please join your advised Voice channel {expectedChannelName ?? "on Discord"} first.
+        </div>
+      ) : null}
 
       <div className="mission-rooms">
         {hasCommanderRoom ? (
@@ -61,7 +71,7 @@ export function MissionVoicePanel({
               onMouseDown={() => onCommanderPtt(true)}
               onMouseUp={() => onCommanderPtt(false)}
               onMouseLeave={() => { if (commanderPttActive) onCommanderPtt(false); }}
-              disabled={commanderStatus !== "connected"}
+              disabled={!discordVoiceOk || commanderStatus !== "connected"}
               title={`Commander Channel · Hotkey: ${localHotkey}`}
             >
               <Icon.radio size={14} />
@@ -73,11 +83,13 @@ export function MissionVoicePanel({
             <div className="mission-room-info">
               <span className="mission-room-name">GLOBAL</span>
               <span className="mission-room-hotkey text-dim">
-                {relayAvailable ? globalHotkey : "—"}
+                {discordVoiceOk && relayAvailable ? globalHotkey : "—"}
               </span>
             </div>
             <span className="text-dim text-sm" style={{ alignSelf: "center" }}>
-              {relayAvailable
+              {!discordVoiceOk
+                ? "Discord Voice required"
+                : relayAvailable
                 ? "Sprich über VOICE TO ALL (Global)"
                 : "Kein Commander-Kanal — nur zuhören"}
             </span>

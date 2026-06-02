@@ -47,7 +47,7 @@ export async function syncFleetplannerRelayBots(guildId: string): Promise<{ bots
   const bots: RelayBotConfig[] = rows.flatMap((row) => {
     if (!row.voiceBot) return [];
     return [{
-      name: row.channelName || row.voiceBot.label,
+      name: row.voiceBot.label,
       channelId: row.channelId,
       token: decryptSecret({
         ciphertext: row.voiceBot.tokenCiphertext,
