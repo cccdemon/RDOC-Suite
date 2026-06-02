@@ -5865,7 +5865,6 @@ export function guildSettingsPage(opts: {
     id: string;
     name: string;
     ownerUserId?: string | null;
-    eventChannelId: string | null;
     voiceChannelCategoryId: string | null;
     admiralRoleId: string | null;
     captainRoleId: string | null;
@@ -6002,9 +6001,6 @@ export function guildSettingsPage(opts: {
       <div class="section-title">Discord integration</div>
       <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
         <input type="hidden" name="_csrf" value="${csrf}" />
-        <label class="text-sm text-dim">Event voice channel ID (optional — empty = external event)
-          <input type="text" name="eventChannelId" value="${g.eventChannelId ?? ""}" placeholder="123456789012345678" />
-        </label>
         <label class="text-sm text-dim">Operation voice category ID
           <input type="text" name="voiceChannelCategoryId" value="${g.voiceChannelCategoryId ?? ""}" placeholder="1507879660724162770" />
         </label>
@@ -6013,12 +6009,6 @@ export function guildSettingsPage(opts: {
         </label>
         <label class="text-sm text-dim">Captain role ID (Discord role → captain)
           <input type="text" name="captainRoleId" value="${g.captainRoleId ?? ""}" placeholder="optional" />
-        </label>
-        <label class="text-sm text-dim">Global Voice role ID <span style="opacity:.65">(Discord role -> granted only to commanders with Global Voice enabled)</span>
-          <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
-        </label>
-        <label class="text-sm text-dim">Commander Voice role ID <span style="opacity:.65">(Discord role -> granted to mission commanders when mission opens)</span>
-          <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
         </label>
         <label class="text-sm text-dim">Timezone <span style="opacity:.65">(used for scheduling dates — shown to all members)</span>
           <select name="timezone">
@@ -6082,6 +6072,25 @@ export function guildSettingsPage(opts: {
     ${
       g.voiceEnabled
         ? html` <div class="section">
+            <div class="section-title">Mission Voice — Companion &amp; Relay</div>
+            <p class="text-dim text-sm" style="margin-bottom:.75rem">
+              Discord roles assigned automatically when a Mission Voice session opens and revoked when it closes.
+              Leave empty to skip role assignment.
+            </p>
+            <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <label class="text-sm text-dim">Commander Voice role ID
+                <span style="opacity:.65">(granted to mission commanders — enables Companion PTT into the commander channel)</span>
+                <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
+              </label>
+              <label class="text-sm text-dim">Global Voice role ID
+                <span style="opacity:.65">(granted only to commanders with Global Voice enabled — gates Discord relay bot access)</span>
+                <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
+              </label>
+              <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>
+            </form>
+          </div>
+          <div class="section">
             <div class="section-title">Voice relay bots (${opts.voiceBots.length}/6)</div>
             <form method="post" action="${bp}/guilds/voice-bots" class="card" style="padding:1rem;display:grid;grid-template-columns:1fr 1.2fr 1.8fr auto;gap:.75rem;align-items:flex-end">
               <input type="hidden" name="_csrf" value="${csrf}" />

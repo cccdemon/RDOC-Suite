@@ -37,7 +37,6 @@ model Guild {
   name                   String
   iconHash               String?
   ownerUserId            String? // fleetplanner user who installed the bot
-  eventChannelId         String? // voice/text channel for scheduled events
   voiceChannelCategoryId String? // Discord category for operation voice channels
   admiralRoleId          String? // Discord role id → fleetoperator (optional mapping)
   captainRoleId          String? // Discord role id → captain (optional mapping)

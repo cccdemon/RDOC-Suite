@@ -49,11 +49,6 @@ struct OAuthCompletedEvent {
 #[derive(Clone, Serialize)]
 struct OAuthCancelledEvent {}
 
-#[derive(Clone, Serialize)]
-struct FleetOAuthCompletedEvent {
-    token: String,
-}
-
 /// Open a small WebviewWindow that drives the Discord OAuth flow
 /// inline (no system browser, no `dccc://` OS scheme registration).
 /// The bridge ends its callback HTML with a redirect to the
@@ -130,66 +125,6 @@ async fn start_oauth_webview(
     win.on_window_event(move |event| {
         if let tauri::WindowEvent::Destroyed = event {
             let _ = app_for_close.emit("oauth-cancelled", OAuthCancelledEvent {});
-        }
-    });
-
-    Ok(())
-}
-
-/// Opens a WebviewWindow for Fleetplanner companion OAuth.
-/// The fleetplanner's /auth/discord/companion/callback redirects to
-/// dccc://fleet-auth?token=<bearer> on success or dccc://fleet-auth?error=...
-/// on failure. on_navigation intercepts the dccc://fleet-auth URL (host = "fleet-auth"),
-/// emits fleet-oauth-completed or fleet-oauth-cancelled, and closes the window.
-#[tauri::command]
-async fn start_fleet_oauth_webview(
-    app: AppHandle,
-    fleetplanner_url: String,
-) -> Result<(), String> {
-    if let Some(existing) = app.get_webview_window("fleet-oauth") {
-        let _ = existing.close();
-    }
-
-    let base = fleetplanner_url.trim_end_matches('/');
-    let start_url = format!("{}/auth/discord/companion/start", base);
-    let parsed = url::Url::parse(&start_url).map_err(|e| e.to_string())?;
-
-    let app_for_nav = app.clone();
-    let win = WebviewWindowBuilder::new(&app, "fleet-oauth", WebviewUrl::External(parsed))
-        .title("RDOC Fleet Commander — Discord Anmeldung")
-        .inner_size(520.0, 760.0)
-        .resizable(true)
-        .focused(true)
-        .on_navigation(move |target| {
-            if target.scheme() == "dccc" && target.host_str() == Some("fleet-auth") {
-                let mut token: Option<String> = None;
-                let mut has_error = false;
-                for (k, v) in target.query_pairs() {
-                    match k.as_ref() {
-                        "token" => token = Some(v.into_owned()),
-                        "error" => { has_error = true; let _ = v; }
-                        _ => {}
-                    }
-                }
-                if let Some(t) = token {
-                    let _ = app_for_nav.emit("fleet-oauth-completed", FleetOAuthCompletedEvent { token: t });
-                } else if has_error {
-                    let _ = app_for_nav.emit("fleet-oauth-cancelled", OAuthCancelledEvent {});
-                }
-                if let Some(w) = app_for_nav.get_webview_window("fleet-oauth") {
-                    let _ = w.close();
-                }
-                return false;
-            }
-            true
-        })
-        .build()
-        .map_err(|e| e.to_string())?;
-
-    let app_for_close = app.clone();
-    win.on_window_event(move |event| {
-        if let tauri::WindowEvent::Destroyed = event {
-            let _ = app_for_close.emit("fleet-oauth-cancelled", OAuthCancelledEvent {});
         }
     });
 
@@ -695,7 +630,6 @@ pub fn run() {
         .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             start_oauth_webview,
-            start_fleet_oauth_webview,
             set_hotkey,
             clear_hotkey,
             set_extra_hotkey,

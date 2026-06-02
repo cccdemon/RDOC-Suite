@@ -144,10 +144,10 @@ export async function guildRoutes(app: FastifyInstance) {
       const [guild, memberships, voiceBots] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
-          id: true, name: true, ownerUserId: true, eventChannelId: true, voiceChannelCategoryId: true,
+          id: true, name: true, ownerUserId: true, voiceChannelCategoryId: true,
           admiralRoleId: true, captainRoleId: true, globalVoiceRoleId: true,
           commanderVoiceRoleId: true, voiceEnabled: true, timezone: true,
-        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; eventChannelId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
+        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; captainRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: {
@@ -226,7 +226,6 @@ export async function guildRoutes(app: FastifyInstance) {
       await (prisma.guild.update as any)({
         where: { id: gctx.guildId },
         data: {
-          eventChannelId: snowflake(req.body.eventChannelId),
           voiceChannelCategoryId: snowflake(req.body.voiceChannelCategoryId),
           admiralRoleId: snowflake(req.body.admiralRoleId),
           captainRoleId: snowflake(req.body.captainRoleId),

@@ -97,8 +97,13 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 # Installation und Setup
 pnpm install
 pnpm db:generate            # Prisma Client generieren (nach jedem frischen Clone zwingend!)
-pnpm db:migrate             # Migrationen auf dev.db anwenden
+pnpm db:migrate             # Migrationen auf dev.db anwenden (bridge/bot root schema)
 pnpm db:studio              # Prisma Web-UI für die SQLite-DB
+
+# Fleetplanner hat ein eigenes Prisma-Schema (PostgreSQL in Prod, SQLite lokal)
+pnpm --filter @rdoc-suite/fleetplanner db:generate
+pnpm --filter @rdoc-suite/fleetplanner db:push   # lokal (SQLite, kein Migrations-History)
+# Prod: Migrationen laufen automatisch beim Container-Start via entrypoint
 
 # Build / Lint / Format / Test (alle Workspaces)
 pnpm build
@@ -111,6 +116,9 @@ pnpm --filter @rdoc-suite/bot dev
 pnpm --filter @rdoc-suite/bridge dev
 pnpm --filter @rdoc-suite/companion dev          # nur Vite-Frontend
 pnpm --filter @rdoc-suite/companion tauri:dev    # Vite + Rust Shell (Hotkeys, Deep-Link)
+# Companion-Voraussetzungen (Windows): Rust + MSVC Build Tools
+# winget install Rustlang.Rustup
+# winget install Microsoft.VisualStudio.2022.BuildTools
 pnpm --filter @rdoc-suite/fleetplanner dev
 pnpm --filter @rdoc-suite/relay-bots dev
 
@@ -122,13 +130,11 @@ node apps/bridge/dist/index.js
 pnpm --filter @rdoc-suite/bridge test -- oauth      # nur oauth.test.ts
 pnpm --filter @rdoc-suite/bridge test -- -t "name"  # einzelner it("name", ...) Block
 
-# Lokales LiveKit (für Voice-Tests zwingend; Dev-Compose mit eingebauten Creds)
-docker compose up -d livekit
 ```
 
 Es gibt keinen `ts-node`-Runner. Bot und Bridge müssen vor dem Start kompiliert werden (Output in `dist/`). **Für Production wird ausschließlich in Docker gebaut** — kein lokaler pnpm/npm/cargo auf dem Server.
 
-### Häufige Commands — Production (10.10.10.99 /opt/RDOC-Suite)
+### Häufige Commands — Production (10.10.10.99 /opt/RDOC-Suite) via ve.raumdock.org(proxmox host)
 
 ```bash
 cd /opt/RDOC-Suite
@@ -164,7 +170,20 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 
 4. **Voice geht über LiveKit (SFU), Lifecycle sticky per WS-Session.** Direkt nach WS-Auth minted die Bridge ein LiveKit-Token, joined den Commander in den Room, schickt `bridge:joined` mit `livekitUrl` + `livekitToken`. `ptt:start`/`ptt:stop` toggeln nur Mic-Mute + `speaking`-Flag. Echter Leave erst bei WS-Close oder Permission-Fail. Räume in-memory ([apps/bridge/src/services/rooms.ts](apps/bridge/src/services/rooms.ts)).
 
-5. **Hotkey zweischichtig**: Tastatur via `@tauri-apps/plugin-global-shortcut`, Maus-Tasten via eigenem `rdev`-Thread in Rust ([apps/companion/src-tauri/src/lib.rs:13](apps/companion/src-tauri/src/lib.rs#L13)). Beide emittieren `"hotkey"` Event; React-Schicht filtert nach Accelerator-Name.
+5. **Companion: 2-PTT-Architektur (Mission-First).** Zwei Hotkeys, zwei semantisch getrennte Voice-Pfade:
+
+   | PTT | Hotkey-Setting | Ziel (ohne Mission) | Ziel (mit Mission) | Transport |
+   |-----|----------------|---------------------|--------------------|-----------|
+   | **LOKAL** | `localHotkey` (default Mouse4) | Guild-Bridge-Room (Squad Link, LiveKit via Bridge) | Mission `commanderRoom` | LiveKit |
+   | **GLOBAL** | `globalHotkey` (default R) | Discord-Relay-Bots | Discord-Relay-Bots | RelayAudio |
+
+   Mission-Link-Flow: `rdoc://mission?token=…&url=…` (Legacy: `dccc://fleet-voice?token=…&url=…` — beide Schemata aktiv) → `applyRaw`/`saveMissionConfig` → 30s-Poll `GET /api/companion/mission-voice` beim Fleetplanner → liefert `commanderRoom` (Captain/Fleetoperator) oder null (normale Crew). Bei `op: null` oder anderer `opId` als der gepinnten → Mission beenden, zurück zu Bridge-Room.
+
+   GLOBAL-Pfad verbindet unabhängig vom Missionszustand, sobald `canUseRelay === true`.
+
+   Hotkey-Layer (OS): Tastatur via `@tauri-apps/plugin-global-shortcut`, Maus-Tasten via eigenem `rdev`-Thread in Rust ([apps/companion/src-tauri/src/lib.rs:13](apps/companion/src-tauri/src/lib.rs#L13)). Beide emittieren `"hotkey"` Event; React-Schicht filtert nach Accelerator-Name.
+
+   Deep-Link-Schemes `rdoc://` + `dccc://` registriert in `tauri.conf.json` und `src-tauri/src/lib.rs`.
 
 6. **Voice-Channel-Enforcement: DB für State, HTTP-Push für Realtime.** Bot abonniert `voiceStateUpdate` ([apps/bot/src/events/voiceState.ts](apps/bot/src/events/voiceState.ts)), upsertet `UserVoiceState`, schickt fire-and-forget POST an Bridge `/internal/voice-state-changed` (Auth: `X-Internal-Auth` + `INTERNAL_BRIDGE_SECRET`) → sofortiges `audio:enable`/`audio:disable` an Companion. 60s-Loop prüft weiterhin nur noch die Discord-Rolle. Ohne `INTERNAL_BRIDGE_SECRET`: Fallback auf 60s-Recheck-only.
 
@@ -178,6 +197,7 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 10. **`apps/relay-bots` (Step 6) = importierter VoiceRelayBots-Worker** (`@rdoc-suite/relay-bots`). Liest Config von der Bridge, subscribed LiveKit-Track, relayed Audio in Discord Voice Channels via `@discordjs/voice`. `@discordjs/opus` ist ein nativer Addon — `pnpm approve-builds` nötig beim Deploy.
 
 11. **`apps/fleetplanner` = Fastify + Prisma + SSR** (`@rdoc-suite/fleetplanner`). Eigene **PostgreSQL**-DB (`fleetplanner-db` Container); Production-Route unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate` Skripte pro Workspace. Companion-OAuth via RDOC-RTC Bot (`DISCORD_COMPANION_BOT_ID`/`KEY`), fleet voice via LiveKit unit rooms + global voice.
+    - **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Per-Guild-Rollen (`fleetoperator | captain | crew`) leben in `GuildMembership.role`. Middleware: `requireSuperAdmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role` für die aktive Guild. Discord-Mapping: `admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain` (aus Guild-Settings). Default bei neuem Member: `crew`.
     - **Fleetplanner bots:** drei separate Discord-Bots — (a) **Fleetplanner Bot** (`DISCORD_FLEETPLANNER_BOT_TOKEN`): Events, DMs, Rollen-Zuweisung; (b) **Companion OAuth App** (`DISCORD_COMPANION_BOT_ID`/`KEY`): Fleet-Auth-Flow; (c) **Funkrelais Bots** (6×, in `GuildVoiceBot`-Tabelle): für "Launch Voice Channels" — jeder Bot joined einen Channel per eigenem Token.
     - **Funkrelais-Token-Verschlüsselung:** `apps/fleetplanner/src/services/secrets.ts` nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
 
@@ -222,6 +242,17 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 
 Kein STAND.md — alles in `docs/`.
 
+### Planungsdokumente — NOCH NICHT IMPLEMENTIERT
+
+Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals eigenständig implementieren — nur auf explizite Anweisung.
+
+| Datei | Inhalt | Status |
+|---|---|---|
+| [docs/opus-tennant-architecture.md](docs/opus-tennant-architecture.md) | Op-Visibility (`private/partners/public`) + Guild-Partnerships (`GuildPartnership`-Tabelle) | Plan, kein Code |
+| [docs/orgmodule-implementationplan.md](docs/orgmodule-implementationplan.md) | Org-Modul: SC-Orgs als First-Class-Entities (`Org`, `OrgMembership`, `OrgInvite`) | Plan, kein Code |
+| [docs/composition-rebuild-plan.md](docs/composition-rebuild-plan.md) | Composition Board + Leader-Assign + Auto-Match (Schritte 1+2 im Code, Schritte 3-5 offen) | Teilweise umgesetzt |
+| [docs/handover.to.opus-model.md](docs/handover.to.opus-model.md) | Bridge-Admin in Fleetplanner absorbieren (Phasen 1-4 done, Raid-Planer bleibt im Bridge-UI) | Phasen 1-4 done |
+
 ### Naming & URL-Konventionen
 
 - Public-Interface: `https://suite.raumdock.org`
@@ -229,6 +260,46 @@ Kein STAND.md — alles in `docs/`.
 - Docker-Image-Prefix: `rdoc-suite-<part>`
 - `PUBLIC_BASE_PATH` = `""` — kein `/dccc`-Prefix irgendwo.
 - Companion-OAuth deep-link scheme: `dccc://` (kein OS-Level-Register; nur im Webview abgefangen)
+
+### Erforderliche Ports (Production)
+
+| Port | Protokoll | Zweck |
+|---|---|---|
+| `443` | TCP | HTTPS Reverse-Proxy (Caddy/Traefik → Bridge, Fleetplanner, Monitoring) |
+| `7880` | TCP | LiveKit Signaling (hinter Proxy als `wss://voice.raumdock.org`) |
+| `7881` | TCP | LiveKit WebRTC TCP Fallback |
+| `7882` | **UDP** | LiveKit WebRTC UDP — entscheidend für gute Voice-Qualität |
+
+UDP 7882 muss in der Firewall explizit offen sein. Docker-Proxy reicht nicht (SNAT/ICE-Problem bei Proxmox/LXC).
+
+---
+
+## Architektur (Überblick)
+
+```mermaid
+graph LR
+    Companion["Companion App\nTauri + React"]
+    Bot["Discord Bot\ndiscord.js"]
+    Bridge["Bridge\nFastify + WS"]
+    Fleetplanner["Fleetplanner\nFastify + Prisma"]
+    RelayBots["Relay Bots\nDiscord Voice"]
+    LiveKit["LiveKit SFU"]
+    BridgeDB[(Bridge DB\nSQLite)]
+    FleetDB[(Fleetplanner DB\nPostgres)]
+    Discord["Discord API"]
+
+    Companion -->|OAuth + WS| Bridge
+    Companion <-->|WebRTC audio| LiveKit
+    Bot <-->|slash commands + guild state| Discord
+    Bot --> Bridge
+    Bridge --> BridgeDB
+    Bridge --> LiveKit
+    Fleetplanner --> FleetDB
+    Fleetplanner --> Discord
+    Fleetplanner --> LiveKit
+    RelayBots -->|subscribe| LiveKit
+    RelayBots -->|voice output| Discord
+```
 
 ---
 

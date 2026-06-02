@@ -1,8 +1,5 @@
 import { prisma } from "../db.js";
 
-// Full companion-app login token (the user's own session). Long-lived because
-// it is stored in the Tauri settings store and used for all companion endpoints.
-const FULL_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
 // Narrow token distributed to other users via dccc://fleet-voice links. Shorter
 // TTL and limited scope — only the mission-voice polling endpoint accepts it.
 const MISSION_VOICE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -23,11 +20,6 @@ async function createSession(userId: string, scope: CompanionScope, ttlMs: numbe
   return id;
 }
 
-/** Full companion-app login token (valid for every companion endpoint). */
-export async function createCompanionSession(userId: string): Promise<string> {
-  return createSession(userId, "full", FULL_TTL_MS);
-}
-
 /** Narrow, short-lived token for dccc://fleet-voice links. Only usable on the
  *  mission-voice polling endpoint — NOT a full companion session. */
 export async function createMissionVoiceSession(userId: string): Promise<string> {
@@ -44,12 +36,6 @@ async function loadScopedSession(token: string, allowed: readonly CompanionScope
   if (!session || session.expiresAt < new Date()) return null;
   if (!allowed.includes(session.scope as CompanionScope)) return null;
   return session.userId;
-}
-
-/** Loads a FULL-scope companion session. Mission-voice tokens are rejected so
- *  they cannot be used as general companion auth. */
-export async function loadCompanionSession(token: string): Promise<string | null> {
-  return loadScopedSession(token, ["full"]);
 }
 
 /** Loads a token valid for the mission-voice endpoint: a full companion session

@@ -39,7 +39,6 @@ import {
   issueMissionVoiceToken,
 } from "../services/livekit.js";
 import {
-  createCompanionSession,
   createMissionVoiceSession,
   loadMissionVoiceSession,
 } from "../auth/companionSession.js";
@@ -535,15 +534,12 @@ export async function apiRoutes(app: FastifyInstance) {
           ? (unit.ship?.name ?? "Unknown Ship")
           : (unit.squadName ?? "Squad");
       const operationUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${unit.operation.id}`;
-      const companionToken = await createCompanionSession(unit.captainId);
-      const companionConfigUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/companion/configure?token=${encodeURIComponent(companionToken)}`;
       Promise.allSettled([
         assignCaptainDiscordRole(unit.captainId, unit.operation.guildId, "commander"),
         sendAcceptedCaptainVoiceDm(unit.captainId, {
           operationTitle: unit.operation.title,
           unitName,
           operationUrl,
-          companionConfigUrl,
         }),
       ]).then((results) => {
         for (const result of results) {

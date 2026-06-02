@@ -3,6 +3,26 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-02: Mission Voice Roles — eigenes Panel in Guild Settings
+
+`commanderVoiceRoleId` + `globalVoiceRoleId` aus dem Discord-Integration-Panel heraus in eigenes
+Panel "Mission Voice — Companion & Relay" verschieben. Panel nur sichtbar wenn `voiceEnabled = true`.
+
+## Queued / Planned Step - 2026-06-02: Guild eventChannelId entfernen
+
+`Guild.eventChannelId` (Guild-Default für Discord-Event-Voice-Channel) entfernen. Per-Op
+`eventVoiceChannelId`-Auswahl ist bereits implementiert und ersetzt den Guild-Default vollständig.
+Schema-Migration + guilds.ts + pages.ts + discord.ts (guild-Fallback-Query raus).
+
+## Queued / Planned Step - 2026-06-02: Dead-Code-Cleanup Fleet-Auth + Unit-Accept-DM-Fix
+
+Handover-Dokument: `docs/handover-codex-fleet-auth-cleanup.md`
+
+Companion: `fleetplannerAuth.ts` + `FleetVoiceModal.tsx` + Rust `start_fleet_oauth_webview` Command löschen.
+Fleetplanner: `/auth/discord/companion/start|callback` + `/companion/configure` Routes entfernen.
+`createCompanionSession` + `companionConfigUrl` aus Unit-Accept-Flow entfernen.
+DM ohne toten Config-Link senden. Full-scope CompanionSession-Funktionen löschen wenn ungenutzt.
+
 ## Queued / Planned Step - 2026-06-02: Companion zeigt im Mission-Mode falschen (Bridge-)Roster
 
 Bug: in MISSION MODE rendert die app parallel die bridge-connected-pane → SQUAD ROSTER zeigt

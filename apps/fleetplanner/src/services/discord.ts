@@ -289,12 +289,7 @@ export async function createScheduledEvent(op: {
   const token = fleetplannerBotToken();
   if (!token) return null;
 
-  // Per-event channel overrides guild-level eventChannelId.
-  const guild = await prisma.guild.findUnique({
-    where: { id: op.guildId },
-    select: { eventChannelId: true },
-  });
-  const voiceChannelId = op.eventVoiceChannelId ?? guild?.eventChannelId ?? null;
+  const voiceChannelId = op.eventVoiceChannelId ?? null;
 
   // Discord requires events to be at least 1h long; use 3h as default
   const startTime = op.scheduledAt.toISOString();
@@ -358,15 +353,8 @@ export async function createScheduledEvent(op: {
   return data;
 }
 
-async function getEventChannelId(op: {
-  guildId: string;
-  eventVoiceChannelId?: string | null;
-}) {
-  const guild = await prisma.guild.findUnique({
-    where: { id: op.guildId },
-    select: { eventChannelId: true },
-  });
-  return op.eventVoiceChannelId ?? guild?.eventChannelId ?? null;
+function getEventChannelId(op: { eventVoiceChannelId?: string | null }): string | null {
+  return op.eventVoiceChannelId ?? null;
 }
 
 function buildEventDescription(opId: string, description?: string) {
@@ -581,7 +569,7 @@ export async function sendDiscordDm(userId: string, content: string): Promise<vo
 
 export async function sendAcceptedCaptainVoiceDm(
   userId: string,
-  input: { operationTitle: string; unitName: string; operationUrl: string; companionConfigUrl?: string },
+  input: { operationTitle: string; unitName: string; operationUrl: string },
 ): Promise<void> {
   const env = getEnv();
   const lines = [
@@ -597,10 +585,7 @@ export async function sendAcceptedCaptainVoiceDm(
   if (env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL) {
     lines.push(`Voice client config: ${env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL}`);
   }
-  if (input.companionConfigUrl) {
-    lines.push(`Connect companion to this Fleetplanner account: ${input.companionConfigUrl}`);
-  }
-  if (!env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL && !env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL && !input.companionConfigUrl) {
+  if (!env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL && !env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL) {
     lines.push("Voice client links are not configured yet. Ask your fleet lead for the current setup.");
   }
 
