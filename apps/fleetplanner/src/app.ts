@@ -19,14 +19,15 @@ export async function buildApp() {
 
   // Log unhandled errors and return a clean 5xx — Caddy picks up the status
   // code and forwards browser requests to the error-page microservice.
-  app.setErrorHandler((err, request, reply) => {
-    const status = err.statusCode ?? 500;
+  app.setErrorHandler((err: unknown, request, reply) => {
+    const e = err as { statusCode?: number; code?: string; name?: string; message?: string };
+    const status = e.statusCode ?? 500;
     app.log.error(err, `Unhandled error on ${request.method} ${request.url}`);
     return reply.code(status).send({
       statusCode: status,
-      code: err.code,
-      error: err.name,
-      message: err.message,
+      code: e.code,
+      error: e.name,
+      message: e.message,
     });
   });
 

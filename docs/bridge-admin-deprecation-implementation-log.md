@@ -207,7 +207,14 @@ Expected result:
 - Full Bridge tests pass or reveal a real unrelated global-settings test issue.
 - Bridge build still passes.
 
-Status: pending.
+Result:
+
+- Initial rerun still failed due to missing `GlobalSettings` table in the Bridge
+  SQLite test DB. See Step 10.
+- After Step 10, full Bridge tests passed: 7 files, 88 tests.
+- Bridge build passed.
+
+Status: completed.
 
 ## Step 10 - Bridge test DB GlobalSettings table
 
@@ -235,7 +242,31 @@ Expected result:
 - OAuth and Relay tests can read empty global settings instead of hitting a
   missing-table 500.
 
-Status: pending.
+Result:
+
+- `apps/bridge/src/__tests__/setup.ts` now creates the `GlobalSettings` test
+  table idempotently.
+- Full Bridge tests passed after the setup fix.
+
+Status: completed.
+
+## Step 11 - Final verification for this slice
+
+Commands run:
+
+- `pnpm.cmd --filter @rdoc-suite/bridge test`
+- `pnpm.cmd --filter @rdoc-suite/bridge build`
+- `pnpm.cmd --filter @rdoc-suite/companion build`
+- `git diff --check`
+
+Result:
+
+- Bridge tests passed: 7 files, 88 tests.
+- Bridge build passed.
+- Companion build passed.
+- `git diff --check` passed.
+
+Status: completed.
 
 ## Step 7 - Verification
 
