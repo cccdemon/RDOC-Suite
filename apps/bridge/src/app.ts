@@ -13,6 +13,7 @@ import { registerRelayRoute } from "./routes/relay.js";
 import { registerRelayBotsRoutes } from "./routes/relayBots.js";
 import { registerPrometheusMetricsRoute } from "./routes/prometheusMetrics.js";
 import { registerAdminRoutes } from "./admin/routes.js";
+import { setAdminViewsUiMode } from "./admin/views.js";
 import { startStrategyChannelGc } from "./services/strategyChannels.js";
 import { getEnv, type BridgeEnv } from "./config/env.js";
 
@@ -68,7 +69,9 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
   await registerRelayRoute(app);
   await registerRelayBotsRoutes(app);
   await registerPrometheusMetricsRoute(app);
-  if ((options.bridgeAdminUiMode ?? env.BRIDGE_ADMIN_UI_MODE) !== "disabled") {
+  const bridgeAdminUiMode = options.bridgeAdminUiMode ?? env.BRIDGE_ADMIN_UI_MODE;
+  setAdminViewsUiMode(bridgeAdminUiMode);
+  if (bridgeAdminUiMode !== "disabled") {
     await registerAdminRoutes(app);
   }
   await registerWsRoute(app);

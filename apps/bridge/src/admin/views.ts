@@ -1,5 +1,5 @@
 import { escape } from "node:querystring";
-import { getEnv } from "../config/env.js";
+import { getEnv, type BridgeEnv } from "../config/env.js";
 
 /**
  * HTML page templates for the admin web UI. Plain template literals,
@@ -38,6 +38,16 @@ function _unused_escape_kept_to_signal_intent(s: string): string {
   return escape(s);
 }
 
+let adminUiModeOverride: BridgeEnv["BRIDGE_ADMIN_UI_MODE"] | undefined;
+
+export function setAdminViewsUiMode(mode: BridgeEnv["BRIDGE_ADMIN_UI_MODE"] | undefined): void {
+  adminUiModeOverride = mode;
+}
+
+function adminUiMode(): BridgeEnv["BRIDGE_ADMIN_UI_MODE"] {
+  return adminUiModeOverride ?? getEnv().BRIDGE_ADMIN_UI_MODE;
+}
+
 type LayoutOpts = {
   title: string;
   body: string;
@@ -48,7 +58,7 @@ type LayoutOpts = {
 
 function layout({ title, body, staticBase, bodyClass = "", scripts = "" }: LayoutOpts): string {
   const legacyBanner =
-    getEnv().BRIDGE_ADMIN_UI_MODE === "legacy" && bodyClass !== "login-body"
+    adminUiMode() === "legacy" && bodyClass !== "login-body"
       ? html`
   <div class="legacy-admin-banner">
     Bridge Admin ist Legacy. Nutze Fleetplanner fuer normale Mission-Voice- und Operations-Steuerung.
@@ -890,6 +900,7 @@ function renderNav(opts: {
   currentGuild?: NavGuild;
   otherGuilds?: NavGuild[]; // empty/undef if admin is on a single guild
 }): string {
+  const legacyMode = adminUiMode() === "legacy";
   const item = (key: typeof opts.active, label: string, href: string): string =>
     html`<a class="cc-nav-item ${opts.active === key ? "active" : ""}" href="${esc(href)}">${esc(label)}</a>`;
   const currentLabel =
@@ -924,14 +935,14 @@ function renderNav(opts: {
       <a class="cc-nav-home" href="${esc(opts.navBase)}/">DCCC<span class="sep">//</span>ADMIN</a>
       ${switcher}
       <div class="cc-nav-items">
-        ${item("dashboard", "DASHBOARD", `${opts.navBase}/`)}
-        ${item("raid-planer", "RAID PLANER", `${opts.navBase}/raid-planer`)}
+        ${legacyMode ? "" : item("dashboard", "DASHBOARD", `${opts.navBase}/`)}
+        ${legacyMode ? "" : item("raid-planer", "RAID PLANER", `${opts.navBase}/raid-planer`)}
         ${item("sessions", "SESSIONS", `${opts.navBase}/sessions`)}
         ${item("relay-bots", "RELAY BOTS", `${opts.navBase}/relay-bots`)}
         ${item("discord-voice", "DISCORD VOICE", `${opts.navBase}/discord-voice`)}
         ${item("monitoring", "MONITORING", `${opts.navBase}/monitoring`)}
         ${item("audit", "AUDIT", `${opts.navBase}/audit`)}
-        ${item("config", "KONFIG", `${opts.navBase}/config`)}
+        ${legacyMode ? "" : item("config", "KONFIG", `${opts.navBase}/config`)}
         ${item("admins", "ADMINS", `${opts.navBase}/admins`)}
       </div>
       <a class="cc-nav-item" href="${esc(opts.navBase)}/logout">SIGN OUT</a>

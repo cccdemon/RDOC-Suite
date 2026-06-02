@@ -21,6 +21,75 @@ Expected result:
 
 Status: completed.
 
+## Step 12 - Reduce native Bridge Admin navigation in legacy mode
+
+Before editing the UI, define the behavior:
+
+- `BRIDGE_ADMIN_UI_MODE=full`: navigation stays unchanged.
+- `BRIDGE_ADMIN_UI_MODE=legacy`: keep native Bridge Admin pages reachable by
+  direct URL, but remove normal-operation pages from the primary nav.
+- `BRIDGE_ADMIN_UI_MODE=disabled`: native `/admin/*` is not registered.
+
+Legacy primary nav should keep:
+
+- Sessions
+- Relay Bots
+- Discord Voice
+- Monitoring
+- Audit
+- Admins
+
+Legacy primary nav should hide:
+
+- Dashboard
+- Raid Planer
+- Konfig
+
+Reason:
+
+- Fleetplanner is now the normal Mission Voice and operation-control UI.
+- Native Bridge Admin should read as diagnostics/Bridge Mode only.
+- Deep links stay usable for troubleshooting during the transition.
+
+Expected result:
+
+- Operators in legacy mode no longer see old Bridge Admin operation controls as
+  first-class navigation.
+- Full mode remains unchanged.
+
+Status: pending.
+
+Planned test:
+
+- Build an app with `{ bridgeAdminUiMode: "legacy" }`.
+- Seed a valid admin session.
+- Request `/admin/`.
+- Assert the legacy banner is present.
+- Assert primary nav contains Sessions/Relay/Monitoring.
+- Assert primary nav does not contain Dashboard/Raid Planer/Konfig links.
+
+Test finding:
+
+- The first test run showed that route registration respected the
+  `buildApp({ bridgeAdminUiMode })` override, but `views.ts` still read
+  `getEnv().BRIDGE_ADMIN_UI_MODE` directly.
+- Fix by passing the effective mode into the Admin views module during app
+  construction, keeping production behavior unchanged.
+
+Result:
+
+- `apps/bridge/src/admin/views.ts` hides Dashboard, Raid Planer, and Konfig
+  links from the native Admin nav in legacy mode.
+- Direct routes remain available.
+- `apps/bridge/src/app.ts` passes the effective Admin UI mode into Admin views
+  so tests and production render consistently.
+- `apps/bridge/src/__tests__/admin.test.ts` covers disabled mode and legacy nav.
+- Bridge tests passed: 7 files, 89 tests.
+- Bridge build passed.
+- `git diff --check` passed.
+
+Status: completed.
+
 ## Step 2 - Bridge Admin UI mode flag
 
 Before changing routes, add an environment-controlled UI mode:

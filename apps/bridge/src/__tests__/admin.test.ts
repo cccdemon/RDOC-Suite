@@ -231,6 +231,34 @@ describe("admin UI exposure mode", () => {
       await disabledApp.close();
     }
   });
+
+  it("legacy mode keeps diagnostic nav and hides legacy operation nav", async () => {
+    await addAdmin({ guildId: GUILD_ID, userId: INVITEE_ID });
+    const { issueAdminSessionCookie } = await import("../admin/cookie.js");
+    const jwt = await issueAdminSessionCookie(process.env.SESSION_SECRET ?? "", {
+      sub: INVITEE_ID,
+      guildId: GUILD_ID,
+    });
+
+    const legacyApp = await buildApp({ bridgeAdminUiMode: "legacy" });
+    try {
+      const legacyBaseUrl = await legacyApp.listen({ host: "127.0.0.1", port: 0 });
+      const res = await fetch(`${legacyBaseUrl}/admin/`, {
+        headers: { cookie: `dccc_admin_session=${jwt}` },
+      });
+      expect(res.status).toBe(200);
+      const body = await res.text();
+
+      expect(body).toContain("Bridge Admin ist Legacy");
+      expect(body).toContain('href="/admin/sessions"');
+      expect(body).toContain('href="/admin/relay-bots"');
+      expect(body).toContain('href="/admin/monitoring"');
+      expect(body).not.toContain('href="/admin/raid-planer"');
+      expect(body).not.toContain('href="/admin/config"');
+    } finally {
+      await legacyApp.close();
+    }
+  });
 });
 
 // Used to prove the admin gate accepts a forged-in-test session cookie
