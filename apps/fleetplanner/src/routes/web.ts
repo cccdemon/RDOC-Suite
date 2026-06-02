@@ -1047,7 +1047,7 @@ export async function webRoutes(app: FastifyInstance) {
       const ctx = await requireRole(req, reply, "superadmin");
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      const validRoles = ["superadmin", "fleetoperator", "captain", "crew"];
+      const validRoles = ["superadmin", "fleetoperator", "crew"];
       const role = req.body.role;
       if (!validRoles.includes(role)) return reply.code(400).send("Invalid role");
       if (req.params.id === ctx.user.id && role !== "superadmin") {

@@ -45,24 +45,20 @@ beforeEach(() => vi.clearAllMocks());
 describe("guildRoleAtLeast", () => {
   const cases: [string, string, boolean][] = [
     ["crew", "crew", true],
-    ["captain", "crew", true],
     ["fleetoperator", "crew", true],
-    ["crew", "captain", false],
-    ["captain", "captain", true],
-    ["fleetoperator", "captain", true],
     ["crew", "fleetoperator", false],
-    ["captain", "fleetoperator", false],
     ["fleetoperator", "fleetoperator", true],
   ];
 
   for (const [role, min, expected] of cases) {
     it(`${role} >= ${min} → ${expected}`, () => {
-      expect(guildRoleAtLeast(role, min as "crew" | "captain" | "fleetoperator")).toBe(expected);
+      expect(guildRoleAtLeast(role, min as "crew" | "fleetoperator")).toBe(expected);
     });
   }
 
   it("unknown role → false for any minimum", () => {
     expect(guildRoleAtLeast("superadmin", "crew")).toBe(false);
+    expect(guildRoleAtLeast("captain", "crew")).toBe(false);
     expect(guildRoleAtLeast("admin", "crew")).toBe(false);
     expect(guildRoleAtLeast("", "crew")).toBe(false);
   });
@@ -89,16 +85,16 @@ describe("effectiveOpRole", () => {
     expect(await effectiveOpRole("user-1", "crew", "op-1")).toBeNull();
   });
 
-  it("returns the member's guild role (captain)", async () => {
+  it("returns the member's guild role (crew)", async () => {
     db.operation.findUnique.mockResolvedValue({ guildId: "guild-1" });
-    db.guildMembership.findUnique.mockResolvedValue({ role: "captain" });
-    expect(await effectiveOpRole("user-1", "crew", "op-1")).toBe("captain");
+    db.guildMembership.findUnique.mockResolvedValue({ role: "crew" });
+    expect(await effectiveOpRole("user-1", "crew", "op-1")).toBe("crew");
   });
 
   it("returns fleetoperator for fleetoperator member", async () => {
     db.operation.findUnique.mockResolvedValue({ guildId: "guild-1" });
     db.guildMembership.findUnique.mockResolvedValue({ role: "fleetoperator" });
-    expect(await effectiveOpRole("user-1", "captain", "op-1")).toBe("fleetoperator");
+    expect(await effectiveOpRole("user-1", "crew", "op-1")).toBe("fleetoperator");
   });
 
   it("returns crew for crew member", async () => {
@@ -142,13 +138,13 @@ describe("resolveActiveGuild", () => {
   it("uses cookie guild when valid active membership exists", async () => {
     db.guildMembership.findUnique.mockResolvedValue({
       guildId: "guild-cookie",
-      role: "captain",
+      role: "crew",
       guild: { active: true, name: "Cookie Guild" },
     });
     const result = await resolveActiveGuild("user-1", "guild-cookie");
     expect(result).toMatchObject({
       guildId: "guild-cookie",
-      role: "captain",
+      role: "crew",
       guildName: "Cookie Guild",
     });
   });
@@ -166,7 +162,7 @@ describe("resolveActiveGuild", () => {
   it("falls back to first guild when cookie guild is inactive", async () => {
     db.guildMembership.findUnique.mockResolvedValue({
       guildId: "guild-cookie",
-      role: "captain",
+      role: "crew",
       guild: { active: false, name: "Inactive Guild" },
     });
     db.guildMembership.findFirst.mockResolvedValue({

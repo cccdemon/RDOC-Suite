@@ -493,7 +493,7 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
   const op = opts.op;
   const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const realUser = opts.currentUser;
-  const previewRoles = ["guest", "crew", "captain", "fleetoperator", "superadmin"];
+  const previewRoles = ["guest", "crew", "fleetoperator", "superadmin"];
   const canPreview =
     !!realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
   const viewAsRole =
@@ -1557,7 +1557,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const csrf = opts.csrfToken ?? "";
   const realUser = opts.currentUser;
-  const previewRoles = ["guest", "crew", "captain", "fleetoperator", "superadmin"];
+  const previewRoles = ["guest", "crew", "fleetoperator", "superadmin"];
   const canRealManage =
     !!realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
   const viewAsRole =
@@ -3830,7 +3830,7 @@ export function adminPage(opts: {
             ? html` <form method="post" action="${bp}/admin/users/${u.id}/role" class="inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <select name="role" onchange="this.form.submit()" class="user-table">
-                  ${["superadmin", "fleetoperator", "captain", "crew"].map(
+                  ${["superadmin", "fleetoperator", "crew"].map(
                     (r) =>
                       html`<option value="${r}" ${u.role === r ? safe("selected") : ""}>
                         ${r}
@@ -5582,12 +5582,8 @@ export function howToPage(opts: {
               </td>
             </tr>
             <tr>
-              <td><span class="tag tag-role">Captain</span></td>
-              <td>Register a ship or squad for an operation, manage their unit's seats.</td>
-            </tr>
-            <tr>
               <td><span class="tag tag-role">Crew</span></td>
-              <td>Claim open seats on accepted units, submit crew assignment requests.</td>
+              <td>Register ships or squads, manage own unit seats, claim open seats, and submit crew assignment requests.</td>
             </tr>
           </tbody>
         </table>
@@ -5605,7 +5601,7 @@ export function howToPage(opts: {
           </li>
           <li>
             Go to <strong>Servers → Settings</strong> to set an optional event voice channel and
-            Discord-role mapping (auto-assigns Admiral/Captain roles on login).
+            Discord-role mapping (auto-assigns Admiral permissions on login).
           </li>
           <li>
             Click <strong>+ New Operation</strong>, fill in title, date, meeting location, and op
@@ -5617,7 +5613,7 @@ export function howToPage(opts: {
             to your server.
           </li>
           <li>
-            Accept incoming unit registrations from Captains. Accepted units get their seats opened
+            Accept incoming unit registrations. Accepted units get their seats opened
             for Crew.
           </li>
           <li>
@@ -5629,7 +5625,7 @@ export function howToPage(opts: {
     </div>
 
     <div class="section">
-      <div class="section-title">Getting started — for Captains &amp; Crew</div>
+      <div class="section-title">Getting started — for Crew</div>
       <div class="card" style="padding:1rem;max-width:52rem">
         <ol style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem">
           <li>
@@ -5658,8 +5654,7 @@ export function howToPage(opts: {
           You only see operations from servers you are a Discord member of.
         </p>
         <p style="margin-top:.5rem">
-          Roles can be auto-assigned from Discord roles — set Admiral Role ID and Captain Role ID in
-          the server settings.
+          Admiral permissions can be auto-assigned from a Discord role in the server settings.
         </p>
       </div>
     </div>
@@ -5906,7 +5901,6 @@ export function guildsListPage(opts: {
   const csrf = opts.csrfToken ?? "";
   const roleLabel: Record<string, string> = {
     fleetoperator: "Admiral",
-    captain: "Captain",
     crew: "Crew",
   };
   const isSuperAdmin = opts.currentUser?.role === "superadmin";
@@ -6026,7 +6020,7 @@ export function guildSettingsPage(opts: {
           <form method="post" action="${bp}/guilds/members/${m.userId}/role" class="inline">
             <input type="hidden" name="_csrf" value="${csrf}" />
             <select name="role" onchange="this.form.submit()" class="user-table">
-              ${["fleetoperator", "captain", "crew"].map(
+              ${["fleetoperator", "crew"].map(
                 (r) =>
                   html`<option value="${r}" ${m.role === r ? safe("selected") : ""}>${r}</option>`,
               )}

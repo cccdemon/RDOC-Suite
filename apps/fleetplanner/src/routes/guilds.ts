@@ -343,7 +343,7 @@ export async function guildRoutes(app: FastifyInstance) {
       const gctx = await requireGuildRole(req, reply, "fleetoperator");
       if (!gctx) return;
       if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      const valid = ["fleetoperator", "captain", "crew"];
+      const valid = ["fleetoperator", "crew"];
       const role = req.body.role;
       if (!valid.includes(role)) return reply.code(400).send("Invalid role");
       await prisma.guildMembership.updateMany({

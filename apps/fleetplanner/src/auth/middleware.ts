@@ -13,12 +13,11 @@ export type GuildContext = AuthContext & {
   guildRole: string;
 };
 
-export type UserRole = "superadmin" | "fleetoperator" | "captain" | "crew";
+export type UserRole = "superadmin" | "fleetoperator" | "crew";
 
 const ROLE_RANK: Record<UserRole, number> = {
   superadmin: 4,
   fleetoperator: 3,
-  captain: 2,
   crew: 1,
 };
 

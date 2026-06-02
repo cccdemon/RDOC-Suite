@@ -64,7 +64,6 @@ export type LayoutOptions = {
 const ROLE_LABEL: Record<string, string> = {
   superadmin: "ADMIRAL",
   fleetoperator: "FLEET OP",
-  captain: "CAPTAIN",
   crew: "CREW",
 };
 

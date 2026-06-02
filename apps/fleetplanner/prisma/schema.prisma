@@ -12,7 +12,7 @@ model User {
   id         String   @id @default(cuid())
   username   String
   avatarHash String?
-  role       String   @default("crew") // superadmin | fleetoperator | captain | crew
+  role       String   @default("crew") // superadmin | fleetoperator | crew
   active     Boolean  @default(true)
   joinedAt   DateTime @default(now())
   lastSeenAt DateTime @default(now())
@@ -109,7 +109,7 @@ model GuildMembership {
   guildId   String
   userId    String
   operationId String?
-  role      String   @default("crew") // fleetoperator | captain | crew (PER guild)
+  role      String   @default("crew") // fleetoperator | crew (PER guild)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

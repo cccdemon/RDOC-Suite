@@ -6,9 +6,9 @@ import { prisma } from "../db.js";
 import { discordUserIdForFleetplannerUser, fetchGuildBasic, fetchGuildMemberRoles } from "./discord.js";
 import { getActivePartnerGuildIds } from "./partnerships.js";
 
-export type GuildRole = "fleetoperator" | "captain" | "crew";
+export type GuildRole = "fleetoperator" | "crew";
 
-const ROLE_RANK: Record<GuildRole, number> = { fleetoperator: 3, captain: 2, crew: 1 };
+const ROLE_RANK: Record<GuildRole, number> = { fleetoperator: 3, crew: 1 };
 
 export function guildRoleAtLeast(role: string, min: GuildRole): boolean {
   const rank = ROLE_RANK[role as GuildRole] ?? 0;
