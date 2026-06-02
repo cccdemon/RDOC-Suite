@@ -7,7 +7,7 @@ import {
   updateDiscordChannelName,
 } from "./discord.js";
 import { bridgeConfigured, getBridgeVoiceStates } from "./bridge.js";
-import { syncFleetplannerRelayBots } from "./relayBots.js";
+import { syncFleetplannerRelayBots, syncOperationRelayBots } from "./relayBots.js";
 import { decryptSecret, encryptSecret } from "./secrets.js";
 
 const SNOWFLAKE = /^\d{16,25}$/;
@@ -155,6 +155,7 @@ export async function launchOperationVoiceChannels(operationId: string): Promise
   const existingUnitIds = new Set(op.voiceChannels.map((channel) => channel.unitId));
   const unitsToCreate = op.units.filter((unit) => !existingUnitIds.has(unit.id));
   if (unitsToCreate.length === 0) {
+    await syncOperationRelayBots(operationId);
     return {
       created: 0,
       existing: op.voiceChannels.length,
@@ -236,7 +237,7 @@ export async function launchOperationVoiceChannels(operationId: string): Promise
     created += 1;
   }
 
-  await syncFleetplannerRelayBots(op.guildId);
+  await syncOperationRelayBots(operationId);
 
   return {
     created,
@@ -268,7 +269,7 @@ export async function renameOperationVoiceChannel(input: {
     where: { id: channel.id },
     data: { channelName: name },
   });
-  await syncFleetplannerRelayBots(channel.guildId);
+  await syncOperationRelayBots(input.operationId);
 }
 
 export async function deleteOperationVoiceChannel(input: {
@@ -293,7 +294,7 @@ export async function deleteOperationVoiceChannel(input: {
       data: { assignedChannelId: null },
     }),
   ]);
-  await syncFleetplannerRelayBots(channel.guildId);
+  await syncOperationRelayBots(input.operationId);
 }
 
 export async function cleanupOperationVoiceChannels(operationId: string): Promise<{

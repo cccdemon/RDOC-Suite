@@ -36,37 +36,12 @@ function requireRelayEnv(): {
   };
 }
 
-export async function syncFleetplannerRelayBots(guildId: string): Promise<{ bots: number }> {
+async function postRelayConfig(input: {
+  guildId: string;
+  relayRoomName: string;
+  bots: RelayBotConfig[];
+}): Promise<{ bots: number }> {
   const env = requireRelayEnv();
-  const activeRelayOp = await prisma.operation.findFirst({
-    where: {
-      guildId,
-      globalVoiceRoom: { not: null },
-      status: { in: ["open", "locked", "in_progress"] },
-    },
-    select: { globalVoiceRoom: true },
-    orderBy: { updatedAt: "desc" },
-  });
-  const rows = await prisma.fleetVoiceChannel.findMany({
-    where: { guildId },
-    include: { voiceBot: true },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const bots: RelayBotConfig[] = rows.flatMap((row) => {
-    if (!row.voiceBot) return [];
-    return [{
-      name: row.voiceBot.label,
-      channelId: row.channelId,
-      token: decryptSecret({
-        ciphertext: row.voiceBot.tokenCiphertext,
-        iv: row.voiceBot.tokenIv,
-        salt: row.voiceBot.tokenSalt,
-        tag: row.voiceBot.tokenTag,
-      }),
-    }];
-  });
-
   const headers: Record<string, string> = { "content-type": "application/json" };
   const auth = basicAuth(env.adminSecret);
   if (auth) headers.authorization = auth;
@@ -79,9 +54,9 @@ export async function syncFleetplannerRelayBots(guildId: string): Promise<{ bots
         url: env.livekitUrl,
         apiKey: env.livekitApiKey,
         apiSecret: env.livekitApiSecret,
-        relayRoomName: activeRelayOp?.globalVoiceRoom || env.roomName,
+        relayRoomName: input.relayRoomName,
       },
-      discord: { guildId, bots },
+      discord: { guildId: input.guildId, bots: input.bots },
     }),
     signal: AbortSignal.timeout(15000),
   });
@@ -91,5 +66,71 @@ export async function syncFleetplannerRelayBots(guildId: string): Promise<{ bots
     throw new Error(`Relay bots sync failed (${res.status}): ${err}`);
   }
 
-  return { bots: bots.length };
+  return { bots: input.bots.length };
+}
+
+function rowToRelayBot(row: {
+  channelId: string;
+  voiceBot: {
+    label: string;
+    tokenCiphertext: string;
+    tokenIv: string;
+    tokenSalt: string;
+    tokenTag: string;
+  } | null;
+}): RelayBotConfig[] {
+  if (!row.voiceBot) return [];
+  return [{
+    name: row.voiceBot.label,
+    channelId: row.channelId,
+    token: decryptSecret({
+      ciphertext: row.voiceBot.tokenCiphertext,
+      iv: row.voiceBot.tokenIv,
+      salt: row.voiceBot.tokenSalt,
+      tag: row.voiceBot.tokenTag,
+    }),
+  }];
+}
+
+export async function syncOperationRelayBots(operationId: string): Promise<{ bots: number }> {
+  const env = requireRelayEnv();
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    select: { guildId: true, globalVoiceRoom: true },
+  });
+  if (!op) throw new Error("Operation not found");
+
+  const rows = await prisma.fleetVoiceChannel.findMany({
+    where: { operationId },
+    include: { voiceBot: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const bots = rows.flatMap(rowToRelayBot);
+
+  return postRelayConfig({
+    guildId: op.guildId,
+    relayRoomName: op.globalVoiceRoom || env.roomName,
+    bots,
+  });
+}
+
+export async function syncFleetplannerRelayBots(guildId: string): Promise<{ bots: number }> {
+  const env = requireRelayEnv();
+  const activeRelayOp = await prisma.operation.findFirst({
+    where: {
+      guildId,
+      globalVoiceRoom: { not: null },
+      status: { in: ["open", "locked", "in_progress"] },
+      voiceChannels: { some: { voiceBotId: { not: null } } },
+    },
+    select: { id: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (activeRelayOp) return syncOperationRelayBots(activeRelayOp.id);
+
+  return postRelayConfig({
+    guildId,
+    relayRoomName: env.roomName,
+    bots: [],
+  });
 }
