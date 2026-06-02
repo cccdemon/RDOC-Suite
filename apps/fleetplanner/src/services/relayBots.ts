@@ -38,6 +38,15 @@ function requireRelayEnv(): {
 
 export async function syncFleetplannerRelayBots(guildId: string): Promise<{ bots: number }> {
   const env = requireRelayEnv();
+  const activeRelayOp = await prisma.operation.findFirst({
+    where: {
+      guildId,
+      globalVoiceRoom: { not: null },
+      status: { in: ["open", "locked", "in_progress"] },
+    },
+    select: { globalVoiceRoom: true },
+    orderBy: { updatedAt: "desc" },
+  });
   const rows = await prisma.fleetVoiceChannel.findMany({
     where: { guildId },
     include: { voiceBot: true },
@@ -70,7 +79,7 @@ export async function syncFleetplannerRelayBots(guildId: string): Promise<{ bots
         url: env.livekitUrl,
         apiKey: env.livekitApiKey,
         apiSecret: env.livekitApiSecret,
-        relayRoomName: env.roomName,
+        relayRoomName: activeRelayOp?.globalVoiceRoom || env.roomName,
       },
       discord: { guildId, bots },
     }),

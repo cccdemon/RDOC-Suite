@@ -1,10 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { timingSafeEqual } from "node:crypto";
-import { getEnv, getOAuthEnv } from "../config/env.js";
+import { getEnv } from "../config/env.js";
 import { verifySessionToken } from "../auth/sessionToken.js";
 import { issueRelayToken } from "../services/livekit.js";
-import { getGlobalSettings } from "../services/globalSettings.js";
+import { checkRelayPublisherRoleGate } from "../services/relayPermissions.js";
 
 const roleSchema = z.enum(["publisher", "subscriber"]);
 
@@ -21,25 +21,6 @@ function timingSafeEqualStr(a: string, b: string): boolean {
   const bb = Buffer.from(b);
   if (ab.length !== bb.length) return false;
   return timingSafeEqual(ab, bb);
-}
-
-async function hasRelayRole(
-  botToken: string,
-  guildId: string,
-  discordUserId: string,
-  requiredRoleId: string,
-): Promise<boolean> {
-  try {
-    const res = await fetch(
-      `https://discord.com/api/v10/guilds/${guildId}/members/${discordUserId}`,
-      { headers: { authorization: `Bot ${botToken}` } },
-    );
-    if (!res.ok) return false;
-    const member = (await res.json()) as { roles?: string[] };
-    return Array.isArray(member.roles) && member.roles.includes(requiredRoleId);
-  } catch {
-    return false;
-  }
 }
 
 export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
@@ -105,22 +86,12 @@ export async function registerRelayRoute(app: FastifyInstance): Promise<void> {
     // Relay publisher role gate. The required role + the guild it is
     // checked against live in GlobalSettings (DB, Raumdock-wide) — NOT in
     // .env, and NOT per-tenant. Active only once a role is configured.
-    const settings = await getGlobalSettings();
-    if (settings.relayRequiredRoleId) {
-      const checkGuildId = settings.raumdockGuildId;
-      const botToken = getOAuthEnv()?.DISCORD_RDOCRTC_BOT_TOKEN;
-      if (!checkGuildId || !botToken) {
+    const roleGate = await checkRelayPublisherRoleGate(userId);
+    if (!roleGate.ok) {
+      if (roleGate.reason === "misconfigured") {
         return reply.code(503).send({ error: "relay_role_gate_misconfigured" });
       }
-      const allowed = await hasRelayRole(
-        botToken,
-        checkGuildId,
-        userId,
-        settings.relayRequiredRoleId,
-      );
-      if (!allowed) {
-        return reply.code(403).send({ error: "missing_relay_role" });
-      }
+      return reply.code(403).send({ error: "missing_relay_role" });
     }
 
     const { token, roomName, url } = await issueRelayToken({ userId, guildId, role: "publisher" });

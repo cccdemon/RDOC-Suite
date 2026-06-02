@@ -505,6 +505,42 @@ export async function removeBridgeMemberRole(
   await expectOk(res, "remove member role");
 }
 
+/** Reorder the guild's allowed voice channels. `ordered` is the full set of
+ *  allowed channel IDs in the desired display order (every ID must be in the
+ *  bridge's allowed list). */
+export async function reorderBridgeChannels(guildId: string, ordered: string[]): Promise<void> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/discord/channels/reorder`, {
+    method: "POST",
+    body: JSON.stringify({ ordered }),
+  });
+  await expectOk(res, "reorder channels");
+}
+
+export type StrategyChannelResult = {
+  ok: true;
+  channelId: string;
+  name: string;
+  moved: string[];
+  moveFailures: Array<{ userId: string; status: number; message: string }>;
+};
+
+/** Create a temporary "strategy" voice channel and pull the given Discord
+ *  members into it. The bridge garbage-collects it after 15 min idle. */
+export async function createBridgeStrategyChannel(
+  guildId: string,
+  name: string,
+  userIds: string[],
+): Promise<StrategyChannelResult> {
+  assertGuildId(guildId);
+  const res = await bridgeFetch(`/internal/fleet/guilds/${guildId}/discord/strategy-channel`, {
+    method: "POST",
+    body: JSON.stringify({ name, userIds }),
+  });
+  await expectOk(res, "create strategy channel");
+  return (await res.json()) as StrategyChannelResult;
+}
+
 // ── Companion download tokens (global, not guild-scoped) ──────────────
 
 export type DownloadToken = {

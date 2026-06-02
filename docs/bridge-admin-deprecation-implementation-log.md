@@ -364,3 +364,48 @@ Result:
   issue fixed now.
 
 Status: completed with caveat.
+
+## Step 13 - Raid-Planer parity in Fleetplanner + native operation-page removal (2026-06-02, Opus)
+
+Continuation after codex. Precondition reached: prod ran clean on
+`BRIDGE_ADMIN_UI_MODE=legacy` and the user verified Fleetplanner parity.
+
+Part A - Parity (plan step 5 precondition):
+
+- Added two Bridge M2M endpoints in `apps/bridge/src/routes/fleetInternal.ts`:
+  `POST /internal/fleet/guilds/:guildId/discord/channels/reorder` (wraps the
+  same allowed-list validation + `bulkModifyChannelPositions` as the native
+  `/admin/api/channels/reorder`) and `.../discord/strategy-channel` (wraps
+  `createStrategyChannel`). Backend services reused unchanged.
+- Fleetplanner client `apps/fleetplanner/src/services/bridge.ts`:
+  `reorderBridgeChannels`, `createBridgeStrategyChannel`.
+- Fleetplanner Discord Voice panel (`bridgeDiscordVoicePage` + the
+  `/admin/bridge/:guildId/discord-voice` routes) gained a channel-order
+  section (SSR up/down) and a strategy-channel form (name + member
+  checkboxes), superadmin-gated + CSRF like the existing move/role actions.
+- Tests: `apps/bridge/src/__tests__/fleetInternalVoice.test.ts` covers the
+  auth/validation guard rails (401/400/403) for both endpoints. Discord
+  success paths are left to prod verify (no REST mock).
+
+Part B - Removal (plan step 5):
+
+- Removed native Bridge Admin operation pages in `apps/bridge/src/admin/`:
+  `GET /admin/` Dashboard (now redirects to `/admin/sessions`), `GET
+  /admin/raid-planer`, `GET /admin/api/live`, `GET /admin/config`, `POST
+  /admin/api/config`, SSE `GET /admin/api/live-stream`; removed the
+  Dashboard/Raid Planer/Konfig nav items (all modes).
+- Bridge Admin UI is now diagnostics-only. Backend + `strategyChannels`
+  service (consumed by `fleetInternal.ts`) retained.
+- `admin.test.ts` updated (cookie-gate probe, legacy-nav test, landing test).
+
+Inert dead code intentionally left for a follow-up cleanup (documented in
+RDOC-SUITE-MERGELOG.md) to keep this change green without a local build:
+`loadDashboardData`, `renderDashboard/renderConfig/renderRaidPlaner`, the
+redundant admin reorder/strategy endpoints, and the dashboard polling in
+`admin.js` (self-gated on absent DOM, so no runtime effect).
+
+Verification: deferred to server build (`docker compose ... up -d --build
+bridge fleetplanner`); prod runtime image has no pnpm/vitest, so tests run in
+the build stage or local dev, not the deployed container.
+
+Status: completed (pending server build/test).

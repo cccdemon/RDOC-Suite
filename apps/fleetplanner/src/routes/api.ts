@@ -45,7 +45,7 @@ import {
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 import { specForShip, specForSquad } from "../services/seats.js";
-import { isMissionCommander, listMissionCommanders } from "../services/missionCommanders.js";
+import { hasMissionRelayVoice, isMissionCommander, listMissionCommanders } from "../services/missionCommanders.js";
 
 function setCompanionCors(reply: FastifyReply, request: FastifyRequest): void {
   const origin = request.headers.origin;
@@ -320,15 +320,35 @@ async function activeMissionOperationForToken(
   userId: string,
   operationId: string,
   activeStatuses: readonly string[],
-): Promise<{ id: string; title: string; guildId: string; eventVoiceChannelId: string | null } | null> {
+): Promise<{
+  id: string;
+  title: string;
+  guildId: string;
+  eventVoiceChannelId: string | null;
+  globalVoiceRoom: string | null;
+  commanderVoiceRoom: string | null;
+} | null> {
   const op = await prisma.operation.findFirst({
     where: {
       id: operationId,
       status: { in: [...activeStatuses] },
     },
-    select: { id: true, title: true, guildId: true, eventVoiceChannelId: true },
+    select: {
+      id: true,
+      title: true,
+      guildId: true,
+      eventVoiceChannelId: true,
+      globalVoiceRoom: true,
+      commanderVoiceRoom: true,
+    },
   });
   if (!op) return null;
+
+  const membership = await prisma.guildMembership.findUnique({
+    where: { guildId_userId: { guildId: op.guildId, userId } },
+    select: { role: true },
+  });
+  if (membership?.role === "fleetoperator") return op;
 
   const unit = await prisma.fleetUnit.findFirst({
     where: { operationId, captainId: userId, status: "accepted" },
@@ -1620,24 +1640,27 @@ export async function apiRoutes(app: FastifyInstance) {
     )
       return reply.send({ op: null });
 
-    // `globalVoiceRoom` is the server-side marker that a voice session is
-    // live for this op. The companion no longer joins a global LiveKit room
-    // (global = Discord relay), so we use it only as the activity gate and
-    // do NOT return it. The commander room is the authoritative LiveKit room.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const voiceSessionLive = (activeOp as any).globalVoiceRoom as string | null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const commanderRoom = (activeOp as any).commanderVoiceRoom as string | null;
-    if (!voiceSessionLive) return reply.send({ op: null });
+    const relayRoom = activeOp.globalVoiceRoom;
+    const commanderRoom = activeOp.commanderVoiceRoom;
+    if (!relayRoom) return reply.send({ op: null });
 
     const env = getEnv();
     if (!env.LIVEKIT_URL) return reply.send({ op: null });
 
     const discordVoice = await missionDiscordVoiceState(activeOp, userId);
     const isCommander = await isMissionCommander(activeOp.id, userId);
+    const canRelay = await hasMissionRelayVoice(activeOp.id, userId);
     const commanderToken =
       discordVoice.ok && isCommander && commanderRoom
         ? await issueMissionVoiceToken(userId, commanderRoom)
+        : null;
+    const relayIdentityUserId =
+      discordVoice.ok && canRelay && relayRoom
+        ? await discordUserIdForFleetplannerUser(userId).catch(() => userId)
+        : userId;
+    const relayToken =
+      discordVoice.ok && canRelay && relayRoom
+        ? await issueMissionVoiceToken(relayIdentityUserId, relayRoom)
         : null;
 
     return reply.send({
@@ -1648,6 +1671,8 @@ export async function apiRoutes(app: FastifyInstance) {
         discordVoice,
         commanderRoom:
           commanderToken && commanderRoom ? { room: commanderRoom, token: commanderToken } : null,
+        relayRoom:
+          relayToken && relayRoom ? { room: relayRoom, token: relayToken } : null,
       },
     });
   });

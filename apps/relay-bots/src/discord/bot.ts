@@ -214,8 +214,9 @@ export class RelayBot {
    * clean — a brief dropout is better than cumulative lag that sounds like
    * slow-then-fast-forward playback.
    */
-  pushPcm(pcm: Buffer): void {
+  pushPcm(pcm: Buffer, speakerUserId?: string): void {
     if (!this.connection || this.destroyed) return;
+    if (speakerUserId && this.isSpeakerInTargetChannel(speakerUserId)) return;
 
     if (this.silenceTimer) {
       clearTimeout(this.silenceTimer);
@@ -252,6 +253,12 @@ export class RelayBot {
       this.passThrough = null;
       this.silenceTimer = null;
     }, SILENCE_TIMEOUT_MS);
+  }
+
+  private isSpeakerInTargetChannel(userId: string): boolean {
+    const guild = this.targetChannel?.guild;
+    if (!guild) return false;
+    return guild.voiceStates.cache.get(userId)?.channelId === this.cfg.channelId;
   }
 
   /** Called by the watchdog to read and reset the per-tick overflow counter. */

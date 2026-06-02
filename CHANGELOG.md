@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — Bridge: native Admin operation pages (Dashboard / Raid Planer / Konfig) (2026-06-02)
+
+- Native Bridge Admin operation UI is removed now that Fleetplanner covers it: `GET /admin/` Dashboard (→ redirects to `/admin/sessions`), `GET /admin/raid-planer`, `GET /admin/config` + `POST /admin/api/config`, and the dashboard live feeds `GET /admin/api/live` and `GET /admin/api/live-stream`. Dashboard/Raid Planer/Konfig nav links removed in all modes.
+- The native Bridge Admin UI is now **diagnostics-only** (Sessions, Relay Bots, Monitoring, Audit, Discord Voice, Admins) plus auth. All backend routes (`/internal/fleet/*`, `/sessions/*`, `/download/*`, `/updater/*`, relay, WS) are unaffected; the `strategyChannels` service + GC stay (used by the Fleetplanner M2M endpoints).
+
+### Added — Fleetmanager: Raid-Planer parity (channel reorder + strategy channels) (2026-06-02)
+
+- **Bridge `/internal/fleet/*` M2M API** gains two endpoints: `POST .../discord/channels/reorder` (reorder allowed voice channels, mirroring the native `/admin/api/channels/reorder` allowed-list validation + position mapping) and `POST .../discord/strategy-channel` (create a temporary voice channel and pull selected members in, auto-GC'd after 15 min idle). Both reuse the existing bridge services unchanged.
+- **Fleetplanner Discord Voice panel** (`/admin/bridge/:guildId/discord-voice`) now offers channel reorder (▲/▼ controls over allowed channels) and a strategy-channel form (name + member checkboxes), superadmin-gated with CSRF like the existing move/role actions. This closes the last gap before native Bridge Admin Raid Planer can be removed.
+
 ### Changed - Fleetmanager: Bridge Admin legacy control plane (2026-06-02)
 
 - Fleetplanner is documented as the primary UI for normal Mission Voice and operation control, while Bridge remains the backend control plane for Discord, LiveKit, relay bots, sessions, downloads, updater, audit, monitoring, and internal APIs.

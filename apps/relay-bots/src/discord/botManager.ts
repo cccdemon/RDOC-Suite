@@ -22,9 +22,9 @@ export class BotManager {
     console.log(`[BotManager] ${this.bots.length} bot(s) ready`);
   }
 
-  pushPcm(pcm: Buffer): void {
+  pushPcm(pcm: Buffer, speakerUserId?: string): void {
     for (const bot of this.bots) {
-      bot.pushPcm(pcm);
+      bot.pushPcm(pcm, speakerUserId);
     }
   }
 

@@ -3,6 +3,23 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Architecture Decision - 2026-06-02: Companion Voice Modes verbindlich
+
+Authoritative doc: `docs/companion-voice-architecture.md`.
+
+- Bridge Mode: nur ohne aktive Mission, gated durch Raumdock Guild `1431307397842079777`
+  und Rolle `1511124797445247096`.
+- Commander Mode: mission-scoped command net fuer Captains/Commanders/Fleetmanager,
+  temporaere Rolle `1510192642997227602`, Rolle wird bei Missionsende entzogen.
+- Relay Mode: zweiter PTT, mission-scoped RelayBot broadcast, temporaere Rolle
+  `1510192451808133210`, Rolle wird bei Missionsende entzogen.
+- Commander Mode beendet/suspendiert Bridge Mode automatisch.
+- Jede Mission hat dedizierte LiveKit-Raeume: Commander-Room und Relay-Publish-Room.
+- RelayBots erstellen missionseigene Discordkanaele je zugewiesenem Schiff/Squad und bewegen
+  zugewiesene User soweit moeglich in diese Kanaele.
+- RelayBots muessen im Kanal des sprechenden Fleetmanagers/Commanders still sein, um
+  Doppel-Audio/Echo zu vermeiden.
+
 ## Queued / Planned Step - 2026-06-02: captainRoleId entfernen
 
 `captainRoleId` ist funktionslos — `captain`-GuildRole gated keinen Route-Guard, Discord-Badge auf

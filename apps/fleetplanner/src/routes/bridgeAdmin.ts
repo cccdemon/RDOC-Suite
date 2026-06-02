@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireRole } from "../auth/middleware.js";
+import { applyChannelReorder } from "../services/bridgeVoiceOrder.js";
 import { basePath } from "../config/env.js";
 import { prisma } from "../db.js";
 import { rawHtml } from "../web/render.js";
@@ -52,6 +53,8 @@ import {
   moveBridgeMember,
   addBridgeMemberRole,
   removeBridgeMemberRole,
+  reorderBridgeChannels,
+  createBridgeStrategyChannel,
   type AdminRole,
   type RelayBotEntry,
 } from "../services/bridge.js";
@@ -695,21 +698,83 @@ export async function bridgeAdminRoutes(app: FastifyInstance): Promise<void> {
       if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
       const name = await guildName(guildId);
       try {
-        const [voice, roles] = await Promise.all([
+        const [voice, roles, cfg] = await Promise.all([
           getBridgeVoiceStates(guildId),
           getBridgeDiscordRoles(guildId),
+          getBridgeGuildConfig(guildId).catch(() => null),
         ]);
+        // Allowed voice channels in current Discord display order. voice.channels
+        // comes back in position order from the bridge cache; intersect with the
+        // guild's allowed list so reorder only touches managed channels.
+        const allowedSet = new Set(cfg?.allowedVoiceChannelIds ?? []);
+        const allowedChannels = voice.channels.filter((c) => allowedSet.has(c.id));
         htmlReply(reply, bridgeDiscordVoicePage({
           basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
           flash: req.query.flash, guildId, guildName: name,
           channels: voice.channels, roles, members: voice.voiceStates, offline: voice.offline,
+          allowedChannels,
         }));
       } catch (err) {
         htmlReply(reply, bridgeDiscordVoicePage({
           basePath: basePath(), currentUser: ctx.user, csrfToken: ctx.csrfToken,
           flash: req.query.flash, guildId, guildName: name,
-          channels: [], roles: [], members: [], error: errMsg(err),
+          channels: [], roles: [], members: [], allowedChannels: [], error: errMsg(err),
         }));
+      }
+    },
+  );
+
+  // Reorder allowed voice channels. The page submits the full current order
+  // (CSV) plus a single ▲/▼ directive; we swap the target with its neighbour
+  // and push the new order to the bridge.
+  app.post<{ Params: { guildId: string }; Body: Record<string, string> }>(
+    "/admin/bridge/:guildId/discord-voice/reorder",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const channelId = req.body.channelId?.trim() ?? "";
+      const dir = req.body.dir === "up" ? "up" : "down";
+      const back = `${basePath(`/admin/bridge/${guildId}/discord-voice`)}`;
+      const order = applyChannelReorder(req.body.ordered ?? "", channelId, dir);
+      if (!order) {
+        return reply.redirect(`${back}?flash=error:Cannot+move+channel.`, 302);
+      }
+      try {
+        await reorderBridgeChannels(guildId, order);
+        return reply.redirect(`${back}?flash=ok:Channels+reordered.`, 302);
+      } catch (err) {
+        app.log.error(err, "bridge channel reorder failed");
+        return reply.redirect(`${back}?flash=error:Reorder+failed.`, 302);
+      }
+    },
+  );
+
+  // Create a temporary strategy voice channel and pull the selected members in.
+  app.post<{ Params: { guildId: string }; Body: Record<string, string | string[]> }>(
+    "/admin/bridge/:guildId/discord-voice/strategy",
+    async (req, reply) => {
+      const ctx = await requireRole(req, reply, "superadmin");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const { guildId } = req.params;
+      if (!SNOWFLAKE.test(guildId)) return reply.code(400).send("Invalid guild ID");
+      const back = `${basePath(`/admin/bridge/${guildId}/discord-voice`)}`;
+      const name = (typeof req.body.name === "string" ? req.body.name : "").trim().slice(0, 100);
+      const raw = req.body.userIds;
+      const userIds = (Array.isArray(raw) ? raw : raw ? [raw] : []).filter((s) => SNOWFLAKE.test(s));
+      if (!name) return reply.redirect(`${back}?flash=error:Channel+name+required.`, 302);
+      if (userIds.length === 0) return reply.redirect(`${back}?flash=error:Select+at+least+one+member.`, 302);
+      try {
+        const result = await createBridgeStrategyChannel(guildId, name, userIds);
+        const failed = result.moveFailures.length;
+        const note = failed > 0 ? `+(${String(failed)}+move+failures)` : "";
+        return reply.redirect(`${back}?flash=ok:Strategy+channel+%22${encodeURIComponent(result.name)}%22+created${note}.`, 302);
+      } catch (err) {
+        app.log.error(err, "bridge strategy channel failed");
+        return reply.redirect(`${back}?flash=error:Strategy+channel+failed.`, 302);
       }
     },
   );

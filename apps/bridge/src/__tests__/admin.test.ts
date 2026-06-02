@@ -207,8 +207,8 @@ describe("admin routes (smoke)", () => {
     expect(loc.startsWith("https://discord.com/oauth2/authorize")).toBe(true);
   });
 
-  it("API endpoints require admin cookie — return 302 to login without one", async () => {
-    const res = await fetch(`${baseUrl}/admin/api/live`, { redirect: "manual" });
+  it("protected pages require admin cookie — return 302 to login without one", async () => {
+    const res = await fetch(`${baseUrl}/admin/sessions`, { redirect: "manual" });
     expect(res.status).toBe(302);
     const loc = res.headers.get("location") ?? "";
     expect(loc).toContain("/admin/login");
@@ -243,7 +243,9 @@ describe("admin UI exposure mode", () => {
     const legacyApp = await buildApp({ bridgeAdminUiMode: "legacy" });
     try {
       const legacyBaseUrl = await legacyApp.listen({ host: "127.0.0.1", port: 0 });
-      const res = await fetch(`${legacyBaseUrl}/admin/`, {
+      // `/admin/` now redirects to the Sessions landing (Dashboard removed);
+      // hit Sessions directly to inspect the shared nav + legacy banner.
+      const res = await fetch(`${legacyBaseUrl}/admin/sessions`, {
         headers: { cookie: `dccc_admin_session=${jwt}` },
       });
       expect(res.status).toBe(200);
@@ -253,6 +255,7 @@ describe("admin UI exposure mode", () => {
       expect(body).toContain('href="/admin/sessions"');
       expect(body).toContain('href="/admin/relay-bots"');
       expect(body).toContain('href="/admin/monitoring"');
+      // Dashboard, Raid Planer and Konfig nav links are removed in all modes.
       expect(body).not.toContain('href="/admin/raid-planer"');
       expect(body).not.toContain('href="/admin/config"');
     } finally {
@@ -266,7 +269,7 @@ describe("admin UI exposure mode", () => {
 // a real Discord OAuth round-trip in tests, so we mint a cookie
 // directly using the same helper the prod path uses.
 describe("admin gate accepts a valid session cookie", () => {
-  it("dashboard renders when AdminUser exists + cookie is valid", async () => {
+  it("landing redirects to Sessions and the gated page renders with a valid cookie", async () => {
     // Pre-seed the admin row that the cookie will claim to represent
     await addAdmin({ guildId: GUILD_ID, userId: INVITEE_ID });
     const { issueAdminSessionCookie } = await import("../admin/cookie.js");
@@ -275,12 +278,19 @@ describe("admin gate accepts a valid session cookie", () => {
       sub: INVITEE_ID,
       guildId: GUILD_ID,
     });
-    const res = await fetch(`${baseUrl}/admin/`, {
+    // `/admin/` is now a redirect to the Sessions diagnostics page.
+    const landing = await fetch(`${baseUrl}/admin/`, {
+      headers: { cookie: `dccc_admin_session=${jwt}` },
+      redirect: "manual",
+    });
+    expect(landing.status).toBe(302);
+    expect(landing.headers.get("location") ?? "").toContain("/admin/sessions");
+
+    const res = await fetch(`${baseUrl}/admin/sessions`, {
       headers: { cookie: `dccc_admin_session=${jwt}` },
     });
     expect(res.status).toBe(200);
     const body = await res.text();
-    expect(body).toContain("DASHBOARD");
-    expect(body).toContain(GUILD_ID);
+    expect(body).toContain("SESSIONS");
   });
 });

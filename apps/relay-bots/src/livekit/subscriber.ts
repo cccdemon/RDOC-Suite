@@ -8,7 +8,7 @@ import {
 } from "@livekit/rtc-node";
 import { AccessToken } from "livekit-server-sdk";
 
-export type PcmHandler = (pcm: Buffer) => void;
+export type PcmHandler = (pcm: Buffer, speakerUserId?: string) => void;
 
 const SUBSCRIBER_IDENTITY = "voice-relay-bot-service";
 const TOKEN_TTL = 86400; // 24 h — service reconnects on expiry anyway
@@ -36,10 +36,10 @@ export class LivekitSubscriber {
 
     const token = await mintToken(apiKey, apiSecret, roomName);
 
-    this.room.on(RoomEvent.TrackSubscribed, (track) => {
+    this.room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
       if (track.kind !== TrackKind.KIND_AUDIO) return;
       const audioTrack = track as RemoteAudioTrack;
-      this.readAudioTrack(audioTrack);
+      this.readAudioTrack(audioTrack, speakerUserIdFromIdentity(participant.identity));
     });
 
     this.room.on(RoomEvent.Disconnected, () => {
@@ -63,7 +63,7 @@ export class LivekitSubscriber {
     }
   }
 
-  private readAudioTrack(track: RemoteAudioTrack): void {
+  private readAudioTrack(track: RemoteAudioTrack, speakerUserId?: string): void {
     const stream = new AudioStream(track, {
       sampleRate: 48000,
       numChannels: 1,
@@ -75,7 +75,7 @@ export class LivekitSubscriber {
         while (!this.destroyed) {
           const { done, value } = await reader.read();
           if (done) break;
-          this.onFrame(toStereoPcm(value));
+          this.onFrame(toStereoPcm(value), speakerUserId);
         }
       } catch (err) {
         if (!this.destroyed) {
@@ -95,6 +95,12 @@ export class LivekitSubscriber {
     }
     await this.room.disconnect();
   }
+}
+
+function speakerUserIdFromIdentity(identity: string | undefined): string | undefined {
+  if (!identity) return undefined;
+  const suffix = identity.match(/^(.*)-[0-9a-f]{8}$/i);
+  return suffix?.[1] || identity;
 }
 
 async function mintToken(apiKey: string, apiSecret: string, roomName: string): Promise<string> {

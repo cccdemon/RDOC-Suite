@@ -7,10 +7,9 @@ type StatusListener = (status: RelayStatus, detail?: string) => void;
 
 /**
  * Manages a secondary LiveKit connection for Voice-to-All relay.
- * Fetches a publisher token from GET /relay/token (bearer auth) each
- * time connect() is called; the caller must call connect() once
- * canUseRelay becomes true, and disconnect() on sign-out or capability
- * loss. PTT is controlled via setPttActive(bool).
+ * Bridge mode can still fetch a publisher token from GET /relay/token via
+ * connect(), but mission Relay Voice uses connectWithToken() with the
+ * Fleetplanner-issued mission relay room token.
  */
 export class RelayAudio {
   private audio = new LivekitAudio();
@@ -55,6 +54,10 @@ export class RelayAudio {
       return;
     }
     await this.audio.connect(data.url, data.token);
+  }
+
+  async connectWithToken(livekitUrl: string, token: string): Promise<void> {
+    await this.audio.connect(livekitUrl, token);
   }
 
   async disconnect(): Promise<void> {

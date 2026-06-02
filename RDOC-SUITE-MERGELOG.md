@@ -1,5 +1,66 @@
 # RDOC-Suite Mergelog
 
+Stand: 2026-06-02
+
+## Remove native Bridge Admin operation pages (plan step 5)
+
+### Status: Done (user-facing) — pending server build/test. Inert internal dead code documented for a follow-up cleanup.
+
+Precondition met: prod ran clean on `BRIDGE_ADMIN_UI_MODE=legacy`; Fleetplanner raid-planer parity (reorder + strategy channel) verified working. User green-lit removal 2026-06-02.
+
+Removed (user-facing) in `apps/bridge/src/admin/`:
+- `routes.ts`: `GET /admin/` Dashboard handler → now a 302 redirect to `/admin/sessions` (landing must stay valid). Deleted: `GET /admin/raid-planer`, `GET /admin/api/live`, `GET /admin/config`, `POST /admin/api/config`, SSE `GET /admin/api/live-stream`.
+- `views.ts`: removed Dashboard / Raid Planer / Konfig nav items (gone in ALL modes now, not just legacy) + the now-unused `legacyMode` local in `renderNav`.
+- `__tests__/admin.test.ts`: updated 3 tests — the `/admin/api/live` cookie-gate probe → `/admin/sessions`; the legacy-nav test fetches `/admin/sessions`; the old "dashboard renders" test → asserts `/admin/` redirects to Sessions + the gated page renders.
+
+KEPT (diagnostics / still required): auth (login, OAuth callback, invite consume); pages sessions, relay-bots, monitoring, audit, discord-voice, admins; services `strategyChannels.ts` (+ `startStrategyChannelGc`), `bulkModifyChannelPositions`, `createStrategyChannel` — consumed by `fleetInternal.ts` M2M endpoints. NOT to be deleted.
+
+Build-safety: bridge tsconfig has no `noUnusedLocals`, so the inert leftovers below do not break `tsc`. `admin.js` dashboard polling self-gates on absent DOM (`#active-commanders`/`#commander-members`/`#channel-mirror`), so removed pages produce no runtime 404 on kept pages.
+
+### Follow-up cleanup — DONE 2026-06-02 (build confirmed green first):
+- `routes.ts`: deleted `loadDashboardData()`, `checkLivekitHealth()`, the redundant `POST /admin/api/channels/reorder` + `POST /admin/api/strategy-channel` admin endpoints (duplicated by `fleetInternal.ts`), and now-unused imports `renderConfig`, `renderDashboard`, `renderRaidPlaner`, `DashboardData`, `bulkModifyChannelPositions`, `createStrategyChannel`, `rooms`, `bridgeRoomName`.
+- `views.ts`: deleted `renderDashboard`, `renderRaidPlaner`, `renderConfig` (dead exports).
+- `admin.js`: dashboard/raid-planer polling + channel-mirror drag-drop kept (inert, self-gates on absent DOM). Plain static JS, not type-checked, no build/runtime effect on kept pages — gutting ~250 lines of intertwined client JS is deferred as low-value/higher-risk.
+
+## Raid-Planer parity in Fleetplanner (precondition for Bridge raid-planer removal)
+
+### Status: Implemented — pending server build/test + prod verify. Bridge raid-planer removal deferred to next change.
+
+User decision (2026-06-02): port Bridge `/admin/raid-planer` capability into Fleetplanner, THEN remove native Bridge Admin operation pages. Prod confirmed clean on `BRIDGE_ADMIN_UI_MODE=legacy`.
+
+Gap analysis — Bridge raid-planer does: (a) move members between voice channels, (b) assign commander roles, (c) **reorder allowed voice channels**, (d) **create a strategy (temp) voice channel + pull selected members in** (auto-GC after 15 min idle). Fleetplanner `/admin/bridge/:guildId/discord-voice` already covers (a)+(b). Missing: (c) reorder, (d) strategy-channel.
+
+Plan (API-first):
+1. Bridge: 2 new `/internal/fleet/*` M2M endpoints in `apps/bridge/src/routes/fleetInternal.ts` — `POST .../discord/channels/reorder` (wraps the same allowed-list validation + `bulkModifyChannelPositions` as `/admin/api/channels/reorder`) and `POST .../discord/strategy-channel` (wraps `createStrategyChannel`). Backend services reused unchanged; GC loop already runs at bridge boot.
+2. Fleetplanner client `apps/fleetplanner/src/services/bridge.ts` — `reorderBridgeChannels`, `createBridgeStrategyChannel`.
+3. Fleetplanner UI: extend `bridgeDiscordVoicePage` + `/admin/bridge/:guildId/discord-voice` routes with a reorder section (▲/▼ SSR form over allowed channels) + a strategy-channel form (name + member checkboxes). superadmin-gated + CSRF like the existing move/role forms.
+4. Tests: `apps/bridge/src/__tests__/fleetInternalVoice.test.ts` — guard-rail coverage for both new endpoints (401 wrong bearer, 400 bad body, 403 channel-not-in-allowed-list). Discord success paths (200) not mocked; left to prod verify.
+5. Reorder swap logic extracted to pure `apps/fleetplanner/src/services/bridgeVoiceOrder.ts` (`applyChannelReorder`) + unit test `__tests__/services/bridgeVoiceOrder.test.ts` (up/down, both boundaries, unknown channel, garbage-CSV filtering). The reorder route calls the helper. Fleetplanner has only service-level test harness (no route/HTTP), so the pure helper is the testable nugget.
+
+Removal of Bridge native operation pages (Dashboard/Konfig/Raid-Planer) is NOT part of this step — separate change after this parity ships and is verified in prod.
+
+## Bridge Admin Deprecation (phased sunset)
+
+### Status: UI-gate + Companion-Link implemented (codex), docs + prod env follow-up done (this pass). Source-removal of native Bridge Admin operation pages NOT done — gated.
+
+Full step log: [docs/bridge-admin-deprecation-implementation-log.md](docs/bridge-admin-deprecation-implementation-log.md). Plan + route matrix: [docs/bridge-admin-deprecation-plan.md](docs/bridge-admin-deprecation-plan.md).
+
+Goal: Fleetplanner is the primary operator/Mission-Voice UI; native Bridge Admin `/admin/*` becomes legacy diagnostics, then is gated off, then removed — but only after backend parity + a clean prod run.
+
+Implemented by codex (plan steps 1–4, log steps 1–12):
+- `BRIDGE_ADMIN_UI_MODE=full|legacy|disabled` in `apps/bridge/src/config/env.ts` (default `full`). Controls ONLY native `/admin/*` web UI; all backend routes (`/internal/fleet/*`, `/sessions/*`, `/download/*`, `/updater/*`, `/relay*`, WS) stay independent.
+- `apps/bridge/src/app.ts` — `buildApp({ bridgeAdminUiMode })` override (testable without mutating `process.env`); skips `registerAdminRoutes` only when `disabled`; passes effective mode into Admin views via `setAdminViewsUiMode`.
+- `apps/bridge/src/admin/views.ts` — central legacy banner in `legacy` mode; hides Dashboard / Raid Planer / Konfig from primary nav (direct routes stay reachable).
+- `apps/companion/src/App.tsx` — Admiral session link now opens `${fleetplannerUrl}/admin/bridge/${guildId}/sessions`; falls back to native `/admin/sessions` only when guildId is unknown.
+- Tests: `apps/bridge/src/__tests__/admin.test.ts` covers `disabled` (404 on `/admin/login`, `/health` still up) + `legacy` nav. `__tests__/setup.ts` seeds `GlobalSettings` test table idempotently (fixed cross-file env-race 500s).
+
+Follow-up this pass (docs + deploy prep, no app-code change):
+- This mergelog entry (codex tracked the effort only in the dedicated implementation log — mergelog-first rule needed it here).
+- CLAUDE.md item 7 documents `BRIDGE_ADMIN_UI_MODE`.
+- `.env.prod.template` + `.env.example` add `BRIDGE_ADMIN_UI_MODE=legacy` (bridge reads it via `env_file: .env`).
+
+Remaining (plan step 5 — gated, DO NOT run blindly): delete native Bridge Admin operation page source (dashboard/config + the deprecated commander-role/allowed-channel workflow). Preconditions per plan: Fleetplanner parity confirmed, Companion no longer links native admin, backend route tests green, AND prod has run clean on `legacy`/`disabled`. NOTE conflict to resolve before deletion: plan marks raid-planer for removal, but CLAUDE.md item 7 says Bridge `/admin/raid-planer` (live drag-drop, strategy channels) stays in the Bridge UI.
+
 Stand: 2026-06-01
 
 ## Op Visibility + Guild Partnerships (Tenant Overhaul)

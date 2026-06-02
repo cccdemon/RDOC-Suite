@@ -125,257 +125,9 @@ export function renderLogin(opts: {
   });
 }
 
-export type DashboardData = {
-  guildId: string;
-  guildName?: string | null;
-  bridgeOk: boolean;
-  botOk: boolean;
-  livekitOk: boolean;
-  activeCommanders: Array<{ userId: string; displayName?: string; speaking: boolean }>;
-  commanderRoleMembers: Array<{
-    userId: string;
-    displayName: string;
-    inVoice: boolean;
-    inAllowedChannel: boolean;
-  }>;
-  enabled: boolean;
-  /** Per-allowed-voice-channel snapshot of currently-connected members.
-   *  Drives the Raid-Planer page (rename / move / role / DM). Each
-   *  member is enriched with the role-ids they currently hold (only
-   *  ids the admin UI cares about, i.e. those listed in
-   *  GuildConfig.commanderRoleIds) and an `isBot` flag for relay-bots
-   *  like funkrelais — those get a stripped-down render with no
-   *  per-user actions. */
-  channelMirror: Array<{
-    channelId: string;
-    channelName: string;
-    members: Array<{
-      userId: string;
-      displayName: string;
-      currentCommanderRoleIds: string[];
-      isBot: boolean;
-    }>;
-  }>;
-  /** All voice channels (type 2) in the guild — used as drop targets
-   *  for the Move-Member drag-and-drop, including channels not in
-   *  allowedVoiceChannelIds so an admin can also kick people out of
-   *  the squad-link network. */
-  allVoiceChannels: Array<{ channelId: string; channelName: string }>;
-  /** Only the roles that are listed in GuildConfig.commanderRoleIds —
-   *  these are the only ones the Raid-Planer UI lets an admin grant
-   *  or revoke (typically RDOC-CC + RDCP.SQ-CC). To enable management
-   *  of additional roles, add their snowflakes to commanderRoleIds. */
-  commanderRoles: Array<{ roleId: string; roleName: string }>;
-  /** First role-id in commanderRoleIds (if any). Used by the
-   *  Raid-Planer name-colour indicator: green if the user has this
-   *  specific role, red otherwise. Admins control which role is the
-   *  indicator by listing it first in the Konfig commanderRoleIds. */
-  primaryCommanderRoleId?: string;
-};
-
-export function renderDashboard(opts: {
-  staticBase: string;
-  navBase: string; // url prefix for nav links, e.g. /dccc/admin
-  data: DashboardData;
-  currentGuild?: NavGuild;
-  otherGuilds?: NavGuild[];
-}): string {
-  const { data } = opts;
-  const titleText = opts.currentGuild?.name ?? data.guildName ?? data.guildId;
-  const healthBadge = (label: string, ok: boolean): string =>
-    html`<span class="health-svc ${ok ? "ok" : "error"}"><span class="health-dot"></span>${esc(label)}</span>`;
-
-  const activeRows = data.activeCommanders.length
-    ? data.activeCommanders
-        .map(
-          (c) => html`
-        <li class="commander-row ${c.speaking ? "speaking" : ""}">
-          <span class="cmd-name">${esc(c.displayName ?? c.userId)}</span>
-          <span class="cmd-status">${c.speaking ? "TALKING" : "IDLE"}</span>
-        </li>`,
-        )
-        .join("")
-    : html`<li class="empty">— niemand verbunden —</li>`;
-
-  const memberRows = data.commanderRoleMembers.length
-    ? data.commanderRoleMembers
-        .map(
-          (m) => html`
-        <li class="member-row" data-user-id="${esc(m.userId)}">
-          <span class="m-name">${esc(m.displayName)}</span>
-          <span class="m-state ${m.inAllowedChannel ? "ok" : m.inVoice ? "warn" : "off"}">
-            ${m.inAllowedChannel ? "IN VOICE" : m.inVoice ? "OTHER CHANNEL" : "OFFLINE"}
-          </span>
-          <button class="btn btn-sm btn-red m-strip" data-strip-commander="${esc(m.userId)}" data-name="${esc(m.displayName)}" title="Commander-Rolle entziehen">ROLLE ENTZIEHEN</button>
-        </li>`,
-        )
-        .join("")
-    : html`<li class="empty">— noch keine Mitglieder mit Commander-Rolle bekannt —</li>`;
-
-  // Channel-Mirror lives in its own page now ("Raid Planer") — see
-  // renderRaidPlaner below. The dashboard stays focused on live state.
-
-  const body = html`
-    ${renderNav({
-      navBase: opts.navBase,
-      active: "dashboard",
-      currentGuild: opts.currentGuild,
-      otherGuilds: opts.otherGuilds,
-    })}
-    <main class="page">
-      <header class="page-header">
-        <h1 class="page-title">DASHBOARD<span class="sep"> // </span><em>${esc(titleText)}</em></h1>
-        <div class="header-right">
-          <span class="badge ${data.enabled ? "on" : "off"}">${data.enabled ? "SYSTEM ON" : "SYSTEM OFF"}</span>
-        </div>
-      </header>
-
-      <section class="health-bar">
-        ${healthBadge("BRIDGE", data.bridgeOk)}
-        ${healthBadge("BOT", data.botOk)}
-        ${healthBadge("LIVEKIT", data.livekitOk)}
-      </section>
-
-      <div class="dash-grid">
-        <section class="card">
-          <span class="card-tick"></span>
-          <h2 class="card-title">VERBUNDENE COMMANDER <span class="card-meta" id="active-count">${data.activeCommanders.length}</span></h2>
-          <ul class="commander-list" id="active-commanders">${activeRows}</ul>
-        </section>
-
-        <section class="card">
-          <span class="card-tick"></span>
-          <h2 class="card-title">MITGLIEDER MIT COMMANDER-ROLLE <span class="card-meta" id="member-count">${data.commanderRoleMembers.length}</span></h2>
-          <ul class="member-list" id="commander-members">${memberRows}</ul>
-        </section>
-      </div>
-
-    </main>`;
-
-  const scripts = html`<script>window.__DCCC_NAV_BASE__=${JSON.stringify(opts.navBase)};</script><script src="${opts.staticBase}/admin.js"></script>`;
-  return layout({
-    title: "Dashboard",
-    body,
-    staticBase: opts.staticBase,
-    scripts,
-  });
-}
-
-/**
- * Initial-render of the Raid-Planer page. Most of the per-tick work
- * (re-rendering tiles, wiring drag-drop, context menus) happens in
- * admin.js — this returns a near-empty shell that the polling tick
- * fills as soon as the first /admin/api/live response arrives.
- */
-export function renderRaidPlaner(opts: {
-  staticBase: string;
-  navBase: string;
-  data: DashboardData;
-  currentGuild?: NavGuild;
-  otherGuilds?: NavGuild[];
-}): string {
-  const { data } = opts;
-  const titleText = opts.currentGuild?.name ?? data.guildName ?? data.guildId;
-  const body = html`
-    ${renderNav({
-      navBase: opts.navBase,
-      active: "raid-planer",
-      currentGuild: opts.currentGuild,
-      otherGuilds: opts.otherGuilds,
-    })}
-    <main class="page">
-      <header class="page-header">
-        <h1 class="page-title">RAID PLANER<span class="sep"> // </span><em>${esc(titleText)}</em></h1>
-      </header>
-      <p class="hint">
-        Jeder Tile = ein freigeschalteter Voice-Channel. Member <strong>per Drag-and-Drop</strong> zwischen Tiles ziehen, um sie in Discord zu verschieben. <strong>Rechtsklick</strong> auf einen Member öffnet das Rollen-Menü (nur die Commander-Rollen aus der Konfiguration). DM-Link via Button. Bots (Funkrelais) werden separiert dargestellt und sind nicht interaktiv.
-      </p>
-      <section class="card" style="margin-top: 12px;">
-        <span class="card-tick"></span>
-        <div class="cm-card-head">
-          <h2 class="card-title">CHANNEL MIRROR <span class="card-meta" id="channel-mirror-count">${data.channelMirror.length}</span></h2>
-          <button id="strategy-channel-btn" class="btn btn-cyan" type="button" disabled title="Erst Mitglieder markieren, dann einen Strategy-Voice-Channel erzeugen und sie hineinziehen">STRATEGY-CHANNEL <span class="sc-count" id="strategy-channel-count">0</span></button>
-        </div>
-        <div class="cm-grid" id="channel-mirror"><div class="empty">— wird geladen —</div></div>
-      </section>
-      <div id="cm-ctx-menu" class="cm-ctx-menu" hidden></div>
-    </main>`;
-  const scripts = html`<script>window.__DCCC_NAV_BASE__=${JSON.stringify(opts.navBase)};</script><script src="${opts.staticBase}/admin.js"></script>`;
-  return layout({
-    title: "Raid Planer",
-    body,
-    staticBase: opts.staticBase,
-    scripts,
-  });
-}
-
-export type ConfigPageData = {
-  guildId: string;
-  enabled: boolean;
-  bridgeMode: string;
-  commanderRoleIds: string[];
-  allowedVoiceChannelIds: string[];
-};
-
-export function renderConfig(opts: {
-  staticBase: string;
-  navBase: string;
-  data: ConfigPageData;
-  saved?: boolean;
-  currentGuild?: NavGuild;
-  otherGuilds?: NavGuild[];
-}): string {
-  const titleText = opts.currentGuild?.name ?? opts.data.guildId;
-  const body = html`
-    ${renderNav({
-      navBase: opts.navBase,
-      active: "config",
-      currentGuild: opts.currentGuild,
-      otherGuilds: opts.otherGuilds,
-    })}
-    <main class="page">
-      <header class="page-header">
-        <h1 class="page-title">SERVER-KONFIG<span class="sep"> // </span><em>${esc(titleText)}</em></h1>
-      </header>
-
-      ${opts.saved ? html`<div class="toast toast-ok">Gespeichert.</div>` : ""}
-
-      <form class="card config-form" id="config-form">
-        <span class="card-tick"></span>
-        <h2 class="card-title">CHANNEL COMMANDER KONFIG</h2>
-
-        <div class="field">
-          <label for="enabled">System aktiviert</label>
-          <input type="checkbox" id="enabled" name="enabled" ${opts.data.enabled ? "checked" : ""}>
-          <span class="hint">Wenn aus, lehnt die Bridge neue WS-Verbindungen ab.</span>
-        </div>
-
-        <div class="field">
-          <label for="commanderRoleIds">Commander-Rollen (eine pro Zeile, Discord Role-ID als Snowflake)</label>
-          <textarea id="commanderRoleIds" name="commanderRoleIds" rows="4">${esc(opts.data.commanderRoleIds.join("\n"))}</textarea>
-          <span class="hint">Rechtsklick auf die Rolle in Discord (Developer-Mode an) → „ID kopieren".</span>
-        </div>
-
-        <div class="field">
-          <label for="allowedVoiceChannelIds">Erlaubte Voice-Channels (eine ID pro Zeile)</label>
-          <textarea id="allowedVoiceChannelIds" name="allowedVoiceChannelIds" rows="6">${esc(opts.data.allowedVoiceChannelIds.join("\n"))}</textarea>
-          <span class="hint">Leer = alle Voice-Channels erlaubt. Sonst: nur User in den gelisteten Channels dürfen sprechen.</span>
-        </div>
-
-        <div class="actions">
-          <button type="submit" class="btn btn-cyan">SPEICHERN</button>
-        </div>
-      </form>
-    </main>`;
-
-  const scripts = html`<script>window.__DCCC_NAV_BASE__=${JSON.stringify(opts.navBase)};</script><script src="${opts.staticBase}/admin.js"></script>`;
-  return layout({
-    title: "Server-Konfig",
-    body,
-    staticBase: opts.staticBase,
-    scripts,
-  });
-}
+// renderDashboard, renderRaidPlaner and renderConfig were removed 2026-06-02
+// with the native Bridge Admin operation pages. Those surfaces now live in
+// Fleetplanner (bridge dashboard page, Discord Voice panel, guild config page).
 
 export type AdminRoleLiteral = "admiral" | "vice_admiral";
 
@@ -900,7 +652,6 @@ function renderNav(opts: {
   currentGuild?: NavGuild;
   otherGuilds?: NavGuild[]; // empty/undef if admin is on a single guild
 }): string {
-  const legacyMode = adminUiMode() === "legacy";
   const item = (key: typeof opts.active, label: string, href: string): string =>
     html`<a class="cc-nav-item ${opts.active === key ? "active" : ""}" href="${esc(href)}">${esc(label)}</a>`;
   const currentLabel =
@@ -935,14 +686,11 @@ function renderNav(opts: {
       <a class="cc-nav-home" href="${esc(opts.navBase)}/">DCCC<span class="sep">//</span>ADMIN</a>
       ${switcher}
       <div class="cc-nav-items">
-        ${legacyMode ? "" : item("dashboard", "DASHBOARD", `${opts.navBase}/`)}
-        ${legacyMode ? "" : item("raid-planer", "RAID PLANER", `${opts.navBase}/raid-planer`)}
         ${item("sessions", "SESSIONS", `${opts.navBase}/sessions`)}
         ${item("relay-bots", "RELAY BOTS", `${opts.navBase}/relay-bots`)}
         ${item("discord-voice", "DISCORD VOICE", `${opts.navBase}/discord-voice`)}
         ${item("monitoring", "MONITORING", `${opts.navBase}/monitoring`)}
         ${item("audit", "AUDIT", `${opts.navBase}/audit`)}
-        ${legacyMode ? "" : item("config", "KONFIG", `${opts.navBase}/config`)}
         ${item("admins", "ADMINS", `${opts.navBase}/admins`)}
       </div>
       <a class="cc-nav-item" href="${esc(opts.navBase)}/logout">SIGN OUT</a>

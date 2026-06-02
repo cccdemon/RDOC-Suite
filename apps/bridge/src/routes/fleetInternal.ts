@@ -28,13 +28,16 @@ import {
   setRelayBotsConfig,
   notifyRelayBotsReload,
 } from "../services/relayBotsConfig.js";
-import { getCachedChannels, getCachedRoles } from "../services/discordMetaCache.js";
+import { getCachedChannels, getCachedRoles, invalidateChannels } from "../services/discordMetaCache.js";
 import {
   moveGuildMember,
   addGuildMemberRole,
   removeGuildMemberRole,
   sendDirectMessage,
+  bulkModifyChannelPositions,
 } from "../auth/discord.js";
+import { bridgeEvents } from "../services/bridgeEvents.js";
+import { createStrategyChannel } from "../services/strategyChannels.js";
 import {
   mintDownloadToken,
   listDownloadTokens,
@@ -821,6 +824,95 @@ export async function registerFleetInternalRoutes(app: FastifyInstance): Promise
         return reply.code(status).send({ error: code });
       }
       return reply.code(200).send({ ok: true, tokenId: minted.id });
+    },
+  );
+
+  // ── Discord voice: channel reorder ───────────────────────────────
+  // Body: { ordered: string[] } — allowed voice channel IDs in the new
+  // display order. Mirrors the native /admin/api/channels/reorder logic:
+  // every ID must be in the guild's allowed list; the requested order is
+  // mapped onto the existing Discord position slots so only the allowed
+  // channels move relative to each other.
+  app.post<{ Params: { guildId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/discord/channels/reorder",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = z
+        .object({ ordered: z.array(z.string().regex(SNOWFLAKE)).min(2).max(50) })
+        .safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const oauth = getOAuthEnv();
+      if (!oauth) return reply.code(503).send({ error: "discord_not_configured" });
+      const { guildId } = params.data;
+      const cfg = await readGuildConfig(guildId);
+      const allowed = new Set(cfg?.allowedVoiceChannelIds ?? []);
+      if (body.data.ordered.some((id) => !allowed.has(id))) {
+        return reply.code(403).send({ error: "channel_not_in_allowed_list" });
+      }
+      const channels = await getCachedChannels(guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN);
+      const positions = channels
+        .filter((c) => allowed.has(c.id))
+        .map((c) => ({ id: c.id, position: c.position ?? 0 }))
+        .sort((a, b) => a.position - b.position);
+      const slots = positions.map((p) => p.position);
+      const items = body.data.ordered.map((id, i) => ({ id, position: slots[i] ?? i }));
+      const result = await bulkModifyChannelPositions({
+        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
+        guildId,
+        items,
+      });
+      if (!result.ok) {
+        const { code, status } = mapDiscordError(result.error.status, "missing_manage_channels");
+        return reply.code(status).send({ error: code });
+      }
+      invalidateChannels(guildId);
+      bridgeEvents.emitGuildStateChanged(guildId);
+      logger.info({ guildId, count: items.length }, "fleet api: reordered voice channels");
+      return reply.code(200).send({ ok: true });
+    },
+  );
+
+  // ── Discord voice: strategy channel ──────────────────────────────
+  // Body: { name, userIds } — create a temporary voice channel and pull
+  // the selected members into it. Garbage-collected after 15 min idle by
+  // the bridge's strategy-channel GC loop (started at bridge boot).
+  app.post<{ Params: { guildId: string }; Body: unknown }>(
+    "/internal/fleet/guilds/:guildId/discord/strategy-channel",
+    async (request, reply) => {
+      if (!authorize(request, reply)) return;
+      const params = guildParamsSchema.safeParse(request.params);
+      if (!params.success) return badRequest(reply, params.error);
+      const body = z
+        .object({
+          name: z.string().min(1).max(100),
+          userIds: z.array(z.string().regex(SNOWFLAKE)).min(1).max(50),
+        })
+        .safeParse(request.body);
+      if (!body.success) return badRequest(reply, body.error);
+      const result = await createStrategyChannel({
+        guildId: params.data.guildId,
+        name: body.data.name,
+        userIds: body.data.userIds,
+        createdBy: "fleetplanner",
+      });
+      if (!result.ok) {
+        if (result.reason === "no_oauth") return reply.code(503).send({ error: "discord_not_configured" });
+        const { code, status } = mapDiscordError(result.status, "missing_manage_channels");
+        return reply.code(status).send({ error: code, message: result.message });
+      }
+      logger.info(
+        { guildId: params.data.guildId, channelId: result.channelId, moved: result.moved.length },
+        "fleet api: created strategy channel",
+      );
+      return reply.code(200).send({
+        ok: true,
+        channelId: result.channelId,
+        name: result.name,
+        moved: result.moved,
+        moveFailures: result.moveFailures,
+      });
     },
   );
 }

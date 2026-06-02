@@ -47,7 +47,7 @@ export async function registerSuiteRoutes(app: FastifyInstance): Promise<void> {
 
     return {
       canManageSessions,
-      canUseRelay: false,       // decision pending
+      canUseRelay: false,
       canUseFleetTools: false,  // web-first, not companion feature
     };
   });

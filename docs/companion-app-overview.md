@@ -1,6 +1,7 @@
 # RDOC Squad Link — App-Übersicht & Zusammenspiel mit dem Fleetplanner
 
 > Stand: nach der Mission-First / 2-PTT-Neuarchitektur (Companion v0.5.3).
+> Architektur-Referenz: [companion-voice-architecture.md](companion-voice-architecture.md).
 > Plan-Referenz: [companion-app-opus.md](companion-app-opus.md).
 
 ## Was ist die App?
@@ -22,8 +23,19 @@ Läuft neben dem Spiel; globale Hotkeys feuern auch, wenn ein Vollbild-Spiel den
 - **Keine Mission aktiv** → Guild-Bridge-Room (Squad Link, Commander-zu-Commander-Funk)
 - **Mission aktiv** → Mission-Commander-Room
 
-**GLOBAL** ist immer der Relay-Pfad (sichtbar/aktiv, wenn der Server `canUseRelay` freigibt) —
-unabhängig vom Missionszustand.
+**GLOBAL** ist im Zielbild der mission-scoped Relay-Pfad. Er ist sichtbar/aktiv, wenn
+die aktive Mission Relay Mode fuer den User freigibt.
+
+## Architektur-Korrektur
+
+Das verbindliche Zielbild steht in
+[companion-voice-architecture.md](companion-voice-architecture.md). Falls diese Uebersicht
+abweicht, gilt das Architektur-Dokument.
+
+- Bridge Mode: nur ohne aktive Mission und nur mit Raumdock-Rolle `1511124797445247096` auf Guild `1431307397842079777`.
+- Commander Mode: mission-scoped, fuer Captains/Commanders/Fleetmanager, temporaere Rolle `1510192642997227602`.
+- Relay Mode: mission-scoped, zweiter PTT zu RelayBots, temporaere Rolle `1510192451808133210`.
+- Commander Mode beendet/suspendiert Bridge Mode automatisch.
 
 ## Zwei Auth-/Datenquellen
 

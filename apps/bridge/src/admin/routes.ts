@@ -8,7 +8,6 @@ import { getEnv, getOAuthEnv } from "../config/env.js";
 import {
   addGuildMemberRole,
   buildAuthorizeUrl,
-  bulkModifyChannelPositions,
   exchangeCodeForToken,
   fetchCurrentUser,
   fetchGuildMember,
@@ -46,8 +45,6 @@ import {
 } from "../services/companionDownloads.js";
 import { fetchLatestCompanionRelease } from "../services/githubReleases.js";
 import { getPrisma } from "@rdoc-suite/db";
-import { rooms } from "../services/rooms.js";
-import { bridgeRoomName } from "../services/livekit.js";
 import { getGuildInfo, getGuildInfos } from "../services/guildInfo.js";
 import {
   ADMIN_SESSION_COOKIE,
@@ -57,19 +54,13 @@ import {
 import { requireAdminSession } from "./middleware.js";
 import {
   renderAdmins,
-  renderConfig,
-  renderDashboard,
   renderError,
   renderLogin,
-  renderRaidPlaner,
   renderRelayBots,
   renderSessionDetail,
   renderSessions,
-  type DashboardData,
 } from "./views.js";
 import { getRelayBotsConfig } from "../services/relayBotsConfig.js";
-import { bridgeEvents } from "../services/bridgeEvents.js";
-import { createStrategyChannel } from "../services/strategyChannels.js";
 import { appendAudit, listRecentAudit, countAudit } from "../services/audit.js";
 import { monitoringSnapshot } from "../services/monitoring.js";
 import { renderAudit, renderDiscordVoice, renderMonitoring } from "./views.js";
@@ -533,50 +524,17 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
   });
 
   // ──────────────────────────────────────────────────────────────
-  // Protected: dashboard
+  // Dashboard, Raid-Planer and Konfig were removed from the native Bridge
+  // Admin UI (2026-06-02). Those operation surfaces now live in Fleetplanner
+  // (bridge dashboard page, Discord Voice panel with reorder + strategy
+  // channels, guild config page). The native admin UI keeps only diagnostics
+  // (sessions, relay bots, monitoring, audit, Discord voice, admins). Land
+  // admins on the Sessions page; deep links to the kept pages still work.
   // ──────────────────────────────────────────────────────────────
   app.get(`${ROUTE_PREFIX}/`, async (request, reply) => {
     const session = await requireAdminSession(request, reply);
     if (!session) return;
-    const [data, nav] = await Promise.all([
-      loadDashboardData(session.guildId),
-      getAdminNavGuilds(session.sub, session.guildId),
-    ]);
-    if (nav.currentGuild) data.guildName = nav.currentGuild.name;
-    reply.type("text/html").send(
-      renderDashboard({
-        staticBase: staticBase(),
-        navBase: navBase(),
-        data,
-        currentGuild: nav.currentGuild,
-        otherGuilds: nav.otherGuilds,
-      }),
-    );
-  });
-
-  // ──────────────────────────────────────────────────────────────
-  // Protected: Raid-Planer (channel mirror with rename / move / role /
-  // DM-link). Uses the same /admin/api/live polling as the dashboard
-  // — both pages share the JSON, the page just renders a different
-  // subset of it.
-  // ──────────────────────────────────────────────────────────────
-  app.get(`${ROUTE_PREFIX}/raid-planer`, async (request, reply) => {
-    const session = await requireAdminSession(request, reply);
-    if (!session) return;
-    const [data, nav] = await Promise.all([
-      loadDashboardData(session.guildId),
-      getAdminNavGuilds(session.sub, session.guildId),
-    ]);
-    if (nav.currentGuild) data.guildName = nav.currentGuild.name;
-    reply.type("text/html").send(
-      renderRaidPlaner({
-        staticBase: staticBase(),
-        navBase: navBase(),
-        data,
-        currentGuild: nav.currentGuild,
-        otherGuilds: nav.otherGuilds,
-      }),
-    );
+    reply.redirect(`${navBase()}/sessions`);
   });
 
   // ──────────────────────────────────────────────────────────────
@@ -615,71 +573,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
       reply.redirect(`${navBase()}/`);
     },
   );
-
-  // ──────────────────────────────────────────────────────────────
-  // Protected: live JSON for dashboard polling
-  // ──────────────────────────────────────────────────────────────
-  app.get(`${ROUTE_PREFIX}/api/live`, async (request, reply) => {
-    const session = await requireAdminSession(request, reply);
-    if (!session) return;
-    const [data, info] = await Promise.all([
-      loadDashboardData(session.guildId),
-      getGuildInfo(session.guildId),
-    ]);
-    if (info) data.guildName = info.name;
-    reply.send(data);
-  });
-
-  // ──────────────────────────────────────────────────────────────
-  // Protected: config page + save endpoint
-  // ──────────────────────────────────────────────────────────────
-  app.get<{ Querystring: { saved?: string } }>(
-    `${ROUTE_PREFIX}/config`,
-    async (request, reply) => {
-      const session = await requireAdminSession(request, reply);
-      if (!session) return;
-      const [cfg, nav] = await Promise.all([
-        readGuildConfig(session.guildId),
-        getAdminNavGuilds(session.sub, session.guildId),
-      ]);
-      reply.type("text/html").send(
-        renderConfig({
-          staticBase: staticBase(),
-          navBase: navBase(),
-          saved: request.query.saved === "1",
-          data: {
-            guildId: session.guildId,
-            enabled: cfg?.enabled ?? false,
-            bridgeMode: cfg?.bridgeMode ?? "external_voice",
-            commanderRoleIds: cfg?.commanderRoleIds ?? [],
-            allowedVoiceChannelIds: cfg?.allowedVoiceChannelIds ?? [],
-          },
-          currentGuild: nav.currentGuild,
-          otherGuilds: nav.otherGuilds,
-        }),
-      );
-    },
-  );
-
-  const configBodySchema = z.object({
-    enabled: z.boolean(),
-    commanderRoleIds: z.array(z.string().regex(/^[0-9]{17,20}$/)),
-    allowedVoiceChannelIds: z.array(z.string().regex(/^[0-9]{17,20}$/)),
-  });
-  app.post(`${ROUTE_PREFIX}/api/config`, async (request, reply) => {
-    const session = await requireAdminSession(request, reply);
-    if (!session) return;
-    const parsed = configBodySchema.safeParse(request.body);
-    if (!parsed.success) {
-      reply.code(400).send({
-        error: "invalid_body",
-        issues: parsed.error.issues.map((i) => `${i.path.join(".") || "<root>"}: ${i.message}`),
-      });
-      return;
-    }
-    await saveGuildConfig(session.guildId, parsed.data);
-    reply.send({ ok: true });
-  });
 
   // ──────────────────────────────────────────────────────────────
   // Protected: admins page + invite-link mint + revoke
@@ -1692,154 +1585,6 @@ export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
     },
   );
 
-  // ──────────────────────────────────────────────────────────────
-  // SSE live-stream: /admin/api/live-stream
-  // Pushes the same payload as /api/live on every guild-state-changed
-  // event from the bridgeEvents bus (debounced 100 ms per guild).
-  // 25 s heartbeat comment-frame keeps idle proxies from closing.
-  // Frontend falls back to /api/live polling if EventSource errors.
-  // ──────────────────────────────────────────────────────────────
-  app.get(`${ROUTE_PREFIX}/api/live-stream`, async (request, reply) => {
-    const session = await requireAdminSession(request, reply);
-    if (!session) return;
-
-    reply.hijack();
-    const raw = reply.raw;
-    raw.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
-      Connection: "keep-alive",
-      "X-Accel-Buffering": "no",
-    });
-
-    let closed = false;
-    let inFlight = false;
-    let pendingAfterFlight = false;
-
-    const sendFrame = async (): Promise<void> => {
-      if (closed) return;
-      if (inFlight) { pendingAfterFlight = true; return; }
-      inFlight = true;
-      try {
-        const [data, info] = await Promise.all([
-          loadDashboardData(session.guildId),
-          (await import("../services/guildInfo.js")).getGuildInfo(session.guildId),
-        ]);
-        if (info) data.guildName = info.name;
-        if (closed) return;
-        raw.write(`data: ${JSON.stringify(data)}\n\n`);
-      } catch (err) {
-        logger.warn({ err, guildId: session.guildId }, "live-stream sendFrame failed");
-      } finally {
-        inFlight = false;
-        if (pendingAfterFlight && !closed) {
-          pendingAfterFlight = false;
-          void sendFrame();
-        }
-      }
-    };
-
-    await sendFrame();
-
-    const unsubscribe = bridgeEvents.onGuildStateChanged((gid) => {
-      if (gid === session.guildId) void sendFrame();
-    });
-
-    const heartbeat = setInterval(() => {
-      if (closed) return;
-      try { raw.write(":\n\n"); } catch { /* peer gone */ }
-    }, 25_000);
-    heartbeat.unref?.();
-
-    const onClose = (): void => {
-      if (closed) return;
-      closed = true;
-      clearInterval(heartbeat);
-      unsubscribe();
-    };
-    request.raw.on("close", onClose);
-    raw.on("close", onClose);
-  });
-
-  // ──────────────────────────────────────────────────────────────
-  // Channel reorder: POST /admin/api/channels/reorder
-  // Body: { ordered: string[] } — IDs of allowed voice channels in
-  // the requested display order. Bridge calculates the minimal set of
-  // Discord position PATCH calls needed.
-  // ──────────────────────────────────────────────────────────────
-  const reorderSchema = z.object({
-    ordered: z.array(z.string().regex(/^[0-9]{17,20}$/)).min(2).max(50),
-  });
-  app.post(`${ROUTE_PREFIX}/api/channels/reorder`, async (request, reply) => {
-    const session = await requireAdminSession(request, reply);
-    if (!session) return;
-    const oauth = getOAuthEnv();
-    if (!oauth) { reply.code(503).send({ error: "discord_not_configured" }); return; }
-    const parsed = reorderSchema.safeParse(request.body);
-    if (!parsed.success) {
-      reply.code(400).send({ error: "invalid_body", issues: parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`) });
-      return;
-    }
-    const cfg = await (await import("../services/guildConfig.js")).readGuildConfig(session.guildId);
-    const allowed = new Set(cfg?.allowedVoiceChannelIds ?? []);
-    if (parsed.data.ordered.some((id) => !allowed.has(id))) {
-      reply.code(403).send({ error: "channel_not_in_allowed_list" });
-      return;
-    }
-    const channels = await getCachedChannels(session.guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN);
-    const positions = channels
-      .filter((c) => allowed.has(c.id))
-      .map((c) => ({ id: c.id, position: c.position ?? 0 }))
-      .sort((a, b) => a.position - b.position);
-    const slots = positions.map((p) => p.position);
-    const items = parsed.data.ordered.map((id, i) => ({ id, position: slots[i] ?? i }));
-    const result = await bulkModifyChannelPositions({
-      botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
-      guildId: session.guildId,
-      items,
-    });
-    if (!result.ok) {
-      const { code, status } = mapDiscordError(result.error.status, "missing_manage_channels");
-      reply.code(status).send({ error: code });
-      return;
-    }
-    invalidateChannels(session.guildId);
-    bridgeEvents.emitGuildStateChanged(session.guildId);
-    reply.send({ ok: true });
-  });
-
-  // ──────────────────────────────────────────────────────────────
-  // Strategy channel: POST /admin/api/strategy-channel
-  // Body: { name: string; userIds: string[] }
-  // Creates a temporary Discord voice channel and moves the selected
-  // commanders into it. GC'd after 15 min idle.
-  // ──────────────────────────────────────────────────────────────
-  const strategyChannelSchema = z.object({
-    name: z.string().min(1).max(100),
-    userIds: z.array(z.string().regex(/^[0-9]{17,20}$/)).min(1).max(50),
-  });
-  app.post(`${ROUTE_PREFIX}/api/strategy-channel`, async (request, reply) => {
-    const session = await requireAdminSession(request, reply);
-    if (!session) return;
-    const parsed = strategyChannelSchema.safeParse(request.body);
-    if (!parsed.success) {
-      reply.code(400).send({ error: "invalid_body" });
-      return;
-    }
-    const result = await createStrategyChannel({
-      guildId: session.guildId,
-      name: parsed.data.name,
-      userIds: parsed.data.userIds,
-      createdBy: session.sub,
-    });
-    if (!result.ok) {
-      if (result.reason === "no_oauth") { reply.code(503).send({ error: "discord_not_configured" }); return; }
-      const { code, status } = mapDiscordError(result.status, "missing_manage_channels");
-      reply.code(status).send({ error: code, message: result.message });
-      return;
-    }
-    reply.send({ ok: true, channelId: result.channelId, name: result.name, moved: result.moved, moveFailures: result.moveFailures });
-  });
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -1866,210 +1611,7 @@ function mapDiscordError(
   return { code: "discord_api_error", status: 502 };
 }
 
-/**
- * One-shot health check against the LiveKit server. We hit the
- * HTTP variant of `LIVEKIT_URL` (the `wss://` URL converted to
- * `https://`) — LiveKit responds on `/` even without auth, so any
- * 2xx/4xx response counts as "the server is alive". Timeout 1500ms
- * to keep dashboard render snappy if LiveKit is wedged.
- */
-async function checkLivekitHealth(): Promise<boolean> {
-  const wsUrl = getEnv().LIVEKIT_URL;
-  if (!wsUrl) return false;
-  const httpUrl = wsUrl.replace(/^ws:\/\//, "http://").replace(/^wss:\/\//, "https://");
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 1500);
-  try {
-    const res = await fetch(httpUrl, { signal: ctl.signal, redirect: "manual" });
-    // LiveKit returns 200 with "OK" body for `/`. We accept anything
-    // < 500 — even a 404 means the server is up and answering.
-    return res.status < 500;
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-async function loadDashboardData(guildId: string): Promise<
-  Awaited<ReturnType<typeof import("./views.js").renderDashboard>> extends string
-    ? import("./views.js").DashboardData
-    : never
-> {
-  const cfg = await readGuildConfig(guildId);
-  const roomId = bridgeRoomName(guildId);
-  const snapshot = rooms.snapshot(roomId);
-
-  // Fetch members with Commander role from Discord REST (no GUILD_MEMBERS
-  // intent needed). We keep BOTH a filtered commander-only list AND a
-  // full id → {name, roles, isBot} lookup so the Raid-Planer page can
-  // render display-names + role hints for any channel member (incl.
-  // non-commanders + bots like funkrelais).
-  const commanderRoleMembers: Array<{
-    userId: string;
-    displayName: string;
-    inVoice: boolean;
-    inAllowedChannel: boolean;
-  }> = [];
-  const memberInfo = new Map<
-    string,
-    { displayName: string; roleIds: Set<string>; isBot: boolean }
-  >();
-  const oauth = getOAuthEnv();
-  const commanderRoleIds = new Set(cfg?.commanderRoleIds ?? []);
-  const allowedIds = new Set(cfg?.allowedVoiceChannelIds ?? []);
-  if (oauth) {
-    try {
-      const url = `https://discord.com/api/v10/guilds/${guildId}/members?limit=1000`;
-      const res = await fetch(url, {
-        headers: { authorization: `Bot ${oauth.DISCORD_RDOCRTC_BOT_TOKEN}` },
-      });
-      if (res.ok) {
-        const raw: unknown = await res.json();
-        if (Array.isArray(raw)) {
-          const voiceRows = await getPrisma().userVoiceState.findMany({
-            where: { guildId },
-          });
-          const voiceByUserId = new Map(voiceRows.map((r) => [r.userId, r.channelId]));
-          for (const m of raw) {
-            const obj = m as Record<string, unknown>;
-            const user = obj.user as Record<string, unknown> | undefined;
-            const roles = obj.roles as string[] | undefined;
-            if (!user || typeof user.id !== "string" || !roles) continue;
-            const display =
-              (typeof obj.nick === "string" && obj.nick) ||
-              (typeof user.global_name === "string" && user.global_name) ||
-              (typeof user.username === "string" && user.username) ||
-              user.id;
-            // Discord marks bots with user.bot=true; we ALSO match by
-            // name for "funkrelais" so the relay bots we expect get
-            // collapsed even if a future Discord change drops the
-            // bot flag from the member-list payload.
-            const isBotFlag = user.bot === true;
-            const isBotByName = display.toLowerCase().includes("funkrelais");
-            memberInfo.set(user.id, {
-              displayName: display,
-              roleIds: new Set(roles),
-              isBot: isBotFlag || isBotByName,
-            });
-            if (commanderRoleIds.size > 0 && roles.some((r) => commanderRoleIds.has(r))) {
-              const ch = voiceByUserId.get(user.id) ?? null;
-              commanderRoleMembers.push({
-                userId: user.id,
-                displayName: display,
-                inVoice: ch !== null,
-                inAllowedChannel: ch !== null && allowedIds.has(ch),
-              });
-            }
-          }
-        }
-      }
-    } catch (err) {
-      logger.warn({ err, guildId }, "dashboard: discord members fetch failed");
-    }
-  }
-
-  // Enrich active commanders with display names from the member list
-  // (where we have them). Falls back to userId when the GuildMembers
-  // intent is off, the member is missing the commander role for some
-  // reason, or the REST call failed — the UI shows `displayName ?? userId`.
-  const nameByUserId = new Map(commanderRoleMembers.map((m) => [m.userId, m.displayName]));
-
-  // Health truthiness: BRIDGE is always true (we're rendering, ergo
-  // we live). BOT = bot is a member of this guild (the guildInfo
-  // lookup is the cheapest signal we have and it's exactly what the
-  // user cares about per-page). LIVEKIT = real http probe.
-  const [guildInfo, livekitOk] = await Promise.all([
-    getGuildInfo(guildId),
-    checkLivekitHealth(),
-  ]);
-
-  // ── Channel-Mirror (Etappe 4 / Raid-Planer) ───────────────
-  // Channels + roles come from the in-process TTL cache so we don't
-  // beat Discord with three REST calls every 5-second polling tick.
-  // On a Discord hiccup the cache serves last-known-good, which keeps
-  // the Raid-Planer card visible instead of going blank.
-  let channelMirror: DashboardData["channelMirror"] = [];
-  let allVoiceChannels: DashboardData["allVoiceChannels"] = [];
-  let commanderRoles: DashboardData["commanderRoles"] = [];
-  if (oauth) {
-    const [channels, roles, voiceRows] = await Promise.all([
-      getCachedChannels(guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN),
-      getCachedRoles(guildId, oauth.DISCORD_RDOCRTC_BOT_TOKEN),
-      getPrisma().userVoiceState.findMany({ where: { guildId } }),
-    ]);
-    if (channels.length > 0) {
-      // Voice channels only (type 2). Stage channels (13) excluded —
-      // moving members into a Stage channel has extra speaker/audience
-      // semantics we don't surface.
-      const voiceChannels = channels.filter((c) => c.type === 2);
-      allVoiceChannels = voiceChannels.map((c) => ({
-        channelId: c.id,
-        channelName: c.name,
-      }));
-      const allowedSet = new Set(cfg?.allowedVoiceChannelIds ?? []);
-      const allowedVoice = voiceChannels.filter((c) => allowedSet.has(c.id));
-      const membersByChannel = new Map<
-        string,
-        DashboardData["channelMirror"][number]["members"]
-      >();
-      for (const ch of allowedVoice) {
-        membersByChannel.set(ch.id, []);
-      }
-      for (const row of voiceRows) {
-        if (!row.channelId) continue;
-        const bucket = membersByChannel.get(row.channelId);
-        if (!bucket) continue; // not an allowed channel
-        const info = memberInfo.get(row.userId);
-        bucket.push({
-          userId: row.userId,
-          displayName: info?.displayName ?? row.userId,
-          // Only the role-ids that the Raid-Planer cares about, so the
-          // client can render "remove RDOC-CC" buttons only when the
-          // user actually has it.
-          currentCommanderRoleIds: info
-            ? Array.from(info.roleIds).filter((r) => commanderRoleIds.has(r))
-            : [],
-          isBot: info?.isBot ?? false,
-        });
-      }
-      channelMirror = allowedVoice.map((c) => ({
-        channelId: c.id,
-        channelName: c.name,
-        members: membersByChannel.get(c.id) ?? [],
-      }));
-    }
-    if (roles.length > 0 && commanderRoleIds.size > 0) {
-      // Whitelist: only the commander roles configured via /admin/config.
-      // The Raid-Planer's role-assign menu shows ONLY these — adding
-      // arbitrary other roles isn't a workflow we expose.
-      commanderRoles = roles
-        .filter((r) => commanderRoleIds.has(r.id))
-        .map((r) => ({ roleId: r.id, roleName: r.name }));
-    }
-  }
-
-  return {
-    guildId,
-    guildName: guildInfo?.name ?? null,
-    bridgeOk: true,
-    botOk: guildInfo !== null,
-    livekitOk,
-    activeCommanders: snapshot.map((c) => ({
-      userId: c.userId,
-      displayName: nameByUserId.get(c.userId),
-      speaking: c.speaking,
-    })),
-    commanderRoleMembers,
-    enabled: cfg?.enabled ?? false,
-    channelMirror,
-    allVoiceChannels,
-    commanderRoles,
-    // Indicator role for the green/red name colour in Raid-Planer.
-    // First entry in commanderRoleIds wins; admins re-order the
-    // textarea in Konfig to pick which role lights up the names.
-    ...(cfg?.commanderRoleIds[0]
-      ? { primaryCommanderRoleId: cfg.commanderRoleIds[0] }
-      : {}),
-  };
-}
+// Dashboard / Raid-Planer data loader removed 2026-06-02 along with the native
+// operation pages (Dashboard/Raid-Planer/Konfig). Those surfaces moved to
+// Fleetplanner. The bridge's live state is still exposed via the WS protocol,
+// /internal/fleet/* M2M API, and the monitoring/audit diagnostic pages.

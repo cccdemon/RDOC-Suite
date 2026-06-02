@@ -74,11 +74,11 @@ async function startRelay(cfg: Config): Promise<void> {
   console.log(`[Startup] guild=${merged.discord.guildId} bots=${merged.discord.bots.length} room=${merged.livekit.relayRoomName}`);
 
   const nextBots = new BotManager();
-  const nextSubscriber = new LivekitSubscriber((pcm) => {
+  const nextSubscriber = new LivekitSubscriber((pcm, speakerUserId) => {
     framesReceived++;
     bytesReceived += pcm.byteLength;
     lastAudioAt = Date.now();
-    nextBots.pushPcm(pcm);
+    nextBots.pushPcm(pcm, speakerUserId);
   });
 
   try {

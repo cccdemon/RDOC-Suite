@@ -4,6 +4,8 @@ import { getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import { discordUserIdForFleetplannerUser } from "./discord.js";
 import { missionVoiceAccessUsers } from "./missionCommanders.js";
+import { syncFleetplannerRelayBots } from "./relayBots.js";
+import { cleanupOperationVoiceChannels, launchOperationVoiceChannels } from "./voiceBots.js";
 
 type Logger = { info: (msg: string) => void; error: (e: unknown, msg: string) => void };
 
@@ -168,6 +170,12 @@ export async function openMissionVoiceSession(operationId: string): Promise<void
   if (grantFailed > 0) {
     console.warn(`[voiceSession] openMissionVoiceSession op ${operationId}: ${granted} role grant(s) ok, ${grantFailed} failed — Discord voice permissions may be incomplete`);
   }
+
+  try {
+    await launchOperationVoiceChannels(operationId);
+  } catch (err) {
+    console.warn(`[voiceSession] openMissionVoiceSession op ${operationId}: relay bot channel prep failed (non-fatal): ${String(err)}`);
+  }
 }
 
 export async function setMissionGlobalVoiceRole(
@@ -219,6 +227,15 @@ export async function closeMissionVoiceSession(operationId: string): Promise<voi
   if (revokeFailed > 0) {
     console.warn(`[voiceSession] closeMissionVoiceSession op ${operationId}: ${revoked} role revoke(s) ok, ${revokeFailed} failed`);
   }
+
+  try {
+    await cleanupOperationVoiceChannels(operationId);
+  } catch (err) {
+    console.warn(`[voiceSession] closeMissionVoiceSession op ${operationId}: relay bot channel cleanup failed (non-fatal): ${String(err)}`);
+  }
+  await syncFleetplannerRelayBots(op.guildId).catch((err) =>
+    console.warn(`[voiceSession] closeMissionVoiceSession op ${operationId}: relay bot config sync failed (non-fatal): ${String(err)}`),
+  );
 }
 
 // ── Stale session cleanup scheduler ────────────────────────────────

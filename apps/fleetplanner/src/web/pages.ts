@@ -4999,12 +4999,16 @@ export function bridgeDiscordVoicePage(opts: {
   channels: Array<{ id: string; name: string }>;
   roles: Array<{ id: string; name: string }>;
   members: Array<{ userId: string; displayName: string; channelId: string | null }>;
+  /** Allowed (managed) voice channels in current Discord display order. */
+  allowedChannels?: Array<{ id: string; name: string }>;
   offline?: boolean;
   error?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
   const channelName = new Map(opts.channels.map((c) => [c.id, c.name]));
+  const allowedChannels = opts.allowedChannels ?? [];
+  const orderCsv = allowedChannels.map((c) => c.id).join(",");
 
   const channelOptions = (selected: string | null): SafeHtml =>
     html` <option value="" ${selected === null ? safe("selected") : ""}>— disconnect —</option>
@@ -5092,9 +5096,74 @@ export function bridgeDiscordVoicePage(opts: {
             </table>
           </div>`}
       <p class="text-dim text-sm" style="margin-top:1rem">
-        Server-rendered snapshot — reload the page to refresh. Live drag-drop stays in the bridge
-        admin UI.
+        Server-rendered snapshot — reload the page to refresh.
       </p>
+    </div>
+    <div class="section">
+      <div class="section-title">Channel order (${String(allowedChannels.length)})</div>
+      ${allowedChannels.length < 2
+        ? html`<p class="text-dim">
+            Need at least two allowed voice channels to reorder. Configure them under
+            <a href="${bp}/admin/bridge/${opts.guildId}/config">guild config</a>.
+          </p>`
+        : html`<table class="user-table">
+            <tbody>
+              ${allowedChannels.map(
+                (c, idx) => html`<tr>
+                  <td class="text-mono">${String(idx + 1)}</td>
+                  <td>${c.name}</td>
+                  <td style="display:flex;gap:.5rem">
+                    <form method="post" action="${bp}/admin/bridge/${opts.guildId}/discord-voice/reorder">
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="ordered" value="${orderCsv}" />
+                      <input type="hidden" name="channelId" value="${c.id}" />
+                      <button type="submit" name="dir" value="up" class="btn btn-sm btn-ghost" ${idx === 0 ? safe("disabled") : ""}>▲</button>
+                      <button type="submit" name="dir" value="down" class="btn btn-sm btn-ghost" ${idx === allowedChannels.length - 1 ? safe("disabled") : ""}>▼</button>
+                    </form>
+                  </td>
+                </tr>`,
+              )}
+            </tbody>
+          </table>`}
+    </div>
+    <div class="section">
+      <div class="section-title">Strategy channel</div>
+      <p class="text-dim text-sm">
+        Create a temporary voice channel and pull the selected members in. It is auto-deleted after
+        15 minutes idle. Only members currently in a voice channel can be pulled (Discord rejects
+        moving users who aren't in voice).
+      </p>
+      ${opts.members.length === 0
+        ? html`<p class="text-dim">No members in voice to pull.</p>`
+        : html`<form
+            method="post"
+            action="${bp}/admin/bridge/${opts.guildId}/discord-voice/strategy"
+            style="display:flex;flex-direction:column;gap:.75rem;max-width:32rem"
+          >
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <input
+              type="text"
+              name="name"
+              placeholder="Strategy channel name"
+              maxlength="100"
+              required
+              style="width:100%"
+            />
+            <div style="display:flex;flex-direction:column;gap:.25rem">
+              ${opts.members.map(
+                (m) => html`<label style="display:flex;gap:.5rem;align-items:center">
+                  <input type="checkbox" name="userIds" value="${m.userId}" />
+                  ${m.displayName}
+                  <span class="text-dim text-sm">
+                    ${m.channelId ? (channelName.get(m.channelId) ?? m.channelId) : safe("—")}
+                  </span>
+                </label>`,
+              )}
+            </div>
+            <button type="submit" class="btn btn-sm btn-green" style="align-self:flex-start">
+              Create &amp; pull in
+            </button>
+          </form>`}
     </div>`;
 
   return layout({
@@ -6079,7 +6148,7 @@ export function guildSettingsPage(opts: {
                 <span style="opacity:.65">(granted to mission commanders — enables Companion PTT into the commander channel)</span>
                 <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
               </label>
-              <label class="text-sm text-dim">Global Voice role ID
+              <label class="text-sm text-dim">Relay Voice role ID
                 <span style="opacity:.65">(granted only to commanders with Global Voice enabled — gates Discord relay bot access)</span>
                 <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
               </label>

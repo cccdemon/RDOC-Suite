@@ -31,3 +31,21 @@ await getPrisma().$executeRawUnsafe(`
     "updatedById" TEXT
   )
 `);
+
+await getPrisma().$executeRawUnsafe(`
+  CREATE TABLE IF NOT EXISTS "RelayBotsConfig" (
+    "guildId" TEXT NOT NULL PRIMARY KEY,
+    "livekitUrl" TEXT NOT NULL DEFAULT '',
+    "livekitApiKey" TEXT NOT NULL DEFAULT '',
+    "livekitApiSecret" TEXT NOT NULL DEFAULT '',
+    "roomName" TEXT NOT NULL DEFAULT 'voice-relay',
+    "botsJson" TEXT NOT NULL DEFAULT '[]',
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedById" TEXT
+  )
+`);
+
+await getPrisma().$executeRawUnsafe(`
+  CREATE UNIQUE INDEX IF NOT EXISTS "RelayBotsConfig_guildId_key"
+  ON "RelayBotsConfig"("guildId")
+`);

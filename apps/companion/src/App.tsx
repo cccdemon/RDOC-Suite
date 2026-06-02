@@ -105,6 +105,8 @@ type AppState = {
   missionOpTitle: string | null;
   /** commanderRoom delivered by the backend for this user? */
   missionHasCommander: boolean;
+  /** relayRoom delivered by the backend for this user? */
+  missionHasRelay: boolean;
   /** missionCommanderRef connection status. */
   commanderStatus: FleetStatus;
   commanderPttActive: boolean;
@@ -152,6 +154,7 @@ const INITIAL: AppState = {
   missionActive: false,
   missionOpTitle: null,
   missionHasCommander: false,
+  missionHasRelay: false,
   commanderStatus: "idle",
   commanderPttActive: false,
   commanderParticipants: 0,
@@ -186,6 +189,7 @@ export function App(): JSX.Element {
   // Mission voice: commander room only (global is handled via the relay path).
   const missionCommanderRef = useRef<FleetAudio | null>(null);
   const currentMissionCommanderRoomRef = useRef<string | null>(null);
+  const currentMissionRelayRoomRef = useRef<string | null>(null);
   // The opId this mission link joined. Pinned on first poll so a mission
   // close/switch is detected (and ends the mission) instead of silently
   // hopping the user onto the next active op.
@@ -774,7 +778,8 @@ export function App(): JSX.Element {
   // Relay (PTT-2 / GLOBAL) hotkey window-level listener (keyboard only).
   useEffect(() => {
     const hotkey = state.globalHotkey;
-    if (!hotkey || isMouseHotkey(hotkey) || !state.suiteCapabilities.canUseRelay) return;
+    const relayAvailable = state.missionActive && state.missionHasRelay && state.missionDiscordVoiceOk;
+    if (!hotkey || isMouseHotkey(hotkey) || !relayAvailable) return;
     const onDown = (e: KeyboardEvent): void => {
       if (e.repeat) return;
       const formatted = formatKeyboardAccelerator(e);
@@ -795,29 +800,15 @@ export function App(): JSX.Element {
       window.removeEventListener("keydown", onDown, true);
       window.removeEventListener("keyup", onUp, true);
     };
-  }, [state.globalHotkey, state.suiteCapabilities.canUseRelay, onRelayPttEvent]);
+  }, [state.globalHotkey, state.missionActive, state.missionHasRelay, state.missionDiscordVoiceOk, onRelayPttEvent]);
 
-  // Connect / disconnect relay audio when canUseRelay changes.
+  // Bridge Relay is not used by the target architecture. Relay audio is
+  // mission-scoped and connected by the mission polling effect.
   useEffect(() => {
-    // guildId is required: the bridge now scopes relay tokens per guild
-    // and 400s without it. Skip connecting until a guild is selected,
-    // otherwise the relay flips to "error" for a signed-in-but-no-guild user.
-    if (
-      !state.suiteCapabilities.canUseRelay ||
-      !state.token ||
-      !state.bridgeUrl ||
-      !state.guildId
-    ) {
+    if (!state.missionActive) {
       void relayRef.current?.disconnect();
-      return;
     }
-    if (!relayRef.current) {
-      const r = new RelayAudio();
-      r.setStatusListener((status) => setState((s) => ({ ...s, relayStatus: status })));
-      relayRef.current = r;
-    }
-    void relayRef.current.connect(state.bridgeUrl, state.token, state.guildId);
-  }, [state.suiteCapabilities.canUseRelay, state.token, state.bridgeUrl, state.guildId]);
+  }, [state.missionActive]);
 
   // ── Mission voice PTT (commander room = PTT-1 in mission mode) ────────
   const onCommanderPtt = useCallback((pressed: boolean) => {
@@ -834,7 +825,9 @@ export function App(): JSX.Element {
   // ── Mission disconnect ───────────────────────────────────────────────
   const onMissionDisconnect = useCallback(async () => {
     await missionCommanderRef.current?.disconnect();
+    await relayRef.current?.disconnect();
     currentMissionCommanderRoomRef.current = null;
+    currentMissionRelayRoomRef.current = null;
     missionOpIdRef.current = null;
     await clearMissionConfig();
     setState((s) => ({
@@ -842,6 +835,7 @@ export function App(): JSX.Element {
       missionActive: false,
       missionOpTitle: null,
       missionHasCommander: false,
+      missionHasRelay: false,
       commanderStatus: "idle",
       commanderPttActive: false,
       commanderParticipants: 0,
@@ -927,6 +921,7 @@ export function App(): JSX.Element {
         livekitUrl: string;
         discordVoice?: MissionDiscordVoice;
         commanderRoom: MissionRoom | null;
+        relayRoom: MissionRoom | null;
       };
     };
 
@@ -952,7 +947,9 @@ export function App(): JSX.Element {
           // just waiting for the linked op to open; keep polling silently.
           if (pinnedOpId !== null) {
             await missionCommanderRef.current?.disconnect();
+            await relayRef.current?.disconnect();
             currentMissionCommanderRoomRef.current = null;
+            currentMissionRelayRoomRef.current = null;
             missionOpIdRef.current = null;
             // Drop the token so polling stops — re-joining requires a fresh
             // mission link. Authorized users fall back to bridge mode (the
@@ -963,8 +960,10 @@ export function App(): JSX.Element {
               missionActive: false,
               missionOpTitle: null,
               missionHasCommander: false,
+              missionHasRelay: false,
               commanderStatus: "idle",
               commanderPttActive: false,
+              relayPttActive: false,
               commanderParticipants: 0,
               missionToken: null,
               missionUrl: null,
@@ -977,7 +976,7 @@ export function App(): JSX.Element {
         }
         if (!data.op) return; // narrowing — handled above
 
-        const { opId, opTitle, livekitUrl, commanderRoom, discordVoice } = data.op;
+        const { opId, opTitle, livekitUrl, commanderRoom, relayRoom, discordVoice } = data.op;
         const discordVoiceOk = discordVoice?.ok ?? true;
         const expectedChannelName = discordVoice?.expectedChannel?.name ?? null;
         // Pin the op on first successful poll so later polls can detect a
@@ -1013,11 +1012,33 @@ export function App(): JSX.Element {
           currentMissionCommanderRoomRef.current = null;
         }
 
+        // Relay room (PTT-2 / GLOBAL) is mission-scoped. It is not the Bridge
+        // relay capability; the backend only returns this room for users with
+        // mission Relay Voice permission.
+        if (discordVoiceOk && relayRoom) {
+          if (
+            currentMissionRelayRoomRef.current !== relayRoom.room ||
+            relayRef.current?.getStatus() === "idle"
+          ) {
+            if (!relayRef.current) {
+              const r = new RelayAudio();
+              r.setStatusListener((status) => setState((s) => ({ ...s, relayStatus: status })));
+              relayRef.current = r;
+            }
+            await relayRef.current.connectWithToken(livekitUrl, relayRoom.token);
+            currentMissionRelayRoomRef.current = relayRoom.room;
+          }
+        } else if (currentMissionRelayRoomRef.current !== null || relayRef.current?.getStatus() !== "idle") {
+          await relayRef.current?.disconnect();
+          currentMissionRelayRoomRef.current = null;
+        }
+
         setState((s) => ({
           ...s,
           missionActive: true,
           missionOpTitle: opTitle,
           missionHasCommander: Boolean(discordVoiceOk && commanderRoom),
+          missionHasRelay: Boolean(discordVoiceOk && relayRoom),
           missionEnded: false,
           missionDiscordVoiceOk: discordVoiceOk,
           missionExpectedChannelName: expectedChannelName,
@@ -1213,7 +1234,7 @@ export function App(): JSX.Element {
   // ── Voice routing readout ──────────────────────────────────────────
   // LOCAL = PTT-1 target: the mission commander room when a mission with a
   // commander room is active, otherwise the session/guild bridge room.
-  // GLOBAL = PTT-2 target: the Discord relay (independent of mission).
+  // GLOBAL = PTT-2 target: mission-scoped Relay Voice.
   const missionOwnsLocal = state.missionActive && state.missionHasCommander;
   const localRoomLabel = missionOwnsLocal
     ? `Commander · ${state.missionOpTitle ?? "Mission"}`
@@ -1224,7 +1245,7 @@ export function App(): JSX.Element {
     ? state.commanderStatus === "connected"
     : state.audioStatus === "connected";
   const localSpeaking = missionOwnsLocal ? state.commanderPttActive : state.pttActive;
-  const relayAvailable = state.suiteCapabilities.canUseRelay;
+  const relayAvailable = state.missionActive && state.missionHasRelay && state.missionDiscordVoiceOk;
   const globalConnected = state.relayStatus === "connected";
   const globalSpeaking = state.relayPttActive;
   const routingTone = (connected: boolean, speaking: boolean): string =>
@@ -1292,7 +1313,7 @@ export function App(): JSX.Element {
               SESSION VERLASSEN
             </button>
           ) : null}
-          {state.suiteCapabilities.canUseRelay ? (
+          {relayAvailable ? (
             <button
               type="button"
               className={`cc-btn ${state.relayPttActive ? "green" : state.relayStatus === "connected" ? "cyan" : "ghost"} sm`}
@@ -1303,7 +1324,7 @@ export function App(): JSX.Element {
               onMouseUp={() =>
                 onRelayPttEvent({ state: "released", accelerator: state.globalHotkey })
               }
-              disabled={state.missionActive && !state.missionDiscordVoiceOk}
+              disabled={!relayAvailable}
             >
               <Icon.radio size={12} />
               {state.relayPttActive ? "RELAY AKTIV" : "VOICE TO ALL"}
@@ -1459,7 +1480,7 @@ export function App(): JSX.Element {
             onDisconnect={() => void onMissionDisconnect()}
             localHotkey={state.localHotkey}
             globalHotkey={state.globalHotkey}
-            relayAvailable={state.suiteCapabilities.canUseRelay}
+            relayAvailable={relayAvailable}
             discordVoiceOk={state.missionDiscordVoiceOk}
             expectedChannelName={state.missionExpectedChannelName}
           />
@@ -1647,7 +1668,7 @@ export function App(): JSX.Element {
             duckingEnabled: state.duckingEnabled,
             duckingTargetVolumePct: state.duckingTargetVolumePct,
           }}
-          canUseRelay={state.suiteCapabilities.canUseRelay}
+          canUseRelay={relayAvailable}
           onSave={onSettingsSave}
           onClose={() => setShowSettings(false)}
         />

@@ -2,6 +2,9 @@
 
 Date: 2026-06-02
 
+Authoritative architecture reference: [companion-voice-architecture.md](companion-voice-architecture.md).
+If this plan conflicts with that architecture file, the architecture file wins.
+
 ## Goal
 
 The Companion app supports operation-scoped mission voice. Users receive a mission-scoped configuration link when the operation starts, join the correct Discord voice channel first, and then use Companion for LiveKit commander voice and relay-bot transmission according to their mission permissions.
@@ -106,16 +109,13 @@ The channel name is based on the assigned squad/mission group name. Duplicate sq
 
 ## Voice Model
 
-The Companion app has two PTT paths:
+The Companion app has three modes:
 
-- Local/Commander voice: operation-scoped LiveKit commander room.
-- Global/Relay voice: second PTT sends to the relay bots, which then transmit into their assigned Discord channels.
+- Bridge Mode: no active mission; gated by Raumdock role `1511124797445247096` on guild `1431307397842079777`.
+- Commander Mode: mission command net; eligible Captains/Commanders/Fleetmanagers receive temporary mission role `1510192642997227602`.
+- Relay Mode: second PTT to RelayBots; eligible mission users receive temporary mission role `1510192451808133210`.
 
-The second PTT is available only to users with the appropriate mission permission:
-
-- Operation leaders.
-- FleetCommander operation role.
-- Commanders explicitly assigned in the Commanders tab.
+Commander Mode automatically owns LOCAL and suspends Bridge Mode. Relay Mode is additional to Commander Mode and uses the second PTT path.
 
 ## Discord Preconditions
 
