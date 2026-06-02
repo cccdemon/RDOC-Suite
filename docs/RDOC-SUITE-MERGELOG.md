@@ -31,9 +31,16 @@ Authoritative doc: `docs/companion-voice-architecture.md`.
 ## Completed Step - 2026-06-02: Fleetplanner Mobile-Responsive
 
 `apps/fleetplanner/src/web/render.ts` CSS + HTML:
-- Nav: `overflow-x: auto` + nav-username span für hide-on-mobile
-- Neuer `@media (max-width: 900px)` Breakpoint: op-dashboard, opv2-grid, opv2-hero auf 1fr
-- Mobile (680px): Touch-Targets ≥44px, table horizontal-scroll, seat-assign min-width fix, page-title kleiner, form-actions flex-wrap
+- Nav: `overflow-x: auto` (Basis-Regel, alle Breiten) + nav-username span hide-on-mobile
+- Neuer `@media (max-width: 900px)`: op-dashboard, opv2-grid, opv2-hero auf 1fr; table horizontal-scroll; detail-row flex-wrap + strong overflow-wrap
+- Mobile (680px): Touch-Targets ≥44px, seat-assign min-width fix, page-title kleiner, form-actions flex-wrap
+
+Getestet mit headless Chromium (playwright) Harness aus der echten CSS, Viewports 375/430/820px:
+horizontal-overflow-Check + Screenshots. 3 echte Bugs gefunden+gefixt:
+1. `.detail-row strong` (lange Usernames) sprengte Viewport bei 375px (docW 410>375)
+2. `.nav` Overflow bei 681–1120px (overflow-x war nur ≤680) → Basis-Regel
+3. Tables sprengten Card/Page bei 681–900px → table-scroll von ≤680 auf ≤900 hochgezogen
+Ergebnis: kein horizontal-overflow auf allen 3 Viewports.
 
 ## Queued / Planned Step - 2026-06-02: captainRoleId entfernen
 

@@ -241,7 +241,12 @@ a:hover { color: #fff; }
   font-family: var(--font-mono);
   font-size: 0.8rem;
   letter-spacing: 0.04em;
+  /* Horizontal scroll instead of pushing the page wider than the viewport
+     when links + user block don't fit (tablet / mid widths). */
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.nav::-webkit-scrollbar { display: none; }
 .nav-brand {
   color: var(--cyan);
   font-weight: bold;
@@ -337,6 +342,11 @@ a:hover { color: #fff; }
   .opv2-grid { grid-template-columns: 1fr; }
   .opv2-hero { grid-template-columns: 1fr; }
   .opv2-hero-mission { min-height: 10rem; }
+  /* Tables scroll inside their card instead of widening the page. */
+  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  /* Long usernames/values must wrap, not push past the viewport. */
+  .detail-row { flex-wrap: wrap; }
+  .detail-row strong { text-align: left; min-width: 0; overflow-wrap: anywhere; }
 }
 .nav-user {
   display: flex; align-items: center; gap: 0.6rem;
@@ -1483,8 +1493,6 @@ select option { background: var(--bg3); }
   .nav a { padding: 0.65rem 0.5rem; font-size: 0.75rem; white-space: nowrap; }
   .nav-username { display: none; }
   .btn-link { padding: 0.65rem 0.55rem; font-size: 0.75rem; }
-  /* Tables: horizontal scroll */
-  table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
   /* Touch targets ≥44px */
   .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
   .btn-sm { min-height: 36px; }

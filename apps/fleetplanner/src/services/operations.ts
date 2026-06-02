@@ -104,7 +104,7 @@ export async function listOperations(guildId: string, includePast = false) {
     },
     orderBy: { scheduledAt: "asc" },
     include: {
-      guild: { select: { id: true, name: true, iconHash: true } },
+      guild: { select: { id: true, name: true, iconHash: true, timezone: true } },
       createdBy: true,
       leaders: { include: { user: true } },
       units: { select: { id: true, status: true } },
@@ -127,7 +127,7 @@ export async function listPublicOperations(includePast = false) {
     },
     orderBy: { scheduledAt: "asc" },
     include: {
-      guild: { select: { id: true, name: true, iconHash: true } },
+      guild: { select: { id: true, name: true, iconHash: true, timezone: true } },
       createdBy: true,
       leaders: { include: { user: true } },
       units: { select: { id: true, status: true } },
@@ -153,7 +153,7 @@ export async function listPartnerOperations(guildId: string, includePast = false
     },
     orderBy: { scheduledAt: "asc" },
     include: {
-      guild: { select: { id: true, name: true, iconHash: true } },
+      guild: { select: { id: true, name: true, iconHash: true, timezone: true } },
       createdBy: true,
       leaders: { include: { user: true } },
       units: { select: { id: true, status: true } },
@@ -172,7 +172,7 @@ export async function listAllUserOperations(guildIds: string[], includePast = fa
     },
     orderBy: { scheduledAt: "asc" },
     include: {
-      guild: { select: { id: true, name: true, iconHash: true } },
+      guild: { select: { id: true, name: true, iconHash: true, timezone: true } },
       createdBy: true,
       leaders: { include: { user: true } },
       units: { select: { id: true, status: true } },

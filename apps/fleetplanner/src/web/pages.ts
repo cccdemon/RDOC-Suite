@@ -256,7 +256,7 @@ type OpListItem = {
   opType: string;
   scheduledAt: Date;
   status: string;
-  guild: { id: string; name: string; iconHash: string | null };
+  guild: { id: string; name: string; iconHash: string | null; timezone?: string | null };
   createdBy: User;
   leaders: { user: User }[];
   units: { id: string; status: string }[];
