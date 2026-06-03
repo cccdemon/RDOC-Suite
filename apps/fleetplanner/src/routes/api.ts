@@ -12,6 +12,7 @@ import {
   unclaimSeat,
 } from "../services/units.js";
 import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
+import { setPrimaryUnit, clearPrimaryUnit } from "../services/primaryUnits.js";
 import {
   discordUserIdForFleetplannerUser,
   createScheduledEvent,
@@ -1368,6 +1369,69 @@ export async function apiRoutes(app: FastifyInstance) {
         opReturnUrl(req.params.id, req.body, "ok:Leader+removed.", "admin"),
         302,
       );
+    },
+  );
+
+  // ── Primary voice unit (multi-position users) ────────────────────────
+  // A user assigned to 2+ units picks (or a leader assigns) which unit is their
+  // main Discord voice channel. Self-service for the user themselves; leaders
+  // (fleetoperator or an OperationLeader) may set it for anyone. Empty unitId
+  // clears the choice → system default.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/primary-unit",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const targetUserId = req.body.userId?.trim();
+      const unitId = req.body.unitId?.trim() ?? "";
+      if (!targetUserId)
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:userId+required", "fleet"),
+          302,
+        );
+
+      // Authorize: self, or a leader (fleetoperator / OperationLeader).
+      if (targetUserId !== ctx.user.id) {
+        const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id);
+        const isLeader =
+          opRole === "fleetoperator" ||
+          !!(await prisma.operationLeader.findUnique({
+            where: { operationId_userId: { operationId: req.params.id, userId: ctx.user.id } },
+            select: { id: true },
+          }));
+        if (!isLeader)
+          return reply.redirect(
+            opReturnUrl(req.params.id, req.body, "error:Forbidden", "fleet"),
+            302,
+          );
+      } else {
+        // Self must at least be a member of the op's guild.
+        const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id);
+        if (!opRole)
+          return reply.redirect(
+            opReturnUrl(req.params.id, req.body, "error:Forbidden", "fleet"),
+            302,
+          );
+      }
+
+      try {
+        if (unitId) {
+          await setPrimaryUnit(req.params.id, targetUserId, unitId, ctx.user.id);
+        } else {
+          await clearPrimaryUnit(req.params.id, targetUserId);
+        }
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "ok:Primary+channel+updated.", "fleet"),
+          302,
+        );
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Could not set primary channel";
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"),
+          302,
+        );
+      }
     },
   );
 

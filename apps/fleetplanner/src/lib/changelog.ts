@@ -13,6 +13,15 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-03",
+    title: "Primary voice channel & looser voice rules",
+    changes: [
+      "Members assigned to two or more units now get one main Discord voice channel they can choose themselves — or a mission leader assigns it (Fleet tab → Primary Voice Channel). Default is the FPS squad.",
+      "Global Radio: you now only need to be on the same Discord server — no specific voice channel required.",
+      "Command Net: you may sit in the event channel or any of the operation's unit voice channels, not just your own unit.",
+    ],
+  },
+  {
+    date: "2026-06-03",
     title: "Mission participant export",
     changes: [
       "Completed operations now show a Participants panel on the Overview tab listing everyone who took part — leaders, unit captains, seat-holders, and manually-added Command Net members.",

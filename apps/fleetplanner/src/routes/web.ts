@@ -63,6 +63,7 @@ import {
 import { closeMissionVoiceSession, hasVoicePermission } from "../services/voiceSession.js";
 import { listMissionCommanders } from "../services/missionCommanders.js";
 import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
+import { getMultiPositionAssignments } from "../services/primaryUnits.js";
 import { getActivePartnerGuildIds } from "../services/partnerships.js";
 import { bridgeConfigured } from "../services/bridge.js";
 import { cleanupOperationVoiceChannels } from "../services/voiceBots.js";
@@ -497,6 +498,8 @@ export async function webRoutes(app: FastifyInstance) {
     }
     // Participant roster — only surfaced once the op is completed.
     const participants = op.status === "completed" ? await getMissionParticipants(op.id) : null;
+    // Multi-position users (2+ units) + their primary-channel choice.
+    const primaryAssignments = await getMultiPositionAssignments(op.id);
     reply.header("Cache-Control", "no-store");
     htmlReply(
       reply,
@@ -526,6 +529,8 @@ export async function webRoutes(app: FastifyInstance) {
         canEditVisibility,
         joinInviteUrl,
         participants,
+        primaryAssignments,
+        canManagePrimary: canAssignSeats,
       }),
     );
   });

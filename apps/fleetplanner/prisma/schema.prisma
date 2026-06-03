@@ -29,6 +29,7 @@ model User {
   guildMemberships GuildMembership[]
   ownedGuilds      Guild[]                 @relation("GuildOwner")
   missionVoiceParticipations MissionVoiceParticipant[]
+  opPrimaryUnits   OpPrimaryUnit[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -290,6 +291,7 @@ model Operation {
   crewRequests             CrewAssignmentRequest[]
   voiceChannels            FleetVoiceChannel[]
   missionVoiceParticipants MissionVoiceParticipant[]
+  primaryUnits             OpPrimaryUnit[]
 }
 
 // Manually-added Command Net participants. Captains of accepted units and
@@ -385,6 +387,30 @@ model FleetUnit {
   requirement  CompositionRequirement? @relation(fields: [requirementId], references: [id])
   seats        SeatAssignment[]
   voiceChannel FleetVoiceChannel?
+  primaryForUsers OpPrimaryUnit[]
+}
+
+// A multi-position user (assigned to 2+ accepted units in an op) lives in only
+// ONE Discord voice channel. This records which unit is that user's PRIMARY (main)
+// channel — chosen by the user themselves or assigned by a mission leader. When
+// absent, the system default applies (prefer an FPS/ground squad, else the first
+// unit by createdAt). See services/primaryUnits.ts.
+model OpPrimaryUnit {
+  id          String   @id @default(cuid())
+  operationId String
+  userId      String
+  unitId      String
+  setByUserId String? // who set it (null = system default never persists; set on explicit choice)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit      FleetUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, userId])
+  @@index([operationId])
+  @@index([unitId])
 }
 
 model FleetVoiceChannel {

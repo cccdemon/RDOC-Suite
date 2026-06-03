@@ -9,6 +9,7 @@ import {
 import { bridgeConfigured, getBridgeVoiceStates } from "./bridge.js";
 import { syncFleetplannerRelayBots, syncOperationRelayBots } from "./relayBots.js";
 import { decryptSecret, encryptSecret } from "./secrets.js";
+import { resolvePrimaryUnits } from "./primaryUnits.js";
 
 const SNOWFLAKE = /^\d{16,25}$/;
 const VIEW_CHANNEL = 1n << 10n;
@@ -383,8 +384,6 @@ export async function moveOperationCrewToVoiceChannels(operationId: string): Pro
   skippedDiscordUsers: number;
   channels: number;
 }> {
-  // createdAt asc → the first unit a user belongs to is their PRIMARY unit.
-  // Matches userMissionVoiceChannels + launchOperationVoiceChannels ordering.
   const channels = await prisma.fleetVoiceChannel.findMany({
     where: { operationId },
     include: {
@@ -400,14 +399,28 @@ export async function moveOperationCrewToVoiceChannels(operationId: string): Pro
 
   // A user can be captain/seat in multiple units (e.g. ship captain + FPS squad
   // member). Discord allows only one voice channel, so move each user EXACTLY
-  // once, into their primary (first) unit's channel — deterministic, no
-  // "last move wins" race.
+  // once. The target unit is their resolved PRIMARY: an explicit self/leader
+  // choice, else the system default (FPS/ground squad preferred). Falls back to
+  // the first unit they appear in if no primary resolves to a channel.
   type Ch = (typeof channels)[number];
-  const primaryChannelByUser = new Map<string, Ch>();
+  const channelByUnitId = new Map<string, Ch>();
   for (const channel of channels) {
     if (!channel.voiceBot) {
       throw new Error(`Voice channel ${channel.channelId} has no assigned bot`);
     }
+    channelByUnitId.set(channel.unitId, channel);
+  }
+
+  const primaryUnitByUser = await resolvePrimaryUnits(operationId);
+  const primaryChannelByUser = new Map<string, Ch>();
+  // First honour the resolved primary unit when it has a channel.
+  for (const [userId, unitId] of primaryUnitByUser) {
+    const channel = channelByUnitId.get(unitId);
+    if (channel) primaryChannelByUser.set(userId, channel);
+  }
+  // Safety net: any user whose primary unit has no channel still gets moved into
+  // the first of their units that does (channels are createdAt-ordered).
+  for (const channel of channels) {
     const userIds = new Set<string>([channel.unit.captainId]);
     for (const seat of channel.unit.seats) {
       if (seat.userId) userIds.add(seat.userId);

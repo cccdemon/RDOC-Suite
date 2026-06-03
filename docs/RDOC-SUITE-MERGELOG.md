@@ -3,6 +3,22 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Primäre Voice-Unit wählbar (Multi-Position-User)
+
+Multi-Position-User (2+ akzeptierte Units) bekommen nur 1 Discord-Voice-Channel. Bisher: immer
+erste Unit (createdAt). Neu: User wählt selbst ODER Missionsleiter weist zu, welche Unit der
+Main-Channel ist. Default bei 2+ Units = FPS/Squad-Unit (statt nur erste).
+- Schema: neues Model `OpPrimaryUnit` (operationId+userId unique → unitId, setByUserId) +
+  Migration `20260603030000_op_primary_unit`. Back-Relations an User/Operation/FleetUnit.
+- `services/primaryUnits.ts`: `userUnitsByUser`, `defaultPrimaryUnit` (FPS bevorzugt),
+  `resolvePrimaryUnits`, `setPrimaryUnit`/`clearPrimaryUnit`, `getMultiPositionAssignments`.
+- `services/voiceBots.ts moveOperationCrewToVoiceChannels`: nutzt resolvePrimaryUnits statt
+  „erste Unit"; Fallback erste-mit-Channel.
+- `routes/api.ts`: `POST /api/ops/:id/primary-unit` (self ODER Leader; leeres unitId = clear).
+- UI `routes/web.ts`+`web/pages.ts`: Fleet-Tab Panel „Primary Voice Channel" — Dropdown pro
+  Multi-Position-User (Leader sieht alle, User nur sich); Auto-Option = Default.
+Deploy via Docker (Migration läuft per `migrate deploy` beim Container-Start).
+
 ## Queued / Planned Step - 2026-06-03: Channel-Restriction lockern (Global vs Command Net)
 
 Regel-Trennung der Discord-Voice-Gate im Mission-Mode:
