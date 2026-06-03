@@ -13,6 +13,21 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-03",
+    title: "Mission participant export",
+    changes: [
+      "Completed operations now show a Participants panel on the Overview tab listing everyone who took part — leaders, unit captains, seat-holders, and manually-added Command Net members.",
+      "Download the participant roster as a CSV (incl. Discord name/ID, roles, and units) from the completed op.",
+    ],
+  },
+  {
+    date: "2026-06-03",
+    title: "Fix: FPS squad members can command ships",
+    changes: [
+      "Fixed: a member assigned to an FPS squad could not also command a ship in the same operation (\"already assigned to a primary seat\"). FPS and a ship seat can now be held at the same time.",
+    ],
+  },
+  {
+    date: "2026-06-03",
     title: "How-to guide refreshed",
     changes: [
       "Updated the How-to page with the current role model: Superadmin, Fleetadmin, Captain, and Crew.",

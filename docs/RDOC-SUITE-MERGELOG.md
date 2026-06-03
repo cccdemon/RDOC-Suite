@@ -3,6 +3,28 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Mission Export — Teilnehmerliste nach Event-Ende
+
+Feature: nach `completed`-Op die Teilnehmer-Roster anzeigen + als CSV exportieren ("Wer hat
+teilgenommen"). Scope (User-Entscheidung): **zugewiesenes Roster** (keine echte Voice-Anwesenheit
+— wird nirgends persistiert), Ausgabe **On-Page-Panel + CSV-Download**.
+Roster-Quellen (unique pro User): Leaders (`OperationLeader.leaderRole`), Captains akzeptierter
+Units, besetzte aktive Seats akzeptierter Units, manuelle `MissionVoiceParticipant` (Command Net).
+- Neu: `services/participants.ts` → `getMissionParticipants(opId)` + `participantsToCsv()`.
+- `routes/web.ts`: `GET /ops/:id/participants.csv` (effectiveOpRole-gated), + im Op-Detail-Loader
+  Participants laden wenn `status==="completed"` und an detailPage durchreichen.
+- `web/pages.ts`: `participants?`-Feld in OpDetailPageOptions, Overview-Panel "Participants"
+  (nur wenn completed) mit CSV-Download-Button.
+- Test: `__tests__/services/participants.test.ts`.
+
+## Queued / Planned Step - 2026-06-03: Classic Op-Detail-Seite entfernt
+
+`?ui=classic` Op-Detail-Ansicht komplett raus — V2 ist einzige UI. Entfernt: `opDetailPage`
+(classic, ~1064 Zeilen), `opUiSwitch`-Nav-Toggle, alle `classicUrl`/"Classic UI"/"Classic Full
+Controls"/"Advanced ship search"-Links, `?ui=classic` Loader-Branch + Querystring-Typ,
+`.nav-ui-switch` CSS, jetzt tote Helfer `eventStatusLabel`/`discordAvatarUrl`.
+`routes/web.ts` rendert immer `opDetailPageV2`.
+
 ## Queued / Planned Step - 2026-06-03: Fix FPS-Squad blockt Schiffs-Command
 
 Bug: User in einer FPS-Squad kann kein Schiff commanden → `"Already assigned to a primary

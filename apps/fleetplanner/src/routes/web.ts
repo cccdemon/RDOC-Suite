@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 import { rawHtml } from "../web/pages.js";
 import {
   homePage,
-  opDetailPage,
   opDetailPageV2,
   opPublicPreviewPage,
   opFormPage,
@@ -63,6 +62,7 @@ import {
 } from "../services/discord.js";
 import { closeMissionVoiceSession, hasVoicePermission } from "../services/voiceSession.js";
 import { listMissionCommanders } from "../services/missionCommanders.js";
+import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
 import { getActivePartnerGuildIds } from "../services/partnerships.js";
 import { bridgeConfigured } from "../services/bridge.js";
 import { cleanupOperationVoiceChannels } from "../services/voiceBots.js";
@@ -312,7 +312,7 @@ export async function webRoutes(app: FastifyInstance) {
   // ── Operation detail ─────────────────────────────────────────────────
   app.get<{
     Params: { id: string };
-    Querystring: { flash?: string; viewAs?: string; ui?: string; tab?: string };
+    Querystring: { flash?: string; viewAs?: string; tab?: string };
   }>("/ops/:id", async (req, reply) => {
     const ctx = await optionalAuth(req);
     const op = await getOperation(req.params.id);
@@ -495,11 +495,12 @@ export async function webRoutes(app: FastifyInstance) {
     ) {
       voiceControl = await buildOpVoiceControl(op).catch(() => null);
     }
-    const detailPage = req.query.ui === "classic" ? opDetailPage : opDetailPageV2;
+    // Participant roster — only surfaced once the op is completed.
+    const participants = op.status === "completed" ? await getMissionParticipants(op.id) : null;
     reply.header("Cache-Control", "no-store");
     htmlReply(
       reply,
-      detailPage({
+      opDetailPageV2({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,
@@ -524,8 +525,33 @@ export async function webRoutes(app: FastifyInstance) {
         visibility: opVisibility ?? "private",
         canEditVisibility,
         joinInviteUrl,
+        participants,
       }),
     );
+  });
+
+  // ── Mission participant export (CSV) ──────────────────────────────────
+  // Any op member (effectiveOpRole != null) may download the roster of who
+  // took part. Available regardless of status, but the UI only links it once
+  // the op is completed.
+  app.get<{ Params: { id: string } }>("/ops/:id/participants.csv", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    if (!ctx) return reply.code(404).send("Not found");
+    const op = await prisma.operation.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, title: true },
+    });
+    if (!op) return reply.code(404).send("Not found");
+    const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+    if (!role) return reply.code(404).send("Not found");
+
+    const participants = await getMissionParticipants(op.id);
+    const csv = participantsToCsv(participants);
+    const slug = op.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "mission";
+    reply.header("Content-Type", "text/csv; charset=utf-8");
+    reply.header("Content-Disposition", `attachment; filename="${slug}-participants.csv"`);
+    reply.header("Cache-Control", "no-store");
+    return reply.send(csv);
   });
 
   // ── Change operation visibility (op leaders only) ─────────────────────
