@@ -6,7 +6,6 @@ import {
   moveGuildMemberToVoice,
   updateDiscordChannelName,
 } from "./discord.js";
-import { bridgeConfigured, getBridgeVoiceStates } from "./bridge.js";
 import { syncFleetplannerRelayBots, syncOperationRelayBots } from "./relayBots.js";
 import { decryptSecret, encryptSecret } from "./secrets.js";
 import { resolvePrimaryUnits } from "./primaryUnits.js";
@@ -317,48 +316,34 @@ export async function cleanupOperationVoiceChannels(operationId: string): Promis
   });
 
   let deleted = 0;
-  let disconnected = 0;
-  let skippedDiscordUsers = 0;
-  let skippedOccupied = 0;
+  const disconnected = 0;
+  const skippedDiscordUsers = 0;
+  // Kept in the return shape for the caller's flash message, but the op is over
+  // so we ALWAYS delete now — see below.
+  const skippedOccupied = 0;
   let skippedUnknown = 0;
 
-  const guildId = channels[0]?.guildId;
-  let occupiedChannelIds: Set<string> | null = null;
-  if (guildId && bridgeConfigured()) {
-    try {
-      const voice = await getBridgeVoiceStates(guildId);
-      if (!voice.offline) {
-        occupiedChannelIds = new Set(
-          voice.voiceStates
-            .filter((state) => Boolean(state.channelId))
-            .map((state) => state.channelId!),
-        );
-      }
-    } catch {
-      occupiedChannelIds = null;
-    }
-  }
-
+  // The operation is finished (this only runs on completed/cancelled) and each
+  // channel is owned by its relay bot, so delete unconditionally. The previous
+  // "skip if anyone is still connected / occupancy unknown" guard meant channels
+  // were never cleaned up when members lingered or the bridge couldn't be reached
+  // — exactly the post-op situation. Discord disconnects any stragglers on delete.
   for (const channel of channels) {
     if (!channel.voiceBot) {
       throw new Error(`Voice channel ${channel.channelId} has no assigned bot`);
     }
     const botToken = decryptVoiceBotToken(channel.voiceBot);
 
-    if (!occupiedChannelIds) {
-      skippedUnknown += 1;
-      continue;
+    try {
+      await deleteDiscordChannel({ channelId: channel.channelId, botToken });
+    } catch (err) {
+      // Channel already gone (manually deleted) → still clear our DB row below.
+      // Any other Discord error: count as unknown but don't abort the whole sweep.
+      const msg = err instanceof Error ? err.message : "";
+      if (!msg.includes("Unknown Channel") && !msg.includes("404")) {
+        skippedUnknown += 1;
+      }
     }
-
-    if (occupiedChannelIds.has(channel.channelId)) {
-      skippedOccupied += 1;
-      continue;
-    }
-
-    await deleteDiscordChannel({
-      channelId: channel.channelId,
-      botToken,
-    });
 
     await prisma.$transaction([
       prisma.fleetVoiceChannel.delete({ where: { id: channel.id } }),

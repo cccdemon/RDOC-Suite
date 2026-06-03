@@ -22,6 +22,17 @@ restriktiv, Duplicate-User in App. Logs (LiveKit) zeigen `voice-relay-bot-servic
    neuem identity-suffix zeigte User doppelt).
 Deploy: relay-bots + fleetplanner Container neu bauen; companion neue Version.
 
+**Nachtrag 2026-06-04 (Folge-Funde live):**
+4. **Ghost-Participants / „101 im Kanal" + Command Net stumm:** `fleetplanner livekit.ts
+   issueMissionVoiceToken` nutzte Identity `${userId}-${randomSuffix}` → jeder Reconnect = neuer
+   Participant, SFU evictet alte nie → Räume voll Zombies. Companion keyed Remote-Audio per userId →
+   stiller Ghost-Track überschrieb echten → niemand hörbar. Fix: stabile Identity (userId/relay-discordId),
+   neue Connection ersetzt alte. LiveKit-Container neu gestartet zum Ghost-Flush. Commit eb4baa0.
+5. **Bots löschen Channels nicht nach Op-Ende:** `voiceBots.ts cleanupOperationVoiceChannels` skippte
+   Löschung wenn Channel „occupied" ODER Bridge-Occupancy unbekannt → post-op (Leute lingern / Bridge-
+   Hiccup) wurde NIE gelöscht. Fix: Op ist vorbei → immer löschen (Discord trennt Nachzügler); Occupancy-
+   Guard + ungenutzte bridge-Imports raus.
+
 ## Queued / Planned Step - 2026-06-03: Primäre Voice-Unit wählbar (Multi-Position-User)
 
 Multi-Position-User (2+ akzeptierte Units) bekommen nur 1 Discord-Voice-Channel. Bisher: immer
