@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="740" height="74" viewBox="0 0 740 74" role="img" aria-labelledby="title desc">
   <title id="title">raumdock.org credits</title>
-  <desc id="desc">raumdock.org - made by xheadwigx &amp; justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos</desc>
+  <desc id="desc">raumdock.org - made by head87x &amp; justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos</desc>
   <defs>
     <linearGradient id="line" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0" stop-color="#00d4ff" stop-opacity="0" />
@@ -55,6 +55,6 @@
       lengthAdjust="spacingAndGlyphs"
       fill="#c8dce8"
       opacity="0.86"
-    >made by xheadwigx &amp; justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos</text>
+    >made by head87x &amp; justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos</text>
   </g>
 </svg>

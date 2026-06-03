@@ -1,6 +1,6 @@
 [package]
 name = "rdoc-squad-link"
-version = "0.5.8"
+version = "0.5.9"
 edition = "2021"
 description = "RDOC Squad Link — Discord cross-channel commander companion"
 authors = ["head87x"]

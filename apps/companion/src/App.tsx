@@ -1196,7 +1196,7 @@ export function App(): JSX.Element {
           <img
             className="cc-credit-stamp"
             src="/credits-stamp.svg"
-            alt="raumdock.org - made by xheadwigx & justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos"
+            alt="raumdock.org - made by head87x & justcallmedeimos - infrastructure powered by twitch.tv/justcallmedeimos"
           />
           {hasStoredToken ? (
             <button
@@ -1543,7 +1543,7 @@ export function App(): JSX.Element {
 
       <footer className="cc-window-footer">
         <span title={longVersion()}>RDOC SQUAD LINK · {shortVersion()}</span>
-        <span>made by @xheadwix&nbsp;&nbsp;//&nbsp;&nbsp;o7</span>
+        <span>made by @head87x&nbsp;&nbsp;//&nbsp;&nbsp;o7</span>
       </footer>
 
       {showSettings ? (
