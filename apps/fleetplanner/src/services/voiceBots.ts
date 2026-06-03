@@ -383,6 +383,8 @@ export async function moveOperationCrewToVoiceChannels(operationId: string): Pro
   skippedDiscordUsers: number;
   channels: number;
 }> {
+  // createdAt asc → the first unit a user belongs to is their PRIMARY unit.
+  // Matches userMissionVoiceChannels + launchOperationVoiceChannels ordering.
   const channels = await prisma.fleetVoiceChannel.findMany({
     where: { operationId },
     include: {
@@ -393,40 +395,51 @@ export async function moveOperationCrewToVoiceChannels(operationId: string): Pro
         },
       },
     },
+    orderBy: { createdAt: "asc" },
   });
+
+  // A user can be captain/seat in multiple units (e.g. ship captain + FPS squad
+  // member). Discord allows only one voice channel, so move each user EXACTLY
+  // once, into their primary (first) unit's channel — deterministic, no
+  // "last move wins" race.
+  type Ch = (typeof channels)[number];
+  const primaryChannelByUser = new Map<string, Ch>();
+  for (const channel of channels) {
+    if (!channel.voiceBot) {
+      throw new Error(`Voice channel ${channel.channelId} has no assigned bot`);
+    }
+    const userIds = new Set<string>([channel.unit.captainId]);
+    for (const seat of channel.unit.seats) {
+      if (seat.userId) userIds.add(seat.userId);
+    }
+    for (const userId of userIds) {
+      if (!primaryChannelByUser.has(userId)) primaryChannelByUser.set(userId, channel);
+    }
+  }
 
   let moved = 0;
   let notConnected = 0;
   let skippedDiscordUsers = 0;
 
-  for (const channel of channels) {
-    if (!channel.voiceBot) {
-      throw new Error(`Voice channel ${channel.channelId} has no assigned bot`);
-    }
+  for (const [userId, channel] of primaryChannelByUser) {
+    if (!channel.voiceBot) continue;
     const botToken = decryptVoiceBotToken(channel.voiceBot);
-    const userIds = new Set<string>([channel.unit.captainId]);
-    for (const seat of channel.unit.seats) {
-      if (seat.userId) userIds.add(seat.userId);
-    }
-
-    for (const userId of userIds) {
-      try {
-        const didMove = await moveGuildMemberToVoice({
-          guildId: channel.guildId,
-          userId: await discordUserIdForFleetplannerUser(userId),
-          channelId: channel.channelId,
-          botToken,
-        });
-        if (didMove) moved += 1;
-        else notConnected += 1;
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "";
-        if (msg.includes("has no linked Discord identity")) {
-          skippedDiscordUsers += 1;
-          continue;
-        }
-        throw err;
+    try {
+      const didMove = await moveGuildMemberToVoice({
+        guildId: channel.guildId,
+        userId: await discordUserIdForFleetplannerUser(userId),
+        channelId: channel.channelId,
+        botToken,
+      });
+      if (didMove) moved += 1;
+      else notConnected += 1;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("has no linked Discord identity")) {
+        skippedDiscordUsers += 1;
+        continue;
       }
+      throw err;
     }
   }
 

@@ -506,12 +506,38 @@ function joinInviteBanner(url: string | null | undefined): SafeHtml | string {
   </div>`;
 }
 
+/** User ids that appear in MORE THAN ONE accepted unit (captain or active seat).
+ *  Discord allows only one voice channel per person, so these users get exactly
+ *  one channel (their primary/first unit) — flagged in the UI so leaders see it. */
+function multiPositionUserIds(op: NonNullable<OpFull>): Set<string> {
+  const count = new Map<string, number>();
+  for (const unit of op.units) {
+    if (unit.status !== "accepted") continue;
+    const ids = new Set<string>([unit.captainId]);
+    for (const s of unit.seats) if (s.active && s.userId) ids.add(s.userId);
+    for (const id of ids) count.set(id, (count.get(id) ?? 0) + 1);
+  }
+  return new Set([...count.entries()].filter(([, n]) => n > 1).map(([id]) => id));
+}
+
+/** Gold flag shown next to a user who holds positions in multiple units. */
+function multiPosTag(userId: string | null | undefined, multiPos: Set<string>): SafeHtml | string {
+  if (!userId || !multiPos.has(userId)) return "";
+  return html`<span
+    class="tag tag-gold"
+    title="In mehreren Units — bekommt nur EINEN Voice-Channel (primäre/erste Unit). Kann sich im Discord frei zwischen seinen Missionskanälen bewegen."
+    style="margin-left:.35rem;font-size:.6rem"
+    >⚑ mehrfach</span
+  >`;
+}
+
 export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
   const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const realUser = opts.currentUser;
   const previewRoles = ["guest", "crew", "fleetoperator", "superadmin"];
+  const multiPos = multiPositionUserIds(op);
   const canPreview =
     !!realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
   const viewAsRole =
@@ -563,7 +589,7 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
         >
         <span class="seat-user ${claimed ? "" : "empty"}"
           >${claimed ? (seat.user?.username ?? "?") : "— open —"}</span
-        >
+        >${claimed ? multiPosTag(seat.userId, multiPos) : ""}
         ${!seat.active ? html`<span class="tag tag-dim">disabled</span>` : ""}
         ${canClaim
           ? html` <form method="post" action="${bp}/api/seats/${seat.id}/claim" class="inline">
@@ -677,7 +703,7 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
             </form>`
           : ""}
       </div>
-      <div class="unit-captain">Captain: ${unit.captain.username}</div>
+      <div class="unit-captain">Captain: ${unit.captain.username}${multiPosTag(unit.captainId, multiPos)}</div>
       ${unit.captainNote
         ? html`<div class="text-dim text-sm mb-1">Note: ${unit.captainNote}</div>`
         : ""}
@@ -1576,6 +1602,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const csrf = opts.csrfToken ?? "";
   const realUser = opts.currentUser;
   const previewRoles = ["guest", "crew", "fleetoperator", "superadmin"];
+  const multiPos = multiPositionUserIds(op);
   const canRealManage =
     !!realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
   const viewAsRole =
@@ -1677,7 +1704,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         <span>${seat.seatType}</span>
       </div>
       <div class="opv2-seat-user ${claimed ? "" : "empty"}">
-        ${claimed ? (seat.user?.username ?? "?") : "open"}
+        ${claimed ? (seat.user?.username ?? "?") : "open"}${claimed ? multiPosTag(seat.userId, multiPos) : ""}
       </div>
       <div class="opv2-seat-actions">
         ${!seat.active ? html`<span class="tag tag-dim">disabled</span>` : safe("")}
@@ -1938,7 +1965,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           <summary class="opv2-unit-summary">
             <div class="opv2-unit-main">
               <strong>${unitName(unit)}</strong>
-              <span>Captain: ${unit.captain.username}</span>
+              <span>Captain: ${unit.captain.username}${multiPosTag(unit.captainId, multiPos)}</span>
             </div>
             <div class="opv2-unit-facts">
               <span class="tag ${unit.unitType === "ship" ? "tag-cyan" : "tag-gold"}"

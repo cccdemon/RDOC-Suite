@@ -360,11 +360,15 @@ async function activeMissionOperationForToken(
   return participant ? op : null;
 }
 
-async function expectedMissionVoiceChannel(
+// All Discord voice channels a user belongs to in this op (captain or active
+// seat), ordered by unit createdAt — the FIRST is the user's primary channel.
+// A multi-position user (e.g. ship captain + FPS squad seat) gets several; the
+// gate accepts ANY of them so the user can move freely between their channels.
+async function userMissionVoiceChannels(
   operationId: string,
   userId: string,
-): Promise<{ id: string; name: string } | null> {
-  const unit = await prisma.fleetUnit.findFirst({
+): Promise<Array<{ id: string; name: string }>> {
+  const units = await prisma.fleetUnit.findMany({
     where: {
       operationId,
       status: "accepted",
@@ -381,19 +385,24 @@ async function expectedMissionVoiceChannel(
     },
     orderBy: { createdAt: "asc" },
   });
-  if (!unit?.voiceChannel) return null;
-  const fallbackName = unit.unitType === "ship" ? (unit.ship?.name ?? "Ship") : (unit.squadName ?? "Squad");
-  return {
-    id: unit.voiceChannel.channelId,
-    name: unit.voiceChannel.channelName || fallbackName,
-  };
+  const out: Array<{ id: string; name: string }> = [];
+  for (const unit of units) {
+    if (!unit.voiceChannel) continue;
+    const fallbackName =
+      unit.unitType === "ship" ? (unit.ship?.name ?? "Ship") : (unit.squadName ?? "Squad");
+    out.push({ id: unit.voiceChannel.channelId, name: unit.voiceChannel.channelName || fallbackName });
+  }
+  return out;
 }
 
 async function missionDiscordVoiceState(
   operation: { id: string; guildId: string; eventVoiceChannelId: string | null },
   userId: string,
 ): Promise<MissionDiscordVoiceState> {
-  const expected = (await expectedMissionVoiceChannel(operation.id, userId)) ??
+  const userChannels = await userMissionVoiceChannels(operation.id, userId);
+  // Primary channel (first unit) is shown in the guidance message; ALL of the
+  // user's unit channels are accepted by the gate (see allowedChannelIds below).
+  const expected = userChannels[0] ??
     (operation.eventVoiceChannelId
       ? { id: operation.eventVoiceChannelId, name: "Event Voice" }
       : null);
@@ -442,7 +451,9 @@ async function missionDiscordVoiceState(
     const channelNames = new Map(voice.channels.map((channel) => [channel.id, channel.name]));
     const currentId = voice.voiceStates.find((state) => state.userId === discordId)?.channelId ?? null;
     const current = currentId ? { id: currentId, name: channelNames.get(currentId) ?? currentId } : null;
-    const allowedChannelIds = new Set([expected.id]);
+    // Accept ANY of the user's unit channels (multi-position users) + the event
+    // channel — so they can move freely between their mission channels.
+    const allowedChannelIds = new Set(userChannels.map((c) => c.id));
     if (operation.eventVoiceChannelId) allowedChannelIds.add(operation.eventVoiceChannelId);
     if (!currentId) {
       return {

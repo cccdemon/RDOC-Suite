@@ -3,6 +3,18 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Multi-Position-User = 1 Voice-Channel (M1)
+
+Problem: ein User kann Captain (Schiff) UND Seat (FPS-Squad) sein → 2 Unit-Channels. Discord erlaubt
+nur 1 Voice-Channel. Aktueller Bug: `moveOperationCrewToVoiceChannels` schiebt ihn in mehrere
+(letzter gewinnt, unkontrolliert), `expectedMissionVoiceChannel` erwartet nur die erste Unit →
+`wrong_channel` → kein Token. Lösung M1 (erste-Zuordnung-Priorität):
+- voiceBots.ts: jeden User nur EINMAL bewegen, in primäre Unit (erste per createdAt); dedupe.
+- api.ts Companion-Gate: `allowedChannelIds` = ALLE Unit-Channels des Users + eventChannel
+  (User darf sich frei zwischen seinen Missionskanälen bewegen, Token bleibt gültig).
+- pages.ts: Multi-Position-User farblich markieren (in mehr als einer Unit/Seat).
+M2/M3 (Leader Drag&Drop / Prioritäts-Tab) = späteres Projekt nach dem Event.
+
 ## Queued / Planned Step - 2026-06-03: Seat-Assign über Partner-Guilds
 
 Folgeschritt zum Invite-Link: bei `partners`/`public`-Ops sollen im Seat-Assign-Dropdown
