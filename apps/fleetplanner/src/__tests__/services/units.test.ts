@@ -336,6 +336,28 @@ describe("claimSeat", () => {
       "Already assigned to a primary seat",
     );
   });
+
+  it("allows commanding a ship while holding an FPS-squad seat", async () => {
+    // claim a primary (ship) seat
+    db.seatAssignment.findUnique.mockResolvedValue(makeSeat({}));
+    // user already holds an FPS-squad seat (requirement.category "fps") in this op —
+    // fps is a secondary (ground-domain) category, must not block a primary ship seat
+    db.seatAssignment.findMany.mockResolvedValue([
+      {
+        fleetUnit: {
+          operationId: "op-1",
+          unitType: "squad",
+          requirement: { category: "fps" },
+          ship: null,
+        },
+      },
+    ]);
+    db.seatAssignment.updateMany.mockResolvedValue({ count: 1 });
+    await claimSeat("seat-1", "user-1");
+    expect(db.seatAssignment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { userId: "user-1" } }),
+    );
+  });
 });
 
 // ── assignSeat ────────────────────────────────────────────────────────────────

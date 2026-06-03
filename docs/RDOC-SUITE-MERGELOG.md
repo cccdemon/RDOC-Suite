@@ -3,6 +3,17 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Fix FPS-Squad blockt Schiffs-Command
+
+Bug: User in einer FPS-Squad kann kein Schiff commanden → `"Already assigned to a primary
+seat in this operation"`. FPS + Schiff muss IMMER gleichzeitig gehen (vgl. M1-Entry unten).
+Ursache: `assertUserCanTakeSeat` in `services/units.ts`. `categoryForUnit` gibt bei Squads mit
+`requirement.category === "fps"` direkt `"fps"` zurück. `SECONDARY_ASSIGNMENT_CATEGORIES`
+enthält aber nur `ground|mining|salvage|transport` — `fps` fehlt → wird als Primary behandelt →
+kollidiert mit dem Schiffs-Primary-Seat.
+Fix: `fps` zu `SECONDARY_ASSIGNMENT_CATEGORIES` hinzufügen (FPS = Boden-Domäne wie `ground`).
++ Test in `__tests__/services/units.test.ts`.
+
 ## Queued / Planned Step - 2026-06-03: How-To-Seite aktualisieren
 
 Fleetplanner `pages.ts howToPage` auf aktuellen Stand bringen (`/how-to` ist bereits public, kein

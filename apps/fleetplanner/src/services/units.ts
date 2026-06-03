@@ -85,7 +85,16 @@ export async function setUnitStatus(
   });
 }
 
-const SECONDARY_ASSIGNMENT_CATEGORIES = new Set(["ground", "mining", "salvage", "transport"]);
+// Ground-domain + support categories that may stack with a primary (ship) seat.
+// "fps" is the requirement-category equivalent of "ground" — a member can be both
+// an FPS-squad seat AND command a ship in the same op, so it must NOT count as primary.
+const SECONDARY_ASSIGNMENT_CATEGORIES = new Set([
+  "fps",
+  "ground",
+  "mining",
+  "salvage",
+  "transport",
+]);
 
 function categoryForUnit(unit: {
   unitType: string;
