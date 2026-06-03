@@ -3,6 +3,15 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Seat-Assign über Partner-Guilds
+
+Folgeschritt zum Invite-Link: bei `partners`/`public`-Ops sollen im Seat-Assign-Dropdown
+auch Members der aktiven Partner-Guilds auftauchen (manuell zuweisbar), nicht nur Host-Guild.
+- web.ts `assignableUsers`: GuildMembership where guildId in [host, ...getActivePartnerGuildIds]
+  wenn opVisibility partners/public; dedupe per user.id (user kann in beiden Guilds sein).
+- Private Ops bleiben host-only (Tenant-Isolation).
+- Voraussetzung Voice: Gast muss trotzdem im Host-Discord sein (Invite-Banner) — Move-Gate unverändert.
+
 ## Queued / Planned Step - 2026-06-03: Guild Discord-Invite-Link für Gäste
 
 Cross-Org-Ops: Gäste aus Partner-Guilds (z.B. PinCodeX nur in Infinite Horizon) fehlen im

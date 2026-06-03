@@ -63,6 +63,7 @@ import {
 } from "../services/discord.js";
 import { closeMissionVoiceSession, hasVoicePermission } from "../services/voiceSession.js";
 import { listMissionCommanders } from "../services/missionCommanders.js";
+import { getActivePartnerGuildIds } from "../services/partnerships.js";
 import { bridgeConfigured } from "../services/bridge.js";
 import { cleanupOperationVoiceChannels } from "../services/voiceBots.js";
 import {
@@ -374,15 +375,33 @@ export async function webRoutes(app: FastifyInstance) {
     // Only op leaders (fleetoperator in the op's guild or a listed
     // OperationLeader) may change visibility — captains/crew cannot.
     const canEditVisibility = canAssignSeats;
-    // Assignable users are scoped to the op's guild (tenant isolation).
+    // Assignable users: the op's host guild, plus active partner guilds when the
+    // op is shared (partners/public) so cross-org guests can be manually assigned.
+    // Private ops stay host-only (tenant isolation).
+    const assignGuildIds = [op.guildId];
+    if (canAssignSeats && (opVisibility === "partners" || opVisibility === "public")) {
+      assignGuildIds.push(...(await getActivePartnerGuildIds(op.guildId)));
+    }
     const assignableUsers = canAssignSeats
-      ? (
-          await prisma.guildMembership.findMany({
-            where: { guildId: op.guildId, user: { active: true } },
-            include: { user: true },
-            orderBy: { user: { username: "asc" } },
-          })
-        ).map((m) => ({ id: m.user.id, username: m.user.username, role: m.role }))
+      ? Array.from(
+          (
+            await prisma.guildMembership.findMany({
+              where: { guildId: { in: assignGuildIds }, user: { active: true } },
+              include: { user: true },
+              orderBy: { user: { username: "asc" } },
+            })
+          )
+            // A user may belong to both the host and a partner guild → dedupe by user id.
+            .reduce(
+              (acc, m) => {
+                if (!acc.has(m.user.id))
+                  acc.set(m.user.id, { id: m.user.id, username: m.user.username, role: m.role });
+                return acc;
+              },
+              new Map<string, { id: string; username: string; role: string }>(),
+            )
+            .values(),
+        )
       : [];
     const [availableVoiceBotCount, voiceEnabled, opGuildRow, guildVoiceChannels] =
       await Promise.all([
