@@ -1,4 +1,5 @@
 import type { FleetStatus } from "../lib/fleetAudio";
+import type { RelayStatus } from "../lib/relayAudio";
 import { Icon } from "./kit/Icon";
 
 type Props = {
@@ -16,9 +17,20 @@ type Props = {
   globalHotkey: string;
   /** Whether the relay/global path is available for this user. */
   relayAvailable: boolean;
+  /** Global Radio (relay) connection + live PTT state, so the panel can show
+   *  the same connected/SENDEN feedback as the commander block. */
+  relayStatus: RelayStatus;
+  relayPttActive: boolean;
+  onRelayPtt: (pressed: boolean) => void;
   discordVoiceOk: boolean;
   expectedChannelName: string | null;
 };
+
+function relayDot(s: RelayStatus): string {
+  if (s === "connected") return "cyan";
+  if (s === "error") return "red";
+  return "dim";
+}
 
 function statusColor(s: FleetStatus): string {
   if (s === "connected") return "cyan";
@@ -37,6 +49,9 @@ export function MissionVoicePanel({
   localHotkey,
   globalHotkey,
   relayAvailable,
+  relayStatus,
+  relayPttActive,
+  onRelayPtt,
   discordVoiceOk,
   expectedChannelName,
 }: Props): JSX.Element {
@@ -53,6 +68,7 @@ export function MissionVoicePanel({
       ) : null}
 
       <div className="mission-rooms">
+        {/* COMMANDER / Command Net (PTT-1) — only for users with a commander room */}
         {hasCommanderRoom ? (
           <div className="mission-room">
             <div className={`mission-room-status ${statusColor(commanderStatus)}`} />
@@ -78,23 +94,41 @@ export function MissionVoicePanel({
               {commanderPttActive ? "SENDEN" : "PTT"}
             </button>
           </div>
-        ) : (
-          <div className="mission-room">
-            <div className="mission-room-info">
-              <span className="mission-room-name">GLOBAL</span>
-              <span className="mission-room-hotkey text-dim">
-                {discordVoiceOk && relayAvailable ? globalHotkey : "—"}
-              </span>
-            </div>
-            <span className="text-dim text-sm" style={{ alignSelf: "center" }}>
+        ) : null}
+
+        {/* GLOBAL RADIO / Relay Net (PTT-2) — shown alongside the commander
+            block so relay-eligible users see their connection + PTT state too. */}
+        <div className="mission-room">
+          <div
+            className={`mission-room-status ${
+              discordVoiceOk && relayAvailable ? relayDot(relayStatus) : "dim"
+            }`}
+          />
+          <div className="mission-room-info">
+            <span className="mission-room-name">GLOBAL RADIO</span>
+            <span className="mission-room-hotkey text-dim">
               {!discordVoiceOk
                 ? "Discord Voice required"
                 : relayAvailable
-                ? "Sprich über VOICE TO ALL (Global)"
-                : "Kein Commander-Kanal — nur zuhören"}
+                ? `${globalHotkey}${relayStatus === "connected" ? " · verbunden" : " · …"}`
+                : "nicht freigegeben"}
             </span>
           </div>
-        )}
+          {discordVoiceOk && relayAvailable ? (
+            <button
+              type="button"
+              className={`cc-btn ${relayPttActive ? "green" : relayStatus === "connected" ? "cyan" : "ghost"} mission-ptt`}
+              onMouseDown={() => onRelayPtt(true)}
+              onMouseUp={() => onRelayPtt(false)}
+              onMouseLeave={() => { if (relayPttActive) onRelayPtt(false); }}
+              disabled={relayStatus !== "connected"}
+              title={`Global Radio (Discord Relay) · Hotkey: ${globalHotkey}`}
+            >
+              <Icon.radio size={14} />
+              {relayPttActive ? "SENDEN" : "PTT"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <button

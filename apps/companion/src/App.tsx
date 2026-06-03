@@ -10,6 +10,8 @@ import {
   keyReleaseMatchesAccelerator,
   setupHotkey,
   teardownHotkey,
+  setExtraHotkey,
+  clearExtraHotkey,
   type HotkeyEventPayload,
 } from "./lib/hotkey";
 import { jwtSubject, startOAuthInWebview } from "./lib/auth";
@@ -702,6 +704,15 @@ export function App(): JSX.Element {
   const onRelayPttEvent = useCallback((e: HotkeyEventPayload) => {
     const active = e.state === "pressed";
     const cur = stateRef.current;
+    // Local audio feedback (funk click) + ducking — same as the LOCAL/commander
+    // PTT path, so the user gets the same press/release cue on Global Radio.
+    if (active) {
+      feedbackAudio.playPttPress();
+      duckingActivate();
+    } else {
+      feedbackAudio.playPttRelease();
+      duckingDeactivate();
+    }
     if (cur.missionActive && !cur.missionDiscordVoiceOk) {
       setState((s) => ({ ...s, relayPttActive: false }));
       void relayRef.current?.setPttActive(false);
@@ -709,13 +720,33 @@ export function App(): JSX.Element {
     }
     setState((s) => ({ ...s, relayPttActive: active }));
     void relayRef.current?.setPttActive(active);
-  }, []);
+  }, [duckingActivate, duckingDeactivate]);
 
-  // Relay (PTT-2 / GLOBAL) hotkey window-level listener (keyboard only).
+  // Relay (PTT-2 / GLOBAL) hotkey. Mirrors the LOCAL path: an rdev/raw-input
+  // EXTRA hotkey (works for mouse side-buttons like Mouse5 AND survives
+  // fullscreen games) PLUS a window-level keyboard fallback for when the
+  // Companion window is focused (WebView2 swallows the low-level hook for
+  // keyboard, not for mouse). Previously the mouse case returned early, so
+  // a mouse globalHotkey was never registered → Global Radio PTT did nothing.
   useEffect(() => {
     const hotkey = state.globalHotkey;
     const relayAvailable = state.missionActive && state.missionHasRelay && state.missionDiscordVoiceOk;
-    if (!hotkey || isMouseHotkey(hotkey) || !relayAvailable) return;
+    if (!hotkey || !relayAvailable) return;
+
+    // rdev extra-hotkey path (mouse + keyboard via low-level hook)
+    let canceled = false;
+    let unlistenRdev: (() => void) | null = null;
+    void (async () => {
+      await setExtraHotkey("relay", hotkey);
+      const fn = await listen<HotkeyEventPayload>("hotkey", (ev) => {
+        if (ev.payload.accelerator === hotkey) onRelayPttEvent(ev.payload);
+      });
+      if (canceled) fn();
+      else unlistenRdev = fn;
+    })();
+
+    // window-level keyboard fallback (focus case; mouse buttons are rdev-only)
+    const keyboard = !isMouseHotkey(hotkey);
     const onDown = (e: KeyboardEvent): void => {
       if (e.repeat) return;
       const formatted = formatKeyboardAccelerator(e);
@@ -730,11 +761,19 @@ export function App(): JSX.Element {
         onRelayPttEvent({ state: "released", accelerator: hotkey });
       }
     };
-    window.addEventListener("keydown", onDown, true);
-    window.addEventListener("keyup", onUp, true);
+    if (keyboard) {
+      window.addEventListener("keydown", onDown, true);
+      window.addEventListener("keyup", onUp, true);
+    }
+
     return () => {
-      window.removeEventListener("keydown", onDown, true);
-      window.removeEventListener("keyup", onUp, true);
+      canceled = true;
+      unlistenRdev?.();
+      void clearExtraHotkey("relay");
+      if (keyboard) {
+        window.removeEventListener("keydown", onDown, true);
+        window.removeEventListener("keyup", onUp, true);
+      }
     };
   }, [state.globalHotkey, state.missionActive, state.missionHasRelay, state.missionDiscordVoiceOk, onRelayPttEvent]);
 
@@ -1375,6 +1414,14 @@ export function App(): JSX.Element {
             localHotkey={state.localHotkey}
             globalHotkey={state.globalHotkey}
             relayAvailable={relayAvailable}
+            relayStatus={state.relayStatus}
+            relayPttActive={state.relayPttActive}
+            onRelayPtt={(pressed) =>
+              onRelayPttEvent({
+                state: pressed ? "pressed" : "released",
+                accelerator: state.globalHotkey,
+              })
+            }
             discordVoiceOk={state.missionDiscordVoiceOk}
             expectedChannelName={state.missionExpectedChannelName}
           />
