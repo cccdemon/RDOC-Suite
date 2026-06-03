@@ -161,10 +161,15 @@ function startWatchdog(): void {
       }
 
       const botMetrics = bots.getMetrics();
-      const allDisconnected = botMetrics.length > 0 && botMetrics.every((b) => !b.voiceConnected);
+      // Only bots that SHOULD be connected (humans in their channel) count toward
+      // a fault. Bots idling outside empty channels are healthy — counting them
+      // as "disconnected" caused a constant ~90s restart loop that tore down the
+      // LiveKit subscriber and chopped/robotised live audio.
+      const expected = botMetrics.filter((b) => b.expectedConnected);
+      const allDisconnected = expected.length > 0 && expected.every((b) => !b.voiceConnected);
       if (allDisconnected) {
         consecutiveAllDisconnectedTicks++;
-        console.warn(`[Watchdog] all bots disconnected (${consecutiveAllDisconnectedTicks}/${DISCONNECT_RESTART_TICKS} ticks)`);
+        console.warn(`[Watchdog] expected-connected bots all down (${consecutiveAllDisconnectedTicks}/${DISCONNECT_RESTART_TICKS} ticks)`);
         if (consecutiveAllDisconnectedTicks >= DISCONNECT_RESTART_TICKS) {
           console.warn("[Watchdog] disconnect threshold reached — restarting relay");
           watchdogRestarts++;

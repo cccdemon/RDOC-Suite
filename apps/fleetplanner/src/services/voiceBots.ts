@@ -190,15 +190,14 @@ export async function launchOperationVoiceChannels(operationId: string): Promise
     const botToken = decryptVoiceBotToken(bot);
     const channelName =
       unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+    // Do NOT deny @everyone: that locked every channel down to its assigned unit
+    // only, which is too restrictive — commanders need to hop into the event
+    // channel or ANY unit channel, and crew should move freely between mission
+    // channels. Channels inherit the op category's permissions; we only ADD
+    // explicit allows for the relay bot + assigned members so they can always
+    // join even if the category itself is locked down.
     const permissionOverwrites: Array<{ id: string; type: 0 | 1; allow?: string; deny?: string }> =
-      [
-        {
-          id: op.guildId,
-          type: 0,
-          deny: VOICE_ACCESS,
-        },
-      ];
-    permissionOverwrites.push({ id: bot.botUserId, type: 1, allow: VOICE_ACCESS });
+      [{ id: bot.botUserId, type: 1, allow: VOICE_ACCESS }];
     for (const userId of userIds) {
       try {
         permissionOverwrites.push({

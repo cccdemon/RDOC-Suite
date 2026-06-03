@@ -520,15 +520,21 @@ export class LivekitAudio {
    *  every participant join/leave, track sub/unsub, and active-speaker change. */
   private emitRoster(): void {
     if (!this.listeners.rosterChanged) return;
-    const entries: RosterEntry[] = [];
+    // Dedup by userId: during a fast reconnect a user briefly has two LiveKit
+    // participants (old identity-suffix not yet evicted, new one joined). The
+    // name (=userId) is stable, so collapse them to avoid a duplicate roster row.
+    const byUser = new Map<string, RosterEntry>();
     if (this.room) {
       for (const p of this.room.remoteParticipants.values()) {
         const userId = p.name || p.identity;
         if (!userId) continue;
-        entries.push({ userId, speaking: this.speakingUserIds.has(userId) });
+        const speaking = this.speakingUserIds.has(userId);
+        const existing = byUser.get(userId);
+        if (existing) existing.speaking = existing.speaking || speaking;
+        else byUser.set(userId, { userId, speaking });
       }
     }
-    this.listeners.rosterChanged(entries);
+    this.listeners.rosterChanged([...byUser.values()]);
   }
 }
 

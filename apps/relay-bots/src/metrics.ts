@@ -2,6 +2,10 @@ export interface BotMetrics {
   name: string;
   channelId: string;
   voiceConnected: boolean;
+  /** True when humans are in the bot's target channel, so the bot is EXPECTED to
+   *  be voice-connected. When false the bot is idle-by-design (waiting outside an
+   *  empty channel) — NOT a fault, and the watchdog must not restart for it. */
+  expectedConnected: boolean;
   speaking: boolean;
   playerState: string;
   bufferBytes: number;

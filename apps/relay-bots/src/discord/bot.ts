@@ -35,6 +35,10 @@ export class RelayBot {
   private presenceTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
   private reconnecting = false;
+  // Humans in the target channel at the last presence check → bot is EXPECTED
+  // to be voice-connected. Drives the watchdog's fault detection so an idle bot
+  // (waiting outside an empty channel) is never mistaken for a crash.
+  private humansPresent = false;
 
   private bufferOverflows = 0;
   private recentOverflows = 0;   // drained by the watchdog each tick
@@ -130,6 +134,7 @@ export class RelayBot {
     if (!channel) return;
 
     const hasHumans = channel.members.some((member) => !member.user.bot);
+    this.humansPresent = hasHumans;
     if (hasHumans) {
       await this.joinChannel(guildId);
       return;
@@ -280,6 +285,7 @@ export class RelayBot {
       name: this.cfg.name,
       channelId: this.cfg.channelId,
       voiceConnected: this.connection !== null,
+      expectedConnected: this.humansPresent,
       speaking: this.passThrough !== null && !this.passThrough.destroyed,
       playerState: this.player.state.status,
       bufferBytes: this.passThrough?.writableLength ?? 0,

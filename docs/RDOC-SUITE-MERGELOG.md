@@ -3,6 +3,25 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Prod-Debug — Relay-Restart-Loop + Channel-Perms + Roster-Dup
+
+Symptome Prod (10.10.10.99): Relay-Bots relayen nicht / robotische Stimme, Channel-Rechte zu
+restriktiv, Duplicate-User in App. Logs (LiveKit) zeigen `voice-relay-bot-service` join → ~90s →
+`CLIENT_REQUEST_LEAVE` → rejoin im Loop.
+1. **Watchdog-Restart-Loop (Hauptursache Relay/robotisch):** `relay-bots/src/index.ts` Watchdog
+   wertete ALLE Bots ohne Voice-Connection als „disconnected" → Neustart alle 90s. Bots joinen aber
+   lazy (nur wenn Menschen im Kanal); idle = `!voiceConnected` = gesund. Fix: neues
+   `BotMetrics.expectedConnected` (Menschen im Zielkanal, gesetzt in `bot.ts syncVoicePresence`);
+   Watchdog restartet nur wenn erwartet-verbundene Bots alle down sind. Teardown-Loop killte Relay +
+   zerhackte Live-Audio (robotisch).
+2. **Channel-Rechte zu restriktiv:** `fleetplanner voiceBots.ts` setzte `@everyone deny VIEW+CONNECT`
+   → nur zugewiesene Unit-Member sahen Kanal; widerspricht neuer Command-Net-Regel (Commander darf
+   in JEDEN Kanal). Fix: `@everyone deny` entfernt → Kanäle erben Kategorie-Perms; Bot + Member-Allows
+   bleiben. Gilt nur für NEU gelaunchte Kanäle (bestehende neu launchen).
+3. **Duplicate-User:** `companion livekit.ts emitRoster` dedupt jetzt per userId (Reconnect-Race mit
+   neuem identity-suffix zeigte User doppelt).
+Deploy: relay-bots + fleetplanner Container neu bauen; companion neue Version.
+
 ## Queued / Planned Step - 2026-06-03: Primäre Voice-Unit wählbar (Multi-Position-User)
 
 Multi-Position-User (2+ akzeptierte Units) bekommen nur 1 Discord-Voice-Channel. Bisher: immer
