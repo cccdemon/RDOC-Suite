@@ -388,10 +388,21 @@ export async function webRoutes(app: FastifyInstance) {
       await Promise.all([
         prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
         hasVoicePermission(op.guildId),
-        prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } }),
+        (prisma.guild.findUnique as any)({ where: { id: op.guildId }, select: { timezone: true, discordInviteUrl: true } }),
         fetchGuildVoiceChannels(op.guildId).catch(() => []),
       ]);
     const opGuildTz = (opGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+    // Guests who aren't members of the op's host guild get a Discord invite
+    // banner so they can join the event Discord (required for voice moves).
+    const isHostMember = ctx
+      ? !!(await prisma.guildMembership.findFirst({
+          where: { userId: ctx.user.id, guildId: op.guildId },
+          select: { userId: true },
+        }))
+      : false;
+    const opGuildInvite =
+      (opGuildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null;
+    const joinInviteUrl = !isHostMember ? opGuildInvite : null;
     const opRole = ctx ? await effectiveOpRole(ctx.user.id, ctx.user.role, op.id) : null;
     const globalVoiceRoom =
       ((op as Record<string, unknown>).globalVoiceRoom as string | null) ?? null;
@@ -493,6 +504,7 @@ export async function webRoutes(app: FastifyInstance) {
         tab: req.query.tab,
         visibility: opVisibility ?? "private",
         canEditVisibility,
+        joinInviteUrl,
       }),
     );
   });

@@ -146,8 +146,8 @@ export async function guildRoutes(app: FastifyInstance) {
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
           id: true, name: true, ownerUserId: true, voiceChannelCategoryId: true,
           admiralRoleId: true, globalVoiceRoleId: true,
-          commanderVoiceRoleId: true, voiceEnabled: true, timezone: true,
-        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; voiceEnabled: boolean; timezone: string } | null>,
+          commanderVoiceRoleId: true, discordInviteUrl: true, voiceEnabled: true, timezone: true,
+        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; discordInviteUrl: string | null; voiceEnabled: boolean; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: {
@@ -219,6 +219,15 @@ export async function guildRoutes(app: FastifyInstance) {
       if (!gctx) return;
       if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       const snowflake = (v: string | undefined) => (v && /^\d{16,25}$/.test(v.trim()) ? v.trim() : null);
+      // Permanent Discord invite link: accept only real discord invite URLs,
+      // otherwise clear it (empty input removes the link).
+      const inviteUrl = (v: string | undefined): string | null => {
+        const t = (v ?? "").trim();
+        if (!t) return null;
+        return /^https:\/\/(discord\.gg|(www\.)?discord(app)?\.com\/invite)\/[A-Za-z0-9-]+$/.test(t)
+          ? t
+          : null;
+      };
       const { isValidTimezone, DEFAULT_TIMEZONE } = await import("../lib/timezone.js");
       const tz = req.body.timezone?.trim() ?? "";
       const validatedTz = isValidTimezone(tz) ? tz : DEFAULT_TIMEZONE;
@@ -230,6 +239,7 @@ export async function guildRoutes(app: FastifyInstance) {
           admiralRoleId: snowflake(req.body.admiralRoleId),
           globalVoiceRoleId: snowflake(req.body.globalVoiceRoleId),
           commanderVoiceRoleId: snowflake(req.body.commanderVoiceRoleId),
+          discordInviteUrl: inviteUrl(req.body.discordInviteUrl),
           timezone: validatedTz,
         },
       });

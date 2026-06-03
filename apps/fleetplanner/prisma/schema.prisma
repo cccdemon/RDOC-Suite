@@ -43,6 +43,7 @@ model Guild {
   timezone               String    @default("Europe/Berlin") // IANA tz for scheduling UI (e.g. "America/New_York")
   globalVoiceRoleId      String?   // Discord role id for Global Radio Net users when mission voice is live
   commanderVoiceRoleId   String?   // Discord role id for Command Net users when mission voice is live
+  discordInviteUrl       String?   // permanent Discord invite (e.g. https://discord.gg/raumdock) shown to non-member guests
   voiceEnabled           Boolean   @default(false) // SuperAdmin-gated feature flag for LiveKit voice sessions
   botInstalledAt         DateTime?
   active                 Boolean   @default(true)

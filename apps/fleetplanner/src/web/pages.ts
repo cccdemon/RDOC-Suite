@@ -486,7 +486,25 @@ type OpDetailPageOptions = {
   visibility?: string;
   /** Whether the current viewer may change the op's visibility. */
   canEditVisibility?: boolean;
+  /** Permanent Discord invite link, set only when the viewer is NOT a member of
+   *  the op's host guild — so guests get a "join the event Discord" banner. */
+  joinInviteUrl?: string | null;
 };
+
+/** Banner shown to viewers who are NOT members of the op's host Discord, so
+ *  guests from partner orgs can join the event Discord (required for voice). */
+function joinInviteBanner(url: string | null | undefined): SafeHtml | string {
+  if (!url) return "";
+  return html`<div
+    class="flash flash-warn"
+    style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap"
+  >
+    <span>You're not in this operation's Discord server — join it to take part in the voice channels:</span>
+    <a class="btn btn-sm btn-gold" href="${url}" target="_blank" rel="noopener noreferrer"
+      >Join Event Discord</a
+    >
+  </div>`;
+}
 
 export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
   const bp = opts.basePath;
@@ -1313,7 +1331,7 @@ export function opDetailPage(opts: OpDetailPageOptions): SafeHtml {
       : ""}
   </aside>`;
 
-  const body = html` <div class="page-header">
+  const body = html` ${joinInviteBanner(opts.joinInviteUrl)}<div class="page-header">
       <div class="flex gap-2" style="align-items:center;flex-wrap:wrap">
         <h1 class="page-title">${op.title}</h1>
         ${opTypeTag(op.opType)} ${statusTag(op.status)}
@@ -2837,7 +2855,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               ? adminPanel
               : overviewPanel;
 
-  const body = html`<div class="opv2-shell">
+  const body = html`${joinInviteBanner(opts.joinInviteUrl)}<div class="opv2-shell">
       <header
         class="opv2-hero opv2-hero-mission"
         style="background-image:linear-gradient(90deg, rgba(5,8,16,.97), rgba(5,8,16,.72), rgba(5,8,16,.2)), url('${missionImageUrl(
@@ -5970,6 +5988,7 @@ export function guildSettingsPage(opts: {
     admiralRoleId: string | null;
     globalVoiceRoleId: string | null;
     commanderVoiceRoleId: string | null;
+    discordInviteUrl: string | null;
     voiceEnabled: boolean;
     timezone: string;
   };
@@ -6106,6 +6125,9 @@ export function guildSettingsPage(opts: {
         </label>
         <label class="text-sm text-dim">Admiral role ID (Discord role → fleetoperator)
           <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="optional" />
+        </label>
+        <label class="text-sm text-dim">Discord invite link <span style="opacity:.65">(permanent invite shown to guests who aren't in this Discord, e.g. https://discord.gg/raumdock)</span>
+          <input type="text" name="discordInviteUrl" value="${g.discordInviteUrl ?? ""}" placeholder="https://discord.gg/yourserver" />
         </label>
         <label class="text-sm text-dim">Timezone <span style="opacity:.65">(used for scheduling dates — shown to all members)</span>
           <select name="timezone">

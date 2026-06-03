@@ -3,6 +3,19 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Guild Discord-Invite-Link für Gäste
+
+Cross-Org-Ops: Gäste aus Partner-Guilds (z.B. PinCodeX nur in Infinite Horizon) fehlen im
+Seat-Dropdown, weil `assignableUsers` nur Host-Guild-`GuildMembership` listet (Tenant-Isolation,
+web.ts) UND der Discord-Voice-Move den Host-Discord braucht. Lösung lt. User: Gäste treten dem
+Event-/Host-Discord bei (Move klappt dann). Dafür: backend-konfigurierbarer permanenter
+Discord-Invite-Link pro Guild.
+- Schema: `Guild.discordInviteUrl String?` + Migration
+- `guilds.ts` /guilds/settings GET+POST: Feld lesen/speichern (validiert: https discord invite)
+- `guildSettingsPage`: Eingabefeld
+- Op-Detail: Banner für Betrachter ohne Host-`GuildMembership` ("Tritt dem Event-Discord bei: <link>")
+Companion eigener Name im Mission-Mode (self.username via mission-voice endpoint) = separater offener Punkt.
+
 ## Architecture Decision - 2026-06-02: Companion Voice Modes verbindlich
 
 Authoritative doc: `docs/companion-voice-architecture.md`.
