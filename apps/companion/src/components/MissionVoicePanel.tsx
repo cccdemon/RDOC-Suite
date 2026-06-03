@@ -1,4 +1,4 @@
-import type { FleetStatus } from "../lib/fleetAudio";
+import type { FleetStatus, RosterEntry } from "../lib/fleetAudio";
 import type { RelayStatus } from "../lib/relayAudio";
 import { Icon } from "./kit/Icon";
 
@@ -11,6 +11,14 @@ type Props = {
   hasCommanderRoom: boolean;
   /** Other commanders currently in the commander room (LiveKit, excl. self). */
   commanderParticipants: number;
+  /** Live roster of OTHER commanders (userId + speaking) — rendered like the
+   *  Bridge SQUAD ROSTER so the two modes look the same. */
+  commanderRoster: RosterEntry[];
+  /** userId → display name for the roster (LiveKit only carries the userId). */
+  commanderNames: Record<string, string>;
+  /** Per-user playback levels (0..100), keyed by userId. */
+  remoteVolumes: Record<string, number>;
+  onRemoteVolumeChange: (userId: string, pct: number) => void;
   onCommanderPtt: (pressed: boolean) => void;
   onDisconnect: () => void;
   /** PTT-1 hotkey — drives the commander room in mission mode. */
@@ -46,6 +54,10 @@ export function MissionVoicePanel({
   commanderPttActive,
   hasCommanderRoom,
   commanderParticipants,
+  commanderRoster,
+  commanderNames,
+  remoteVolumes,
+  onRemoteVolumeChange,
   onCommanderPtt,
   onDisconnect,
   localHotkey,
@@ -68,9 +80,10 @@ export function MissionVoicePanel({
         {selfName ? <span className="text-dim">You: {selfName}</span> : null}
       </div>
 
-      {!discordVoiceOk ? (
+      {hasCommanderRoom && !discordVoiceOk ? (
         <div className="cc-banner warn">
-          Please join your advised Voice channel {expectedChannelName ?? "on Discord"} first.
+          Command Net: please join the event channel or a unit voice channel
+          {expectedChannelName ? ` (${expectedChannelName})` : ""} first.
         </div>
       ) : null}
 
@@ -103,9 +116,58 @@ export function MissionVoicePanel({
           </div>
         ) : null}
 
-        {/* GLOBAL RADIO / Relay Net (PTT-2). Usable → room row with PTT;
-            otherwise a clean status banner (avoids cramped inline text). */}
-        {discordVoiceOk && relayAvailable ? (
+        {/* Commander roster — mirrors the Bridge SQUAD ROSTER so both modes
+            look the same. Live LiveKit presence + speaking; per-user volume. */}
+        {hasCommanderRoom && commanderStatus === "connected" ? (
+          <div className="cc-card">
+            <span className="cc-card-tick"></span>
+            <div className="cc-card-title">
+              <span>COMMANDER ROSTER</span>
+              <span className="cc-badge dim">{commanderRoster.length + 1}</span>
+            </div>
+            <div className="cc-col" style={{ gap: 4 }}>
+              {/* Self first, no slider (own track isn't played back). */}
+              <div className={`cc-prow ${commanderPttActive ? "speaking" : ""}`}>
+                <span className="cc-prow-tick"></span>
+                <div className="cc-avatar">
+                  {commanderPttActive ? <Icon.mic size={14} /> : <Icon.headphones size={14} />}
+                </div>
+                <div className="cc-prow-name">{selfName ?? "You"} <span className="text-dim">(du)</span></div>
+                <div className="cc-prow-state">{commanderPttActive ? "TALKING" : "IDLE"}</div>
+              </div>
+              {commanderRoster.map((c) => {
+                const vol = remoteVolumes[c.userId] ?? 100;
+                return (
+                  <div key={c.userId} className={`cc-prow ${c.speaking ? "speaking" : ""}`}>
+                    <span className="cc-prow-tick"></span>
+                    <div className="cc-avatar">
+                      {c.speaking ? <Icon.mic size={14} /> : <Icon.headphones size={14} />}
+                    </div>
+                    <div className="cc-prow-name">{commanderNames[c.userId] ?? c.userId}</div>
+                    <div className="cc-prow-vol" title={`Lautstärke ${vol}%`}>
+                      <Icon.volume size={11} />
+                      <input
+                        type="range"
+                        className="cc-range cc-range-sm"
+                        min={0}
+                        max={100}
+                        step={5}
+                        value={vol}
+                        onChange={(e) => onRemoteVolumeChange(c.userId, Number(e.target.value))}
+                      />
+                      <span className="cc-prow-vol-val">{vol}%</span>
+                    </div>
+                    <div className="cc-prow-state">{c.speaking ? "TALKING" : "IDLE"}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {/* GLOBAL RADIO / Relay Net (PTT-2). Independent of the Commander Net
+            channel gate — usable as long as the user is on the same Discord. */}
+        {relayAvailable ? (
           <div className="mission-room">
             <div className={`mission-room-status ${relayDot(relayStatus)}`} />
             <div className="mission-room-info">
@@ -129,9 +191,7 @@ export function MissionVoicePanel({
             </button>
           </div>
         ) : (
-          <div className="cc-banner info">
-            GLOBAL RADIO — {!discordVoiceOk ? "erst Discord-Voice beitreten" : "für dich nicht freigegeben"}
-          </div>
+          <div className="cc-banner info">GLOBAL RADIO — für dich nicht freigegeben</div>
         )}
       </div>
 

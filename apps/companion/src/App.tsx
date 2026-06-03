@@ -55,7 +55,7 @@ import { Icon } from "./components/kit/Icon";
 import { SettingsModal, type SettingsDraft } from "./components/SettingsModal";
 import { GuildPickerModal } from "./components/GuildPickerModal";
 import { RelayAudio, type RelayStatus } from "./lib/relayAudio";
-import { FleetAudio, type FleetStatus } from "./lib/fleetAudio";
+import { FleetAudio, type FleetStatus, type RosterEntry } from "./lib/fleetAudio";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { MissionVoicePanel } from "./components/MissionVoicePanel";
 import { MissionLinkModal } from "./components/MissionLinkModal";
@@ -114,10 +114,19 @@ type AppState = {
    *  excludes self). Reflects who is actually in the mission channel —
    *  distinct from the bridge guild roster (activeCommanders). */
   commanderParticipants: number;
+  /** Live roster of OTHER commanders in the commander room (LiveKit presence +
+   *  speaking), mirrored into the UI like the Bridge SQUAD ROSTER. */
+  commanderRoster: RosterEntry[];
+  /** userId → display name for commander-room participants, from the
+   *  mission-voice endpoint (LiveKit only carries the userId). */
+  commanderNames: Record<string, string>;
   missionToken: string | null;
   missionUrl: string | null;
   missionEnded: boolean;
   missionDiscordVoiceOk: boolean;
+  /** Global Radio usable — same-Discord gate, independent of the Commander Net
+   *  channel gate (missionDiscordVoiceOk). */
+  missionRelayOk: boolean;
   missionExpectedChannelName: string | null;
   // ── Hotkeys (consolidated: 2 PTTs) ──────────────────────────────────
   /** PTT-1: without mission → bridge; with mission → commanderRoom. */
@@ -157,10 +166,13 @@ const INITIAL: AppState = {
   commanderStatus: "idle",
   commanderPttActive: false,
   commanderParticipants: 0,
+  commanderRoster: [],
+  commanderNames: {},
   missionToken: null,
   missionUrl: null,
   missionEnded: false,
   missionDiscordVoiceOk: true,
+  missionRelayOk: false,
   missionExpectedChannelName: null,
   localHotkey: DEFAULT_HOTKEY,
   globalHotkey: DEFAULT_RELAY_HOTKEY,
@@ -201,6 +213,11 @@ export function App(): JSX.Element {
   const [showMissionModal, setShowMissionModal] = useState(false);
   const stateRef = useRef<AppState>(INITIAL);
   stateRef.current = state;
+  // Mirror remoteVolumes into a ref so the mission-voice poll (a stable
+  // effect closure) can seed a freshly-created commander-room audio instance
+  // with the current per-user levels.
+  const remoteVolumesRef = useRef<Record<string, number>>({});
+  remoteVolumesRef.current = remoteVolumes;
   /** Set of remote-commander userIds that were `speaking=true` in the
    *  last commander:list. Diff'd against the next list so we can fire
    *  exactly one feedbackAudio chirp per remote-talk-start / -stop. */
@@ -658,6 +675,7 @@ export function App(): JSX.Element {
    *  store so it sticks across reconnects + EXE restarts. */
   const onRemoteVolumeChange = useCallback((userId: string, pct: number) => {
     audioRef.current?.setRemoteVolume(userId, pct);
+    missionCommanderRef.current?.setRemoteVolume(userId, pct);
     setRemoteVolumes((prev) => {
       // Drop the entry when reverting to unity, so the store stays
       // small and an unset value naturally means "100%".
@@ -685,6 +703,7 @@ export function App(): JSX.Element {
     const next = !stateRef.current.outputMuted;
     void logInfo(`[status] output-mute toggled -> ${next}`);
     audioRef.current?.setOutputMuted(next);
+    missionCommanderRef.current?.setOutputMuted(next);
     // Mute the chirps too — no point pinging the user about peer talk
     // they can't hear anyway.
     feedbackAudio.setSuppressed(next);
@@ -717,7 +736,7 @@ export function App(): JSX.Element {
       feedbackAudio.playPttRelease();
       duckingDeactivate();
     }
-    if (cur.missionActive && !cur.missionDiscordVoiceOk) {
+    if (cur.missionActive && !cur.missionRelayOk) {
       setState((s) => ({ ...s, relayPttActive: false }));
       void relayRef.current?.setPttActive(false);
       return;
@@ -734,7 +753,7 @@ export function App(): JSX.Element {
   // a mouse globalHotkey was never registered → Global Radio PTT did nothing.
   useEffect(() => {
     const hotkey = state.globalHotkey;
-    const relayAvailable = state.missionActive && state.missionHasRelay && state.missionDiscordVoiceOk;
+    const relayAvailable = state.missionActive && state.missionHasRelay && state.missionRelayOk;
     if (!hotkey || !relayAvailable) return;
 
     // rdev extra-hotkey path (mouse + keyboard via low-level hook)
@@ -779,7 +798,7 @@ export function App(): JSX.Element {
         window.removeEventListener("keyup", onUp, true);
       }
     };
-  }, [state.globalHotkey, state.missionActive, state.missionHasRelay, state.missionDiscordVoiceOk, onRelayPttEvent]);
+  }, [state.globalHotkey, state.missionActive, state.missionHasRelay, state.missionRelayOk, onRelayPttEvent]);
 
   // Bridge Relay is not used by the target architecture. Relay audio is
   // mission-scoped and connected by the mission polling effect.
@@ -900,6 +919,10 @@ export function App(): JSX.Element {
         livekitUrl: string;
         selfUsername?: string | null;
         discordVoice?: MissionDiscordVoice;
+        commanders?: Array<{ userId: string; username: string }>;
+        /** Global Radio usable (same-Discord gate) — independent of the
+         *  Commander Net channel gate in discordVoice. */
+        relayOk?: boolean;
         commanderRoom: MissionRoom | null;
         relayRoom: MissionRoom | null;
       };
@@ -945,10 +968,13 @@ export function App(): JSX.Element {
               commanderPttActive: false,
               relayPttActive: false,
               commanderParticipants: 0,
+              commanderRoster: [],
+              commanderNames: {},
               missionToken: null,
               missionUrl: null,
               missionEnded: true,
               missionDiscordVoiceOk: true,
+              missionRelayOk: false,
               missionExpectedChannelName: null,
             }));
           }
@@ -956,18 +982,26 @@ export function App(): JSX.Element {
         }
         if (!data.op) return; // narrowing — handled above
 
-        const { opId, opTitle, livekitUrl, selfUsername, commanderRoom, relayRoom, discordVoice } =
+        const { opId, opTitle, livekitUrl, selfUsername, commanders, commanderRoom, relayRoom, discordVoice, relayOk: relayOkRaw } =
           data.op;
+        const commanderNames: Record<string, string> = {};
+        for (const c of commanders ?? []) commanderNames[c.userId] = c.username;
         const discordVoiceOk = discordVoice?.ok ?? true;
+        // Global Radio gate is independent of the Commander Net channel gate.
+        const relayOk = relayOkRaw ?? false;
         const expectedChannelName = discordVoice?.expectedChannel?.name ?? null;
         // Pin the op on first successful poll so later polls can detect a
         // close/switch instead of following the backend onto the next op.
         missionOpIdRef.current = opId;
 
+        // Commander Net gate failed → drop the commander room only. Global Radio
+        // is gated separately (relayOk) and must NOT be torn down here.
         if (!discordVoiceOk) {
           await missionCommanderRef.current?.disconnect();
           await missionCommanderRef.current?.setPttActive(false);
           currentMissionCommanderRoomRef.current = null;
+        }
+        if (!relayOk) {
           void relayRef.current?.setPttActive(false);
         }
 
@@ -983,8 +1017,24 @@ export function App(): JSX.Element {
               fa.setParticipantsListener((count) =>
                 setState((st) => ({ ...st, commanderParticipants: count })),
               );
+              fa.setRosterListener((entries) =>
+                setState((st) => ({ ...st, commanderRoster: entries })),
+              );
               missionCommanderRef.current = fa;
             }
+            // Route the commander room through the user's chosen output device,
+            // volume, mute and per-user levels — same audio settings the bridge
+            // session uses. Without this the commander room plays on the OS
+            // default device and the user can't hear the other commanders.
+            const cur = stateRef.current;
+            await missionCommanderRef.current.applyDeviceConfig({
+              micDeviceId: cur.device.micDeviceId,
+              outputDeviceId: cur.device.outputDeviceId,
+              outputVolumePct: cur.device.outputVolumePct,
+              micGainPct: cur.device.micGainPct,
+            });
+            missionCommanderRef.current.setRemoteVolumes(remoteVolumesRef.current);
+            missionCommanderRef.current.setOutputMuted(cur.outputMuted);
             await missionCommanderRef.current.connect(livekitUrl, commanderRoom.token);
             currentMissionCommanderRoomRef.current = commanderRoom.room;
           }
@@ -996,7 +1046,7 @@ export function App(): JSX.Element {
         // Relay room (PTT-2 / GLOBAL) is mission-scoped. It is not the Bridge
         // relay capability; the backend only returns this room for users with
         // mission Relay Voice permission.
-        if (discordVoiceOk && relayRoom) {
+        if (relayOk && relayRoom) {
           if (
             currentMissionRelayRoomRef.current !== relayRoom.room ||
             relayRef.current?.getStatus() === "idle"
@@ -1020,12 +1070,14 @@ export function App(): JSX.Element {
           missionOpTitle: opTitle,
           missionSelfName: selfUsername ?? null,
           missionHasCommander: Boolean(discordVoiceOk && commanderRoom),
-          missionHasRelay: Boolean(discordVoiceOk && relayRoom),
+          missionHasRelay: Boolean(relayOk && relayRoom),
           missionEnded: false,
           missionDiscordVoiceOk: discordVoiceOk,
+          missionRelayOk: relayOk,
           missionExpectedChannelName: expectedChannelName,
+          commanderNames,
           commanderPttActive: discordVoiceOk ? s.commanderPttActive : false,
-          relayPttActive: discordVoiceOk ? s.relayPttActive : false,
+          relayPttActive: relayOk ? s.relayPttActive : false,
         }));
       } catch {
         // network error — retry on next tick
@@ -1131,6 +1183,7 @@ export function App(): JSX.Element {
           micGainPct: nextDevice.micGainPct,
         });
         await audioRef.current?.applyDeviceConfig(nextDevice);
+        await missionCommanderRef.current?.applyDeviceConfig(nextDevice);
       }
 
       // Feedback-sound prefs — apply live + persist.
@@ -1223,7 +1276,7 @@ export function App(): JSX.Element {
     ? state.commanderStatus === "connected"
     : state.audioStatus === "connected";
   const localSpeaking = missionOwnsLocal ? state.commanderPttActive : state.pttActive;
-  const relayAvailable = state.missionActive && state.missionHasRelay && state.missionDiscordVoiceOk;
+  const relayAvailable = state.missionActive && state.missionHasRelay && state.missionRelayOk;
   const globalConnected = state.relayStatus === "connected";
   const globalSpeaking = state.relayPttActive;
   const routingTone = (connected: boolean, speaking: boolean): string =>
@@ -1417,6 +1470,10 @@ export function App(): JSX.Element {
             commanderPttActive={state.commanderPttActive}
             hasCommanderRoom={state.missionHasCommander}
             commanderParticipants={state.commanderParticipants}
+            commanderRoster={state.commanderRoster}
+            commanderNames={state.commanderNames}
+            remoteVolumes={remoteVolumes}
+            onRemoteVolumeChange={onRemoteVolumeChange}
             onCommanderPtt={onCommanderPtt}
             onDisconnect={() => void onMissionDisconnect()}
             localHotkey={state.localHotkey}

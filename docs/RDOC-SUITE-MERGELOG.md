@@ -3,6 +3,48 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Channel-Restriction lockern (Global vs Command Net)
+
+Regel-Trennung der Discord-Voice-Gate im Mission-Mode:
+- **Global Radio (Relay)**: nur „selbe Discord" nötig (verknüpfter Discord-Account → Guild-Member,
+  da op guild-scoped). KEIN Kanal-Zwang — Relaybot spricht für den User.
+- **Command Net (Commander)**: muss im Event-Channel ODER in IRGENDEINEM Relaybot-Unit-Channel der
+  Op sein (vorher: nur eigene Unit-Channels).
+Backend `routes/api.ts`: `missionDiscordVoiceState` Gate = Event-Channel + alle `FleetVoiceChannel`
+der Op (neue Helper `opRelayBotChannels`, alte `userMissionVoiceChannels` entfernt). Relay-Token
+gated auf neuem `relayOk` (= canRelay && verknüpfter Discord), nicht mehr auf `discordVoice.ok`.
+Response liefert `relayOk`. Companion `App.tsx`/`MissionVoicePanel.tsx`: `missionRelayOk` State;
+Relay-Connect/PTT/Visibility nutzen `relayOk` statt commander-`discordVoiceOk`; Warn-Banner nur
+noch für Commander. Companion-Build lokal/CI.
+
+## Queued / Planned Step - 2026-06-03: Commander Mode Optik = Bridge Mode (Participant-Roster)
+
+Bridge Mode zeigt SQUAD ROSTER (Teilnehmerliste), Command Net nur Teilnehmer-Count. Angleichen:
+Command-Net zeigt jetzt COMMANDER ROSTER mit denselben `cc-prow`-Rows (Avatar, Name, Speaking,
+Volume-Slider). Datenquelle = LiveKit-Presence der commanderRoom + Speaking via
+`ActiveSpeakersChanged`; Namen vom Backend.
+- `routes/api.ts` mission-voice: liefert `commanders:[{userId,username}]` (aus listMissionCommanders)
+  damit LiveKit-Participants (name=userId) Namen kriegen.
+- `lib/livekit.ts`: `RosterEntry`-Typ + `rosterChanged`-Listener; trackt remoteParticipants +
+  `speakingUserIds` (ActiveSpeakersChanged), emit bei join/leave/sub/unsub/speaker-change.
+- `lib/fleetAudio.ts`: `setRosterListener` Passthrough.
+- `App.tsx`: `commanderRoster`/`commanderNames` State, Listener auf FleetAudio, an MissionVoicePanel.
+- `components/MissionVoicePanel.tsx`: COMMANDER ROSTER Card (Self ohne Slider + Remote-Rows mit
+  Volume), nur wenn commanderStatus connected.
+
+## Queued / Planned Step - 2026-06-03: Fix Command Net — andere Commander nicht hörbar
+
+Bug: im Command-Net-Mode (Mission `commanderRoom`, PTT-1) hört User andere Commander nicht.
+Ursache: `missionCommanderRef` (FleetAudio) wird in `App.tsx` erstellt + connected, kriegt aber NIE
+`applyDeviceConfig`/`setOutputMuted`/`setRemoteVolumes` — nur `audioRef` (Bridge) bekommt die beim
+Mount. Folge: Command-Net-Audio spielt auf OS-Default-Output statt User-gewähltem Headset → User
+hört nichts (Bridge ging, weil audioRef korrekt geroutet). Token/Grant der commanderRoom waren ok
+(unique identity, canSubscribe true).
+Fix: `lib/fleetAudio.ts` Passthroughs (`applyDeviceConfig`/`setOutputMuted`/`setRemoteVolumes`/
+`setRemoteVolume`) zu inner LivekitAudio. `App.tsx`: vor commanderRoom-`connect` Device-Config +
+outputMuted + remoteVolumes anwenden; bei Live-Änderungen (Settings-Save, Output-Mute-Toggle,
+Remote-Volume-Slider) auch `missionCommanderRef` mitziehen. Companion-Build lokal/CI (Tag).
+
 ## Queued / Planned Step - 2026-06-03: Companion-Fenster breiter (Modebar-Buttons abgeschnitten)
 
 Beim Start waren nicht alle Modebar-Buttons (SERVER WECHSELN/VOICE TO ALL/MUTE/AFK/ABMELDEN/

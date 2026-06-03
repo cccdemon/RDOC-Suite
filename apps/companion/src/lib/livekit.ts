@@ -10,9 +10,16 @@ import { info, warn, error as logError } from "@tauri-apps/plugin-log";
 
 export type AudioStatus = "idle" | "connecting" | "connected" | "error";
 
+/** One remote participant in the room (self excluded). userId is the LiveKit
+ *  participant name (the app sets name=userId), falling back to identity. */
+export type RosterEntry = { userId: string; speaking: boolean };
+
 type Listeners = {
   status?: (status: AudioStatus, detail?: string) => void;
   participantsChanged?: (count: number) => void;
+  /** Fires whenever the remote-participant set or their speaking state
+   *  changes, so callers can render a live roster (mission commander room). */
+  rosterChanged?: (entries: RosterEntry[]) => void;
 };
 
 export type DeviceConfig = {
@@ -59,6 +66,9 @@ export class LivekitAudio {
    *  has self-muted INCOMING audio). New tracks subscribed while in
    *  this state are muted immediately at attach time. */
   private outputMuted = false;
+  /** userIds (participant.name||identity) currently flagged speaking by the
+   *  last ActiveSpeakersChanged event. Drives the roster's speaking dots. */
+  private speakingUserIds = new Set<string>();
 
   /** Toggle the output (receive) mute.
    *
@@ -238,9 +248,14 @@ export class LivekitAudio {
       },
     });
 
+    room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
+      this.speakingUserIds = new Set(speakers.map((s) => s.name || s.identity).filter(Boolean));
+      this.emitRoster();
+    });
     room.on(RoomEvent.ParticipantConnected, (p) => {
       void info(`[livekit] participant connected: identity=${p.identity} name=${p.name}`);
       this.listeners.participantsChanged?.(room.numParticipants);
+      this.emitRoster();
       // If we're output-muted, prevent the auto-subscribe from kicking
       // in for this newcomer's existing audio tracks. New tracks they
       // publish AFTER joining are caught by the TrackPublished handler.
@@ -259,6 +274,8 @@ export class LivekitAudio {
     room.on(RoomEvent.ParticipantDisconnected, (p) => {
       void info(`[livekit] participant disconnected: identity=${p.identity}`);
       this.listeners.participantsChanged?.(room.numParticipants);
+      this.speakingUserIds.delete(p.name || p.identity);
+      this.emitRoster();
     });
     room.on(RoomEvent.Disconnected, (reason) => {
       void info(`[livekit] room disconnected, reason=${String(reason)}`);
@@ -356,6 +373,7 @@ export class LivekitAudio {
       this.room = room;
       this.emitStatus("connected");
       this.listeners.participantsChanged?.(room.numParticipants);
+      this.emitRoster();
       void info(
         `[livekit] connected → ${room.numParticipants} participant(s), local sid=${room.localParticipant.sid} identity=${room.localParticipant.identity} name=${room.localParticipant.name}`,
       );
@@ -390,6 +408,8 @@ export class LivekitAudio {
     document.querySelectorAll("audio[data-dccc-sink]").forEach((el) => el.remove());
     document.querySelectorAll("audio[data-dccc-primer]").forEach((el) => el.remove());
     this.attachedRemotes.clear();
+    this.speakingUserIds.clear();
+    this.listeners.rosterChanged?.([]);
     this.emitStatus("idle");
   }
 
@@ -494,6 +514,21 @@ export class LivekitAudio {
 
   private emitStatus(status: AudioStatus, detail?: string): void {
     this.listeners.status?.(status, detail);
+  }
+
+  /** Build the current remote roster (self excluded) and emit it. Called on
+   *  every participant join/leave, track sub/unsub, and active-speaker change. */
+  private emitRoster(): void {
+    if (!this.listeners.rosterChanged) return;
+    const entries: RosterEntry[] = [];
+    if (this.room) {
+      for (const p of this.room.remoteParticipants.values()) {
+        const userId = p.name || p.identity;
+        if (!userId) continue;
+        entries.push({ userId, speaking: this.speakingUserIds.has(userId) });
+      }
+    }
+    this.listeners.rosterChanged(entries);
   }
 }
 

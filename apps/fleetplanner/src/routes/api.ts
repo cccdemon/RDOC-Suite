@@ -360,52 +360,30 @@ async function activeMissionOperationForToken(
   return participant ? op : null;
 }
 
-// All Discord voice channels a user belongs to in this op (captain or active
-// seat), ordered by unit createdAt — the FIRST is the user's primary channel.
-// A multi-position user (e.g. ship captain + FPS squad seat) gets several; the
-// gate accepts ANY of them so the user can move freely between their channels.
-async function userMissionVoiceChannels(
-  operationId: string,
-  userId: string,
-): Promise<Array<{ id: string; name: string }>> {
-  const units = await prisma.fleetUnit.findMany({
-    where: {
-      operationId,
-      status: "accepted",
-      OR: [
-        { captainId: userId },
-        { seats: { some: { userId, active: true } } },
-      ],
-    },
-    select: {
-      voiceChannel: { select: { channelId: true, channelName: true } },
-      unitType: true,
-      squadName: true,
-      ship: { select: { name: true } },
-    },
-    orderBy: { createdAt: "asc" },
+// Every relaybot voice channel created for this op (all units), regardless of
+// which user is assigned where. The Commander Net gate accepts ANY of these
+// plus the event channel — a commander just has to be "in the mission", not in
+// their own specific unit channel.
+async function opRelayBotChannels(operationId: string): Promise<Array<{ id: string; name: string }>> {
+  const chans = await prisma.fleetVoiceChannel.findMany({
+    where: { operationId },
+    select: { channelId: true, channelName: true },
   });
-  const out: Array<{ id: string; name: string }> = [];
-  for (const unit of units) {
-    if (!unit.voiceChannel) continue;
-    const fallbackName =
-      unit.unitType === "ship" ? (unit.ship?.name ?? "Ship") : (unit.squadName ?? "Squad");
-    out.push({ id: unit.voiceChannel.channelId, name: unit.voiceChannel.channelName || fallbackName });
-  }
-  return out;
+  return chans.map((c) => ({ id: c.channelId, name: c.channelName || "Unit Voice" }));
 }
 
 async function missionDiscordVoiceState(
   operation: { id: string; guildId: string; eventVoiceChannelId: string | null },
   userId: string,
 ): Promise<MissionDiscordVoiceState> {
-  const userChannels = await userMissionVoiceChannels(operation.id, userId);
-  // Primary channel (first unit) is shown in the guidance message; ALL of the
-  // user's unit channels are accepted by the gate (see allowedChannelIds below).
-  const expected = userChannels[0] ??
-    (operation.eventVoiceChannelId
-      ? { id: operation.eventVoiceChannelId, name: "Event Voice" }
-      : null);
+  // Commander Net presence rule: be in the event channel OR in ANY of the op's
+  // relaybot unit channels (not restricted to the user's own unit).
+  const relayBotChannels = await opRelayBotChannels(operation.id);
+  // Guidance/expected channel: prefer the event channel, else the first unit
+  // channel. The gate accepts all of them (allowedChannelIds below).
+  const expected = (operation.eventVoiceChannelId
+    ? { id: operation.eventVoiceChannelId, name: "Event Voice" }
+    : (relayBotChannels[0] ?? null));
   if (!expected) {
     return {
       required: false,
@@ -451,9 +429,9 @@ async function missionDiscordVoiceState(
     const channelNames = new Map(voice.channels.map((channel) => [channel.id, channel.name]));
     const currentId = voice.voiceStates.find((state) => state.userId === discordId)?.channelId ?? null;
     const current = currentId ? { id: currentId, name: channelNames.get(currentId) ?? currentId } : null;
-    // Accept ANY of the user's unit channels (multi-position users) + the event
-    // channel — so they can move freely between their mission channels.
-    const allowedChannelIds = new Set(userChannels.map((c) => c.id));
+    // Accept the event channel + ANY relaybot unit channel of the op, so a
+    // commander can sit in any mission channel (not only their own unit).
+    const allowedChannelIds = new Set(relayBotChannels.map((c) => c.id));
     if (operation.eventVoiceChannelId) allowedChannelIds.add(operation.eventVoiceChannelId);
     if (!currentId) {
       return {
@@ -1691,21 +1669,28 @@ export async function apiRoutes(app: FastifyInstance) {
     const env = getEnv();
     if (!env.LIVEKIT_URL) return reply.send({ op: null });
 
+    // Commander Net gate: must be in the event channel or any relaybot channel.
     const discordVoice = await missionDiscordVoiceState(activeOp, userId);
     const isCommander = await isMissionCommander(activeOp.id, userId);
     const canRelay = await hasMissionRelayVoice(activeOp.id, userId);
+
+    // Global Radio (relay) gate is looser: a relay participant only needs to be
+    // on the same Discord (a linked Discord account → guild member, since the op
+    // is guild-scoped). No specific voice channel required — the relaybot speaks
+    // for them. relayDiscordId doubles as the LiveKit identity for the relay room.
+    const relayDiscordId =
+      canRelay && relayRoom
+        ? await discordUserIdForFleetplannerUser(userId).catch(() => null)
+        : null;
+    const relayOk = Boolean(canRelay && relayRoom && relayDiscordId);
+
     const commanderToken =
       discordVoice.ok && isCommander && commanderRoom
         ? await issueMissionVoiceToken(userId, commanderRoom)
         : null;
-    const relayIdentityUserId =
-      discordVoice.ok && canRelay && relayRoom
-        ? await discordUserIdForFleetplannerUser(userId).catch(() => userId)
-        : userId;
-    const relayToken =
-      discordVoice.ok && canRelay && relayRoom
-        ? await issueMissionVoiceToken(relayIdentityUserId, relayRoom)
-        : null;
+    const relayToken = relayOk
+      ? await issueMissionVoiceToken(relayDiscordId!, relayRoom!)
+      : null;
 
     // The mission token carries no display name; the companion shows the user's
     // own name in mission mode from this (Bridge roster isn't present there).
@@ -1714,6 +1699,17 @@ export async function apiRoutes(app: FastifyInstance) {
       select: { username: true },
     });
 
+    // Commander roster (userId → username) so the companion can label the
+    // LiveKit commander-room participants by name, matching the Bridge roster.
+    // The commander-room LiveKit identity name is the fleetplanner userId, which
+    // is exactly the key listMissionCommanders returns.
+    const commanders = isCommander
+      ? (await listMissionCommanders(activeOp.id)).map((c) => ({
+          userId: c.userId,
+          username: c.username,
+        }))
+      : [];
+
     return reply.send({
       op: {
         opId: activeOp.id,
@@ -1721,6 +1717,10 @@ export async function apiRoutes(app: FastifyInstance) {
         livekitUrl: env.LIVEKIT_URL,
         selfUsername: selfUser?.username ?? null,
         discordVoice,
+        commanders,
+        // Global Radio is usable as long as the user is on the same Discord —
+        // independent of the Commander Net channel gate (discordVoice).
+        relayOk,
         commanderRoom:
           commanderToken && commanderRoom ? { room: commanderRoom, token: commanderToken } : null,
         relayRoom:
