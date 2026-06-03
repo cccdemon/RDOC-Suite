@@ -60,12 +60,13 @@ export function MissionVoicePanel({
 }: Props): JSX.Element {
   return (
     <div className="mission-panel">
-      <div className="mission-op-title">
-        {opTitle ?? "MISSION ACTIVE"}
+      <div
+        className="cc-banner info"
+        style={{ flexDirection: "column", alignItems: "flex-start", gap: "2px" }}
+      >
+        <span style={{ fontWeight: 600 }}>{opTitle ?? "MISSION ACTIVE"}</span>
+        {selfName ? <span className="text-dim">You: {selfName}</span> : null}
       </div>
-      {selfName ? (
-        <div className="mission-self-name text-dim text-sm">You: {selfName}</div>
-      ) : null}
 
       {!discordVoiceOk ? (
         <div className="cc-banner warn">
@@ -102,25 +103,18 @@ export function MissionVoicePanel({
           </div>
         ) : null}
 
-        {/* GLOBAL RADIO / Relay Net (PTT-2) — shown alongside the commander
-            block so relay-eligible users see their connection + PTT state too. */}
-        <div className="mission-room">
-          <div
-            className={`mission-room-status ${
-              discordVoiceOk && relayAvailable ? relayDot(relayStatus) : "dim"
-            }`}
-          />
-          <div className="mission-room-info">
-            <span className="mission-room-name">GLOBAL RADIO</span>
-            <span className="mission-room-hotkey text-dim">
-              {!discordVoiceOk
-                ? "Discord Voice required"
-                : relayAvailable
-                ? `${globalHotkey}${relayStatus === "connected" ? " · verbunden" : " · …"}`
-                : "nicht freigegeben"}
-            </span>
-          </div>
-          {discordVoiceOk && relayAvailable ? (
+        {/* GLOBAL RADIO / Relay Net (PTT-2). Usable → room row with PTT;
+            otherwise a clean status banner (avoids cramped inline text). */}
+        {discordVoiceOk && relayAvailable ? (
+          <div className="mission-room">
+            <div className={`mission-room-status ${relayDot(relayStatus)}`} />
+            <div className="mission-room-info">
+              <span className="mission-room-name">GLOBAL RADIO</span>
+              <span className="mission-room-hotkey text-dim">
+                {globalHotkey}
+                {relayStatus === "connected" ? " · verbunden" : " · …"}
+              </span>
+            </div>
             <button
               type="button"
               className={`cc-btn ${relayPttActive ? "green" : relayStatus === "connected" ? "cyan" : "ghost"} mission-ptt`}
@@ -133,8 +127,12 @@ export function MissionVoicePanel({
               <Icon.radio size={14} />
               {relayPttActive ? "SENDEN" : "PTT"}
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="cc-banner info">
+            GLOBAL RADIO — {!discordVoiceOk ? "erst Discord-Voice beitreten" : "für dich nicht freigegeben"}
+          </div>
+        )}
       </div>
 
       <button
