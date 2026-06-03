@@ -5605,33 +5605,106 @@ export function howToPage(opts: {
           Admirals plan operations, captains register their ships, crew members claim seats — all
           coordinated through Discord and posted as Discord scheduled events.
         </p>
+        <p style="margin-top:.5rem">
+          During an operation, mission voice connects the team through the
+          <strong>RDOC Squad Link</strong> companion app: a <span class="text-mono">Command Net</span>
+          for mission leaders and a <span class="text-mono">Global Radio Net</span> that broadcasts
+          into Discord voice channels. See <strong>Mission voice</strong> below.
+        </p>
       </div>
     </div>
 
     <div class="section">
       <div class="section-title">Roles</div>
       <div class="card" style="padding:1rem;max-width:52rem">
-        <table class="user-table" style="width:100%">
+        <p style="margin-top:0">
+          Fleet-level roles and mission roles are separate. A fleet role grants platform or server
+          permissions; it does <strong>not</strong> automatically grant mission voice access — that is
+          assigned per operation.
+        </p>
+        <table class="user-table" style="width:100%;margin-top:.75rem">
           <thead>
             <tr>
-              <th>Role</th>
+              <th>Fleet role</th>
               <th>What they can do</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><span class="tag tag-role">Admiral</span></td>
+              <td><span class="tag tag-role">Superadmin</span></td>
+              <td>Instance-wide admin: manage all Discord servers, ban/unban servers, trigger ship sync, configure the bridge.</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-role">Fleetadmin</span></td>
               <td>
-                Add the bot to a Discord server, create &amp; manage operations, accept/reject
-                units, assign leaders, manage composition, post Discord scheduled events.
+                A server's admin (the &ldquo;Admiral&rdquo;). Add the bot to a Discord server, create &amp;
+                manage operations, accept/reject units, assign mission leaders, manage composition,
+                post Discord scheduled events.
               </td>
             </tr>
             <tr>
+              <td><span class="tag tag-role">Captain</span></td>
+              <td>Register ships or FPS squads, manage own unit seats, and assign crew to their unit.</td>
+            </tr>
+            <tr>
               <td><span class="tag tag-role">Crew</span></td>
-              <td>Register ships or squads, manage own unit seats, claim open seats, and submit crew assignment requests.</td>
+              <td>Claim open seats and submit crew assignment requests. The default role for new members.</td>
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Mission voice</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p style="margin-top:0">
+          Mission voice runs over a separate LiveKit audio path (Discord audio is never touched) and
+          is reached through the <strong>RDOC Squad Link</strong> companion app using two push-to-talk
+          keys. It is granted per operation via the <strong>Commanders</strong> tab — a mission
+          roster, not an admin roster. Fleet admins are not on the nets unless assigned a mission role.
+        </p>
+        <table class="user-table" style="width:100%;margin-top:.75rem">
+          <thead>
+            <tr><th>Net</th><th>Who &amp; what</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-cyan">Command Net</span></td>
+              <td>Mission commander voice for mission leaders and commanders.</td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-gold">Global Radio Net</span></td>
+              <td>
+                RelayBot broadcast into assigned Discord voice channels. Intentionally narrower than
+                Command Net — granted only to users who may broadcast.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <table class="user-table" style="width:100%;margin-top:1rem">
+          <thead>
+            <tr>
+              <th>Mission role</th>
+              <th>Command Net</th>
+              <th>Global Radio Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Event Leader</td><td>Yes</td><td>Yes</td></tr>
+            <tr><td>Raidleader</td><td>Yes</td><td>Yes</td></tr>
+            <tr><td>Wingcommander (deputy)</td><td>Yes</td><td>Yes</td></tr>
+            <tr><td>Fleetcommander</td><td>No by default</td><td>No by default</td></tr>
+            <tr><td>Ship Captain</td><td>Yes</td><td>No by default</td></tr>
+            <tr><td>CQB Captain</td><td>Yes</td><td>No by default</td></tr>
+            <tr><td>Added Commander</td><td>Yes</td><td>Optional</td></tr>
+          </tbody>
+        </table>
+        <p class="text-dim text-sm" style="margin-top:.75rem;margin-bottom:0">
+          Fleetcommander manages mission needs and confirms units but is not automatically on the
+          Command Net. To request Global Radio (RelayBot) voice for your server, contact the
+          SuperAdmin (see Contact &amp; support below).
+        </p>
       </div>
     </div>
 

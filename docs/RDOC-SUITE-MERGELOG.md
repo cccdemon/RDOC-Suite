@@ -3,6 +3,16 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: How-To-Seite aktualisieren
+
+Fleetplanner `pages.ts howToPage` auf aktuellen Stand bringen (`/how-to` ist bereits public, kein
+Login). Login-Seite bleibt unverändert (User-Entscheidung).
+- "What is this?": Mission-Voice + Companion-Hinweis ergänzt.
+- Rollen-Tabelle: war nur Admiral/Crew → jetzt Superadmin/Fleetadmin/Captain/Crew (echtes
+  `User.role` + `GuildMembership.role`-Modell).
+- Neue Sektion "Mission voice": Command Net vs Global Radio Net + Mission-Rollen→Net-Matrix.
+  Quelle: README.md "Mission role and voice concept".
+
 ## Queued / Planned Step - 2026-06-03: Multi-Position-User = 1 Voice-Channel (M1)
 
 Problem: ein User kann Captain (Schiff) UND Seat (FPS-Squad) sein → 2 Unit-Channels. Discord erlaubt
