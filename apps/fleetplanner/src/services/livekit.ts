@@ -46,17 +46,22 @@ export async function issueUnitLivekitToken(
 
 /** Issues a LiveKit token for a Mission Voice room (global or commander).
  *  Both rooms grant publish+subscribe — who can join is controlled by
- *  which token the backend issues, not by LiveKit room config. */
+ *  which token the backend issues, not by LiveKit room config.
+ *
+ *  Identity is STABLE (the userId, no random suffix): a reconnecting client
+ *  must replace its previous participant. A random suffix made every reconnect
+ *  look like a new person, so the SFU never evicted the stale session and the
+ *  commander room filled up with ghost participants ("101 in channel"). With a
+ *  stable identity LiveKit disconnects the prior session automatically. */
 export async function issueMissionVoiceToken(
-  userId: string,
+  identity: string,
   room: string,
 ): Promise<string | null> {
   const env = getEnv();
   if (!env.LIVEKIT_URL || !env.LIVEKIT_API_KEY || !env.LIVEKIT_API_SECRET) return null;
-  const suffix = randomBytes(4).toString("hex");
   const at = new AccessToken(env.LIVEKIT_API_KEY, env.LIVEKIT_API_SECRET, {
-    identity: `${userId}-${suffix}`,
-    name: userId,
+    identity,
+    name: identity,
     ttl: 8 * 60 * 60, // 8h — covers typical operation duration
   });
   at.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true, canPublishData: false, roomRecord: false });
