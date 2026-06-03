@@ -1073,7 +1073,71 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
+  // Multi-position users pick (or leaders assign) which of their 2+ units is
+  // their primary Discord voice channel. Default prefers an FPS squad.
+  const currentUserId = opts.currentUser?.id ?? null;
+  const primaryAssignments = opts.primaryAssignments ?? [];
+  const visiblePrimary = opts.canManagePrimary
+    ? primaryAssignments
+    : primaryAssignments.filter((a) => a.userId === currentUserId);
+  const primaryPanel =
+    visiblePrimary.length > 0
+      ? html`<section class="opv2-panel">
+          <div class="opv2-panel-title">Primary Voice Channel</div>
+          <p class="text-dim text-sm">
+            Members in two or more units get only one Discord voice channel. Pick the main one
+            (default: the FPS squad).
+          </p>
+          <div class="opv2-stack">
+            ${visiblePrimary.map((a) => {
+              const editable = opts.canManagePrimary || a.userId === currentUserId;
+              const effectiveName =
+                a.units.find((u) => u.unitId === a.effectiveUnitId)?.name ?? "—";
+              if (!editable) {
+                return html`<div class="opv2-row">
+                  <div>
+                    <strong>${a.username}</strong>
+                    <span>${effectiveName}${a.chosenUnitId ? "" : " (auto)"}</span>
+                  </div>
+                </div>`;
+              }
+              return html`<form
+                method="post"
+                action="${bp}/api/ops/${op.id}/primary-unit"
+                class="opv2-row"
+                style="align-items:flex-end;gap:.5rem"
+              >
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                ${returnFields("voice")}
+                <input type="hidden" name="userId" value="${a.userId}" />
+                <div style="flex:1">
+                  <label>${a.username}</label>
+                  <select name="unitId">
+                    <option value="" ${a.chosenUnitId ? "" : safe("selected")}>
+                      Auto (FPS squad / first unit)
+                    </option>
+                    ${a.units.map(
+                      (u) =>
+                        html`<option
+                          value="${u.unitId}"
+                          ${a.chosenUnitId === u.unitId ? safe("selected") : ""}
+                        >
+                          ${u.name} (${u.unitType === "ship" ? "Ship" : "FPS"})${u.hasChannel
+                            ? ""
+                            : " — no channel"}
+                        </option>`,
+                    )}
+                  </select>
+                </div>
+                <button type="submit" class="btn btn-sm">Save</button>
+              </form>`;
+            })}
+          </div>
+        </section>`
+      : safe("");
+
   const voicePanel = html`<div class="opv2-grid">
+    ${primaryPanel}
     <section class="opv2-panel">
       <div class="opv2-panel-title">Mission Voice</div>
       ${opts.voiceEnabled
@@ -1522,71 +1586,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
-  // Multi-position users pick (or leaders assign) which of their 2+ units is
-  // their primary Discord voice channel. Default prefers an FPS squad.
-  const currentUserId = opts.currentUser?.id ?? null;
-  const primaryAssignments = opts.primaryAssignments ?? [];
-  const visiblePrimary = opts.canManagePrimary
-    ? primaryAssignments
-    : primaryAssignments.filter((a) => a.userId === currentUserId);
-  const primaryPanel =
-    visiblePrimary.length > 0
-      ? html`<section class="opv2-panel">
-          <div class="opv2-panel-title">Primary Voice Channel</div>
-          <p class="text-dim text-sm">
-            Members in two or more units get only one Discord voice channel. Pick the main one
-            (default: the FPS squad).
-          </p>
-          <div class="opv2-stack">
-            ${visiblePrimary.map((a) => {
-              const editable = opts.canManagePrimary || a.userId === currentUserId;
-              const effectiveName =
-                a.units.find((u) => u.unitId === a.effectiveUnitId)?.name ?? "—";
-              if (!editable) {
-                return html`<div class="opv2-row">
-                  <div>
-                    <strong>${a.username}</strong>
-                    <span>${effectiveName}${a.chosenUnitId ? "" : " (auto)"}</span>
-                  </div>
-                </div>`;
-              }
-              return html`<form
-                method="post"
-                action="${bp}/api/ops/${op.id}/primary-unit"
-                class="opv2-row"
-                style="align-items:flex-end;gap:.5rem"
-              >
-                <input type="hidden" name="_csrf" value="${csrf}" />
-                ${returnFields("fleet")}
-                <input type="hidden" name="userId" value="${a.userId}" />
-                <div style="flex:1">
-                  <label>${a.username}</label>
-                  <select name="unitId">
-                    <option value="" ${a.chosenUnitId ? "" : safe("selected")}>
-                      Auto (FPS squad / first unit)
-                    </option>
-                    ${a.units.map(
-                      (u) =>
-                        html`<option
-                          value="${u.unitId}"
-                          ${a.chosenUnitId === u.unitId ? safe("selected") : ""}
-                        >
-                          ${u.name} (${u.unitType === "ship" ? "Ship" : "FPS"})${u.hasChannel
-                            ? ""
-                            : " — no channel"}
-                        </option>`,
-                    )}
-                  </select>
-                </div>
-                <button type="submit" class="btn btn-sm">Save</button>
-              </form>`;
-            })}
-          </div>
-        </section>`
-      : safe("");
-
   const fleetPanel = html`<div class="opv2-grid">
-    ${primaryPanel}
     <section class="opv2-panel">
       <div class="opv2-panel-title">Fleet Units</div>
       <div class="opv2-stack">${unitRows}</div>
