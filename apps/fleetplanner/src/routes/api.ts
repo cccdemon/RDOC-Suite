@@ -1707,11 +1707,19 @@ export async function apiRoutes(app: FastifyInstance) {
         ? await issueMissionVoiceToken(relayIdentityUserId, relayRoom)
         : null;
 
+    // The mission token carries no display name; the companion shows the user's
+    // own name in mission mode from this (Bridge roster isn't present there).
+    const selfUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true },
+    });
+
     return reply.send({
       op: {
         opId: activeOp.id,
         opTitle: activeOp.title,
         livekitUrl: env.LIVEKIT_URL,
+        selfUsername: selfUser?.username ?? null,
         discordVoice,
         commanderRoom:
           commanderToken && commanderRoom ? { room: commanderRoom, token: commanderToken } : null,

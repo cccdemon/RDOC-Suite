@@ -4,6 +4,8 @@ import { Icon } from "./kit/Icon";
 
 type Props = {
   opTitle: string | null;
+  /** The user's own display name, shown in mission mode (Bridge roster absent). */
+  selfName: string | null;
   commanderStatus: FleetStatus;
   commanderPttActive: boolean;
   hasCommanderRoom: boolean;
@@ -54,12 +56,16 @@ export function MissionVoicePanel({
   onRelayPtt,
   discordVoiceOk,
   expectedChannelName,
+  selfName,
 }: Props): JSX.Element {
   return (
     <div className="mission-panel">
       <div className="mission-op-title">
         {opTitle ?? "MISSION ACTIVE"}
       </div>
+      {selfName ? (
+        <div className="mission-self-name text-dim text-sm">You: {selfName}</div>
+      ) : null}
 
       {!discordVoiceOk ? (
         <div className="cc-banner warn">

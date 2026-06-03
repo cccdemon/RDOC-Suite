@@ -100,6 +100,9 @@ type AppState = {
   // ── Mission Voice (Fleetcommander mode) ─────────────────────────────
   missionActive: boolean;
   missionOpTitle: string | null;
+  /** The user's own display name, resolved by the mission endpoint (the mission
+   *  token carries no name and the Bridge roster is absent in mission mode). */
+  missionSelfName: string | null;
   /** commanderRoom delivered by the backend for this user? */
   missionHasCommander: boolean;
   /** relayRoom delivered by the backend for this user? */
@@ -148,6 +151,7 @@ const INITIAL: AppState = {
   fleetplannerUrl: DEFAULT_FLEETPLANNER_URL,
   missionActive: false,
   missionOpTitle: null,
+  missionSelfName: null,
   missionHasCommander: false,
   missionHasRelay: false,
   commanderStatus: "idle",
@@ -894,6 +898,7 @@ export function App(): JSX.Element {
         opId: string;
         opTitle: string;
         livekitUrl: string;
+        selfUsername?: string | null;
         discordVoice?: MissionDiscordVoice;
         commanderRoom: MissionRoom | null;
         relayRoom: MissionRoom | null;
@@ -951,7 +956,8 @@ export function App(): JSX.Element {
         }
         if (!data.op) return; // narrowing — handled above
 
-        const { opId, opTitle, livekitUrl, commanderRoom, relayRoom, discordVoice } = data.op;
+        const { opId, opTitle, livekitUrl, selfUsername, commanderRoom, relayRoom, discordVoice } =
+          data.op;
         const discordVoiceOk = discordVoice?.ok ?? true;
         const expectedChannelName = discordVoice?.expectedChannel?.name ?? null;
         // Pin the op on first successful poll so later polls can detect a
@@ -1012,6 +1018,7 @@ export function App(): JSX.Element {
           ...s,
           missionActive: true,
           missionOpTitle: opTitle,
+          missionSelfName: selfUsername ?? null,
           missionHasCommander: Boolean(discordVoiceOk && commanderRoom),
           missionHasRelay: Boolean(discordVoiceOk && relayRoom),
           missionEnded: false,
@@ -1405,6 +1412,7 @@ export function App(): JSX.Element {
         {state.missionActive ? (
           <MissionVoicePanel
             opTitle={state.missionOpTitle}
+            selfName={state.missionSelfName}
             commanderStatus={state.commanderStatus}
             commanderPttActive={state.commanderPttActive}
             hasCommanderRoom={state.missionHasCommander}
