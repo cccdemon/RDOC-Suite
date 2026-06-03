@@ -528,6 +528,7 @@ export async function webRoutes(app: FastifyInstance) {
         visibility: opVisibility ?? "private",
         canEditVisibility,
         joinInviteUrl,
+        guildDiscordInviteUrl: opGuildInvite,
         participants,
         primaryAssignments,
         canManagePrimary: canAssignSeats,

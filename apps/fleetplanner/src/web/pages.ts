@@ -466,6 +466,8 @@ type OpDetailPageOptions = {
   /** Permanent Discord invite link, set only when the viewer is NOT a member of
    *  the op's host guild — so guests get a "join the event Discord" banner. */
   joinInviteUrl?: string | null;
+  /** The host guild's permanent Discord invite link, shown in Action Details. */
+  guildDiscordInviteUrl?: string | null;
   /** Assigned-roster participants — passed only when the op is completed, so the
    *  overview shows "who took part" plus a CSV export link. */
   participants?: MissionParticipant[] | null;
@@ -1581,6 +1583,16 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           >${opts.guildVoiceChannels?.find((channel) => channel.id === op.eventVoiceChannelId)
             ?.name ?? "Not set"}</strong
         >
+      </div>
+      <div class="detail-row">
+        <span>Discord</span>
+        <strong>
+          ${opts.guildDiscordInviteUrl
+            ? html`<a href="${opts.guildDiscordInviteUrl}" target="_blank" rel="noopener noreferrer"
+                >Join server</a
+              >`
+            : "Not set"}
+        </strong>
       </div>
       ${statusControls}
     </section>
