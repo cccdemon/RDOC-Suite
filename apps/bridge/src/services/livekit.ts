@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 import { getEnv } from "../config/env.js";
 import { logger } from "./logger.js";
@@ -17,13 +16,12 @@ export function sessionRoomName(sessionId: string): string {
 /**
  * Issues a short-lived LiveKit access token that lets the user join the
  * commander-bridge room for the given guild. The LiveKit identity is the
- * Discord user id PLUS a per-token random suffix, so a fast press/release/
- * press cycle does not look like a duplicate-identity collision to LiveKit
- * (its server-side cleanup is asynchronous). Our own RoomRegistry still
- * tracks the real userId, so the active-commander count stays correct.
- *
- * The display name uses the Discord user id so commanders can be identified
- * in LiveKit logs even though the identity is randomized.
+ * Discord user id — STABLE, no random suffix. A random suffix made every
+ * reconnect look like a new participant, so the SFU never evicted the stale
+ * session and rooms filled with ghosts (which also overwrote the real audio
+ * track on the client). PTT press/release only mutes the existing track — it
+ * does not reconnect — so a stable identity is safe and lets LiveKit replace a
+ * prior session on a genuine reconnect.
  */
 export async function issueLivekitToken(opts: {
   userId: string;
@@ -31,10 +29,9 @@ export async function issueLivekitToken(opts: {
 }): Promise<string> {
   const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = getEnv();
   const room = bridgeRoomName(opts.guildId);
-  const suffix = randomBytes(4).toString("hex");
 
   const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-    identity: `${opts.userId}-${suffix}`,
+    identity: opts.userId,
     name: opts.userId,
     ttl: TOKEN_TTL_SECONDS,
   });
@@ -54,9 +51,8 @@ export async function issueSessionLivekitToken(opts: {
   livekitRoom: string;
 }): Promise<string> {
   const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = getEnv();
-  const suffix = randomBytes(4).toString("hex");
   const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
-    identity: `${opts.userId}-${suffix}`,
+    identity: opts.userId,
     name: opts.userId,
     ttl: TOKEN_TTL_SECONDS,
   });
@@ -84,11 +80,10 @@ export async function issueRelayToken(opts: {
 }): Promise<{ token: string; roomName: string; url: string }> {
   const { url, apiKey, apiSecret } = await getRelayLivekitCredentials(opts.guildId);
   const roomName = await getRelayRoomName(opts.guildId);
-  const suffix = randomBytes(4).toString("hex");
+  // Stable identity (no random suffix): a reconnecting publisher replaces its
+  // own prior participant instead of leaving a ghost in the relay room.
   const identity =
-    opts.role === "subscriber"
-      ? "relay-bot-service"
-      : `relay-pub-${opts.userId}-${suffix}`;
+    opts.role === "subscriber" ? "relay-bot-service" : `relay-pub-${opts.userId}`;
 
   const at = new AccessToken(apiKey, apiSecret, {
     identity,

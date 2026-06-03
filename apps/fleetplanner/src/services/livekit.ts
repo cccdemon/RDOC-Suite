@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { AccessToken } from "livekit-server-sdk";
 import { getEnv } from "../config/env.js";
 
@@ -27,9 +26,10 @@ export async function issueUnitLivekitToken(
   if (!env.LIVEKIT_URL || !env.LIVEKIT_API_KEY || !env.LIVEKIT_API_SECRET) return null;
 
   const room = fleetUnitRoom(operationId, unitId);
-  const suffix = randomBytes(4).toString("hex");
+  // Stable identity (no random suffix) so a reconnect replaces the prior
+  // participant instead of leaving a ghost. See issueMissionVoiceToken.
   const at = new AccessToken(env.LIVEKIT_API_KEY, env.LIVEKIT_API_SECRET, {
-    identity: `${userId}-${suffix}`,
+    identity: userId,
     name: userId,
     ttl: TOKEN_TTL_SECONDS,
   });
@@ -76,9 +76,10 @@ export async function issueGlobalVoiceToken(
   if (!env.LIVEKIT_URL || !env.LIVEKIT_API_KEY || !env.LIVEKIT_API_SECRET) return null;
 
   const room = fleetGlobalRoom(operationId);
-  const suffix = randomBytes(4).toString("hex");
+  // Stable identity (no random suffix) so a reconnect replaces the prior
+  // participant instead of leaving a ghost. See issueMissionVoiceToken.
   const at = new AccessToken(env.LIVEKIT_API_KEY, env.LIVEKIT_API_SECRET, {
-    identity: `${userId}-${suffix}`,
+    identity: userId,
     name: userId,
     ttl: TOKEN_TTL_SECONDS,
   });

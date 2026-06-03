@@ -32,6 +32,14 @@ Deploy: relay-bots + fleetplanner Container neu bauen; companion neue Version.
    Löschung wenn Channel „occupied" ODER Bridge-Occupancy unbekannt → post-op (Leute lingern / Bridge-
    Hiccup) wurde NIE gelöscht. Fix: Op ist vorbei → immer löschen (Discord trennt Nachzügler); Occupancy-
    Guard + ungenutzte bridge-Imports raus.
+6. **Random-suffix Identity auch in Bridge + Unit/Global-Token** (LiveKit-Log:
+   `could not restart participant` im `commander-bridge-<guild>`-Room). Gleiches Ghost-Problem in
+   Squad-Link-Bridge-Room, Session-Rooms, Relay-Publisher, Fleet-Unit-/Global-Rooms. Fix: stabile
+   Identity überall — `bridge/livekit.ts` (issueLivekitToken/issueSessionLivekitToken/issueRelayToken),
+   `fleetplanner/livekit.ts` (issueUnitLivekitToken/issueGlobalVoiceToken). randomBytes-Imports raus.
+   Bridge-Roster nutzt eigene RoomRegistry (kein Identity-Parsing) → kein Break.
+Sonst: bot `shard reconnecting`→sofort `shard resumed replayed:1` = normales Discord-Gateway-Verhalten,
+kein Fehler. Keine Buffer-Overflows, keine Caddy-5xx.
 
 ## Queued / Planned Step - 2026-06-03: Primäre Voice-Unit wählbar (Multi-Position-User)
 
