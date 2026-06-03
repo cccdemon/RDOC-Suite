@@ -3,6 +3,13 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-03: Companion-Fenster breiter (Modebar-Buttons abgeschnitten)
+
+Beim Start waren nicht alle Modebar-Buttons (SERVER WECHSELN/VOICE TO ALL/MUTE/AFK/ABMELDEN/
+MISSION/⚙) sichtbar — `.cc-modebar`/`.cc-modebar-right` = flex ohne wrap, 640px zu schmal → rechts
+geclippt. Fix: `tauri.conf.json` width 640→820, minWidth 560→720; `kit.css .cc-modebar-right`
+`flex-wrap: wrap` + `justify-content: flex-end` als Sicherheitsnetz. Companion-Build lokal (Windows/Tauri).
+
 ## Queued / Planned Step - 2026-06-03: Mission Export — Teilnehmerliste nach Event-Ende
 
 Feature: nach `completed`-Op die Teilnehmer-Roster anzeigen + als CSV exportieren ("Wer hat
