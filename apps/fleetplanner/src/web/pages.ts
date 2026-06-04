@@ -1563,33 +1563,18 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   // Action Details — rendered persistently in the shell (above the tab nav) so
   // mission time/location/Discord + status controls stay visible on every tab.
-  const actionDetailsPanel = html`<section class="opv2-panel opv2-action-details">
-    <div class="opv2-panel-title">Action Details</div>
-    <div class="opv2-action-grid">
-      <div class="detail-row">
-        <span>When</span>
-        <strong>${fmtDate(op.scheduledAt, gtz)}</strong>
-      </div>
-      <div class="detail-row">
-        <span>System</span>
-        <strong>${systemLabel(op.meetingSystem ?? "stanton")}</strong>
-      </div>
-      <div class="detail-row">
-        <span>Rendezvous</span>
-        <strong>${op.meetingLocation || "Not set"}</strong>
-      </div>
-      <div class="detail-row">
-        <span>Leaders</span>
-        <strong>${op.leaders.length || "None"}</strong>
-      </div>
-      <div class="detail-row">
-        <span>Discord Event Voice</span>
-        <strong
-          >${opts.guildVoiceChannels?.find((channel) => channel.id === op.eventVoiceChannelId)
-            ?.name ?? "Not set"}</strong
-        >
-      </div>
-      <div class="detail-row">
+  // Styled as metric cards (label over value) to match the metrics row above.
+  const eventVoiceName =
+    opts.guildVoiceChannels?.find((channel) => channel.id === op.eventVoiceChannelId)?.name ??
+    "Not set";
+  const actionDetailsPanel = html`<div class="opv2-action-details">
+    <div class="opv2-metrics opv2-action-metrics">
+      ${metric("When", fmtDate(op.scheduledAt, gtz))}
+      ${metric("System", systemLabel(op.meetingSystem ?? "stanton"))}
+      ${metric("Rendezvous", op.meetingLocation || "Not set")}
+      ${metric("Leaders", op.leaders.length || "None")}
+      ${metric("Event Voice", eventVoiceName)}
+      <div class="opv2-metric">
         <span>Discord</span>
         <strong>
           ${opts.guildDiscordInviteUrl
@@ -1601,7 +1586,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       </div>
     </div>
     ${statusControls}
-  </section>`;
+  </div>`;
 
   const fleetPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">

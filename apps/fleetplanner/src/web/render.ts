@@ -1007,15 +1007,17 @@ select option { background: var(--bg3); }
 }
 .opv2-metric.good { border-color: rgba(0,255,136,0.3); background: var(--green-08); }
 .opv2-metric.warn { border-color: var(--gold-38); background: var(--gold-08); }
-/* Persistent Action Details bar — visible above the tab nav on every tab.
-   Detail rows flow into a compact responsive grid instead of a tall stack. */
+/* Persistent Action Details — visible above the tab nav on every tab. Rendered
+   as metric cards (label over value) to match the metrics row above. Values run
+   longer than a metric number (dates, place names) so use a smaller value font. */
 .opv2-action-details { margin: 0 0 1rem; }
-.opv2-action-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-  gap: 0.35rem 1.25rem;
+.opv2-action-metrics { margin: 0 0 0.75rem; }
+.opv2-action-metrics .opv2-metric strong {
+  font-size: 0.95rem;
+  line-height: 1.3;
+  word-break: break-word;
 }
-.opv2-action-details .detail-row { margin: 0; padding: 0.3rem 0; }
+.opv2-action-metrics .opv2-metric strong a { color: var(--cyan); }
 .opv2-tabs {
   display: flex;
   flex-wrap: wrap;
