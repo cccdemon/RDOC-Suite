@@ -8,7 +8,7 @@ import { logger } from "../services/logger.js";
 import { bridgeRoomName, issueSessionLivekitToken, issueLivekitToken, sessionRoomName } from "../services/livekit.js";
 import { rooms } from "../services/rooms.js";
 import { wsConnectionOpened, wsConnectionClosed } from "../services/metrics.js";
-import { checkAllowedVoiceChannel, recheckCommanderRole } from "../services/permissions.js";
+import { checkAllowedVoiceChannel, recheckCommanderRole, checkBridgeGate } from "../services/permissions.js";
 import { readGuildConfig } from "../services/guildConfig.js";
 import { fetchGuildMember } from "../auth/discord.js";
 import { getGuildInfo } from "../services/guildInfo.js";
@@ -259,6 +259,23 @@ async function handleOAuthCommander(
     return;
   }
   logger.info({ userId, guildId, authPath: "oauth" }, "ws client connected");
+
+  // Re-evaluate authorization live on every connect (not just at OAuth
+  // login), so a freshly granted/revoked role propagates on the next
+  // reconnect without forcing a new OAuth round-trip. The companion
+  // slow-retries after a 4403, so a role grant is picked up automatically.
+  const bridgeGate = await checkBridgeGate({ userId });
+  if (!bridgeGate.ok) {
+    send(socket, { type: "error", code: bridgeGate.reason, message: "bridge gate" });
+    socket.close(CLOSE_FORBIDDEN, bridgeGate.reason);
+    return;
+  }
+  const roleVerdict = await recheckCommanderRole({ userId, guildId });
+  if (!roleVerdict.ok) {
+    send(socket, { type: "error", code: roleVerdict.reason, message: "permission denied" });
+    socket.close(CLOSE_FORBIDDEN, roleVerdict.reason);
+    return;
+  }
 
   // Resolve the Discord display name + guild name once per WS-connect
   // so the companion shows "HEADWiG" + "HEADWiG's Knobelbude" instead

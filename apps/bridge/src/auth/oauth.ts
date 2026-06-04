@@ -3,8 +3,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { getEnv, getOAuthEnv } from "../config/env.js";
 import { readGuildConfig } from "../services/guildConfig.js";
-import { getGlobalSettings } from "../services/globalSettings.js";
 import { logger } from "../services/logger.js";
+import { checkBridgeGate } from "../services/permissions.js";
 import { issueSessionToken } from "./sessionToken.js";
 import {
   buildAuthorizeUrl,
@@ -140,31 +140,17 @@ export async function registerOAuthRoutes(app: FastifyInstance): Promise<void> {
     // Discord role on the Raumdock server to use bridge mode at all.
     // Configured in GlobalSettings (DB), enforced before any tenant check.
     // Only active once both the role and the Raumdock guild are set.
-    const globalSettings = await getGlobalSettings();
-    if (globalSettings.bridgeRequiredRoleId && globalSettings.raumdockGuildId) {
-      const rdMember = await fetchGuildMember({
-        botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
-        guildId: globalSettings.raumdockGuildId,
-        userId,
-      });
-      if (!rdMember.ok) {
-        logger.warn(
-          { userId, raumdockGuildId: globalSettings.raumdockGuildId },
-          "bridge gate: raumdock member fetch failed",
-        );
+    const bridgeGate = await checkBridgeGate({ userId });
+    if (!bridgeGate.ok) {
+      if (bridgeGate.reason === "raumdock_member_fetch_failed") {
         return reply.code(502).send({ error: "raumdock_member_fetch_failed" });
       }
-      const hasBridgeRole =
-        rdMember.value.present &&
-        rdMember.value.member.roles.includes(globalSettings.bridgeRequiredRoleId);
-      if (!hasBridgeRole) {
-        logger.info({ userId }, "auth rejected: missing bridge role");
-        return reply.code(403).send({
-          error: "missing_bridge_role",
-          detail:
-            "Dir fehlt die erforderliche Discord-Rolle auf dem Raumdock-Server, um Squad Link zu nutzen.",
-        });
-      }
+      logger.info({ userId }, "auth rejected: missing bridge role");
+      return reply.code(403).send({
+        error: "missing_bridge_role",
+        detail:
+          "Dir fehlt die erforderliche Discord-Rolle auf dem Raumdock-Server, um Squad Link zu nutzen.",
+      });
     }
 
     const guildConfig = await readGuildConfig(cookie.guildId);

@@ -3,6 +3,20 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Companion picks up role grants live (4403 retry + WS-connect bridge gate)
+
+Bug: Companion sagt dauerhaft „Bridge Mode nicht erlaubt" nachdem Admin die Rolle (CanUseBridgeMode)
+gegeben hat. Ursachen: (1) Companion `ws.ts` behandelt `4403 forbidden` als terminal → kein Reconnect,
+Rollen-Grant wird nie neu geprüft. (2) `bridgeRequiredRoleId`-Gate läuft NUR im OAuth-Login
+(`oauth.ts`), nicht beim WS-Connect → altes Token re-evaluiert nie. Fix:
+- Bridge: `checkBridgeGate({userId})` aus oauth.ts in `services/permissions.ts` extrahiert; in
+  `ws.ts handleOAuthCommander` beim Connect aufgerufen (+ `recheckCommanderRole` beim Connect statt
+  erst im 60s-Loop) → WS-Connect ist live-autoritativ, Reconnect reicht.
+- Companion `ws.ts`: nach `4403 forbidden` langsamer Auto-Retry (60s, gedeckelt-loop) statt Dead-End
+  → Rollen-Grant sickert ohne Neustart/Re-Login durch.
+Companion Version-Bump 0.5.17 → 0.5.18 + Tag companion-v0.5.18.
+
+
 ## Completed Step - 2026-06-04: Fleetplanner Top-Nav "Unsigned Binary"-Seite
 
 Neue Top-Nav-Seite `/why-unsigned` ("Unsigned Binary") erklärt warum die Companion-EXE (noch) nicht

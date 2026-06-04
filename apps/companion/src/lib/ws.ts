@@ -11,6 +11,11 @@ type Listener = {
 const HEARTBEAT_INTERVAL_MS = 20_000;
 const RECONNECT_BASE_MS = 1_000;
 const RECONNECT_MAX_MS = 30_000;
+// After a 4403 (forbidden) close we don't fast-reconnect, but we DO retry
+// slowly: a Discord role grant on the bridge side should propagate without
+// the user restarting / re-logging the app. The bridge re-checks the bridge
+// gate + commander role live on every WS connect.
+const FORBIDDEN_RETRY_MS = 60_000;
 
 export class BridgeWs {
   private socket: WebSocket | null = null;
@@ -22,6 +27,7 @@ export class BridgeWs {
   private status: WsStatus = "idle";
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private reconnectAttempts = 0;
+  private forbiddenTimer: ReturnType<typeof setTimeout> | null = null;
   private explicitlyClosed = false;
   private lastHeartbeatTimestamp: number | null = null;
   /** Most recent measured RTT in milliseconds. Null until first pong received. */
@@ -48,6 +54,7 @@ export class BridgeWs {
     this.guildId = guildId;
     this.sessionId = null;
     this.teardownSocket("switching_guild");
+    this.clearForbiddenTimer();
     this.reconnectAttempts = 0;
     this.explicitlyClosed = false;
     this.openSocket();
@@ -60,6 +67,7 @@ export class BridgeWs {
     this.sessionId = sessionId;
     this.guildId = null;
     this.teardownSocket("switching_session");
+    this.clearForbiddenTimer();
     this.reconnectAttempts = 0;
     this.explicitlyClosed = false;
     this.openSocket();
@@ -68,6 +76,7 @@ export class BridgeWs {
   disconnect(): void {
     this.explicitlyClosed = true;
     this.clearHeartbeat();
+    this.clearForbiddenTimer();
     this.teardownSocket("client_disconnect");
     this.setStatus("closed");
   }
@@ -143,9 +152,13 @@ export class BridgeWs {
         this.setStatus("closed", "unauthenticated");
         return;
       }
-      // Code 4403 = forbidden (session ended, not a member); do not reconnect.
+      // Code 4403 = forbidden (missing role / session ended / not a member).
+      // Don't fast-reconnect, but retry slowly so a later role grant on the
+      // bridge is picked up automatically — the bridge re-checks permissions
+      // live on every WS connect.
       if (ev.code === 4403) {
         this.setStatus("closed", "forbidden");
+        this.scheduleForbiddenRetry();
         return;
       }
       // Code 4409 = the bridge kicked this socket because another
@@ -159,6 +172,21 @@ export class BridgeWs {
       }
       this.scheduleReconnect();
     };
+  }
+
+  private scheduleForbiddenRetry(): void {
+    this.clearForbiddenTimer();
+    this.forbiddenTimer = setTimeout(() => {
+      this.forbiddenTimer = null;
+      if (!this.explicitlyClosed) this.openSocket();
+    }, FORBIDDEN_RETRY_MS);
+  }
+
+  private clearForbiddenTimer(): void {
+    if (this.forbiddenTimer) {
+      clearTimeout(this.forbiddenTimer);
+      this.forbiddenTimer = null;
+    }
   }
 
   private scheduleReconnect(): void {

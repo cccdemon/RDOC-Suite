@@ -3,6 +3,51 @@ import { fetchGuildMember } from "../auth/discord.js";
 import { getOAuthEnv } from "../config/env.js";
 import { logger } from "./logger.js";
 import { readGuildConfig } from "./guildConfig.js";
+import { getGlobalSettings } from "./globalSettings.js";
+
+export type BridgeGateResult =
+  | { ok: true }
+  | { ok: false; reason: "missing_bridge_role" | "raumdock_member_fetch_failed" };
+
+/**
+ * Raumdock-wide bridge gate: the user must hold a specific Discord role on
+ * the Raumdock server to use Squad Link at all. Live Discord lookup (no
+ * cache), so a freshly granted/revoked role is reflected immediately.
+ *
+ * Shared by the OAuth login (apps/bridge/src/auth/oauth.ts) and the WS
+ * connect (signaling/ws.ts) so a role change propagates on the next WS
+ * connect without forcing a fresh OAuth. Returns ok when OAuth creds are
+ * absent (tests/demos) or the gate isn't configured.
+ */
+export async function checkBridgeGate(opts: { userId: string }): Promise<BridgeGateResult> {
+  const oauth = getOAuthEnv();
+  if (!oauth) return { ok: true };
+
+  const globalSettings = await getGlobalSettings();
+  if (!globalSettings.bridgeRequiredRoleId || !globalSettings.raumdockGuildId) {
+    return { ok: true };
+  }
+
+  const rdMember = await fetchGuildMember({
+    botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
+    guildId: globalSettings.raumdockGuildId,
+    userId: opts.userId,
+  });
+  if (!rdMember.ok) {
+    logger.warn(
+      { userId: opts.userId, raumdockGuildId: globalSettings.raumdockGuildId },
+      "bridge gate: raumdock member fetch failed",
+    );
+    return { ok: false, reason: "raumdock_member_fetch_failed" };
+  }
+  const hasBridgeRole =
+    rdMember.value.present &&
+    rdMember.value.member.roles.includes(globalSettings.bridgeRequiredRoleId);
+  if (!hasBridgeRole) {
+    return { ok: false, reason: "missing_bridge_role" };
+  }
+  return { ok: true };
+}
 
 export type PermissionCheckResult =
   | { ok: true }
