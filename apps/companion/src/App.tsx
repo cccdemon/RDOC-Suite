@@ -1386,15 +1386,13 @@ export function App(): JSX.Element {
         </div>
       </header>
 
-      {/* ── Mode banner ─────────────────────────────────────── */}
-      <div className={`cc-mode-banner ${state.missionActive ? "mission" : "bridge"}`}>
-        <Icon.radio size={10} />
-        {state.missionActive ? "MISSION MODE" : "BRIDGE MODE"}
-      </div>
-
       {/* ── Status strip ───────────────────────────────────── */}
       <section className="cc-status-strip">
         <span className="cc-status-stripe"></span>
+        <span className={`cc-badge ${state.missionActive ? "gold" : "cyan"}`}>
+          <Icon.radio size={11} />
+          {state.missionActive ? "MISSION MODE" : "BRIDGE MODE"}
+        </span>
         <span className={`cc-badge ${wsConnected ? "green" : "dim"}`}>
           <span className="cc-badge-dot" style={{ background: "currentColor" }}></span>
           {wsConnected ? "VERBUNDEN" : state.wsStatus.toUpperCase()}
