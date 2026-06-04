@@ -1595,9 +1595,15 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       ${user && (op.status === "open" || op.status === "draft")
         ? html`<details class="opv2-edit-block mt-1">
             <summary class="btn btn-sm">Register Unit</summary>
-            <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form mt-1">
+            <form
+              method="post"
+              action="${bp}/api/ops/${op.id}/units"
+              class="opv2-form opv2-unit-form mt-1"
+              novalidate
+            >
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
+              <div class="form-errors opv2-unit-errors" hidden></div>
               <label>Fleet need</label>
               <select name="requirementId">
                 <option value="">Unslotted</option>
@@ -2023,6 +2029,51 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           };
           unitType.addEventListener("change", syncUnitType);
           syncUnitType();
+
+          // Validate BEFORE submit so a missing ship/squad field never hits the
+          // server, reloads the page and collapses this <details> (losing all
+          // entered data). Keeps the form open and points at what's missing.
+          const errBox = form.querySelector(".opv2-unit-errors");
+          const squadName = form.querySelector('[name="squadName"]');
+          const squadSize = form.querySelector('[name="squadSize"]');
+          const markBad = (el, bad) => el && el.classList.toggle("field-error", bad);
+          form.addEventListener("submit", (e) => {
+            const missing = [];
+            const isShip = unitType.value === "ship";
+            markBad(ownedShipSelect, false);
+            markBad(shipSearch, false);
+            markBad(squadName, false);
+            markBad(squadSize, false);
+            if (isShip) {
+              const hasShip =
+                (ownedShipSelect && ownedShipSelect.value) ||
+                (shipIdField && shipIdField.value);
+              if (!hasShip) {
+                missing.push("Schiff (Owned ship oder Ship search)");
+                markBad(ownedShipSelect, true);
+                markBad(shipSearch, true);
+              }
+            } else {
+              if (!squadName || !squadName.value.trim()) {
+                missing.push("Squad name");
+                markBad(squadName, true);
+              }
+              if (!squadSize || !squadSize.value) {
+                missing.push("Squad size");
+                markBad(squadSize, true);
+              }
+            }
+            if (missing.length > 0) {
+              e.preventDefault();
+              if (errBox) {
+                errBox.textContent = "Bitte ausfüllen: " + missing.join(", ") + ".";
+                errBox.hidden = false;
+                errBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+              }
+            } else if (errBox) {
+              errBox.hidden = true;
+            }
+          });
         }
         if (ownedShipSelect && shipIdField) {
           ownedShipSelect.addEventListener("change", () => {
