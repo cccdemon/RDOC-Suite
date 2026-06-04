@@ -404,9 +404,16 @@ export class LivekitAudio {
       await r.disconnect();
     }
     this.tearDownMicGain();
-    document.querySelectorAll("audio[data-dccc-track]").forEach((el) => el.remove());
-    document.querySelectorAll("audio[data-dccc-sink]").forEach((el) => el.remove());
-    document.querySelectorAll("audio[data-dccc-primer]").forEach((el) => el.remove());
+    // Remove ONLY this instance's attached <audio> elements. A global
+    // querySelectorAll("audio[data-dccc-track]") would also nuke the elements
+    // owned by a *coexisting* LivekitAudio instance — in mission mode the
+    // bridge/guild room and the mission commander room run side by side, so
+    // tearing down one room would silence the other (one-way audio: you keep
+    // publishing but stop hearing the remote). Scope cleanup to attachedRemotes.
+    for (const remote of this.attachedRemotes.values()) {
+      remote.element.srcObject = null;
+      remote.element.remove();
+    }
     this.attachedRemotes.clear();
     this.speakingUserIds.clear();
     this.listeners.rosterChanged?.([]);

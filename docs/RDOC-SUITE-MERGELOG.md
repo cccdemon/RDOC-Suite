@@ -3,6 +3,26 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: Command Net stabiles Einweg-Audio — LivekitAudio.disconnect() löscht fremde <audio> global (Companion v0.5.21)
+
+Live mit Hedwig per `listParticipants` + Companion-Log (v0.5.19) gemessen: beide Publisher OK
+(Track toggelt LIVE/MUTED korrekt mit PTT), Hedwig hört dich — du hörst Hedwig NICHT. Listener-Bug
+auf deiner Seite, stabil (nicht der Flap aus v0.5.20).
+
+Root Cause: in Mission laufen ZWEI `LivekitAudio`-Instanzen parallel — der mission commander room
+(FleetAudio, identity=fleetplanner-cuid) UND der bridge/guild room (audioRef, identity=Discord-ID).
+Beide attachen ihre Remote-`<audio>` an `document.body` mit `data-dccc-track`. Wenn der bridge room
+in Mission abgebaut wird (`reason=1`), ruft `LivekitAudio.disconnect()`
+([apps/companion/src/lib/livekit.ts](../apps/companion/src/lib/livekit.ts) ~L407):
+`document.querySelectorAll("audio[data-dccc-track]").forEach(el => el.remove())` — das entfernt
+ALLE solchen Elemente GLOBAL, also auch das des commander rooms. Folge: commander-Remote-Audio
+(Hedwig) verschwindet, dein Mic-Publish bleibt → „Hedwig hört mich, ich höre Hedwig nicht", stabil
+bis der commander room neu attached. Selbe Klasse: `data-dccc-sink`/`data-dccc-primer` global removed.
+
+Fix: disconnect-Cleanup auf die eigene Instanz scopen — nur die Elemente aus `this.attachedRemotes`
+entfernen (srcObject=null + remove), statt global per querySelectorAll. Koexistierende Rooms bleiben
+unberührt. Version-Bump 0.5.20→0.5.21.
+
 ## Completed Step - 2026-06-05: Command Net flapping one-way audio — Discord-voice-gate Hysterese (Companion v0.5.20) — commit 6828d39
 
 Symptom (live mit Hedwig diagnostiziert): im Commander Net (Mission, LiveKit `fc-<uuid>`-Raum)

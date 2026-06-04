@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Companion: Command Net stable one-way audio (disconnect() nuked coexisting room's audio elements) (2026-06-05)
+
+- In Command Net you could be heard but heard nobody. Root cause: in mission mode two `LivekitAudio` instances run side by side (the bridge/guild room and the mission commander room), both attaching remote `<audio>` elements with `data-dccc-track`. When the bridge room tore down, `LivekitAudio.disconnect()` ran `document.querySelectorAll("audio[data-dccc-track]").forEach(el => el.remove())` — a **global** removal that also deleted the commander room's remote audio elements, silencing the other commander while your own mic kept publishing (one-way).
+- `disconnect()` now removes only the elements in its own `attachedRemotes`, leaving a coexisting instance's audio intact. Companion 0.5.20 → 0.5.21.
+
 ### Fixed — Companion: Command Net flapping one-way audio (Discord-voice gate hysteresis) (2026-06-05)
 
 - Commander Net audio dropped intermittently ("whoever joined last is heard, others not"; speaking indicator flickering; one side mutes mid-talk). Root cause: the 5s mission poll tore the commander LiveKit room down on a *single* `discordVoice.ok=false` poll, and the backend gate derives from the Bot's flaky/stale Discord voice-state. Members sitting in their own per-unit relaybot channels (the normal in_progress state) flapped the gate and churned the room.
