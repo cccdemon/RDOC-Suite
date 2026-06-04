@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { getEnv } from "../config/env.js";
+import { getEnv, getOAuthEnv } from "../config/env.js";
 import { type AdminRecord, getAdminRecord } from "../services/admins.js";
 import {
   ADMIN_SESSION_COOKIE,
@@ -24,8 +24,10 @@ const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /** Expected public origin (scheme+host[:port]) of the admin UI, from OAUTH_REDIRECT_URI. */
 function expectedOrigin(): string | null {
+  const oauth = getOAuthEnv();
+  if (!oauth) return null;
   try {
-    return new URL(getEnv().OAUTH_REDIRECT_URI).origin;
+    return new URL(oauth.OAUTH_REDIRECT_URI).origin;
   } catch {
     return null;
   }
