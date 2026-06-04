@@ -3,6 +3,12 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Completed Step - 2026-06-04: Bridge LiveKit room weekly rotation + role-loss auto-kick — commit 4f0b113
+
+Deployed (bridge-only, healthy). Verifiziert: `bridgeLivekitRoom(1431307397842079777)` =
+`commander-bridge-1431307397842079777-w22`. Live-Migration via 60s-Recheck, role-loss-kick via
+recheckBridgeAccess. Kein Companion-Bump.
+
 ## Queued / Planned Step - 2026-06-04: Bridge LiveKit room weekly rotation + role-loss auto-kick
 
 1. **Weekly rotation:** Guild-Bridge-LiveKit-Raum rotiert alle 7 Tage. `livekit.ts`:
