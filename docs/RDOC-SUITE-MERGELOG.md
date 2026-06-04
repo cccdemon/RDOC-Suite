@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-05: Bridge↔Mission room-Exklusivität im Code erzwingen (Companion v0.6.0)
+## Completed Step - 2026-06-05: Bridge↔Mission room-Exklusivität im Code erzwingen (Companion v0.6.0) — commit 9d7c68f
 
 Doc-Enforcement (#2) der Mode-Transitions: Bridge room (audioRef) darf bei aktivem Mission-Link nie
 connecten. Vorher gegated auf `missionActive && missionHasCommander` → Lücke: solange commander room
