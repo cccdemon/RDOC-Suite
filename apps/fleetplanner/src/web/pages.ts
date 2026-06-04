@@ -892,7 +892,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             </details>`
           : safe("");
 
-        return html`<details class="opv2-unit-card" open>
+        return html`<details class="opv2-unit-card">
           <summary class="opv2-unit-summary">
             <div class="opv2-unit-main">
               <strong>${unitName(unit)}</strong>
