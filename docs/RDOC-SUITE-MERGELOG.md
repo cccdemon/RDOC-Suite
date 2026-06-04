@@ -3,6 +3,17 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: Architektur-Doc — Mode-Transitions (Bridge↔Mission exklusiv) explizit
+
+User-Klarstellung: Bridge room und Missionsräume sind room-level EXKLUSIV. Sobald der Mission-
+Config-Link kommt, MUSS die Companion den Bridge room SOFORT verlassen und die Missionsräume betreten
+(Commander immer; Relay wenn Global-Radio-Net-Berechtigung). Bridge Mode ist NUR aktiv solange der
+User NICHT in einer Mission ist. Mission-Ende → zurück zu Bridge Mode NUR wenn die User-Rolle das
+Bridge-Gate erfüllt. Doc-Ergänzung in `docs/companion-voice-architecture.md` (neuer Abschnitt
+"Mode Transitions"). Bezug: der v0.5.21-Bug (ea6546f) entstand genau durch transiente Koexistenz
+Bridge+Commander; die Doc verbietet diese Koexistenz jetzt explizit. Code-Enforcement (Bridge room
+bei Mission garantiert ungeconnected statt transient flackernd) = separater Folge-Step.
+
 ## Completed Step - 2026-06-05: Command Net stabiles Einweg-Audio — LivekitAudio.disconnect() löscht fremde <audio> global (Companion v0.5.21) — commit ea6546f
 
 Live mit Hedwig per `listParticipants` + Companion-Log (v0.5.19) gemessen: beide Publisher OK

@@ -132,6 +132,35 @@ Important audio rule:
 
 - If the speaking Fleetmanager/Commander is currently in the same Discord channel as a RelayBot, that RelayBot must not retransmit that speaker back into that channel. Otherwise the speaker hears themselves twice.
 
+## Mode Transitions
+
+Bridge Mode and the mission modes (Commander Mode, Relay Mode) are mutually
+exclusive at the LiveKit room level. The Companion must never hold the Bridge
+room and a mission room connected at the same time.
+
+1. **Mission configuration link received.** The Companion must **immediately
+   leave the Bridge room** and join the mission rooms: the Commander room
+   always, and the Relay publish room if the user has Global Radio Net
+   permission. The Bridge LiveKit connection is **fully torn down** as part of
+   entering the mission — it must not keep running in the background.
+2. **During an active mission.** Bridge Mode is inactive. PTT-1 / LOCAL is owned
+   by Commander Mode; PTT-2 / GLOBAL is owned by Relay Mode. The Bridge room
+   must not be connected.
+3. **Bridge Mode is active only while the user is not in a mission.** It is the
+   default out-of-mission mode, never a mission fallback.
+4. **Mission ends or is disconnected.** The Companion leaves all mission rooms
+   and switches back to Bridge Mode **only if** the user satisfies the Raumdock
+   Bridge role gate (`1511124797445247096` on guild `1431307397842079777`).
+   Otherwise it stays idle.
+
+Implementation note: a Bridge room and a mission room connected simultaneously
+previously caused a one-way audio bug — a Bridge room teardown removed the
+mission room's remote `<audio>` elements, so the user kept publishing but
+stopped hearing other commanders (Companion v0.5.21 scoped the teardown as an
+immediate mitigation). Enforcing single-active-room transitions (leave Bridge
+before joining the mission; never reconnect Bridge during a mission) is the
+structural guarantee that prevents this class of bug.
+
 ## Mission Voice Room Model
 
 Each mission owns dedicated LiveKit rooms that are created/prepared when the mission is opened.
