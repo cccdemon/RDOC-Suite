@@ -44,6 +44,17 @@ groups:
           summary: "Relay bot {{ $labels.bot }} buffer overflow"
           description: "{{ $value }} buffer overflow(s) on bot {{ $labels.bot }} in 5m — audio is being dropped (robotic voice)."
 
+  - name: rdoc-suite-postgres
+    rules:
+      - alert: PostgresDown
+        expr: pg_up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Fleetplanner Postgres is unreachable"
+          description: "postgres-exporter reports pg_up=0 for more than 2 minutes — the fleetplanner database may be down."
+
   - name: rdoc-suite-host
     rules:
       - alert: DiskSpaceLow

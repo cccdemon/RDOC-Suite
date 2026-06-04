@@ -26,9 +26,15 @@ suite.raumdock.org:9443 {
 
 	# Prometheus scrape endpoints must never be reachable from the public
 	# internet. The bridge serves /metrics on the same Fastify app that this
-	# catch-all proxies, so block it here. Prometheus scrapes bridge:8787 over
-	# the internal docker network, so this does not affect monitoring.
+	# catch-all proxies, and the fleetplanner serves it under /fleetplanner/metrics
+	# (handle_path strips the prefix to /metrics). Block both here. Prometheus
+	# scrapes bridge:8787 and fleetplanner:3200 over the internal docker network,
+	# so this does not affect monitoring.
 	handle /metrics* {
+		respond 404
+	}
+
+	handle /fleetplanner/metrics* {
 		respond 404
 	}
 

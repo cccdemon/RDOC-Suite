@@ -212,6 +212,8 @@ services:
       - relay-bots
       - alertmanager
       - node-exporter
+      - postgres-exporter
+      - fleetplanner
 
   # Alert routing → Discord. No public port; UI bound to loopback only.
   # The Discord webhook URL is a host-side file secret (see
@@ -229,6 +231,17 @@ services:
       - alertmanager_data:/alertmanager
     ports:
       - "127.0.0.1:9093:9093"
+
+  # Postgres metrics for the fleetplanner DB. No published port — scraped only
+  # over the internal docker network. Never expose this to the internet.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: rdoc-suite-postgres-exporter
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_NAME: "postgresql://fleetplanner:${FLEETPLANNER_DB_PASSWORD}@fleetplanner-db:5432/fleetplanner?sslmode=disable"
+    depends_on:
+      - fleetplanner-db
 
   # Host CPU / RAM / disk metrics. No published port — scraped only over the
   # internal docker network by Prometheus. Never expose this to the internet.

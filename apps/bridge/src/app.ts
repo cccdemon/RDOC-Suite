@@ -12,6 +12,7 @@ import { registerSessionRoutes } from "./routes/sessions.js";
 import { registerRelayRoute } from "./routes/relay.js";
 import { registerRelayBotsRoutes } from "./routes/relayBots.js";
 import { registerPrometheusMetricsRoute } from "./routes/prometheusMetrics.js";
+import { httpRequestDuration } from "./services/metrics.js";
 import { registerAdminRoutes } from "./admin/routes.js";
 import { setAdminViewsUiMode } from "./admin/views.js";
 import { startStrategyChannelGc } from "./services/strategyChannels.js";
@@ -41,6 +42,16 @@ export async function buildApp(options: BuildAppOptions = {}): Promise<FastifyIn
 
   await app.register(cookie);
   await app.register(websocket);
+
+  // HTTP request duration histogram. Uses the route template (not the raw
+  // URL) as the label to avoid unbounded cardinality.
+  app.addHook("onResponse", async (request, reply) => {
+    const route = request.routeOptions?.url ?? "unmatched";
+    if (route === "/metrics") return; // don't measure the scrape itself
+    httpRequestDuration
+      .labels(request.method, route, String(reply.statusCode))
+      .observe(reply.elapsedTime / 1000);
+  });
 
   // Public health probe. CORS-open so the companion's "Test connection"
   // button works from any origin (Vite dev, Tauri webview, browser

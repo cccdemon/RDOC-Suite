@@ -7,6 +7,7 @@ import { verifySessionToken } from "../auth/sessionToken.js";
 import { logger } from "../services/logger.js";
 import { bridgeRoomName, issueSessionLivekitToken, issueLivekitToken, sessionRoomName } from "../services/livekit.js";
 import { rooms } from "../services/rooms.js";
+import { wsConnectionOpened, wsConnectionClosed } from "../services/metrics.js";
 import { checkAllowedVoiceChannel, recheckCommanderRole } from "../services/permissions.js";
 import { readGuildConfig } from "../services/guildConfig.js";
 import { fetchGuildMember } from "../auth/discord.js";
@@ -79,6 +80,7 @@ function attachLifecycle(
   },
 ): void {
   const { userId, roomId, pttGuildIdGate, recheck } = opts;
+  wsConnectionOpened();
   let alive = true;
   socket.on("pong", () => {
     alive = true;
@@ -206,6 +208,7 @@ function attachLifecycle(
   });
 
   socket.on("close", (code) => {
+    wsConnectionClosed();
     clearInterval(heartbeat);
     if (recheckTimer) clearInterval(recheckTimer);
     const left = rooms.leave(socket);

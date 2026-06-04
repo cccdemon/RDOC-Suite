@@ -1849,6 +1849,154 @@
         { "id": "organize", "options": { "excludeByName": { "Time": true, "Value": true }, "indexByName": {} } }
       ],
       "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 79 },
+      "id": 29,
+      "panels": [],
+      "title": "App Services (fleetplanner / bridge / postgres)",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 80 },
+      "id": 30,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "sum by (status_code) (rate(fleetplanner_http_request_duration_seconds_count[5m]))", "legendFormat": "{{status_code}}", "range": true, "refId": "A" }
+      ],
+      "title": "Fleetplanner HTTP Request Rate (by status)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 80 },
+      "id": 31,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(fleetplanner_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p95", "range": true, "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "histogram_quantile(0.50, sum by (le) (rate(fleetplanner_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p50", "range": true, "refId": "B" }
+      ],
+      "title": "Fleetplanner HTTP Latency (p50/p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 80 },
+      "id": 32,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "fleetplanner_operations", "legendFormat": "{{status}}", "range": true, "refId": "A" }
+      ],
+      "title": "Fleetplanner Operations (by status)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 88 },
+      "id": 33,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "bridge_ws_connections", "legendFormat": "ws connections", "range": true, "refId": "A" }
+      ],
+      "title": "Bridge WebSocket Connections",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 88 },
+      "id": 34,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "pg_stat_database_numbackends{datname=\"fleetplanner\"}", "legendFormat": "connections", "range": true, "refId": "A" }
+      ],
+      "title": "Postgres Connections (fleetplanner)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 88 },
+      "id": 35,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "rate(pg_stat_database_xact_commit{datname=\"fleetplanner\"}[5m])", "legendFormat": "commits/s", "range": true, "refId": "A" },
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "rate(pg_stat_database_xact_rollback{datname=\"fleetplanner\"}[5m])", "legendFormat": "rollbacks/s", "range": true, "refId": "B" }
+      ],
+      "title": "Postgres Transactions (fleetplanner)",
+      "type": "timeseries"
     }
   ],
   "refresh": "15s",
@@ -1885,6 +2033,6 @@
   "timezone": "browser",
   "title": "RDOC Suite Overview",
   "uid": "rdoc-suite-overview",
-  "version": 4,
+  "version": 5,
   "weekStart": ""
 }

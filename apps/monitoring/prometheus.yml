@@ -30,6 +30,17 @@ scrape_configs:
       - targets:
           - relay-bots:8788
 
+  - job_name: rdoc-suite-fleetplanner
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - fleetplanner:3200
+
+  - job_name: rdoc-suite-postgres
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+
   # Host CPU / RAM / disk. Scraped over the internal docker network only;
   # node-exporter publishes no host port.
   - job_name: rdoc-suite-node

@@ -3,6 +3,24 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Monitoring-Ausbau Batch 2 (fleetplanner /metrics + postgres_exporter + bridge HTTP/WS)
+
+1. **Fleetplanner `/metrics`** (prom-client): default-Prozess-Metrics (prefix `fleetplanner_`),
+   HTTP-Request-Histogram (method/route/status via onResponse-Hook), Op-Lifecycle-Gauge
+   (`fleetplanner_operations` by status, async collect via Prisma groupBy). Route registriert ohne
+   Base-Prefix (Caddy strippt). Scrape-Job `fleetplanner:3200`.
+2. **postgres_exporter** Service (prometheuscommunity/postgres-exporter) → fleetplanner-db. Kein
+   Host-Port, nur Docker-Netz. Scrape-Job `postgres-exporter:9187`. Alert PostgresDown.
+3. **Bridge HTTP/WS-Metrics:** prometheusMetrics.ts auf prom-client umgestellt — default (prefix
+   `bridge_`), HTTP-Histogram (onResponse), `bridge_ws_connections` Gauge (inc/dec in
+   attachLifecycle/close). Bestehende `dccc_rooms_active/commanders_active/commanders_speaking`
+   bleiben (als Gauges mit collect() aus rooms.globalMetrics()).
+4. **SICHERHEIT:** `/fleetplanner/metrics` würde via Caddy `handle_path /fleetplanner*` öffentlich →
+   Caddy-Block `handle /fleetplanner/metrics* { respond 404 }`. Prometheus scrapt intern übers
+   Docker-Netz. postgres-exporter publisht keinen Port.
+Deploy: caddy-rdoc + bridge + fleetplanner neu bauen, postgres-exporter + monitoring neu.
+
+
 ## Completed Step - 2026-06-04: Monitoring-Ausbau Batch 1 — commits b6540f2 + df18e97
 
 Deployed + verifiziert: targets bridge/livekit/node/relay-bots alle `up`, 7 Alert-Rules geladen,

@@ -8,6 +8,7 @@ import { apiRoutes } from "./routes/api.js";
 import { guildRoutes } from "./routes/guilds.js";
 import { partnershipRoutes } from "./routes/partnerships.js";
 import { bridgeAdminRoutes } from "./routes/bridgeAdmin.js";
+import { registerMetrics } from "./services/metrics.js";
 
 export async function buildApp() {
   const env = getEnv();
@@ -33,6 +34,10 @@ export async function buildApp() {
 
   await app.register(cookie);
   await app.register(formbody);
+
+  // Prometheus metrics (HTTP histogram + /metrics route). Registered early so
+  // the onResponse hook covers all subsequent routes.
+  registerMetrics(app);
 
   // Routes register without the PUBLIC_BASE_PATH prefix because Caddy's
   // handle_path strips it before forwarding. basePath() is only used for
