@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-05: Command Net flapping one-way audio — Discord-voice-gate Hysterese (Companion v0.5.20)
+## Completed Step - 2026-06-05: Command Net flapping one-way audio — Discord-voice-gate Hysterese (Companion v0.5.20) — commit 6828d39
 
 Symptom (live mit Hedwig diagnostiziert): im Commander Net (Mission, LiveKit `fc-<uuid>`-Raum)
 hört mal der eine den anderen nicht, „wer als letztes joined wird gehört", Sprachindikator an/aus.
