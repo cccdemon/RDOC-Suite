@@ -1559,8 +1559,13 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           ? html`<p>${op.description}</p>`
           : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
     </section>
-    <section class="opv2-panel">
-      <div class="opv2-panel-title">Action Details</div>
+  </div>`;
+
+  // Action Details — rendered persistently in the shell (above the tab nav) so
+  // mission time/location/Discord + status controls stay visible on every tab.
+  const actionDetailsPanel = html`<section class="opv2-panel opv2-action-details">
+    <div class="opv2-panel-title">Action Details</div>
+    <div class="opv2-action-grid">
       <div class="detail-row">
         <span>When</span>
         <strong>${fmtDate(op.scheduledAt, gtz)}</strong>
@@ -1594,9 +1599,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             : "Not set"}
         </strong>
       </div>
-      ${statusControls}
-    </section>
-  </div>`;
+    </div>
+    ${statusControls}
+  </section>`;
 
   const fleetPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
@@ -1825,7 +1830,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             </form>`
           : safe("")}
       </div>
-      ${statusControls}
+      <p class="text-dim text-sm mt-1">Status controls are in the Action Details bar above.</p>
     </section>
     <section class="opv2-panel">
       <div class="opv2-panel-title">Leaders</div>
@@ -1972,6 +1977,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ${metric("Compositions", `${compositionFilled}/${compositionTotal}`)}
         ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
       </div>
+
+      ${actionDetailsPanel}
 
       <nav class="opv2-tabs">
         ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}

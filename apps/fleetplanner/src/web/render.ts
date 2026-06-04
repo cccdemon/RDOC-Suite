@@ -1007,6 +1007,15 @@ select option { background: var(--bg3); }
 }
 .opv2-metric.good { border-color: rgba(0,255,136,0.3); background: var(--green-08); }
 .opv2-metric.warn { border-color: var(--gold-38); background: var(--gold-08); }
+/* Persistent Action Details bar — visible above the tab nav on every tab.
+   Detail rows flow into a compact responsive grid instead of a tall stack. */
+.opv2-action-details { margin: 0 0 1rem; }
+.opv2-action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.35rem 1.25rem;
+}
+.opv2-action-details .detail-row { margin: 0; padding: 0.3rem 0; }
 .opv2-tabs {
   display: flex;
   flex-wrap: wrap;
