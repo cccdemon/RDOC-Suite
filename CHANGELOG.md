@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Companion: Global Radio Net double audio (Relay room was subscribed, not publish-only) (2026-06-05)
+
+- A commander with Global Radio Net permission was heard twice, and was still heard after the listener muted the RelayBot. Root cause: `RelayAudio` wrapped the shared `LivekitAudio`, which auto-subscribes and plays every remote track — so companions heard each other directly in the mission Relay room (`fg-…`) on top of the RelayBot broadcast in their Discord channel. The Relay room is publish-only (only RelayBots may consume it; per companion-voice-architecture.md §3 Global Radio Net is a RelayBot broadcast).
+- `LivekitAudio` gains a `publishOnly` mode (connects with `autoSubscribe: false` and never attaches remote audio); `RelayAudio` uses it. Command Net (commander room) keeps subscribing. Companion 0.6.0 → 0.6.1.
+- Follow-up (relay-bots, server-side): `subscriber.ts` lacks TrackUnsubscribed/ParticipantDisconnected handling and mixes all PCM into one PassThrough; watchdog restarts (buffer overflow) can leave stale reader loops → in-channel doubling. Tracked separately.
+
 ### Changed — Companion: Bridge and mission rooms are now mutually exclusive (2026-06-05)
 
 - Enforces the `companion-voice-architecture.md` rule that Bridge Mode and the mission rooms never run at once. The Bridge LiveKit room is now gated on `missionToken`: it is left/never-connected the moment a mission link is engaged (not only after the commander room finishes connecting), and resumes only after the mission ends (subject to the Bridge role gate). Closes the window where the Bridge room transiently connected during a mission — the coexistence that produced the v0.5.21 one-way audio bug. Companion 0.5.21 → 0.6.0.

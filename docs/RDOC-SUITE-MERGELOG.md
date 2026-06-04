@@ -3,6 +3,29 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: Global Radio Net Doppel-Audio — RelayAudio muss publish-only sein (Companion v0.6.1)
+
+Symptom (live verifiziert mit Hedwig): ein Commander mit Global-Net-Permission, in anderem Discord-
+Channel, wird DOPPELT gehört. Bot-Mute-Test: Hedwig mutete Funkrelais-2 (ihr Channel), User sprach
+Global — Hedwig hörte ihn trotzdem → die Kopie kam NICHT über den Bot.
+
+Root Cause: `RelayAudio` ([apps/companion/src/lib/relayAudio.ts](../apps/companion/src/lib/relayAudio.ts))
+wrappt `LivekitAudio`, die Klasse subscribed+attached ALLE Remote-Audio-Tracks (TrackSubscribed →
+attachRemoteAudio). Der mission Relay-Raum (`fg-…`) ist aber PUBLISH-ONLY — nur die RelayBots dürfen
+konsumieren (companion-voice-architecture.md §3: Global Radio Net = Broadcast via RelayBots in Discord-
+Channels). Da jeder Companion im Relay-Raum die anderen direkt via LiveKit hört, entsteht: Bot-Kopie
+(Discord) + LiveKit-Direkt-Kopie = DOPPELT; Bot-Mute entfernt nur die Bot-Kopie. NICHT „App sendet in
+beide Räume" — Command-Net-Track ist bei reinem Global-PTT MUTED (per listParticipants gemessen).
+
+Fix: `LivekitAudio` bekommt `publishOnly`-Modus (`autoSubscribe:false` beim connect + TrackSubscribed
+skippt attach). `RelayAudio` nutzt `new LivekitAudio(true)`. Command-Net (FleetAudio) bleibt subscribe.
+Version-Bump 0.6.0→0.6.1.
+
+Follow-up (separat, relay-bots serverseitig): subscriber.ts hat keinen TrackUnsubscribed/Participant-
+Disconnected-Handler + alle PCM in einen PassThrough; Watchdog-Restarts (buffer overflow) lassen alte
+Reader-Loops weiterlaufen → kann INNERHALB eines Discord-Channels doppeln + Overflow-Kaskade. Eigener
+Step (relay-bots Docker-Rebuild, nicht Companion).
+
 ## Completed Step - 2026-06-05: Bridge↔Mission room-Exklusivität im Code erzwingen (Companion v0.6.0) — commit 9d7c68f
 
 Doc-Enforcement (#2) der Mode-Transitions: Bridge room (audioRef) darf bei aktivem Mission-Link nie

@@ -70,6 +70,14 @@ export class LivekitAudio {
    *  last ActiveSpeakersChanged event. Drives the roster's speaking dots. */
   private speakingUserIds = new Set<string>();
 
+  /** Publish-only mode: connect with autoSubscribe disabled and never attach
+   *  remote audio. Used for the mission Relay room (Global Radio Net), which is
+   *  a publish-only input for the RelayBots — companions must NOT hear each
+   *  other directly there, otherwise a global speaker is heard twice (once via
+   *  the RelayBot in the Discord channel, once directly via LiveKit). The
+   *  Command Net (commander room) keeps the default subscribe behaviour. */
+  constructor(private readonly publishOnly = false) {}
+
   /** Toggle the output (receive) mute.
    *
    *  Build-107 went the "set `<audio>.muted=true`" route, but live test
@@ -303,6 +311,9 @@ export class LivekitAudio {
       }
     });
     room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
+      // Publish-only rooms must never play remote audio (defence-in-depth on
+      // top of autoSubscribe:false). See the publishOnly field.
+      if (this.publishOnly) return;
       // Self-hearing diagnostic: an SFU should never deliver our own
       // published track back to us, but if it ever does (LiveKit bug,
       // identity-suffix race during fast PTT cycles, weird relay
@@ -337,6 +348,10 @@ export class LivekitAudio {
       // browser its reflexive address; openrelay TURN is a no-auth-needed
       // free fallback when direct UDP/TCP can't traverse NAT.
       await room.connect(url, token, {
+        // Publish-only (relay) rooms never subscribe — the RelayBots are the
+        // only legitimate consumers; a subscribing companion would hear global
+        // speakers twice (RelayBot + direct LiveKit).
+        autoSubscribe: !this.publishOnly,
         rtcConfig: {
           iceServers: [
             { urls: "stun:stun.l.google.com:19302" },

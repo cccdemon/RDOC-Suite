@@ -12,7 +12,10 @@ type StatusListener = (status: RelayStatus, detail?: string) => void;
  * Fleetplanner-issued mission relay room token.
  */
 export class RelayAudio {
-  private audio = new LivekitAudio();
+  // Publish-only: the mission Relay room (Global Radio Net) feeds the RelayBots
+  // only. A subscribing companion would hear global speakers twice (RelayBot +
+  // direct LiveKit), which is exactly the double-audio bug this prevents.
+  private audio = new LivekitAudio(true);
   private status: RelayStatus = "idle";
   private statusListener: StatusListener | null = null;
 
