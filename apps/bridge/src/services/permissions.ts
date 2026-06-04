@@ -58,6 +58,7 @@ export type PermissionCheckResult =
         | "no_commander_roles_configured"
         | "not_a_member"
         | "missing_commander_role"
+        | "missing_bridge_role"
         | "discord_api_error"
         | "not_in_voice"
         | "outside_allowed_voice_channel";
@@ -113,6 +114,31 @@ export async function recheckCommanderRole(opts: {
   const isCommander = guildConfig.commanderRoleIds.some((roleId) => memberRoles.has(roleId));
   if (!isCommander) {
     return { ok: false, reason: "missing_commander_role" };
+  }
+  return { ok: true };
+}
+
+/**
+ * Re-verifies that the user may use **Bridge Mode** (the no-mission Squad Link
+ * guild bridge). Bridge Mode is its own operating mode, gated only by the
+ * Raumdock bridge role ([[checkBridgeGate]]) — NOT by the commander role.
+ * The commander role gates Command Net (the mission commander room), which is
+ * a separate path issued by the fleetplanner.
+ */
+export async function recheckBridgeAccess(opts: {
+  userId: string;
+  guildId: string;
+}): Promise<PermissionCheckResult> {
+  const guildConfig = await readGuildConfig(opts.guildId);
+  if (!guildConfig || !guildConfig.enabled) {
+    return { ok: false, reason: "guild_not_enabled" };
+  }
+  const gate = await checkBridgeGate({ userId: opts.userId });
+  if (!gate.ok) {
+    return {
+      ok: false,
+      reason: gate.reason === "missing_bridge_role" ? "missing_bridge_role" : "discord_api_error",
+    };
   }
   return { ok: true };
 }

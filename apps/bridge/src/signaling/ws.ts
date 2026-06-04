@@ -8,7 +8,7 @@ import { logger } from "../services/logger.js";
 import { bridgeRoomName, issueSessionLivekitToken, issueLivekitToken, sessionRoomName } from "../services/livekit.js";
 import { rooms } from "../services/rooms.js";
 import { wsConnectionOpened, wsConnectionClosed } from "../services/metrics.js";
-import { checkAllowedVoiceChannel, recheckCommanderRole, checkBridgeGate } from "../services/permissions.js";
+import { checkAllowedVoiceChannel, recheckBridgeAccess } from "../services/permissions.js";
 import { readGuildConfig } from "../services/guildConfig.js";
 import { fetchGuildMember } from "../auth/discord.js";
 import { getGuildInfo } from "../services/guildInfo.js";
@@ -260,20 +260,16 @@ async function handleOAuthCommander(
   }
   logger.info({ userId, guildId, authPath: "oauth" }, "ws client connected");
 
-  // Re-evaluate authorization live on every connect (not just at OAuth
-  // login), so a freshly granted/revoked role propagates on the next
-  // reconnect without forcing a new OAuth round-trip. The companion
-  // slow-retries after a 4403, so a role grant is picked up automatically.
-  const bridgeGate = await checkBridgeGate({ userId });
-  if (!bridgeGate.ok) {
-    send(socket, { type: "error", code: bridgeGate.reason, message: "bridge gate" });
-    socket.close(CLOSE_FORBIDDEN, bridgeGate.reason);
-    return;
-  }
-  const roleVerdict = await recheckCommanderRole({ userId, guildId });
-  if (!roleVerdict.ok) {
-    send(socket, { type: "error", code: roleVerdict.reason, message: "permission denied" });
-    socket.close(CLOSE_FORBIDDEN, roleVerdict.reason);
+  // Re-evaluate Bridge-Mode authorization live on every connect (not just at
+  // OAuth login), so a freshly granted/revoked bridge role propagates on the
+  // next reconnect without a new OAuth round-trip. The companion slow-retries
+  // after a 4403, so a role grant is picked up automatically. Bridge Mode is
+  // gated ONLY by the bridge role — NOT the commander role (that gates Command
+  // Net, a separate mission path).
+  const bridgeVerdict = await recheckBridgeAccess({ userId, guildId });
+  if (!bridgeVerdict.ok) {
+    send(socket, { type: "error", code: bridgeVerdict.reason, message: "bridge access denied" });
+    socket.close(CLOSE_FORBIDDEN, bridgeVerdict.reason);
     return;
   }
 
@@ -339,11 +335,11 @@ async function handleOAuthCommander(
     roomId,
     pttGuildIdGate: guildId,
     recheck: async () => {
-      const verdict = await recheckCommanderRole({ userId, guildId });
+      const verdict = await recheckBridgeAccess({ userId, guildId });
       if (!verdict.ok) {
         logger.info(
           { userId, guildId, reason: verdict.reason },
-          "role recheck failed, kicking client",
+          "bridge access recheck failed, kicking client",
         );
         send(socket, {
           type: "error",

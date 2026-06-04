@@ -3,6 +3,21 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Bridge Mode entkoppelt von Commander-Rolle (per companion-voice-architecture.md)
+
+Autoritatives Doc `docs/companion-voice-architecture.md`: Bridge Mode (kein-Mission-Modus) ist NUR
+durch die Raumdock-Bridge-Rolle gegated (`bridgeRequiredRoleId`=1511124797445247096 @
+`raumdockGuildId`=1431307397842079777), NICHT durch die Commander-Rolle. Commander-Rolle gehört zu
+Command Net (Mission, temp-Rolle 1510192642997227602); Global Radio Net = temp-Rolle 1510192451808133210.
+Code war falsch gekoppelt (OAuth-Login + WS verlangten Commander-Rolle für Bridge Mode). Fix:
+- `permissions.ts`: neue `recheckBridgeAccess` (guild enabled + checkBridgeGate, KEIN Commander).
+- `ws.ts handleOAuthCommander`: Connect-Gate + 60s-Recheck nutzen `recheckBridgeAccess` statt
+  `recheckCommanderRole`.
+- `oauth.ts`: Commander-Pflichtblock entfernt (guild enabled + Member-present + checkBridgeGate bleiben).
+- DB: GlobalSettings raumdockGuildId + bridgeRequiredRoleId gesetzt.
+Mission-Voice-Rollen (commanderVoiceRoleId/globalVoiceRoleId) + Fleetplanner-UI dafür = Folge-Arbeit.
+
+
 ## Completed Step - 2026-06-04: Companion picks up role grants live — commit dcb86e9, companion-v0.5.18
 
 Deployed: bridge neu (healthy), Companion-Build grün → Release `RDOC.Squad.Link_0.5.18_x64-setup.exe`.

@@ -161,10 +161,13 @@ export async function registerOAuthRoutes(app: FastifyInstance): Promise<void> {
       );
       return reply.code(403).send({ error: "guild_not_enabled" });
     }
-    if (guildConfig.commanderRoleIds.length === 0) {
-      return reply.code(403).send({ error: "no_commander_roles_configured" });
-    }
 
+    // Bridge Mode is a standalone "no active mission" operating mode, gated
+    // ONLY by the Raumdock bridge role (checked above via checkBridgeGate).
+    // The commander role is NOT required here — it gates Command Net (the
+    // mission commander room), which is a separate path. We still confirm the
+    // user is a member of the guild they're bridging into (and the bot is
+    // installed there).
     const memberRes = await fetchGuildMember({
       botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
       guildId: cookie.guildId,
@@ -187,13 +190,6 @@ export async function registerOAuthRoutes(app: FastifyInstance): Promise<void> {
         });
       }
       return reply.code(403).send({ error: "not_a_member" });
-    }
-
-    const memberRoles = new Set(memberRes.value.member.roles);
-    const isCommander = guildConfig.commanderRoleIds.some((roleId) => memberRoles.has(roleId));
-    if (!isCommander) {
-      logger.info({ userId, guildId: cookie.guildId }, "auth rejected: missing commander role");
-      return reply.code(403).send({ error: "missing_commander_role" });
     }
 
     const env = getEnv();
