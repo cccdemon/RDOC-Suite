@@ -1058,8 +1058,10 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   margin: 0.5rem 0 1rem;
   border: 1px solid var(--cyan-28);
   background: var(--bg2);
-  scrollbar-width: thin;
+  scrollbar-width: none; /* hide horizontal scrollbar; swipe still works */
 }
+.opv2-tabs::-webkit-scrollbar { display: none; }
+.opv2-tabpage[hidden] { display: none; }
 .opv2-tab {
   flex: 1 0 auto;
   text-align: center;
@@ -1505,6 +1507,8 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   .opv2-seat-actions {
     justify-content: flex-start;
   }
+  /* Mobile: wrap pills into rows instead of horizontal scroll (no scrollbar). */
+  .opv2-tabs { flex-wrap: wrap; overflow-x: visible; }
   .opv2-tab {
     flex: 1 0 auto;
     text-align: center;

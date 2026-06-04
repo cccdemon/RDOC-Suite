@@ -585,7 +585,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   `;
 
   const shellLink = (tab: string, label: string) =>
-    html`<a class="opv2-tab ${activeTab === tab ? "active" : ""}" href="${tabUrl(tab)}"
+    html`<a
+      class="opv2-tab ${activeTab === tab ? "active" : ""}"
+      href="${tabUrl(tab)}"
+      data-tab="${tab}"
       >${label}</a
     >`;
 
@@ -1898,18 +1901,19 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
-  const activePanel =
-    activeTab === "fleet"
-      ? fleetPanel
-      : activeTab === "crew"
-        ? crewPanel
-        : activeTab === "voice"
-          ? voicePanel
-          : activeTab === "commanders"
-            ? commandersPanel
-            : activeTab === "admin"
-              ? adminPanel
-              : overviewPanel;
+  // All tab panels are rendered; client-side JS toggles visibility so switching
+  // a tab never reloads the page (no jump to top, no mobile scrollbar reflow).
+  // The initially-active one is visible; the rest are [hidden].
+  const tabPage = (tab: string, panel: SafeHtml) =>
+    html`<div class="opv2-tabpage" data-tab="${tab}" ${activeTab === tab ? safe("") : safe("hidden")}>
+      ${panel}
+    </div>`;
+  const tabPages = html`
+    ${tabPage("overview", overviewPanel)} ${tabPage("fleet", fleetPanel)}
+    ${tabPage("crew", crewPanel)} ${tabPage("voice", voicePanel)}
+    ${canManage ? tabPage("commanders", commandersPanel) : safe("")}
+    ${tabPage("admin", adminPanel)}
+  `;
 
   const body = html`${joinInviteBanner(opts.joinInviteUrl)}<div class="opv2-shell">
       <header
@@ -1995,7 +1999,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ${shellLink("admin", "Admin")}
       </nav>
 
-      ${activePanel}
+      ${tabPages}
     </div>
     <script>
       document.querySelectorAll(".opv2-form").forEach((form) => {
@@ -2175,6 +2179,34 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#39;");
       }
+
+      // Client-side tab switching: show/hide pre-rendered panels without a page
+      // reload, so picking a tab never scrolls back to the top. The URL is kept
+      // in sync (replaceState) so a later reload or form POST lands on the same
+      // tab. Falls back to the plain link navigation if JS is off.
+      (function () {
+        const shell = document.querySelector(".opv2-shell");
+        if (!shell) return;
+        const tabs = shell.querySelectorAll(".opv2-tab");
+        const pages = shell.querySelectorAll(".opv2-tabpage");
+        tabs.forEach((tab) => {
+          tab.addEventListener("click", (e) => {
+            const name = tab.dataset.tab;
+            if (!name) return;
+            e.preventDefault();
+            tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+            pages.forEach((p) => {
+              p.hidden = p.dataset.tab !== name;
+            });
+            const href = tab.getAttribute("href");
+            if (href) {
+              try {
+                history.replaceState(null, "", href);
+              } catch (_) {}
+            }
+          });
+        });
+      })();
     </script>`;
 
   const { WEB_PUBLIC_URL } = getEnv();
