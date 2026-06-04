@@ -539,10 +539,10 @@ select option { background: var(--bg3); }
    filled. The .mandatory class covers fields whose requirement is conditional
    (e.g. the ship picker) and can't carry the HTML required attribute. */
 input[required], select[required], textarea[required], .mandatory {
-  border-color: var(--gold-38);
+  border-color: var(--gold);
 }
 input[required]:focus, select[required]:focus, textarea[required]:focus,
-.mandatory:focus { border-color: var(--gold); }
+.mandatory:focus { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-38); }
 .form-group.has-error label { color: var(--red); }
 .field-error,
 .field-error:focus {
