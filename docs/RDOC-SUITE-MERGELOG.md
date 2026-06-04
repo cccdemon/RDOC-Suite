@@ -3,6 +3,10 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Completed Step - 2026-06-04: Cleanup — toten Commander-Gating-Code raus — commit a5f0739
+
+Deployed (bridge-only, healthy, Build sauber).
+
 ## Queued / Planned Step - 2026-06-04: Cleanup — toten Commander-Gating-Code raus (post Bridge-Mode-Entkopplung)
 
 Nach der Bridge-Mode-Entkopplung war `recheckCommanderRole` (permissions.ts) ohne Aufrufer → entfernt.
