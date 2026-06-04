@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Companion: Command Net flapping one-way audio (Discord-voice gate hysteresis) (2026-06-05)
+
+- Commander Net audio dropped intermittently ("whoever joined last is heard, others not"; speaking indicator flickering; one side mutes mid-talk). Root cause: the 5s mission poll tore the commander LiveKit room down on a *single* `discordVoice.ok=false` poll, and the backend gate derives from the Bot's flaky/stale Discord voice-state. Members sitting in their own per-unit relaybot channels (the normal in_progress state) flapped the gate and churned the room.
+- Companion now applies `COMMANDER_GATE_GRACE_MS` (20s) hysteresis: the commander room + PTT-1 transmit stay alive for 20s after the last genuine gate pass, so a transient blip no longer drops audio. Grace only starts after the first real pass (a user who never qualifies gets none); a real channel-leave (>20s) still drops. Global Radio / relay path unchanged. Companion 0.5.19 → 0.5.20.
+- Follow-up (separate): harden the server-side voice-state source (Bot logged 0 `voiceStateUpdate` events — GuildVoiceStates intent / stale `UserVoiceState`).
+
 ### Removed — Bridge: native Admin operation pages (Dashboard / Raid Planer / Konfig) (2026-06-02)
 
 - Native Bridge Admin operation UI is removed now that Fleetplanner covers it: `GET /admin/` Dashboard (→ redirects to `/admin/sessions`), `GET /admin/raid-planer`, `GET /admin/config` + `POST /admin/api/config`, and the dashboard live feeds `GET /admin/api/live` and `GET /admin/api/live-stream`. Dashboard/Raid Planer/Konfig nav links removed in all modes.

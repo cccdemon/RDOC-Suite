@@ -135,6 +135,14 @@ type AppState = {
   globalHotkey: string;
 };
 
+// Commander Net Discord-voice gate hysteresis. The mission poll runs every 5s
+// and the backend gate (missionDiscordVoiceState) derives from the Bot's
+// Discord voice-state, which can flap stale for a poll or two. Without grace a
+// single false poll tears the commander room down mid-conversation. We keep the
+// room (and PTT transmit) alive for this long after the LAST genuine `ok`, so a
+// transient blip doesn't drop audio. A real channel-leave (>grace) still drops.
+const COMMANDER_GATE_GRACE_MS = 20_000;
+
 const INITIAL: AppState = {
   bridgeUrl: DEFAULT_BRIDGE_URL,
   guildId: null,
@@ -198,6 +206,11 @@ export function App(): JSX.Element {
   const missionCommanderRef = useRef<FleetAudio | null>(null);
   const currentMissionCommanderRoomRef = useRef<string | null>(null);
   const currentMissionRelayRoomRef = useRef<string | null>(null);
+  // Timestamp (ms) of the last poll where the Commander Net Discord-voice gate
+  // genuinely passed. Drives COMMANDER_GATE_GRACE_MS hysteresis so a transient
+  // gate blip doesn't tear down the commander room. Stays 0 until the first
+  // real pass, so a user who never qualifies never gets false grace.
+  const lastCommanderOkAtRef = useRef<number>(0);
   // The opId this mission link joined. Pinned on first poll so a mission
   // close/switch is detected (and ends the mission) instead of silently
   // hopping the user onto the next active op.
@@ -987,6 +1000,14 @@ export function App(): JSX.Element {
         const commanderNames: Record<string, string> = {};
         for (const c of commanders ?? []) commanderNames[c.userId] = c.username;
         const discordVoiceOk = discordVoice?.ok ?? true;
+        // Hysteresis: a single flaky `ok=false` poll must not drop the commander
+        // room mid-conversation. Treat the gate as still-open for
+        // COMMANDER_GATE_GRACE_MS after the last genuine pass. `commanderOk`
+        // (not raw discordVoiceOk) gates every COMMANDER path below.
+        if (discordVoiceOk) lastCommanderOkAtRef.current = Date.now();
+        const commanderOk =
+          discordVoiceOk ||
+          Date.now() - lastCommanderOkAtRef.current < COMMANDER_GATE_GRACE_MS;
         // Global Radio gate is independent of the Commander Net channel gate.
         const relayOk = relayOkRaw ?? false;
         const expectedChannelName = discordVoice?.expectedChannel?.name ?? null;
@@ -994,9 +1015,10 @@ export function App(): JSX.Element {
         // close/switch instead of following the backend onto the next op.
         missionOpIdRef.current = opId;
 
-        // Commander Net gate failed → drop the commander room only. Global Radio
-        // is gated separately (relayOk) and must NOT be torn down here.
-        if (!discordVoiceOk) {
+        // Commander Net gate failed (past the grace window) → drop the commander
+        // room only. Global Radio is gated separately (relayOk) and must NOT be
+        // torn down here.
+        if (!commanderOk) {
           await missionCommanderRef.current?.disconnect();
           await missionCommanderRef.current?.setPttActive(false);
           currentMissionCommanderRoomRef.current = null;
@@ -1006,7 +1028,7 @@ export function App(): JSX.Element {
         }
 
         // Commander room (only if returned)
-        if (discordVoiceOk && commanderRoom) {
+        if (commanderOk && commanderRoom) {
           if (
             currentMissionCommanderRoomRef.current !== commanderRoom.room ||
             missionCommanderRef.current?.getStatus() === "idle"
@@ -1069,14 +1091,14 @@ export function App(): JSX.Element {
           missionActive: true,
           missionOpTitle: opTitle,
           missionSelfName: selfUsername ?? null,
-          missionHasCommander: Boolean(discordVoiceOk && commanderRoom),
+          missionHasCommander: Boolean(commanderOk && commanderRoom),
           missionHasRelay: Boolean(relayOk && relayRoom),
           missionEnded: false,
-          missionDiscordVoiceOk: discordVoiceOk,
+          missionDiscordVoiceOk: commanderOk,
           missionRelayOk: relayOk,
           missionExpectedChannelName: expectedChannelName,
           commanderNames,
-          commanderPttActive: discordVoiceOk ? s.commanderPttActive : false,
+          commanderPttActive: commanderOk ? s.commanderPttActive : false,
           relayPttActive: relayOk ? s.relayPttActive : false,
         }));
       } catch {

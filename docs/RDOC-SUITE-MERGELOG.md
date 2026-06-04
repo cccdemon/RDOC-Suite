@@ -3,6 +3,34 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: Command Net flapping one-way audio — Discord-voice-gate Hysterese (Companion v0.5.20)
+
+Symptom (live mit Hedwig diagnostiziert): im Commander Net (Mission, LiveKit `fc-<uuid>`-Raum)
+hört mal der eine den anderen nicht, „wer als letztes joined wird gehört", Sprachindikator an/aus.
+KEINE identity-Collision (zwei distinkte fleetplanner-userId-cuids im fc-Raum), KEIN fixes Einweg.
+Per `listParticipants`-Messung: während Hedwig redete war ihr Track `LIVE`, der eigene Track die
+ganze Zeit `MUTED` → PTT-1 entmutet nicht.
+
+Root Cause: Companion mission-poll läuft alle **5s** ([apps/companion/src/App.tsx](../apps/companion/src/App.tsx)).
+EIN einzelner Poll mit `discordVoice.ok=false` reißt sofort den commander room ab (`missionCommanderRef.disconnect()`,
+L999-1003) + setzt `missionDiscordVoiceOk=false` → PTT-1 zwingt MUTE (L285-289). Das Gate
+`missionDiscordVoiceState` ([apps/fleetplanner/src/routes/api.ts](../apps/fleetplanner/src/routes/api.ts) L376)
+hängt an Bridge→Bot Discord-voice-state, der flaky/stale ist (Bot loggte 0 voiceState-Events) →
+Gate flappt true↔false → commander room churnt (CLIENT_REQUEST_LEAVE alle paar s, beobachtet) →
+Audio bricht beide Richtungen, versetzt pro User = „last joined wins". Channel-übergreifend (jeder
+in seinem relaybot-Unit-Channel) ist GEWOLLT und vom Gate erlaubt — Problem ist nur das Flappen.
+
+Fix (Companion, ursachenunabhängig robust): Grace-Fenster `COMMANDER_GATE_GRACE_MS=20s`. Nach dem
+letzten echten `ok` toleriert der Poll transiente `ok=false` bis zur Grace, statt sofort abzureißen.
+`commanderOk = discordVoiceOk || (now - lastCommanderOkAt < grace)` ersetzt `discordVoiceOk` an allen
+COMMANDER-Gates (Teardown L999, Connect L1009, missionHasCommander L1072, missionDiscordVoiceOk L1075,
+commanderPttActive L1079). Grace startet erst NACH erstem echten ok (init 0) → wer das Gate nie
+besteht kriegt keine falsche Grace; echtes Verlassen (>20s) reißt weiterhin ab. Relay/Global-Pfad
+unangetastet. Version-Bump 0.5.19→0.5.20.
+
+Follow-up (separat, nicht in diesem Step): warum Bot 0 voiceState-Events loggt (GuildVoiceStates-Intent
+/ stale UserVoiceState) — die eigentliche Flap-Quelle serverseitig härten.
+
 ## Completed Step - 2026-06-05: Fix "Relay bots sync failed (401)" — relay-admin Secret-Mismatch — commit a7ace6c
 
 Deployed (relay-bots recreated, `[Admin] listening`). Verifiziert aus fleetplanner-Container:
