@@ -169,8 +169,13 @@ services:
     restart: unless-stopped
     environment:
       CONFIG_PATH: "/app/data/config.json"
+      # Bind 0.0.0.0 inside the container so Prometheus can scrape /metrics
+      # over the docker network; the host port below is published to
+      # 127.0.0.1 only. ADMIN_PASSWORD is required now — the admin server
+      # fails closed (refuses to start) on a non-loopback bind without it.
       ADMIN_HOST: "0.0.0.0"
       ADMIN_PORT: "8788"
+      ADMIN_PASSWORD: "${RELAY_ADMIN_PASSWORD:?set RELAY_ADMIN_PASSWORD in .env}"
     # Mount a config.json you create on the host — see apps/relay-bots/config.example.json.
     # Minimal bridge-backed config:
     #   { "bridge": { "url": "http://bridge:8787", "serviceSecret": "<RELAY_BOTS_SECRET>" },
