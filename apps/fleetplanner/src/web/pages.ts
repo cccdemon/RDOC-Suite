@@ -1606,34 +1606,51 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 )}
               </select>
               <label>Unit type</label>
-              <select name="unitType">
+              <select name="unitType" class="opv2-unit-type">
                 <option value="ship">Ship</option>
                 <option value="squad">FPS Squad</option>
               </select>
-              <label>Owned ship</label>
-              <select name="ownedShipId" class="opv2-owned-ship-select mandatory">
-                <option value="">Select owned ship for ship units...</option>
-                ${opts.ownedShips.map(
-                  (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
-                )}
-              </select>
-              <label>Ship search</label>
-              <input
-                type="search"
-                class="opv2-ship-search mandatory"
-                placeholder="Search ship catalog..."
-                autocomplete="off"
-              />
-              <input type="hidden" name="shipId" class="opv2-ship-id-field" />
-              <div class="ship-results opv2-ship-results"></div>
-              <div class="opv2-form-grid">
-                <div>
-                  <label>Squad name</label>
-                  <input type="text" name="squadName" maxlength="80" placeholder="FPS Team" />
-                </div>
-                <div>
-                  <label>Squad size</label>
-                  <input type="number" name="squadSize" min="2" max="8" value="4" />
+              <div class="unit-ship-fields">
+                <label>Owned ship</label>
+                <select name="ownedShipId" class="opv2-owned-ship-select mandatory">
+                  <option value="">Select owned ship for ship units...</option>
+                  ${opts.ownedShips.map(
+                    (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
+                  )}
+                </select>
+                <label>Ship search</label>
+                <input
+                  type="search"
+                  class="opv2-ship-search mandatory"
+                  placeholder="Search ship catalog..."
+                  autocomplete="off"
+                />
+                <input type="hidden" name="shipId" class="opv2-ship-id-field" />
+                <div class="ship-results opv2-ship-results"></div>
+              </div>
+              <div class="unit-squad-fields" hidden>
+                <div class="opv2-form-grid">
+                  <div>
+                    <label>Squad name</label>
+                    <input
+                      type="text"
+                      name="squadName"
+                      class="mandatory"
+                      maxlength="80"
+                      placeholder="FPS Team"
+                    />
+                  </div>
+                  <div>
+                    <label>Squad size</label>
+                    <input
+                      type="number"
+                      name="squadSize"
+                      class="mandatory"
+                      min="2"
+                      max="8"
+                      value="4"
+                    />
+                  </div>
                 </div>
               </div>
               <label>Captain note</label>
@@ -1981,6 +1998,32 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         const shipIdField = form.querySelector(".opv2-ship-id-field");
         const ownedShipSelect = form.querySelector(".opv2-owned-ship-select");
         let searchTimer;
+
+        // Unit type → show only the relevant fields (ship picker vs squad).
+        const unitType = form.querySelector(".opv2-unit-type");
+        const shipFields = form.querySelector(".unit-ship-fields");
+        const squadFields = form.querySelector(".unit-squad-fields");
+        if (unitType && shipFields && squadFields) {
+          const syncUnitType = () => {
+            const isShip = unitType.value === "ship";
+            shipFields.hidden = !isShip;
+            squadFields.hidden = isShip;
+            // Clear the hidden side so stale values aren't submitted.
+            if (isShip) {
+              squadFields.querySelectorAll("input").forEach((i) => {
+                if (i.name === "squadSize") i.value = "4";
+                else i.value = "";
+              });
+            } else {
+              if (shipIdField) shipIdField.value = "";
+              if (shipSearch) shipSearch.value = "";
+              if (ownedShipSelect) ownedShipSelect.value = "";
+              if (shipResults) shipResults.innerHTML = "";
+            }
+          };
+          unitType.addEventListener("change", syncUnitType);
+          syncUnitType();
+        }
         if (ownedShipSelect && shipIdField) {
           ownedShipSelect.addEventListener("change", () => {
             if (ownedShipSelect.value) {
