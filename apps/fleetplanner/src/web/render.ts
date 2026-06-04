@@ -79,6 +79,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
     <a href="${bp}/">Operations</a>
     ${u ? html`<a href="${bp}/guilds">Servers</a>` : ""}
     <a href="${bp}/how-to">How to</a>
+    <a href="${bp}/why-unsigned">Unsigned Binary</a>
     <a href="${bp}/changelog">Changelog</a>
     <a href="${bp}/feedback">Feedback</a>
     ${u ? html`<a href="${bp}/profile">Profile</a>` : ""}

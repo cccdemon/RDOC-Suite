@@ -20,6 +20,7 @@ import {
   impressumPage,
   datenschutzPage,
   licensePage,
+  whyUnsignedPage,
 } from "../web/pages.js";
 import {
   requireRole,
@@ -960,6 +961,18 @@ export async function webRoutes(app: FastifyInstance) {
     htmlReply(
       reply,
       licensePage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+      }),
+    );
+  });
+
+  app.get("/why-unsigned", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(
+      reply,
+      whyUnsignedPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,

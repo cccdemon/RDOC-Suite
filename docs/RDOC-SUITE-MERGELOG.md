@@ -3,6 +3,15 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Completed Step - 2026-06-04: Fleetplanner Top-Nav "Unsigned Binary"-Seite
+
+Neue Top-Nav-Seite `/why-unsigned` ("Unsigned Binary") erklärt warum die Companion-EXE (noch) nicht
+Authenticode-signiert ist (SmartScreen) + alle evaluierten Optionen (Azure Trusted Signing, EV, OV,
+Store/MSIX, no-sign user-bypass, EU-Individual-Geoblock) + aktueller Stand (Azure Trusted Signing
+Org-Validation "Raumdock" läuft). `whyUnsignedPage` in pages.ts, Route in web.ts, Nav-Link in
+render.ts (zwischen How-to und Changelog).
+
+
 ## Completed Step - 2026-06-04: Monitoring-Ausbau Batch 2 — commit c270a8b
 
 Deployed + verifiziert: 6 Targets `up` (bridge/fleetplanner/livekit/node/postgres/relay-bots),

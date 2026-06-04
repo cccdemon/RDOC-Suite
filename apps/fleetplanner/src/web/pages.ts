@@ -5181,6 +5181,109 @@ Required Notice: The RDOC-Suite credit banner, stamp, logo, and visible attribut
   });
 }
 
+export function whyUnsignedPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+
+  const option = (n: string, title: string, body: SafeHtml) => html`
+    <div class="card" style="padding:1.1rem;margin-bottom:.85rem">
+      <h2 style="margin:0 0 .5rem;font-size:1rem;color:var(--cyan)">
+        <span class="text-dim">${n}.</span> ${title}
+      </h2>
+      <div class="text-sm" style="color:var(--text);line-height:1.55">${body}</div>
+    </div>
+  `;
+
+  const body = html`
+    <div class="page-header"><h1 class="page-title">WHY OUR BINARY IS NOT SIGNED</h1></div>
+    <div class="section" style="max-width:52rem">
+      <p class="text-sm" style="color:var(--text);line-height:1.6;margin:0 0 1.25rem">
+        When you install <strong>RDOC Squad Link</strong>, Windows SmartScreen may warn that the
+        publisher is unknown. That is because the installer is not (yet) code-signed. Code signing
+        for a small, non-commercial squad tool is surprisingly expensive and bureaucratic. Here is
+        an honest rundown of every option we evaluated and where we currently stand.
+      </p>
+
+      ${option(
+        "1",
+        "Azure Trusted Signing — best value (~$10/month)",
+        html`Microsoft's own cloud signing service. Gives <strong>instant SmartScreen
+          reputation</strong> (no warmup), no hardware token. Integrates with
+          <code>signtool</code> and ships a GitHub Action → straight into our
+          <code>companion-build.yml</code>.<br />
+          <span class="text-dim">Catch:</span> the organization must be verifiable (ideally 3+
+          years old; otherwise extra validation), or an individual account. Currently the cheapest
+          legitimate route.`,
+      )}
+
+      ${option(
+        "2",
+        "EV Code Signing Certificate (~$300–600/year)",
+        html`Also <strong>instant reputation</strong>, no warmup. Requires a hardware token (USB
+          HSM) or cloud HSM → makes CI signing more cumbersome. Providers: DigiCert, Sectigo,
+          SSL.com.`,
+      )}
+
+      ${option(
+        "3",
+        "OV Certificate (~$100–250/year, e.g. Certum)",
+        html`Cheaper, but reputation has to <strong>build up first</strong> (a number of
+          downloads/installs) — SmartScreen still warns at the beginning. Since 2023 only with a
+          token/cloud HSM as well (no more simple .pfx files). Certum has cheap open-source
+          options.`,
+      )}
+
+      ${option(
+        "4",
+        "Microsoft Store / MSIX",
+        html`Store apps bypass SmartScreen completely. But: MSIX packaging + store submission
+          effort, store policies. For an internal/squad tool usually overkill.`,
+      )}
+
+      ${option(
+        "5",
+        "Don't sign at all — user bypass ($0)",
+        html`SmartScreen dialog → <strong>"More info" → "Run anyway"</strong>. Works, but
+          off-putting and resets with every new build hash. This is the route we currently
+          document in the commander guide.`,
+      )}
+
+      ${option(
+        "6",
+        "For private individuals on Azure",
+        html`Artifact Signing is currently available to <strong>organizations</strong> in the USA,
+          Canada, European Union &amp; United Kingdom. Individual-developer validation is limited
+          to the <strong>USA &amp; Canada</strong> — so a private individual in the EU cannot use
+          the cheapest route as a person, only as a verifiable organization.`,
+      )}
+
+      <div class="card" style="padding:1.1rem;margin-top:.4rem;border-color:var(--gold-38)">
+        <h2 style="margin:0 0 .5rem;font-size:1rem;color:var(--gold)">Where we stand</h2>
+        <p class="text-sm" style="color:var(--text);line-height:1.55;margin:0">
+          We are pursuing <strong>Azure Trusted Signing</strong> as a verified organization. Until
+          that validation completes, the installer ships unsigned. To install safely in the
+          meantime: on the SmartScreen prompt choose <strong>"More info" → "Run anyway"</strong>.
+          The build is open source — you can verify it yourself at
+          <a href="https://github.com/cccdemon/RDOC-Suite" target="_blank" rel="noopener"
+            >github.com/cccdemon/RDOC-Suite</a
+          >.
+        </p>
+      </div>
+    </div>
+  `;
+
+  return layout({
+    title: "Why Unsigned",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
 // ── Multi-tenant: no-guild landing + guild settings ─────────────────
 
 export function noGuildPage(opts: {
