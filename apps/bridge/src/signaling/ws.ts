@@ -5,7 +5,7 @@ import type { ServerMessage } from "@rdoc-suite/shared";
 import { getEnv, getOAuthEnv } from "../config/env.js";
 import { verifySessionToken } from "../auth/sessionToken.js";
 import { logger } from "../services/logger.js";
-import { bridgeRoomName, issueSessionLivekitToken, issueLivekitToken, sessionRoomName } from "../services/livekit.js";
+import { bridgeRoomName, bridgeRoomRotationPeriod, issueSessionLivekitToken, issueLivekitToken, sessionRoomName } from "../services/livekit.js";
 import { rooms } from "../services/rooms.js";
 import { wsConnectionOpened, wsConnectionClosed } from "../services/metrics.js";
 import { checkAllowedVoiceChannel, recheckBridgeAccess } from "../services/permissions.js";
@@ -330,6 +330,10 @@ async function handleOAuthCommander(
     socket,
   );
 
+  // Track which weekly rotation period this client's LiveKit token targets,
+  // so the recheck loop can migrate it when the bridge room rotates.
+  let livekitPeriod = bridgeRoomRotationPeriod();
+
   attachLifecycle(socket, {
     userId,
     roomId,
@@ -388,6 +392,24 @@ async function handleOAuthCommander(
           "voice recheck: re-enabling audio (back in allowed channel)",
         );
         await pushAudioEnable(socket, { userId, guildId, roomId });
+      }
+
+      // Weekly bridge LiveKit room rotation. When the period flips, migrate
+      // this client to the new room by re-minting + pushing a fresh
+      // audio:enable token (only while audio is live; otherwise the next
+      // audio:enable already targets the new room). The roster roomId is
+      // stable, so the squad list doesn't churn and the empty old LiveKit
+      // room is auto-reaped.
+      const period = bridgeRoomRotationPeriod();
+      if (period !== livekitPeriod) {
+        livekitPeriod = period;
+        if (rooms.isAudioEnabled(socket)) {
+          logger.info(
+            { userId, guildId, period },
+            "bridge room rotation: migrating client to new livekit room",
+          );
+          await pushAudioEnable(socket, { userId, guildId, roomId });
+        }
       }
     },
   });

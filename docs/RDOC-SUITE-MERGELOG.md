@@ -3,6 +3,20 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Bridge LiveKit room weekly rotation + role-loss auto-kick
+
+1. **Weekly rotation:** Guild-Bridge-LiveKit-Raum rotiert alle 7 Tage. `livekit.ts`:
+   `bridgeRoomRotationPeriod()` (7d-Index, Epoch 2026-01-01) + `bridgeLivekitRoom(guildId)` =
+   `commander-bridge-<guild>-w<period>`; `issueLivekitToken` nutzt den rotierenden Namen. Roster-roomId
+   (`bridgeRoomName`) bleibt STABIL → keine Squad-List-Churn. Live-Migration: `ws.ts` recheck (60s)
+   trackt `livekitPeriod`; bei Period-Flip + Audio live → `pushAudioEnable` re-mintet + pusht frischen
+   `audio:enable`-Token, Companion `audio.connect()` reißt alten Room ab + joint neuen (KEINE
+   Companion-Änderung nötig). Leerer alter LiveKit-Room wird von LiveKit auto-reaped.
+2. **Role-loss auto-kick:** bereits durch frühere Entkopplung — 60s-Recheck nutzt `recheckBridgeAccess`
+   → wer die Bridge-Rolle (1511) verliert, fällt `checkBridgeGate` → CLOSE_FORBIDDEN, raus aus dem Raum.
+Bridge-only Deploy, kein Companion-Bump.
+
+
 ## Queued / Planned Step - 2026-06-04: Bridge Mode entkoppelt von Commander-Rolle (per companion-voice-architecture.md)
 
 Autoritatives Doc `docs/companion-voice-architecture.md`: Bridge Mode (kein-Mission-Modus) ist NUR

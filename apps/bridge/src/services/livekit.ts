@@ -5,8 +5,29 @@ import { getRelayLivekitCredentials, getRelayRoomName } from "./relayBotsConfig.
 
 const TOKEN_TTL_SECONDS = 60 * 60;
 
+// The guild bridge LiveKit voice room rotates weekly: a long-lived room
+// otherwise accumulates stale state, and a fresh key surface every 7 days is
+// good hygiene. Only the LiveKit grant room rotates — the roster room id
+// (bridgeRoomName) stays stable, so the squad list doesn't churn. Live clients
+// are migrated to the new room by the bridge's periodic recheck, which
+// re-mints + pushes a fresh audio:enable token; the empty old room is
+// auto-reaped by LiveKit.
+const BRIDGE_ROOM_ROTATION_MS = 7 * 24 * 60 * 60 * 1000;
+const BRIDGE_ROOM_ROTATION_EPOCH = Date.UTC(2026, 0, 1);
+
+/** Current weekly rotation index for the guild bridge LiveKit room. */
+export function bridgeRoomRotationPeriod(now: number = Date.now()): number {
+  return Math.floor((now - BRIDGE_ROOM_ROTATION_EPOCH) / BRIDGE_ROOM_ROTATION_MS);
+}
+
+/** Stable roster room id for the guild bridge (does NOT rotate). */
 export function bridgeRoomName(guildId: string): string {
   return `commander-bridge-${guildId}`;
+}
+
+/** The actual LiveKit voice room for the guild bridge — rotates weekly. */
+export function bridgeLivekitRoom(guildId: string, now: number = Date.now()): string {
+  return `${bridgeRoomName(guildId)}-w${bridgeRoomRotationPeriod(now)}`;
 }
 
 export function sessionRoomName(sessionId: string): string {
@@ -28,7 +49,7 @@ export async function issueLivekitToken(opts: {
   guildId: string;
 }): Promise<string> {
   const { LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = getEnv();
-  const room = bridgeRoomName(opts.guildId);
+  const room = bridgeLivekitRoom(opts.guildId);
 
   const at = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
     identity: opts.userId,
