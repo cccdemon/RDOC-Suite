@@ -582,7 +582,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       ),
     0,
   );
-  const tabNames = ["overview", "fleet", "crew", "voice", "commanders", "admin"];
+  // Tabs the current viewer may see. Commanders is operator-only; Admin needs a
+  // logged-in user (hidden for public-op guests). Clamp the active tab to this
+  // set so a ?tab=admin URL from a guest doesn't land on a blank panel.
+  const tabNames = [
+    "overview",
+    "fleet",
+    "crew",
+    "voice",
+    ...(canManage ? ["commanders"] : []),
+    ...(user ? ["admin"] : []),
+  ];
   const activeTab = tabNames.includes(opts.tab ?? "") ? opts.tab! : "overview";
   const tabUrl = (tab: string) => `${bp}/ops/${op.id}?tab=${tab}`;
   const returnFields = (tab: string) => html`
@@ -1918,7 +1928,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ${tabPage("overview", overviewPanel)} ${tabPage("fleet", fleetPanel)}
     ${tabPage("crew", crewPanel)} ${tabPage("voice", voicePanel)}
     ${canManage ? tabPage("commanders", commandersPanel) : safe("")}
-    ${tabPage("admin", adminPanel)}
+    ${user ? tabPage("admin", adminPanel) : safe("")}
   `;
 
   const guestBanner = !realUser
@@ -2015,7 +2025,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
         ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")}
         ${canManage ? shellLink("commanders", "Commanders") : safe("")}
-        ${shellLink("admin", "Admin")}
+        ${user ? shellLink("admin", "Admin") : safe("")}
       </nav>
 
       ${tabPages}
