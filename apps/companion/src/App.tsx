@@ -220,9 +220,10 @@ export function App(): JSX.Element {
   // suppresses the bridge LiveKit session so LOCAL voice truly switches
   // to the commander room instead of layering both channels.
   const lastBridgeCredsRef = useRef<{ url: string; token: string } | null>(null);
-  // Tracks whether the mission commander room currently owns LOCAL voice,
-  // so the bridge↔mission audio switch only fires on real transitions.
-  const missionOwnsLocalRef = useRef(false);
+  // Tracks whether a mission link currently owns the companion (engaged), so
+  // the Bridge↔mission room switch only fires on real transitions. Bridge and
+  // mission rooms are mutually exclusive (companion-voice-architecture.md).
+  const missionEngagedRef = useRef(false);
   const [showMissionModal, setShowMissionModal] = useState(false);
   const stateRef = useRef<AppState>(INITIAL);
   stateRef.current = state;
@@ -480,11 +481,12 @@ export function App(): JSX.Element {
               // Remember the bridge creds so we can resume guild audio
               // after a mission ends (mission mode suppresses it).
               lastBridgeCredsRef.current = { url: msg.livekitUrl, token: msg.livekitToken };
-              // Don't connect guild audio while a mission commander room
-              // owns LOCAL voice — the mission has switched us off the
-              // squad channel. We'll resume on mission end.
+              // Never connect the Bridge room while a mission link is engaged
+              // (companion-voice-architecture.md: Bridge and mission rooms are
+              // mutually exclusive). Creds are remembered above so Bridge Mode
+              // resumes on mission end.
               const m = stateRef.current;
-              if (!(m.missionActive && m.missionHasCommander)) {
+              if (!m.missionToken) {
                 audio
                   .connect(msg.livekitUrl, msg.livekitToken)
                   .catch((err) => setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })));
@@ -505,7 +507,8 @@ export function App(): JSX.Element {
             setState((s) => ({ ...s, lastError: null }));
             lastBridgeCredsRef.current = { url: msg.livekitUrl, token: msg.livekitToken };
             const m = stateRef.current;
-            if (!(m.missionActive && m.missionHasCommander)) {
+            // Bridge room stays disconnected while a mission link is engaged.
+            if (!m.missionToken) {
               audio
                 .connect(msg.livekitUrl, msg.livekitToken)
                 .catch((err) => setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })));
@@ -1119,21 +1122,29 @@ export function App(): JSX.Element {
   // both rooms. On mission end, resume guild audio from the remembered
   // bridge creds. The bridge WS stays connected throughout (roster/status).
   useEffect(() => {
-    const missionOwnsLocal = state.missionActive && state.missionHasCommander;
+    // A mission link owning the companion = engaged. Per
+    // companion-voice-architecture.md the Bridge room and the mission rooms are
+    // mutually exclusive: leave the Bridge the moment a mission link arrives,
+    // resume it only after the mission ends. Gate on missionToken so the switch
+    // happens at link time — not only once the commander room finished
+    // connecting (the gap that previously let both rooms coexist).
+    const missionEngaged = !!state.missionToken;
     // Only act on a real transition — not on every token/guildId change,
     // which would churn the (re)connect that bridge:joined already does.
-    if (missionOwnsLocal === missionOwnsLocalRef.current) return;
-    missionOwnsLocalRef.current = missionOwnsLocal;
-    if (missionOwnsLocal) {
+    if (missionEngaged === missionEngagedRef.current) return;
+    missionEngagedRef.current = missionEngaged;
+    if (missionEngaged) {
       void audioRef.current?.disconnect();
     } else if (lastBridgeCredsRef.current && state.token && state.guildId) {
-      // Mission ended — resume guild audio from the remembered bridge creds.
+      // Mission ended — resume Bridge audio from the remembered creds (the
+      // bridge gate having granted them; if the role was lost the bridge WS
+      // would not have delivered creds).
       const { url, token } = lastBridgeCredsRef.current;
       audioRef.current
         ?.connect(url, token)
         .catch((err) => setState((s) => ({ ...s, lastError: `LiveKit: ${String(err)}` })));
     }
-  }, [state.missionActive, state.missionHasCommander, state.token, state.guildId]);
+  }, [state.missionToken, state.token, state.guildId]);
 
   // NOTE: In mission mode PTT-1 (the commander room) is driven by the
   // primary `localHotkey` path — `handlePttEvent` branches to

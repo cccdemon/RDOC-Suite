@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Companion: Bridge and mission rooms are now mutually exclusive (2026-06-05)
+
+- Enforces the `companion-voice-architecture.md` rule that Bridge Mode and the mission rooms never run at once. The Bridge LiveKit room is now gated on `missionToken`: it is left/never-connected the moment a mission link is engaged (not only after the commander room finishes connecting), and resumes only after the mission ends (subject to the Bridge role gate). Closes the window where the Bridge room transiently connected during a mission — the coexistence that produced the v0.5.21 one-way audio bug. Companion 0.5.21 → 0.6.0.
+
 ### Fixed — Companion: Command Net stable one-way audio (disconnect() nuked coexisting room's audio elements) (2026-06-05)
 
 - In Command Net you could be heard but heard nobody. Root cause: in mission mode two `LivekitAudio` instances run side by side (the bridge/guild room and the mission commander room), both attaching remote `<audio>` elements with `data-dccc-track`. When the bridge room tore down, `LivekitAudio.disconnect()` ran `document.querySelectorAll("audio[data-dccc-track]").forEach(el => el.remove())` — a **global** removal that also deleted the commander room's remote audio elements, silencing the other commander while your own mic kept publishing (one-way).

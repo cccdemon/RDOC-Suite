@@ -3,6 +3,22 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: Bridge↔Mission room-Exklusivität im Code erzwingen (Companion v0.6.0)
+
+Doc-Enforcement (#2) der Mode-Transitions: Bridge room (audioRef) darf bei aktivem Mission-Link nie
+connecten. Vorher gegated auf `missionActive && missionHasCommander` → Lücke: solange commander room
+noch nicht verbunden war, connectete Bridge doch (transiente Koexistenz → v0.5.21-Einweg-Bug).
+Fix in [apps/companion/src/App.tsx](../apps/companion/src/App.tsx): Master-Gate auf `missionToken`
+(=Mission-Link engaged, gesetzt bei Link, gecleart bei Mission-Ende).
+- WS-Handler `bridge:joined` + `audio:enable`: `audio.connect()` nur noch wenn `!missionToken` (Creds
+  werden weiter in lastBridgeCredsRef gemerkt für Return-to-Bridge).
+- Bridge↔Mission-Effekt: `missionEngaged = !!missionToken` (Ref `missionOwnsLocalRef`→`missionEngagedRef`);
+  engaged → Bridge disconnect; nicht-engaged + Creds + token/guildId → Bridge reconnect. Deps
+  `[missionToken, token, guildId]`.
+Resultat: Link → Bridge sofort raus, Mission-Räume rein; Bridge bleibt aus solange Mission; Mission-Ende
+→ Bridge zurück (sofern Bridge-Gate Creds liefert). Strukturelle Garantie statt nur v0.5.21-Mitigation.
+Version 0.5.21→0.6.0. Danach: alle GitHub-Releases/Tags companion-v* < 0.6.0 entfernen.
+
 ## Completed Step - 2026-06-05: Architektur-Doc — Mode-Transitions (Bridge↔Mission exklusiv) explizit — commit bd743dd
 
 User-Klarstellung: Bridge room und Missionsräume sind room-level EXKLUSIV. Sobald der Mission-

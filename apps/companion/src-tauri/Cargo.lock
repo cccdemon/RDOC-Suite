@@ -3042,7 +3042,7 @@ dependencies = [
 
 [[package]]
 name = "rdoc-squad-link"
-version = "0.5.21"
+version = "0.6.0"
 dependencies = [
  "log",
  "rdev",
