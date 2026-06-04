@@ -18,10 +18,26 @@ type AdminServerOptions = {
 
 const MAX_BODY_BYTES = 256 * 1024;
 
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "::1", "localhost"]);
+
 export function startAdminServer(options: AdminServerOptions): void {
   const password = process.env.ADMIN_PASSWORD ?? "";
+  const loopbackOnly = LOOPBACK_HOSTS.has(options.host);
   if (!password) {
-    console.warn("[Admin] ADMIN_PASSWORD is not set; web interface is unauthenticated");
+    // Fail closed: an unauthenticated admin server exposes config
+    // read/write, restart/reload, and metrics. Only tolerable when it
+    // can't be reached off-box (loopback bind). On any routable bind
+    // (default 0.0.0.0) without a password, refuse to start.
+    if (!loopbackOnly) {
+      console.error(
+        `[Admin] ADMIN_PASSWORD is not set and host ${options.host} is not loopback; refusing to start admin server. ` +
+          "Set ADMIN_PASSWORD, or bind ADMIN_HOST to 127.0.0.1 for internal-only access.",
+      );
+      return;
+    }
+    console.warn(
+      "[Admin] ADMIN_PASSWORD is not set; web interface is unauthenticated (loopback-only bind)",
+    );
   }
 
   const server = createServer((req, res) => {
@@ -333,6 +349,15 @@ function renderAdminPage(): string {
       return String(value).replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;");
     }
 
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
     function render() {
       $("livekitUrl").value = config.livekit.url || "";
       $("relayRoomName").value = config.livekit.relayRoomName || "";
@@ -461,8 +486,8 @@ function renderAdminPage(): string {
           : "";
         return [
           '<div class="m-bot">',
-          '  <span class="m-bot-name">' + b.name + '</span>',
-          '  <span class="m-state ' + stateCls + '">' + b.playerState + '</span>',
+          '  <span class="m-bot-name">' + escapeHtml(b.name) + '</span>',
+          '  <span class="m-state ' + stateCls + '">' + escapeHtml(b.playerState) + '</span>',
           '  <span class="m-conn">' + connLabel + '</span>',
           '  <div class="m-buf-wrap">',
           '    <div class="m-buf-lbl">Buffer ' + fmtBytes(b.bufferBytes) + ' / ' + fmtBytes(MAX_BUF) + '</div>',

@@ -95,6 +95,13 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
     "/updater/companion/check",
     async (request, reply) => {
       setCors(reply, request);
+      // Same OAuth-JWT gate as the mint endpoint — don't leak private
+      // release metadata (version/notes/asset) to unauthenticated callers.
+      const auth = await authenticate(request, request.query?.token);
+      if (!auth.ok) {
+        reply.code(auth.status).send({ error: "unauthorized", reason: auth.reason });
+        return;
+      }
       const env = getEnv();
       if (!env.GITHUB_REPO) {
         reply.code(503).send({ error: "updater_not_configured" });
@@ -127,7 +134,11 @@ export async function registerUpdaterRoutes(app: FastifyInstance): Promise<void>
     setCors(reply, request);
     const parsed = mintBodySchema.safeParse(request.body ?? {});
     const auth = await authenticate(request, parsed.success ? parsed.data?.token : undefined);
-    const userId = auth.ok ? auth.userId : "auto-update";
+    if (!auth.ok) {
+      reply.code(auth.status).send({ error: "unauthorized", reason: auth.reason });
+      return;
+    }
+    const userId = auth.userId;
     const env = getEnv();
     if (!env.GITHUB_REPO) {
       reply.code(503).send({ error: "updater_not_configured" });

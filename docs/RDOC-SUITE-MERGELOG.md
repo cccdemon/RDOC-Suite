@@ -3,6 +3,24 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Security-Review-Fixes (updater auth + relay-admin hardening)
+
+Security-Review fand 6 Findings (kein SQLi — Prisma model API). Fix in Reihenfolge:
+1. **High — `bridge/routes/updater.ts:126` mint-download-token unauth:** Route authentifiziert,
+   ignoriert aber `auth.ok === false` und mintet trotzdem mit `userId="auto-update"`. Fix: `401`
+   zurückgeben wenn `!auth.ok` (vor dem Mint).
+2. **Med — `bridge/routes/updater.ts:94` `/check` ohne Auth:** Leakt Release-Metadaten (Version/Notes/
+   Asset) ohne JWT trotz Datei-Kommentar. Fix: gleiche Bearer-Auth wie mint anwenden.
+3. **Med — `relay-bots/web/adminServer.ts:22` Admin offen ohne `ADMIN_PASSWORD`:** loggt nur Warnung,
+   exponiert Config-Read/Write/Restart/Reload. Fix: fail-closed in Production (kein Start ohne Passwort
+   außer explizit erlaubt / loopback-bind).
+4. **Med — `relay-bots/web/adminServer.ts:464` Admin-XSS:** `b.name` (+ dyn. Felder) via `innerHTML`
+   ohne Escaping in Metrics-Renderer. Fix: client-seitige `escapeHtml`-Helper, alle dyn. Felder escapen.
+5. **Med — `bridge/.../routes.ts:643` Admin-CSRF:** nur SameSite=Lax, keine Token/Origin-Checks. (Folge,
+   noch nicht in diesem Batch.)
+6. **Low — Admin-HTML ohne CSP/frame-ancestors.** (Folge.)
+Deploy: bridge + relay-bots Container neu bauen.
+
 ## Queued / Planned Step - 2026-06-04: Prod-Debug — Relay-Restart-Loop + Channel-Perms + Roster-Dup
 
 Symptome Prod (10.10.10.99): Relay-Bots relayen nicht / robotische Stimme, Channel-Rechte zu
