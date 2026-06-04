@@ -217,7 +217,7 @@ services:
   # The Discord webhook URL is a host-side file secret (see
   # deploy/alertmanager/secret/discord-webhook-url).
   alertmanager:
-    image: prom/alertmanager:v0.27.0
+    image: prom/alertmanager:v0.28.1
     container_name: rdoc-suite-alertmanager
     restart: unless-stopped
     command:
