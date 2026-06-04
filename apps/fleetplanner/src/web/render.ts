@@ -1048,30 +1048,38 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   word-break: break-word;
 }
 .opv2-action-metrics .opv2-metric strong a { color: var(--cyan); }
+/* Segmented pill bar — one connected strip, clear active segment. Scrolls
+   horizontally on narrow widths instead of wrapping into an ambiguous grid. */
 .opv2-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 0;
   margin: 0.5rem 0 1rem;
-  border-bottom: 1px solid var(--border);
+  border: 1px solid var(--cyan-28);
+  background: var(--bg2);
+  scrollbar-width: thin;
 }
 .opv2-tab {
-  padding: 0.75rem 1rem;
-  border: 1px solid transparent;
-  border-bottom: none;
-  color: var(--dim);
+  flex: 1 0 auto;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0.7rem 1.15rem;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text);
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background var(--t-fast), color var(--t-fast);
 }
-.opv2-tab:hover {
-  color: var(--text);
-  background: var(--cyan-08);
-}
+.opv2-tab:last-child { border-right: none; }
+.opv2-tab:hover { color: var(--cyan); background: var(--cyan-08); }
 .opv2-tab.active {
-  color: var(--cyan);
-  border-color: var(--border);
-  background: var(--bg2);
+  color: var(--bg);
+  background: var(--cyan);
+  font-weight: 700;
 }
 .opv2-grid {
   display: grid;
@@ -1498,8 +1506,9 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
     justify-content: flex-start;
   }
   .opv2-tab {
-    flex: 1 1 50%;
+    flex: 1 0 auto;
     text-align: center;
+    padding: 0.7rem 0.9rem;
   }
   /* ship search: stack on mobile */
   .ship-row { grid-template-columns: 1fr 1fr; gap: 0.5rem; padding: 0.75rem 0.9rem; }
