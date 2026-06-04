@@ -3,6 +3,12 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Completed Step - 2026-06-05: Fix "Relay bots sync failed (401)" — relay-admin Secret-Mismatch — commit a7ace6c
+
+Deployed (relay-bots recreated, `[Admin] listening`). Verifiziert aus fleetplanner-Container:
+authed (RELAY_BOTS_ADMIN_SECRET)=200, noauth=401. Sync muss neu angestoßen werden (Mission-Voice
+neu öffnen) damit Config gepusht wird.
+
 ## Queued / Planned Step - 2026-06-05: Fix "Relay bots sync failed (401)" — relay-admin Secret-Mismatch
 
 Regression aus dem relay-admin-Hardening (2026-06-04): relay-bots `ADMIN_PASSWORD` lag auf NEUER Var
