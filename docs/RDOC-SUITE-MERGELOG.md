@@ -3,7 +3,10 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-04: Security-Review-Fixes (updater auth + relay-admin hardening)
+## Completed Step - 2026-06-04: Security-Review-Fixes (updater auth + relay-admin hardening) — commit 6304d23
+
+Findings 1-4 fixed in commit `6304d23` (bridge updater + relay-bots adminServer). Findings 5-6
+(bridge admin CSRF + Admin-HTML CSP) bleiben offen als Folge-Batch.
 
 Security-Review fand 6 Findings (kein SQLi — Prisma model API). Fix in Reihenfolge:
 1. **High — `bridge/routes/updater.ts:126` mint-download-token unauth:** Route authentifiziert,
