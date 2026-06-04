@@ -3,6 +3,12 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Completed Step - 2026-06-04: Companion picks up role grants live — commit dcb86e9, companion-v0.5.18
+
+Deployed: bridge neu (healthy), Companion-Build grün → Release `RDOC.Squad.Link_0.5.18_x64-setup.exe`.
+WS-Connect prüft jetzt checkBridgeGate + recheckCommanderRole live; Companion retryt 4403 alle 60s.
+Rollen-Grant greift ohne Re-Login (~60s). Alte Clients bis Update: abmelden + neu anmelden.
+
 ## Queued / Planned Step - 2026-06-04: Companion picks up role grants live (4403 retry + WS-connect bridge gate)
 
 Bug: Companion sagt dauerhaft „Bridge Mode nicht erlaubt" nachdem Admin die Rolle (CanUseBridgeMode)
