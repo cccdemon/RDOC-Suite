@@ -817,7 +817,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   </option>
                 </select>
                 <label>Owned ship</label>
-                <select name="ownedShipId" class="opv2-owned-ship-select">
+                <select name="ownedShipId" class="opv2-owned-ship-select mandatory">
                   <option value="">Keep current ship</option>
                   ${opts.ownedShips.map(
                     (ship) =>
@@ -838,7 +838,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <label>Ship search</label>
                 <input
                   type="search"
-                  class="opv2-ship-search"
+                  class="opv2-ship-search mandatory"
                   placeholder="Search ship catalog..."
                   autocomplete="off"
                 />
@@ -1611,7 +1611,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <option value="squad">FPS Squad</option>
               </select>
               <label>Owned ship</label>
-              <select name="ownedShipId" class="opv2-owned-ship-select">
+              <select name="ownedShipId" class="opv2-owned-ship-select mandatory">
                 <option value="">Select owned ship for ship units...</option>
                 ${opts.ownedShips.map(
                   (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
@@ -1620,7 +1620,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               <label>Ship search</label>
               <input
                 type="search"
-                class="opv2-ship-search"
+                class="opv2-ship-search mandatory"
                 placeholder="Search ship catalog..."
                 autocomplete="off"
               />

@@ -535,6 +535,14 @@ select option { background: var(--bg3); }
   font-weight: 700;
   margin-left: 0.15rem;
 }
+/* Mandatory fields stand out with a gold border so users see they must be
+   filled. `.mandatory` covers fields whose requirement is conditional (e.g. the
+   ship picker) and can't carry the HTML `required` attribute. */
+input[required], select[required], textarea[required], .mandatory {
+  border-color: var(--gold-38);
+}
+input[required]:focus, select[required]:focus, textarea[required]:focus,
+.mandatory:focus { border-color: var(--gold); }
 .form-group.has-error label { color: var(--red); }
 .field-error,
 .field-error:focus {
