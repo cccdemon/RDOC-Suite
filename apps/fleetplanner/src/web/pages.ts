@@ -476,6 +476,8 @@ type OpDetailPageOptions = {
   /** Whether the viewer may set the primary channel for ANY user (leaders).
    *  Non-leaders may still set their own. */
   canManagePrimary?: boolean;
+  /** Guest view of a public op (not logged in): redact member usernames. */
+  redactNames?: boolean;
 };
 
 /** Banner shown to viewers who are NOT members of the op's host Discord, so
@@ -540,6 +542,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         : realUser;
   const canManage = !!user && (user.role === "superadmin" || user.role === "fleetoperator");
   const isLeader = !!user && (canManage || op.leaders.some((leader) => leader.user.id === user.id));
+  // Guest view of a public op (not logged in): hide member usernames for privacy.
+  // Manage/claim controls are already gated on `user` (null here), so they vanish.
+  const redactNames = opts.redactNames === true;
+  const nm = (name?: string | null) => (redactNames ? "Mitglied" : (name ?? "?"));
   const activeUnits = op.units.filter((unit) => unit.status !== "rejected");
   const pendingUnits = op.units.filter((unit) => unit.status === "pending");
   const acceptedUnits = op.units.filter((unit) => unit.status === "accepted");
@@ -629,7 +635,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         <span>${seat.seatType}</span>
       </div>
       <div class="opv2-seat-user ${claimed ? "" : "empty"}">
-        ${claimed ? (seat.user?.username ?? "?") : "open"}${claimed ? multiPosTag(seat.userId, multiPos) : ""}
+        ${claimed ? nm(seat.user?.username) : "open"}${claimed && !redactNames ? multiPosTag(seat.userId, multiPos) : ""}
       </div>
       <div class="opv2-seat-actions">
         ${!seat.active ? html`<span class="tag tag-dim">disabled</span>` : safe("")}
@@ -890,7 +896,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           <summary class="opv2-unit-summary">
             <div class="opv2-unit-main">
               <strong>${unitName(unit)}</strong>
-              <span>Captain: ${unit.captain.username}${multiPosTag(unit.captainId, multiPos)}</span>
+              <span>Captain: ${nm(unit.captain.username)}${redactNames ? "" : multiPosTag(unit.captainId, multiPos)}</span>
             </div>
             <div class="opv2-unit-facts">
               <span class="tag ${unit.unitType === "ship" ? "tag-cyan" : "tag-gold"}"
@@ -1038,7 +1044,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             (request) =>
               html`<div class="opv2-row">
                 <div>
-                  <strong>${request.user.username}</strong>
+                  <strong>${nm(request.user.username)}</strong>
                   <span>${request.note || "No note"}</span>
                 </div>
                 ${isLeader
@@ -1686,7 +1692,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   data-crew-user-id="${request.user.id}"
                   title="${request.note || "No note"}"
                 >
-                  <strong>${request.user.username}</strong>
+                  <strong>${nm(request.user.username)}</strong>
                   <span>${request.note || "No note"}</span>
                 </div>`,
             )}
@@ -1850,7 +1856,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             (leader) =>
               html`<div class="opv2-row">
                 <div>
-                  <strong>${leader.user.username}</strong>
+                  <strong>${nm(leader.user.username)}</strong>
                   <span>${roleLabel(leader.leaderRole)}</span>
                 </div>
                 ${canManage
@@ -1915,7 +1921,20 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ${tabPage("admin", adminPanel)}
   `;
 
-  const body = html`${joinInviteBanner(opts.joinInviteUrl)}<div class="opv2-shell">
+  const guestBanner = !realUser
+    ? html`<div
+        class="flash flash-warn"
+        style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap"
+      >
+        <span
+          >Öffentliche Operation — Mitgliedsnamen sind ausgeblendet. Melde dich an, um Seats zu
+          claimen oder als Crew beizutreten.</span
+        >
+        <a class="btn btn-sm btn-gold" href="${bp}/login">Anmelden</a>
+      </div>`
+    : safe("");
+
+  const body = html`${guestBanner}${joinInviteBanner(opts.joinInviteUrl)}<div class="opv2-shell">
       <header
         class="opv2-hero opv2-hero-mission"
         style="background-image:linear-gradient(90deg, rgba(5,8,16,.97), rgba(5,8,16,.72), rgba(5,8,16,.2)), url('${missionImageUrl(

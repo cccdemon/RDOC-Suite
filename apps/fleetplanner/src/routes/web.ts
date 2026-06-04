@@ -7,7 +7,6 @@ import { rawHtml } from "../web/pages.js";
 import {
   homePage,
   opDetailPageV2,
-  opPublicPreviewPage,
   opFormPage,
   profilePage,
   shipsPage,
@@ -329,8 +328,10 @@ export async function webRoutes(app: FastifyInstance) {
       );
     }
     const opVisibility = (op as Record<string, unknown>).visibility as string | undefined;
-    // Unauthenticated: only PUBLIC ops get a preview (with OG tags for
-    // scrapers). Private/partner ops 404 to non-logged-in visitors.
+    // Unauthenticated: PUBLIC ops are fully viewable WITHOUT login — but member
+    // usernames are redacted and all claim/manage controls are hidden (they are
+    // gated on the logged-in user, which is null here). Login is only needed to
+    // actually claim a seat or join as crew. Private/partner ops 404 to guests.
     if (!ctx) {
       if (opVisibility !== "public") {
         return htmlReply(
@@ -344,7 +345,33 @@ export async function webRoutes(app: FastifyInstance) {
         );
       }
       reply.header("Cache-Control", "no-store");
-      return htmlReply(reply, opPublicPreviewPage({ basePath: basePath(), op }));
+      const guestGuildRow = (await (prisma.guild.findUnique as any)({
+        where: { id: op.guildId },
+        select: { timezone: true, discordInviteUrl: true },
+      })) as { timezone?: string; discordInviteUrl?: string | null } | null;
+      return htmlReply(
+        reply,
+        opDetailPageV2({
+          basePath: basePath(),
+          currentUser: null,
+          op,
+          ownedShips: [],
+          assignableUsers: [],
+          guildVoiceChannels: [],
+          availableVoiceBotCount: 0,
+          voiceEnabled: false,
+          guildTimezone: guestGuildRow?.timezone ?? DEFAULT_TIMEZONE,
+          visibility: "public",
+          canEditVisibility: false,
+          joinInviteUrl: null,
+          guildDiscordInviteUrl: guestGuildRow?.discordInviteUrl ?? null,
+          participants: null,
+          primaryAssignments: [],
+          canManagePrimary: false,
+          redactNames: true,
+          tab: req.query.tab,
+        }),
+      );
     }
     // Authenticated: access if member of the op's guild OR the op is
     // public OR partner-visible to a guild the user belongs to. This is
