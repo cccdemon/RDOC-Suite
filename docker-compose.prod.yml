@@ -210,6 +210,38 @@ services:
       - bridge
       - livekit
       - relay-bots
+      - alertmanager
+      - node-exporter
+
+  # Alert routing → Discord. No public port; UI bound to loopback only.
+  # The Discord webhook URL is a host-side file secret (see
+  # deploy/alertmanager/secret/discord-webhook-url).
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: rdoc-suite-alertmanager
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ./deploy/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./deploy/alertmanager/secret:/etc/alertmanager/secret:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "127.0.0.1:9093:9093"
+
+  # Host CPU / RAM / disk metrics. No published port — scraped only over the
+  # internal docker network by Prometheus. Never expose this to the internet.
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    container_name: rdoc-suite-node-exporter
+    restart: unless-stopped
+    command:
+      - "--path.rootfs=/host"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|run)($$|/)"
+    pid: host
+    volumes:
+      - "/:/host:ro,rslave"
 
   grafana:
     image: grafana/grafana:latest
@@ -237,3 +269,4 @@ volumes:
   fleetplanner_pgdata:
   grafana_data:
   monitoring_data:
+  alertmanager_data:

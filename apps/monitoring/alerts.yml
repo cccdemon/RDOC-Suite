@@ -1,0 +1,74 @@
+groups:
+  - name: rdoc-suite-availability
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Scrape target {{ $labels.job }} is down"
+          description: "Prometheus has been unable to scrape {{ $labels.job }} ({{ $labels.instance }}) for more than 2 minutes."
+
+  - name: rdoc-suite-relay
+    rules:
+      # The watchdog restart loop was the root cause of the robotic-voice /
+      # no-relay outage. Any restart in a 10m window is worth surfacing.
+      - alert: RelayWatchdogRestartLoop
+        expr: increase(relay_watchdog_restarts_total[10m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Relay watchdog restarted the relay"
+          description: "{{ $value }} watchdog restart(s) on {{ $labels.instance }} in the last 10m. Possible relay/LiveKit instability."
+
+      # Relay received audio before but has gone silent while commanders are
+      # connected on the bridge — points at a broken relay path.
+      - alert: RelayNoAudioWhileActive
+        expr: (time() - relay_last_audio_timestamp_seconds > 120) and on() (dccc_commanders_active > 0)
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Relay has no inbound audio while commanders are connected"
+          description: "Last relay audio was {{ $value | humanizeDuration }} ago while bridge commanders are active. Relay → Discord audio may be broken."
+
+      # Buffer overflows chop audio into the 'robotic' artifact.
+      - alert: RelayBufferOverflow
+        expr: increase(relay_bot_buffer_overflows_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Relay bot {{ $labels.bot }} buffer overflow"
+          description: "{{ $value }} buffer overflow(s) on bot {{ $labels.bot }} in 5m — audio is being dropped (robotic voice)."
+
+  - name: rdoc-suite-host
+    rules:
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}) * 100 < 15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space low on {{ $labels.instance }}"
+          description: "Root filesystem has {{ $value | printf \"%.1f\" }}% free."
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay"}) * 100 < 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space critical on {{ $labels.instance }}"
+          description: "Root filesystem has only {{ $value | printf \"%.1f\" }}% free."
+
+      - alert: HostMemoryLow
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 < 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Host memory low on {{ $labels.instance }}"
+          description: "Only {{ $value | printf \"%.1f\" }}% memory available."

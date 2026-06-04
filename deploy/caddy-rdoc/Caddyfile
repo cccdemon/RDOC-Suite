@@ -24,6 +24,14 @@ suite.raumdock.org:9443 {
 		}
 	}
 
+	# Prometheus scrape endpoints must never be reachable from the public
+	# internet. The bridge serves /metrics on the same Fastify app that this
+	# catch-all proxies, so block it here. Prometheus scrapes bridge:8787 over
+	# the internal docker network, so this does not affect monitoring.
+	handle /metrics* {
+		respond 404
+	}
+
 	reverse_proxy 127.0.0.1:8787 {
 		@upstream_5xx status 5xx
 		handle_response @upstream_5xx {

@@ -1,0 +1,28 @@
+route:
+  receiver: discord
+  group_by: ["alertname", "job"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers:
+        - severity = "critical"
+      receiver: discord
+      repeat_interval: 1h
+
+receivers:
+  - name: discord
+    discord_configs:
+      # The webhook URL is a secret — kept out of git in a mounted file.
+      # Create deploy/alertmanager/secret/discord-webhook-url on the host
+      # with the Discord channel webhook URL (single line, no newline).
+      - webhook_url_file: /etc/alertmanager/secret/discord-webhook-url
+        send_resolved: true
+
+inhibit_rules:
+  # A critical alert silences the matching warning for the same alert/instance.
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ["alertname", "instance"]

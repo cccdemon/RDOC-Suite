@@ -3,6 +3,26 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Monitoring-Ausbau Batch 1 (Alerting + node_exporter + relay per-bot + /metrics-Exposure-Fix)
+
+Grafana-Lücken-Review → Batch 1 von 2:
+1. **Alerting:** Prometheus rule_files (`apps/monitoring/alerts.yml`) + Alertmanager-Service mit
+   Discord-Webhook-Receiver. Rules an die Prod-Outages dieser Woche: `up==0` (ServiceDown),
+   `increase(relay_watchdog_restarts_total[10m])>0` (Restart-Loop), Relay stumm während aktiv,
+   `relay_bot_buffer_overflows` (robotische Stimme), Disk low. Webhook-URL als Datei-Secret
+   (`deploy/alertmanager/secret/discord-webhook-url`, gitignored) — kein env-Substitution-Gefrickel.
+2. **node_exporter:** Host-CPU/RAM/Disk (Disk-Fill-Vorfall 81%→52%). Kein Host-Port-Publish, nur
+   Docker-Netz-Scrape. Disk-Alert <15% warn / <5% crit.
+3. **relay per-bot Panels** ins Dashboard: voice_connected, buffer_bytes, overflow-rate,
+   reconnect-rate (legend {{bot}}) + Watchdog-Restart-Panel. Metrics existierten, waren nur nicht visualisiert.
+4. **SICHERHEIT — /metrics nicht ins Internet:** Caddy `suite.raumdock.org` Catch-all
+   `reverse_proxy →:8787` exponierte bridge `/metrics` öffentlich. Fix: `handle /metrics* { respond 404 }`
+   vor Catch-all. Prometheus scrapt `bridge:8787` übers Docker-Netz → unberührt. Neue Exporter
+   (node-exporter/alertmanager) publishen KEINE öffentlichen Ports.
+Deploy: caddy-rdoc + monitoring neu bauen, alertmanager + node-exporter neu, grafana Dashboard-Reload.
+Batch 2 (separat): fleetplanner /metrics + postgres_exporter + bridge HTTP/WS-Metrics.
+
+
 ## Completed Step - 2026-06-04: Security-Review-Fixes (updater auth + relay-admin hardening) — commit 6304d23
 
 Findings 1-4 fixed in commit `6304d23` (bridge updater + relay-bots adminServer).

@@ -1522,6 +1522,131 @@
       ],
       "title": "LiveKit Quality Score",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "mappings": [
+            { "options": { "0": { "color": "red", "text": "Down" }, "1": { "color": "green", "text": "Connected" } }, "type": "value" }
+          ],
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "max": 1,
+          "min": 0,
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 49 },
+      "id": 16,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "relay_bot_voice_connected", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
+      ],
+      "title": "Relay Bots — Voice Connected (per bot)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 12, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "line" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 76800 }, { "color": "red", "value": 144000 } ] },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 49 },
+      "id": 17,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "relay_bot_buffer_bytes", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
+      ],
+      "title": "Relay Bots — Buffer Backlog (per bot)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.001 } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 49 },
+      "id": 18,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "increase(relay_bot_buffer_overflows_total[5m])", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
+      ],
+      "title": "Relay Bots — Buffer Overflows / 5m (robotic voice)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 57 },
+      "id": 19,
+      "options": {
+        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "increase(relay_bot_reconnect_count_total[10m])", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
+      ],
+      "title": "Relay Bots — Voice Reconnects / 10m (per bot)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 57 },
+      "id": 20,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
+        "textMode": "auto",
+        "wideLayout": true
+      },
+      "pluginVersion": "13.0.1",
+      "targets": [
+        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "increase(relay_watchdog_restarts_total[10m])", "legendFormat": "restarts /10m {{instance}}", "range": true, "refId": "A" }
+      ],
+      "title": "Relay Watchdog Restarts / 10m",
+      "type": "stat"
     }
   ],
   "refresh": "15s",
@@ -1558,6 +1683,6 @@
   "timezone": "browser",
   "title": "RDOC Suite Overview",
   "uid": "rdoc-suite-overview",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }
