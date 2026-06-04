@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-05: Architektur-Doc — Mode-Transitions (Bridge↔Mission exklusiv) explizit
+## Completed Step - 2026-06-05: Architektur-Doc — Mode-Transitions (Bridge↔Mission exklusiv) explizit — commit bd743dd
 
 User-Klarstellung: Bridge room und Missionsräume sind room-level EXKLUSIV. Sobald der Mission-
 Config-Link kommt, MUSS die Companion den Bridge room SOFORT verlassen und die Missionsräume betreten
