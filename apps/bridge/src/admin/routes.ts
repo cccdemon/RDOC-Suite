@@ -243,6 +243,33 @@ function deriveOAuthRedirectUri(suffix: "/oauth/callback" | "/invite/callback"):
 }
 
 export async function registerAdminRoutes(app: FastifyInstance): Promise<void> {
+  // Security headers for every /admin/* response (pages + static assets).
+  // The admin pages ship inline <script>/<style>, so CSP keeps
+  // 'unsafe-inline' for script-src/style-src for now (nonce-based hardening
+  // is a follow-up); the value still locks down framing, base-uri, object
+  // embedding, and default-src to shrink the XSS/clickjacking blast radius.
+  const adminPrefix = `${publicBase()}${ROUTE_PREFIX}`;
+  app.addHook("onSend", async (request, reply, payload) => {
+    if (!request.url.startsWith(adminPrefix)) return payload;
+    reply.header(
+      "content-security-policy",
+      [
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "frame-ancestors 'none'",
+      ].join("; "),
+    );
+    reply.header("x-frame-options", "DENY");
+    reply.header("x-content-type-options", "nosniff");
+    reply.header("referrer-policy", "same-origin");
+    return payload;
+  });
+
   // URL-encoded body parser for native HTML form POSTs (sessions pages).
   app.addContentTypeParser(
     "application/x-www-form-urlencoded",

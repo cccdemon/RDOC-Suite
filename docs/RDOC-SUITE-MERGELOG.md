@@ -5,8 +5,16 @@ RDOC-VoiceRelayBots into this repository.
 
 ## Completed Step - 2026-06-04: Security-Review-Fixes (updater auth + relay-admin hardening) — commit 6304d23
 
-Findings 1-4 fixed in commit `6304d23` (bridge updater + relay-bots adminServer). Findings 5-6
-(bridge admin CSRF + Admin-HTML CSP) bleiben offen als Folge-Batch.
+Findings 1-4 fixed in commit `6304d23` (bridge updater + relay-bots adminServer).
+Findings 5-6 fixed im Folge-Batch:
+- **5 (Med) — Admin-CSRF:** `requireAdminSession` (`bridge/admin/middleware.ts`) prüft jetzt für
+  unsafe Methoden (POST/PUT/PATCH/DELETE) Origin (Fallback Referer) gegen `OAUTH_REDIRECT_URI`-Origin
+  → 403 `csrf_origin_mismatch` bei Mismatch/fehlend. Alle mutierenden Admin-Routes laufen durch diesen
+  Choke-Point. GETs unberührt (Tests grün).
+- **6 (Low) — Security-Header:** `onSend`-Hook in `registerAdminRoutes` setzt für alle `/admin/*`
+  Responses CSP (`frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'none'`, default-src self;
+  script/style behalten `'unsafe-inline'` wg. Inline-Scripts → Nonce-Härtung als Follow-up),
+  X-Frame-Options DENY, X-Content-Type-Options nosniff, Referrer-Policy same-origin.
 
 Security-Review fand 6 Findings (kein SQLi — Prisma model API). Fix in Reihenfolge:
 1. **High — `bridge/routes/updater.ts:126` mint-download-token unauth:** Route authentifiziert,
