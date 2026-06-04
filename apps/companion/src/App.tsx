@@ -1282,6 +1282,27 @@ export function App(): JSX.Element {
   const routingTone = (connected: boolean, speaking: boolean): string =>
     speaking ? "green" : connected ? "cyan" : "dim";
 
+  // ── Bridge-Mode permission readout (status footer) ─────────────────
+  // Surfaces the bridge's commander-role check lifecycle: checking → granted
+  // (WS joined) / denied (4403) etc. The bridge gates Bridge Mode on: logged in
+  // + guild enabled + commander role configured + you're a member + you hold a
+  // commander role (services/permissions.ts recheckCommanderRole).
+  const bridgePerm: { tone: string; label: string } = !signedIn
+    ? { tone: "dim", label: "Nicht angemeldet" }
+    : state.wsStatus === "connecting"
+      ? { tone: "dim", label: "Prüfe Berechtigung…" }
+      : state.wsStatus === "reconnecting"
+        ? { tone: "gold", label: "Verbindung verloren — prüfe erneut…" }
+        : state.wsStatus === "closed" && state.wsDetail === "forbidden"
+          ? { tone: "red", label: "Verweigert — keine Commander-Rolle oder Server nicht aktiviert" }
+          : state.wsStatus === "closed" && state.wsDetail === "unauthenticated"
+            ? { tone: "red", label: "Sitzung abgelaufen — neu anmelden" }
+            : state.wsStatus === "closed" && state.wsDetail === "superseded"
+              ? { tone: "gold", label: "Andere Companion-Instanz aktiv" }
+              : wsConnected
+                ? { tone: "green", label: "Erlaubt" }
+                : { tone: "dim", label: state.wsStatus.toUpperCase() };
+
   return (
     <div className="cc-window">
       {/* ── Brand bar (replaces native chrome for now) ────── */}
@@ -1650,6 +1671,27 @@ export function App(): JSX.Element {
           </section>
         )}
       </main>
+
+      {/* ── Bridge permission status footer ──────────────────── */}
+      <div
+        className="cc-perm-footer"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "5px 14px",
+          borderTop: "1px solid var(--border)",
+          background: "var(--bg2)",
+          fontSize: 11,
+        }}
+      >
+        <Icon.key size={11} />
+        <span className="cc-name-label">BRIDGE MODE</span>
+        <span className={`cc-badge ${bridgePerm.tone}`}>
+          <span className="cc-badge-dot" style={{ background: "currentColor" }}></span>
+          {bridgePerm.label}
+        </span>
+      </div>
 
       <footer className="cc-window-footer">
         <span title={longVersion()}>RDOC SQUAD LINK · {shortVersion()}</span>
