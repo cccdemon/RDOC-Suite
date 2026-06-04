@@ -536,8 +536,8 @@ select option { background: var(--bg3); }
   margin-left: 0.15rem;
 }
 /* Mandatory fields stand out with a gold border so users see they must be
-   filled. `.mandatory` covers fields whose requirement is conditional (e.g. the
-   ship picker) and can't carry the HTML `required` attribute. */
+   filled. The .mandatory class covers fields whose requirement is conditional
+   (e.g. the ship picker) and can't carry the HTML required attribute. */
 input[required], select[required], textarea[required], .mandatory {
   border-color: var(--gold-38);
 }
