@@ -26,13 +26,13 @@ groups:
       # Relay received audio before but has gone silent while commanders are
       # connected on the bridge — points at a broken relay path.
       - alert: RelayNoAudioWhileActive
-        expr: (time() - relay_last_audio_timestamp_seconds > 120) and on() (dccc_commanders_active > 0)
-        for: 2m
+        expr: (time() - relay_last_audio_timestamp_seconds > 300) and on() (dccc_commanders_active > 0)
+        for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Relay has no inbound audio while commanders are connected"
-          description: "Last relay audio was {{ $value | humanizeDuration }} ago while bridge commanders are active. Relay → Discord audio may be broken."
+          description: "Last relay audio was {{ $value | humanizeDuration }} ago while bridge commanders are active (sustained 5m). Relay → Discord audio may be broken."
 
       # Buffer overflows chop audio into the 'robotic' artifact.
       - alert: RelayBufferOverflow
