@@ -3,7 +3,15 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-04: Monitoring-Ausbau Batch 1 (Alerting + node_exporter + relay per-bot + /metrics-Exposure-Fix)
+## Completed Step - 2026-06-04: Monitoring-Ausbau Batch 1 — commits b6540f2 + df18e97
+
+Deployed + verifiziert: targets bridge/livekit/node/relay-bots alle `up`, 7 Alert-Rules geladen,
+Alertmanager healthy (v0.28.1, `webhook_url_file` braucht ≥0.28), Prometheus→1 aktiver Alertmanager,
+public `https://suite.raumdock.org/metrics` → 404 (geblockt), `/health` → 200, node-exporter ohne
+Host-Port. **OFFEN:** Discord-Webhook ist noch Placeholder (`deploy/alertmanager/secret/discord-webhook-url`
+= Beispiel-URL) → User muss echte Webhook-URL eintragen, dann liefern Alerts (kein Restart nötig,
+0.28 liest die Datei beim Senden). `RelayNoAudioWhileActive` war initial „pending" — beobachten, ggf.
+Schwelle/Gate justieren falls noisy.
 
 Grafana-Lücken-Review → Batch 1 von 2:
 1. **Alerting:** Prometheus rule_files (`apps/monitoring/alerts.yml`) + Alertmanager-Service mit
