@@ -3,6 +3,17 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: Fix "Relay bots sync failed (401)" — relay-admin Secret-Mismatch
+
+Regression aus dem relay-admin-Hardening (2026-06-04): relay-bots `ADMIN_PASSWORD` lag auf NEUER Var
+`RELAY_ADMIN_PASSWORD`, aber Fleetplanner + Bridge senden seit jeher `RELAY_BOTS_ADMIN_SECRET` als
+Basic-Auth (`admin:<secret>`) an relay-bots `/api/config` (+ metrics/restart). Mismatch → 401 „Relay
+bots sync failed". Discord-Channels werden trotzdem erzeugt (eigener Discord-Pfad, kein relay-auth).
+Fix: relay-bots `ADMIN_PASSWORD` = `${RELAY_BOTS_ADMIN_SECRET}` (kanonischer geteilter Secret); neue
+Var entfernt. .env.prod.template dokumentiert jetzt das EINE geteilte Secret für alle 3 Parteien.
+Deploy: relay-bots recreaten (nur Env).
+
+
 ## Completed Step - 2026-06-04: Cleanup — toten Commander-Gating-Code raus — commit a5f0739
 
 Deployed (bridge-only, healthy, Build sauber).
