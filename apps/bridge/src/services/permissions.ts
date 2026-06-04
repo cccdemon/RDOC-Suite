@@ -55,9 +55,6 @@ export type PermissionCheckResult =
       ok: false;
       reason:
         | "guild_not_enabled"
-        | "no_commander_roles_configured"
-        | "not_a_member"
-        | "missing_commander_role"
         | "missing_bridge_role"
         | "discord_api_error"
         | "not_in_voice"
@@ -67,56 +64,6 @@ export type PermissionCheckResult =
 export type VoiceChannelCheckResult =
   | { ok: true }
   | { ok: false; reason: "not_in_voice" | "outside_allowed_voice_channel" };
-
-/**
- * Re-verifies that the given user is still allowed to participate in
- * the commander bridge for the given guild. Used periodically during
- * an active PTT session so a commander who has their role revoked is
- * kicked out.
- *
- * Returns { ok: true } when OAuth credentials are missing — in that
- * mode the bridge runs without Discord checks (tests, demos).
- */
-export async function recheckCommanderRole(opts: {
-  userId: string;
-  guildId: string;
-}): Promise<PermissionCheckResult> {
-  const oauth = getOAuthEnv();
-  if (!oauth) {
-    return { ok: true };
-  }
-
-  const guildConfig = await readGuildConfig(opts.guildId);
-  if (!guildConfig || !guildConfig.enabled) {
-    return { ok: false, reason: "guild_not_enabled" };
-  }
-  if (guildConfig.commanderRoleIds.length === 0) {
-    return { ok: false, reason: "no_commander_roles_configured" };
-  }
-
-  const memberRes = await fetchGuildMember({
-    botToken: oauth.DISCORD_RDOCRTC_BOT_TOKEN,
-    guildId: opts.guildId,
-    userId: opts.userId,
-  });
-  if (!memberRes.ok) {
-    logger.warn(
-      { userId: opts.userId, guildId: opts.guildId, status: memberRes.error.status },
-      "permission recheck: discord api error",
-    );
-    return { ok: false, reason: "discord_api_error" };
-  }
-  if (!memberRes.value.present) {
-    return { ok: false, reason: "not_a_member" };
-  }
-
-  const memberRoles = new Set(memberRes.value.member.roles);
-  const isCommander = guildConfig.commanderRoleIds.some((roleId) => memberRoles.has(roleId));
-  if (!isCommander) {
-    return { ok: false, reason: "missing_commander_role" };
-  }
-  return { ok: true };
-}
 
 /**
  * Re-verifies that the user may use **Bridge Mode** (the no-mission Squad Link

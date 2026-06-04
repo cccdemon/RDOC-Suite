@@ -3,6 +3,15 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-04: Cleanup — toten Commander-Gating-Code raus (post Bridge-Mode-Entkopplung)
+
+Nach der Bridge-Mode-Entkopplung war `recheckCommanderRole` (permissions.ts) ohne Aufrufer → entfernt.
+PermissionCheckResult-Reasons `no_commander_roles_configured`/`not_a_member`/`missing_commander_role`
+ungenutzt → aus der Union raus. oauth.test „403 if user lacks the commander role" testete entferntes
+Verhalten → gelöscht (Kommentar erklärt warum). NICHT angefasst: `GuildConfig.commanderRoleIds` +
+fleetAdmin Strip-Roles/Dashboard — das sind eigene, noch genutzte Features (kein toter Code).
+
+
 ## Completed Step - 2026-06-04: Bridge LiveKit room weekly rotation + role-loss auto-kick — commit 4f0b113
 
 Deployed (bridge-only, healthy). Verifiziert: `bridgeLivekitRoom(1431307397842079777)` =

@@ -206,38 +206,11 @@ describe("GET /auth/callback (full flow with mocked Discord API)", () => {
     await clearGuildConfig();
   });
 
-  it("returns 403 if user lacks the commander role", async () => {
-    await seedGuildConfig({ enabled: true, roleIds: [COMMANDER_ROLE_ID] });
-    mockFetchSequence([
-      {
-        json: () => ({
-          access_token: "fake-access-token",
-          token_type: "Bearer",
-          expires_in: 3600,
-          scope: "identify",
-        }),
-      },
-      { json: () => ({ id: USER_ID, username: "tester" }) },
-      { json: () => ({ roles: [OTHER_ROLE_ID] }) },
-    ]);
-
-    const startRes = await app.inject({
-      method: "GET",
-      url: `/auth/start?guildId=${GUILD_ID}`,
-    });
-    const stateCookie = startRes.cookies.find((c) => c.name === "dccc_oauth_state")!;
-    const state = new URL(startRes.headers.location as string).searchParams.get("state")!;
-
-    const res = await app.inject({
-      method: "GET",
-      url: `/auth/callback?code=abc&state=${state}`,
-      cookies: { dccc_oauth_state: stateCookie.value },
-    });
-    expect(res.statusCode).toBe(403);
-    expect(res.json().error).toBe("missing_commander_role");
-
-    await clearGuildConfig();
-  });
+  // NOTE: the old "403 if user lacks the commander role" case was removed:
+  // Bridge Mode login is no longer gated by the commander role (see
+  // companion-voice-architecture.md). It is gated by the Raumdock bridge role
+  // (checkBridgeGate), which is inactive in these tests (no GlobalSettings),
+  // so a guild member without a commander role now signs in successfully.
 
   it("returns 403 if user is not a guild member at all", async () => {
     await seedGuildConfig({ enabled: true, roleIds: [COMMANDER_ROLE_ID] });
