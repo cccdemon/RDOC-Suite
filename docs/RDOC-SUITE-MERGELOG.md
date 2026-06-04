@@ -39,6 +39,11 @@ Host-Port. **OFFEN:** Discord-Webhook ist noch Placeholder (`deploy/alertmanager
 0.28 liest die Datei beim Senden). `RelayNoAudioWhileActive` war initial „pending" — beobachten, ggf.
 Schwelle/Gate justieren falls noisy.
 
+**Nachtrag 2026-06-04:** Discord-Webhook live (Kanal 1512140718360236255, via Discord-UI erstellt —
+RDOC-RTC Bot hatte kein MANAGE_WEBHOOKS, 50013). Datei `deploy/alertmanager/secret/discord-webhook-url`
+gesetzt (gitignored). End-to-End verifiziert: direkter POST 204 + Synthetik-Alert durch Alertmanager,
+keine notify-Errors. `RelayNoAudioWhileActive` feuert real → Schwelle/Gate evtl. nachziehen.
+
 Grafana-Lücken-Review → Batch 1 von 2:
 1. **Alerting:** Prometheus rule_files (`apps/monitoring/alerts.yml`) + Alertmanager-Service mit
    Discord-Webhook-Receiver. Rules an die Prod-Outages dieser Woche: `up==0` (ServiceDown),
