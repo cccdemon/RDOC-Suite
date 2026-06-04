@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-05: Global Radio Net Doppel-Audio — RelayAudio muss publish-only sein (Companion v0.6.1)
+## Completed Step - 2026-06-05: Global Radio Net Doppel-Audio — RelayAudio muss publish-only sein (Companion v0.6.1) — commit b0855b1
 
 Symptom (live verifiziert mit Hedwig): ein Commander mit Global-Net-Permission, in anderem Discord-
 Channel, wird DOPPELT gehört. Bot-Mute-Test: Hedwig mutete Funkrelais-2 (ihr Channel), User sprach
