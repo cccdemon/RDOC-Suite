@@ -3,6 +3,14 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Completed Step - 2026-06-04: Monitoring-Ausbau Batch 2 — commit c270a8b
+
+Deployed + verifiziert: 6 Targets `up` (bridge/fleetplanner/livekit/node/postgres/relay-bots),
+`fleetplanner_operations` 6 Serien, `bridge_ws_connections` da, `pg_up=1`. Public geblockt:
+`/fleetplanner/metrics` → 404, `/metrics` → 404, `/fleetplanner` (App) → 200. Grafana Dashboard v5
+(35 Panels, App-Services-Row). prom-client mit named imports (ESM-Interop). Bridge+fleetplanner
+Docker-Build ohne TS-Fehler.
+
 ## Queued / Planned Step - 2026-06-04: Monitoring-Ausbau Batch 2 (fleetplanner /metrics + postgres_exporter + bridge HTTP/WS)
 
 1. **Fleetplanner `/metrics`** (prom-client): default-Prozess-Metrics (prefix `fleetplanner_`),
