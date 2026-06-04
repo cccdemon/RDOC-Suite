@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-05: Command Net stabiles Einweg-Audio — LivekitAudio.disconnect() löscht fremde <audio> global (Companion v0.5.21)
+## Completed Step - 2026-06-05: Command Net stabiles Einweg-Audio — LivekitAudio.disconnect() löscht fremde <audio> global (Companion v0.5.21) — commit ea6546f
 
 Live mit Hedwig per `listParticipants` + Companion-Log (v0.5.19) gemessen: beide Publisher OK
 (Track toggelt LIVE/MUTED korrekt mit PTT), Hedwig hört dich — du hörst Hedwig NICHT. Listener-Bug
