@@ -529,6 +529,28 @@ select option { background: var(--bg3); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
 .form-actions { display: flex; gap: 1rem; margin-top: 2rem; }
 
+/* Required-field marker + client-side validation feedback */
+.req {
+  color: var(--gold);
+  font-weight: 700;
+  margin-left: 0.15rem;
+}
+.form-group.has-error label { color: var(--red); }
+.field-error,
+.field-error:focus {
+  border-color: var(--red) !important;
+  background: var(--red-08);
+}
+.form-errors {
+  background: var(--red-08);
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 0.7rem 0.95rem;
+  margin-bottom: 1.5rem;
+}
+
 /* ── Op list ─────────────────────────────────────────────────── */
 .op-date-board {
   display: flex;

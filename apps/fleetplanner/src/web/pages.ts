@@ -2300,11 +2300,12 @@ export function opFormPage(opts: {
       <h1 class="page-title">${op ? "EDIT OPERATION" : "NEW OPERATION"}</h1>
     </div>
     <div class="card">
-      <form method="post" action="${action}">
+      <form method="post" action="${action}" id="op-form" novalidate>
         <input type="hidden" name="_csrf" value="${csrf}" />
+        <div class="form-errors" id="op-form-errors" hidden></div>
         ${!op && opts.operatorGuilds && opts.operatorGuilds.length > 0
           ? html` <div class="form-group">
-              <label>Server</label>
+              <label>Server <span class="req" title="Pflichtfeld">*</span></label>
               ${selectedOperatorGuild
                 ? html` <input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
                     <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
@@ -2324,7 +2325,7 @@ export function opFormPage(opts: {
             </div>`
           : safe("")}
         <div class="form-group">
-          <label>Operation Title</label>
+          <label>Operation Title <span class="req" title="Pflichtfeld">*</span></label>
           <input
             type="text"
             name="title"
@@ -2335,7 +2336,7 @@ export function opFormPage(opts: {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Scheduled Date/Time (${gtz})</label>
+            <label>Scheduled Date/Time (${gtz}) <span class="req" title="Pflichtfeld">*</span></label>
             <input
               type="datetime-local"
               name="scheduledAt"
@@ -2469,6 +2470,52 @@ ${op?.description ?? ""}</textarea
       meetingSystemSelect?.addEventListener("change", filterMeetingLocations);
       meetingLocationSelect?.addEventListener("change", syncMeetingLocationLabel);
       filterMeetingLocations();
+
+      // ── Client-side validation BEFORE submit ──────────────────────
+      // Marks every missing required field at once (red border) and shows a
+      // summary banner, instead of the native one-field-at-a-time bubble.
+      (function () {
+        const form = document.getElementById("op-form");
+        const errorBox = document.getElementById("op-form-errors");
+        if (!form || !errorBox) return;
+        const labelFor = (el) => {
+          const group = el.closest(".form-group");
+          const lbl = group ? group.querySelector("label") : null;
+          return (lbl ? lbl.textContent : el.name).replace("*", "").trim();
+        };
+        const clearError = (el) => {
+          el.classList.remove("field-error");
+          const group = el.closest(".form-group");
+          if (group) group.classList.remove("has-error");
+        };
+        form.querySelectorAll("[required]").forEach((el) => {
+          el.addEventListener("input", () => clearError(el));
+          el.addEventListener("change", () => clearError(el));
+        });
+        form.addEventListener("submit", (e) => {
+          const missing = [];
+          form.querySelectorAll("[required]").forEach((el) => {
+            clearError(el);
+            if (!el.value || !el.value.trim()) {
+              missing.push(el);
+              el.classList.add("field-error");
+              const group = el.closest(".form-group");
+              if (group) group.classList.add("has-error");
+            }
+          });
+          if (missing.length > 0) {
+            e.preventDefault();
+            errorBox.innerHTML =
+              "Bitte fülle die Pflichtfelder aus: " +
+              missing.map(labelFor).join(", ") + ".";
+            errorBox.hidden = false;
+            missing[0].focus();
+            errorBox.scrollIntoView({ behavior: "smooth", block: "center" });
+          } else {
+            errorBox.hidden = true;
+          }
+        });
+      })();
     </script>`;
 
   return layout({
