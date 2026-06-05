@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-05: relay-bots Buffer-Overflow + Doppel-Audio — Reader-Teardown + realtime-Mixer
+## Completed Step - 2026-06-05: relay-bots Buffer-Overflow + Doppel-Audio — Reader-Teardown + realtime-Mixer — commit e62ad47
 
 Buffer-Overflow ist Backpressure, NICHT RAM. `pushPcm` schrieb PCM seriell in EINEN PassThrough
 (192000 B/s realtime, Cap ~1s); >realtime → overflow → drop + Watchdog-Restart. Zwei Ursachen:
