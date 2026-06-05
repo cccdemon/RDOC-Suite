@@ -98,6 +98,35 @@ Analogy (user's): connected house-parties in different cities — each stays hom
 - **Reuse:** `GuildVoiceBot` / guild-scoped `RelayBotsConfig`, relay-bots worker, `openMissionVoiceSession`/`closeMissionVoiceSession`, LiveKit token mint with grant split, Companion mission flow.
 - **New:** `Operation.federationVoiceRoom`, federation room lifecycle across N guilds, deputy model, relay-bot "join this federation room" instruction per partner guild, per-event mode flag (`Operation.voiceMode: "host" | "federation"`).
 
+### Concurrent events & isolation (relay-bots refactor) — REQUIRED for F2
+**Problem.** Multiple events must run at once and stay isolated: e.g. 2 users in Event A, 3 in Event B; **A participants must NOT hear B**. Today's worker can't: it is single-session per guild and **broadcasts one room's mixed PCM to every bot**.
+
+**Current architecture (single-session, no isolation):**
+- One relay-bots worker per guild, bound to one room (`RelayBotsConfig` PK `guildId`, single `roomName`).
+- One `LivekitSubscriber` → one room → one mixed PCM stream.
+- `BotManager.pushPcm` broadcasts the **same** PCM to **all** bots ([apps/relay-bots/src/discord/botManager.ts](apps/relay-bots/src/discord/botManager.ts) `pushPcm` loops every bot). Each `RelayBot` = one Discord token + one `channelId`.
+- Net: one room → all channels hear the same thing. No per-event separation.
+
+**Three isolation layers needed:**
+1. **Room per event** (LiveKit). Each event = its own `federationVoiceRoom`; a subscriber on room A never receives room-B audio. (Already in the model.)
+2. **Distinct Discord bot identity per concurrent channel.** Discord hard limit: **one bot user can occupy only ONE voice channel per guild.** So Event A and Event B in the *same* guild require **different bot tokens** — exactly what the 6× `GuildVoiceBot` pool provides (Bot#1→channel A, Bot#2→channel B).
+3. **Per-session routing.** Drop the global broadcast: PCM from room A goes **only** to A's bots.
+
+**Worker changes (single-session → N concurrent sessions per guild):**
+- New concept **`RelaySession` = { opId, roomName, members: [{ botUserId/token, channelId }] }`**.
+- **One `LivekitSubscriber` per active session** (per room), not one global subscriber.
+- Route each session's PCM **only** to that session's bots — group bots by session instead of `BotManager` broadcasting to all.
+- **Bot allocator:** reserve distinct `GuildVoiceBot` identities per session+channel; free them on event close. `GuildVoiceBot.assignedChannelId` is the existing hook — extend with `assignedOpId` / `assignedRoom`.
+- **Lifecycle:** op opens → allocate bots + spawn a subscriber for its room; op closes → free bots + tear down **only that** subscriber (other live sessions keep running).
+
+**Cross-guild federation:** each participating guild runs a session pointing at the **same** federation room but outputting to **its own** channel. Event A's room is relayed by guild-X-bot + guild-Y-bot; Event B uses a different room + different bots. Isolation holds because rooms differ and routing is per-session.
+
+**Caps (concurrency):**
+- **Per guild, concurrent: Σ(event channels) ≤ bot pool size (6 today).** 2 events × 1 channel = 2 bots; an event with 3 unit channels + an event with 2 = 5 bots. More simultaneous events/units ⇒ enlarge the per-guild bot pool.
+- The F2 **hard cap 16** is *publishers per federation room* — a separate dimension from the relay-bot pool.
+
+**Schema follow-up.** `RelayBotsConfig` (one `roomName` per guild) gains a session dimension: either a **`RelaySession`** table keyed `(guildId, opId)` with its own room + bot/channel assignments, or the bridge `service-config` returns an **array** of sessions. The worker fetches all active sessions for its guild and holds one subscriber per session.
+
 ### Decisions (F2) — 2026-06-05
 1. **Activation: explicit opt-in per event.** A partner joins federation voice only after (a) accepting the F1 distribution AND (b) separately opting into federation voice for that event — and having voice permission + a free relay bot. No surprise hot-mic. Store an opt-in flag on `EventDistribution` (e.g. `federationOptIn Boolean`).
 2. **Voice line: host + deputies, cross-guild allowed.** Host fleetoperator and a per-op deputy list may publish; deputies **may be members of partner guilds**. Everyone else subscribe-only. Per-op deputy grants via `OperationVoiceDeputy`.
