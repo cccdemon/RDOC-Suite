@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `bot.ts`: a 20 ms output clock now mixes per-speaker jitter buffers (sample-summed, clamped) into one realtime stream — input rate == playback rate (no overflow), and simultaneous speakers are mixed instead of concatenated. Per-speaker buffers are capped (~200 ms, drop-oldest); idle speakers are reaped.
 - Server-side only (relay-bots container); deploy with `docker compose -f docker-compose.prod.yml up -d --build relay-bots`.
 
+## [1.0.1] — 2026-06-05
+
+### Changed — Companion: new app icons / symbols (1.0.1)
+
+- Release carrying the updated app icons + symbols (`src-tauri/icons`). No code changes vs 1.0.0.
+
 ## [1.0.0] — 2026-06-05
 
 ### Changed — Companion: mission voice UI polish + new app icons (1.0.0)
