@@ -3,6 +3,24 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued Step - 2026-06-05: OBS Application-Audio-Capture of SquadLink — force WebView2 audio in-process (Companion 1.0.3)
+
+OBS "Application Audio Capture" (WASAPI process loopback) records silence for SquadLink because
+Tauri = WebView2 (Chromium), which renders audio in a separate out-of-process audio service
+(`msedgewebview2.exe` utility process), not in `rdoc-squad-link.exe`. OBS hooks the selected
+window's process tree; the Chromium audio utility process is not in that tree → no audio.
+
+Fix: set the window's `additionalBrowserArgs` in `apps/companion/src-tauri/tauri.conf.json` to add
+`--disable-features=AudioServiceOutOfProcess` so audio renders in the main WebView2 process and OBS
+app-capture picks it up. `additionalBrowserArgs` REPLACES Tauri's defaults, so the three Tauri
+defaults (`msWebOOUI,msPdfOOUI,msSmartScreenProtection`) are kept in the same `--disable-features`
+list:
+`--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AudioServiceOutOfProcess`
+
+No JS/Rust change; config-only. Version bump Companion 1.0.2 → 1.0.3.
+Files: `apps/companion/src-tauri/tauri.conf.json`, `apps/companion/package.json`,
+`apps/companion/src-tauri/Cargo.toml`, `apps/companion/src-tauri/Cargo.lock` (version).
+
 ## Completed Step - 2026-06-05: Stale mission-token deadlock blocks Bridge audio — clear on definitive-ended/401 (Companion 1.0.2 + fleetplanner backend) — commit 7f3ffca
 
 Symptom (live, diagnosed via LiveKit prod logs): "2 participants in bridge mode, nobody can

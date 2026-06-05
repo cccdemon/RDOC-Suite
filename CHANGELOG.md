@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Companion: OBS could not capture SquadLink audio (1.0.3, 2026-06-05)
+
+- OBS "Application Audio Capture" recorded silence because Tauri/WebView2 (Chromium) renders audio in a separate out-of-process audio service, outside the SquadLink window's process tree.
+- Set the window's `additionalBrowserArgs` to add `--disable-features=AudioServiceOutOfProcess` (keeping Tauri's three default disabled features) so audio renders in the main WebView2 process. OBS app-capture on the SquadLink window now picks up the sound. Config-only change.
+
 ### Fixed — Companion: stale mission-token deadlock silently killed Bridge audio (1.0.2, 2026-06-05)
 
 - Symptom: two commanders shown in the bridge roster but nobody could hear anyone. LiveKit prod logs showed each companion joining the bridge room **alone** and leaving after ~1 s — the roster count came from the WS squad list, not LiveKit.
