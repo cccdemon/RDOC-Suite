@@ -144,10 +144,10 @@ export async function guildRoutes(app: FastifyInstance) {
       const [guild, memberships, voiceBots] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
-          id: true, name: true, ownerUserId: true, voiceChannelCategoryId: true,
+          id: true, name: true, orgName: true, ownerUserId: true, voiceChannelCategoryId: true,
           admiralRoleId: true, globalVoiceRoleId: true,
           commanderVoiceRoleId: true, discordInviteUrl: true, voiceEnabled: true, timezone: true,
-        } }) as Promise<{ id: string; name: string; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; discordInviteUrl: string | null; voiceEnabled: boolean; timezone: string } | null>,
+        } }) as Promise<{ id: string; name: string; orgName: string | null; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; discordInviteUrl: string | null; voiceEnabled: boolean; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: {
@@ -240,6 +240,7 @@ export async function guildRoutes(app: FastifyInstance) {
           globalVoiceRoleId: snowflake(req.body.globalVoiceRoleId),
           commanderVoiceRoleId: snowflake(req.body.commanderVoiceRoleId),
           discordInviteUrl: inviteUrl(req.body.discordInviteUrl),
+          orgName: ((v) => (v ? v.slice(0, 80) : null))((req.body.orgName ?? "").trim()),
           timezone: validatedTz,
         },
       });

@@ -36,6 +36,7 @@ model User {
 model Guild {
   id                     String    @id // Discord guild snowflake
   name                   String
+  orgName                String?   // SC org name shown in op embeds, distinct from the Discord server name
   iconHash               String?
   ownerUserId            String? // fleetplanner user who installed the bot
   voiceChannelCategoryId String? // Discord category for operation voice channels

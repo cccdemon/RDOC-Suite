@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Fleetplanner: richer share embeds (OpenGraph) for public ops + Guild `orgName` (2026-06-05)
+
+- Shared op links now unfurl on Discord/social with a structured `og:description`: When, System, Rendezvous, Leaders, Event Voice, Org and the Discord invite — mirroring the op's Action Details. Previously only title/description/image were emitted.
+- New optional `Guild.orgName` (SC org name, ≤80 chars) editable under server settings → Discord integration. Falls back to the Discord server name in the embed when empty.
+- Privacy unchanged: embeds render only for `public` ops. Private/partner ops still 404 to guests, so their details are never exposed via OG.
+
 ### Fixed — Companion: OBS could not capture SquadLink audio (1.0.3, 2026-06-05)
 
 - OBS "Application Audio Capture" recorded silence because Tauri/WebView2 (Chromium) renders audio in a separate out-of-process audio service, outside the SquadLink window's process tree.

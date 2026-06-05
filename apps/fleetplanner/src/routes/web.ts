@@ -348,8 +348,8 @@ export async function webRoutes(app: FastifyInstance) {
       reply.header("Cache-Control", "no-store");
       const guestGuildRow = (await (prisma.guild.findUnique as any)({
         where: { id: op.guildId },
-        select: { timezone: true, discordInviteUrl: true },
-      })) as { timezone?: string; discordInviteUrl?: string | null } | null;
+        select: { name: true, orgName: true, timezone: true, discordInviteUrl: true },
+      })) as { name?: string; orgName?: string | null; timezone?: string; discordInviteUrl?: string | null } | null;
       return htmlReply(
         reply,
         opDetailPageV2({
@@ -362,6 +362,8 @@ export async function webRoutes(app: FastifyInstance) {
           availableVoiceBotCount: 0,
           voiceEnabled: false,
           guildTimezone: guestGuildRow?.timezone ?? DEFAULT_TIMEZONE,
+          guildName: guestGuildRow?.name,
+          orgName: guestGuildRow?.orgName ?? null,
           visibility: "public",
           canEditVisibility: false,
           joinInviteUrl: null,
@@ -436,10 +438,12 @@ export async function webRoutes(app: FastifyInstance) {
       await Promise.all([
         prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
         hasVoicePermission(op.guildId),
-        (prisma.guild.findUnique as any)({ where: { id: op.guildId }, select: { timezone: true, discordInviteUrl: true } }),
+        (prisma.guild.findUnique as any)({ where: { id: op.guildId }, select: { name: true, orgName: true, timezone: true, discordInviteUrl: true } }),
         fetchGuildVoiceChannels(op.guildId).catch(() => []),
       ]);
     const opGuildTz = (opGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+    const opGuildName = (opGuildRow as { name?: string } | null)?.name;
+    const opGuildOrgName = (opGuildRow as { orgName?: string | null } | null)?.orgName ?? null;
     // Guests who aren't members of the op's host guild get a Discord invite
     // banner so they can join the event Discord (required for voice moves).
     const isHostMember = ctx
@@ -543,6 +547,8 @@ export async function webRoutes(app: FastifyInstance) {
         availableVoiceBotCount,
         voiceEnabled,
         guildTimezone: opGuildTz,
+        guildName: opGuildName,
+        orgName: opGuildOrgName,
         missionVoice: {
           globalVoiceRoom,
           commanderVoiceRoom:

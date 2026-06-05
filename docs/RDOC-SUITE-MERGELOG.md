@@ -3,6 +3,31 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued Step - 2026-06-05: Fleetplanner OG/embed enrichment + Guild.orgName field (public ops only)
+
+Problem: shared op links (Discord/social unfurl) showed nothing. Two reasons: (a) only `og:title`/`description`/`image` were emitted — no structured When/System/Rendezvous/Leaders/Voice/Org/Discord; (b) non-public ops 404 to guests so they never reach the OG-bearing page. Decision (user): leave the privacy gate as-is — **embeds only for `public` ops**, no crawler/guest preview for private/partner ops. Add a new `orgName` so the embed can name the SC org separately from the Discord server name.
+
+Scope:
+- `prisma/schema.prisma` (fleetplanner): add `orgName String?` to `Guild`.
+- New migration `20260605010000_guild_org_name`: `ALTER TABLE "Guild" ADD COLUMN "orgName" TEXT;`.
+- `routes/guilds.ts`: settings GET select + type add `orgName`; settings POST persists trimmed/nulled `orgName` (≤80 chars).
+- `web/pages.ts`: `guildSettingsPage` guild type + a new "Org name" input in the Discord-integration form; `OpDetailPageOptions` gains `guildName` + `orgName`; `opDetailPageV2` builds a multiline `ogMeta.description` (When / System · Rendezvous / Leaders / Event Voice / Org / Discord invite) reusing `fmtDate`/`systemLabel`/`eventVoiceName`.
+- `routes/web.ts`: guest + authed `/ops/:id` branches select `name`+`orgName` and pass `guildName`/`orgName` into `opDetailPageV2`.
+
+No new preview route; `opPublicPreviewPage` stays unused. Code-first, compile last; prod migration auto-runs on container start.
+
+## Queued Step - 2026-06-05: Custom PTT sound (press + release) — user-supplied audio file, base64 in store (Companion, NO build yet)
+
+User can replace the synthesized PTT press/release chirps with their own short audio file.
+Incoming-transmission chirps stay synthesized. Scope this round: press + release only.
+
+- `audioFeedback.ts`: `customBuffers: Partial<Record<Cue, AudioBuffer>>`; `setCustomSound(cue, ArrayBuffer | null)` decodes via the existing AudioContext; `playPttPress`/`playPttRelease` play the custom AudioBuffer when set (through the volume gate), else fall back to the synth burst. Same enabled/suppressed/volume gating.
+- `store.ts`: new persisted slots `pttPressSound` / `pttReleaseSound` = `{ name, dataUrl } | null` (data URL = `data:audio/…;base64,…`), `savePttSound(cue, slot)`. base64-in-store; size cap ~512 KB raw bytes enforced at pick time.
+- `SettingsModal.tsx`: per cue a row — filename, "Auswählen…" (hidden `<input type=file accept=audio/*>`, no dialog/fs plugin), "Test" (preview via `new Audio(dataUrl)`), "Zurücksetzen" (→ null = synth). Validation: decode check, size cap, duration cap ~3 s; error text on reject.
+- `App.tsx`: load slots into state + push to `feedbackAudio.setCustomSound` on mount; apply + persist on save. base64↔ArrayBuffer helpers.
+
+Limits (by design): formats = whatever Chromium/WebView2 `decodeAudioData` accepts (mp3/wav/ogg-opus/flac/m4a-aac); ≤512 KB, ≤3 s; stored base64 in settings.json (keep small). NO new Tauri plugin. **No build/tag this round — local dev test only.** Version bump deferred until we ship.
+
 ## Completed Step - 2026-06-05: OBS Application-Audio-Capture of SquadLink — force WebView2 audio in-process (Companion 1.0.3) — commit a2dd557
 
 OBS "Application Audio Capture" (WASAPI process loopback) records silence for SquadLink because

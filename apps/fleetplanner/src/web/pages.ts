@@ -468,6 +468,10 @@ type OpDetailPageOptions = {
   joinInviteUrl?: string | null;
   /** The host guild's permanent Discord invite link, shown in Action Details. */
   guildDiscordInviteUrl?: string | null;
+  /** Host guild's Discord server name — used in the share embed (og). */
+  guildName?: string;
+  /** Host guild's SC org name — preferred over guildName in the share embed. */
+  orgName?: string | null;
   /** Assigned-roster participants — passed only when the op is completed, so the
    *  overview shows "who took part" plus a CSV export link. */
   participants?: MissionParticipant[] | null;
@@ -2239,6 +2243,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </script>`;
 
   const { WEB_PUBLIC_URL } = getEnv();
+  // Share embed (OpenGraph). Discord renders og:description with newlines, so we
+  // pack the structured op details (When / System / Rendezvous / Leaders / Voice
+  // / Org / Discord) as one multiline block — mirrors the Action Details panel.
+  const ogLeaders = op.leaders.length
+    ? op.leaders.map((l) => l.user.username).join(", ")
+    : "None";
+  const ogOrg = opts.orgName?.trim() || opts.guildName;
+  const ogLines = [
+    `🕗 When: ${fmtDate(op.scheduledAt, gtz)}`,
+    `🌌 System: ${systemLabel(op.meetingSystem ?? "stanton")}`,
+    `📍 Rendezvous: ${op.meetingLocation || "Not set"}`,
+    `👥 Leaders: ${ogLeaders}`,
+    `🔊 Event Voice: ${eventVoiceName}`,
+  ];
+  if (ogOrg) ogLines.push(`🛰 Org: ${ogOrg}`);
+  if (opts.guildDiscordInviteUrl) ogLines.push(`💬 Discord: ${opts.guildDiscordInviteUrl}`);
   return layout({
     title: op.title,
     basePath: bp,
@@ -2248,7 +2268,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     body,
     ogMeta: {
       title: op.title,
-      description: op.description ? op.description.slice(0, 200) : undefined,
+      description: ogLines.join("\n"),
       imageUrl: `${WEB_PUBLIC_URL}${missionImageUrl(bp, op.opType)}`,
       pageUrl: `${WEB_PUBLIC_URL}${bp}/ops/${op.id}`,
     },
@@ -5393,6 +5413,7 @@ export function guildSettingsPage(opts: {
   guild: {
     id: string;
     name: string;
+    orgName?: string | null;
     ownerUserId?: string | null;
     voiceChannelCategoryId: string | null;
     admiralRoleId: string | null;
@@ -5535,6 +5556,9 @@ export function guildSettingsPage(opts: {
         </label>
         <label class="text-sm text-dim">Admiral role ID (Discord role → fleetoperator)
           <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="optional" />
+        </label>
+        <label class="text-sm text-dim">Org name <span style="opacity:.65">(Star Citizen org shown in shared op embeds — defaults to the Discord server name if empty)</span>
+          <input type="text" name="orgName" value="${g.orgName ?? ""}" maxlength="80" placeholder="e.g. RDOC" />
         </label>
         <label class="text-sm text-dim">Discord invite link <span style="opacity:.65">(permanent invite shown to guests who aren't in this Discord, e.g. https://discord.gg/raumdock)</span>
           <input type="text" name="discordInviteUrl" value="${g.discordInviteUrl ?? ""}" placeholder="https://discord.gg/yourserver" />
