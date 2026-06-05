@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued Step - 2026-06-05: Stale mission-token deadlock blocks Bridge audio — clear on definitive-ended/401 (Companion 1.0.1 + fleetplanner backend)
+## Completed Step - 2026-06-05: Stale mission-token deadlock blocks Bridge audio — clear on definitive-ended/401 (Companion 1.0.2 + fleetplanner backend) — commit 7f3ffca
 
 Symptom (live, diagnosed via LiveKit prod logs): "2 participants in bridge mode, nobody can
 hear each other." Server logs (`commander-bridge-1431307397842079777-w22`, 08:51): only ONE
