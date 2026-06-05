@@ -23,9 +23,18 @@ A host guild creates an op with a Discord scheduled event. The event is offered 
 - **`EventDistribution`** — one row per (operation, targetGuild):
   - `id`, `operationId`, `sourceGuildId`, `targetGuildId`
   - `status`: `pending | approved | declined | auto | revoked`
+  - `contactUserId String?` — the **named contact person** for this target guild (decided per event, see below). Must be a member of `targetGuildId`.
   - `discordEventId String?` — the scheduled-event id created in the target guild (null until approved+posted)
   - `decidedByUserId String?`, `decidedAt DateTime?`
   - `@@unique([operationId, targetGuildId])`
+
+### Contact person (per event × target guild) — DECIDED
+The approval recipient is **a named contact person chosen per event for each target partner guild**, NOT a guild-wide default and NOT a host-side op role. Rationale: whoever accepts/declines must hold the rights on that **partner** Discord, so the host designates a real liaison who is a member of that partner guild.
+
+- Surfaced in the op as a mission role label per partner, e.g. **"Contact Person — <Partner Discord A>"**, **"Contact Person — <Partner Discord B>"**.
+- Set per event when distribution is configured: for each active partner guild, the host picks a `contactUserId` from that guild's `GuildMembership` (validated: the user must belong to `targetGuildId`). Only `manual` (non-allow-listed) partners need a contact; allow-listed/auto partners may omit it.
+- The contact (and only the contact) receives the approval DM + appears in the web inbox for that guild; their Teilen/Ablehnen sets `EventDistribution.status`.
+- Optional convenience: remember the last contact per (sourceGuild, targetGuild) to pre-fill next time (a `PartnerSharePolicy.defaultContactUserId`), but it stays **per-event overridable**.
 - **Partnership sharing policy** — extend `GuildPartnership` (or a side table keyed per direction) with:
   - `autoShareInbound Boolean @default(false)` on the **receiving** side — "events from this partner auto-publish into my Discord".
   - Decision: policy is **directional** (B decides whether A's events auto-post into B). Since `GuildPartnership` is a single row for the A↔B pair, store two flags (`autoShareAToB`, `autoShareBToA`) OR a dedicated `PartnerSharePolicy { ownerGuildId, partnerGuildId, autoShare }`. **Recommended:** dedicated `PartnerSharePolicy` table — cleaner directional semantics, avoids A/B-order confusion (same trap as the existing partnership A/B duplicate-user gotcha).
@@ -47,12 +56,13 @@ Target: DM the target guild's Admiral(s)/fleetoperators with an **event preview 
 | **A. HTTP Interactions endpoint** | Register an Interactions URL on the Fleetplanner Discord app; verify Ed25519 with `DISCORD_FLEETPLANNER_PUBLIC_KEY`; Fastify route `/discord/interactions` handles button `custom_id` (`evt-share:<distId>` / `evt-decline:<distId>`). | No persistent gateway connection; fits the existing Fastify/stateless model. Needs public key + signature verify (already done in bridge for RDOC-RTC). **Recommended.** |
 | **B. Gateway client** | Add a discord.js gateway client to fleetplanner listening for `interactionCreate`. | New long-lived connection + intents; heavier; duplicates bot presence. |
 
-- `custom_id` carries the `EventDistribution.id`; handler checks the clicking user is a fleetoperator of `targetGuildId` (via `fetchGuildMemberRoles` + guild `admiralRoleId`, or `GuildMembership.role`), then sets status `approved`→post event, or `declined`.
-- **Web fallback** (always): a "Shared with you" inbox under `/guilds/...` listing pending `EventDistribution`s with Teilen/Ablehnen buttons (server-rendered, CSRF) — covers users who miss/ignore the DM and is the source of truth if interactions fail.
+- DM goes to the designated **contact person** (`EventDistribution.contactUserId`) of the target guild — not a guild-wide broadcast.
+- `custom_id` carries the `EventDistribution.id`; handler checks the clicking user **is** that `contactUserId` (and still a member of `targetGuildId`), then sets status `approved`→post event, or `declined`. If no contact was set for a manual partner, distribution stays `pending` and only surfaces in the web inbox.
+- **Web fallback** (always): a "Shared with you" inbox under `/guilds/...` listing pending `EventDistribution`s where the viewer is the contact (or a fleetoperator of the target guild), with Teilen/Ablehnen buttons (server-rendered, CSRF) — covers a missed DM and is the source of truth if interactions fail.
 - Preview embed reuses the op's OG fields (When/System/Rendezvous/Org/host) — see the OG work in [pages.ts](apps/fleetplanner/src/web/pages.ts) `opDetailPageV2`.
 
 ### Open decisions (F1)
-1. Who receives the approval DM — guild owner only, all fleetoperators, or a configurable "events contact"? (Default: all fleetoperators of the target guild, dedupe.)
+1. ~~Who receives the approval DM?~~ **DECIDED:** a named **contact person per event × target guild** (mission role "Contact Person — <Discord>"), member of the target guild. See above.
 2. Does declining a single event auto-mute future events from that partner, or stay per-event? (Default: per-event; muting is the allowlist toggle.)
 3. Event entity type in partner guilds: EXTERNAL (link back to host op page) vs VOICE (partner's own channel). Cross-guild voice belongs to F2 — F1 events default to **EXTERNAL** pointing at the host op page.
 
