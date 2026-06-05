@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued Step - 2026-06-05: OBS Application-Audio-Capture of SquadLink — force WebView2 audio in-process (Companion 1.0.3)
+## Completed Step - 2026-06-05: OBS Application-Audio-Capture of SquadLink — force WebView2 audio in-process (Companion 1.0.3) — commit a2dd557
 
 OBS "Application Audio Capture" (WASAPI process loopback) records silence for SquadLink because
 Tauri = WebView2 (Chromium), which renders audio in a separate out-of-process audio service
