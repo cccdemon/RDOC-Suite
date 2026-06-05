@@ -3,7 +3,7 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
-## Queued / Planned Step - 2026-06-05: Companion 1.0.0 — Mission-Voice-UI-Politur + Brand-Logo
+## Completed Step - 2026-06-05: Companion 1.0.0 — Mission-Voice-UI-Politur + Brand-Logo — commit 60529fe
 
 Audio-Tests (Command Net beidseitig, Global publish-only, Mission↔Bridge) erfolgreich → 1.0.0 sobald
 Design stimmt. User-Vorgaben:
