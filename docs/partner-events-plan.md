@@ -61,10 +61,10 @@ Target: DM the target guild's Admiral(s)/fleetoperators with an **event preview 
 - **Web fallback** (always): a "Shared with you" inbox under `/guilds/...` listing pending `EventDistribution`s where the viewer is the contact (or a fleetoperator of the target guild), with Teilen/Ablehnen buttons (server-rendered, CSRF) — covers a missed DM and is the source of truth if interactions fail.
 - Preview embed reuses the op's OG fields (When/System/Rendezvous/Org/host) — see the OG work in [pages.ts](apps/fleetplanner/src/web/pages.ts) `opDetailPageV2`.
 
-### Open decisions (F1)
-1. ~~Who receives the approval DM?~~ **DECIDED:** a named **contact person per event × target guild** (mission role "Contact Person — <Discord>"), member of the target guild. See above.
-2. Does declining a single event auto-mute future events from that partner, or stay per-event? (Default: per-event; muting is the allowlist toggle.)
-3. Event entity type in partner guilds: EXTERNAL (link back to host op page) vs VOICE (partner's own channel). Cross-guild voice belongs to F2 — F1 events default to **EXTERNAL** pointing at the host op page.
+### Decisions (F1) — 2026-06-05
+1. **Approval recipient:** a named **contact person per event × target guild** (mission role "Contact Person — <Discord>"), member of the target guild. See above.
+2. **Decline is per-event only.** Declining one event never mutes future events from that partner — those keep arriving as proposals. Silencing a partner is done explicitly via the allowlist/`PartnerSharePolicy`, not by declining.
+3. **Partner-guild event entity = EXTERNAL**, `entity_metadata.location` = the host op page URL. One clear anchor; cross-guild voice is F2's concern, never baked into the F1 event type.
 
 ---
 
@@ -98,11 +98,11 @@ Analogy (user's): connected house-parties in different cities — each stays hom
 - **Reuse:** `GuildVoiceBot` / guild-scoped `RelayBotsConfig`, relay-bots worker, `openMissionVoiceSession`/`closeMissionVoiceSession`, LiveKit token mint with grant split, Companion mission flow.
 - **New:** `Operation.federationVoiceRoom`, federation room lifecycle across N guilds, deputy model, relay-bot "join this federation room" instruction per partner guild, per-event mode flag (`Operation.voiceMode: "host" | "federation"`).
 
-### Open decisions (F2)
-1. Does a partner guild opt **into** federation voice per event (consent), or is accepting the F1 event distribution enough? (Default: federation requires the partner to have **accepted** the event AND have voice permission + a free relay bot.)
-2. Talk-back: can a partner deputy be granted publish, or is the voice line host-only with deputies meaning host-side only? (User said "host and his deputies" — deputies can be cross-guild; allow per-op deputy grants.)
-3. Echo/loopback risk: a guild's relay bot must not re-publish what it outputs. Federation room must be publish-gated so relay bots are subscribe-only (they never publish) — design already enforces this.
-4. LiveKit capacity / bot count: federation across many guilds = many relay bots + a busy room. Document a cap (analogous to SACompanion 16/24) before shipping.
+### Decisions (F2) — 2026-06-05
+1. **Activation: explicit opt-in per event.** A partner joins federation voice only after (a) accepting the F1 distribution AND (b) separately opting into federation voice for that event — and having voice permission + a free relay bot. No surprise hot-mic. Store an opt-in flag on `EventDistribution` (e.g. `federationOptIn Boolean`).
+2. **Voice line: host + deputies, cross-guild allowed.** Host fleetoperator and a per-op deputy list may publish; deputies **may be members of partner guilds**. Everyone else subscribe-only. Per-op deputy grants via `OperationVoiceDeputy`.
+3. **Hard cap 16.** Max 16 active publishers/guilds in a federation room (matches the SACompanion mesh ceiling). Enforced server-side at token mint / relay-bot join; reject + surface a clear error beyond 16.
+4. Echo/loopback (engineering, settled): relay bots are subscribe-only in the federation room and never re-publish their own output — publish-gating already guarantees this.
 
 ---
 
@@ -152,12 +152,12 @@ An op can recur (e.g. "every Saturday 20:00 CEST"). Each occurrence is materiali
 - Editing the series = edit `templateJson`; only **future, not-yet-spawned** instances change. Already-spawned instances stay unless explicitly bulk-updated.
 - Deleting the series stops spawning; existing instances + their Discord events remain unless cascaded.
 
-### Open decisions (F3)
-1. Native recurring Discord event (A) vs per-occurrence events (B) vs hybrid (C) — see table. (Recommended: A where representable, B otherwise.)
-2. Limit the Fleetplanner recurrence UI to **exactly Discord's options** (so A always works), or allow richer RRULEs that force B? (Default: mirror Discord's option set first — matches the UX users already know; richer patterns later.)
-3. RRULE library vs hand-rolled subset. (Recommended: a small `rrule` dependency for correctness/DST; needed anyway for occurrence math even in approach A since `count`/`end` are Fleetplanner-enforced.)
-4. How many instances live ahead at once — rolling single next instance (simplest, respects the 100/guild cap) vs a window (e.g. next 3). (Default: rolling single, controlled by `leadTimeHours`.)
-5. Recurrence × distribution: does each occurrence re-ask manual partners, or does approval persist for the series? (Default: per-occurrence re-ask unless the partner is allow-listed — keeps consent fresh.)
+### Decisions (F3) — 2026-06-05
+1. **Approach A — native recurring Discord event.** The recurrence UI is limited to **exactly Discord's option set** (no-repeat / weekly any day / every-other-week single day / nth-weekday-of-month / yearly month+day) so every pattern maps cleanly onto `recurrence_rule`. One native Discord event with the recurring badge; richer custom RRULEs (approach B) deferred — not built now.
+2. **RRULE handling: use a small `rrule` dependency.** Needed regardless for occurrence math + DST, since `count`/`end` are Fleetplanner-enforced (Discord won't store them).
+3. **Rolling single instance ahead**, controlled by `leadTimeHours`; respects the 100-events/guild cap. No bulk pre-spawn.
+4. **Series-level distribution approval (approve once).** For a recurring op, the per-target contact person approves **once for the whole series** → all future occurrences auto-share to that partner (allow-listed partners stay auto regardless). This intentionally overrides F1's per-occurrence default **for series only** — fewer DMs, blanket consent accepted by the user. A partner can still later mute the series via the allowlist.
+   - Note interplay with F1 decision 2 (per-event decline): a partner may still decline an individual spawned occurrence; series approval sets the default, per-occurrence decline is the override.
 
 ---
 
