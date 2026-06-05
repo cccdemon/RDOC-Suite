@@ -3,6 +3,19 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: Companion 1.0.0 — Mission-Voice-UI-Politur + Brand-Logo
+
+Audio-Tests (Command Net beidseitig, Global publish-only, Mission↔Bridge) erfolgreich → 1.0.0 sobald
+Design stimmt. User-Vorgaben:
+- Zwei Voice-Mode-Anzeigen (`MissionVoicePanel.tsx`) waren unstyled (CSS-Klassen `.mission-room*`
+  existierten nicht in kit.css → Plain-Text). Jetzt: pro Modus eine Reihe = bordered Label-Chip
+  (PTT-Button-Style) mit Status-Dot + Name + Hotkey + Meta, PTT-Button direkt daneben.
+- Relabel: „Command Net (<hotkey>)" + „Global Radio Net : Permission Granted (<hotkey>)".
+- Brand-Bar: nur Logo (`public/squadlink.png`, aus src-tauri/icons kopiert) statt „RDOC // SQUAD LINK"-Text.
+- CSS neu in kit.css: `.cc-brand-logo`, `.mission-rooms/.mission-room/.mission-room-info/-status/-name/
+  -key/-meta/.mission-ptt`.
+Version 0.6.1→1.0.0 (erstes Stable). Danach: alle Releases/Tags companion-v* < 1.0.0 entfernen.
+
 ## Completed Step - 2026-06-05: Global Radio Net Doppel-Audio — RelayAudio muss publish-only sein (Companion v0.6.1) — commit b0855b1
 
 Symptom (live verifiziert mit Hedwig): ein Commander mit Global-Net-Permission, in anderem Discord-

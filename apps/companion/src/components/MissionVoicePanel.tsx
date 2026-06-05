@@ -91,14 +91,15 @@ export function MissionVoicePanel({
         {/* COMMANDER / Command Net (PTT-1) — only for users with a commander room */}
         {hasCommanderRoom ? (
           <div className="mission-room">
-            <div className={`mission-room-status ${statusColor(commanderStatus)}`} />
             <div className="mission-room-info">
-              <span className="mission-room-name">COMMANDER</span>
-              <span className="mission-room-hotkey text-dim">
-                {localHotkey}
+              <div className={`mission-room-status ${statusColor(commanderStatus)}`} />
+              <span className="mission-room-name">
+                Command Net <span className="mission-room-key">({localHotkey})</span>
+              </span>
+              <span className="mission-room-meta text-dim">
                 {commanderStatus === "connected"
-                  ? ` · ${commanderParticipants + 1} im Kanal (inkl. dir)`
-                  : ""}
+                  ? `${commanderParticipants + 1} im Kanal`
+                  : "…"}
               </span>
             </div>
             <button
@@ -108,7 +109,7 @@ export function MissionVoicePanel({
               onMouseUp={() => onCommanderPtt(false)}
               onMouseLeave={() => { if (commanderPttActive) onCommanderPtt(false); }}
               disabled={!discordVoiceOk || commanderStatus !== "connected"}
-              title={`Commander Channel · Hotkey: ${localHotkey}`}
+              title={`Command Net · Hotkey: ${localHotkey}`}
             >
               <Icon.radio size={14} />
               {commanderPttActive ? "SENDEN" : "PTT"}
@@ -169,12 +170,14 @@ export function MissionVoicePanel({
             channel gate — usable as long as the user is on the same Discord. */}
         {relayAvailable ? (
           <div className="mission-room">
-            <div className={`mission-room-status ${relayDot(relayStatus)}`} />
             <div className="mission-room-info">
-              <span className="mission-room-name">GLOBAL RADIO</span>
-              <span className="mission-room-hotkey text-dim">
-                {globalHotkey}
-                {relayStatus === "connected" ? " · verbunden" : " · …"}
+              <div className={`mission-room-status ${relayDot(relayStatus)}`} />
+              <span className="mission-room-name">
+                Global Radio Net : Permission Granted{" "}
+                <span className="mission-room-key">({globalHotkey})</span>
+              </span>
+              <span className="mission-room-meta text-dim">
+                {relayStatus === "connected" ? "verbunden" : "…"}
               </span>
             </div>
             <button
@@ -184,7 +187,7 @@ export function MissionVoicePanel({
               onMouseUp={() => onRelayPtt(false)}
               onMouseLeave={() => { if (relayPttActive) onRelayPtt(false); }}
               disabled={relayStatus !== "connected"}
-              title={`Global Radio (Discord Relay) · Hotkey: ${globalHotkey}`}
+              title={`Global Radio Net · Hotkey: ${globalHotkey}`}
             >
               <Icon.radio size={14} />
               {relayPttActive ? "SENDEN" : "PTT"}

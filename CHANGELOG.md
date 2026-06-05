@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-06-05
+
+### Changed — Companion: mission voice UI polish + brand logo (1.0.0)
+
+- The two mission voice indicators are restyled: each is a bordered label chip (PTT-button style) with the status dot, name, hotkey and connection meta, and the PTT button directly beside it. Relabelled to "Command Net (<hotkey>)" and "Global Radio Net : Permission Granted (<hotkey>)".
+- The mode-bar brand is now the Squad Link logo (replacing the "RDOC // SQUAD LINK" wordmark).
+- First stable release: Command Net + Global Radio Net verified working end-to-end (bidirectional command audio, publish-only relay, Bridge↔mission exclusivity). Companion 0.6.1 → 1.0.0.
+
 ## [Unreleased]
 
 ### Fixed — Companion: Global Radio Net double audio (Relay room was subscribed, not publish-only) (2026-06-05)

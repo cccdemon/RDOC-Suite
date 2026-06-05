@@ -308,6 +308,82 @@ body,
   font-size: 11px;
 }
 
+/* ── Brand logo (mode bar) ─────────────────────────── */
+.cc-brand-logo {
+  height: 24px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+/* ── Mission voice mode rows (Command Net / Global Radio Net) ──
+   One row per mode: a bordered label chip (PTT-button style) with the
+   status dot + name + hotkey + connection meta, and the PTT button
+   directly beside it. */
+.mission-rooms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mission-room {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.mission-room-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  background: var(--cyan-08);
+  font-family: var(--font-mono);
+}
+.mission-room-status {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.mission-room-status.cyan {
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan-38);
+}
+.mission-room-status.red {
+  background: var(--red);
+}
+.mission-room-status.dim {
+  background: var(--dim);
+}
+.mission-room-name {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.mission-room-key {
+  color: var(--cyan);
+  letter-spacing: 1px;
+}
+.mission-room-meta {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font-size: 9px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+.mission-ptt {
+  flex: 0 0 auto;
+  min-width: 90px;
+}
+
 /* Range / slider */
 .cc-range {
   -webkit-appearance: none;
