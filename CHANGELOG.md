@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Companion: stale mission-token deadlock silently killed Bridge audio (1.0.2, 2026-06-05)
+
+- Symptom: two commanders shown in the bridge roster but nobody could hear anyone. LiveKit prod logs showed each companion joining the bridge room **alone** and leaving after ~1 s — the roster count came from the WS squad list, not LiveKit.
+- Root cause: a stale persisted `missionToken` + the Bridge↔Mission exclusivity gate (`missionEngaged = !!missionToken`) kept Bridge LiveKit torn down. The mission poll only cleared a token when an op was pinned in memory (null after restart), and an expired token returned `401` → `if (!res.ok) return` → never cleared. Backend overloaded `op: null` for both "mission ended" and "voice not opened yet", so the client couldn't tell them apart.
+- Backend (`fleetplanner`): `/api/companion/mission-voice` now returns an `ended` discriminator on `op: null` — `true` = definitively over, `false` = pending (op active, voice not opened yet).
+- Companion: the mission poll clears the token and falls back to Bridge Mode on `401` or `op: null && (ended === true || pinned)`, and keeps waiting on pending / transient errors. Stale tokens now self-heal within one 5 s poll; Bridge audio resumes from the remembered creds — no manual `settings.json` edit needed. Backward compatible with an old backend (missing `ended` → treated as pending; expired tokens still clear via 401).
+
 ### Fixed — Relay bots: buffer-overflow cascade + simultaneous-speaker distortion (2026-06-05)
 
 - The relay audio path wrote PCM straight into one PassThrough per bot at whatever rate it arrived. Faster-than-realtime input overflowed the ~1 s buffer → drop + watchdog restart. Two causes: (1) `LivekitSubscriber` never tore down a track's reader loop, so reconnects/restarts left stale loops pushing duplicate PCM; (2) `pushPcm` concatenated every simultaneous speaker into the same stream (2 speakers = 2× realtime + garbled).

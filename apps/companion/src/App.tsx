@@ -929,6 +929,10 @@ export function App(): JSX.Element {
       currentChannel: { id: string; name: string } | null;
     };
     type MissionVoiceResponse = {
+      /** Discriminates the overloaded `op: null`: true = mission definitively
+       *  over (clear token, fall back to Bridge); false/undefined = pending
+       *  (op active, voice not opened yet) — keep the token and keep polling. */
+      ended?: boolean;
       op: null | {
         opId: string;
         opTitle: string;
@@ -944,59 +948,73 @@ export function App(): JSX.Element {
       };
     };
 
+    // Tear down any mission rooms, drop the persisted mission token, and fall
+    // back to Bridge Mode. `banner` shows the "MISSION BEENDET" notice — set it
+    // only when we had actually joined the mission, not when silently cleaning
+    // up a stale/expired token at startup. Clearing the token is what lets the
+    // bridge↔mission effect resume guild audio (it gates on `missionToken`).
+    const fallbackToBridge = async (banner: boolean): Promise<void> => {
+      await missionCommanderRef.current?.disconnect();
+      await relayRef.current?.disconnect();
+      currentMissionCommanderRoomRef.current = null;
+      currentMissionRelayRoomRef.current = null;
+      missionOpIdRef.current = null;
+      await clearMissionConfig();
+      setState((s) => ({
+        ...s,
+        missionActive: false,
+        missionOpTitle: null,
+        missionHasCommander: false,
+        missionHasRelay: false,
+        commanderStatus: "idle",
+        commanderPttActive: false,
+        relayPttActive: false,
+        commanderParticipants: 0,
+        commanderRoster: [],
+        commanderNames: {},
+        missionToken: null,
+        missionUrl: null,
+        missionEnded: banner,
+        missionDiscordVoiceOk: true,
+        missionRelayOk: false,
+        missionExpectedChannelName: null,
+      }));
+    };
+
     const poll = async (): Promise<void> => {
       const base = state.missionUrl!.replace(/\/+$/, "");
       try {
         const res = await fetch(`${base}/api/companion/mission-voice`, {
           headers: { Authorization: `Bearer ${state.missionToken}` },
         });
+        // 401 = the mission token is expired/invalid and will never become
+        // valid again. Clear it and return to Bridge Mode instead of polling
+        // forever with a dead token (which keeps Bridge audio gated off via
+        // `missionEngaged = !!missionToken`). Other non-OK statuses (5xx /
+        // network) are transient — retry on the next tick.
+        if (res.status === 401) {
+          await fallbackToBridge(missionOpIdRef.current !== null);
+          return;
+        }
         if (!res.ok) return;
         const data = (await res.json()) as MissionVoiceResponse;
 
         const pinnedOpId = missionOpIdRef.current;
-        // End the mission when EITHER there is no active op, OR the active
-        // op is a DIFFERENT one than the one this link joined. The mission
-        // token is not op-bound, so the backend would otherwise hand us the
-        // NEXT active op and the app would silently hop missions. Closing a
-        // mission must kick everyone out — not roll them onto another op.
-        const missionEndedNow =
-          !data.op || (pinnedOpId !== null && data.op.opId !== pinnedOpId);
-        if (missionEndedNow) {
-          // Only act if we had actually joined (pinned) — otherwise we're
-          // just waiting for the linked op to open; keep polling silently.
-          if (pinnedOpId !== null) {
-            await missionCommanderRef.current?.disconnect();
-            await relayRef.current?.disconnect();
-            currentMissionCommanderRoomRef.current = null;
-            currentMissionRelayRoomRef.current = null;
-            missionOpIdRef.current = null;
-            // Drop the token so polling stops — re-joining requires a fresh
-            // mission link. Authorized users fall back to bridge mode (the
-            // bridge↔mission audio effect resumes guild audio).
-            await clearMissionConfig();
-            setState((s) => ({
-              ...s,
-              missionActive: false,
-              missionOpTitle: null,
-              missionHasCommander: false,
-              missionHasRelay: false,
-              commanderStatus: "idle",
-              commanderPttActive: false,
-              relayPttActive: false,
-              commanderParticipants: 0,
-              commanderRoster: [],
-              commanderNames: {},
-              missionToken: null,
-              missionUrl: null,
-              missionEnded: true,
-              missionDiscordVoiceOk: true,
-              missionRelayOk: false,
-              missionExpectedChannelName: null,
-            }));
-          }
+        // The backend overloads `op: null`: `ended: true` = mission gone (clear
+        // + fall back to Bridge); `ended: false`/undefined = pending (op active
+        // but voice not opened yet) — keep the token and wait. A pinned op going
+        // away is always a real end regardless of `ended` (covers older
+        // backends + a mission that genuinely closes while we're in it). A
+        // DIFFERENT active op than the one we pinned means hop → kick out (the
+        // token is not op-bound; never silently roll onto another op).
+        const opHopped =
+          !!data.op && pinnedOpId !== null && data.op.opId !== pinnedOpId;
+        const opGoneForGood = !data.op && (data.ended === true || pinnedOpId !== null);
+        if (opHopped || opGoneForGood) {
+          await fallbackToBridge(pinnedOpId !== null);
           return;
         }
-        if (!data.op) return; // narrowing — handled above
+        if (!data.op) return; // pending — op active, voice not opened yet; wait
 
         const { opId, opTitle, livekitUrl, selfUsername, commanders, commanderRoom, relayRoom, discordVoice, relayOk: relayOkRaw } =
           data.op;

@@ -3,6 +3,43 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued Step - 2026-06-05: Stale mission-token deadlock blocks Bridge audio — clear on definitive-ended/401 (Companion 1.0.1 + fleetplanner backend)
+
+Symptom (live, diagnosed via LiveKit prod logs): "2 participants in bridge mode, nobody can
+hear each other." Server logs (`commander-bridge-1431307397842079777-w22`, 08:51): only ONE
+companion ever in the LiveKit bridge room, joined alone (`numParticipants: 0`), left after ~1s
+(`CLIENT_REQUEST_LEAVE`). The "2 participants" was the WS squad roster (`commander:list`),
+independent of LiveKit. The DTLS-timeout WARNs are teardown noise, not the cause.
+
+Root cause: a **stale persisted `missionToken`** + today's Bridge↔Mission exclusivity gate
+(commit 9d7c68f, `missionEngaged = !!state.missionToken`, App.tsx:1131). Bridge LiveKit connect
+is skipped/torn down whenever a token is present (App.tsx:489/511/1137). The mission poll only
+clears a stale token when `pinnedOpId !== null` (in-memory ref, null after restart, App.tsx:967),
+and a 401 (expired token) hits `if (!res.ok) return` (App.tsx:953) → never cleared. So a token
+from an already-ended/expired op deadlocks Bridge audio forever while the WS roster still shows
+the user. Backend `/api/companion/mission-voice` overloads `op: null` for BOTH "op ended" (clear)
+and "op active, voice not opened yet" (keep) — client can't distinguish.
+
+Fix:
+- **Backend** (`apps/fleetplanner/src/routes/api.ts`): add an `ended` discriminator to the
+  `op: null` responses. `ended: true` for definitive-over (no active op / guild voice off);
+  `ended: false` for pending (voice session not opened yet / no LIVEKIT_URL — transient).
+- **Companion** (`apps/companion/src/App.tsx` mission poll): clear mission config (→ fall back to
+  Bridge) when token is dead: `res.status === 401`, OR `op:null && (data.ended === true ||
+  pinnedOpId !== null)`. Keep waiting silently on pending (`op:null && ended !== true` &&
+  not pinned) and on transient non-401 `!res.ok`. Only show the "MISSION BEENDET" banner if we
+  had actually joined (`pinnedOpId !== null`). Add `ended?: boolean` to `MissionVoiceResponse`.
+  Backward compatible with old backend: `ended === undefined` → treated as pending (unchanged
+  behavior for not-pinned), and expired tokens still self-heal via the 401 path.
+- Self-healing: stale token clears within one 5s poll → `missionEngaged` flips false →
+  bridge↔mission effect reconnects Bridge audio from `lastBridgeCredsRef` (set in bridge:joined
+  even when the initial connect was skipped). No manual settings.json edit needed after deploy.
+- Version bump Companion 1.0.1 → 1.0.2 (1.0.1 already released as commit 36d4a44).
+
+Files: `apps/fleetplanner/src/routes/api.ts`, `apps/companion/src/App.tsx`,
+`apps/companion/package.json`, `apps/companion/src-tauri/tauri.conf.json`,
+`apps/companion/src-tauri/Cargo.toml` (version).
+
 ## Completed Step - 2026-06-05: relay-bots Buffer-Overflow + Doppel-Audio — Reader-Teardown + realtime-Mixer — commit e62ad47
 
 Buffer-Overflow ist Backpressure, NICHT RAM. `pushPcm` schrieb PCM seriell in EINEN PassThrough

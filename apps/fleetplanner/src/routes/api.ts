@@ -1709,7 +1709,11 @@ export async function apiRoutes(app: FastifyInstance) {
 
     const activeOp = await activeMissionOperationForToken(userId, operationId, ACTIVE_STATUSES);
 
-    if (!activeOp) return reply.send({ op: null });
+    // `ended: true` = the mission is definitively over (no active op for this
+    // token / guild voice disabled). The Companion clears its persisted mission
+    // token and falls back to Bridge Mode. `ended: false` = transient/pending
+    // (op active but voice not opened yet) → Companion keeps the token + waits.
+    if (!activeOp) return reply.send({ op: null, ended: true });
 
     // Voice permission check
     if (
@@ -1724,14 +1728,16 @@ export async function apiRoutes(app: FastifyInstance) {
         return g?.voiceEnabled ?? false;
       })())
     )
-      return reply.send({ op: null });
+      return reply.send({ op: null, ended: true });
 
     const relayRoom = activeOp.globalVoiceRoom;
     const commanderRoom = activeOp.commanderVoiceRoom;
-    if (!relayRoom) return reply.send({ op: null });
+    // Op is active but its voice session hasn't been opened yet (no relay room).
+    // Pending, not ended — Companion keeps the token and keeps polling.
+    if (!relayRoom) return reply.send({ op: null, ended: false });
 
     const env = getEnv();
-    if (!env.LIVEKIT_URL) return reply.send({ op: null });
+    if (!env.LIVEKIT_URL) return reply.send({ op: null, ended: false });
 
     // Commander Net gate: must be in the event channel or any relaybot channel.
     const discordVoice = await missionDiscordVoiceState(activeOp, userId);
