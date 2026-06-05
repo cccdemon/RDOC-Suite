@@ -308,14 +308,6 @@ body,
   font-size: 11px;
 }
 
-/* ── Brand logo (mode bar) ─────────────────────────── */
-.cc-brand-logo {
-  height: 24px;
-  width: auto;
-  display: block;
-  object-fit: contain;
-}
-
 /* ── Mission voice mode rows (Command Net / Global Radio Net) ──
    One row per mode: a bordered label chip (PTT-button style) with the
    status dot + name + hotkey + connection meta, and the PTT button

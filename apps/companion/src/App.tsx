@@ -1341,7 +1341,9 @@ export function App(): JSX.Element {
       {/* ── Brand bar (replaces native chrome for now) ────── */}
       <header className="cc-modebar">
         <div className="cc-brand">
-          <img className="cc-brand-logo" src="/squadlink.png" alt="RDOC Squad Link" />
+          <span className="brand-cy">RDOC</span>
+          <span className="brand-sep">//</span>
+          <span className="brand-gd">SQUAD LINK</span>
         </div>
         <div className="cc-modebar-right">
           <img
