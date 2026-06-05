@@ -109,14 +109,35 @@ Analogy (user's): connected house-parties in different cities — each stays hom
 ## Feature 3 — Recurring Events
 
 ### Goal
-An op can recur (e.g. "every Saturday 20:00 CEST"). Each occurrence is materialised as a real `Operation` instance with its own Discord event(s) and (optional) distribution + voice.
+An op can recur (e.g. "every Saturday 20:00 CEST"). Each occurrence is materialised as a real `Operation` instance with its own roster/seats/voice and (optional) distribution.
 
-**Why materialise, not virtual:** Discord's API has no usable recurring-scheduled-event support — each occurrence needs its own event object. Seats/roster/voice are all per-op. So a recurrence is a **template that spawns concrete op instances**.
+**Discord DOES support native recurring scheduled events** (`recurrence_rule` on the Guild Scheduled Event API — corrected 2026-06-05, earlier plan was wrong). The Discord UI exposes exactly: *Wiederholt sich nicht / Jeden Freitag / Jeden zweiten Freitag / Am ersten Freitag jedes Monats / Jährlich am <Datum>*. But it's a **constrained RRULE subset** and it does **not** give us per-occurrence op pages, so we still materialise op instances on our side. Two layers:
+1. **Discord side** — set `recurrence_rule` on the scheduled event so Discord shows the native "recurring" badge + auto-lists upcoming occurrences.
+2. **Fleetplanner side** — a template + scheduler still spawns concrete `Operation` instances (seats/roster/voice/distribution are all per-op and per-occurrence).
+
+#### Discord `recurrence_rule` constraints (verified against the API docs)
+- `frequency`: `YEARLY(0) | MONTHLY(1) | WEEKLY(2) | DAILY(3)`; `start` (ISO8601) required.
+- `interval`: only >1 for **WEEKLY where it must be exactly 2** (every-other-week) and `by_weekday` is a single day; otherwise 1.
+- `by_weekday` (0–6 Mon–Sun) **xor** `by_n_weekday` (nth-weekday-of-month, length 1 for MONTHLY).
+- `YEARLY` requires both `by_month` + `by_month_day` (each length 1). `DAILY` `by_weekday` limited to preset sets (Mon–Fri, Tue–Sat, …).
+- **`count`, `end`, `by_year_day` are NOT externally settable** → a Discord recurring event is open-ended; any series end/count must be enforced **by Fleetplanner** (stop spawning, optionally delete/modify the Discord event).
+- Guild cap: **100** SCHEDULED/ACTIVE events per guild — favours rolling/lazy occurrence creation, not bulk pre-spawning.
+
+#### Native-event vs per-occurrence-event — the real design choice
+| Approach | Discord side | Op-page deep link | Notes |
+|---|---|---|---|
+| **A. Native recurring event** | one event with `recurrence_rule` | links to the **series/template** page (one URL, not per-occurrence) | cheap, native badge, fits the 100-cap; but the embed link can't be per-occurrence |
+| **B. Per-occurrence single events** | scheduler creates a fresh event per spawned op | each links to its own op page (accurate OG/embed) | no native badge; rolling creation keeps well under the cap |
+| **C. Hybrid** | native recurring event for visibility **+** Fleetplanner ops per occurrence | series link | best UX, most moving parts |
+
+**Recommended:** start with **A** for patterns Discord can represent (map our recurrence → `recurrence_rule`), fall back to **B** for patterns Discord can't (e.g. our richer RRULEs, or when a per-occurrence op-page link in the embed matters). Whichever, Fleetplanner still owns occurrence materialisation.
 
 ### Data model (new)
 - **`OperationRecurrence`** (or fields on a template op):
   - `id`, `guildId`, `createdById`
-  - `rrule String` (iCal RRULE, e.g. `FREQ=WEEKLY;BYDAY=SA`) or structured `{ freq, interval, byday, until/count }`
+  - `rrule String` (iCal RRULE, e.g. `FREQ=WEEKLY;BYDAY=SA`) or structured `{ freq, interval, byday, until/count }`. A `discordRepresentable Boolean` (computed) flags whether this pattern maps onto Discord's constrained `recurrence_rule` (→ approach A) or needs per-occurrence events (→ approach B).
+  - `seriesEnd DateTime?` / `seriesCount Int?` — **Fleetplanner-enforced** (Discord can't store these); scheduler stops spawning when reached.
+  - `discordRecurringEventId String?` — set in approach A (the single native recurring Discord event).
   - `templateJson` — the op blueprint (title, opType, system, location, visibility, default voice mode, composition snapshot)
   - `nextRunAt DateTime`, `lastSpawnedAt DateTime?`, `active Boolean`
   - `leadTimeHours Int` — how far ahead to create the next concrete op (so DMs/distribution/reminders have runway)
@@ -132,9 +153,11 @@ An op can recur (e.g. "every Saturday 20:00 CEST"). Each occurrence is materiali
 - Deleting the series stops spawning; existing instances + their Discord events remain unless cascaded.
 
 ### Open decisions (F3)
-1. RRULE library vs hand-rolled subset. (Recommended: a small `rrule` dependency for correctness/DST over hand-rolling.)
-2. How many instances live ahead at once — rolling single next instance (simplest) vs a window (e.g. next 3). (Default: rolling single, controlled by `leadTimeHours`.)
-3. Recurrence × distribution: does each occurrence re-ask manual partners, or does approval persist for the series? (Default: per-occurrence re-ask unless the partner is allow-listed — keeps consent fresh.)
+1. Native recurring Discord event (A) vs per-occurrence events (B) vs hybrid (C) — see table. (Recommended: A where representable, B otherwise.)
+2. Limit the Fleetplanner recurrence UI to **exactly Discord's options** (so A always works), or allow richer RRULEs that force B? (Default: mirror Discord's option set first — matches the UX users already know; richer patterns later.)
+3. RRULE library vs hand-rolled subset. (Recommended: a small `rrule` dependency for correctness/DST; needed anyway for occurrence math even in approach A since `count`/`end` are Fleetplanner-enforced.)
+4. How many instances live ahead at once — rolling single next instance (simplest, respects the 100/guild cap) vs a window (e.g. next 3). (Default: rolling single, controlled by `leadTimeHours`.)
+5. Recurrence × distribution: does each occurrence re-ask manual partners, or does approval persist for the series? (Default: per-occurrence re-ask unless the partner is allow-listed — keeps consent fresh.)
 
 ---
 
