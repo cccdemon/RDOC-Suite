@@ -24,6 +24,15 @@ export class LivekitSubscriber {
   private apiSecret = "";
   private roomName = "";
 
+  /** Active per-track reader loops, keyed by LiveKit track sid. Lets us tear a
+   *  reader down on TrackUnsubscribed / ParticipantDisconnected / reconnect, so
+   *  a stale loop can't keep pushing PCM — which doubled audio and overflowed
+   *  the relay buffer after every reconnect/restart. */
+  private readers = new Map<
+    string,
+    { stopped: boolean; reader: ReadableStreamDefaultReader<AudioFrame> }
+  >();
+
   constructor(private readonly onFrame: PcmHandler) {
     this.room = new Room();
   }
@@ -39,10 +48,25 @@ export class LivekitSubscriber {
     this.room.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
       if (track.kind !== TrackKind.KIND_AUDIO) return;
       const audioTrack = track as RemoteAudioTrack;
+      // Replace any prior reader for this track sid (dedupe on re-subscribe).
+      this.stopReader(audioTrack.sid);
       this.readAudioTrack(audioTrack, speakerUserIdFromIdentity(participant.identity));
     });
 
+    this.room.on(RoomEvent.TrackUnsubscribed, (track) => {
+      this.stopReader(track.sid);
+    });
+
+    this.room.on(RoomEvent.ParticipantDisconnected, (participant) => {
+      for (const pub of participant.trackPublications.values()) {
+        this.stopReader(pub.sid);
+      }
+    });
+
     this.room.on(RoomEvent.Disconnected, () => {
+      // Kill every reader before the room object is replaced on reconnect,
+      // otherwise the old loops keep pushing PCM into the mixer.
+      this.stopAllReaders();
       if (this.destroyed) return;
       console.warn("[LivekitSubscriber] disconnected — reconnecting in 3 s");
       this.reconnectTimer = setTimeout(() => void this.reconnect(), 3000);
@@ -64,31 +88,59 @@ export class LivekitSubscriber {
   }
 
   private readAudioTrack(track: RemoteAudioTrack, speakerUserId?: string): void {
+    const sid = track.sid;
     const stream = new AudioStream(track, {
       sampleRate: 48000,
       numChannels: 1,
     });
     const reader = stream.getReader();
+    const handle = { stopped: false, reader };
+    if (sid) this.readers.set(sid, handle);
 
     void (async () => {
       try {
-        while (!this.destroyed) {
+        while (!this.destroyed && !handle.stopped) {
           const { done, value } = await reader.read();
           if (done) break;
           this.onFrame(toStereoPcm(value), speakerUserId);
         }
       } catch (err) {
-        if (!this.destroyed) {
+        if (!this.destroyed && !handle.stopped) {
           console.warn("[LivekitSubscriber] audio stream stopped:", err);
         }
       } finally {
-        reader.releaseLock();
+        try {
+          reader.releaseLock();
+        } catch {
+          // already released (e.g. cancel() in flight) — ignore
+        }
+        if (sid && this.readers.get(sid) === handle) this.readers.delete(sid);
       }
     })();
   }
 
+  /** Stop + drop the reader loop for a single track sid. */
+  private stopReader(sid: string | undefined): void {
+    if (!sid) return;
+    const h = this.readers.get(sid);
+    if (!h) return;
+    h.stopped = true;
+    void h.reader.cancel().catch(() => undefined);
+    this.readers.delete(sid);
+  }
+
+  /** Stop every active reader loop (reconnect / shutdown). */
+  private stopAllReaders(): void {
+    for (const h of this.readers.values()) {
+      h.stopped = true;
+      void h.reader.cancel().catch(() => undefined);
+    }
+    this.readers.clear();
+  }
+
   async disconnect(): Promise<void> {
     this.destroyed = true;
+    this.stopAllReaders();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

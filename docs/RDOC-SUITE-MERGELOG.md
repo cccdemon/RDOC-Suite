@@ -3,6 +3,24 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued / Planned Step - 2026-06-05: relay-bots Buffer-Overflow + Doppel-Audio — Reader-Teardown + realtime-Mixer
+
+Buffer-Overflow ist Backpressure, NICHT RAM. `pushPcm` schrieb PCM seriell in EINEN PassThrough
+(192000 B/s realtime, Cap ~1s); >realtime → overflow → drop + Watchdog-Restart. Zwei Ursachen:
+1. `subscriber.ts` hatte keinen TrackUnsubscribed/ParticipantDisconnected-Handler; reconnect/Restart
+   (`new Room()`) ließ alte Reader-Loops weiterlaufen → mehrere Reader/Speaker → >realtime → Kaskade.
+2. `botManager.pushPcm` hängte ALLE gleichzeitigen Speaker seriell in denselben PassThrough → 2 Speaker
+   = 2×realtime + concat statt mix → overflow + Verzerrung.
+
+Fix (relay-bots, Docker-Rebuild auf LXC 103):
+- `subscriber.ts`: Reader pro track.sid in Map; dedupe bei re-Subscribe; `TrackUnsubscribed` +
+  `ParticipantDisconnected` + Disconnected/disconnect() brechen Reader ab (`reader.cancel()` + Flag).
+- `bot.ts`: pushPcm akkumuliert pro Speaker (jitter-cap ~200ms, trim-oldest = bounded Latenz). Neuer
+  20ms-Output-Clock (`setInterval`) zieht 1 Frame/Speaker, **mischt** sample-weise (int16 sum+clamp),
+  schreibt 1 gemischten 20ms-Frame in den PassThrough = exakt realtime → kein Overflow mehr. Idle-
+  Speaker nach SILENCE_TIMEOUT entfernt; Mixer stoppt wenn alle idle.
+Kein Companion-Bump (relay-bots ist nicht versioniert; deploy via `docker compose up -d --build relay-bots`).
+
 ## Completed Step - 2026-06-05: Companion 1.0.0 — Mission-Voice-UI-Politur + Brand-Logo — commit 60529fe
 
 Audio-Tests (Command Net beidseitig, Global publish-only, Mission↔Bridge) erfolgreich → 1.0.0 sobald

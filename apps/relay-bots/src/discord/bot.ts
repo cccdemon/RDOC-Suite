@@ -20,10 +20,30 @@ const JOIN_TIMEOUT_MS = 30_000;
 const LOGIN_TIMEOUT_MS = 30_000;
 const PRESENCE_DEBOUNCE_MS = 500;
 
-// 1 second of stereo s16le at 48 kHz. Exceeding this means Discord voice
-// consumption has fallen far behind — drop the stream instead of accumulating
-// a slow→fast-forward audio lag.
-const MAX_BUFFER_BYTES = 48_000 * 2 * 2 * 1;
+// Realtime mixer. One 20 ms stereo s16le @48 kHz output frame = 3840 B. The
+// mixer emits exactly one frame per FRAME_MS, so input rate == playback rate
+// and the PassThrough can't run away (the old overflow cause). Multiple
+// simultaneous speakers are summed per sample instead of concatenated.
+const FRAME_MS = 20;
+const FRAME_BYTES = (48_000 * 2 * 2 * FRAME_MS) / 1000;
+// Per-speaker jitter buffer cap (~200 ms). Beyond it we drop the OLDEST audio
+// so latency stays bounded instead of one stream growing without limit.
+const MAX_SPEAKER_BUFFER_BYTES = FRAME_BYTES * 10;
+
+/** Sum a set of equal-length 20 ms frames sample-by-sample (clamped int16). */
+function mixFrames(frames: Buffer[]): Buffer {
+  const out = Buffer.allocUnsafe(FRAME_BYTES);
+  const samples = FRAME_BYTES / 2;
+  for (let i = 0; i < samples; i++) {
+    const off = i * 2;
+    let sum = 0;
+    for (const f of frames) sum += f.readInt16LE(off);
+    if (sum > 32767) sum = 32767;
+    else if (sum < -32768) sum = -32768;
+    out.writeInt16LE(sum, off);
+  }
+  return out;
+}
 
 export class RelayBot {
   private client: Client;
@@ -31,7 +51,10 @@ export class RelayBot {
   private player: AudioPlayer;
   private targetChannel: VoiceBasedChannel | null = null;
   private passThrough: PassThrough | null = null;
-  private silenceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Fixed 20 ms output clock that mixes the per-speaker buffers. */
+  private mixTimer: ReturnType<typeof setInterval> | null = null;
+  /** Per-speaker jitter buffers keyed by speaker userId ("" = unknown). */
+  private speakers = new Map<string, { buf: Buffer; lastAt: number }>();
   private presenceTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
   private reconnecting = false;
@@ -198,12 +221,7 @@ export class RelayBot {
   }
 
   private disconnectVoice(): void {
-    if (this.silenceTimer) {
-      clearTimeout(this.silenceTimer);
-      this.silenceTimer = null;
-    }
-    this.passThrough?.end();
-    this.passThrough = null;
+    this.stopMixer();
     this.player.stop();
     this.connection?.destroy();
     this.connection = null;
@@ -211,38 +229,36 @@ export class RelayBot {
   }
 
   /**
-   * Write a stereo s16le PCM buffer into the bot's audio stream.
-   * Creates a fresh PassThrough + AudioResource on the first chunk after
-   * idle; ends it after SILENCE_TIMEOUT_MS of inactivity.
-   *
-   * If the buffer exceeds MAX_BUFFER_BYTES the stream is dropped and restarted
-   * clean — a brief dropout is better than cumulative lag that sounds like
-   * slow-then-fast-forward playback.
+   * Queue a stereo s16le PCM buffer for a given speaker. The audio is NOT
+   * written straight to Discord — it lands in that speaker's jitter buffer and
+   * the 20 ms mixer clock ({@link mixTick}) sums all active speakers into one
+   * realtime stream. This bounds the output rate to realtime (no overflow) and
+   * mixes simultaneous speakers instead of concatenating them.
    */
   pushPcm(pcm: Buffer, speakerUserId?: string): void {
     if (!this.connection || this.destroyed) return;
-    if (speakerUserId && this.isSpeakerInTargetChannel(speakerUserId)) return;
+    const key = speakerUserId ?? "";
+    if (key && this.isSpeakerInTargetChannel(key)) return;
 
-    if (this.silenceTimer) {
-      clearTimeout(this.silenceTimer);
-      this.silenceTimer = null;
+    let s = this.speakers.get(key);
+    if (!s) {
+      s = { buf: Buffer.alloc(0), lastAt: 0 };
+      this.speakers.set(key, s);
     }
-
-    // Overflow guard
-    if (
-      this.passThrough &&
-      !this.passThrough.destroyed &&
-      this.passThrough.writableLength > MAX_BUFFER_BYTES
-    ) {
+    s.buf = s.buf.length ? Buffer.concat([s.buf, pcm]) : pcm;
+    s.lastAt = Date.now();
+    // Bound latency: if a speaker's buffer runs away, keep only the most recent
+    // MAX_SPEAKER_BUFFER_BYTES (drop oldest) and count it as an overflow.
+    if (s.buf.length > MAX_SPEAKER_BUFFER_BYTES) {
+      s.buf = s.buf.subarray(s.buf.length - MAX_SPEAKER_BUFFER_BYTES);
       this.bufferOverflows++;
       this.recentOverflows++;
-      console.warn(
-        `[${this.cfg.name}] buffer overflow (${this.passThrough.writableLength} B) — dropping stream`,
-      );
-      this.passThrough.end();
-      this.passThrough = null;
     }
+    this.ensureMixer();
+  }
 
+  /** Start the output stream + 20 ms mixer clock if not already running. */
+  private ensureMixer(): void {
     if (!this.passThrough || this.passThrough.destroyed) {
       this.passThrough = new PassThrough();
       const resource = createAudioResource(this.passThrough, {
@@ -250,14 +266,44 @@ export class RelayBot {
       });
       this.player.play(resource);
     }
+    if (!this.mixTimer) {
+      this.mixTimer = setInterval(() => this.mixTick(), FRAME_MS);
+    }
+  }
 
-    this.passThrough.write(pcm);
+  /** One mixer tick: pull a 20 ms frame from each speaker that has one, sum
+   *  them, write a single mixed frame. Reap idle speakers; stop when none. */
+  private mixTick(): void {
+    if (this.destroyed || !this.connection) {
+      this.stopMixer();
+      return;
+    }
+    const now = Date.now();
+    const frames: Buffer[] = [];
+    for (const [key, s] of this.speakers) {
+      if (s.buf.length >= FRAME_BYTES) {
+        frames.push(s.buf.subarray(0, FRAME_BYTES));
+        s.buf = s.buf.subarray(FRAME_BYTES);
+      } else if (s.buf.length === 0 && now - s.lastAt > SILENCE_TIMEOUT_MS) {
+        this.speakers.delete(key);
+      }
+    }
+    if (frames.length === 0) {
+      if (this.speakers.size === 0) this.stopMixer();
+      return;
+    }
+    this.passThrough?.write(mixFrames(frames));
+  }
 
-    this.silenceTimer = setTimeout(() => {
-      this.passThrough?.end();
-      this.passThrough = null;
-      this.silenceTimer = null;
-    }, SILENCE_TIMEOUT_MS);
+  /** Stop the mixer clock, end the output stream, drop all speaker buffers. */
+  private stopMixer(): void {
+    if (this.mixTimer) {
+      clearInterval(this.mixTimer);
+      this.mixTimer = null;
+    }
+    if (this.passThrough && !this.passThrough.destroyed) this.passThrough.end();
+    this.passThrough = null;
+    this.speakers.clear();
   }
 
   private isSpeakerInTargetChannel(userId: string): boolean {
@@ -286,9 +332,9 @@ export class RelayBot {
       channelId: this.cfg.channelId,
       voiceConnected: this.connection !== null,
       expectedConnected: this.humansPresent,
-      speaking: this.passThrough !== null && !this.passThrough.destroyed,
+      speaking: this.mixTimer !== null && this.speakers.size > 0,
       playerState: this.player.state.status,
-      bufferBytes: this.passThrough?.writableLength ?? 0,
+      bufferBytes: [...this.speakers.values()].reduce((n, s) => n + s.buf.length, 0),
       bufferOverflows: this.bufferOverflows,
       recentOverflows: this.recentOverflows,
       reconnectCount: this.reconnectCount,

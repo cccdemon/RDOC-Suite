@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed — Relay bots: buffer-overflow cascade + simultaneous-speaker distortion (2026-06-05)
+
+- The relay audio path wrote PCM straight into one PassThrough per bot at whatever rate it arrived. Faster-than-realtime input overflowed the ~1 s buffer → drop + watchdog restart. Two causes: (1) `LivekitSubscriber` never tore down a track's reader loop, so reconnects/restarts left stale loops pushing duplicate PCM; (2) `pushPcm` concatenated every simultaneous speaker into the same stream (2 speakers = 2× realtime + garbled).
+- `subscriber.ts`: per-track reader loops are tracked by sid, deduped on re-subscribe, and cancelled on `TrackUnsubscribed` / `ParticipantDisconnected` / disconnect / reconnect.
+- `bot.ts`: a 20 ms output clock now mixes per-speaker jitter buffers (sample-summed, clamped) into one realtime stream — input rate == playback rate (no overflow), and simultaneous speakers are mixed instead of concatenated. Per-speaker buffers are capped (~200 ms, drop-oldest); idle speakers are reaped.
+- Server-side only (relay-bots container); deploy with `docker compose -f docker-compose.prod.yml up -d --build relay-bots`.
+
 ## [1.0.0] — 2026-06-05
 
 ### Changed — Companion: mission voice UI polish + new app icons (1.0.0)
