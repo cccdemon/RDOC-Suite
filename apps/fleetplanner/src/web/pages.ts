@@ -1332,25 +1332,34 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const rosterIds = new Set((opts.commanderRoster?.entries ?? []).map((e) => e.userId));
   const addableUsers = opts.assignableUsers.filter((u) => !rosterIds.has(u.id));
 
+  const voiceEntries = opts.commanderRoster?.entries ?? [];
+  const commandNetCount = voiceEntries.length;
+  const globalNetCount = voiceEntries.filter((e) => e.globalVoice).length;
   const commandersPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Commanders</div>
+      <div class="opv2-panel-title">Voice Access</div>
       ${!opts.voiceEnabled
         ? html`<p class="text-dim text-sm">Voice integration is not enabled for this server.</p>`
         : html`
-            <p class="text-dim text-sm" style="margin-bottom:.75rem">
-              Squadleaders of accepted FPS squads are commanders automatically. Add anyone else
-              who should be on the Command Net, and grant Global Radio Net only where needed.
+            <p class="text-dim text-sm" style="margin-bottom:.5rem">
+              <strong style="color:var(--cyan,#35d0e0)">Command Net</strong> (PTT-1, commander
+              room) = mission leaders + accepted unit captains + anyone added here.
+              <strong style="color:var(--gold,#e0b835)">Global Radio Net</strong> (PTT-2, relay
+              bots → Discord) is narrower — grant only to those allowed to broadcast.
             </p>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+              <span class="tag tag-cyan">Command Net · ${String(commandNetCount)}</span>
+              <span class="tag tag-gold">Global Radio Net · ${String(globalNetCount)}</span>
+            </div>
             ${opts.commanderRoster && !opts.commanderRoster.voiceActive
               ? html`<div class="banner banner-dim text-sm" style="margin-bottom:.75rem">
-                  No active voice session — links appear once the operation is set to
+                  No active voice session — Companion links appear once the operation is set to
                   <strong>open</strong> or <strong>in progress</strong>.
                 </div>`
               : safe("")}
             <div class="opv2-stack">
-              ${(opts.commanderRoster?.entries ?? []).length
-                ? opts.commanderRoster!.entries.map(
+              ${voiceEntries.length
+                ? voiceEntries.map(
                     (e) => html`<div class="opv2-row" style="flex-wrap:wrap;gap:.5rem">
                       <div>
                         <strong>${e.username}</strong>
@@ -1360,8 +1369,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       </div>
                       <div
                         class="opv2-row-meta"
-                        style="flex:1;justify-content:flex-end;gap:.4rem;min-width:16rem"
+                        style="flex:1;justify-content:flex-end;gap:.4rem;min-width:18rem;align-items:center"
                       >
+                        <span class="tag tag-cyan" title="On the mission Command Net">Command Net</span>
                         ${e.link
                           ? html`<input
                                 type="text"
@@ -1390,7 +1400,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           <button
                             type="submit"
                             class="btn btn-sm ${e.globalVoice ? "btn-gold" : "btn-ghost"}"
-                            title="Global Radio Net via relay bots"
+                            title="Toggle Global Radio Net (relay-bot broadcast)"
                           >
                             Global Radio ${e.globalVoice ? "On" : "Off"}
                           </button>
@@ -1409,7 +1419,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       </div>
                     </div>`,
                   )
-                : html`<p class="text-dim text-sm">No commanders yet.</p>`}
+                : html`<p class="text-dim text-sm">No one on the Command Net yet.</p>`}
             </div>
             ${addableUsers.length
               ? html`<form
@@ -1421,14 +1431,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   ${returnFields("commanders")}
                   <select name="userId" required style="flex:1">
-                    <option value="">Add commander…</option>
+                    <option value="">Add to Command Net…</option>
                     ${addableUsers.map(
                       (u) => html`<option value="${u.id}">${u.username} (${u.role})</option>`,
                     )}
                   </select>
                   <label class="seat-toggle text-sm">
                     <input type="checkbox" name="globalVoice" value="1" />
-                    Global Radio Net
+                    + Global Radio Net
                   </label>
                   <button type="submit" class="btn btn-sm btn-green">Add</button>
                 </form>`
@@ -2138,7 +2148,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       <nav class="opv2-tabs">
         ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
         ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")}
-        ${canManage ? shellLink("commanders", "Commanders") : safe("")}
+        ${canManage ? shellLink("commanders", "Voice Access") : safe("")}
         ${user ? shellLink("admin", "Admin") : safe("")}
       </nav>
 
