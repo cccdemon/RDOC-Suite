@@ -1004,6 +1004,13 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .mg-work { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
 .mg-section > h3 { font-size: 1.05rem; margin: 0 0 .65rem; }
 .mg-section { scroll-margin-top: 1rem; }
+.mg-board-sub { margin-top: .85rem; padding-top: .6rem; border-top: 1px solid rgba(255,255,255,.06); }
+.mg-board-sub > strong { display: block; font-size: .85rem; margin-bottom: .45rem; }
+.mg-board-row { flex-wrap: wrap; gap: .5rem; }
+.mg-board-act { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.mg-slot-form { display: flex; gap: .35rem; align-items: center; }
+.mg-edit-toggle { cursor: pointer; color: var(--cyan); font-size: .8rem; list-style: none; }
+.mg-edit-toggle::-webkit-details-marker { display: none; }
 @media (max-width: 980px) {
   .mg-2col { grid-template-columns: 1fr; }
   .mg-rail { position: static; }

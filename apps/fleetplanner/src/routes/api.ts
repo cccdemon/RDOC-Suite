@@ -780,6 +780,28 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       await setUnitStatus(req.params.unitId, "accepted");
+      // Accept-into-slot: when a requirement is passed, slot the unit in the same
+      // action (also used to slot an already-accepted unit — idempotent, no
+      // re-pending). A full/mismatched slot is skipped; the unit stays accepted
+      // but unslotted rather than failing the accept.
+      const slotId = req.body.requirementId?.trim();
+      if (slotId) {
+        try {
+          await assertRequirementFitsUnit(
+            req.params.id,
+            slotId,
+            unit.unitType,
+            unit.shipId ?? undefined,
+            unit.id,
+          );
+          await prisma.fleetUnit.update({
+            where: { id: unit.id },
+            data: { requirementId: slotId },
+          });
+        } catch {
+          /* slot full / mismatch — accept unslotted */
+        }
+      }
       await setMissionCommanderVoiceRole(req.params.id, unit.captainId, true).catch((err) =>
         req.log.warn(err, "Command Net role sync failed (non-fatal)"),
       );

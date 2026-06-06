@@ -13,7 +13,14 @@ NO markup/logic loss, panels reused:
   units, Crew & seats, Voice channels, Voice access, Admin) — the former tab panels stacked,
   reused verbatim (overviewPanel/fleetPanel/crewPanel/voicePanel/commandersPanel/adminPanel).
 - Dropped the tab nav + `tabPages`/`tabPage`/`shellLink` dead code. CSS `mg-*` in render.ts.
-Build + tests pass. Phases 2 (accept-into-slot + auto-match) and 3 (inline edit) to follow.
+Build + tests pass.
+
+**Phase 2 (accept-into-slot + auto-match):** `POST /api/ops/:id/units/:unitId/accept` gains an
+optional `requirementId` — slots the unit in the same action (idempotent; also slots an
+already-accepted unit without re-pending; full/mismatch → accepted unslotted). The board lists
+pending + unassigned-accepted units with a slot `<select>` defaulted to `suggestSlot()` (✓ marks
+category match) + Accept/Assign/Reject. **Phase 3 (edit-on-demand):** Briefing section renders
+read-first with a collapsible "✎ Edit event details" form (was always-open). Build + 235 tests pass.
 
 ## Completed Step - 2026-06-06: Fleetplanner — modernize the operator manage shell (kill old opv2 look)
 

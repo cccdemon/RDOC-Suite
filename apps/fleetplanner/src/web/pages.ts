@@ -10,7 +10,7 @@ import {
 } from "../lib/timezone.js";
 import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
-import { matchesCategory } from "../services/composition.js";
+import { matchesCategory, suggestSlot } from "../services/composition.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
 
@@ -1564,6 +1564,41 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   };
   const compTone = (r: CompRow) =>
     r.open === 0 ? "tag-green" : r.fulfilled === 0 ? "tag-dim" : "tag-gold";
+  // Open requirement slots (for accept-into-slot + auto-match suggestion).
+  const openSlots = op.groups.flatMap((g) =>
+    g.requirements.map((r) => ({
+      id: r.id,
+      label: r.label,
+      category: r.category,
+      open: Math.max(0, r.count - r.fleetUnits.filter((u) => u.status === "accepted").length),
+    })),
+  );
+  // Accept (or slot an already-accepted) unit into a requirement in one action.
+  // Posts to /accept with requirementId; the slot defaults to the auto-match.
+  const slotAcceptForm = (unit: UnitFull, actionLabel: string) => {
+    const suggested = suggestSlot({ unitType: unit.unitType, ship: unit.ship }, openSlots);
+    return html`<form
+      method="post"
+      action="${bp}/api/ops/${op.id}/units/${unit.id}/accept"
+      class="mg-slot-form"
+    >
+      <input type="hidden" name="_csrf" value="${csrf}" />
+      ${returnFields("overview")}
+      <select name="requirementId">
+        <option value="">— unslotted —</option>
+        ${openSlots
+          .filter((s) => s.open > 0 || s.id === suggested)
+          .map(
+            (s) => html`<option value="${s.id}" ${s.id === suggested ? safe("selected") : ""}>
+              ${s.label}${matchesCategory(s.category, { unitType: unit.unitType, ship: unit.ship })
+                ? " ✓"
+                : ""}
+            </option>`,
+          )}
+      </select>
+      <button type="submit" class="btn btn-sm btn-green">${actionLabel}</button>
+    </form>`;
+  };
   const compositionBoard = html`<section class="opv2-panel">
     <div class="opv2-panel-title">Fleet Requirements</div>
     ${compRows.length
@@ -1613,22 +1648,44 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       : html`<p class="text-dim text-sm">
           No Fleet Requirements defined.${canManage ? " Add the ships and squads you need in the Fleet tab." : ""}
         </p>`}
+    ${canManage && pendingUnits.length
+      ? html`<div class="mg-board-sub">
+          <strong>Pending review (${String(pendingUnits.length)})</strong>
+          ${pendingUnits.map(
+            (u) => html`<div class="opv2-row mg-board-row">
+              <div>
+                <strong>${unitName(u)}</strong>${u.captainNote
+                  ? html`<span class="text-dim text-sm"> — "${u.captainNote}"</span>`
+                  : safe("")}
+              </div>
+              <div class="mg-board-act">
+                ${slotAcceptForm(u, "Accept")}
+                <form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/units/${u.id}/reject"
+                  class="inline"
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("overview")}
+                  <button type="submit" class="btn btn-sm btn-ghost">Reject</button>
+                </form>
+              </div>
+            </div>`,
+          )}
+        </div>`
+      : safe("")}
     ${(() => {
-      if (!canManage || compRows.length === 0) return safe("");
+      if (!canManage) return safe("");
       const unslotted = op.units.filter((u) => u.status === "accepted" && !u.requirementId);
       if (unslotted.length === 0) return safe("");
-      return html`<div style="margin-top:.85rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.06)">
-        <div class="text-sm" style="margin-bottom:.4rem">
-          <strong>${String(unslotted.length)} accepted unit${unslotted.length === 1 ? "" : "s"} not assigned to a requirement</strong>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
-          ${unslotted.map(
-            (u) => html`<span class="tag tag-gold">${u.squadName || u.ship?.name || "Unit"}</span>`,
-          )}
-          <a class="text-sm" href="${tabUrl("fleet")}" style="margin-left:.25rem"
-            >Assign in Fleet tab &gt;</a
-          >
-        </div>
+      return html`<div class="mg-board-sub">
+        <strong>Unassigned accepted (${String(unslotted.length)})</strong>
+        ${unslotted.map(
+          (u) => html`<div class="opv2-row mg-board-row">
+            <div><strong>${unitName(u)}</strong></div>
+            <div class="mg-board-act">${slotAcceptForm(u, "Assign")}</div>
+          </div>`,
+        )}
       </div>`;
     })()}
   </section>`;
@@ -1658,9 +1715,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const overviewPanel = html`<div class="opv2-grid">
     ${participantsPanel} ${compositionBoard}
     <section class="opv2-panel">
-      <div class="opv2-panel-title">${canManage ? "Edit Briefing" : "Briefing"}</div>
+      <div class="opv2-panel-title">Briefing</div>
+      ${op.description
+        ? html`<div style="white-space:pre-wrap;line-height:1.55">${op.description}</div>`
+        : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
       ${canManage
-        ? html`<form method="post" action="${bp}/ops/${op.id}/edit" class="opv2-form">
+        ? html`<details style="margin-top:.85rem">
+            <summary class="mg-edit-toggle">✎ Edit event details</summary>
+            <form method="post" action="${bp}/ops/${op.id}/edit" class="opv2-form mt-1">
             <input type="hidden" name="_csrf" value="${csrf}" />
             ${returnFields("overview")}
             <label>Title</label>
@@ -1735,10 +1797,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   </select>`
               : safe("")}
             <button type="submit" class="btn btn-sm mt-1">Save Overview</button>
-          </form>`
-        : op.description
-          ? html`<p>${op.description}</p>`
-          : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
+            </form>
+          </details>`
+        : safe("")}
     </section>
   </div>`;
 

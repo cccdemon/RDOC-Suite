@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed - Fleetplanner: greenfield manage workspace (2026-06-06)
 
 - Rebuilt the `/ops/:id/manage` operator UI as a workflow workspace, replacing the old tabbed V2 shell: a **status spine** (Draft → Open → Locked → Starting → Live → Done), a **sticky command rail** (Next step / Needs you / Readiness / Delete), and a single-scroll work column with anchored sections. The former tab panels (overview/fleet/crew/voice/voice-access/admin) are reused as stacked sections. "Needs you" surfaces pending units, unassigned accepted units, open seats and unanswered questions as jump links.
+- **Accept-into-slot + auto-match.** The Fleet Requirements board lists pending units and unassigned accepted units with a slot dropdown defaulted to the auto-matched requirement (✓ marks a category match); one click accepts (or slots) a unit into a requirement. `POST /api/ops/:id/units/:id/accept` now takes an optional `requirementId` (idempotent, no re-pending; full/mismatched slots are skipped → accepted unslotted).
+- **Edit-on-demand briefing.** The Briefing section renders the briefing read-first with a collapsible "✎ Edit event details" form, instead of an always-open edit form.
 
 ### Changed - Fleetplanner: operator manage shell modernized (2026-06-06)
 
