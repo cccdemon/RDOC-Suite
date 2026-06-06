@@ -1,9 +1,11 @@
 # FR-P4 — Mission-Cover-Microservice (server-render API für den Fleetplanner)
 
 > **FeatureRequest** · **Prio 4**
-> **Status:** Steps 1–5 implementiert (2026-06-06) — Service + Render-API + Store + Fleetplanner-Seite
-> (`/ops/:id/cover`) + Generate/Delete + Editor-Round-Trip. Offen: Discord-Event-`image` /
-> Cross-Post-Synergie (Step 6), optionale Wizard-Integration, Font-Bundling fürs Image.
+> **Status:** ✓ **Done (2026-06-07)** — Service + Render-API + Store + Fleetplanner-Seite
+> (`/ops/:id/cover`) + Generate/Delete + Editor-Round-Trip + **Discord-Event-`image`**
+> (`updateScheduledEventImage`/`coverImageDataUri`) + Wizard-Integration. Offen nur noch:
+> **Partner-Cross-Post** (hängt an FR-P1-event-distribution); optionales Font-Bundling fürs Image
+> (Render lädt Fonts derzeit über die erlaubten Google-Font-Hosts).
 > **Scope:** neuer Microservice `apps/mission-cover` (`@rdoc-suite/mission-cover`,
 > Container `rdoc-suite-mission-cover`) + dünner Client im `apps/fleetplanner`.
 >
