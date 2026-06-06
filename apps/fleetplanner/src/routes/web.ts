@@ -875,10 +875,17 @@ export async function webRoutes(app: FastifyInstance) {
   });
 
   // ── User profile / owned ships ───────────────────────────────────────
-  app.get<{ Querystring: { q?: string; flash?: string } }>("/profile", async (req, reply) => {
+  app.get<{ Querystring: { q?: string; flash?: string; unmatched?: string } }>(
+    "/profile",
+    async (req, reply) => {
     const ctx = await requireRole(req, reply, "crew");
     if (!ctx) return;
     const q = req.query.q?.trim().slice(0, 80) ?? "";
+    const unmatched = (req.query.unmatched ?? "")
+      .split("\n")
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 50);
     const [ownedShips, searchResults] = await Promise.all([
       prisma.userShip.findMany({
         where: { userId: ctx.user.id },
@@ -897,9 +904,11 @@ export async function webRoutes(app: FastifyInstance) {
         ownedShips,
         searchResults,
         query: q,
+        unmatched,
       }),
     );
-  });
+  },
+  );
 
   app.post<{ Body: Record<string, string> }>("/profile/ships", async (req, reply) => {
     const ctx = await requireRole(req, reply, "crew");
@@ -926,9 +935,16 @@ export async function webRoutes(app: FastifyInstance) {
     try {
       const r = await importUserFleet(ctx.user.id, raw);
       const parts = [`Imported ${r.added} new`, `${r.already} already owned`];
-      if (r.unmatched.length)
-        parts.push(`${r.unmatched.length} not matched: ${r.unmatched.slice(0, 8).join(", ")}`);
-      return reply.redirect(basePath(`/profile?flash=ok:${encodeURIComponent(parts.join(" · "))}`), 302);
+      if (r.unmatched.length) parts.push(`${r.unmatched.length} need manual assignment`);
+      // Carry the unmatched names so the profile can offer a manual-assign /
+      // skip resolver for each.
+      const um = r.unmatched.length
+        ? `&unmatched=${encodeURIComponent(r.unmatched.join("\n").slice(0, 4000))}`
+        : "";
+      return reply.redirect(
+        basePath(`/profile?flash=ok:${encodeURIComponent(parts.join(" · "))}${um}`),
+        302,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Import failed";
       return reply.redirect(basePath(`/profile?flash=error:${encodeURIComponent(msg)}`), 302);

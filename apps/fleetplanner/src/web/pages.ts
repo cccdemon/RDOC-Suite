@@ -2795,9 +2795,11 @@ export function profilePage(opts: {
   ownedShips: OwnedShipRow[];
   searchResults: Ship[];
   query: string;
+  unmatched?: string[];
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
+  const unmatched = opts.unmatched ?? [];
 
   const ownedRows = opts.ownedShips.map(
     (owned) =>
@@ -2876,20 +2878,106 @@ export function profilePage(opts: {
       </details>
     </div>
 
+    ${unmatched.length
+      ? html`<div class="section" id="resolve-section">
+          <div class="section-title">Unmatched ships — assign manually or skip (${unmatched.length})</div>
+          <p class="text-dim text-sm">
+            These import names didn't match the catalog. Search the ship database to assign the right
+            ship, or skip it.
+          </p>
+          <style>
+            .resolve-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding: .45rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+            .resolve-name { font-weight: 600; min-width: 11rem; }
+            .resolve-search { flex: 1; min-width: 12rem; }
+            .resolve-results { flex-basis: 100%; }
+          </style>
+          ${unmatched.map(
+            (name) => html`<div class="resolve-row">
+              <span class="resolve-name">${name}</span>
+              <input
+                type="search"
+                class="resolve-search"
+                placeholder="Search ship database…"
+                autocomplete="off"
+              />
+              <div class="ship-results resolve-results"></div>
+              <form method="post" action="${bp}/profile/ships" class="resolve-assign inline">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <input type="hidden" name="shipId" class="resolve-shipid" />
+                <button type="submit" class="btn btn-sm btn-green" disabled>Assign</button>
+              </form>
+              <button type="button" class="btn btn-sm btn-ghost resolve-skip">Skip</button>
+            </div>`,
+          )}
+          <script>
+            (function () {
+              const sec = document.getElementById("resolve-section");
+              if (!sec) return;
+              const esc = (s) =>
+                String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+              sec.querySelectorAll(".resolve-row").forEach((row) => {
+                const search = row.querySelector(".resolve-search");
+                const results = row.querySelector(".resolve-results");
+                const hidden = row.querySelector(".resolve-shipid");
+                const btn = row.querySelector(".resolve-assign button");
+                let timer;
+                row.querySelector(".resolve-skip").addEventListener("click", () => row.remove());
+                search.addEventListener("input", () => {
+                  clearTimeout(timer);
+                  hidden.value = "";
+                  btn.disabled = true;
+                  btn.textContent = "Assign";
+                  const q = search.value.trim();
+                  if (q.length < 2) { results.innerHTML = ""; return; }
+                  timer = setTimeout(async () => {
+                    const res = await fetch("${bp}/api/ships?q=" + encodeURIComponent(q));
+                    const ships = await res.json();
+                    results.innerHTML = ships
+                      .map(
+                        (s) =>
+                          '<button type="button" class="ship-row" data-id="' + esc(s.id) +
+                          '" data-name="' + esc(s.name) + '"><strong>' + esc(s.name) +
+                          "</strong><span>" + esc(s.manufacturer || "") + " // " + esc(s.size || "") +
+                          "</span></button>",
+                      )
+                      .join("");
+                  }, 180);
+                });
+                results.addEventListener("click", (e) => {
+                  const el = e.target.closest(".ship-row");
+                  if (!el) return;
+                  results.querySelectorAll(".ship-row").forEach((r) => r.classList.remove("selected"));
+                  el.classList.add("selected");
+                  hidden.value = el.dataset.id || "";
+                  search.value = el.dataset.name || "";
+                  btn.disabled = false;
+                  btn.textContent = "Assign " + (el.dataset.name || "");
+                });
+              });
+            })();
+          </script>
+        </div>`
+      : safe("")}
+
     <div class="section">
       <div class="section-title">Owned Ships (${opts.ownedShips.length})</div>
       ${opts.ownedShips.length
-        ? html` <div style="overflow-x:auto">
-            <table>
+        ? html` <style>
+              #owned-table th[data-col] { cursor: pointer; user-select: none; white-space: nowrap; }
+              #owned-table th[data-col]:hover { color: var(--cyan, #35d0e0); }
+              #owned-table th[data-dir]::after { content: " " attr(data-dir); color: var(--cyan, #35d0e0); }
+            </style>
+            <div style="overflow-x:auto">
+            <table id="owned-table">
               <thead>
                 <tr>
-                  <th>Ship</th>
-                  <th>Nickname</th>
-                  <th>Manufacturer</th>
-                  <th>Size</th>
-                  <th>Career</th>
-                  <th>Role</th>
-                  <th class="text-right">Crew</th>
+                  <th data-col="0" data-type="text">Ship</th>
+                  <th data-col="1" data-type="text">Nickname</th>
+                  <th data-col="2" data-type="text">Manufacturer</th>
+                  <th data-col="3" data-type="size">Size</th>
+                  <th data-col="4" data-type="text">Career</th>
+                  <th data-col="5" data-type="text">Role</th>
+                  <th class="text-right" data-col="6" data-type="num">Crew</th>
                   <th></th>
                 </tr>
               </thead>
@@ -2897,7 +2985,34 @@ export function profilePage(opts: {
                 ${ownedRows}
               </tbody>
             </table>
-          </div>`
+            </div>
+            <script>
+              (function () {
+                const t = document.getElementById("owned-table");
+                if (!t) return;
+                const tb = t.querySelector("tbody");
+                const rank = { small: 1, medium: 2, large: 3, capital: 4, vehicle: 5 };
+                let lastCol = -1, asc = true;
+                t.querySelectorAll("th[data-col]").forEach((th) => {
+                  th.addEventListener("click", () => {
+                    const col = +th.dataset.col, type = th.dataset.type || "text";
+                    asc = lastCol === col ? !asc : true;
+                    lastCol = col;
+                    const rows = Array.prototype.slice.call(tb.querySelectorAll("tr"));
+                    rows.sort((a, b) => {
+                      let x = a.children[col].textContent.trim();
+                      let y = b.children[col].textContent.trim();
+                      if (type === "num") { x = parseInt(x, 10) || 0; y = parseInt(y, 10) || 0; return asc ? x - y : y - x; }
+                      if (type === "size") { x = rank[x.toLowerCase()] || 0; y = rank[y.toLowerCase()] || 0; return asc ? x - y : y - x; }
+                      return asc ? x.localeCompare(y) : y.localeCompare(x);
+                    });
+                    rows.forEach((r) => tb.appendChild(r));
+                    t.querySelectorAll("th[data-col]").forEach((h) => h.removeAttribute("data-dir"));
+                    th.setAttribute("data-dir", asc ? "▲" : "▼");
+                  });
+                });
+              })();
+            </script>`
         : html`<p class="text-dim text-sm">
             No ships added yet. Search the ship database below and add the ships you own.
           </p>`}

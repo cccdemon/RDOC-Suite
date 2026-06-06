@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — import token-match + sortable Owned Ships
+
+1. **Fleet-import matching:** live import left 11 unmatched (Ares Ion, Aurora MR, G12, Merchantman,
+   Kraken…) — CCU short names vs full catalog names ("Ares Ion" → "Ares Star Fighter Ion"). New
+   token-subset match in `importUserFleet`: exact norm → catalog ship containing ALL input words
+   (order-independent, shortest name wins) → loose contains fallback. Truly-absent catalog entries
+   stay unmatched (catalog re-sync = separate).
+2. **Owned Ships sortable:** profile table headers (Ship / Nickname / Manufacturer / Size / Career /
+   Role / Crew) are click-to-sort (client-side, toggle asc/desc). No backend change.
+
 ## Completed Step - 2026-06-06: Mission-Cover DEPLOYED to prod (LXC 103) + build fixes
 
 Feature commit `72e4c24`. Deployed to 10.10.10.99 / LXC 103. Four build/runtime fixes needed

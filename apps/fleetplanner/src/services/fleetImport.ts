@@ -26,6 +26,10 @@ export async function importUserFleet(userId: string, raw: string): Promise<Flee
 
   const ships = await prisma.ship.findMany({ select: { id: true, name: true } });
   const byName = new Map(ships.map((s) => [norm(s.name), s]));
+  const toks = (s: string) => norm(s).split(" ").filter(Boolean);
+  // Precompute token sets so a CCU short name ("Ares Ion") matches the fuller
+  // catalog name ("Ares Star Fighter Ion") when all its words are present.
+  const shipToks = ships.map((s) => ({ ship: s, set: new Set(toks(s.name)), len: s.name.length }));
 
   let added = 0;
   let already = 0;
@@ -42,6 +46,15 @@ export async function importUserFleet(userId: string, raw: string): Promise<Flee
 
     const key = norm(rawName);
     let ship = byName.get(key);
+    if (!ship) {
+      // All input words present in the catalog name (order-independent);
+      // prefer the shortest (most specific) matching catalog name.
+      const inputToks = toks(rawName);
+      const cands = shipToks
+        .filter((x) => inputToks.every((t) => x.set.has(t)))
+        .sort((a, b) => a.len - b.len);
+      ship = cands[0]?.ship;
+    }
     if (!ship) {
       ship = ships.find((s) => {
         const n = norm(s.name);
