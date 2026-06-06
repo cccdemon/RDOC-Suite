@@ -28,6 +28,8 @@ import {
   saveBridgeUrl,
   saveDucking,
   saveFeedbackSounds,
+  savePttSound,
+  type PttSoundSlot,
   saveFleetplannerUrl,
   saveGuilds,
   saveLocalHotkey,
@@ -51,6 +53,16 @@ import {
   type SuiteCapabilities,
 } from "./lib/suite";
 import { feedbackAudio } from "./lib/audioFeedback";
+
+/** Decode a `data:…;base64,…` URL into raw bytes for Web Audio decoding. */
+function dataUrlToBytes(dataUrl: string): ArrayBuffer {
+  const comma = dataUrl.indexOf(",");
+  const b64 = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl;
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
 import { Icon } from "./components/kit/Icon";
 import { SettingsModal, type SettingsDraft } from "./components/SettingsModal";
 import { GuildPickerModal } from "./components/GuildPickerModal";
@@ -87,6 +99,9 @@ type AppState = {
   feedbackSoundsEnabled: boolean;
   /** 0..100 volume for those chirps. */
   feedbackSoundsVolumePct: number;
+  /** Custom own-PTT press/release samples. null = synthesized chirp. */
+  pttPressSound: PttSoundSlot;
+  pttReleaseSound: PttSoundSlot;
   /** Lower Discord's per-app volume while squad-link audio is active. */
   duckingEnabled: boolean;
   /** Target Discord volume while ducked, 0..100. */
@@ -159,6 +174,8 @@ const INITIAL: AppState = {
   afk: false,
   feedbackSoundsEnabled: true,
   feedbackSoundsVolumePct: 50,
+  pttPressSound: null,
+  pttReleaseSound: null,
   duckingEnabled: true,
   duckingTargetVolumePct: 25,
   activeCommanders: [],
@@ -435,6 +452,18 @@ export function App(): JSX.Element {
       // Chirps follow output-mute: if you can't hear peers, you don't
       // want a chirp announcing them either.
       feedbackAudio.setSuppressed(settings.outputMuted);
+      // Custom PTT samples, if any. decodeAudioData can reject a corrupt or
+      // unsupported blob — fall back to the synth chirp silently on error.
+      if (settings.pttPressSound) {
+        void feedbackAudio
+          .setCustomSound("press", dataUrlToBytes(settings.pttPressSound.dataUrl))
+          .catch(() => {});
+      }
+      if (settings.pttReleaseSound) {
+        void feedbackAudio
+          .setCustomSound("release", dataUrlToBytes(settings.pttReleaseSound.dataUrl))
+          .catch(() => {});
+      }
       audio.setListeners({
         status: (audioStatus, detail) => {
           setState((s) => ({ ...s, audioStatus, audioDetail: detail ?? null }));
@@ -584,6 +613,8 @@ export function App(): JSX.Element {
         afk: settings.afk,
         feedbackSoundsEnabled: settings.feedbackSoundsEnabled,
         feedbackSoundsVolumePct: settings.feedbackSoundsVolumePct,
+        pttPressSound: settings.pttPressSound,
+        pttReleaseSound: settings.pttReleaseSound,
         duckingEnabled: settings.duckingEnabled,
         duckingTargetVolumePct: settings.duckingTargetVolumePct,
         fleetplannerUrl: settings.fleetplannerUrl,
@@ -1250,6 +1281,32 @@ export function App(): JSX.Element {
         });
       }
 
+      // Custom PTT samples — apply live + persist. Compared by dataUrl: a
+      // new file always changes it, reset sets it to null. Decode failure
+      // keeps the previous sample so a bad pick can't silence PTT.
+      if ((next.pttPressSound?.dataUrl ?? null) !== (state.pttPressSound?.dataUrl ?? null)) {
+        try {
+          await feedbackAudio.setCustomSound(
+            "press",
+            next.pttPressSound ? dataUrlToBytes(next.pttPressSound.dataUrl) : null,
+          );
+          await savePttSound("press", next.pttPressSound);
+        } catch {
+          /* keep previous sample on decode failure */
+        }
+      }
+      if ((next.pttReleaseSound?.dataUrl ?? null) !== (state.pttReleaseSound?.dataUrl ?? null)) {
+        try {
+          await feedbackAudio.setCustomSound(
+            "release",
+            next.pttReleaseSound ? dataUrlToBytes(next.pttReleaseSound.dataUrl) : null,
+          );
+          await savePttSound("release", next.pttReleaseSound);
+        } catch {
+          /* keep previous sample on decode failure */
+        }
+      }
+
       // Ducking prefs — persist + safe-state-transition. If the user
       // disables ducking WHILE Discord is currently ducked, snap-restore
       // so Discord doesn't get stuck at the lowered level.
@@ -1276,6 +1333,8 @@ export function App(): JSX.Element {
         device: nextDevice,
         feedbackSoundsEnabled: next.feedbackSoundsEnabled,
         feedbackSoundsVolumePct: next.feedbackSoundsVolumePct,
+        pttPressSound: next.pttPressSound,
+        pttReleaseSound: next.pttReleaseSound,
         duckingEnabled: next.duckingEnabled,
         duckingTargetVolumePct: next.duckingTargetVolumePct,
         lastError: null,
@@ -1290,6 +1349,8 @@ export function App(): JSX.Element {
       state.device,
       state.feedbackSoundsEnabled,
       state.feedbackSoundsVolumePct,
+      state.pttPressSound,
+      state.pttReleaseSound,
       state.duckingEnabled,
       state.duckingTargetVolumePct,
     ],
@@ -1762,6 +1823,8 @@ export function App(): JSX.Element {
             micGainPct: state.device.micGainPct,
             feedbackSoundsEnabled: state.feedbackSoundsEnabled,
             feedbackSoundsVolumePct: state.feedbackSoundsVolumePct,
+            pttPressSound: state.pttPressSound,
+            pttReleaseSound: state.pttReleaseSound,
             duckingEnabled: state.duckingEnabled,
             duckingTargetVolumePct: state.duckingTargetVolumePct,
           }}

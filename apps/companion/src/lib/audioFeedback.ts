@@ -15,6 +15,10 @@
  *  applies them via setEnabled / setVolume on mount and on save.
  */
 
+/** The four feedback cues. Only `press` / `release` are user-customisable
+ *  for now; incoming cues stay synthesized. */
+export type FeedbackCue = "press" | "release" | "incomingStart" | "incomingStop";
+
 type BurstShape = {
   /** Linear ramp-up time (seconds). */
   attack: number;
@@ -41,6 +45,29 @@ class FeedbackAudio {
   private suppressed = false;
   /** 0..1, post-multiplied onto every burst's peakGain. */
   private volume = 0.5;
+  /** User-supplied samples, per cue. When a cue has one, it plays instead
+   *  of the synthesized burst. Decoded once via setCustomSound. */
+  private customBuffers: Partial<Record<FeedbackCue, AudioBuffer>> = {};
+
+  /** Install (or clear) a custom sample for a cue. Pass the raw encoded
+   *  file bytes (mp3/wav/ogg/flac/…) and they're decoded via the shared
+   *  AudioContext; pass null to drop back to the synthesized burst.
+   *  decodeAudioData works on a suspended context (no user gesture needed),
+   *  so this is safe to call at startup. Returns the decoded duration in
+   *  seconds for the caller to validate / display, or throws on a format
+   *  the WebView can't decode. */
+  async setCustomSound(cue: FeedbackCue, bytes: ArrayBuffer | null): Promise<number | null> {
+    if (bytes === null) {
+      delete this.customBuffers[cue];
+      return null;
+    }
+    const ctx = this.getContext();
+    // decodeAudioData detaches the ArrayBuffer; callers must pass a copy
+    // if they need to reuse it.
+    const buffer = await ctx.decodeAudioData(bytes);
+    this.customBuffers[cue] = buffer;
+    return buffer.duration;
+  }
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
@@ -108,8 +135,26 @@ class FeedbackAudio {
     noise.stop(now + total + 0.02);
   }
 
-  /** Own PTT pressed: sharp, slightly tonal click that says "you're live now". */
+  /** Play a user-supplied sample through the volume gate. Same enabled/
+   *  suppressed/volume rules as the synthesized bursts. */
+  private playCustom(buffer: AudioBuffer): void {
+    if (!this.enabled || this.suppressed || this.volume === 0) return;
+    const ctx = this.getContext();
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const gain = ctx.createGain();
+    gain.gain.value = this.volume;
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start();
+  }
+
+  /** Own PTT pressed: custom sample if set, else a sharp tonal click. */
   playPttPress(): void {
+    if (this.customBuffers.press) {
+      this.playCustom(this.customBuffers.press);
+      return;
+    }
     this.playBurst({
       attack: 0.005,
       sustain: 0.05,
@@ -120,8 +165,12 @@ class FeedbackAudio {
     });
   }
 
-  /** Own PTT released: lower, softer tail-out. */
+  /** Own PTT released: custom sample if set, else a lower, softer tail-out. */
   playPttRelease(): void {
+    if (this.customBuffers.release) {
+      this.playCustom(this.customBuffers.release);
+      return;
+    }
     this.playBurst({
       attack: 0.02,
       sustain: 0.03,

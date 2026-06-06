@@ -9,6 +9,17 @@ import { DEFAULT_BRIDGE_URL, DEFAULT_FLEETPLANNER_URL, DEFAULT_HOTKEY, DEFAULT_R
  */
 export type SavedGuild = { id: string; label?: string };
 
+/** A user-supplied PTT sound. `dataUrl` is a `data:audio/…;base64,…` string
+ *  (self-contained so it survives restarts and needs no file path). null =
+ *  use the built-in synthesized chirp. */
+export type PttSoundSlot = { name: string; dataUrl: string } | null;
+
+/** Hard cap on a custom PTT sound's encoded size. The whole settings.json is
+ *  rewritten on every save, so keep samples small. Enforced at pick time. */
+export const MAX_PTT_SOUND_BYTES = 512 * 1024;
+/** Max decoded duration (seconds) for a custom PTT sound. */
+export const MAX_PTT_SOUND_SECONDS = 3;
+
 export type Settings = {
   /** Bridge HTTPS origin (no trailing slash) — formerly VITE_BRIDGE_URL. */
   bridgeUrl: string;
@@ -48,8 +59,11 @@ export type Settings = {
   afk: boolean;
   /** PTT / incoming-transmission audio feedback chirps on/off. */
   feedbackSoundsEnabled: boolean;
-  /** Volume of the synthesized feedback chirps, 0..100. */
+  /** Volume of the feedback chirps, 0..100. */
   feedbackSoundsVolumePct: number;
+  /** Custom sample for own-PTT press / release. null = synthesized chirp. */
+  pttPressSound: PttSoundSlot;
+  pttReleaseSound: PttSoundSlot;
   /** Whether to lower Discord's per-app volume while squad-link audio
    *  is active (own PTT or incoming peer transmission). */
   duckingEnabled: boolean;
@@ -80,9 +94,29 @@ const DEFAULTS: Omit<Settings, "token" | "guildId" | "lastGuildId" | "micDeviceI
   afk: false,
   feedbackSoundsEnabled: true,
   feedbackSoundsVolumePct: 50,
+  pttPressSound: null,
+  pttReleaseSound: null,
   duckingEnabled: true,
   duckingTargetVolumePct: 25,
 };
+
+/** Validate a value read from disk as a PttSoundSlot — guards against a
+ *  hand-edited / corrupted settings.json. */
+function coercePttSound(v: unknown): PttSoundSlot {
+  if (
+    v &&
+    typeof v === "object" &&
+    typeof (v as { name?: unknown }).name === "string" &&
+    typeof (v as { dataUrl?: unknown }).dataUrl === "string" &&
+    (v as { dataUrl: string }).dataUrl.startsWith("data:")
+  ) {
+    return {
+      name: (v as { name: string }).name,
+      dataUrl: (v as { dataUrl: string }).dataUrl,
+    };
+  }
+  return null;
+}
 
 /**
  * Load + migrate the settings file. Any field added since the last
@@ -96,6 +130,7 @@ export async function loadSettings(): Promise<Settings> {
     micDeviceId, outputDeviceId, outputVolumePct, micGainPct, remoteVolumes,
     outputMuted, afk,
     feedbackSoundsEnabled, feedbackSoundsVolumePct,
+    pttPressSound, pttReleaseSound,
     duckingEnabled, duckingTargetVolumePct,
     missionToken, missionUrl, globalHotkey,
   ] = await Promise.all([
@@ -117,6 +152,8 @@ export async function loadSettings(): Promise<Settings> {
     store.get<boolean>("afk"),
     store.get<boolean>("feedbackSoundsEnabled"),
     store.get<number>("feedbackSoundsVolumePct"),
+    store.get<PttSoundSlot>("pttPressSound"),
+    store.get<PttSoundSlot>("pttReleaseSound"),
     store.get<boolean>("duckingEnabled"),
     store.get<number>("duckingTargetVolumePct"),
     store.get<string>("missionToken"),
@@ -148,6 +185,8 @@ export async function loadSettings(): Promise<Settings> {
       typeof feedbackSoundsVolumePct === "number"
         ? feedbackSoundsVolumePct
         : DEFAULTS.feedbackSoundsVolumePct,
+    pttPressSound: coercePttSound(pttPressSound),
+    pttReleaseSound: coercePttSound(pttReleaseSound),
     duckingEnabled:
       typeof duckingEnabled === "boolean" ? duckingEnabled : DEFAULTS.duckingEnabled,
     duckingTargetVolumePct:
@@ -233,6 +272,13 @@ export async function saveFeedbackSounds(opts: {
   if (typeof opts.volumePct === "number")
     writes.push(store.set("feedbackSoundsVolumePct", opts.volumePct));
   await Promise.all(writes);
+  await store.save();
+}
+
+export async function savePttSound(cue: "press" | "release", slot: PttSoundSlot): Promise<void> {
+  const key = cue === "press" ? "pttPressSound" : "pttReleaseSound";
+  if (slot === null) await store.delete(key);
+  else await store.set(key, slot);
   await store.save();
 }
 

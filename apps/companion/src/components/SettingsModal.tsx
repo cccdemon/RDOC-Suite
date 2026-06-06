@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { Icon } from "./kit/Icon";
 import { HotkeyCapture } from "./HotkeyCapture";
 import { buildConfig } from "../lib/config";
@@ -7,6 +7,21 @@ import {
   ensureDevicePermission,
   type EnumeratedDevices,
 } from "../lib/devices";
+import {
+  MAX_PTT_SOUND_BYTES,
+  MAX_PTT_SOUND_SECONDS,
+  type PttSoundSlot,
+} from "../lib/store";
+
+/** Read a File into a `data:…;base64,…` URL (self-contained, persistable). */
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(r.error ?? new Error("read failed"));
+    r.readAsDataURL(file);
+  });
+}
 
 export type SettingsDraft = {
   bridgeUrl: string;
@@ -21,6 +36,9 @@ export type SettingsDraft = {
   micGainPct: number;
   feedbackSoundsEnabled: boolean;
   feedbackSoundsVolumePct: number;
+  /** Custom own-PTT press/release samples. null = synthesized chirp. */
+  pttPressSound: PttSoundSlot;
+  pttReleaseSound: PttSoundSlot;
   duckingEnabled: boolean;
   duckingTargetVolumePct: number;
 };
@@ -52,6 +70,61 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
   });
   const [permState, setPermState] = useState<"unknown" | "asking" | "granted" | "denied">(
     "unknown",
+  );
+  const [soundError, setSoundError] = useState<string | null>(null);
+  const pressInputRef = useRef<HTMLInputElement | null>(null);
+  const releaseInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Validate a picked audio file (size + decodable + duration) and, if it
+  // passes, store it as a self-contained data URL in the draft. Caps keep
+  // settings.json small and the chirp short.
+  const applyPickedSound = useCallback(
+    async (cue: "press" | "release", file: File | null | undefined): Promise<void> => {
+      setSoundError(null);
+      if (!file) return;
+      if (file.size > MAX_PTT_SOUND_BYTES) {
+        setSoundError(
+          `Datei zu groß: ${Math.round(file.size / 1024)} KB (max ${Math.round(
+            MAX_PTT_SOUND_BYTES / 1024,
+          )} KB).`,
+        );
+        return;
+      }
+      let duration: number;
+      try {
+        const buf = await file.arrayBuffer();
+        const ctx = new AudioContext();
+        const decoded = await ctx.decodeAudioData(buf.slice(0));
+        duration = decoded.duration;
+        void ctx.close();
+      } catch {
+        setSoundError("Format nicht abspielbar. Probiere mp3, wav, ogg, flac oder m4a.");
+        return;
+      }
+      if (duration > MAX_PTT_SOUND_SECONDS) {
+        setSoundError(
+          `Zu lang: ${duration.toFixed(1)} s (max ${MAX_PTT_SOUND_SECONDS} s).`,
+        );
+        return;
+      }
+      const dataUrl = await fileToDataUrl(file);
+      const slot: PttSoundSlot = { name: file.name, dataUrl };
+      setDraft((d) => ({
+        ...d,
+        ...(cue === "press" ? { pttPressSound: slot } : { pttReleaseSound: slot }),
+      }));
+    },
+    [],
+  );
+
+  const testSound = useCallback(
+    (slot: PttSoundSlot): void => {
+      if (!slot) return;
+      const a = new Audio(slot.dataUrl);
+      a.volume = Math.max(0, Math.min(1, draft.feedbackSoundsVolumePct / 100));
+      void a.play().catch(() => {});
+    },
+    [draft.feedbackSoundsVolumePct],
   );
 
   // Close on Escape
@@ -134,6 +207,61 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
   }, [draft, initial.localHotkey, initial.globalHotkey, onSave]);
 
   const needPerm = permState !== "granted" && (devices.inputs.length === 0 || !devices.inputs[0]?.label);
+
+  const renderSoundRow = (
+    cue: "press" | "release",
+    label: string,
+    slot: PttSoundSlot,
+    inputRef: RefObject<HTMLInputElement>,
+  ): JSX.Element => (
+    <div className="cc-field" style={{ marginTop: 10 }}>
+      <label className="cc-label">{label}</label>
+      <div className="cc-row" style={{ gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <span
+          className="cc-hint"
+          style={{
+            textTransform: "none",
+            marginRight: "auto",
+            maxWidth: 230,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {slot ? slot.name : "Standard (synthetisch)"}
+        </span>
+        <button type="button" className="cc-btn ghost sm" onClick={() => inputRef.current?.click()}>
+          Auswählen…
+        </button>
+        <button type="button" className="cc-btn cyan sm" disabled={!slot} onClick={() => testSound(slot)}>
+          Test
+        </button>
+        <button
+          type="button"
+          className="cc-btn ghost sm"
+          disabled={!slot}
+          onClick={() =>
+            setDraft((d) => ({
+              ...d,
+              ...(cue === "press" ? { pttPressSound: null } : { pttReleaseSound: null }),
+            }))
+          }
+        >
+          Zurücksetzen
+        </button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="audio/*"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          void applyPickedSound(cue, e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+    </div>
+  );
 
   return (
     <div className="cc-modal-backdrop" onClick={onClose}>
@@ -356,6 +484,25 @@ export function SettingsModal({ initial, onSave, onClose, canUseRelay = false }:
               }
             />
           </div>
+
+          {/* ── Custom PTT sounds ──────────────────────────── */}
+          <div className="cc-field" style={{ marginTop: 14 }}>
+            <label className="cc-label">Eigene PTT-Sounds</label>
+            <span className="cc-hint">
+              Ersetze die synthetischen Funk-Klicks beim Drücken/Loslassen durch eigene Dateien.
+              Eingehendes Funkrauschen bleibt synthetisch. Max{" "}
+              {Math.round(MAX_PTT_SOUND_BYTES / 1024)} KB, {MAX_PTT_SOUND_SECONDS} s. Lautstärke +
+              An/Aus folgen den Funk-Sound-Reglern oben.
+            </span>
+          </div>
+          {renderSoundRow("press", "PTT drücken", draft.pttPressSound, pressInputRef)}
+          {renderSoundRow("release", "PTT loslassen", draft.pttReleaseSound, releaseInputRef)}
+          {soundError ? (
+            <div className="cc-banner error" style={{ marginTop: 8 }}>
+              <Icon.x size={12} />
+              {soundError}
+            </div>
+          ) : null}
 
           {/* ── Discord-Ducking (Etappe 3.2) ───────────────── */}
           <div className="cc-field" style={{ marginTop: 14 }}>
