@@ -58,6 +58,7 @@ import {
   isOpVisibility,
 } from "../services/operations.js";
 import { searchLocalShips } from "../services/scwiki.js";
+import { importUserFleet } from "../services/fleetImport.js";
 import {
   deleteScheduledEvent,
   fetchGuildVoiceChannels,
@@ -905,6 +906,24 @@ export async function webRoutes(app: FastifyInstance) {
       update: {},
     });
     return reply.redirect(basePath("/profile?flash=ok:Ship+added."), 302);
+  });
+
+  // Bulk-import owned ships from a CCU-Game JSON export.
+  app.post<{ Body: Record<string, string> }>("/profile/fleet-import", async (req, reply) => {
+    const ctx = await requireRole(req, reply, "crew");
+    if (!ctx) return;
+    if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+    const raw = (req.body.fleetJson ?? "").slice(0, 200000);
+    try {
+      const r = await importUserFleet(ctx.user.id, raw);
+      const parts = [`Imported ${r.added} new`, `${r.already} already owned`];
+      if (r.unmatched.length)
+        parts.push(`${r.unmatched.length} not matched: ${r.unmatched.slice(0, 8).join(", ")}`);
+      return reply.redirect(basePath(`/profile?flash=ok:${encodeURIComponent(parts.join(" · "))}`), 302);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Import failed";
+      return reply.redirect(basePath(`/profile?flash=error:${encodeURIComponent(msg)}`), 302);
+    }
   });
 
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(

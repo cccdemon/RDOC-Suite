@@ -2845,6 +2845,32 @@ export function profilePage(opts: {
     </div>
 
     <div class="section">
+      <div class="section-title">Import fleet (JSON)</div>
+      <details>
+        <summary style="cursor:pointer;color:var(--cyan,#35d0e0)">
+          Paste a CCU-Game JSON export to add many ships at once
+        </summary>
+        <form method="post" action="${bp}/profile/fleet-import" style="margin-top:.6rem">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <p class="text-dim text-sm">
+            Expected format — an array of <code>{ "name": "&lt;model&gt;", "shipname": "&lt;nickname&gt;" }</code>:
+          </p>
+          <textarea
+            name="fleetJson"
+            rows="8"
+            style="width:100%;box-sizing:border-box;font-family:var(--font-mono)"
+            placeholder='[{"name":"600i Explorer","shipname":"Libertalia","type":"ship"},{"name":"Carrack Expedition","shipname":"Heureka","type":"ship"}]'
+          ></textarea>
+          <p class="text-dim text-sm">
+            Models are matched to the ship catalog (case-insensitive). Unmatched names are reported.
+            Duplicate models collapse to one owned entry.
+          </p>
+          <button type="submit" class="btn btn-sm btn-green">Import ships</button>
+        </form>
+      </details>
+    </div>
+
+    <div class="section">
       <div class="section-title">Owned Ships (${opts.ownedShips.length})</div>
       ${opts.ownedShips.length
         ? html` <div style="overflow-x:auto">
