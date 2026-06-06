@@ -1052,6 +1052,14 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .mg-section { scroll-margin-top: 1rem; }
 .mg-board-sub { margin-top: .85rem; padding-top: .6rem; border-top: 1px solid rgba(255,255,255,.06); }
 .mg-board-sub > strong { display: block; font-size: .85rem; margin-bottom: .45rem; }
+.mg-board-sub > summary { cursor: pointer; font-size: .85rem; font-weight: 700; margin-bottom: .45rem; list-style: none; }
+.mg-board-sub > summary::-webkit-details-marker { display: none; }
+.mg-board-sub > summary::before { content: "▸ "; color: var(--dim, #9fb0bd); }
+.mg-board-sub[open] > summary::before { content: "▾ "; }
+/* Status-change row: bigger touch targets; current status stays solid green. */
+.opv2-status-controls { gap: 0.55rem; }
+.opv2-status-controls .btn { text-transform: capitalize; }
+.opv2-status-current[disabled] { opacity: 1; cursor: default; font-weight: 700; }
 .mg-board-row { flex-wrap: wrap; gap: .5rem; }
 .mg-board-act { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
 .mg-slot-form { display: flex; gap: .35rem; align-items: center; }

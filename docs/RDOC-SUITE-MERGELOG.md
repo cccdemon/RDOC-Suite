@@ -1,5 +1,13 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — collapsible board sub-sections + status row polish
+
+User feedback on the manage Fleet Requirements board + status controls:
+- **Pending review / Unassigned accepted** are now `<details>`: Pending is `open` (needs action);
+  Unassigned opens only when there are pending units, else collapsed (reduces clutter).
+- **Status-change row:** the CURRENT status renders as a solid **green** disabled chip (always
+  visible), the other statuses are full-size `btn` (were too-small `btn-sm`).
+
 ## Completed Step - 2026-06-06: Fleetplanner — render briefing Markdown + wizard Markdown help
 
 User: render the mission briefing (Markdown) nicely + add Markdown help while creating.

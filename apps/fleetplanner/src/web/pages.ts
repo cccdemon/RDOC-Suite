@@ -1142,18 +1142,24 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       )
     : [html`<p class="text-dim text-sm">No fleet needs have been defined yet.</p>`];
   const statusControls = canManage
-    ? html`<div class="opv2-actions">
+    ? html`<div class="opv2-actions opv2-status-controls">
         ${["draft", "open", "locked", "starting", "in_progress", "completed", "cancelled"].map((status) =>
-          status !== op.status
-            ? html`<form method="post" action="${bp}/api/ops/${op.id}/status" class="inline">
+          status === op.status
+            ? html`<button
+                type="button"
+                class="btn btn-green opv2-status-current"
+                disabled
+                aria-current="true"
+                title="Current status"
+              >
+                ${status.replace("_", " ")}
+              </button>`
+            : html`<form method="post" action="${bp}/api/ops/${op.id}/status" class="inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <input type="hidden" name="status" value="${status}" />
                 ${returnFields(activeTab)}
-                <button type="submit" class="btn btn-sm btn-ghost">
-                  ${status.replace("_", " ")}
-                </button>
-              </form>`
-            : safe(""),
+                <button type="submit" class="btn">${status.replace("_", " ")}</button>
+              </form>`,
         )}
       </div>`
     : safe("");
@@ -1649,8 +1655,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           No Fleet Requirements defined.${canManage ? " Add the ships and squads you need in the Fleet tab." : ""}
         </p>`}
     ${canManage && pendingUnits.length
-      ? html`<div class="mg-board-sub">
-          <strong>Pending review (${String(pendingUnits.length)})</strong>
+      ? html`<details class="mg-board-sub" open>
+          <summary>Pending review (${String(pendingUnits.length)})</summary>
           ${pendingUnits.map(
             (u) => html`<div class="opv2-row mg-board-row">
               <div>
@@ -1672,21 +1678,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               </div>
             </div>`,
           )}
-        </div>`
+        </details>`
       : safe("")}
     ${(() => {
       if (!canManage) return safe("");
       const unslotted = op.units.filter((u) => u.status === "accepted" && !u.requirementId);
       if (unslotted.length === 0) return safe("");
-      return html`<div class="mg-board-sub">
-        <strong>Unassigned accepted (${String(unslotted.length)})</strong>
+      // Open only when there are pending units to deal with (the urgent case).
+      return html`<details class="mg-board-sub" ${pendingUnits.length ? safe("open") : safe("")}>
+        <summary>Unassigned accepted (${String(unslotted.length)})</summary>
         ${unslotted.map(
           (u) => html`<div class="opv2-row mg-board-row">
             <div><strong>${unitName(u)}</strong></div>
             <div class="mg-board-act">${slotAcceptForm(u, "Assign")}</div>
           </div>`,
         )}
-      </div>`;
+      </details>`;
     })()}
   </section>`;
 

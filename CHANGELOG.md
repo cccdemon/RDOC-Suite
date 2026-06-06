@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: manage board collapsibles + status row (2026-06-06)
+
+- The Fleet Requirements board's **Pending review** and **Unassigned accepted** lists are now collapsible; Pending is expanded by default (and Unassigned expands too whenever there are pending units).
+- The status-change row shows the **current status as a solid green chip**, and the other status buttons are full-size (were too small).
+
 ### Changed - Fleetplanner: briefing Markdown, richer Review, composition category as hint (2026-06-06)
 
 - Mission briefings now render as formatted **Markdown** (headings, bold, italic, code, lists, links) on the player event page and the operator manage shell (were raw text). New XSS-safe `renderMarkdown` helper.
