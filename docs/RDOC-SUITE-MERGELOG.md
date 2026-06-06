@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-07: FR — Org Fleet (guild ship roster) [SilentKnight]
+
+Capture FeatureRequest as `docs/FR-P3-org-fleet.md` + ROADMAP. Guild-scoped "Org Fleet" tab: which
+member owns which ship (from existing UserShip + GuildMembership), searchable both ways, to ask to
+borrow/view; optional Discord contact link. Plan only, Prio 3 — most infra already exists.
+
 ## Queued / Planned Step - 2026-06-07: FR — Language switch (i18n) across Fleetplanner + Companion + MissionCover
 
 Capture FeatureRequest as `docs/FR-P3-language-switch.md` + ROADMAP entry. One language preference
