@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — player page shows accepted units + inline self-edit
+
+User: on the player event page a participant couldn't see the accepted composition/ships/squads
+or edit their own signup (no edit-mode button — edit directly on the page).
+- New **Accepted Units** section on `opJoinPage`: each accepted ship/fireteam with its seats
+  (label + occupant), crew count, and **inline controls — no edit mode**: open seats show a
+  **Claim** button, the viewer's own seat shows **You + Release** (`unclaim`), others show the name.
+- Aside: waitlisted players get a **Withdraw request** button (`crew-requests/remove`, self).
+- "You're signed up" copy now points to the Accepted Units roster for release / seat change.
+All self-service routes already existed + are self-gated; posts use `ui=player` → return to the
+player page. Build + 235 tests pass.
+
 ## Completed Step - 2026-06-06: Fleetplanner — element-level (AJAX) updates for manage actions
 
 User: don't reload the whole page on actions — update only the changed element. Implemented a

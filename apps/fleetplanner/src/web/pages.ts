@@ -3711,6 +3711,21 @@ export function opJoinPage(opts: {
       };
     })
     .filter((u) => u.open > 0);
+  // Accepted units + their seats (who's seated / open), so players see the
+  // current composition and can claim/release directly on the page.
+  const acceptedRoster = acceptedUnits.map((u) => ({
+    name: u.squadName || u.ship?.name || "Unit",
+    kind: u.unitType === "ship" ? "Ship" : "FPS Fireteam",
+    seats: u.seats
+      .filter((s) => s.active)
+      .map((s) => ({
+        id: s.id,
+        label: s.label,
+        user: (s as { user?: { username?: string } }).user?.username ?? null,
+        mine: !!myId && s.userId === myId,
+        open: !s.userId,
+      })),
+  }));
   const requirements = op.groups.flatMap((g) => g.requirements);
   const ownedShips = opts.ownedShips ?? [];
   // Open composition slots (accepted units < requested) the player can target
@@ -3799,6 +3814,16 @@ export function opJoinPage(opts: {
       .ja-radio:checked + .ja-opt + .ja-panel { display: block; }
       .join-seat { display: flex; justify-content: space-between; gap: .75rem; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
       .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; white-space: nowrap; }
+      .roster-unit { border: 1px solid rgba(255,255,255,.08); padding: .6rem .8rem; margin-bottom: .6rem; }
+      .roster-unit-head { display: flex; align-items: center; gap: .5rem; margin-bottom: .45rem; }
+      .roster-unit-count { margin-left: auto; color: var(--dim); font-size: .76rem; font-family: var(--font-mono); }
+      .roster-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .35rem; }
+      .roster-seat { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .35rem .55rem; border: 1px solid rgba(255,255,255,.06); font-size: .85rem; }
+      .roster-seat.open { border-color: rgba(53,208,224,.25); }
+      .roster-seat.mine { border-color: var(--green, #3ad07a); background: rgba(58,208,122,.08); }
+      .roster-seat-label { color: var(--dim); }
+      .roster-occ { font-weight: 600; }
+      .roster-you { color: var(--green, #3ad07a); font-weight: 700; }
       .req-table { display: grid; gap: .35rem; }
       .req-row { display: grid; grid-template-columns: minmax(8rem, 1fr) 5rem 5rem 5.5rem; gap: .5rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
       .req-head { color: var(--dim); font-family: var(--font-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -3871,7 +3896,10 @@ export function opJoinPage(opts: {
           : hasSeat
             ? html`<section class="card">
                 <h3 class="wiz-sum-h">You're signed up</h3>
-                <p class="text-dim text-sm">Your status and questions are in the panel on the right.</p>
+                <p class="text-dim text-sm">
+                  You hold a seat — see <strong>Accepted Units</strong> below to release it or take a
+                  different open seat. Ask the operator a question in the panel on the right.
+                </p>
               </section>`
             : !isOpen
               ? html`<section class="card">
@@ -4017,6 +4045,47 @@ export function opJoinPage(opts: {
                 </section>`}
 
         <section class="card" style="margin-top:1rem">
+          <h3 class="wiz-sum-h">Accepted Units</h3>
+          ${acceptedRoster.length
+            ? acceptedRoster.map(
+                (u) => html`<div class="roster-unit">
+                  <div class="roster-unit-head">
+                    <strong>${u.name}</strong> <span class="tag tag-dim">${u.kind}</span>
+                    <span class="roster-unit-count"
+                      >${u.seats.filter((s) => !s.open).length}/${u.seats.length} crew</span
+                    >
+                  </div>
+                  <div class="roster-seats">
+                    ${u.seats.map(
+                      (s) => html`<div class="roster-seat${s.open ? " open" : s.mine ? " mine" : ""}">
+                        <span class="roster-seat-label">${s.label}</span>
+                        ${s.open
+                          ? isOpen && myId
+                            ? html`<form method="post" action="${bp}/api/seats/${s.id}/claim" class="inline">
+                                <input type="hidden" name="_csrf" value="${csrf}" />
+                                <input type="hidden" name="ui" value="player" />
+                                <input type="hidden" name="tab" value="fleet" />
+                                <button type="submit" class="btn btn-sm btn-green">Claim</button>
+                              </form>`
+                            : html`<span class="free">open</span>`
+                          : s.mine
+                            ? html`<span class="roster-occ roster-you">You</span>
+                                <form method="post" action="${bp}/api/seats/${s.id}/unclaim" class="inline">
+                                  <input type="hidden" name="_csrf" value="${csrf}" />
+                                  <input type="hidden" name="ui" value="player" />
+                                  <input type="hidden" name="tab" value="fleet" />
+                                  <button type="submit" class="btn btn-sm btn-ghost">Release</button>
+                                </form>`
+                            : html`<span class="roster-occ">${s.user ?? "Taken"}</span>`}
+                      </div>`,
+                    )}
+                  </div>
+                </div>`,
+              )
+            : html`<p class="text-dim text-sm">No ships or fireteams accepted yet.</p>`}
+        </section>
+
+        <section class="card" style="margin-top:1rem">
           <h3 class="wiz-sum-h">Fleet Requirements</h3>
           ${requirementRows.length
             ? html`<div class="req-table">
@@ -4075,6 +4144,20 @@ export function opJoinPage(opts: {
           : !hasSeat && !hasReq
             ? html`<p class="text-dim text-sm">Use “I want to join” on the left to sign up.</p>`
             : safe("")}
+        ${myId && hasReq && !hasSeat
+          ? html`<form
+              method="post"
+              action="${bp}/api/ops/${op.id}/crew-requests/remove"
+              style="margin-top:10px"
+            >
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="ui" value="player" />
+              <input type="hidden" name="tab" value="crew" />
+              <button type="submit" class="btn btn-sm btn-ghost join-cta-btn">
+                Withdraw request
+              </button>
+            </form>`
+          : safe("")}
         ${myId
           ? html`<form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">
               <input type="hidden" name="_csrf" value="${csrf}" />

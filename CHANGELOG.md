@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: player event page shows accepted units + inline self-edit (2026-06-06)
+
+- The player event page now has an **Accepted Units** section: each accepted ship/fireteam with its seats and who's in them. **Open seats have a Claim button and your own seat a Release button, directly on the page** — no edit mode. Waitlisted players get a **Withdraw request** button.
+
 ### Changed - Fleetplanner: manage actions update in place (no full reload) (2026-06-06)
 
 - Operator actions in the manage work area (accept / reject / claim / assign / offer ship / voice move / requirement edits, drag-to-seat) now submit via fetch and **swap only the work area** — the active tab is preserved and a transient success banner is shown, instead of a full page reload. Status changes and delete still reload (they affect the page-wide spine), and any error falls back to a normal submit.
