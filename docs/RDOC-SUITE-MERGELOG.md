@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-07: FR — Language switch (i18n) across Fleetplanner + Companion + MissionCover
+
+Capture FeatureRequest as `docs/FR-P3-language-switch.md` + ROADMAP entry. One language preference
+per user (saved in profile = single source of truth, `User.locale`), consumed by all three
+surfaces. Languages: DE, EN, EN_US, FR, ES. Plan doc only — no code yet; large/phased.
+
 ## Completed Step - 2026-06-07: Mission-Cover editor bug fixes (HEADWiG report, FR-P4)
 
 Four editor bugs + 1 FR.
