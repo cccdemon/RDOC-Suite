@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-06: PLAN DOC - P1 Fleetplanner GUI UX implementation plan
+
+Planning only - add a Prio-1 implementation plan for Fleetplanner GUI UX cleanup:
+participant-focused join view, FleetOperator event creation framing, and terminology cleanup.
+Key wording: "Composition" becomes "Fleet Requirements"; metrics become "Requested",
+"Fulfilled", and "Open Slots"; per-unit crew availability remains "Open Seats".
+No code or schema changes in this step. Add the plan under `docs/` and link it from
+`docs/ROADMAP.md` for Claude-Code / Opus handoff.
+
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
