@@ -4040,10 +4040,10 @@ export function opJoinPage(opts: {
 
                   <input type="radio" name="join-mode" id="jm-ship" class="ja-radio" />
                   <label for="jm-ship" class="ja-opt">
-                    <span class="ico">Ship</span>
+                    <span class="ico">Offer</span>
                     <span class="ja-txt"
-                      ><span class="ttl">Offer a ship or fireteam</span
-                      ><span class="sub">Bring one of your ships, or form an FPS fireteam.</span></span
+                      ><span class="ttl">Offer a Ship / CQB Team</span
+                      ><span class="sub">Bring one of your ships, or form a CQB team.</span></span
                     >
                     <span class="ja-chk"></span>
                   </label>
