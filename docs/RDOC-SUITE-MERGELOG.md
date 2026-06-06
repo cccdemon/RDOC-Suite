@@ -1,5 +1,24 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — assistant-like manage page (attention tabs)
+
+User: make the manage page more assistant-like; tabs ARE allowed; active tab = yellow, tabs
+needing attention = gold outline; Voice belongs in a tab (not the bottom of a long scroll);
+surface open tasks (accept/decline, assignments); de-emphasize "Need Assignment"; navigate
+without reloading the whole page.
+- Re-introduced a tab bar in the `.mg-work` area (Overview / Fleet / Crew / Voice / Voice Access /
+  Admin), reusing the existing panels as `.mg-tabpage`s. **Client-side switching — no page reload.**
+- **Active tab = yellow** (`--gold` bg); **attention tabs = gold outline + dot** (`tabAttn`:
+  overview when pending/unassigned units, crew when open seats / crew requests, admin when
+  unanswered questions). Default tab = first attention tab → operator lands where action is needed.
+- Rail "Needs you" → **"Open tasks"** with action-phrased items (Accept/decline N pending, Assign N,
+  Fill N seats, Answer N) that **jump to the relevant tab** (no reload).
+- Voice channels now live in the **Voice tab**; "Need Assignment" lives inside the Crew tab (no
+  longer an always-present top panel). `actionDetailsPanel` (event facts + status row) stays above
+  the tabs.
+- Partial updates: tab navigation is reload-free; action posts still redirect back to the same tab
+  (`?tab=` preserved). Full AJAX form submission (no reload on accept/claim) is a noted follow-up.
+
 ## Completed Step - 2026-06-06: Fleetplanner — collapsible board sub-sections + status row polish
 
 User feedback on the manage Fleet Requirements board + status controls:

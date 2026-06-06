@@ -1047,7 +1047,16 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .mg-needs a:last-child { border-bottom: none; }
 .mg-needs a:hover { color: var(--cyan); }
 .mg-ready div { display: flex; gap: .5rem; align-items: center; padding: .25rem 0; font-size: .85rem; }
-.mg-work { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+.mg-work { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+/* Attention-driven tabs: active = yellow, tabs with open tasks = gold outline. */
+.mg-tabs { display: flex; flex-wrap: wrap; gap: .45rem; border-bottom: 1px solid var(--border); padding-bottom: .6rem; }
+.mg-tab { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; border: 1px solid var(--border); background: var(--bg2); color: var(--text); font-weight: 600; font-size: .9rem; cursor: pointer; border-radius: 4px; transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast); }
+.mg-tab:hover { border-color: var(--cyan-28); }
+.mg-tab.attn { border-color: var(--gold, #e0b835); box-shadow: 0 0 0 1px var(--gold, #e0b835); }
+.mg-tab.active { background: var(--gold, #e0b835); color: #0a0e16; border-color: var(--gold, #e0b835); box-shadow: none; }
+.mg-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold, #e0b835); }
+.mg-tab.active .mg-tab-dot { background: #0a0e16; }
+.mg-tabpage[hidden] { display: none; }
 .mg-section > h3 { font-size: 1.05rem; margin: 0 0 .65rem; }
 .mg-section { scroll-margin-top: 1rem; }
 .mg-board-sub { margin-top: .85rem; padding-top: .6rem; border-top: 1px solid rgba(255,255,255,.06); }

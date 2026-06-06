@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: assistant-like manage page with attention tabs (2026-06-06)
+
+- The operator manage page is now tabbed (Overview / Fleet / Crew / Voice / Voice Access / Admin) with **client-side switching — no page reload**. The **active tab is yellow**, and any tab with open tasks gets a **gold outline + dot**; the page opens on the first tab that needs attention.
+- The rail's task list ("Open tasks") is action-phrased (Accept/decline pending, Assign units, Fill seats, Answer questions) and **jumps to the relevant tab**.
+- Voice channels moved into the **Voice tab** (no longer at the bottom of a long scroll); "Need Assignment" now lives inside the Crew tab instead of an always-present panel.
+
 ### Changed - Fleetplanner: manage board collapsibles + status row (2026-06-06)
 
 - The Fleet Requirements board's **Pending review** and **Unassigned accepted** lists are now collapsible; Pending is expanded by default (and Unassigned expands too whenever there are pending units).

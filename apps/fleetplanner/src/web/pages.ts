@@ -2264,30 +2264,30 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     <span style="flex:1"></span>
     <span class="text-dim text-sm">${fmtDate(op.scheduledAt, gtz)}</span>
   </div>`;
-  const needs: Array<{ icon: string; label: string; href: string }> = [];
+  const needs: Array<{ icon: string; label: string; tab: string }> = [];
   if (canManage && pendingUnits.length)
     needs.push({
       icon: "⚠",
-      label: `${pendingUnits.length} unit${pendingUnits.length === 1 ? "" : "s"} pending review`,
-      href: "#mg-fleet",
+      label: `Accept / decline ${pendingUnits.length} pending ${pendingUnits.length === 1 ? "unit" : "units"}`,
+      tab: "overview",
     });
   if (canManage && unslottedAccepted)
     needs.push({
       icon: "⚠",
-      label: `${unslottedAccepted} accepted unit${unslottedAccepted === 1 ? "" : "s"} unassigned`,
-      href: "#mg-overview",
+      label: `Assign ${unslottedAccepted} accepted ${unslottedAccepted === 1 ? "unit" : "units"} to a slot`,
+      tab: "overview",
     });
   if (openSeatsTotal)
     needs.push({
       icon: "⚠",
-      label: `${openSeatsTotal} open seat${openSeatsTotal === 1 ? "" : "s"}`,
-      href: "#mg-crew",
+      label: `Fill ${openSeatsTotal} open ${openSeatsTotal === 1 ? "seat" : "seats"}`,
+      tab: "crew",
     });
   if (canManage && unanswered)
     needs.push({
       icon: "✉",
-      label: `${unanswered} unanswered question${unanswered === 1 ? "" : "s"}`,
-      href: "#mg-admin",
+      label: `Answer ${unanswered} ${unanswered === 1 ? "question" : "questions"}`,
+      tab: "admin",
     });
   const ready: Array<{ ok: boolean; label: string }> = [
     { ok: !!op.eventVoiceChannelId, label: "Event voice channel" },
@@ -2296,6 +2296,35 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   ];
   if (minP > 0)
     ready.push({ ok: assignedSeats.length >= minP, label: `Min players (${assignedSeats.length}/${minP})` });
+  // Tabbed work area (attention-driven): which tab has open tasks → gold outline;
+  // active tab is yellow. Default to the first attention tab so the operator
+  // lands where action is needed.
+  const tabAttn: Record<string, boolean> = {
+    overview: canManage && (pendingUnits.length > 0 || unslottedAccepted > 0),
+    fleet: false,
+    crew: openSeatsTotal > 0 || crewWaiting > 0,
+    voice: false,
+    commanders: false,
+    admin: !!user && unanswered > 0,
+  };
+  const tabDefs = [
+    { id: "overview", label: "Overview" },
+    { id: "fleet", label: "Fleet" },
+    { id: "crew", label: "Crew" },
+    { id: "voice", label: "Voice" },
+    ...(canManage ? [{ id: "commanders", label: "Voice Access" }] : []),
+    ...(user ? [{ id: "admin", label: "Admin" }] : []),
+  ];
+  const firstAttn = tabDefs.find((t) => tabAttn[t.id]);
+  const mgActiveTab = tabDefs.some((t) => t.id === opts.tab)
+    ? opts.tab!
+    : firstAttn
+      ? firstAttn.id
+      : "overview";
+  const mgTabPage = (id: string, panel: SafeHtml) =>
+    html`<div class="mg-tabpage" data-tab="${id}" ${id === mgActiveTab ? safe("") : safe("hidden")}>
+      ${panel}
+    </div>`;
   const section = (id: string, title: string, panel: SafeHtml) =>
     html`<section class="mg-section" id="${id}"><h3>${title}</h3>${panel}</section>`;
 
@@ -2373,13 +2402,13 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               </div>`
             : safe("")}
           <div class="mg-card mg-needs">
-            <h4>Needs you</h4>
+            <h4>Open tasks</h4>
             ${needs.length
               ? needs.map(
                   (n) =>
-                    html`<a href="${n.href}"><span>${n.icon}</span><span>${n.label}</span></a>`,
+                    html`<a href="#" data-jump="${n.tab}"><span>${n.icon}</span><span>${n.label}</span></a>`,
                 )
-              : html`<p class="text-dim text-sm">All clear ✓</p>`}
+              : html`<p class="text-dim text-sm">All clear ✓ — nothing needs you.</p>`}
           </div>
           <div class="mg-card mg-ready">
             <h4>Readiness</h4>
@@ -2409,12 +2438,21 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         </aside>
         <div class="mg-work">
           ${actionDetailsPanel}
-          ${section("mg-overview", "Briefing & Fleet Requirements", overviewPanel)}
-          ${section("mg-fleet", "Fleet units", fleetPanel)}
-          ${section("mg-crew", "Crew & seats", crewPanel)}
-          ${section("mg-voice", "Voice channels", voicePanel)}
-          ${canManage ? section("mg-voiceaccess", "Voice access", commandersPanel) : safe("")}
-          ${user ? section("mg-admin", "Leaders, questions & audit", adminPanel) : safe("")}
+          <div class="mg-tabs" role="tablist">
+            ${tabDefs.map(
+              (t) => html`<button
+                type="button"
+                class="mg-tab${t.id === mgActiveTab ? " active" : ""}${tabAttn[t.id] ? " attn" : ""}"
+                data-tab="${t.id}"
+              >
+                ${t.label}${tabAttn[t.id] ? html`<span class="mg-tab-dot"></span>` : safe("")}
+              </button>`,
+            )}
+          </div>
+          ${mgTabPage("overview", overviewPanel)} ${mgTabPage("fleet", fleetPanel)}
+          ${mgTabPage("crew", crewPanel)} ${mgTabPage("voice", voicePanel)}
+          ${canManage ? mgTabPage("commanders", commandersPanel) : safe("")}
+          ${user ? mgTabPage("admin", adminPanel) : safe("")}
         </div>
       </div>
     </div>
@@ -2602,27 +2640,25 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       // in sync (replaceState) so a later reload or form POST lands on the same
       // tab. Falls back to the plain link navigation if JS is off.
       (function () {
-        const shell = document.querySelector(".opv2-shell");
-        if (!shell) return;
-        const tabs = shell.querySelectorAll(".opv2-tab");
-        const pages = shell.querySelectorAll(".opv2-tabpage");
-        tabs.forEach((tab) => {
-          tab.addEventListener("click", (e) => {
-            const name = tab.dataset.tab;
-            if (!name) return;
+        const work = document.querySelector(".mg-work");
+        if (!work) return;
+        const tabs = work.querySelectorAll(".mg-tab");
+        const pages = work.querySelectorAll(".mg-tabpage");
+        function activate(name) {
+          if (!name) return;
+          tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+          pages.forEach((p) => { p.hidden = p.dataset.tab !== name; });
+          try { history.replaceState(null, "", "?tab=" + encodeURIComponent(name)); } catch (_) {}
+        }
+        tabs.forEach((tab) => tab.addEventListener("click", () => activate(tab.dataset.tab)));
+        // Rail "Open tasks" links jump to the relevant tab (no reload).
+        document.querySelectorAll("[data-jump]").forEach((a) =>
+          a.addEventListener("click", (e) => {
             e.preventDefault();
-            tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
-            pages.forEach((p) => {
-              p.hidden = p.dataset.tab !== name;
-            });
-            const href = tab.getAttribute("href");
-            if (href) {
-              try {
-                history.replaceState(null, "", href);
-              } catch (_) {}
-            }
-          });
-        });
+            activate(a.dataset.jump);
+            work.scrollIntoView({ behavior: "smooth", block: "start" });
+          }),
+        );
       })();
     </script>`;
 
