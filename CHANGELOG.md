@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Fleetplanner: Create-Event wizard was non-functional (2026-06-06)
+
+- The wizard JavaScript crashed at init (`filterLoc()` → `updateAside()` read the `summary` const before it was declared — temporal dead zone), so **Continue/Back, the requirement template picker, and the composition editor never worked**; only the native "Save as Draft" submit fired (which is why it submitted from any step). Deferred the init call past the const declarations; the wizard now steps correctly.
+- Removed the always-visible "Save as Draft" (it bypassed the wizard) and added a submit guard so Enter advances the step; only the final Review step submits ("Create Event" → draft → manage).
+
 ### Changed - Fleetplanner: greenfield manage workspace (2026-06-06)
 
 - Rebuilt the `/ops/:id/manage` operator UI as a workflow workspace, replacing the old tabbed V2 shell: a **status spine** (Draft → Open → Locked → Starting → Live → Done), a **sticky command rail** (Next step / Needs you / Readiness / Delete), and a single-scroll work column with anchored sections. The former tab panels (overview/fleet/crew/voice/voice-access/admin) are reused as stacked sections. "Needs you" surfaces pending units, unassigned accepted units, open seats and unanswered questions as jump links.

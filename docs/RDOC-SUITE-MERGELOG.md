@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-06: Analysis — addOns/ overview + Mission-Cover-as-Service report
+
+User: analyse `addOns/`, write overview of what it does + a report for adding a service usable in
+fleetplanner. Two add-ons found (`addOns/CCO`, `addOns/MissionCover`) — both standalone Star
+Citizen mission-briefing **cover/poster image generators**, no backend, no suite integration.
+Deliverable: analysis doc `docs/FR-P4-mission-cover-service.md` (FeatureRequest, Prio 4) proposing
+how to fold cover-generation into the fleetplanner as an op-attached service. No code change yet.
+
+## Completed Step - 2026-06-06: Fleetplanner — fix dead Create-Event wizard (TDZ) + premature submit
+
+Bug (user-reported: Continue dead, templates unselectable, "Save as Draft" submits from any step):
+the wizard `<script>` called `filterLoc()` at init → `syncLabel()` → `updateAside()`, which reads
+the `summary` const declared LATER → `ReferenceError: Cannot access 'summary' before initialization`
+(temporal dead zone). The whole IIFE threw → every handler (Continue/Back/template-select/comp
+editor) never attached. Only the native `type=submit` "Save as Draft" worked (no JS needed),
+which is why pressing it submitted from any step. Fix:
+- Defer the initial `filterLoc()` call to the end of the IIFE (after summary/ready/review consts).
+- Remove the always-visible "Save as Draft" button (premature submit, bypassed the wizard).
+- Add a form submit guard: submit blocked unless on the Review step; Enter advances the step.
+- Final step "Create Event" is the only submit (creates the draft → lands in manage to open).
+Verified via DOM-shim run in the container (INIT OK + Continue advances) + build + 235 tests.
+
 ## Completed Step - 2026-06-06: Fleetplanner — greenfield manage workspace (branch feat/manage-workspace), Phase 1
 
 User: rebuild the `/ops/:id/manage` operator UI greenfield, max usability, stop using the old V2

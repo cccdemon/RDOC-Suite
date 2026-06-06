@@ -3314,10 +3314,9 @@ export function opWizardPage(opts: {
           <div class="wiz-sum-h">Summary</div>
           <dl class="wiz-sum" id="wiz-summary"></dl>
           <div class="wiz-aside-actions">
-            <button type="submit" class="btn btn-green" id="wiz-draft">💾 Save as Draft</button>
-            <button type="button" class="btn btn-ghost" id="wiz-next">Continue ›</button>
-            <button type="submit" class="btn btn-green" id="wiz-submit" hidden>Create Event</button>
             <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ Back</button>
+            <button type="button" class="btn btn-green" id="wiz-next">Continue ›</button>
+            <button type="submit" class="btn btn-green" id="wiz-submit" hidden>Create Event</button>
           </div>
         </aside>
       </div>
@@ -3344,7 +3343,10 @@ export function opWizardPage(opts: {
         }
         ms?.addEventListener("change", filterLoc);
         ml?.addEventListener("change", syncLabel);
-        filterLoc();
+        // NOTE: initial filterLoc() is called at the END of this IIFE — it
+        // transitively reads consts (summary/ready/review) declared further
+        // down, so calling it here would hit a temporal-dead-zone ReferenceError
+        // and kill every handler below (Continue/Back/templates).
 
         const sections = Array.from(document.querySelectorAll(".wiz-step"));
         const rail = Array.from(document.querySelectorAll(".wiz-rail-step"));
@@ -3447,6 +3449,14 @@ export function opWizardPage(opts: {
         rail.forEach((r, n) => r.addEventListener("click", () => { if (n < cur) { cur = n; show(cur); } }));
         next.addEventListener("click", () => { if (validate(cur) && cur < sections.length - 1) { cur++; show(cur); } });
         back.addEventListener("click", () => { if (cur > 0) { cur--; show(cur); } });
+        // Only the final Review step may actually submit. Enter / any earlier
+        // submit advances the wizard instead of creating the op prematurely.
+        form.addEventListener("submit", (e) => {
+          if (cur < sections.length - 1) {
+            e.preventDefault();
+            if (validate(cur)) { cur++; show(cur); }
+          }
+        });
 
         // ── Fleet Requirements editor (Phase 3) ──────────────────────
         const TPL = ${safe(JSON.stringify(COMPOSITION_TEMPLATES))};
@@ -3498,6 +3508,7 @@ export function opWizardPage(opts: {
 
         show(0);
         updateAside();
+        filterLoc();
       })();
     </script>`;
 
