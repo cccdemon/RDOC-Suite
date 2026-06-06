@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: operator manage shell modernized (2026-06-06)
+
+- The `/ops/:id/manage` operator shell still wore the old `opv2-*` terminal styling (1180px width cap, mono/cyan/uppercase hero title, terminal tabs). Restyled the `opv2-*` CSS (used only by this shell) to match the player event page: full content width, large sans hero title, normal-case tabs. No markup change.
+
 ### Changed - Fleetplanner greenfield redesign (branch feat/fleetmanager-redesign) (2026-06-06)
 
 - **Event page join assistant.** The 3 anchor "I want to join" links are now a CSS-only radio assistant that reveals the relevant sub-form inline (let the operator place me / take an open seat / offer a ship). Open Seats + ship offer moved into the assistant; Fleet Requirements is full-width.

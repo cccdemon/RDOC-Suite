@@ -977,8 +977,7 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 }
 
 .opv2-shell {
-  max-width: 1180px;
-  margin: 0 auto;
+  width: 100%;
 }
 .opv2-hero {
   display: grid;
@@ -1003,17 +1002,16 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   margin-bottom: 0.6rem;
 }
 .opv2-hero h1 {
-  font-family: var(--font-mono);
-  font-size: 1.55rem;
-  line-height: 1.25;
-  letter-spacing: 0.06em;
-  color: var(--cyan);
+  margin: 0;
+  font-size: clamp(1.65rem, 3vw, 2.55rem);
+  line-height: 1.05;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 .opv2-hero p {
   color: var(--dim);
-  font-size: 0.92rem;
-  margin-top: 0.4rem;
+  font-size: 0.95rem;
+  margin-top: 0.45rem;
 }
 .opv2-switch,
 .opv2-actions {
@@ -1106,10 +1104,8 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   border: none;
   border-right: 1px solid var(--border);
   color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.88rem;
+  font-weight: 600;
   transition: background var(--t-fast), color var(--t-fast);
 }
 .opv2-tab:last-child { border-right: none; }

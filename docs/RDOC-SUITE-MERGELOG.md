@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — modernize the operator manage shell (kill old opv2 look)
+
+Done: `.opv2-shell` full-width (dropped 1180 cap), `.opv2-hero h1` large sans (was mono/cyan/
+uppercase), `.opv2-tab` normal-case 600-weight (was mono uppercase). CSS-only in render.ts, no
+markup change. Build + 235 tests pass.
+
+
+The redesign modernized the player event page but `/ops/:id/manage` (opDetailPageV2) still wore
+the old `opv2-*` terminal styling: `.opv2-shell` capped at 1180px (dead side margins), mono/cyan/
+uppercase hero title, terminal segmented tabs. `opv2-*` classes are used ONLY by the manage shell,
+so restyle that CSS in `web/render.ts` to match the player aesthetic — full width, large sans hero
+title, softer tabs. No markup change. Build-verify; deploy.
+
 ## Completed Step - 2026-06-06: Fleetplanner greenfield redesign (branch feat/fleetmanager-redesign)
 
 Verified: `pnpm --filter @rdoc-suite/fleetplanner build` + `test` (235) pass after each phase.
