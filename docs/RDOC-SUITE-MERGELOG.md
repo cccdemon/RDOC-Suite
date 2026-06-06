@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Drop FR-P5 Rolling Crew Positions
+
+User: no real use case → removed without replacement. Deleted `docs/FR-P5-rolling-crew-positions.md`;
+removed from ROADMAP (table + recommended order + bug/feedback list), CLAUDE.md planning table, and
+FLEETPLANNER-BACKLOG.md. No code existed.
+
 ## Completed Step - 2026-06-06: FR-P3 Recurring Events (RRULE, Approach A)
 
 DONE: schema + migration `20260606160000_recurring_events`; `services/recurrence.ts` (tz/DST-correct

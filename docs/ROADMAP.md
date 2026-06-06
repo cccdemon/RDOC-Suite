@@ -16,7 +16,6 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | ✓ Done (2026-06-06; series-distribution deferred → FR-P1) |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
 | P4 | Mission-Cover Microservice (server-render API, op→cover image) | [FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md) | — (standalone svc; synergy → FR-P1 cross-post) | ✓ Steps 1–5 (Discord-image/cross-post open) |
-| P5 | Rolling Crew Positions (rotate seats) | [FR-P5-rolling-crew-positions.md](FR-P5-rolling-crew-positions.md) | FleetUnit/Seat | Plan |
 | P5 | Item Database (loot/distribution) | [FR-P5-item-database.md](FR-P5-item-database.md) | **blocked: no items API** | Plan |
 
 ## Recommended order
@@ -28,7 +27,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 6. **FR-P3 roadmap-tab** — surfaces everything else + feedback intake.
 7. **FR-P4 mission-cover-service** — standalone microservice; can land any time, no hard deps (synergy with FR-P1 cross-post).
 8. **FR-P3 federation-voice** — largest/riskiest; needs FR-P1 + relay-bots refactor.
-8. **FR-P5 rolling-crew-positions**, **FR-P5 item-database** (item-db blocked on data source).
+8. **FR-P5 item-database** (blocked on data source).
 
 ## Bugs / improvements (tracked in [FLEETPLANNER-BACKLOG.md](FLEETPLANNER-BACKLOG.md))
 | Item | Source | Status |
@@ -36,7 +35,6 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | PTT custom press/release sound | Feedback (Mimosenherkules) | ✓ Done — commit 1efbb17 (Companion, local build pending) |
 | 404 on accepted link when not logged in → show login note | Feedback (exrelax) | Quick-win — in progress this batch |
 | Fleet naming: non-capital lead = "Pilot" not "Captain" | Feedback (Mimosenherkules) | Quick-win — in progress this batch |
-| Rolling crew positions | Feedback (Vi5E) | → FR-P5-rolling-crew-positions.md |
 
 ## Needs sighting / clarification (no doc yet)
 - **"Vi5E Tools"** — tools to be reviewed before locking the eventcreation admin wizard scope.

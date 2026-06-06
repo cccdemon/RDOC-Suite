@@ -295,7 +295,7 @@ Forward-looking features live in [ROADMAP.md](ROADMAP.md) + `FR-P*-*.md`. This s
 - `[x]` **PTT custom press/release sound** (Mimosenherkules) — users can set their own PTT sound. Done in Companion, commit `1efbb17` (local build/ship pending).
 - `[~]` **404 on accepted link when not logged in** (exrelax) — the accept-confirmation Discord link 404s for logged-out users; looks like a broken URL. Fix: show a "log in to view this operation" page with a login link (return-to), no op detail leak. (In progress 2026-06-06.)
 - `[~]` **Fleet naming: Captain vs Pilot** (Mimosenherkules) — only capital ships (Idris etc.) should show "Captain"; non-capital ship leads should be "Pilot". Centralised `unitLeadTitle(ship)` helper on the unit-lead label. (In progress 2026-06-06.)
-- `[ ]` **Rolling crew positions** (Vi5E) — rotate multicrew seats every 30 min, default off, leader toggle → [FR-P5-rolling-crew-positions.md](FR-P5-rolling-crew-positions.md).
+- `[x]` **Rolling crew positions** (Vi5E) — DROPPED 2026-06-06, no real use case (user decision). FR doc deleted.
 
 ---
 

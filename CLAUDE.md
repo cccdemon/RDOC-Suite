@@ -277,7 +277,6 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 | [docs/FR-P1-eventcreation-simplification.md](docs/FR-P1-eventcreation-simplification.md) | **FeatureRequest, Prio 1.** Event-Anlage vereinfachen: 2 Views (Mobile-Join + Admin-Wizard). „Vi5E Tools" noch sichten. | Plan, kein Code |
 | [docs/FR-P2-fleet-import-json.md](docs/FR-P2-fleet-import-json.md) | **FeatureRequest, Prio 2.** Flotten-Import via JSON (CCU-Game-Format) → UserShips; = Backlog #1. | Plan, kein Code |
 | [docs/FR-P3-roadmap-tab.md](docs/FR-P3-roadmap-tab.md) | **FeatureRequest, Prio 3.** Roadmap-Tab + Auto-Ingest Discord-Feedback (Reverse des Feedback-Ticket-Flows). | Plan, kein Code |
-| [docs/FR-P5-rolling-crew-positions.md](docs/FR-P5-rolling-crew-positions.md) | **FeatureRequest, Prio 5.** Crew rotiert Positionen alle 30 Min, default off, Leiter-Toggle. | Plan, kein Code |
 | [docs/FR-P5-item-database.md](docs/FR-P5-item-database.md) | **FeatureRequest, Prio 5.** Loot-/Item-DB. Blockiert: keine Items-API. | Plan, kein Code |
 
 ### Naming & URL-Konventionen
