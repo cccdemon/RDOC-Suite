@@ -43,6 +43,52 @@ export function rawHtml(value: SafeHtml): string {
   return value.html;
 }
 
+// Minimal, XSS-safe Markdown → HTML. Input is escaped FIRST, then a small
+// subset is applied: #/##/### headings, **bold**, *italic*, `code`,
+// - / * bullet lists, [text](https://url) links, blank-line paragraphs,
+// single newlines → <br>. Output wrapped in <div class="md"> for styling.
+export function renderMarkdown(input: string | null | undefined): SafeHtml {
+  const src = (input ?? "").replace(/\r\n/g, "\n");
+  if (!src.trim()) return { [SAFE]: true, html: "" };
+  const inline = (s: string) =>
+    escape(s)
+      .replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1<em>$2</em>")
+      .replace(/`([^`]+?)`/g, "<code>$1</code>")
+      .replace(
+        /\[([^\]]+?)\]\((https?:\/\/[^\s)]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>',
+      );
+  const lines = src.split("\n");
+  const out: string[] = [];
+  let para: string[] = [];
+  let list: string[] = [];
+  const flushPara = () => {
+    if (para.length) { out.push("<p>" + para.join("<br>") + "</p>"); para = []; }
+  };
+  const flushList = () => {
+    if (list.length) { out.push("<ul>" + list.map((li) => "<li>" + li + "</li>").join("") + "</ul>"); list = []; }
+  };
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    const h = /^(#{1,3})\s+(.*)$/.exec(line);
+    const li = /^[-*]\s+(.*)$/.exec(line);
+    if (h) {
+      flushPara(); flushList();
+      const tag = h[1].length === 1 ? "h3" : h[1].length === 2 ? "h4" : "h5";
+      out.push("<" + tag + ">" + inline(h[2]) + "</" + tag + ">");
+    } else if (li) {
+      flushPara(); list.push(inline(li[1]));
+    } else if (line.trim() === "") {
+      flushPara(); flushList();
+    } else {
+      flushList(); para.push(inline(line));
+    }
+  }
+  flushPara(); flushList();
+  return { [SAFE]: true, html: '<div class="md">' + out.join("") + "</div>" };
+}
+
 // ── Layout ──────────────────────────────────────────────────────────
 
 export type LayoutOptions = {
@@ -1011,6 +1057,18 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .mg-slot-form { display: flex; gap: .35rem; align-items: center; }
 .mg-edit-toggle { cursor: pointer; color: var(--cyan); font-size: .8rem; list-style: none; }
 .mg-edit-toggle::-webkit-details-marker { display: none; }
+/* Rendered Markdown (mission briefing). */
+.md { font-size: .92rem; line-height: 1.6; color: var(--text, #cdd9e1); }
+.md > :first-child { margin-top: 0; }
+.md h3 { font-size: 1.05rem; color: var(--cyan, #35d0e0); margin: 1rem 0 .35rem; }
+.md h4 { font-size: .95rem; color: var(--cyan, #35d0e0); margin: .85rem 0 .3rem; }
+.md h5 { font-size: .85rem; color: var(--dim, #9fb0bd); text-transform: uppercase; letter-spacing: .05em; margin: .75rem 0 .3rem; }
+.md p { margin: .5rem 0; }
+.md ul { margin: .5rem 0; padding-left: 1.25rem; }
+.md li { margin: .15rem 0; }
+.md a { color: var(--cyan, #35d0e0); text-decoration: underline; }
+.md code { font-family: var(--font-mono, monospace); background: rgba(255,255,255,.06); padding: .05rem .35rem; border-radius: 3px; font-size: .85em; }
+.md strong { color: var(--text, #fff); }
 @media (max-width: 980px) {
   .mg-2col { grid-template-columns: 1fr; }
   .mg-rail { position: static; }

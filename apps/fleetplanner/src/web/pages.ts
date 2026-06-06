@@ -1,4 +1,4 @@
-import { html, safe, rawHtml, layout, type SafeHtml, type LayoutOptions } from "./render.js";
+import { html, safe, rawHtml, layout, renderMarkdown, type SafeHtml, type LayoutOptions } from "./render.js";
 import type { User, Operation, Ship, Location } from "@prisma/client";
 import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/discordDiagnostics.js";
 import {
@@ -1717,7 +1717,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     <section class="opv2-panel">
       <div class="opv2-panel-title">Briefing</div>
       ${op.description
-        ? html`<div style="white-space:pre-wrap;line-height:1.55">${op.description}</div>`
+        ? renderMarkdown(op.description)
         : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
       ${canManage
         ? html`<details style="margin-top:.85rem">
@@ -3138,6 +3138,19 @@ export function opWizardPage(opts: {
       .wiz-md-prev { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 12px 14px; background: rgba(0,0,0,.2); min-height: 120px; }
       .wiz-md-prev h4 { margin: .7rem 0 .25rem; color: var(--cyan, #35d0e0); }
       .wiz-md-prev h4:first-child { margin-top: 0; }
+      .wiz-md-help { margin-top: .6rem; }
+      .wiz-md-help summary { cursor: pointer; color: var(--cyan, #35d0e0); font-size: .82rem; }
+      .wiz-md-cheat { width: 100%; margin-top: .5rem; border-collapse: collapse; font-size: .82rem; }
+      .wiz-md-cheat td { padding: .25rem .5rem; border-bottom: 1px solid rgba(255,255,255,.05); }
+      .wiz-md-cheat td:first-child { white-space: nowrap; color: var(--dim, #9fb0bd); }
+      .wiz-md-cheat code { font-family: var(--font-mono, monospace); background: rgba(255,255,255,.06); padding: .05rem .3rem; border-radius: 3px; }
+      .wiz-rev-block { margin-top: 1.1rem; padding-top: .85rem; border-top: 1px solid rgba(255,255,255,.08); }
+      .wiz-rev-h { font-weight: 700; margin-bottom: .5rem; }
+      .wiz-rev-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .3rem; }
+      .wiz-rev-list li { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem .5rem; background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); }
+      .wiz-rev-list b { color: var(--cyan, #35d0e0); white-space: nowrap; }
+      .wiz-rev-md { white-space: pre-wrap; line-height: 1.55; font-size: .9rem; color: var(--text, #cdd9e1); }
+      .wiz-rev-empty { color: var(--dim, #7a8a96); font-size: .85rem; }
       @media (max-width: 1100px) {
         .wiz-layout { grid-template-columns: 1fr; }
         .wiz-rail ol { flex-direction: row; flex-wrap: wrap; }
@@ -3248,6 +3261,19 @@ export function opWizardPage(opts: {
               placeholder="## Mission Objective&#10;…&#10;&#10;## RoE&#10;…&#10;&#10;## Equipment&#10;…"
             ></textarea>
             <div class="wiz-md-prev" id="wiz-md-prev" hidden></div>
+            <details class="wiz-md-help">
+              <summary>Markdown help</summary>
+              <table class="wiz-md-cheat">
+                <tr><td><code>## Heading</code></td><td>section title</td></tr>
+                <tr><td><code>### Subheading</code></td><td>smaller title</td></tr>
+                <tr><td><code>**bold**</code></td><td><b>bold</b> text</td></tr>
+                <tr><td><code>*italic*</code></td><td><i>italic</i> text</td></tr>
+                <tr><td><code>&#96;code&#96;</code></td><td>monospace</td></tr>
+                <tr><td><code>- item</code></td><td>bullet list</td></tr>
+                <tr><td><code>[label](https://…)</code></td><td>link</td></tr>
+                <tr><td>empty line</td><td>new paragraph</td></tr>
+              </table>
+            </details>
           </section>
 
           <section class="wiz-step card" data-step="2" hidden>
@@ -3379,6 +3405,39 @@ export function opWizardPage(opts: {
         function dl(node) {
           node.innerHTML = rows().map((r) => "<dt>" + r[0] + "</dt><dd>" + esc(r[1]) + "</dd>").join("");
         }
+        // Full pre-publish recap (Review step): facts + participants + fleet
+        // requirements + briefing preview — not just the aside's 7 facts.
+        function renderReview() {
+          const minP = parseInt(val("minParticipants") || "0", 10) || 0;
+          const maxEl = document.querySelector('[name="maxParticipants"]');
+          const maxP = maxEl && maxEl.value ? parseInt(maxEl.value, 10) : 0;
+          const part = minP > 0 ? "min " + minP : "no minimum";
+          const partStr = part + (maxP > 0 ? " / max " + maxP : "");
+          let comp = [];
+          try { comp = JSON.parse((compJsonEl && compJsonEl.value) || "[]"); } catch (_) {}
+          const mdVal = (document.getElementById("wiz-md") || {}).value || "";
+          const facts = rows()
+            .map((r) => "<dt>" + r[0] + "</dt><dd>" + esc(r[1]) + "</dd>")
+            .join("") + "<dt>Participants</dt><dd>" + esc(partStr) + "</dd>";
+          const reqHtml = comp.length
+            ? '<ul class="wiz-rev-list">' +
+              comp
+                .map(
+                  (r) =>
+                    "<li><span>" + esc((CATLBL[r.category] || r.category) + " — " + r.label) +
+                    "</span><b>×" + esc(r.count) + "</b></li>",
+                )
+                .join("") +
+              "</ul>"
+            : '<p class="wiz-rev-empty">No fleet requirements added.</p>';
+          const briefHtml = mdVal.trim()
+            ? '<div class="wiz-rev-md">' + renderMd(mdVal) + "</div>"
+            : '<p class="wiz-rev-empty">No briefing written.</p>';
+          review.innerHTML =
+            '<dl class="wiz-sum">' + facts + "</dl>" +
+            '<div class="wiz-rev-block"><div class="wiz-rev-h">Fleet Requirements</div>' + reqHtml + "</div>" +
+            '<div class="wiz-rev-block"><div class="wiz-rev-h">Briefing</div>' + briefHtml + "</div>";
+        }
         function updateAside() {
           dl(summary);
           let compN = 0, compTotal = 0;
@@ -3411,7 +3470,7 @@ export function opWizardPage(opts: {
           next.hidden = i === sections.length - 1;
           submit.hidden = i !== sections.length - 1;
           errs.hidden = true;
-          if (i === sections.length - 1) dl(review);
+          if (i === sections.length - 1) renderReview();
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
         function validate(i) {
@@ -3430,8 +3489,12 @@ export function opWizardPage(opts: {
         const mdPrev = document.getElementById("wiz-md-prev");
         function renderMd(t) {
           return esc(t)
-            .replace(/^##\\s?(.*)$/gm, "<h4>$1</h4>")
-            .replace(/\\*\\*(.+?)\\*\\*/g, "<b>$1</b>")
+            .replace(/^###\\s+(.*)$/gm, "<h5>$1</h5>")
+            .replace(/^##\\s+(.*)$/gm, "<h4>$1</h4>")
+            .replace(/^#\\s+(.*)$/gm, "<h3>$1</h3>")
+            .replace(/^[-*]\\s+(.*)$/gm, "&bull; $1")
+            .replace(/\\*\\*([^*]+?)\\*\\*/g, "<b>$1</b>")
+            .replace(/\\[([^\\]]+?)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
             .replace(/\\n/g, "<br>");
         }
         mdToggle?.addEventListener("click", () => {
@@ -3903,7 +3966,7 @@ export function opJoinPage(opts: {
         <section class="card" style="margin-top:1rem">
           <h3 class="wiz-sum-h">Briefing</h3>
           ${op.description
-            ? html`<div class="join-md">${op.description}</div>`
+            ? renderMarkdown(op.description)
             : html`<p class="text-dim text-sm">No briefing yet.</p>`}
         </section>
 

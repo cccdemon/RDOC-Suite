@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { requireAuth, requireOpRole } from "../auth/middleware.js";
 import { effectiveOpRole } from "../services/guilds.js";
 import { basePath, getEnv } from "../config/env.js";
-import { searchLocalShips, shipCategory } from "../services/scwiki.js";
+import { searchLocalShips } from "../services/scwiki.js";
 import {
   registerUnit,
   deleteUnit,
@@ -146,16 +146,9 @@ async function assertRequirementFitsUnit(
   if (unitType === "squad" && !["fps", "ground"].includes(requirement.category)) {
     throw new Error("FPS squads can only fill FPS, ground or any slots");
   }
-  if (unitType === "ship" && selectedShipId) {
-    const ship = await prisma.ship.findUnique({ where: { id: selectedShipId } });
-    if (!ship) throw new Error("Ship not found");
-    const category = shipCategory(ship);
-    if (category !== "any" && category !== requirement.category) {
-      throw new Error(
-        `Ship category ${category} does not match slot category ${requirement.category}`,
-      );
-    }
-  }
+  // Ship ↔ slot category is a HINT, not a hard gate: e.g. a subcapital with
+  // punch can fill a capital role. The board flags mismatches (✓ marks a
+  // match) and the FleetOperator decides — we do NOT block on it.
 }
 
 async function assertUniqueSquadName(

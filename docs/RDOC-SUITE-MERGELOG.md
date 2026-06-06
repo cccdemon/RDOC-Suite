@@ -1,12 +1,41 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-06: Analysis — addOns/ overview + Mission-Cover-as-Service report
+## Completed Step - 2026-06-06: Fleetplanner — render briefing Markdown + wizard Markdown help
 
-User: analyse `addOns/`, write overview of what it does + a report for adding a service usable in
-fleetplanner. Two add-ons found (`addOns/CCO`, `addOns/MissionCover`) — both standalone Star
-Citizen mission-briefing **cover/poster image generators**, no backend, no suite integration.
-Deliverable: analysis doc `docs/FR-P4-mission-cover-service.md` (FeatureRequest, Prio 4) proposing
-how to fold cover-generation into the fleetplanner as an op-attached service. No code change yet.
+User: render the mission briefing (Markdown) nicely + add Markdown help while creating.
+- New XSS-safe `renderMarkdown()` in `web/render.ts` (escape-first, then #/##/### headings,
+  **bold**, *italic*, `code`, - lists, [text](https url) links, paragraphs, `<br>`) + `.md` CSS.
+  Used on the player event page briefing + the manage shell briefing (were raw pre-wrap text).
+- Wizard Briefing step: collapsible "Markdown help" cheatsheet; upgraded the live-preview
+  `renderMd` (headings/bold/links/lists). (Discord renders its own Markdown for the event
+  description, so no change needed there.)
+
+## Completed Step - 2026-06-06: Fleetplanner — composition category is a hint, not a gate
+
+User: "subcapital does not match capital" blocked assignment, but a subcapital with punch can
+fill a capital role — let the FleetOperator decide. `assertRequirementFitsUnit` no longer throws
+on a ship↔slot category mismatch; the board still flags it (✓ marks a match) but the operator
+chooses. Kept the structural guards (slot belongs to op, not full, valid category, FPS squad
+only into fps/ground/any). Dropped the now-unused `shipCategory` import.
+
+## Completed Step - 2026-06-06: Fleetplanner — richer Create-Event wizard Review step
+
+The wizard Review (step 5) only re-listed the same 7 facts as the Summary aside (thin + redundant).
+New `renderReview()` builds a full pre-publish recap: event facts + Participants (min/max) +
+Fleet Requirements list (category — label ×count) + rendered Briefing preview. `show()` calls it
+instead of the plain `dl(review)`. Client-only (reads form + compositionJson), no backend change.
+
+## Queued / Planned Step - 2026-06-06: Analysis — addOns/ overview + Mission-Cover microservice report
+
+User: analyse `addOns/`, write overview + report for adding the cover generator as a **service**.
+Two add-ons (`addOns/CCO`, `addOns/MissionCover`) — both standalone SC mission-briefing
+**cover/poster image generators**, no backend, no suite integration.
+**Decision (user):** build **MissionCover (Gen 2)** as a **standalone microservice** in the suite
+(`apps/mission-cover`, own container `rdoc-suite-mission-cover`), **server-render (Option C)** via
+headless Chromium. Fleetplanner stays thin: M2M API (Bearer secret, same pattern as
+`BRIDGE_FLEET_SECRET`/`bridgeFetch`) sends op data, service renders + stores + returns image
+**links**. Module stays self-contained. **CCO branding + author Vi5E (YouTube/Twitch links) stay.**
+Deliverable: design doc `docs/FR-P4-mission-cover-service.md` (FeatureRequest, Prio 4). No code yet.
 
 ## Completed Step - 2026-06-06: Fleetplanner — fix dead Create-Event wizard (TDZ) + premature submit
 
