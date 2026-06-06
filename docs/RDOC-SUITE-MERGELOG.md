@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — player event page layout fix
+
+Live screenshot review (Admiral, public Testing Operation): Fleet Requirements table rendered
+unreadable — labels broke one char per line ("Fig/ht/er/Sq/ua/dr/on/s") and the header
+collided ("REQUIREREQUESTED"). Cause: `.req-name strong { overflow-wrap: anywhere }` + label
+column `minmax(0,1fr)` (collapses to ~50px) inside the cramped `.join-row2` half-column.
+Also large dead margins left/right from `.event-shell` max-width 1180 on wide monitors.
+
+Fix (CSS in `opJoinPage`): remove the char-shredding overflow-wrap (→ normal word wrap), label
+column `minmax(8rem,1fr)` + narrower numeric cols, shell max-width 1180 → 1480. Build passed.
+
 ## Completed Step - 2026-06-06: Fleetplanner — remove Classic create View entirely
 
 Verified: `pnpm --filter @rdoc-suite/fleetplanner build` + `test` (235) pass. Commit + deploy

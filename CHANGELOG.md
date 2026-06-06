@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Fleetplanner: player event page layout (2026-06-06)
+
+- Fleet Requirements table was unreadable — labels wrapped one character per line and the header columns overlapped ("REQUIREREQUESTED"). Removed the `overflow-wrap: anywhere` char-shredding on requirement names and gave the label column a real minimum width (`minmax(8rem, 1fr)`, narrower numeric columns).
+- Widened the event page shell (1180px → 1480px) so it uses more of the viewport and leaves less dead margin left/right on wide monitors.
+
 ### Removed - Fleetplanner: classic event-create form (2026-06-06)
 
 - The guided wizard (`/ops/new/wizard`) is now the only event-creation UI. `GET /ops/new` redirects to it; the `/ui-mode` toggle + `fpui` cookie and the "Classic form" / "Assistent (neu)" switch links are gone. `opFormPage` remains as the edit form (`/ops/:id/edit`).

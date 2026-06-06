@@ -3329,7 +3329,7 @@ export function opJoinPage(opts: {
         : safe("");
 
   const body = html` <style>
-      .event-shell { max-width: 1180px; margin: 0 auto; }
+      .event-shell { max-width: 1480px; margin: 0 auto; }
       .event-hero {
         min-height: 250px;
         display: grid;
@@ -3365,10 +3365,10 @@ export function opJoinPage(opts: {
       .join-seat { display: flex; justify-content: space-between; gap: .75rem; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
       .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; white-space: nowrap; }
       .req-table { display: grid; gap: .35rem; }
-      .req-row { display: grid; grid-template-columns: minmax(0, 1fr) 5.8rem 5.8rem 6.5rem; gap: .5rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+      .req-row { display: grid; grid-template-columns: minmax(8rem, 1fr) 5rem 5rem 5.5rem; gap: .5rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
       .req-head { color: var(--dim); font-family: var(--font-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
       .req-name { min-width: 0; }
-      .req-name strong { display: block; overflow-wrap: anywhere; }
+      .req-name strong { display: block; overflow-wrap: normal; word-break: normal; }
       .req-name span { color: var(--dim); font-size: .76rem; }
       .req-num { font-family: var(--font-mono); font-weight: 700; }
       .join-md { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.55; color: var(--text, #cdd9e1); }
