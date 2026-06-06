@@ -12,6 +12,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-06-06",
+    title: "Mission cover generator",
+    changes: [
+      "New Mission Cover page on each operation (operators): generate a cinematic Star-Citizen briefing cover from the op's own data, or open the editor to fine-tune background, logos, fonts and effects.",
+      "The cover is used for the mission — shown as the banner on the operation page, as the link-preview image when you share the op, and as the Discord scheduled-event image (updated automatically when you regenerate it).",
+      "Optional checkbox in the Create-Event wizard to jump straight to the cover after creating an operation.",
+      "Covers of completed or cancelled operations are cleaned up automatically after 14 days.",
+    ],
+  },
+  {
+    date: "2026-06-06",
+    title: "Fleet import, ground vehicles & event polish",
+    changes: [
+      "Import your fleet from a CCU-Game JSON export on your profile to bulk-add owned ships.",
+      "Ships with a big-enough cargo bay can carry a ground vehicle as a crewable sub-unit with its own seats, nested under the carrier ship; the operator accepts the ship and its vehicles together.",
+      "Mission briefings now render Markdown (headings, bold, lists, links), with a Markdown cheatsheet in the event wizard.",
+      "Rebuilt operator management workspace: a clear status flow (Draft → Open → Live → Done) with a 'next step' button and a 'what needs you' command rail.",
+      "Rejecting a unit now frees its seats; you can configure your offered ship's seats or withdraw it while it is still pending.",
+    ],
+  },
+  {
     date: "2026-06-03",
     title: "Primary voice channel & looser voice rules",
     changes: [
