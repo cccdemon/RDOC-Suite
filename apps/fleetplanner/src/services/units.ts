@@ -1,5 +1,6 @@
 import { prisma } from "../db.js";
 import { specForShip, specForSquad } from "./seats.js";
+import { shipCanCarryVehicle } from "./scwiki.js";
 import type { Prisma, Ship } from "@prisma/client";
 
 export type RegisterUnitInput = {
@@ -33,12 +34,15 @@ export async function registerUnit(
     if (!input.carrierUnitId) throw new Error("A vehicle must be carried by a ship");
     const carrier = await prisma.fleetUnit.findUnique({
       where: { id: input.carrierUnitId },
-      select: { operationId: true, status: true, unitType: true },
+      select: { operationId: true, status: true, unitType: true, ship: true },
     });
     if (!carrier || carrier.operationId !== operationId) {
       throw new Error("Carrier ship not found in this operation");
     }
     if (carrier.unitType !== "ship") throw new Error("Vehicles can only attach to a ship");
+    if (!shipCanCarryVehicle(carrier.ship)) {
+      throw new Error("This ship cannot carry a ground vehicle");
+    }
     vehicleStatus = carrier.status;
   }
 

@@ -202,3 +202,26 @@ export function shipCategory(ship: Ship): string {
   if (career.includes("exploration") || career.includes("pathfinder")) return "exploration";
   return "any";
 }
+
+/** Can this ship physically carry a ground vehicle? True only if it has a cargo
+ *  grid whose opening is big enough for a vehicle (≥2.4m × 2.4m × ≥4m). This
+ *  cleanly separates carriers (Perseus 10×2.5×7.5, Asgard 6.25×5×11.25) from
+ *  non-carriers (Paladin 1.25×1.25×5, fighters with no grid). A vehicle itself
+ *  never carries one. */
+export function shipCanCarryVehicle(
+  ship: { size?: string | null; rawJson?: string | null } | null | undefined,
+): boolean {
+  if (!ship) return false;
+  if ((ship.size ?? "").toLowerCase() === "vehicle") return false;
+  try {
+    const raw = JSON.parse(ship.rawJson ?? "{}") as {
+      cargo_grids?: Array<{ width?: number; height?: number; length?: number }>;
+    };
+    const grids = Array.isArray(raw.cargo_grids) ? raw.cargo_grids : [];
+    return grids.some(
+      (g) => Number(g?.width) >= 2.4 && Number(g?.height) >= 2.4 && Number(g?.length) >= 4,
+    );
+  } catch {
+    return false;
+  }
+}

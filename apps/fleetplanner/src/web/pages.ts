@@ -11,6 +11,7 @@ import {
 import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { matchesCategory, suggestSlot } from "../services/composition.js";
+import { shipCanCarryVehicle } from "../services/scwiki.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
 
@@ -868,7 +869,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const availableSlots = availableSlotsForUnit();
 
   const unitRows = activeUnits.length
-    ? activeUnits.map((unit) => {
+    ? activeUnits
+        .filter((u) => u.unitType !== "vehicle")
+        .map((unit) => {
         const seats = unit.seats.filter((seat) => seat.active);
         const assigned = seats.filter((seat) => seat.userId).length;
         const free = Math.max(seats.length - assigned, 0);
@@ -1033,6 +1036,41 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           <div class="opv2-unit-body">
             ${unitActions}
             <div class="opv2-seat-list">${unit.seats.map((seat) => seatRow(unit, seat))}</div>
+            ${activeUnits
+              .filter((v) => v.unitType === "vehicle" && v.carrierUnitId === unit.id)
+              .map(
+                (v) => html`<div class="opv2-unit-vehicle">
+                  <div class="opv2-unit-main">
+                    <strong>${unitName(v)}</strong> <span class="tag tag-cyan">Vehicle</span>
+                  </div>
+                  <div class="opv2-seat-list">${v.seats.map((seat) => seatRow(v, seat))}</div>
+                  ${canManage
+                    ? html`<form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/delete" class="inline">
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        ${returnFields("fleet")}
+                        <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Remove this vehicle?')">
+                          Remove vehicle
+                        </button>
+                      </form>`
+                    : safe("")}
+                </div>`,
+              )}
+            ${canManage && unit.unitType === "ship" && shipCanCarryVehicle(unit.ship)
+              ? html`<details class="opv2-edit-block mt-1">
+                  <summary class="btn btn-sm btn-ghost">Add ground vehicle</summary>
+                  <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form mt-1" novalidate>
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <input type="hidden" name="unitType" value="vehicle" />
+                    <input type="hidden" name="carrierUnitId" value="${unit.id}" />
+                    <label>Vehicle (catalog)</label>
+                    <input type="search" class="opv2-ship-search" placeholder="Cyclone, Nova, ATLS…" autocomplete="off" />
+                    <input type="hidden" name="shipId" class="opv2-ship-id-field" />
+                    <div class="ship-results opv2-ship-results"></div>
+                    <button type="submit" class="btn btn-sm mt-1">Add vehicle</button>
+                  </form>
+                </details>`
+              : safe("")}
             ${editUnit} ${seatSetup(unit)}
           </div>
         </details>`;
@@ -3741,6 +3779,7 @@ export function opJoinPage(opts: {
       name: u.squadName || u.ship?.name || "Unit",
       kind: u.unitType === "ship" ? "Ship" : "FPS Fireteam",
       isShip: u.unitType === "ship",
+      canCarry: u.unitType === "ship" && shipCanCarryVehicle(u.ship),
       isMyUnit: !!myId && u.captainId === myId,
       seats: seatView(u),
       editSeats: u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
@@ -4233,7 +4272,8 @@ export function opJoinPage(opts: {
                     </div>`,
                   )}
                   ${u.isMyUnit
-                    ? html`${seatEditDetails(u.id, u.editSeats)} ${u.isShip ? addVehicleForm(u.id) : safe("")}
+                    ? html`${seatEditDetails(u.id, u.editSeats)}
+                        ${u.isShip && u.canCarry ? addVehicleForm(u.id) : safe("")}
                         ${withdrawShipForm(u.id)}`
                     : safe("")}
                 </div>`,
