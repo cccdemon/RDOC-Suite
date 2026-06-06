@@ -1,4 +1,7 @@
-# RDOC-Suite Mergelog
+# RDOC-Suite Mergelog — ARCHIV (vor 2026-06-02)
+
+> **Archiv, nicht aktiv pflegen.** Aktueller Log = [`RDOC-SUITE-MERGELOG.md`](RDOC-SUITE-MERGELOG.md).
+> Diese Datei hält die topic-basierte Früh-Historie (2026-05-30 … 06-02) — u.a. den **Tenant-Overhaul (Op-Visibility + `GuildPartnership`)** und den ersten Fleetplanner-Feature-Dump —, die NICHT ins chronologische Log übernommen wurde. Nur als Referenz.
 
 Stand: 2026-06-02
 

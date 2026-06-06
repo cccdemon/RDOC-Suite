@@ -248,6 +248,7 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 | Datei | Zweck |
 |---|---|
 | [docs/RDOC-SUITE-MERGELOG.md](docs/RDOC-SUITE-MERGELOG.md) | **Primäre Quelle** — Queued/Completed/Decisions. Vor jeder Änderung lesen und schreiben. |
+| [docs/MERGELOG-archive-pre-2026-06-02.md](docs/MERGELOG-archive-pre-2026-06-02.md) | Archiv (nicht pflegen): topic-basierte Früh-Historie inkl. Tenant-Overhaul + erster Fleetplanner-Feature-Dump. |
 | [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md) | Feature-Backlog Fleetplanner — was done, was fehlt. |
 | [docs/admin-guide.md](docs/admin-guide.md) | Slash-Commands, Bot-Invite, Credential-Flow |
 | [docs/commander-guide.md](docs/commander-guide.md) | Companion-Install, Hotkey, Audio |
