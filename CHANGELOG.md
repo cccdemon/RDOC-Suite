@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Egress lockdown in the renderer (anti-SSRF): only `file:`/`data:` + font CDNs + a configurable host allowlist; everything else aborted. Inputs Zod-validated, dimensions/payload capped, runs as non-root.
 - **Fleetplanner** stays thin: client `services/coverService.ts` (mirrors `bridge.ts`), env-gated via `MISSIONCOVER_SERVICE_SECRET` (`coverServiceConfigured()`); compose wires `MISSIONCOVER_SERVICE_URL`.
 
+### Fixed - Mission-cover: editor save HTTP 413 on large images (2026-06-06)
+
+- The editor "save to operation" posts full-res background + custom-logo data URLs; the 8 MB request-body limit rejected them with HTTP 413. Raised the mission-cover body limit to 32 MB (`MAX_PAYLOAD_BYTES`). Verified: a 10 MB body now returns 201.
+
 ### Added - Mission-cover: image cleanup service (2026-06-06)
 
 - The mission-cover service gained `DELETE /v1/covers/:id` (M2M). A fleetplanner scheduler (`coverCleanup`, every 6h) purges the rendered image **and** the `OpCover` pointer for operations that are **completed or cancelled and whose event date is older than 14 days**. Manually removing a cover now also deletes the artifact in the service (previously only the DB pointer was dropped).
