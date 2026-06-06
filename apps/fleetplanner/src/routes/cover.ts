@@ -130,8 +130,16 @@ export async function coverRoutes(app: FastifyInstance): Promise<void> {
       const preset = pickPreset(req.body.preset);
       try {
         const res = await requestCover({ opId: op.id, format, preset, data: opToCoverData(op) });
-        await upsertCover(op.id, res);
-        syncDiscordEventImage(op.guildId, op.discordEventId, res.url, req);
+        const url = res.urls.png;
+        await upsertCover(op.id, {
+          id: res.id,
+          url,
+          width: res.width,
+          height: res.height,
+          preset: res.preset,
+          format: res.format,
+        });
+        syncDiscordEventImage(op.guildId, op.discordEventId, url, req);
         return reply.redirect(coverUrl(op.id, "ok:Cover+erstellt."), 302);
       } catch (err) {
         req.log.error(err, "cover generate failed");
