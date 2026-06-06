@@ -59,6 +59,7 @@ import {
 } from "../services/operations.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import { importUserFleet } from "../services/fleetImport.js";
+import { createSeriesForOp } from "../services/recurrence.js";
 import {
   deleteScheduledEvent,
   fetchGuildVoiceChannels,
@@ -345,6 +346,42 @@ export async function webRoutes(app: FastifyInstance) {
             : null,
       });
       await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "");
+      // FR-P3: optional recurring series. Pattern is derived from the chosen
+      // date; the operator only picks a frequency (+ optional end).
+      const RECUR_FREQS = new Set(["weekly", "biweekly", "monthly_nth", "yearly"]);
+      if (RECUR_FREQS.has(req.body.recurFreq)) {
+        try {
+          const seriesCount =
+            req.body.recurCount && parseInt(req.body.recurCount, 10) > 0
+              ? Math.min(365, parseInt(req.body.recurCount, 10))
+              : null;
+          const seriesEnd = req.body.recurUntil
+            ? parseDateLocalTz(`${req.body.recurUntil}T23:59`, guildTz)
+            : null;
+          await createSeriesForOp({
+            op: {
+              id: op.id,
+              guildId: op.guildId,
+              createdById: ctx.user.id,
+              scheduledAt: parsedDate,
+              title: op.title,
+              description: op.description,
+              opType: op.opType,
+              visibility: op.visibility,
+              meetingSystem: op.meetingSystem,
+              meetingLocation: op.meetingLocation,
+              minParticipants: op.minParticipants,
+              maxParticipants: op.maxParticipants,
+            },
+            freq: req.body.recurFreq as "weekly" | "biweekly" | "monthly_nth" | "yearly",
+            timezone: guildTz,
+            seriesEnd,
+            seriesCount,
+          });
+        } catch {
+          /* recurrence is optional — never fail op creation on it */
+        }
+      }
       // Wizard composition (Phase 3): optional JSON of requirement rows. Create
       // one "Fleet Requirements" group + requirements. Bad input is ignored so
       // op creation never fails on it.
@@ -1126,6 +1163,33 @@ export async function webRoutes(app: FastifyInstance) {
       } catch {
         return reply.redirect(basePath(`/ops/${req.params.id}/manage?tab=admin&flash=error:Delete+failed`), 302);
       }
+    },
+  );
+
+  // ── Stop a recurring series (FR-P3) ─────────────────────────────────
+  // Deactivates the series so no further occurrences spawn. Already-spawned
+  // operations stay. The native Discord recurring event is left in place.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/ops/:id/recurrence/stop",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const op = await prisma.operation.findUnique({
+        where: { id: req.params.id },
+        select: { recurrenceId: true },
+      });
+      if (op?.recurrenceId) {
+        await prisma.operationRecurrence.update({
+          where: { id: op.recurrenceId },
+          data: { active: false },
+        });
+        await logAudit(req.params.id, ctx.user.id, ctx.user.username, "recurrence_stopped", "");
+      }
+      return reply.redirect(
+        basePath(`/ops/${req.params.id}/manage?tab=admin&flash=ok:Recurring+series+stopped.`),
+        302,
+      );
     },
   );
 

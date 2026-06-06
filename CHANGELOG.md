@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetplanner: recurring events (FR-P3) (2026-06-06)
+
+- An operation can **repeat** (weekly / every 2 weeks / monthly on the same weekday / yearly) — set "Repeat" in the create wizard; the pattern follows the start date you pick. Each occurrence becomes its own operation with its own roster, and the Discord scheduled event shows the native recurring badge.
+- A scheduler rolling-spawns the next occurrence ahead of time (timezone- and DST-correct). Optionally end the series after N occurrences or a date. Operators can **Stop series** from the manage Admin tab (already-created occurrences stay).
+
 ### Changed - Fleetplanner: complete GUI overhaul (player-first + assistant manage workspace) (2026-06-06)
 
 A full front-end redesign of the operation experience (the individual entries below detail each step):

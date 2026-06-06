@@ -5,6 +5,7 @@ import { startLocationSyncScheduler } from "./services/locations.js";
 import { startReminderScheduler } from "./services/reminderScheduler.js";
 import { startVoiceSessionScheduler } from "./services/voiceSession.js";
 import { startCoverCleanupScheduler } from "./services/coverCleanup.js";
+import { startRecurrenceScheduler } from "./services/recurrence.js";
 
 const env = getEnv();
 const app = await buildApp();
@@ -31,6 +32,11 @@ try {
   });
   // Purge mission covers of completed/cancelled ops older than 14 days.
   startCoverCleanupScheduler({
+    info: (msg) => app.log.info(msg),
+    error: (e, msg) => app.log.error(e, msg),
+  });
+  // FR-P3: rolling-spawn concrete ops from recurring-operation series.
+  startRecurrenceScheduler({
     info: (msg) => app.log.info(msg),
     error: (e, msg) => app.log.error(e, msg),
   });

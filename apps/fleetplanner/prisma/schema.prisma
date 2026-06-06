@@ -56,6 +56,7 @@ model Guild {
   owner         User?               @relation("GuildOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
   memberships   GuildMembership[]
   operations    Operation[]
+  recurrences   OperationRecurrence[]
   voiceBots     GuildVoiceBot[]
   voiceChannels FleetVoiceChannel[]
   partnershipsSent     GuildPartnership[] @relation("PartnershipA")
@@ -283,11 +284,14 @@ model Operation {
   globalVoiceRoom       String?   // LiveKit room name for Global Radio Net publish room
   commanderVoiceRoom    String?   // LiveKit room name for Command Net room
   reminderSentAt        DateTime? // set once reminder DMs have been dispatched; null = not yet sent
+  recurrenceId          String?   // FR-P3: set on instances spawned from an OperationRecurrence series
+  occurrenceAt          DateTime? // the series occurrence datetime this instance materialises
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   guild                    Guild                     @relation(fields: [guildId], references: [id], onDelete: Cascade)
   createdBy                User                      @relation(fields: [createdById], references: [id])
+  recurrence               OperationRecurrence?      @relation(fields: [recurrenceId], references: [id], onDelete: SetNull)
   leaders                  OperationLeader[]
   groups                   CompositionGroup[]
   units                    FleetUnit[]
@@ -298,6 +302,43 @@ model Operation {
   auditLogs                AuditLog[]
   questions                OpQuestion[]
   cover                    OpCover?
+
+  @@index([recurrenceId])
+}
+
+// FR-P3: a recurring-operation series. Approach A — one native recurring
+// Discord event (recurrence_rule) + a scheduler that rolling-spawns concrete
+// Operation instances from templateJson. count/end are Fleetplanner-enforced
+// (Discord can't store them).
+model OperationRecurrence {
+  id            String   @id @default(cuid())
+  guildId       String
+  createdById   String
+  freq          String // weekly | biweekly | monthly_nth | yearly
+  byWeekday     Int? // 0=Mon … 6=Sun (weekly/biweekly/monthly_nth)
+  nthWeek       Int? // 1..5 nth weekday of month (monthly_nth)
+  byMonth       Int? // 1..12 (yearly)
+  byMonthDay    Int? // 1..31 (yearly)
+  timeOfDay     String // "HH:MM" local
+  timezone      String   @default("Europe/Berlin")
+  anchorAt      DateTime // first occurrence (UTC) — biweekly parity anchor
+  seriesEnd     DateTime? // stop spawning after this (Fleetplanner-enforced)
+  seriesCount   Int? // stop after N occurrences
+  spawnedCount  Int      @default(0)
+  leadTimeHours Int      @default(168) // spawn the next instance this many hours ahead
+  nextRunAt     DateTime // next occurrence to spawn
+  lastSpawnedAt DateTime?
+  active        Boolean  @default(true)
+  templateJson  String // op blueprint (title, opType, system, location, visibility, …)
+  discordRecurringEventId String? // native recurring Discord scheduled-event id
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  guild      Guild       @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  operations Operation[]
+
+  @@index([guildId])
+  @@index([active, nextRunAt])
 }
 
 // FR-P4: mission cover image rendered by the @rdoc-suite/mission-cover

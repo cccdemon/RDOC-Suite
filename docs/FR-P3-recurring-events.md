@@ -1,7 +1,10 @@
 # Recurring Events — RRULE series that spawn op instances
 
 **FeatureRequest — Priority 3** (scale 1 highest … 5 lowest)
-**Status:** Plan approved 2026-06-05, **NOT yet implemented**. No schema/code exists.
+**Status:** ✓ **Implemented 2026-06-06** (Approach A). `OperationRecurrence` schema + migration,
+`services/recurrence.ts` (tz/DST-correct occurrence math, rolling spawner, Discord `recurrence_rule`),
+scheduler, wizard "Repeat" picker (pattern derived from the chosen date), Stop-series. **Deferred:**
+series-level distribution (decision 4 — needs FR-P1) and edit-series-template (edit semantics §52).
 **Split from:** the former combined `partner-events-plan.md`.
 
 ## Dependencies

@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: FR-P3 Recurring Events (RRULE, Approach A)
+
+DONE: schema + migration `20260606160000_recurring_events`; `services/recurrence.ts` (tz/DST-correct
+`nextOccurrence`, `discordRecurrenceRule`, rolling `spawnDueOccurrences`, `createSeriesForOp`);
+scheduler in index.ts; `createScheduledEvent` recurrence_rule + getOperation include; wizard "Repeat"
+picker (pattern derived from chosen date) + create-route wiring; Stop-series route + manage card.
+9 unit tests (weekly/biweekly/monthly-nth/yearly + DST). Build + 244 tests pass. Series-distribution
+deferred (needs FR-P1); edit-series-template = follow-up.
+
+
+Implement recurring operations. Approach A (per FR-P3 decisions): one native recurring Discord
+event (`recurrence_rule`) + Fleetplanner rolling-spawns concrete op instances.
+- Schema `OperationRecurrence` (structured pattern: weekly / biweekly / monthly-nth / yearly +
+  timeOfDay + tz + seriesEnd/seriesCount + leadTimeHours + nextRunAt + templateJson +
+  discordRecurringEventId) + `Operation.recurrenceId`/`occurrenceAt` + migration.
+- `services/recurrence.ts`: tz-aware `nextOccurrence` (DST-correct via Intl + parseDateLocalTz),
+  `discordRecurrenceRule` (maps to Discord's constrained subset), `spawnDueOccurrences` (rolling:
+  spawn next op when nextRunAt − leadTime ≤ now, enforce seriesEnd/count, advance nextRunAt).
+- Scheduler in index.ts; `createScheduledEvent` takes optional recurrence_rule (native event once).
+- Wizard recurrence picker + create-route wiring; Stop-series action. Series-distribution deferred
+  (needs FR-P1). Edit-series-template = follow-up. Build + tests, verify occurrence math.
+
 ## Completed Step - 2026-06-06: Mission-Cover image cleanup service (FR-P4)
 
 User: clean up cover images only when the op is closed/cancelled AND older than 14 days.

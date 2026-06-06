@@ -13,6 +13,15 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-06",
+    title: "Recurring events",
+    changes: [
+      "Operations can now repeat: pick \"Repeat\" in the create wizard (weekly, every 2 weeks, monthly on the same weekday, or yearly) — the pattern follows your start date.",
+      "Each occurrence is created as its own operation with its own roster and voice; the Discord event shows the native recurring badge.",
+      "Optionally end the series after a number of occurrences or a date, and stop a running series anytime from the operation's Admin tab.",
+    ],
+  },
+  {
+    date: "2026-06-06",
     title: "Smarter fleet import & sortable ship list",
     changes: [
       "Fleet import now matches short ship names to the full catalog name (e.g. \"Ares Ion\" → Ares Star Fighter Ion), so far more of your ships import automatically.",

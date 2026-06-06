@@ -2466,6 +2466,35 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <a class="btn btn-sm" href="${bp}/ops/${op.id}/cover">Cover erstellen / bearbeiten</a>
               </div>`
             : safe("")}
+          ${canManage && op.recurrence
+            ? html`<div class="mg-card">
+                <h4>Recurring series</h4>
+                <p class="text-dim text-sm">
+                  ${op.recurrence.freq === "weekly"
+                    ? "Repeats weekly"
+                    : op.recurrence.freq === "biweekly"
+                      ? "Repeats every 2 weeks"
+                      : op.recurrence.freq === "monthly_nth"
+                        ? "Repeats monthly (same weekday)"
+                        : op.recurrence.freq === "yearly"
+                          ? "Repeats yearly"
+                          : "Recurring"}${op.recurrence.active ? "" : " — stopped"}. Each occurrence
+                  is its own operation.
+                </p>
+                ${op.recurrence.active
+                  ? html`<form method="post" action="${bp}/ops/${op.id}/recurrence/stop">
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <button
+                        type="submit"
+                        class="btn btn-sm"
+                        onclick="return confirm('Stop this recurring series? Already-created occurrences stay; no new ones spawn.')"
+                      >
+                        Stop series
+                      </button>
+                    </form>`
+                  : safe("")}
+              </div>`
+            : safe("")}
           ${canManage
             ? html`<details class="mg-card">
                 <summary style="cursor:pointer;color:var(--dim);font-size:.85rem">Delete operation</summary>
@@ -3481,6 +3510,30 @@ export function opWizardPage(opts: {
                 </select>
               </div>
             </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Repeat</label>
+                <select name="recurFreq">
+                  <option value="">Does not repeat</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="biweekly">Every 2 weeks</option>
+                  <option value="monthly_nth">Monthly (same weekday)</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Ends after <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                <input type="number" name="recurCount" min="1" max="365" placeholder="N occurrences" />
+              </div>
+              <div class="form-group">
+                <label>…or until <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                <input type="date" name="recurUntil" />
+              </div>
+            </div>
+            <p class="text-dim text-sm" style="margin:-4px 0 4px">
+              Recurring events: each occurrence becomes its own operation with its own roster, and
+              Discord shows the native recurring badge. The pattern follows the Start Time you pick.
+            </p>
             <div class="form-row">
               <div class="form-group">
                 <label>System</label>

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import sharp from "sharp";
 import { getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
+import { discordRecurrenceRule, type RecurrenceLike } from "./recurrence.js";
 
 const DISCORD_API = "https://discord.com/api/v10";
 
@@ -317,6 +318,7 @@ export async function createScheduledEvent(op: {
   eventVoiceChannelId?: string | null;
   opType?: string | null;
   cover?: { url: string } | null;
+  recurrence?: RecurrenceLike | null;
 }): Promise<DiscordEventResult> {
   const env = getEnv();
   const token = fleetplannerBotToken();
@@ -331,6 +333,11 @@ export async function createScheduledEvent(op: {
   const image = (op.cover?.url ? await coverImageDataUri(op.cover.url) : null)
     ?? (await opTypeImageDataUri(op.opType));
 
+  // FR-P3: a recurring series gets one native recurring Discord event.
+  const recurrenceRule = op.recurrence
+    ? discordRecurrenceRule(op.recurrence, startTime)
+    : null;
+
   const body = voiceChannelId
     ? {
         name: op.title,
@@ -340,6 +347,7 @@ export async function createScheduledEvent(op: {
         entity_type: 2, // VOICE
         channel_id: voiceChannelId,
         ...(image ? { image } : {}),
+        ...(recurrenceRule ? { recurrence_rule: recurrenceRule } : {}),
       }
     : {
         name: op.title,
@@ -352,6 +360,7 @@ export async function createScheduledEvent(op: {
           location: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${op.id}`,
         },
         ...(image ? { image } : {}),
+        ...(recurrenceRule ? { recurrence_rule: recurrenceRule } : {}),
       };
 
   const res = await fetch(`${DISCORD_API}/guilds/${op.guildId}/scheduled-events`, {
