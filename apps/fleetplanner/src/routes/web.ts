@@ -468,7 +468,7 @@ export async function webRoutes(app: FastifyInstance) {
     },
   );
 
-  // ── Ask the FleetOperator: post a question ───────────────────────────
+  // ── Ask the Fleet Operator: post a question ──────────────────────────
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
     "/ops/:id/questions",
     async (req, reply) => {
@@ -486,7 +486,7 @@ export async function webRoutes(app: FastifyInstance) {
         });
         await logAudit(op.id, ctx.user.id, ctx.user.username, "question", "");
       }
-      return reply.redirect(basePath(`/ops/${op.id}/join?flash=ok:Frage+gesendet.`), 302);
+      return reply.redirect(basePath(`/ops/${op.id}/join?flash=ok:Question+sent.`), 302);
     },
   );
 

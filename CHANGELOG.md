@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: player signup and Fleet Requirements wording polish (2026-06-06)
+
+- Renamed remaining player/operator-facing "Composition" and "Fleet Needs" wording to **Fleet Requirements**.
+- The requirements overview now uses **Requested**, **Fulfilled**, and **Open Slots**; fulfilled counts accepted ships or teams, while pending and extra units are shown separately.
+- Cleaned the participant join page to stay fully English: event facts, join choices, Open Seats, Fleet Requirements, questions, and signup status.
+
 ### Changed — Fleetplanner: wizard + join view aligned to the operator/player design spec (2026-06-06)
 
 - **Wizard:** 5 steps now (Basics — incl. rendezvous + visibility — / Briefing / Discord / Fleet Requirements / Review), English labels, "Ready to Open" readiness items (Event Voice Channel, Announcement Channel, Fleet Requirements, Minimum Participants, Commander Net), "Save as Draft" as the primary action, live Summary. "Composition" is now "Fleet Requirements".

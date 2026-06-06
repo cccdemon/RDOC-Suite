@@ -126,20 +126,20 @@ async function assertRequirementFitsUnit(
     },
   });
   if (!requirement || requirement.group.operationId !== operationId) {
-    throw new Error("Composition slot does not belong to this operation");
+    throw new Error("Fleet Requirement slot does not belong to this operation");
   }
   const filled = requirement.fleetUnits.filter(
     (unit) => unit.id !== currentUnitId && unit.status !== "rejected",
   ).length;
   if (filled >= requirement.count) {
-    throw new Error("Composition slot is already full");
+    throw new Error("Fleet Requirement slot is already full");
   }
   if (
     !REQUIREMENT_CATEGORIES.includes(
       requirement.category as (typeof REQUIREMENT_CATEGORIES)[number],
     )
   ) {
-    throw new Error("Composition slot has an invalid category");
+    throw new Error("Fleet Requirement slot has an invalid category");
   }
   if (requirement.category === "any") return;
   if (unitType === "squad" && !["fps", "ground"].includes(requirement.category)) {
@@ -1442,7 +1442,7 @@ export async function apiRoutes(app: FastifyInstance) {
     },
   );
 
-  // ── Composition groups ───────────────────────────────────────────────
+  // ── Fleet Requirement groups ─────────────────────────────────────────
   app.post<{ Params: { id: string }; Body: Record<string, string> }>(
     "/api/ops/:id/groups",
     async (req, reply) => {
@@ -1485,7 +1485,7 @@ export async function apiRoutes(app: FastifyInstance) {
     },
   );
 
-  // ── Composition requirements ─────────────────────────────────────────
+  // ── Fleet Requirements ───────────────────────────────────────────────
   app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
     "/api/ops/:id/groups/:groupId/requirements",
     async (req, reply) => {
@@ -1552,11 +1552,11 @@ export async function apiRoutes(app: FastifyInstance) {
       }
       const group =
         (await prisma.compositionGroup.findFirst({
-          where: { operationId: req.params.id, name: "Fleet Needs" },
+          where: { operationId: req.params.id, name: "Fleet Requirements" },
           select: { id: true },
         })) ??
         (await prisma.compositionGroup.create({
-          data: { operationId: req.params.id, name: "Fleet Needs", order: 0 },
+          data: { operationId: req.params.id, name: "Fleet Requirements", order: 0 },
           select: { id: true },
         }));
       const last = await prisma.compositionRequirement.aggregate({

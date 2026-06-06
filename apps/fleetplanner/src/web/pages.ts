@@ -37,7 +37,7 @@ const REQUIREMENT_CATEGORIES = [
   "any",
 ] as const;
 
-// Composition starter templates for the creation wizard (FR-P1 Phase 3). Hosts
+// Fleet Requirements starter templates for the creation wizard (FR-P1 Phase 3). Hosts
 // load one and then tweak rows; nothing is locked. Categories must be valid
 // REQUIREMENT_CATEGORIES.
 const COMPOSITION_TEMPLATES = [
@@ -627,7 +627,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           groupSum +
           Math.min(
             requirement.count,
-            requirement.fleetUnits.filter((unit) => unit.status !== "rejected").length,
+            requirement.fleetUnits.filter((unit) => unit.status === "accepted").length,
           ),
         0,
       ),
@@ -1446,21 +1446,24 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </section>
   </div>`;
 
-  // ── Fleet Needs Board (read-only soll/ist/offen overview) ───────────
+  // ── Fleet Requirements Board (read-only requested/fulfilled/open overview) ──
   type CompRow = {
     group: string;
     label: string;
     category: string;
     count: number;
-    filled: number;
+    fulfilled: number;
+    pending: number;
     open: number;
+    extra: number;
     mismatches: number;
   };
   const compRows: CompRow[] = op.groups.flatMap((g) =>
     g.requirements.map((r) => {
-      const units = r.fleetUnits.filter((u) => u.status !== "rejected");
-      const filled = units.length;
-      const mismatches = units.filter(
+      const accepted = r.fleetUnits.filter((u) => u.status === "accepted");
+      const pending = r.fleetUnits.filter((u) => u.status === "pending").length;
+      const fulfilled = accepted.length;
+      const mismatches = accepted.filter(
         (u) => !matchesCategory(r.category, { unitType: u.unitType, ship: u.ship }),
       ).length;
       return {
@@ -1468,17 +1471,19 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         label: r.label,
         category: r.category,
         count: r.count,
-        filled,
-        open: Math.max(0, r.count - filled),
+        fulfilled,
+        pending,
+        open: Math.max(0, r.count - fulfilled),
+        extra: Math.max(0, fulfilled - r.count),
         mismatches,
       };
     }),
   );
-  const compSoll = compRows.reduce((a, r) => a + r.count, 0);
-  const compIst = compRows.reduce((a, r) => a + r.filled, 0);
+  const compRequested = compRows.reduce((a, r) => a + r.count, 0);
+  const compFulfilled = compRows.reduce((a, r) => a + r.fulfilled, 0);
   const compOpen = compRows.reduce((a, r) => a + r.open, 0);
   const compChips = (r: CompRow) => {
-    const filledOk = Math.max(0, r.filled - r.mismatches);
+    const filledOk = Math.max(0, r.fulfilled - r.mismatches);
     const chips: SafeHtml[] = [];
     for (let i = 0; i < filledOk; i++) chips.push(html`<span class="comp-chip filled"></span>`);
     for (let i = 0; i < r.mismatches; i++)
@@ -1487,38 +1492,55 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     return chips;
   };
   const compTone = (r: CompRow) =>
-    r.open === 0 ? "tag-green" : r.filled === 0 ? "tag-dim" : "tag-gold";
+    r.open === 0 ? "tag-green" : r.fulfilled === 0 ? "tag-dim" : "tag-gold";
   const compositionBoard = html`<section class="opv2-panel">
-    <div class="opv2-panel-title">Fleet Needs</div>
+    <div class="opv2-panel-title">Fleet Requirements</div>
     ${compRows.length
-      ? html`<div class="opv2-stack">
+      ? html`<div class="fleet-req-board">
+            <div class="fleet-req-row fleet-req-head">
+              <span>Fleet Requirement</span>
+              <span>Requested</span>
+              <span>Fulfilled</span>
+              <span>Open Slots</span>
+            </div>
             ${compRows.map(
               (r) => html`<div class="comp-row">
                 <div class="comp-row-head">
-                  <strong>${r.label}</strong>
-                  <span class="tag tag-dim">${categoryLabel(r.category)}</span>
-                  <span class="tag ${compTone(r)}">${r.filled}/${r.count}</span>
-                  ${r.mismatches
-                    ? html`<span class="tag tag-gold" title="Units not matching the category"
-                        >${r.mismatches} mismatch</span
-                      >`
-                    : safe("")}
-                  ${r.group ? html`<span class="text-dim text-sm">${r.group}</span>` : safe("")}
+                  <div class="fleet-req-name">
+                    <strong>${r.label}</strong>
+                    <span class="tag tag-dim">${categoryLabel(r.category)}</span>
+                    ${r.group ? html`<span class="text-dim text-sm">${r.group}</span>` : safe("")}
+                  </div>
+                  <strong class="fleet-req-num">${r.count}</strong>
+                  <span class="fleet-req-num">
+                    <span class="tag ${compTone(r)}">${r.fulfilled}</span>
+                    ${r.pending ? html`<span class="tag tag-gold">${r.pending} pending</span>` : safe("")}
+                    ${r.mismatches
+                      ? html`<span class="tag tag-gold" title="Accepted units not matching the category"
+                          >${r.mismatches} mismatch</span
+                        >`
+                      : safe("")}
+                  </span>
+                  <span class="fleet-req-num">
+                    <span class="tag ${r.open ? "tag-red" : "tag-green"}">${r.open}</span>
+                    ${r.extra ? html`<span class="tag tag-cyan">+${r.extra} extra</span>` : safe("")}
+                  </span>
                 </div>
                 <div class="comp-chips">${compChips(r)}</div>
               </div>`,
             )}
-            <div class="detail-row" style="border-top:1px solid var(--border,#243);margin-top:.4rem;padding-top:.4rem">
+            <div class="fleet-req-row fleet-req-total">
               <span>Total</span>
-              <strong
-                >${compIst}/${compSoll} filled${compOpen
-                  ? html` · <span class="text-dim">${compOpen} open</span>`
-                  : safe("")}</strong
-              >
+              <strong>${compRequested}</strong>
+              <strong>${compFulfilled}</strong>
+              <strong>${compOpen}</strong>
             </div>
+            <p class="text-dim text-sm" style="margin:.6rem 0 0">
+              Fulfilled = accepted ships or teams. Open Slots = still needed mission requirements.
+            </p>
           </div>`
       : html`<p class="text-dim text-sm">
-          No fleet needs defined.${canManage ? " Add the ships and squads you need in the Fleet tab." : ""}
+          No Fleet Requirements defined.${canManage ? " Add the ships and squads you need in the Fleet tab." : ""}
         </p>`}
   </section>`;
 
@@ -1782,7 +1804,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ),
         )}
       </div>
-      <div class="opv2-panel-title mt-2">Fleet Needs</div>
+      <div class="opv2-panel-title mt-2">Fleet Requirements</div>
       ${canManage
         ? html`<details class="opv2-edit-block mt-1" open>
             <summary class="btn btn-sm">Add Need</summary>
@@ -1987,18 +2009,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         class="flash flash-warn"
         style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap"
       >
-        <span
-          >Öffentliche Operation — Mitgliedsnamen sind ausgeblendet. Melde dich an, um Seats zu
-          claimen oder als Crew beizutreten.</span
-        >
-        <a class="btn btn-sm btn-gold" href="${bp}/login">Anmelden</a>
+        <span>Public operation - member names are hidden. Sign in to claim seats or join as crew.</span>
+        <a class="btn btn-sm btn-gold" href="${bp}/login">Sign in</a>
       </div>`
     : safe("");
 
-  // Participant join CTA (FR-P1 Phase 2 mobile/join focus): a logged-in
-  // non-leader instantly sees their join state — eingeteilt / angemeldet — or a
-  // single clear "Mitmachen" action while the op is open. Leaders/managers skip
-  // it (they have the admin controls).
+  // Participant join CTA (FR-P1 join focus): a logged-in non-leader instantly
+  // sees their signup state or one clear "I want to join" action while open.
+  // Leaders/managers skip it because they have the operator controls.
   const myId = user?.id;
   const hasSeat = !!myId && activeSeats.some((seat) => seat.userId === myId);
   const hasCrewReq = !!myId && op.crewRequests.some((r) => r.user.id === myId);
@@ -2006,22 +2024,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     !user || isLeader
       ? safe("")
       : hasSeat
-        ? html`<div class="opv2-cta done">✓ Du bist eingeteilt.</div>`
+        ? html`<div class="opv2-cta done">Seat claimed.</div>`
         : hasCrewReq
           ? html`<div class="opv2-cta done">
-              ✓ Anmeldung eingegangen — wartet auf Zuweisung durch den FleetOperator.
+              Signup received - waiting for Fleet Operator assignment.
             </div>`
           : op.status === "open"
             ? html`<div class="opv2-cta">
-                <div class="opv2-cta-h">Mitmachen?</div>
+                <div class="opv2-cta-h">I want to join</div>
                 <div class="opv2-cta-actions">
-                  <a class="btn btn-green" href="${bp}/ops/${op.id}/join">▶ Mitmachen</a>
-                  <a class="btn" href="${bp}/ops/${op.id}?tab=fleet">Sitz direkt wählen</a>
+                  <a class="btn btn-green" href="${bp}/ops/${op.id}/join">Join</a>
+                  <a class="btn" href="${bp}/ops/${op.id}?tab=fleet">Choose an open seat</a>
                 </div>
               </div>`
             : op.status === "locked"
               ? html`<div class="opv2-cta closed">
-                  Anmeldung geschlossen — sprich den FleetOperator an.
+                  Signup closed - contact the Fleet Operator.
                 </div>`
               : safe("");
 
@@ -2096,7 +2114,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           fpsSeatStats.open ? "warn" : "good",
         )}
         ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
-        ${metric("Compositions", `${compositionFilled}/${compositionTotal}`)}
+        ${metric("Fleet Requirements", `${compositionFilled}/${compositionTotal}`)}
         ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
       </div>
 
@@ -3154,7 +3172,7 @@ export function opWizardPage(opts: {
         next.addEventListener("click", () => { if (validate(cur) && cur < sections.length - 1) { cur++; show(cur); } });
         back.addEventListener("click", () => { if (cur > 0) { cur--; show(cur); } });
 
-        // ── Composition editor (Phase 3) ─────────────────────────────
+        // ── Fleet Requirements editor (Phase 3) ──────────────────────
         const TPL = ${safe(JSON.stringify(COMPOSITION_TEMPLATES))};
         const CATS = ${safe(JSON.stringify(REQUIREMENT_CATEGORIES))};
         const CATLBL = ${safe(
@@ -3218,8 +3236,8 @@ export function opWizardPage(opts: {
 }
 
 // ── Participant join view (FR-P1 Phase 2/4 — mobile-first sign-up) ───
-// Focused "I want to join" page: the three sign-up paths, open seats, what the
-// mission needs, briefing, and a "Meine Anmeldung" sidebar. Reuses existing
+// Focused "I want to join" page: the three sign-up paths, Open Seats, Fleet
+// Requirements, briefing, and a "My Signup" sidebar. Reuses existing
 // endpoints (crew-requests, seat claim on the Fleet tab).
 export function opJoinPage(opts: {
   basePath: string;
@@ -3245,7 +3263,7 @@ export function opJoinPage(opts: {
       u.seats
         .filter((s) => s.active && !s.userId)
         .map((s) => ({
-          unit: u.squadName || u.ship?.name || "Einheit",
+          unit: u.squadName || u.ship?.name || "Unit",
           seatId: s.id,
           label: s.label,
         })),
@@ -3270,9 +3288,9 @@ export function opJoinPage(opts: {
   const visUpper = ((op as { visibility?: string }).visibility ?? "private").toUpperCase();
 
   const stateBanner = hasSeat
-    ? html`<div class="opv2-cta done">✓ Seat claimed.</div>`
+    ? html`<div class="opv2-cta done">Seat claimed.</div>`
     : hasReq
-      ? html`<div class="opv2-cta done">✓ Waiting for operator assignment.</div>`
+      ? html`<div class="opv2-cta done">Waiting for Fleet Operator assignment.</div>`
       : !isOpen
         ? html`<div class="opv2-cta closed">Sign-up closed.</div>`
         : safe("");
@@ -3289,7 +3307,7 @@ export function opJoinPage(opts: {
       .join-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
       .join-opt { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; margin-top: 10px; text-decoration: none; color: inherit; }
       .join-opt:hover { border-color: var(--cyan, #35d0e0); }
-      .join-opt .ico { font-size: 1.4rem; flex: none; }
+      .join-opt .ico { flex: none; width: 3.4rem; font-family: var(--font-mono); font-size: .72rem; color: var(--cyan); text-transform: uppercase; }
       .join-opt .ttl { font-weight: 600; }
       .join-opt .sub { font-size: 0.8rem; color: var(--dim, #7a8a96); }
       .join-opt .arr { margin-left: auto; color: var(--dim, #7a8a96); }
@@ -3315,45 +3333,45 @@ export function opJoinPage(opts: {
     <div class="join-badges">
       <span class="join-badge ${isOpen ? "open" : ""}">${statusUpper}</span>
       <span class="join-badge pub">${visUpper}</span>
-      <span class="join-badge time">🕑 ${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
+      <span class="join-badge time">${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
     </div>
     <div class="join-meta card">
-      <span>📍 Rendezvous: <b>${op.meetingLocation || "—"}</b></span>
-      <span>🪐 System: <b>${systemLabel(op.meetingSystem)}</b></span>
-      <span>🎙 Voice: <b>${opts.voiceChannelName || "—"}</b></span>
-      <span>👥 Participants: <b>${minP > 0 ? `${minP}` : "—"}${maxP ? `–${maxP}` : ""}</b></span>
+      <span>Rendezvous: <b>${op.meetingLocation || "Not set"}</b></span>
+      <span>System: <b>${systemLabel(op.meetingSystem)}</b></span>
+      <span>Voice: <b>${opts.voiceChannelName || "Not set"}</b></span>
+      <span>Participants: <b>${minP > 0 ? `Min ${minP}` : "No minimum"}${maxP ? ` / Max ${maxP}` : ""}</b></span>
     </div>
 
     <div class="join-layout">
       <div class="join-main">
         <section class="card">
           <h3 class="wiz-sum-h">I want to join</h3>
-          <a class="join-opt" href="#anmeldung">
-            <span class="ico">🧭</span>
+          <a class="join-opt" href="#signup">
+            <span class="ico">Assign</span>
             <span
               ><span class="ttl">Let the operator assign me</span><br /><span class="sub"
                 >I am flexible or need help finding a role.</span
               ></span
             >
-            <span class="arr">›</span>
+            <span class="arr">&gt;</span>
           </a>
           <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
-            <span class="ico">💺</span>
+            <span class="ico">Seat</span>
             <span
               ><span class="ttl">Choose an open seat</span><br /><span class="sub"
                 >Pick an available seat in an accepted ship or fireteam.</span
               ></span
             >
-            <span class="arr">›</span>
+            <span class="arr">&gt;</span>
           </a>
           <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
-            <span class="ico">🚀</span>
+            <span class="ico">Ship</span>
             <span
               ><span class="ttl">Offer a ship</span><br /><span class="sub"
                 >Offer one of your ships for this mission.</span
               ></span
             >
-            <span class="arr">›</span>
+            <span class="arr">&gt;</span>
           </a>
         </section>
 
@@ -3364,7 +3382,7 @@ export function opJoinPage(opts: {
               ? openSeats.map(
                   (s) =>
                     html`<div class="join-seat">
-                      <span>${s.unit} — ${s.label}</span>
+                      <span>${s.unit} - ${s.label}</span>
                       ${isOpen
                         ? html`<form
                             method="post"
@@ -3376,20 +3394,20 @@ export function opJoinPage(opts: {
                             <input type="hidden" name="tab" value="fleet" />
                             <button type="submit" class="btn btn-sm btn-green">Claim</button>
                           </form>`
-                        : html`<span class="free">offen</span>`}
+                        : html`<span class="free">open</span>`}
                     </div>`,
                 )
               : html`<p class="text-dim text-sm">No open seats right now.</p>`}
             <a href="${bp}/ops/${op.id}?tab=fleet" class="text-sm" style="display:inline-block;margin-top:8px"
-              >View all positions ›</a
+              >View all positions &gt;</a
             >
           </section>
           <section class="card">
-            <h3 class="wiz-sum-h">Mission Needs</h3>
+            <h3 class="wiz-sum-h">Fleet Requirements</h3>
             ${requirements.length
               ? html`<div class="join-chips">
                   ${requirements.map(
-                    (r) => html`<span class="join-chip">${r.count}× ${r.label}</span>`,
+                    (r) => html`<span class="join-chip">${r.count}x ${r.label}</span>`,
                   )}
                 </div>`
               : html`<p class="text-dim text-sm">No requirements defined.</p>`}
@@ -3410,7 +3428,7 @@ export function opJoinPage(opts: {
                 (q) => html`<div class="join-q">
                   <div><b>${q.asker}:</b> ${q.body}</div>
                   ${q.answer
-                    ? html`<div class="join-a">↳ <b>${q.answeredBy}:</b> ${q.answer}</div>`
+                    ? html`<div class="join-a">Reply from <b>${q.answeredBy}:</b> ${q.answer}</div>`
                     : isLeader
                       ? html`<form
                           method="post"
@@ -3418,10 +3436,10 @@ export function opJoinPage(opts: {
                           class="join-ans"
                         >
                           <input type="hidden" name="_csrf" value="${csrf}" />
-                          <input name="answer" maxlength="1000" placeholder="Answer…" />
+                          <input name="answer" maxlength="1000" placeholder="Answer..." />
                           <button type="submit" class="btn btn-sm btn-green">Answer</button>
                         </form>`
-                      : html`<div class="join-a text-dim">— not answered yet</div>`}
+                      : html`<div class="join-a text-dim">Not answered yet</div>`}
                 </div>`,
               )}
             </section>`
@@ -3443,7 +3461,7 @@ export function opJoinPage(opts: {
           : safe("")}
       </div>
 
-      <aside class="card join-aside" id="anmeldung">
+      <aside class="card join-aside" id="signup">
         <h3 class="wiz-sum-h">My Signup</h3>
         ${stateBanner}
         ${isOpen && !hasSeat && !hasReq
@@ -3458,7 +3476,7 @@ export function opJoinPage(opts: {
               <textarea
                 name="note"
                 maxlength="240"
-                placeholder="e.g. experience, preferred role, ships you can bring…"
+                placeholder="e.g. experience, preferred role, ships you can bring..."
               ></textarea>
               <button type="submit" class="btn btn-green join-cta-btn">Join</button>
             </form>`
@@ -3469,7 +3487,7 @@ export function opJoinPage(opts: {
           <input type="hidden" name="_csrf" value="${csrf}" />
           <label>Ask a question</label>
           <textarea name="body" maxlength="1000" placeholder="e.g. which loadouts? exact time?"></textarea>
-          <button type="submit" class="btn btn-ghost join-cta-btn">💬 Ask a question</button>
+          <button type="submit" class="btn btn-ghost join-cta-btn">Ask a question</button>
         </form>
         ${seatSummary.length
           ? html`<div style="margin-top:14px">
@@ -5774,7 +5792,7 @@ export function howToPage(opts: {
             Click <strong>+ New Operation</strong>, fill in title, date, meeting location, and op
             type. Save as draft.
           </li>
-          <li>Add a <strong>Composition</strong> to define which ship types you need.</li>
+          <li>Add <strong>Fleet Requirements</strong> to define which ship types and teams you need.</li>
           <li>
             Set status to <strong>Open</strong> — a Discord scheduled event is posted automatically
             to your server.

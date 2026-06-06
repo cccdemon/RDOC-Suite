@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner P1 GUI UX implementation
+
+Implemented the P1 Fleetplanner GUI UX baseline from
+`docs/FR-P1-fleetplanner-gui-ux-implementation.md`: rename visible Composition/Fleet Needs
+wording to Fleet Requirements, show Requested/Fulfilled/Open Slots semantics based on accepted
+units with pending/extra indicators, and clean up the participant join view so normal players see
+English event facts, join choices, Open Seats, Fleet Requirements, and their signup status without
+operator/admin controls. No schema migration intended.
+
+Verification: `pnpm --filter @rdoc-suite/fleetplanner db:generate`, `pnpm --filter
+@rdoc-suite/fleetplanner build`, and `pnpm --filter @rdoc-suite/fleetplanner test` all passed
+locally.
+
 ## Queued / Planned Step - 2026-06-06: Mission Creation Flow — Admin-Wizard (Phase 1, branch feat/mission-creation-wizard)
 
 Implementierung gestartet auf Branch `feat/mission-creation-wizard` für FR-P1-eventcreation-simplification
