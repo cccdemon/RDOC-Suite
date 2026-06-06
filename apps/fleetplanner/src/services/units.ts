@@ -79,6 +79,14 @@ export async function setUnitStatus(
   status: "accepted" | "rejected",
   note?: string,
 ) {
+  // A rejected unit holds nobody — free its seats so no one keeps a phantom
+  // "claimed seat" in a ship that was turned down.
+  if (status === "rejected") {
+    await prisma.seatAssignment.updateMany({
+      where: { unitId, userId: { not: null } },
+      data: { userId: null },
+    });
+  }
   return prisma.fleetUnit.update({
     where: { id: unitId },
     data: { status, ...(note !== undefined && { leaderNote: note }) },

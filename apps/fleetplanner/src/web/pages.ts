@@ -3687,9 +3687,17 @@ export function opJoinPage(opts: {
   const csrf = opts.csrfToken ?? "";
   const myId = opts.currentUser?.id;
   const isOpen = op.status === "open";
-  const hasSeat = !!myId && op.units.some((u) => u.seats.some((s) => s.active && s.userId === myId));
-  const hasReq = !!myId && op.crewRequests.some((r) => r.user.id === myId);
   const acceptedUnits = op.units.filter((u) => u.status === "accepted");
+  // You only "hold a seat" in an ACCEPTED unit. Seats in pending/rejected units
+  // don't count (a rejected unit's seats are also cleared server-side).
+  const hasSeat =
+    !!myId && acceptedUnits.some((u) => u.seats.some((s) => s.active && s.userId === myId));
+  const hasReq = !!myId && op.crewRequests.some((r) => r.user.id === myId);
+  // The viewer's own offered ships still awaiting the operator's decision —
+  // shown so they can edit seats or withdraw BEFORE acceptance.
+  const myPendingUnits = myId
+    ? op.units.filter((u) => u.status === "pending" && u.captainId === myId)
+    : [];
   const openSeats = acceptedUnits
     .flatMap((u) =>
       u.seats
@@ -3729,6 +3737,50 @@ export function opJoinPage(opts: {
       })),
     editSeats: u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
   }));
+  // Captain seat-config form (rename + enable/disable) — usable on a pending
+  // OR accepted own unit; reuses the captain-gated /units/:id/seats route.
+  const seatEditDetails = (
+    unitId: string,
+    editSeats: Array<{ id: string; label: string; order: number; active: boolean }>,
+  ) => html`<details class="roster-edit">
+    <summary>Edit seats — rename or enable / disable</summary>
+    <form method="post" action="${bp}/api/ops/${op.id}/units/${unitId}/seats">
+      <input type="hidden" name="_csrf" value="${csrf}" />
+      <input type="hidden" name="ui" value="player" />
+      <input type="hidden" name="tab" value="fleet" />
+      ${editSeats.map(
+        (s) => html`<div class="roster-edit-row">
+          <input type="text" name="label_${s.id}" value="${s.label}" maxlength="40" />
+          ${s.order === 0
+            ? html`<span class="tag tag-dim">pilot</span>`
+            : html`<label class="seat-toggle"
+                ><input type="checkbox" name="active_${s.id}" value="1" ${s.active ? safe("checked") : ""} />
+                available</label
+              >`}
+        </div>`,
+      )}
+      <button type="submit" class="btn btn-sm mt-1">Save seats</button>
+    </form>
+  </details>`;
+  // Withdraw (delete) an own ship from the operation. captain-gated server-side.
+  const withdrawShipForm = (unitId: string) =>
+    html`<form
+      method="post"
+      action="${bp}/api/ops/${op.id}/units/${unitId}/delete"
+      class="inline"
+      style="margin-top:.5rem"
+    >
+      <input type="hidden" name="_csrf" value="${csrf}" />
+      <input type="hidden" name="ui" value="player" />
+      <input type="hidden" name="tab" value="fleet" />
+      <button
+        type="submit"
+        class="btn btn-sm btn-danger"
+        onclick="return confirm('Withdraw this ship from the operation? It is removed and its crew freed.')"
+      >
+        Withdraw ship
+      </button>
+    </form>`;
   const requirements = op.groups.flatMap((g) => g.requirements);
   const ownedShips = opts.ownedShips ?? [];
   // Open composition slots (accepted units < requested) the player can target
@@ -3908,7 +3960,15 @@ export function opJoinPage(opts: {
                   different open seat. Ask the operator a question in the panel on the right.
                 </p>
               </section>`
-            : !isOpen
+            : myPendingUnits.length
+              ? html`<section class="card">
+                  <h3 class="wiz-sum-h">Ship offered — pending review</h3>
+                  <p class="text-dim text-sm">
+                    Your ship is awaiting the Fleet Operator's decision. See
+                    <strong>Your offered ship</strong> below to configure seats or withdraw it.
+                  </p>
+                </section>`
+              : !isOpen
               ? html`<section class="card">
                   <h3 class="wiz-sum-h">I want to join</h3>
                   <div class="opv2-cta closed">Sign-up is closed.</div>
@@ -4051,6 +4111,28 @@ export function opJoinPage(opts: {
                   </div>
                 </section>`}
 
+        ${myPendingUnits.length
+          ? html`<section class="card" style="margin-top:1rem">
+              <h3 class="wiz-sum-h">Your offered ${myPendingUnits.length === 1 ? "ship" : "ships"}</h3>
+              ${myPendingUnits.map(
+                (u) => html`<div class="roster-unit">
+                  <div class="roster-unit-head">
+                    <strong>${u.squadName || u.ship?.name || "Unit"}</strong>
+                    <span class="tag tag-gold">pending review</span>
+                  </div>
+                  <p class="text-dim text-sm">
+                    Awaiting the Fleet Operator. Configure the seats now or withdraw the ship.
+                  </p>
+                  ${seatEditDetails(
+                    u.id,
+                    u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
+                  )}
+                  ${withdrawShipForm(u.id)}
+                </div>`,
+              )}
+            </section>`
+          : safe("")}
+
         <section class="card" style="margin-top:1rem">
           <h3 class="wiz-sum-h">Accepted Units</h3>
           ${acceptedRoster.length
@@ -4097,38 +4179,7 @@ export function opJoinPage(opts: {
                       </div>`,
                     )}
                   </div>
-                  ${u.isMyUnit
-                    ? html`<details class="roster-edit">
-                        <summary>Edit seats — rename or enable / disable</summary>
-                        <form method="post" action="${bp}/api/ops/${op.id}/units/${u.id}/seats">
-                          <input type="hidden" name="_csrf" value="${csrf}" />
-                          <input type="hidden" name="ui" value="player" />
-                          <input type="hidden" name="tab" value="fleet" />
-                          ${u.editSeats.map(
-                            (s) => html`<div class="roster-edit-row">
-                              <input
-                                type="text"
-                                name="label_${s.id}"
-                                value="${s.label}"
-                                maxlength="40"
-                              />
-                              ${s.order === 0
-                                ? html`<span class="tag tag-dim">pilot</span>`
-                                : html`<label class="seat-toggle"
-                                    ><input
-                                      type="checkbox"
-                                      name="active_${s.id}"
-                                      value="1"
-                                      ${s.active ? safe("checked") : ""}
-                                    />
-                                    available</label
-                                  >`}
-                            </div>`,
-                          )}
-                          <button type="submit" class="btn btn-sm mt-1">Save seats</button>
-                        </form>
-                      </details>`
-                    : safe("")}
+                  ${u.isMyUnit ? html`${seatEditDetails(u.id, u.editSeats)} ${withdrawShipForm(u.id)}` : safe("")}
                 </div>`,
               )
             : html`<p class="text-dim text-sm">No ships or fireteams accepted yet.</p>`}
