@@ -3551,7 +3551,7 @@ export function opJoinPage(opts: {
               </p>
               <a class="btn btn-green" href="${bp}/login">Sign in</a>
             </section>`
-          : hasSeat || hasReq
+          : hasSeat
             ? html`<section class="card">
                 <h3 class="wiz-sum-h">You're signed up</h3>
                 <p class="text-dim text-sm">Your status and questions are in the panel on the right.</p>
