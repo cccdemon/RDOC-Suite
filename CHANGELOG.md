@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Fleetplanner: accepted-link 404 for logged-out users (2026-06-06)
+
+- Opening an op link (e.g. the accepted-captain Discord link) while logged out returned a 404 "Operation not found" for private/partner ops, which looked like a broken URL (feedback: exrelax). Guests now get a clear "Login required" page (HTTP 401) with a login link, without leaking op details.
+
+### Changed — Fleetplanner: unit lead title is "Pilot" for non-capital ships (2026-06-06)
+
+- The unit lead was always labelled "Captain". Now only Capital ships (Idris etc.) show "Captain"; smaller hulls show "Pilot" (feedback: Mimosenherkules). Centralised in a `unitLeadTitle(ship)` helper based on ship size.
+
 ### Added — Fleetplanner: richer share embeds (OpenGraph) for public ops + Guild `orgName` (2026-06-05)
 
 - Shared op links now unfurl on Discord/social with a structured `og:description`: When, System, Rendezvous, Leaders, Event Voice, Org and the Discord invite — mirroring the op's Action Details. Previously only title/description/image were emitted.

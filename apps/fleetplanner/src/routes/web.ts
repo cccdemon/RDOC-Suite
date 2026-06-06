@@ -13,6 +13,7 @@ import {
   feedbackPage,
   adminPage,
   errorPage,
+  loginRequiredPage,
   loginPage,
   accountPage,
   howToPage,
@@ -335,14 +336,13 @@ export async function webRoutes(app: FastifyInstance) {
     // actually claim a seat or join as crew. Private/partner ops 404 to guests.
     if (!ctx) {
       if (opVisibility !== "public") {
+        // Logged-out guest opening a private/partner op link (e.g. the accepted-
+        // captain Discord link). Don't 404 — that looks like a broken URL
+        // (user feedback). Show a "login required" note instead.
+        reply.code(401);
         return htmlReply(
           reply,
-          errorPage({
-            basePath: basePath(),
-            currentUser: null,
-            status: 404,
-            message: "Operation not found",
-          }),
+          loginRequiredPage({ basePath: basePath() }),
         );
       }
       reply.header("Cache-Control", "no-store");

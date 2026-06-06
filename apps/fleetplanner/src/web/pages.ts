@@ -233,6 +233,14 @@ function shipSizeLabel(ship: Pick<Ship, "size" | "rawJson">): string {
   return "";
 }
 
+/** Title for a unit's lead. Only Capital ships (Idris etc.) carry a true
+ *  "Captain"; smaller hulls are flown by a "Pilot" (user feedback). Falls back
+ *  to "Captain" when there is no ship (e.g. FPS/ground units). */
+function unitLeadTitle(ship?: Pick<Ship, "size" | "rawJson"> | null): string {
+  if (!ship) return "Captain";
+  return shipSizeLabel(ship).trim().toLowerCase() === "capital" ? "Captain" : "Pilot";
+}
+
 type OpListItem = {
   id: string;
   title: string;
@@ -910,7 +918,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           <summary class="opv2-unit-summary">
             <div class="opv2-unit-main">
               <strong>${unitName(unit)}</strong>
-              <span>Captain: ${nm(unit.captain.username)}${redactNames ? "" : multiPosTag(unit.captainId, multiPos)}</span>
+              <span>${unitLeadTitle(unit.ship)}: ${nm(unit.captain.username)}${redactNames ? "" : multiPosTag(unit.captainId, multiPos)}</span>
             </div>
             <div class="opv2-unit-facts">
               <span class="tag ${unit.unitType === "ship" ? "tag-cyan" : "tag-gold"}"
@@ -1194,7 +1202,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             return html`<div class="opv2-row">
               <div>
                 <strong>${name}</strong>
-                <span>Captain: ${channel.unit.captain.username}</span>
+                <span>${unitLeadTitle(channel.unit.ship)}: ${channel.unit.captain.username}</span>
               </div>
               <div class="opv2-row-meta">
                 <span class="tag tag-cyan">${channel.voiceBot?.label ?? "Discord"}</span>
@@ -4805,6 +4813,34 @@ export function errorPage(opts: {
     title: `Error ${opts.status}`,
     basePath: opts.basePath,
     currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+/** Shown when a logged-out guest opens a non-public op link (e.g. the accepted-
+ *  captain Discord link). A plain 404 looked like a broken URL (user feedback),
+ *  so explain that login is required instead — without revealing op details. */
+export function loginRequiredPage(opts: {
+  basePath: string;
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html` <div style="max-width:34rem;margin:4rem auto;text-align:center">
+    <div class="page-title" style="font-size:1.6rem;color:var(--cyan);margin-bottom:0.75rem">
+      Login required
+    </div>
+    <p class="text-dim" style="line-height:1.7">
+      This operation link is private. Please log in — if you have access (you're a
+      member of the hosting or a partner Discord, or it was shared with you), the
+      operation will open after sign-in. This is not a broken link.
+    </p>
+    <a href="${bp}/login" class="btn" style="margin-top:1.5rem">Login</a>
+  </div>`;
+  return layout({
+    title: "Login required",
+    basePath: bp,
+    currentUser: null,
     csrfToken: opts.csrfToken,
     body,
   });
