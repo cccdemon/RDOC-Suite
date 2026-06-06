@@ -62,13 +62,18 @@ the dicts copied in at build time rather than imported.)
 4. MissionCover: extend engine i18n to 5 locales + service passes locale in the render payload.
 5. (Optional) extract dictionaries into `packages/i18n` once all three consume them.
 
-## Open decisions
-1. **Cover language source** — op creator’s locale (proposed) vs guild default vs per-cover override?
-   A cover is one shared image per op, so a single language must be chosen.
-2. **Translation source** — hand-authored dicts only, or seed via machine translation then review?
-   SC-specific terms (ship roles, “Command Net”, “Global Radio”) must stay consistent — needs a glossary.
-3. **en-US scope** — spelling/format overrides only, or full copy? (Proposed: thin override layer.)
-4. **Companion offline** — last fetched locale cached; no live switch in the companion UI (one switch rule).
+## Decisions (2026-06-07)
+1. **Cover language = the op creator’s locale.** ✓ Passed in the MissionCover render payload.
+2. **Proper names / SC-specific terms stay English — never translated.** Ship names, ship roles,
+   and RDOC voice terms (“Command Net”, “Global Radio Net”) are eigennames → keep their English
+   form in every locale. Maintain a small **do-not-translate glossary** so dictionaries leave these
+   tokens intact (and translators don’t localize them).
+3. **en-US = thin override layer on the `en` base** (spelling + date/number/12h formats only), not
+   a full second copy. ✓
+4. **Companion: no separate switch** — caches the last fetched `User.locale`; one switch only (the
+   profile). Live re-fetch on reconnect.
+
+**Prio:** P3 — scheduled. Build in phases per the build order; no code yet.
 
 ---
 *Design doc only. Implement on explicit instruction, mergelog-first. Effort is large (Fleetplanner
