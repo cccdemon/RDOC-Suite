@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Egress lockdown in the renderer (anti-SSRF): only `file:`/`data:` + font CDNs + a configurable host allowlist; everything else aborted. Inputs Zod-validated, dimensions/payload capped, runs as non-root.
 - **Fleetplanner** stays thin: client `services/coverService.ts` (mirrors `bridge.ts`), env-gated via `MISSIONCOVER_SERVICE_SECRET` (`coverServiceConfigured()`); compose wires `MISSIONCOVER_SERVICE_URL`.
 
+### Fixed - Mission-cover: uploaded images missing from the rendered cover (2026-06-06)
+
+- Uploaded background and custom-logo images (large data URLs) blew the engine's localStorage quota, so they were silently dropped and never appeared in the final PNG. The engine now hydrates from `window.__MC_CONFIG__` / `window.__MC_BG__` and publishes live state to `window.__MC_STATE__`; the server render seeds those globals and the editor's save bar reads live state — no localStorage quota on the render/save path. Verified: background + custom logo now render headless.
+
 ### Added - Mission-cover: fleetplanner integration + editor (FR-P4, Step 4+5) (2026-06-06)
 
 - **Operator cover page** `GET /ops/:id/cover` (operator-only = fleetoperator or op leader): shows the current cover, a quick **generate-from-op-data** form (format + preset), and an **Open editor** button. Linked from a new "Mission Cover" card in the manage workspace command rail.
