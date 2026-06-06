@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: greenfield manage workspace (2026-06-06)
+
+- Rebuilt the `/ops/:id/manage` operator UI as a workflow workspace, replacing the old tabbed V2 shell: a **status spine** (Draft → Open → Locked → Starting → Live → Done), a **sticky command rail** (Next step / Needs you / Readiness / Delete), and a single-scroll work column with anchored sections. The former tab panels (overview/fleet/crew/voice/voice-access/admin) are reused as stacked sections. "Needs you" surfaces pending units, unassigned accepted units, open seats and unanswered questions as jump links.
+
 ### Changed - Fleetplanner: operator manage shell modernized (2026-06-06)
 
 - The `/ops/:id/manage` operator shell still wore the old `opv2-*` terminal styling (1180px width cap, mono/cyan/uppercase hero title, terminal tabs). Restyled the `opv2-*` CSS (used only by this shell) to match the player event page: full content width, large sans hero title, normal-case tabs. No markup change.

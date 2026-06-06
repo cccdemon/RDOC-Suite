@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — greenfield manage workspace (branch feat/manage-workspace), Phase 1
+
+User: rebuild the `/ops/:id/manage` operator UI greenfield, max usability, stop using the old V2
+tabbed GUI. Phase 1 (this step) replaces the tabbed `opv2` shell with a workflow workspace —
+NO markup/logic loss, panels reused:
+- **Status spine** (Draft → Open → Locked → Starting → Live → Done) replacing the flat status tags.
+- **Sticky command rail**: *Next step* (single primary status-transition button per state),
+  *Needs you* (pending units / unassigned accepted / open seats / unanswered questions → jump
+  links), *Readiness* (voice channel / leaders / voice enabled / min players), Delete.
+- **Single-scroll work column** with anchored sections (Briefing & Fleet Requirements, Fleet
+  units, Crew & seats, Voice channels, Voice access, Admin) — the former tab panels stacked,
+  reused verbatim (overviewPanel/fleetPanel/crewPanel/voicePanel/commandersPanel/adminPanel).
+- Dropped the tab nav + `tabPages`/`tabPage`/`shellLink` dead code. CSS `mg-*` in render.ts.
+Build + tests pass. Phases 2 (accept-into-slot + auto-match) and 3 (inline edit) to follow.
+
 ## Completed Step - 2026-06-06: Fleetplanner — modernize the operator manage shell (kill old opv2 look)
 
 Done: `.opv2-shell` full-width (dropped 1180 cap), `.opv2-hero h1` large sans (was mono/cyan/

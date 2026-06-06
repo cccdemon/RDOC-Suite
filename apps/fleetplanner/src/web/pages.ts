@@ -719,13 +719,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     <input type="hidden" name="tab" value="${tab}" />
   `;
 
-  const shellLink = (tab: string, label: string) =>
-    html`<a
-      class="opv2-tab ${activeTab === tab ? "active" : ""}"
-      href="${tabUrl(tab)}"
-      data-tab="${tab}"
-      >${label}</a
-    >`;
 
   const metric = (label: string, value: string | number, tone = "") =>
     html`<div class="opv2-metric ${tone}">
@@ -2129,16 +2122,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // All tab panels are rendered; client-side JS toggles visibility so switching
   // a tab never reloads the page (no jump to top, no mobile scrollbar reflow).
   // The initially-active one is visible; the rest are [hidden].
-  const tabPage = (tab: string, panel: SafeHtml) =>
-    html`<div class="opv2-tabpage" data-tab="${tab}" ${activeTab === tab ? safe("") : safe("hidden")}>
-      ${panel}
-    </div>`;
-  const tabPages = html`
-    ${tabPage("overview", overviewPanel)} ${tabPage("fleet", fleetPanel)}
-    ${tabPage("crew", crewPanel)} ${tabPage("voice", voicePanel)}
-    ${canManage ? tabPage("commanders", commandersPanel) : safe("")}
-    ${user ? tabPage("admin", adminPanel) : safe("")}
-  `;
 
   const guestBanner = !realUser
     ? html`<div
@@ -2178,6 +2161,75 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   Signup closed - contact the Fleet Operator.
                 </div>`
               : safe("");
+
+  // ── Greenfield manage workspace: lifecycle spine + command rail ──────
+  const minP = (op as { minParticipants?: number }).minParticipants ?? 0;
+  const openSeatsTotal = shipSeatStats.open + fpsSeatStats.open;
+  const unslottedAccepted = acceptedUnits.filter((u) => !u.requirementId).length;
+  const unanswered = op.questions.filter((q) => !q.answer).length;
+  const NEXT_STEP: Record<string, { to: string; label: string } | undefined> = {
+    draft: { to: "open", label: "Open sign-ups" },
+    open: { to: "locked", label: "Lock sign-ups" },
+    locked: { to: "starting", label: "Start pre-brief" },
+    starting: { to: "in_progress", label: "Mark live" },
+    in_progress: { to: "completed", label: "Complete operation" },
+  };
+  const nextStep = NEXT_STEP[op.status];
+  const SPINE = [
+    { key: "draft", label: "Draft" },
+    { key: "open", label: "Open" },
+    { key: "locked", label: "Locked" },
+    { key: "starting", label: "Starting" },
+    { key: "in_progress", label: "Live" },
+    { key: "completed", label: "Done" },
+  ];
+  const curIdx = SPINE.findIndex((s) => s.key === op.status);
+  const statusSpine = html`<div class="mg-spine">
+    ${op.status === "cancelled"
+      ? html`<span class="mg-step active"><span class="dot"></span>Cancelled</span>`
+      : SPINE.map((s, i) => {
+          const cls = i < curIdx ? "done" : i === curIdx ? "active" : "";
+          return html`${i ? html`<span class="sep">›</span>` : safe("")}<span class="mg-step ${cls}"
+              ><span class="dot"></span>${s.label}</span
+            >`;
+        })}
+    <span style="flex:1"></span>
+    <span class="text-dim text-sm">${fmtDate(op.scheduledAt, gtz)}</span>
+  </div>`;
+  const needs: Array<{ icon: string; label: string; href: string }> = [];
+  if (canManage && pendingUnits.length)
+    needs.push({
+      icon: "⚠",
+      label: `${pendingUnits.length} unit${pendingUnits.length === 1 ? "" : "s"} pending review`,
+      href: "#mg-fleet",
+    });
+  if (canManage && unslottedAccepted)
+    needs.push({
+      icon: "⚠",
+      label: `${unslottedAccepted} accepted unit${unslottedAccepted === 1 ? "" : "s"} unassigned`,
+      href: "#mg-overview",
+    });
+  if (openSeatsTotal)
+    needs.push({
+      icon: "⚠",
+      label: `${openSeatsTotal} open seat${openSeatsTotal === 1 ? "" : "s"}`,
+      href: "#mg-crew",
+    });
+  if (canManage && unanswered)
+    needs.push({
+      icon: "✉",
+      label: `${unanswered} unanswered question${unanswered === 1 ? "" : "s"}`,
+      href: "#mg-admin",
+    });
+  const ready: Array<{ ok: boolean; label: string }> = [
+    { ok: !!op.eventVoiceChannelId, label: "Event voice channel" },
+    { ok: op.leaders.length > 0, label: `Leaders (${op.leaders.length})` },
+    { ok: opts.voiceEnabled === true, label: "Voice integration enabled" },
+  ];
+  if (minP > 0)
+    ready.push({ ok: assignedSeats.length >= minP, label: `Min players (${assignedSeats.length}/${minP})` });
+  const section = (id: string, title: string, panel: SafeHtml) =>
+    html`<section class="mg-section" id="${id}"><h3>${title}</h3>${panel}</section>`;
 
   const body = html`${guestBanner}${joinInviteBanner(opts.joinInviteUrl)}<div class="opv2-shell">
       <header
@@ -2237,17 +2289,66 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
       </div>
 
-      ${actionDetailsPanel}
+      ${statusSpine}
 
-      ${participantCta}
-      <nav class="opv2-tabs">
-        ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
-        ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")}
-        ${canManage ? shellLink("commanders", "Voice Access") : safe("")}
-        ${user ? shellLink("admin", "Admin") : safe("")}
-      </nav>
-
-      ${tabPages}
+      <div class="mg-2col">
+        <aside class="mg-rail">
+          ${canManage && nextStep
+            ? html`<div class="mg-card mg-next">
+                <h4>Next step</h4>
+                <form method="post" action="${bp}/api/ops/${op.id}/status">
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  <input type="hidden" name="status" value="${nextStep.to}" />
+                  ${returnFields("overview")}
+                  <button type="submit" class="btn btn-green">${nextStep.label}</button>
+                </form>
+              </div>`
+            : safe("")}
+          <div class="mg-card mg-needs">
+            <h4>Needs you</h4>
+            ${needs.length
+              ? needs.map(
+                  (n) =>
+                    html`<a href="${n.href}"><span>${n.icon}</span><span>${n.label}</span></a>`,
+                )
+              : html`<p class="text-dim text-sm">All clear ✓</p>`}
+          </div>
+          <div class="mg-card mg-ready">
+            <h4>Readiness</h4>
+            ${ready.map(
+              (r) => html`<div>
+                <span style="color:${r.ok ? "var(--green,#3ad07a)" : "var(--gold,#e0b835)"}"
+                  >${r.ok ? "✓" : "⚠"}</span
+                ><span>${r.label}</span>
+              </div>`,
+            )}
+          </div>
+          ${canManage
+            ? html`<details class="mg-card">
+                <summary style="cursor:pointer;color:var(--dim);font-size:.85rem">Delete operation</summary>
+                <form method="post" action="${bp}/ops/${op.id}/delete" style="margin-top:.6rem">
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-danger"
+                    onclick="return confirm('Delete this operation?')"
+                  >
+                    Delete
+                  </button>
+                </form>
+              </details>`
+            : safe("")}
+        </aside>
+        <div class="mg-work">
+          ${actionDetailsPanel}
+          ${section("mg-overview", "Briefing & Fleet Requirements", overviewPanel)}
+          ${section("mg-fleet", "Fleet units", fleetPanel)}
+          ${section("mg-crew", "Crew & seats", crewPanel)}
+          ${section("mg-voice", "Voice channels", voicePanel)}
+          ${canManage ? section("mg-voiceaccess", "Voice access", commandersPanel) : safe("")}
+          ${user ? section("mg-admin", "Leaders, questions & audit", adminPanel) : safe("")}
+        </div>
+      </div>
     </div>
     <script>
       document.querySelectorAll(".opv2-form").forEach((form) => {

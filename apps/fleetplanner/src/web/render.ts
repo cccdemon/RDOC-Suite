@@ -979,6 +979,35 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .opv2-shell {
   width: 100%;
 }
+/* Greenfield manage workspace: status spine + sticky command rail + stacked
+   work sections (replaces the tabbed opv2 shell). */
+.mg-spine {
+  display: flex; flex-wrap: wrap; gap: .45rem; align-items: center;
+  margin: 1rem 0; padding: .6rem .85rem;
+  border: 1px solid var(--border); background: var(--bg2);
+}
+.mg-step { display: flex; align-items: center; gap: .4rem; font-size: .82rem; color: var(--dim); }
+.mg-step.done { color: var(--text); }
+.mg-step.active { color: var(--cyan); font-weight: 700; }
+.mg-step .dot { width: 9px; height: 9px; border-radius: 50%; border: 1px solid currentColor; }
+.mg-step.done .dot, .mg-step.active .dot { background: currentColor; }
+.mg-spine .sep { color: var(--dim); opacity: .45; }
+.mg-2col { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 1.25rem; align-items: start; }
+.mg-rail { position: sticky; top: 1rem; display: flex; flex-direction: column; gap: .85rem; }
+.mg-card { border: 1px solid var(--border); background: var(--bg2); padding: .9rem 1rem; }
+.mg-card h4 { margin: 0 0 .55rem; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); }
+.mg-next .btn { width: 100%; }
+.mg-needs a { display: flex; gap: .5rem; align-items: flex-start; padding: .35rem 0; font-size: .85rem; color: inherit; text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.05); }
+.mg-needs a:last-child { border-bottom: none; }
+.mg-needs a:hover { color: var(--cyan); }
+.mg-ready div { display: flex; gap: .5rem; align-items: center; padding: .25rem 0; font-size: .85rem; }
+.mg-work { display: flex; flex-direction: column; gap: 1.25rem; min-width: 0; }
+.mg-section > h3 { font-size: 1.05rem; margin: 0 0 .65rem; }
+.mg-section { scroll-margin-top: 1rem; }
+@media (max-width: 980px) {
+  .mg-2col { grid-template-columns: 1fr; }
+  .mg-rail { position: static; }
+}
 .opv2-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
