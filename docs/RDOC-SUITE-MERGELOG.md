@@ -1,6 +1,11 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-06: Fleetplanner greenfield redesign (branch feat/fleetmanager-redesign)
+## Completed Step - 2026-06-06: Fleetplanner greenfield redesign (branch feat/fleetmanager-redesign)
+
+Verified: `pnpm --filter @rdoc-suite/fleetplanner build` + `test` (235) pass after each phase.
+Commits on branch `feat/fleetmanager-redesign`: 96bf4dd (join assistant), dfc555f (voice access),
+440f1f2 (overview cards), e2ead1f (composition board). NOT yet merged to master / deployed —
+awaiting review per "on a new branch".
 
 Approved greenfield redesign (the ASCII-mockup design). Replace the old interface; build from a
 shared partial vocabulary. Extends `docs/FR-P1-fleetplanner-gui-ux-implementation.md`.

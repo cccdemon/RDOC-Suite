@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner greenfield redesign (branch feat/fleetmanager-redesign) (2026-06-06)
+
+- **Event page join assistant.** The 3 anchor "I want to join" links are now a CSS-only radio assistant that reveals the relevant sub-form inline (let the operator place me / take an open seat / offer a ship). Open Seats + ship offer moved into the assistant; Fleet Requirements is full-width.
+- **Voice access admin.** The per-op Commanders tab is now a "Voice Access" panel that makes the two-net model explicit per `companion-voice-architecture.md`: a Command Net chip per person (always) + a Global Radio Net toggle, plus net counts.
+- **Operations overview.** Op cards gained a unit-fill bar and a per-viewer signup badge (Joined / Waitlisted), plus a client-side filter bar (search / status / type / my signups).
+- **Composition board.** Surfaces accepted units not yet assigned to a requirement (manage-only), linking to the Fleet tab.
+
 ### Fixed - Fleetplanner: player event page layout (2026-06-06)
 
 - Fleet Requirements table was unreadable — labels wrapped one character per line and the header columns overlapped ("REQUIREREQUESTED"). Removed the `overflow-wrap: anywhere` char-shredding on requirement names and gave the label column a real minimum width (`minmax(8rem, 1fr)`, narrower numeric columns).
