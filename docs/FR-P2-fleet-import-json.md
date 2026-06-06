@@ -4,7 +4,9 @@
 **Status:** ✓ **Implemented 2026-06-06** — `services/fleetImport.ts` + `POST /profile/fleet-import`
 + profile "Import fleet (JSON)" UI. Matches CCU-Game JSON to the catalog (case-insensitive + fuzzy),
 upserts `UserShip`. NOTE: `UserShip` is unique per (user, model) → duplicate hulls collapse to one
-owned entry (open decision #1: true multi-hull would need dropping that unique constraint).
+owned entry. **Update 2026-06-07:** [FR-P3-org-fleet.md](FR-P3-org-fleet.md) decision 3 supersedes
+this — add `UserShip.quantity` and have the import set the per-model count (collapse to one row *with
+a count*), to be done when Org Fleet lands.
 
 ## Dependencies
 - **= Backlog #1 "CCU Chain Import (Personal Hangars)"** — supersede/merge that backlog item.

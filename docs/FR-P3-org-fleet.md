@@ -51,12 +51,20 @@ Tiered, cheapest first:
 2. Discord contact link (MVP tier 1 — handle + profile deep link).
 3. (Optional) bot-DM relay + per-user visibility opt-out.
 
-## Open decisions
-1. **Visibility default** — fleet visible to fellow guild members by default (proposed), with an
-   optional per-user "hide my fleet from the org" opt-out? Or opt-in only?
-2. **Contact depth** — ship MVP with just the Discord profile link, and defer the bot-DM relay?
-3. **Counts/duplicates** — `UserShip` is unique per (user, model), so the roster shows one entry per
-   model per member (no hull counts). Acceptable for "who has X?".
+## Decisions (2026-06-07)
+1. **Visible to fellow guild members by default — no opt-in/opt-out.** A member's owned ships are
+   shown to everyone in their guild(s). No privacy toggle.
+2. **MVP contact = Discord profile link only** (handle + `discord://users/<id>`). Bot-DM relay
+   deferred to a later phase.
+3. **Show quantity per model.** `UserShip` is unique per (user, model), so a **`quantity` column**
+   must be added to carry hull counts (e.g. "MDC ×7"). Implications:
+   - `UserShip.quantity Int @default(1)` + migration.
+   - **FR-P2 import** sets `quantity` = number of that model in the JSON (instead of collapsing to 1);
+     re-import updates the count.
+   - Profile Owned Ships + Org Fleet display the count; Org Fleet can also total per model across the
+     guild ("Polaris ×3 — 2 members").
+   - This supersedes FR-P2's "duplicates collapse to one entry" — they now collapse to one row **with
+     a count**.
 
 ---
 *Design doc only. Implement on explicit instruction, mergelog-first. Light feature — most data
