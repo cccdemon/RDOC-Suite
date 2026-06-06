@@ -1057,6 +1057,8 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .mg-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold, #e0b835); }
 .mg-tab.active .mg-tab-dot { background: #0a0e16; }
 .mg-tabpage[hidden] { display: none; }
+.mg-flash { margin-bottom: 1rem; animation: mg-flash-in .2s ease; }
+@keyframes mg-flash-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .mg-section > h3 { font-size: 1.05rem; margin: 0 0 .65rem; }
 .mg-section { scroll-margin-top: 1rem; }
 .mg-board-sub { margin-top: .85rem; padding-top: .6rem; border-top: 1px solid rgba(255,255,255,.06); }

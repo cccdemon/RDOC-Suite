@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — element-level (AJAX) updates for manage actions
+
+User: don't reload the whole page on actions — update only the changed element. Implemented a
+delegated `submit` interceptor on `.mg-work` (persists across swaps): action POSTs (accept /
+reject / claim / assign / offer / voice-move / requirement edits …) are `fetch`ed, the response
+(it follows the 302 to the manage GET) is parsed, and ONLY the `.mg-work` innerHTML is swapped —
+the active tab is preserved (`activate(currentTab)`), per-element handlers re-bound (`bindWork()`),
+and the server flash shown as a transient in-place banner. Refactor details:
+- All per-element binding (tab clicks, ship search, unit-type toggle + validation, crew drag&drop)
+  moved into a re-callable `bindWork()`; the submit interceptor + rail jump-links bind once.
+- Crew drag-drop assignment uses `requestSubmit()` (fires the submit event → AJAX) instead of
+  `form.submit()` (which bypasses it).
+- **status/delete forms are excluded** (they change the spine/rail that live OUTSIDE `.mg-work`, so
+  they full-reload). Non-OK responses or a response without `.mg-work` fall back to native submit /
+  full navigation (covers errors + the delete→ops-list redirect).
+Verified: build + 235 tests; rendered manage `<script>` syntax-checked (1 script OK, has the
+delegated submit + requestSubmit).
+
 ## Completed Step - 2026-06-06: Fleetplanner — assistant-like manage page (attention tabs)
 
 User: make the manage page more assistant-like; tabs ARE allowed; active tab = yellow, tabs

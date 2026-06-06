@@ -2457,7 +2457,30 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       </div>
     </div>
     <script>
-      document.querySelectorAll(".opv2-form").forEach((form) => {
+      (function () {
+        const work = document.querySelector(".mg-work");
+        if (!work) return;
+        let currentTab = ${safe(JSON.stringify(mgActiveTab))};
+        function opv2EscHtml(s) {
+          return String(s)
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        }
+        function activate(name) {
+          if (!name) return;
+          currentTab = name;
+          work.querySelectorAll(".mg-tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+          work.querySelectorAll(".mg-tabpage").forEach((p) => { p.hidden = p.dataset.tab !== name; });
+          try { history.replaceState(null, "", "?tab=" + encodeURIComponent(name)); } catch (_) {}
+        }
+        // (Re)bind per-element behaviour inside the work area — called at init
+        // and again after every AJAX swap (the swapped DOM has fresh elements).
+        function bindWork() {
+          work.querySelectorAll(".mg-tab").forEach((tab) =>
+            tab.addEventListener("click", () => activate(tab.dataset.tab)),
+          );
+          let opv2DraggedCrewUserId = "";
+      work.querySelectorAll(".opv2-form").forEach((form) => {
         const shipSearch = form.querySelector(".opv2-ship-search");
         const shipResults = form.querySelector(".opv2-ship-results");
         const shipIdField = form.querySelector(".opv2-ship-id-field");
@@ -2587,8 +2610,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           });
         }
       });
-      let opv2DraggedCrewUserId = "";
-      document.querySelectorAll("[data-crew-user-id]").forEach((chip) => {
+      work.querySelectorAll("[data-crew-user-id]").forEach((chip) => {
         chip.addEventListener("dragstart", (event) => {
           opv2DraggedCrewUserId = chip.dataset.crewUserId || "";
           if (event.dataTransfer) {
@@ -2602,7 +2624,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           opv2DraggedCrewUserId = "";
         });
       });
-      document.querySelectorAll("[data-drop-seat]").forEach((seat) => {
+      work.querySelectorAll("[data-drop-seat]").forEach((seat) => {
         seat.addEventListener("dragover", (event) => {
           if (!opv2DraggedCrewUserId) return;
           event.preventDefault();
@@ -2619,38 +2641,51 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             (event.dataTransfer && event.dataTransfer.getData("text/plain")) ||
             opv2DraggedCrewUserId;
           const seatId = seat.dataset.seatId || "";
-          const form = document.querySelector('[data-seat-assign-form="' + seatId + '"]');
+          const form = work.querySelector('[data-seat-assign-form="' + seatId + '"]');
           const input = form ? form.querySelector('input[name="userId"]') : null;
           if (!form || !input || !userId) return;
           input.value = userId;
-          form.submit();
+          form.requestSubmit();
         });
       });
-      function opv2EscHtml(s) {
-        return String(s)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
-      }
+        } // end bindWork
 
-      // Client-side tab switching: show/hide pre-rendered panels without a page
-      // reload, so picking a tab never scrolls back to the top. The URL is kept
-      // in sync (replaceState) so a later reload or form POST lands on the same
-      // tab. Falls back to the plain link navigation if JS is off.
-      (function () {
-        const work = document.querySelector(".mg-work");
-        if (!work) return;
-        const tabs = work.querySelectorAll(".mg-tab");
-        const pages = work.querySelectorAll(".mg-tabpage");
-        function activate(name) {
-          if (!name) return;
-          tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
-          pages.forEach((p) => { p.hidden = p.dataset.tab !== name; });
-          try { history.replaceState(null, "", "?tab=" + encodeURIComponent(name)); } catch (_) {}
-        }
-        tabs.forEach((tab) => tab.addEventListener("click", () => activate(tab.dataset.tab)));
+        // AJAX action posts inside the work area: swap only .mg-work, keep the
+        // current tab — no full-page reload. status/delete forms full-reload
+        // (they change the spine/rail which live OUTSIDE the work area).
+        work.addEventListener("submit", async (e) => {
+          const form = e.target;
+          if (!(form instanceof HTMLFormElement)) return;
+          if (e.defaultPrevented) return; // a per-form validator blocked it
+          if (/\\/(status|delete)$/.test(form.action)) return; // full reload
+          e.preventDefault();
+          const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+          if (submitBtn) submitBtn.disabled = true;
+          try {
+            const res = await fetch(form.action, {
+              method: form.method || "post",
+              body: new FormData(form),
+              headers: { "X-Requested-With": "fetch" },
+            });
+            if (!res.ok) { form.submit(); return; }
+            const txt = await res.text();
+            const doc = new DOMParser().parseFromString(txt, "text/html");
+            const fresh = doc.querySelector(".mg-work");
+            if (!fresh) { window.location.href = res.url || form.action; return; }
+            work.innerHTML = fresh.innerHTML;
+            bindWork();
+            activate(currentTab);
+            const fl = doc.querySelector(".flash");
+            if (fl) {
+              fl.classList.add("mg-flash");
+              work.insertBefore(fl, work.firstChild);
+              setTimeout(() => fl.remove(), 3500);
+            }
+          } catch (_) {
+            form.submit();
+          }
+        });
+
         // Rail "Open tasks" links jump to the relevant tab (no reload).
         document.querySelectorAll("[data-jump]").forEach((a) =>
           a.addEventListener("click", (e) => {
@@ -2659,6 +2694,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             work.scrollIntoView({ behavior: "smooth", block: "start" });
           }),
         );
+
+        bindWork();
+        activate(currentTab);
       })();
     </script>`;
 
