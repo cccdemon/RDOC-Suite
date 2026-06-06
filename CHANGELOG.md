@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Fleetplanner: Fleet Operators can open the real player signup preview (2026-06-06)
+
+- Replaced the ambiguous operator-only "View as" role selector with an explicit **Operator / Player Signup** switch. The player signup preview links to `/ops/:id/join?view=player`, hiding leader-only join-page extras so Fleet Operators can verify the actual player-facing flow.
+
 ### Fixed - Fleetplanner: regular event links now open the player signup view (2026-06-06)
 
 - Authenticated regular players opening `/ops/:id` are redirected to the focused `/ops/:id/join` signup page. Fleet Operators and operation leaders keep the operator/detail view; explicit tabs such as `?tab=fleet` remain reachable for seat selection.

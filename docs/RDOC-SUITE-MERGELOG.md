@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner explicit player signup preview
+
+Fixed the remaining UX confusion for Fleet Operators: the operator page still shows the management
+shell by design, and the old "View as" role selector only simulated roles inside that shell. Replace
+it with an explicit Operator View / Player Signup View switch that links directly to `/ops/:id/join`,
+so Fleet Operators can verify the real player signup experience from the event page. No schema
+migration.
+
+Verification: `pnpm --filter @rdoc-suite/fleetplanner build` and `pnpm --filter
+@rdoc-suite/fleetplanner test` passed locally.
+
 ## Completed Step - 2026-06-06: Fleetplanner player default route fix
 
 Fixed the FR-P1 GUI UX rollout gap: the participant join page exists at `/ops/:id/join`, but the

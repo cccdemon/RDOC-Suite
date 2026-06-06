@@ -426,7 +426,7 @@ export async function webRoutes(app: FastifyInstance) {
   });
 
   // ── Participant join view (focused sign-up page) ─────────────────────
-  app.get<{ Params: { id: string }; Querystring: { flash?: string } }>(
+  app.get<{ Params: { id: string }; Querystring: { flash?: string; view?: string } }>(
     "/ops/:id/join",
     async (req, reply) => {
       const ctx = await requireAuth(req, reply);
@@ -462,7 +462,9 @@ export async function webRoutes(app: FastifyInstance) {
           guildTimezone: (joinGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
           voiceChannelName,
           isLeader:
-            role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id),
+            req.query.view === "player"
+              ? false
+              : role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id),
         }),
       );
     },

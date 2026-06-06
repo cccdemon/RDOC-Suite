@@ -2074,28 +2074,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         </div>
         <div class="opv2-switch">
           ${canRealManage
-            ? html`<form
-                method="get"
-                action="${bp}/ops/${op.id}"
-                class="flex gap-1"
-                style="align-items:center"
-              >
-                <input type="hidden" name="tab" value="${activeTab}" />
-                <span class="text-dim text-sm">View as</span>
-                <select
-                  name="viewAs"
-                  onchange="this.form.submit()"
-                  style="width:auto;min-width:9rem;padding:.3rem .5rem"
-                >
-                  <option value="">Actual Role</option>
-                  ${previewRoles.map(
-                    (role) =>
-                      html`<option value="${role}" ${viewAsRole === role ? safe("selected") : ""}
-                        >${role}</option
-                      >`,
-                  )}
-                </select>
-              </form>`
+            ? html`<div class="opv2-view-switch">
+                <span class="text-dim text-sm">View</span>
+                <a class="active" href="${bp}/ops/${op.id}?tab=${activeTab}">Operator</a>
+                <a href="${bp}/ops/${op.id}/join?view=player">Player Signup</a>
+              </div>`
             : ""}
         </div>
       </header>

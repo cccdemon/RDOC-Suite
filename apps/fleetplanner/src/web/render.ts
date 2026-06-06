@@ -1061,6 +1061,29 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   word-break: break-word;
 }
 .opv2-action-metrics .opv2-metric strong a { color: var(--cyan); }
+.opv2-view-switch {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--cyan-28);
+  background: var(--bg2);
+}
+.opv2-view-switch > span,
+.opv2-view-switch > a {
+  padding: 0.45rem 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+.opv2-view-switch > a {
+  border-left: 1px solid var(--border);
+  color: var(--text);
+}
+.opv2-view-switch > a:hover { color: var(--cyan); background: var(--cyan-08); }
+.opv2-view-switch > a.active {
+  color: var(--bg);
+  background: var(--cyan);
+  font-weight: 700;
+}
 /* Segmented pill bar — one connected strip, clear active segment. Scrolls
    horizontally on narrow widths instead of wrapping into an ambiguous grid. */
 .opv2-tabs {
