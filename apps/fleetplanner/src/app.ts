@@ -8,6 +8,7 @@ import { apiRoutes } from "./routes/api.js";
 import { guildRoutes } from "./routes/guilds.js";
 import { partnershipRoutes } from "./routes/partnerships.js";
 import { bridgeAdminRoutes } from "./routes/bridgeAdmin.js";
+import { coverRoutes } from "./routes/cover.js";
 import { registerMetrics } from "./services/metrics.js";
 
 export async function buildApp() {
@@ -47,6 +48,7 @@ export async function buildApp() {
   await app.register(partnershipRoutes);
   await app.register(webRoutes);
   await app.register(bridgeAdminRoutes);
+  await app.register(coverRoutes);
   await app.register(apiRoutes);
 
   return app;

@@ -33,6 +33,7 @@ services:
       - fleetplanner
       - grafana
       - livekit
+      - mission-cover
       - monitoring
 
   livekit:
@@ -142,6 +143,9 @@ services:
       DATABASE_URL: "postgresql://fleetplanner:${FLEETPLANNER_DB_PASSWORD}@fleetplanner-db:5432/fleetplanner?schema=public"
       WEB_PUBLIC_URL: "${FLEETPLANNER_PUBLIC_URL:-https://suite.raumdock.org}"
       PUBLIC_BASE_PATH: "/fleetplanner"
+      # Mission-cover microservice (FR-P4). Internal docker DNS; render API.
+      MISSIONCOVER_SERVICE_URL: "${MISSIONCOVER_SERVICE_URL:-http://mission-cover:3300}"
+      # MISSIONCOVER_SERVICE_SECRET comes from .env (shared with mission-cover).
     ports:
       - "127.0.0.1:3200:3200"
     depends_on:
@@ -159,6 +163,31 @@ services:
       PORT: "9091"
     ports:
       - "127.0.0.1:9091:9091"
+
+  # Mission-cover render microservice (FR-P4). Self-contained: headless Chromium
+  # renders the MissionCover engine bundle. The fleetplanner calls /v1/* over the
+  # internal network; only /covers/*.png is published (via Caddy /cover/covers*).
+  mission-cover:
+    build:
+      context: .
+      dockerfile: apps/mission-cover/Dockerfile
+    image: rdoc-suite-mission-cover:latest
+    container_name: rdoc-suite-mission-cover
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3300"
+      DATA_DIR: "/app/data/covers"
+      MISSIONCOVER_PUBLIC_URL: "${MISSIONCOVER_PUBLIC_URL:-https://suite.raumdock.org/cover}"
+      # MISSIONCOVER_SERVICE_SECRET comes from .env (min 32 chars). Must match
+      # the value the fleetplanner sends.
+    # Loopback only — Caddy (host network) proxies /cover/covers* here; the
+    # fleetplanner reaches /v1 via the docker DNS name `mission-cover`.
+    ports:
+      - "127.0.0.1:3300:3300"
+    volumes:
+      - mission_cover_data:/app/data
 
   relay-bots:
     build:
@@ -284,5 +313,6 @@ volumes:
   caddy_rdoc_data:
   fleetplanner_pgdata:
   grafana_data:
+  mission_cover_data:
   monitoring_data:
   alertmanager_data:

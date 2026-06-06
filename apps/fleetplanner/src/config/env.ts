@@ -55,6 +55,15 @@ const schema = z.object({
   // Shared secret matching the bridge's BRIDGE_FLEET_SECRET. When unset the
   // Bridge admin section in the fleetplanner UI is hidden (bridgeConfigured()).
   BRIDGE_FLEET_SECRET: z.string().min(32).optional(),
+
+  // Mission-cover render microservice (FR-P4). Internal docker-network URL +
+  // shared M2M secret (matches the service's MISSIONCOVER_SERVICE_SECRET). When
+  // the secret is unset, the cover feature is hidden (coverServiceConfigured()).
+  MISSIONCOVER_SERVICE_URL: z.string().url().default("http://mission-cover:3300"),
+  MISSIONCOVER_SERVICE_SECRET: z.string().min(32).optional(),
+  // Public base URL of the mission-cover service (Caddy /cover) — used to build
+  // the editor link the operator's browser is redirected to.
+  MISSIONCOVER_PUBLIC_URL: z.string().default("https://suite.raumdock.org/cover"),
 });
 
 export type Env = z.infer<typeof schema>;

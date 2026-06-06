@@ -297,6 +297,23 @@ model Operation {
   primaryUnits             OpPrimaryUnit[]
   auditLogs                AuditLog[]
   questions                OpQuestion[]
+  cover                    OpCover?
+}
+
+// FR-P4: mission cover image rendered by the @rdoc-suite/mission-cover
+// microservice. The fleetplanner stores only a reference (id + public URL);
+// the image bytes live in the service's own volume.
+model OpCover {
+  opId      String   @id
+  coverId   String // service-side artifact id (cov_...)
+  url       String // public PNG URL
+  width     Int
+  height    Int
+  preset    String
+  format    String
+  updatedAt DateTime @updatedAt
+
+  operation Operation @relation(fields: [opId], references: [id], onDelete: Cascade)
 }
 
 // ── Audit log (per operation) ──────────────────────────────────────

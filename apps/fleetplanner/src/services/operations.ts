@@ -115,6 +115,7 @@ export async function getOperation(id: string) {
       },
       auditLogs: { orderBy: { createdAt: "desc" }, take: 50 },
       questions: { orderBy: { createdAt: "desc" } },
+      cover: true,
     },
   });
 }

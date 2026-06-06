@@ -21,7 +21,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Server-side render** via headless Chromium (Playwright): seeds the engine's own localStorage config → loads the bundle → screenshots the `#mission-cover-canvas` node. No engine logic change needed for config injection.
 - **M2M API** (Bearer `MISSIONCOVER_SERVICE_SECRET`): `POST /v1/covers` (op payload → render + store), `GET /v1/covers/:id` (metadata). **Public** `GET /covers/:id.png` (read-only, unguessable id) served via Caddy `/cover/covers*`; `/v1/*` never exposed. Artifacts in volume `mission_cover_data`.
 - Egress lockdown in the renderer (anti-SSRF): only `file:`/`data:` + font CDNs + a configurable host allowlist; everything else aborted. Inputs Zod-validated, dimensions/payload capped, runs as non-root.
-- **Fleetplanner** stays thin: client `services/coverService.ts` (mirrors `bridge.ts`), env-gated via `MISSIONCOVER_SERVICE_SECRET` (`coverServiceConfigured()`); compose wires `MISSIONCOVER_SERVICE_URL`. UI button + op→cover persistence land in a follow-up step.
+- **Fleetplanner** stays thin: client `services/coverService.ts` (mirrors `bridge.ts`), env-gated via `MISSIONCOVER_SERVICE_SECRET` (`coverServiceConfigured()`); compose wires `MISSIONCOVER_SERVICE_URL`.
+
+### Added - Mission-cover: fleetplanner integration + editor (FR-P4, Step 4+5) (2026-06-06)
+
+- **Operator cover page** `GET /ops/:id/cover` (operator-only = fleetoperator or op leader): shows the current cover, a quick **generate-from-op-data** form (format + preset), and an **Open editor** button. Linked from a new "Mission Cover" card in the manage workspace command rail.
+- **Generate** `POST /api/ops/:id/cover` maps op fields (title, briefing, system/location, scheduled time, accepted units → asset list, op permalink → QR) to the render service and stores the returned image link in a new **`OpCover`** table (migration `20260606140000_op_cover`; the fleetplanner keeps only the pointer, not the bytes). `POST /api/ops/:id/cover/delete` clears it.
+- **Editor round-trip (Step 5):** `GET /ops/:id/cover/edit` mints a short-lived HMAC capability token (shared `MISSIONCOVER_SERVICE_SECRET`) and redirects to the service editor. The service serves the MissionCover SPA prefilled (seeded localStorage) with an injected **"In Operation speichern"** bar; saving renders + stores and redirects back to `GET /ops/:id/cover/saved` with a signed result token the fleetplanner verifies to persist the `OpCover` row. Capability tokens both directions — no cross-service CORS/CSRF.
+- Caddy now also exposes the token-gated editor (`/cover/edit*`); the M2M render API (`/cover/v1*`) stays blocked from the public.
+- **The cover is actually used for the mission:** rendered as the hero image on the player op page (`/ops/:id`), set as the page's Open-Graph image (link-preview when the op URL is shared), and pushed as the **Discord scheduled-event cover** — on event creation (cover preferred over the generic opType image) and patched live whenever the cover is (re)generated or edited.
+- **Optional wizard step:** the Create-Event wizard has an optional "open mission cover after creating" checkbox; when ticked, creation lands on `/ops/:id/cover` instead of the manage shell.
 
 ### Added - Fleetplanner: ground vehicles carried by a ship (2026-06-06)
 

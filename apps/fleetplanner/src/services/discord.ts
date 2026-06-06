@@ -276,6 +276,38 @@ export async function moveGuildMemberToVoice(input: {
 
 // ── Scheduled events (posted to the operation's own guild) ─────────
 
+// Fetch a rendered mission-cover PNG and turn it into a Discord image data URI.
+// Size-guarded; failures are non-fatal (falls back to the opType image).
+async function coverImageDataUri(url: string): Promise<string | null> {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return null;
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.byteLength > 8 * 1024 * 1024) return null;
+    return `data:image/png;base64,${buf.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Patch an existing scheduled event's cover image (after a cover is (re)generated). */
+export async function updateScheduledEventImage(
+  guildId: string,
+  eventId: string,
+  coverUrl: string,
+): Promise<void> {
+  const token = fleetplannerBotToken();
+  if (!token) return;
+  const image = await coverImageDataUri(coverUrl);
+  if (!image) return;
+  await fetch(`${DISCORD_API}/guilds/${guildId}/scheduled-events/${eventId}`, {
+    method: "PATCH",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ image }),
+    signal: AbortSignal.timeout(8000),
+  }).catch(() => {});
+}
+
 export async function createScheduledEvent(op: {
   id: string;
   guildId: string;
@@ -284,6 +316,7 @@ export async function createScheduledEvent(op: {
   scheduledAt: Date;
   eventVoiceChannelId?: string | null;
   opType?: string | null;
+  cover?: { url: string } | null;
 }): Promise<DiscordEventResult> {
   const env = getEnv();
   const token = fleetplannerBotToken();
@@ -294,7 +327,9 @@ export async function createScheduledEvent(op: {
   // Discord requires events to be at least 1h long; use 3h as default
   const startTime = op.scheduledAt.toISOString();
   const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
-  const image = await opTypeImageDataUri(op.opType);
+  // Prefer the rendered mission cover; fall back to the generic opType image.
+  const image = (op.cover?.url ? await coverImageDataUri(op.cover.url) : null)
+    ?? (await opTypeImageDataUri(op.opType));
 
   const body = voiceChannelId
     ? {

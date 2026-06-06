@@ -1,5 +1,31 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Mission-Cover Step 4+5 — fleetplanner integration + editor (FR-P4)
+
+Built on Step 1+2. **Where in the fleetplanner:** a dedicated operator-only page
+`GET /ops/:id/cover` (NOT surgery in the 8000-line pages.ts) + a "Mission Cover" card in the
+manage-workspace command rail. Operator gate = fleetoperator OR op leader (canManageOp).
+- **Persistence:** new `OpCover` Prisma model (Postgres) holding only {coverId,url,w,h,preset,format}
+  — pointer, not bytes. Migration `prisma/migrations/20260606140000_op_cover`. Relation `Operation.cover`.
+- **Step 4 generate:** `POST /api/ops/:id/cover` builds CoverData from op (title/description/
+  meetingSystem+Location/scheduledAt/units→assets/permalink→QR) → `requestCover` → upsert OpCover.
+  `POST /api/ops/:id/cover/delete` clears it. Quick form (format+preset) on the cover page.
+- **Step 5 editor:** `GET /ops/:id/cover/edit` mints HMAC capability token (shared
+  MISSIONCOVER_SERVICE_SECRET, algo duplicated in coverToken.ts ↔ service token.ts) → redirect to
+  service `/cover/edit?token=`. Service `routes/editor.ts` serves the MissionCover SPA prefilled
+  (editor.ts injects a localStorage-seed <head> script + a "Save to Op" bar) → `POST /cover/edit/save`
+  re-renders via `renderEngineConfig` (render.ts refactor), stores under opId, returns a signed
+  result token → redirect to `GET /ops/:id/cover/saved` which verifies + persists OpCover.
+- **Caddy:** now exposes `/cover/edit*` (token-gated); `/cover/v1*` stays 404 (M2M internal only).
+- New fleetplanner env `MISSIONCOVER_PUBLIC_URL` (editor redirect base).
+- **Cover is actually used for the op:** player page hero (`opJoinPage`), OG link-preview image
+  (layout ogMeta, needs publicUrl param), and the **Discord scheduled-event image** —
+  `createScheduledEvent` prefers `op.cover.url` over the opType image (getOperation now includes
+  `cover`), and `updateScheduledEventImage()` PATCHes the event live on cover (re)generate/save.
+- **Optional wizard step:** Create-Event wizard checkbox `openCover` → create handler redirects to
+  `/ops/:id/cover` when ticked (op must exist first, so it's post-create, not a pre-create step).
+Build = Docker only (no local pnpm). User deploys. First `--build` is the real typecheck.
+
 ## Completed Step - 2026-06-06: Fleetplanner — JSON fleet import (FR-P2, CCU-Game format)
 
 Profile page bulk-import of owned ships from a CCU-Game JSON export. `services/fleetImport.ts`
@@ -44,7 +70,7 @@ ship.
 - **Verified on prod Postgres** (temp data, 6/6 PASS): attach, status-inherit, own seats,
   accept-cascade, reject-cascade, reject-frees-seats. Build + 235 tests pass.
 
-## Queued / Planned Step - 2026-06-06: Mission-Cover microservice — Step 1+2 scaffold (FR-P4)
+## Completed Step - 2026-06-06: Mission-Cover microservice — Step 1+2 scaffold (FR-P4)
 
 Implementing [docs/FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md). New self-contained
 microservice `apps/mission-cover` (`@rdoc-suite/mission-cover`, container `rdoc-suite-mission-cover`):
@@ -175,7 +201,7 @@ New `renderReview()` builds a full pre-publish recap: event facts + Participants
 Fleet Requirements list (category — label ×count) + rendered Briefing preview. `show()` calls it
 instead of the plain `dl(review)`. Client-only (reads form + compositionJson), no backend change.
 
-## Queued / Planned Step - 2026-06-06: Analysis — addOns/ overview + Mission-Cover microservice report
+## Completed Step - 2026-06-06: Analysis — addOns/ overview + Mission-Cover microservice report
 
 User: analyse `addOns/`, write overview + report for adding the cover generator as a **service**.
 Two add-ons (`addOns/CCO`, `addOns/MissionCover`) — both standalone SC mission-briefing

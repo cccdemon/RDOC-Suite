@@ -18,6 +18,19 @@ suite.raumdock.org:9443 {
 		reverse_proxy 127.0.0.1:3001
 	}
 
+	# Mission-cover service. Public: rendered images (/cover/covers*) + the
+	# token-gated editor (/cover/edit*). The M2M render API (/cover/v1*) is NEVER
+	# exposed — the fleetplanner reaches it over the internal docker network.
+	# (Caddy orders handle blocks by path specificity, so the /cover/v1* 404
+	# wins over the broader /cover* handler.) handle_path strips /cover so the
+	# service sees /covers/<id>.png, /edit, /edit/save.
+	handle /cover/v1* {
+		respond 404
+	}
+	handle_path /cover* {
+		reverse_proxy 127.0.0.1:3300
+	}
+
 	handle_path /downloads* {
 		file_server {
 			root /srv/downloads

@@ -15,7 +15,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P3 | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | **FR-P1 event-distribution** + relay-bots multi-session refactor | Plan |
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | Plan |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
-| P4 | Mission-Cover Microservice (server-render API, op→cover image) | [FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md) | — (standalone svc; synergy → FR-P1 cross-post) | Plan |
+| P4 | Mission-Cover Microservice (server-render API, op→cover image) | [FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md) | — (standalone svc; synergy → FR-P1 cross-post) | ✓ Steps 1–5 (Discord-image/cross-post open) |
 | P5 | Rolling Crew Positions (rotate seats) | [FR-P5-rolling-crew-positions.md](FR-P5-rolling-crew-positions.md) | FleetUnit/Seat | Plan |
 | P5 | Item Database (loot/distribution) | [FR-P5-item-database.md](FR-P5-item-database.md) | **blocked: no items API** | Plan |
 

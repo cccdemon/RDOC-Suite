@@ -2461,6 +2461,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             )}
           </div>
           ${canManage
+            ? html`<div class="mg-card">
+                <h4>Mission Cover</h4>
+                <a class="btn btn-sm" href="${bp}/ops/${op.id}/cover">Cover erstellen / bearbeiten</a>
+              </div>`
+            : safe("")}
+          ${canManage
             ? html`<details class="mg-card">
                 <summary style="cursor:pointer;color:var(--dim);font-size:.85rem">Delete operation</summary>
                 <form method="post" action="${bp}/ops/${op.id}/delete" style="margin-top:.6rem">
@@ -3486,6 +3492,10 @@ export function opWizardPage(opts: {
           <ul class="wiz-ready" id="wiz-ready"></ul>
           <div class="wiz-sum-h">Summary</div>
           <dl class="wiz-sum" id="wiz-summary"></dl>
+          <label class="wiz-opt" id="wiz-cover-opt" style="display:flex;gap:.5rem;align-items:center;margin:.4rem 0;font-size:.85rem;color:var(--dim)">
+            <input type="checkbox" name="openCover" value="1" />
+            Mission-Cover nach dem Erstellen öffnen (optional)
+          </label>
           <div class="wiz-aside-actions">
             <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ Back</button>
             <button type="button" class="btn btn-green" id="wiz-next">Continue ›</button>
@@ -3746,6 +3756,7 @@ export function opJoinPage(opts: {
   voiceChannelName?: string | null;
   ownedShips?: Ship[];
   canManage?: boolean;
+  publicUrl?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -4069,6 +4080,14 @@ export function opJoinPage(opts: {
             </div>`
           : safe("")}
       </div>
+      ${op.cover
+        ? html`<img
+            class="event-cover"
+            src="${op.cover.url}"
+            alt="Mission cover"
+            style="width:100%;max-height:340px;object-fit:cover;border-radius:10px;margin:8px 0"
+          />`
+        : safe("")}
       <div>
         <h1>${op.title}</h1>
         <p>${op.meetingLocation || "Rendezvous not set"} · ${systemLabel(op.meetingSystem)}</p>
@@ -4512,6 +4531,16 @@ export function opJoinPage(opts: {
     csrfToken: opts.csrfToken,
     flash: flashFromQuery(opts.flash),
     body,
+    // Mission cover doubles as the link-preview image when the op URL is shared.
+    ogMeta:
+      op.cover && opts.publicUrl
+        ? {
+            title: op.title,
+            description: op.meetingLocation || systemLabel(op.meetingSystem),
+            imageUrl: op.cover.url,
+            pageUrl: `${opts.publicUrl}/ops/${op.id}`,
+          }
+        : undefined,
   });
 }
 

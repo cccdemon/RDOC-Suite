@@ -385,8 +385,16 @@ export async function webRoutes(app: FastifyInstance) {
           /* ignore malformed composition */
         }
       }
-      // The creator is an operator — land in the management shell so they can
-      // open the op, add leaders, launch voice, etc. (not the player signup page).
+      // Optional wizard step: jump straight to the Mission Cover page when the
+      // creator ticked "open cover after creating". Otherwise land in the
+      // management shell (add leaders, launch voice, etc.).
+      const openCover = req.body.openCover === "1" || req.body.openCover === "on";
+      if (openCover) {
+        return reply.redirect(
+          basePath(`/ops/${op.id}/cover?flash=ok:Operation+created.+Add+a+mission+cover.`),
+          302,
+        );
+      }
       return reply.redirect(
         basePath(`/ops/${op.id}/manage?flash=ok:Operation+created.+Open+it+when+ready.`),
         302,
@@ -524,6 +532,7 @@ export async function webRoutes(app: FastifyInstance) {
         voiceChannelName,
         ownedShips,
         canManage,
+        publicUrl: `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH ?? ""}`,
       }),
     );
   });
