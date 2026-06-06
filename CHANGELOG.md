@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Fleetplanner: regular event links now open the player signup view (2026-06-06)
+
+- Authenticated regular players opening `/ops/:id` are redirected to the focused `/ops/:id/join` signup page. Fleet Operators and operation leaders keep the operator/detail view; explicit tabs such as `?tab=fleet` remain reachable for seat selection.
+
 ### Changed - Fleetplanner: player signup and Fleet Requirements wording polish (2026-06-06)
 
 - Renamed remaining player/operator-facing "Composition" and "Fleet Needs" wording to **Fleet Requirements**.

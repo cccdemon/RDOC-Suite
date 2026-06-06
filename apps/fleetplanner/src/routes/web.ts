@@ -604,6 +604,10 @@ export async function webRoutes(app: FastifyInstance) {
     const canAssignSeats =
       opRoleForView === "fleetoperator" ||
       op.leaders.some((leader) => leader.user.id === ctx.user.id);
+    if (!canAssignSeats && !req.query.tab && !req.query.viewAs) {
+      const qs = req.query.flash ? `?flash=${encodeURIComponent(req.query.flash)}` : "";
+      return reply.redirect(basePath(`/ops/${op.id}/join${qs}`), 302);
+    }
     // Only op leaders (fleetoperator in the op's guild or a listed
     // OperationLeader) may change visibility — captains/crew cannot.
     const canEditVisibility = canAssignSeats;

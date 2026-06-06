@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner player default route fix
+
+Fixed the FR-P1 GUI UX rollout gap: the participant join page exists at `/ops/:id/join`, but the
+normal event link `/ops/:id` still opens the operator/detail shell for regular authenticated
+players. Redirect regular non-leader viewers from the default event URL to the focused join page,
+while keeping explicit tabs such as `?tab=fleet` available for seat selection. No schema migration.
+
+Verification: `pnpm --filter @rdoc-suite/fleetplanner build` and `pnpm --filter
+@rdoc-suite/fleetplanner test` passed locally.
+
 ## Completed Step - 2026-06-06: Fleetplanner P1 GUI UX implementation
 
 Implemented the P1 Fleetplanner GUI UX baseline from
