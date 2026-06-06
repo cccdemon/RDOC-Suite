@@ -79,15 +79,25 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 
 2. **RDOC-Suite ≠ DCCC.** Nie verwechseln (siehe Deploy-Regeln oben).
 
-3. **SSH in Prod erlaubt.** SSH-Key vorhanden. Server: `10.10.10.99`, Pfad: `/opt/RDOC-Suite`.
+3. **Prod-Zugang NUR über Proxmox-Host → LXC 103.** Niemals direktes `ssh root@10.10.10.99` (User: „fireable offense"). Pfad:
+   `ssh -i ~/.ssh/claude_deploy root@ve.raumdock.org "pct exec 103 -- sh -c '<cmd>'"`
+   - Key `~/.ssh/claude_deploy` (NICHT die `id_ed25519*`-Defaults). RDOC-Suite liegt in LXC 103 unter `/opt/RDOC-Suite`. Für Befehle `pct exec 103 --` (nicht das interaktive `pct enter`).
+   - Deploy macht der User normalerweise selbst; nur deployen wenn explizit beauftragt.
 
-4. **Kein lokales pnpm/npm/cargo.** Docker baut alles server-seitig. Dockerfile bootstrappt sich selbst.
+4. **GitHub-Push über gh-Credential-Helper.** Die SSH-Keys authentifizieren NICHT gegen GitHub. `gh` ist als `cccdemon` eingeloggt (https):
+   `git -c credential.helper="!gh auth git-credential" push https://github.com/cccdemon/RDOC-Suite.git master`
 
-5. **Code first, compile last.** Ganzes Feature end-to-end schreiben, dann alle Type-Errors in einem Batch fixen.
+5. **Kein lokales pnpm/npm/cargo.** Docker baut alles server-seitig. Dockerfile bootstrappt sich selbst.
 
-6. **Docs nur in `docs/`.** Kein STAND.md. Infra-Wahrheit liegt in `docs/RDOC-SUITE-MERGELOG.md`.
+6. **Code first, compile last.** Ganzes Feature end-to-end schreiben, dann alle Type-Errors in einem Batch fixen.
 
-7. **Regeln in CLAUDE.md schreiben** wenn der User sie nennt — nicht nur in Memory.
+7. **Docs nur in `docs/`.** Kein STAND.md. Infra-Wahrheit liegt in `docs/RDOC-SUITE-MERGELOG.md` (Code = Ground Truth). Erledigte Handover-/Plan-/Implementation-Log-Docs löschen statt veralten lassen — Historie bleibt im Mergelog.
+
+8. **CHANGELOG.md nach jeder Coding-Session** unter `## [Unreleased]` pflegen — Einträge für alle Änderungen.
+
+9. **FeatureRequest-/Plan-Docs:** ein Feature pro File, Dateiname `docs/FR-P<n>-<feature>.md` (n = Prio, 1 höchste … 5 niedrigste). Header: FR-Marker + Prio + **Dependency-Block** (Abhängigkeiten sichtbar machen). In die Planungstabelle unten eintragen.
+
+10. **Regeln in CLAUDE.md schreiben** wenn der User sie nennt — nicht nur in Memory.
 
 ## Operative Hinweise für Claude Code
 
@@ -134,7 +144,9 @@ pnpm --filter @rdoc-suite/bridge test -- -t "name"  # einzelner it("name", ...) 
 
 Es gibt keinen `ts-node`-Runner. Bot und Bridge müssen vor dem Start kompiliert werden (Output in `dist/`). **Für Production wird ausschließlich in Docker gebaut** — kein lokaler pnpm/npm/cargo auf dem Server.
 
-### Häufige Commands — Production (10.10.10.99 /opt/RDOC-Suite) via ve.raumdock.org(proxmox host)
+### Häufige Commands — Production (LXC 103, `/opt/RDOC-Suite`)
+
+Zugang **immer** über Proxmox-Host (siehe Regel 3): `ssh -i ~/.ssh/claude_deploy root@ve.raumdock.org "pct exec 103 -- sh -c '<cmd>'"`. Die folgenden Befehle laufen **innerhalb** LXC 103:
 
 ```bash
 cd /opt/RDOC-Suite
@@ -194,7 +206,7 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
      - `full`: native Bridge Admin UI unverändert.
      - `legacy`: native UI bleibt per Direkt-URL erreichbar, zeigt Legacy-Banner; Dashboard/Raid Planer/Konfig sind aus der Primär-Nav entfernt (Fleetplanner ist die normale Operator-UI). Diagnostik (Sessions/Relay/Monitoring/Audit/Discord-Voice/Admins) bleibt sichtbar.
      - `disabled`: `registerAdminRoutes` wird übersprungen → `/admin/*` 404, `/health` + alle Backend-Routes laufen weiter.
-     - `buildApp({ bridgeAdminUiMode })`-Override existiert nur für Tests (kein `process.env`-Mutieren). Prod liest den Wert via `env_file: .env` ([.env.prod.template](.env.prod.template), default-Empfehlung `legacy`). Native-Admin-**Operation-Pages** (Dashboard/Raid-Planer/Konfig) sind seit 2026-06-02 entfernt (plan step 5, siehe oben); Diagnose-Pages bleiben. Plan: [docs/bridge-admin-deprecation-plan.md](docs/bridge-admin-deprecation-plan.md).
+     - `buildApp({ bridgeAdminUiMode })`-Override existiert nur für Tests (kein `process.env`-Mutieren). Prod liest den Wert via `env_file: .env` ([.env.prod.template](.env.prod.template), default-Empfehlung `legacy`). Native-Admin-**Operation-Pages** (Dashboard/Raid-Planer/Konfig) sind seit 2026-06-02 entfernt (plan step 5, siehe oben); Diagnose-Pages bleiben. (Plan + Implementation-Log dazu am 2026-06-06 als erledigt gelöscht; Historie im Mergelog.)
 
 8. **Sessions (Step 3, 2026-05-27): invite-basierte Ops-Räume.** Admiral minted single-use Invite-Token; Commander löst per `POST /sessions/join` LiveKit-Credentials ein. Schema: `Session` + `SessionInvite` in [prisma/schema.prisma](prisma/schema.prisma). Service: [apps/bridge/src/services/sessions.ts](apps/bridge/src/services/sessions.ts). Admin-UI unter `/admin/sessions`. Tests: [apps/bridge/src/__tests__/sessions.test.ts](apps/bridge/src/__tests__/sessions.test.ts).
 
@@ -254,10 +266,9 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 
 | Datei | Inhalt | Status |
 |---|---|---|
-| [docs/opus-tennant-architecture.md](docs/opus-tennant-architecture.md) | Op-Visibility (`private/partners/public`) + Guild-Partnerships (`GuildPartnership`-Tabelle) | Plan, kein Code |
+| [docs/opus-tennant-architecture.md](docs/opus-tennant-architecture.md) | Op-Visibility (`private/partners/public`) + Guild-Partnerships (`GuildPartnership`-Tabelle) | ✓ **Umgesetzt** — nur noch Design-Referenz/Historie |
 | [docs/orgmodule-implementationplan.md](docs/orgmodule-implementationplan.md) | Org-Modul: SC-Orgs als First-Class-Entities (`Org`, `OrgMembership`, `OrgInvite`) | Plan, kein Code |
 | [docs/composition-rebuild-plan.md](docs/composition-rebuild-plan.md) | Composition Board + Leader-Assign + Auto-Match (Schritte 1+2 im Code, Schritte 3-5 offen) | Teilweise umgesetzt |
-| [docs/handover.to.opus-model.md](docs/handover.to.opus-model.md) | Bridge-Admin in Fleetplanner absorbieren (Phasen 1-4 done, Raid-Planer bleibt im Bridge-UI) | Phasen 1-4 done |
 | [docs/FR-P1-event-distribution.md](docs/FR-P1-event-distribution.md) | **FeatureRequest, Prio 1.** Event-Distribution: Op-Discord-Event an alle aktiven Partner-Discords cross-posten, Allowlist (`PartnerSharePolicy`) + Approval (DM-Buttons/Web-Inbox) durch benannte Kontaktperson pro Event×Guild. Basis für FR-P3-federation-voice. | Plan, kein Code |
 | [docs/FR-P3-federation-voice.md](docs/FR-P3-federation-voice.md) | **FeatureRequest, Prio 3.** Federation Voice (Homeoffice-Party / shared LiveKit room, host+deputies, Cap 16) + Relay-Bots-Multi-Session-Umbau für gleichzeitige isolierte Events. **Hängt an FR-P1.** | Plan, kein Code |
 | [docs/FR-P3-recurring-events.md](docs/FR-P3-recurring-events.md) | **FeatureRequest, Prio 3.** Wiederkehrende Events: RRULE-Template + Scheduler materialisiert Op-Instanzen; nativer Discord `recurrence_rule` (Approach A). Kern eigenständig; Serien-Distribution soft-hängt an FR-P1. | Plan, kein Code |
