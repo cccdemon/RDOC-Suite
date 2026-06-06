@@ -9,6 +9,7 @@ import {
   opDetailPageV2,
   opFormPage,
   opWizardPage,
+  opJoinPage,
   profilePage,
   shipsPage,
   feedbackPage,
@@ -356,6 +357,47 @@ export async function webRoutes(app: FastifyInstance) {
       return reply.redirect(basePath("/ops/new?flash=error:Failed+to+create+operation"), 302);
     }
   });
+
+  // ── Participant join view (focused sign-up page) ─────────────────────
+  app.get<{ Params: { id: string }; Querystring: { flash?: string } }>(
+    "/ops/:id/join",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      const op = await getOperation(req.params.id);
+      if (!op) {
+        return htmlReply(
+          reply,
+          errorPage({ basePath: basePath(), currentUser: ctx.user, status: 404, message: "Operation not found" }),
+        );
+      }
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+      if (!role) {
+        return htmlReply(
+          reply,
+          errorPage({ basePath: basePath(), currentUser: ctx.user, status: 404, message: "Operation not found" }),
+        );
+      }
+      const [voiceChannels, joinGuildRow] = await Promise.all([
+        fetchGuildVoiceChannels(op.guildId),
+        prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } }),
+      ]);
+      const voiceChannelName =
+        voiceChannels.find((c) => c.id === op.eventVoiceChannelId)?.name ?? null;
+      htmlReply(
+        reply,
+        opJoinPage({
+          basePath: basePath(),
+          currentUser: ctx.user,
+          csrfToken: ctx.csrfToken,
+          flash: req.query.flash,
+          op,
+          guildTimezone: (joinGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
+          voiceChannelName,
+        }),
+      );
+    },
+  );
 
   // ── Operation detail ─────────────────────────────────────────────────
   app.get<{

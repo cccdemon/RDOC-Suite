@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Fleetplanner: dedicated participant join view (Mission Creation Flow Phase 2/4, 2026-06-06)
+
+- New `/ops/:id/join` page (mobile-first): status/visibility badges + When/System/Voice meta, an "Ich will teilnehmen" card with the three sign-up paths (vom Operator zuweisen lassen / freien Sitz wählen / Schiff stellen), "Freie Plätze" per unit, "Mission braucht" composition chips, the briefing, and a "Meine Anmeldung" sidebar with state + a crew-request form (Notiz → Teilnehmen). Reuses the existing crew-request + seat-claim endpoints; "Frage stellen" is stubbed for Phase 5. The op-detail "Mitmachen?" CTA now links here.
+
 ### Changed — Fleetplanner: op-creation wizard restyled to 3-column layout (Mission Creation Flow, 2026-06-06)
 
 - The `/ops/new/wizard` assistant now matches the target design: a vertical step rail (Basisdaten → Ort → Sichtbarkeit & Voice → Briefing → Review), the form in the centre, and a right "Bereit zum Öffnen" readiness panel + live "Zusammenfassung" that update as you type. Briefing step gains a Markdown preview toggle. Still posts to the existing `POST /ops/new` — no backend change. Composition + min-participants readiness land with Phase 3/5.

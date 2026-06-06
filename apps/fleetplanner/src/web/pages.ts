@@ -1976,8 +1976,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ? html`<div class="opv2-cta">
                 <div class="opv2-cta-h">Mitmachen?</div>
                 <div class="opv2-cta-actions">
-                  <a class="btn btn-green" href="${bp}/ops/${op.id}?tab=fleet">▶ Sitz claimen</a>
-                  <a class="btn" href="${bp}/ops/${op.id}?tab=crew">Als Crew anmelden</a>
+                  <a class="btn btn-green" href="${bp}/ops/${op.id}/join">▶ Mitmachen</a>
+                  <a class="btn" href="${bp}/ops/${op.id}?tab=fleet">Sitz direkt wählen</a>
                 </div>
               </div>`
             : op.status === "locked"
@@ -3092,6 +3092,192 @@ export function opWizardPage(opts: {
 
   return layout({
     title: "Neue Operation — Assistent",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+// ── Participant join view (FR-P1 Phase 2/4 — mobile-first sign-up) ───
+// Focused "I want to join" page: the three sign-up paths, open seats, what the
+// mission needs, briefing, and a "Meine Anmeldung" sidebar. Reuses existing
+// endpoints (crew-requests, seat claim on the Fleet tab).
+export function opJoinPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  op: NonNullable<OpFull>;
+  guildTimezone?: string;
+  voiceChannelName?: string | null;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const op = opts.op;
+  const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
+  const csrf = opts.csrfToken ?? "";
+  const myId = opts.currentUser?.id;
+  const isOpen = op.status === "open";
+  const hasSeat = !!myId && op.units.some((u) => u.seats.some((s) => s.active && s.userId === myId));
+  const hasReq = !!myId && op.crewRequests.some((r) => r.user.id === myId);
+  const acceptedUnits = op.units.filter((u) => u.status === "accepted");
+  const openUnits = acceptedUnits
+    .map((u) => {
+      const seats = u.seats.filter((s) => s.active);
+      const open = seats.filter((s) => !s.userId).length;
+      const name = u.squadName || u.ship?.name || "Einheit";
+      return { name, open, total: seats.length };
+    })
+    .filter((u) => u.open > 0);
+  const requirements = op.groups.flatMap((g) => g.requirements);
+  const statusUpper = op.status.toUpperCase();
+  const visUpper = ((op as { visibility?: string }).visibility ?? "private").toUpperCase();
+
+  const stateBanner = hasSeat
+    ? html`<div class="opv2-cta done">✓ Du bist eingeteilt.</div>`
+    : hasReq
+      ? html`<div class="opv2-cta done">✓ Anmeldung eingegangen — wartet auf Zuweisung.</div>`
+      : !isOpen
+        ? html`<div class="opv2-cta closed">Anmeldung geschlossen.</div>`
+        : safe("");
+
+  const body = html` <style>
+      .join-badges { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 14px; }
+      .join-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 6px; border: 1px solid currentColor; }
+      .join-badge.open { color: var(--green, #3ad07a); }
+      .join-badge.pub { color: var(--cyan, #35d0e0); }
+      .join-badge.time { color: var(--dim, #7a8a96); }
+      .join-meta { display: flex; gap: 18px; flex-wrap: wrap; padding: 12px 14px; margin-bottom: 1rem; font-size: 0.85rem; color: var(--dim, #7a8a96); }
+      .join-meta b { color: var(--text, #cdd9e1); font-weight: 600; }
+      .join-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1rem; align-items: start; }
+      .join-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+      .join-opt { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; margin-top: 10px; text-decoration: none; color: inherit; }
+      .join-opt:hover { border-color: var(--cyan, #35d0e0); }
+      .join-opt .ico { font-size: 1.4rem; flex: none; }
+      .join-opt .ttl { font-weight: 600; }
+      .join-opt .sub { font-size: 0.8rem; color: var(--dim, #7a8a96); }
+      .join-opt .arr { margin-left: auto; color: var(--dim, #7a8a96); }
+      .join-seat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
+      .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; }
+      .join-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+      .join-chip { font-size: 0.78rem; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.14); }
+      .join-md { white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5; color: var(--text, #cdd9e1); }
+      .join-aside textarea { width: 100%; box-sizing: border-box; min-height: 90px; margin: 6px 0 10px; }
+      .join-cta-btn { width: 100%; }
+      @media (max-width: 900px) {
+        .join-layout { grid-template-columns: 1fr; }
+        .join-row2 { grid-template-columns: 1fr; }
+      }
+    </style>
+    <div class="page-header"><h1 class="page-title">${op.title}</h1></div>
+    <div class="join-badges">
+      <span class="join-badge ${isOpen ? "open" : ""}">${statusUpper}</span>
+      <span class="join-badge pub">${visUpper}</span>
+      <span class="join-badge time">🕑 ${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
+    </div>
+    <div class="join-meta card">
+      <span>📍 Treffpunkt: <b>${op.meetingLocation || "—"}</b></span>
+      <span>🪐 System: <b>${systemLabel(op.meetingSystem)}</b></span>
+      <span>🎙 Voice: <b>${opts.voiceChannelName || "—"}</b></span>
+    </div>
+
+    <div class="join-layout">
+      <div class="join-main">
+        <section class="card">
+          <h3 class="wiz-sum-h">Ich will teilnehmen</h3>
+          <a class="join-opt" href="#anmeldung">
+            <span class="ico">🧭</span>
+            <span
+              ><span class="ttl">Vom Operator zuweisen lassen</span><br /><span class="sub"
+                >Ich bin flexibel oder brauche einen Platz.</span
+              ></span
+            >
+            <span class="arr">›</span>
+          </a>
+          <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
+            <span class="ico">💺</span>
+            <span
+              ><span class="ttl">Freien Sitz wählen</span><br /><span class="sub"
+                >Direkt in ein Schiff oder Fireteam eintragen.</span
+              ></span
+            >
+            <span class="arr">›</span>
+          </a>
+          <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
+            <span class="ico">🚀</span>
+            <span
+              ><span class="ttl">Schiff stellen</span><br /><span class="sub"
+                >Nur erlaubte Schiffe aus der Composition anbieten.</span
+              ></span
+            >
+            <span class="arr">›</span>
+          </a>
+        </section>
+
+        <div class="join-row2">
+          <section class="card">
+            <h3 class="wiz-sum-h">Freie Plätze</h3>
+            ${openUnits.length
+              ? openUnits.map(
+                  (u) =>
+                    html`<div class="join-seat">
+                      <span>${u.name}</span><span class="free">${u.open}/${u.total} frei</span>
+                    </div>`,
+                )
+              : html`<p class="text-dim text-sm">Aktuell keine offenen Plätze.</p>`}
+            <a href="${bp}/ops/${op.id}?tab=fleet" class="text-sm" style="display:inline-block;margin-top:8px"
+              >Alle Positionen anzeigen ›</a
+            >
+          </section>
+          <section class="card">
+            <h3 class="wiz-sum-h">Mission braucht</h3>
+            ${requirements.length
+              ? html`<div class="join-chips">
+                  ${requirements.map(
+                    (r) => html`<span class="join-chip">${r.count}× ${r.label}</span>`,
+                  )}
+                </div>`
+              : html`<p class="text-dim text-sm">Keine Composition definiert.</p>`}
+          </section>
+        </div>
+
+        <section class="card" style="margin-top:1rem">
+          <h3 class="wiz-sum-h">Briefing</h3>
+          ${op.description
+            ? html`<div class="join-md">${op.description}</div>`
+            : html`<p class="text-dim text-sm">Kein Briefing hinterlegt.</p>`}
+        </section>
+      </div>
+
+      <aside class="card join-aside" id="anmeldung">
+        <h3 class="wiz-sum-h">Meine Anmeldung</h3>
+        ${stateBanner}
+        ${isOpen && !hasSeat && !hasReq
+          ? html`<form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="ui" value="new" />
+              <input type="hidden" name="tab" value="crew" />
+              <label>Notiz an den FleetOperator</label>
+              <textarea
+                name="note"
+                maxlength="240"
+                placeholder="z. B. Erfahrung, bevorzugte Rolle, verfügbare Schiffe … (optional)"
+              ></textarea>
+              <button type="submit" class="btn btn-green join-cta-btn">Teilnehmen ›</button>
+            </form>`
+          : safe("")}
+        <button class="btn btn-ghost join-cta-btn" style="margin-top:8px" disabled title="kommt mit Phase 5">
+          💬 Frage stellen
+        </button>
+        <p class="text-dim text-sm" style="margin-top:10px">
+          Deine Anmeldung ist für den Operator sichtbar, sobald du teilnimmst.
+        </p>
+      </aside>
+    </div>`;
+
+  return layout({
+    title: `Mitmachen: ${op.title}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
