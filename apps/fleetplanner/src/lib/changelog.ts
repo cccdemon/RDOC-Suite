@@ -19,6 +19,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Switching the style preset now keeps all your inputs and only changes the look (colors, fonts, effects) — it no longer wipes your texts and placements.",
       "Fixed: clicking \"Abbrechen\" in the editor now returns to the cover page instead of showing an error.",
       "The bottom save bar no longer covers the editor.",
+      "After saving, the editor shows a clear \"Zurück zum Fleetmanager\" button.",
     ],
   },
   {

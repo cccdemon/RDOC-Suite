@@ -63,7 +63,15 @@ export async function buildEditorHtml(boot: EditorBootstrap): Promise<string> {
           var bg=st.bgImage||null;
           var r=await fetch(BOOT.saveUrl,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:BOOT.token,config:config,bg:bg})});
           if(!r.ok){throw new Error('HTTP '+r.status);}
-          var j=await r.json();window.location.href=j.redirect;
+          var j=await r.json();
+          // Saved → show confirmation + an explicit "back to Fleetmanager" button
+          // (the link finalises the cover on the Fleetmanager side). Auto-follow
+          // after a few seconds as a fallback.
+          bar.innerHTML='';
+          var ok=el('span',{textContent:'✓ Cover gespeichert'});ok.style.cssText='margin-right:auto;color:#34d399;font-size:13px;font-weight:600';
+          var back=el('a',{textContent:'Zurück zum Fleetmanager',href:j.redirect});back.style.cssText='padding:8px 16px;border:1px solid #0ea5e9;background:#0284c7;color:#fff;border-radius:6px;text-decoration:none;font-weight:600';
+          bar.appendChild(ok);bar.appendChild(back);
+          setTimeout(function(){window.location.href=j.redirect;},6000);
         }catch(e){save.disabled=false;save.textContent='In Operation speichern';alert('Speichern fehlgeschlagen: '+e.message);}
       };
       bar.appendChild(label);bar.appendChild(cancel);bar.appendChild(save);

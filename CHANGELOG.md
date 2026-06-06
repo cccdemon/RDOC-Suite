@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Style switch keeps inputs:** `handleSelectPreset` now merges only the visual style fields (colors/fonts/effects); it no longer replaces the whole config and wipe the user's texts and placements.
 - **"Abbrechen" fixed:** the editor now has a separate `cancelUrl` (the cover page); cancel previously navigated to the save callback without a token and hit the 5xx error page.
 - **Save bar no longer overlaps** the editor: it shrinks the engine app shell to `calc(100vh - 56px)` instead of relying on body padding (ignored by the fixed-height layout).
+- **Back-to-Fleetmanager button:** after a successful save the editor shows a confirmation + an explicit "Zurück zum Fleetmanager" button (the link finalises the cover on the Fleetmanager side); auto-follows after a few seconds as a fallback.
 
 ### Added - Fleetplanner: recurring events (FR-P3) (2026-06-06)
 
