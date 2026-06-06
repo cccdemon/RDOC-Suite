@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Mission-Cover DEPLOYED to prod (LXC 103) + build fixes
+
+Feature commit `72e4c24`. Deployed to 10.10.10.99 / LXC 103. Four build/runtime fixes needed
+(first real typecheck + container run surfaced them):
+- `96a13dd` fleetplanner tsc: `requestCover` returns `CoverResponse.urls.png`, not `.url`.
+- `6d99f08` Dockerfile: corepack on the Playwright image fails pnpm signature verify
+  ("Cannot find matching keyid") on Node 22.12 → install pnpm via `npm install -g pnpm@10.33.0`.
+- `bb33e5d` pin `playwright` to exact `1.49.1` = base image tag; `^1.49.1` pulled 1.60.0 whose
+  bundled Chromium path differs → "Executable doesn't exist".
+- `0c490c8` engine `postbuild.js`: keep inline `type="module"` (defers natively, runs after
+  `#root`); downgrading to plain `<script defer>` is a no-op for inline scripts → bundle ran in
+  `<head>` before `#root` → React #299, `#mission-cover-canvas` never mounted.
+**Verified live:** `/v1/covers` → 201, PNG 2400×1350 @1.6MB; public `/cover/covers/:id.png` → 200;
+`/cover/v1*` → 404 (M2M not exposed); `/cover/edit` no-token → 403; fleetplanner migration
+`20260606140000_op_cover` applied; mission-cover `/about` shows Vi5E credit. Smoketest artifact cleaned.
+**Gotcha:** prod `.env` wraps `MISSIONCOVER_SERVICE_SECRET` in double quotes — compose strips them
+(both services see the same 52-char value); a raw `grep|cut` keeps the quotes (54) → don't compare that way.
+
 ## Completed Step - 2026-06-06: Mission-Cover Step 4+5 — fleetplanner integration + editor (FR-P4)
 
 Built on Step 1+2. **Where in the fleetplanner:** a dedicated operator-only page
