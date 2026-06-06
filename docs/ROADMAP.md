@@ -11,10 +11,11 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P1 | Event Distribution (cross-post to partner Discords) | [FR-P1-event-distribution.md](FR-P1-event-distribution.md) | live partnerships only | Plan |
 | P1 | Event Creation Simplification (Mobile join + Admin wizard) | [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) | — (sight "Vi5E Tools") | Plan |
 | P1 | Fleetplanner GUI UX (Join view + Fleet Requirements wording) | [FR-P1-fleetplanner-gui-ux-implementation.md](FR-P1-fleetplanner-gui-ux-implementation.md) | existing Fleetplanner SSR + Composition/FleetUnit models | Plan |
-| P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | Plan |
+| P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | ✓ Done |
 | P3 | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | **FR-P1 event-distribution** + relay-bots multi-session refactor | Plan |
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | Plan |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
+| P4 | Mission-Cover Microservice (server-render API, op→cover image) | [FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md) | — (standalone svc; synergy → FR-P1 cross-post) | Plan |
 | P5 | Rolling Crew Positions (rotate seats) | [FR-P5-rolling-crew-positions.md](FR-P5-rolling-crew-positions.md) | FleetUnit/Seat | Plan |
 | P5 | Item Database (loot/distribution) | [FR-P5-item-database.md](FR-P5-item-database.md) | **blocked: no items API** | Plan |
 
@@ -25,7 +26,8 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 4. **FR-P2 fleet-import-json** — concrete data ready, self-contained.
 5. **FR-P3 recurring-events** — standalone, low risk.
 6. **FR-P3 roadmap-tab** — surfaces everything else + feedback intake.
-7. **FR-P3 federation-voice** — largest/riskiest; needs FR-P1 + relay-bots refactor.
+7. **FR-P4 mission-cover-service** — standalone microservice; can land any time, no hard deps (synergy with FR-P1 cross-post).
+8. **FR-P3 federation-voice** — largest/riskiest; needs FR-P1 + relay-bots refactor.
 8. **FR-P5 rolling-crew-positions**, **FR-P5 item-database** (item-db blocked on data source).
 
 ## Bugs / improvements (tracked in [FLEETPLANNER-BACKLOG.md](FLEETPLANNER-BACKLOG.md))

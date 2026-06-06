@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — JSON fleet import (FR-P2, CCU-Game format)
+
+Profile page bulk-import of owned ships from a CCU-Game JSON export. `services/fleetImport.ts`
+`importUserFleet(userId, raw)`: parse the array, match each `name` to the ship catalog
+(case-insensitive + light fuzzy contains), upsert `UserShip` with `shipname`→nickname; returns
+{added, already, unmatched}. Route `POST /profile/fleet-import`; profile UI gets an "Import fleet
+(JSON)" textarea with the format hint. **In-process** module (not a deployed microservice — pure
+DB-bound, no benefit to a network hop; service-shaped boundary keeps it extractable). `UserShip` is
+unique per (user, model) so duplicate hulls collapse to one owned entry (true multi-hull = future
+schema change). **Verified on prod DB**: example JSON → 2 added, 1 duplicate collapsed, bogus name
+reported unmatched. Build + 235 tests pass.
+
 ## Completed Step - 2026-06-06: Fleetplanner — vehicle-carrier capability + operator attach
 
 User: a ground vehicle can only attach to a CAPABLE ship (Paladin no, Perseus/Asgard yes, fighters

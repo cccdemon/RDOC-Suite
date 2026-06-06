@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetplanner: JSON fleet import on profile (2026-06-06)
+
+- The profile page can **import a CCU-Game JSON export** ("Import fleet (JSON)") to bulk-add owned ships. Each model is matched to the ship catalog (case-insensitive); the import reports how many were added, already owned, and unmatched. (FR-P2.)
+
 ### Added - Fleetplanner: only vehicle-capable ships carry a ground vehicle (2026-06-06)
 
 - A ground vehicle can only be attached to a ship with a big-enough cargo bay (cargo-grid opening ≥ 2.4 × 2.4 × ≥4 m) — e.g. Perseus / Asgard yes, Paladin and fighters no. Enforced on attach; "Add a ground vehicle" only appears on capable ships. The operator can also attach/remove a vehicle from the manage shell, where vehicles now nest under their carrier ship.

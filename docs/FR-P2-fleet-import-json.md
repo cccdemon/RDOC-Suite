@@ -1,7 +1,10 @@
 # Fleet Import via JSON — bulk-add user ships (CCU-Game format)
 
 **FeatureRequest — Priority 2** (scale 1 highest … 5 lowest)
-**Status:** Plan, **NOT yet implemented**. Captured from roadmap dump 2026-06-06.
+**Status:** ✓ **Implemented 2026-06-06** — `services/fleetImport.ts` + `POST /profile/fleet-import`
++ profile "Import fleet (JSON)" UI. Matches CCU-Game JSON to the catalog (case-insensitive + fuzzy),
+upserts `UserShip`. NOTE: `UserShip` is unique per (user, model) → duplicate hulls collapse to one
+owned entry (open decision #1: true multi-hull would need dropping that unique constraint).
 
 ## Dependencies
 - **= Backlog #1 "CCU Chain Import (Personal Hangars)"** — supersede/merge that backlog item.
