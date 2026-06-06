@@ -3362,6 +3362,19 @@ export function opJoinPage(opts: {
       .join-opt .ttl { font-weight: 700; }
       .join-opt .sub { font-size: 0.8rem; color: var(--dim, #7a8a96); }
       .join-opt .arr { color: var(--dim, #7a8a96); }
+      /* Radio-driven join assistant: CSS-only inline disclosure, no JS. */
+      .join-asst .ja-radio { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+      .ja-opt { display: grid; grid-template-columns: 4rem minmax(0, 1fr) 18px; align-items: center; gap: 14px; padding: 13px 16px; border: 1px solid rgba(255,255,255,0.1); margin-top: 10px; cursor: pointer; background: rgba(255,255,255,.015); }
+      .ja-opt .ico { font-family: var(--font-mono); font-size: .72rem; color: var(--cyan); text-transform: uppercase; }
+      .ja-txt { display: flex; flex-direction: column; min-width: 0; }
+      .ja-txt .ttl { font-weight: 700; }
+      .ja-txt .sub { font-size: 0.8rem; color: var(--dim, #7a8a96); }
+      .ja-chk { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,.3); }
+      .ja-radio:checked + .ja-opt { border-color: var(--cyan, #35d0e0); background: var(--cyan-08); }
+      .ja-radio:checked + .ja-opt .ja-chk { border-color: var(--cyan, #35d0e0); background: var(--cyan, #35d0e0); box-shadow: inset 0 0 0 3px rgba(5,8,16,.9); }
+      .ja-radio:focus-visible + .ja-opt { outline: 2px solid var(--cyan, #35d0e0); outline-offset: 2px; }
+      .ja-panel { display: none; padding: 14px 16px 6px; border: 1px solid rgba(53,208,224,.22); border-top: none; }
+      .ja-radio:checked + .ja-opt + .ja-panel { display: block; }
       .join-seat { display: flex; justify-content: space-between; gap: .75rem; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
       .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; white-space: nowrap; }
       .req-table { display: grid; gap: .35rem; }
@@ -3425,166 +3438,188 @@ export function opJoinPage(opts: {
 
     <div class="join-layout">
       <div class="join-main">
-        <section class="card">
-          <h3 class="wiz-sum-h">I want to join</h3>
-          <a class="join-opt" href="#signup">
-            <span class="ico">Assign</span>
-            <span
-              ><span class="ttl">Let the operator assign me</span><br /><span class="sub"
-                >I am flexible or need help finding a role.</span
-              ></span
-            >
-            <span class="arr">&gt;</span>
-          </a>
-          <a class="join-opt" href="#open-seats">
-            <span class="ico">Seat</span>
-            <span
-              ><span class="ttl">Choose an open seat</span><br /><span class="sub"
-                >Pick an available seat in an accepted ship or fireteam.</span
-              ></span
-            >
-            <span class="arr">&gt;</span>
-          </a>
-          <a class="join-opt" href="#offer-ship">
-            <span class="ico">Ship</span>
-            <span
-              ><span class="ttl">Offer a ship</span><br /><span class="sub"
-                >Offer one of your ships for this mission.</span
-              ></span
-            >
-            <span class="arr">&gt;</span>
-          </a>
-        </section>
-
-        <div class="join-row2">
-          <section class="card" id="open-seats">
-            <h3 class="wiz-sum-h">Open Seats</h3>
-            ${openSeats.length
-              ? openSeats.map(
-                  (s) =>
-                    html`<div class="join-seat">
-                      <span>${s.unit} - ${s.label}</span>
-                      ${isOpen && myId
-                        ? html`<form
-                            method="post"
-                            action="${bp}/api/seats/${s.seatId}/claim"
-                            class="inline"
-                          >
-                            <input type="hidden" name="_csrf" value="${csrf}" />
-                            <input type="hidden" name="ui" value="player" />
-                            <input type="hidden" name="tab" value="fleet" />
-                            <button type="submit" class="btn btn-sm btn-green">Claim</button>
-                          </form>`
-                        : isOpen
-                          ? html`<a class="btn btn-sm btn-green" href="${bp}/login">Sign in</a>`
-                        : html`<span class="free">open</span>`}
-                    </div>`,
-                )
-              : html`<p class="text-dim text-sm">No open seats right now.</p>`}
-            ${canManage
-              ? html`<a
-                  href="${bp}/ops/${op.id}/manage?tab=fleet"
-                  class="text-sm"
-                  style="display:inline-block;margin-top:8px"
-                  >Manage all positions &gt;</a
-                >`
-              : safe("")}
-          </section>
-          <section class="card">
-            <h3 class="wiz-sum-h">Fleet Requirements</h3>
-            ${requirementRows.length
-              ? html`<div class="req-table">
-                  <div class="req-row req-head">
-                    <span>Requirement</span>
-                    <span>Requested</span>
-                    <span>Fulfilled</span>
-                    <span>Open Slots</span>
-                  </div>
-                  ${requirementRows.map(
-                    (r) => html`<div class="req-row">
-                      <span class="req-name"><strong>${r.label}</strong><span>${r.category}</span></span>
-                      <span class="req-num">${r.requested}</span>
-                      <span class="req-num">${r.fulfilled}${r.pending ? html` <span class="tag tag-gold">${r.pending} pending</span>` : safe("")}</span>
-                      <span class="req-num">${r.open}</span>
-                    </div>`,
-                  )}
-                  <div class="req-row">
-                    <span class="req-name"><strong>Total</strong><span>Accepted units count as fulfilled</span></span>
-                    <span class="req-num">${requestedTotal}</span>
-                    <span class="req-num">${fulfilledTotal}</span>
-                    <span class="req-num">${openTotal}</span>
-                  </div>
-                </div>`
-              : html`<p class="text-dim text-sm">No requirements defined.</p>`}
-          </section>
-        </div>
-
-        <section class="card" id="offer-ship" style="margin-top:1rem">
-          <h3 class="wiz-sum-h">Offer a ship or fireteam</h3>
-          ${!myId
-            ? html`<p class="text-dim text-sm">Sign in to offer a ship for this mission.</p>
-                <a class="btn btn-sm btn-green" href="${bp}/login">Sign in</a>`
+        ${!myId
+          ? html`<section class="card">
+              <h3 class="wiz-sum-h">I want to join</h3>
+              <p class="text-dim text-sm">
+                Sign in to claim a seat, offer a ship, or let the operator place you.
+              </p>
+              <a class="btn btn-green" href="${bp}/login">Sign in</a>
+            </section>`
+          : hasSeat || hasReq
+            ? html`<section class="card">
+                <h3 class="wiz-sum-h">You're signed up</h3>
+                <p class="text-dim text-sm">Your status and questions are in the panel on the right.</p>
+              </section>`
             : !isOpen
-              ? html`<p class="text-dim text-sm">Sign-up is closed.</p>`
-              : html`<form
-                  method="post"
-                  action="${bp}/api/ops/${op.id}/units"
-                  class="opv2-form join-unit-form"
-                  novalidate
-                >
-                  <input type="hidden" name="_csrf" value="${csrf}" />
-                  <input type="hidden" name="ui" value="player" />
-                  <input type="hidden" name="tab" value="fleet" />
-                  <div class="form-errors join-unit-errors" hidden></div>
-                  <label>Fleet need <span style="font-weight:normal;opacity:.65">(optional)</span></label>
-                  <select name="requirementId">
-                    <option value="">Unslotted — let the operator place it</option>
-                    ${availableSlots.map(
-                      (s) => html`<option value="${s.id}">${s.label}</option>`,
-                    )}
-                  </select>
-                  <label>Type</label>
-                  <select name="unitType" class="join-unit-type">
-                    <option value="ship">Ship</option>
-                    <option value="squad">FPS fireteam</option>
-                  </select>
-                  <div class="unit-ship-fields">
-                    <label>From your hangar</label>
-                    <select name="ownedShipId" class="join-owned-ship-select">
-                      <option value="">Select an owned ship…</option>
-                      ${ownedShips.map(
-                        (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
-                      )}
-                    </select>
-                    <label>…or search the ship catalog</label>
-                    <input
-                      type="search"
-                      class="join-ship-search"
-                      placeholder="Search ship catalog…"
-                      autocomplete="off"
-                    />
-                    <input type="hidden" name="shipId" class="join-ship-id-field" />
-                    <label style="font-weight:normal">
-                      <input type="checkbox" name="storeOwnedShip" value="1" /> Save this ship to my
-                      hangar
-                    </label>
-                    <div class="ship-results join-ship-results"></div>
+              ? html`<section class="card">
+                  <h3 class="wiz-sum-h">I want to join</h3>
+                  <div class="opv2-cta closed">Sign-up is closed.</div>
+                </section>`
+              : html`<section class="card join-asst">
+                  <h3 class="wiz-sum-h">I want to join</h3>
+
+                  <input type="radio" name="join-mode" id="jm-assign" class="ja-radio" checked />
+                  <label for="jm-assign" class="ja-opt">
+                    <span class="ico">Assign</span>
+                    <span class="ja-txt"
+                      ><span class="ttl">Let the operator place me</span
+                      ><span class="sub">I'm flexible or need help finding a role.</span></span
+                    >
+                    <span class="ja-chk"></span>
+                  </label>
+                  <div class="ja-panel">
+                    <form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="ui" value="player" />
+                      <input type="hidden" name="tab" value="crew" />
+                      <label
+                        >Note to the Fleet Operator
+                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                      >
+                      <textarea
+                        name="note"
+                        maxlength="240"
+                        placeholder="e.g. experience, preferred role, ships you can bring…"
+                      ></textarea>
+                      <button type="submit" class="btn btn-green mt-1">Request a spot</button>
+                    </form>
                   </div>
-                  <div class="unit-squad-fields" hidden>
-                    <label>Fireteam name</label>
-                    <input type="text" name="squadName" maxlength="80" placeholder="FPS Team" />
-                    <label>Fireteam size</label>
-                    <input type="number" name="squadSize" min="2" max="8" value="4" />
+
+                  <input type="radio" name="join-mode" id="jm-seat" class="ja-radio" />
+                  <label for="jm-seat" class="ja-opt">
+                    <span class="ico">Seat</span>
+                    <span class="ja-txt"
+                      ><span class="ttl">Take an open seat</span
+                      ><span class="sub"
+                        >${openSeats.length
+                          ? `${openSeats.length} open seat${openSeats.length === 1 ? "" : "s"} in accepted units.`
+                          : "Pick a seat in an accepted ship or fireteam."}</span
+                      ></span
+                    >
+                    <span class="ja-chk"></span>
+                  </label>
+                  <div class="ja-panel">
+                    ${openSeats.length
+                      ? openSeats.map(
+                          (s) => html`<div class="join-seat">
+                            <span>${s.unit} · ${s.label}</span>
+                            <form
+                              method="post"
+                              action="${bp}/api/seats/${s.seatId}/claim"
+                              class="inline"
+                            >
+                              <input type="hidden" name="_csrf" value="${csrf}" />
+                              <input type="hidden" name="ui" value="player" />
+                              <input type="hidden" name="tab" value="fleet" />
+                              <button type="submit" class="btn btn-sm btn-green">Claim</button>
+                            </form>
+                          </div>`,
+                        )
+                      : html`<p class="text-dim text-sm">
+                          No open seats right now — try "Offer a ship" or let the operator place you.
+                        </p>`}
                   </div>
-                  <label>Note to the Fleet Operator <span style="font-weight:normal;opacity:.65">(optional)</span></label>
-                  <input
-                    type="text"
-                    name="captainNote"
-                    maxlength="240"
-                    placeholder="Role, loadout, crew preference…"
-                  />
-                  <button type="submit" class="btn btn-green mt-1">Offer</button>
-                </form>`}
+
+                  <input type="radio" name="join-mode" id="jm-ship" class="ja-radio" />
+                  <label for="jm-ship" class="ja-opt">
+                    <span class="ico">Ship</span>
+                    <span class="ja-txt"
+                      ><span class="ttl">Offer a ship or fireteam</span
+                      ><span class="sub">Bring one of your ships, or form an FPS fireteam.</span></span
+                    >
+                    <span class="ja-chk"></span>
+                  </label>
+                  <div class="ja-panel">
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/units"
+                      class="opv2-form join-unit-form"
+                      novalidate
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="ui" value="player" />
+                      <input type="hidden" name="tab" value="fleet" />
+                      <div class="form-errors join-unit-errors" hidden></div>
+                      <label>Fleet need <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                      <select name="requirementId">
+                        <option value="">Unslotted — let the operator place it</option>
+                        ${availableSlots.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
+                      </select>
+                      <label>Type</label>
+                      <select name="unitType" class="join-unit-type">
+                        <option value="ship">Ship</option>
+                        <option value="squad">FPS fireteam</option>
+                      </select>
+                      <div class="unit-ship-fields">
+                        <label>From your hangar</label>
+                        <select name="ownedShipId" class="join-owned-ship-select">
+                          <option value="">Select an owned ship…</option>
+                          ${ownedShips.map(
+                            (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
+                          )}
+                        </select>
+                        <label>…or search the ship catalog</label>
+                        <input
+                          type="search"
+                          class="join-ship-search"
+                          placeholder="Search ship catalog…"
+                          autocomplete="off"
+                        />
+                        <input type="hidden" name="shipId" class="join-ship-id-field" />
+                        <label style="font-weight:normal">
+                          <input type="checkbox" name="storeOwnedShip" value="1" /> Save this ship to
+                          my hangar
+                        </label>
+                        <div class="ship-results join-ship-results"></div>
+                      </div>
+                      <div class="unit-squad-fields" hidden>
+                        <label>Fireteam name</label>
+                        <input type="text" name="squadName" maxlength="80" placeholder="FPS Team" />
+                        <label>Fireteam size</label>
+                        <input type="number" name="squadSize" min="2" max="8" value="4" />
+                      </div>
+                      <label
+                        >Note to the Fleet Operator
+                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                      >
+                      <input
+                        type="text"
+                        name="captainNote"
+                        maxlength="240"
+                        placeholder="Role, loadout, crew preference…"
+                      />
+                      <button type="submit" class="btn btn-green mt-1">Offer</button>
+                    </form>
+                  </div>
+                </section>`}
+
+        <section class="card" style="margin-top:1rem">
+          <h3 class="wiz-sum-h">Fleet Requirements</h3>
+          ${requirementRows.length
+            ? html`<div class="req-table">
+                <div class="req-row req-head">
+                  <span>Requirement</span>
+                  <span>Requested</span>
+                  <span>Fulfilled</span>
+                  <span>Open Slots</span>
+                </div>
+                ${requirementRows.map(
+                  (r) => html`<div class="req-row">
+                    <span class="req-name"><strong>${r.label}</strong><span>${r.category}</span></span>
+                    <span class="req-num">${r.requested}</span>
+                    <span class="req-num">${r.fulfilled}${r.pending ? html` <span class="tag tag-gold">${r.pending} pending</span>` : safe("")}</span>
+                    <span class="req-num">${r.open}</span>
+                  </div>`,
+                )}
+                <div class="req-row">
+                  <span class="req-name"><strong>Total</strong><span>Accepted units count as fulfilled</span></span>
+                  <span class="req-num">${requestedTotal}</span>
+                  <span class="req-num">${fulfilledTotal}</span>
+                  <span class="req-num">${openTotal}</span>
+                </div>
+              </div>`
+            : html`<p class="text-dim text-sm">No requirements defined.</p>`}
         </section>
 
         <section class="card" style="margin-top:1rem">
@@ -3615,24 +3650,8 @@ export function opJoinPage(opts: {
         ${!myId
           ? html`<p class="text-dim text-sm">Sign in to claim seats, offer ships, or ask the Fleet Operator a question.</p>
               <a class="btn btn-green join-cta-btn" href="${bp}/login">Sign in</a>`
-          : isOpen && !hasSeat && !hasReq
-          ? html`<form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              <input type="hidden" name="ui" value="player" />
-              <input type="hidden" name="tab" value="crew" />
-              <label
-                >Note to Fleet Operator
-                <span style="font-weight:normal;opacity:.65">(optional)</span></label
-              >
-              <textarea
-                name="note"
-                maxlength="240"
-                placeholder="e.g. experience, preferred role, ships you can bring..."
-              ></textarea>
-              <button type="submit" class="btn btn-green join-cta-btn">Join</button>
-            </form>`
           : !hasSeat && !hasReq
-            ? html`<p class="text-dim text-sm">Not signed up yet.</p>`
+            ? html`<p class="text-dim text-sm">Use “I want to join” on the left to sign up.</p>`
             : safe("")}
         ${myId
           ? html`<form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">

@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-06: Fleetplanner greenfield redesign (branch feat/fleetmanager-redesign)
+
+Approved greenfield redesign (the ASCII-mockup design). Replace the old interface; build from a
+shared partial vocabulary. Extends `docs/FR-P1-fleetplanner-gui-ux-implementation.md`.
+
+Phases (one commit each, build-verified):
+1. **Join assistant (event page).** Replace the 3 anchor "I want to join" links with a
+   radio-driven assistant that reveals the relevant sub-form inline (assign / claim seat / offer
+   ship) — CSS-only disclosure, no dead anchors. (`opJoinPage`.)
+2. **Voice access admin (Command Net / Global Radio Net).** Per the authoritative
+   `companion-voice-architecture.md` two-net model. Relabel guild settings
+   `commanderVoiceRoleId`→"Command Net Role", `globalVoiceRoleId`→"Global Radio Net Role" with
+   help text; restructure the per-op Commanders tab into a clear two-net "Voice Access" panel
+   (who has Command Net, who has Global Radio Net, grant/revoke). Backed by existing
+   `missionVoiceParticipant` + `listMissionCommanders` — no schema change.
+3. **Overview cards.** Add fill bar + my-signup badge + relative day buckets + filter bar to
+   `homePage` (`opCard` partial).
+4. **Composition Board** (manage Fleet tab) per `composition-rebuild-plan.md` §3.1 — Req/Acc/Open
+   matrix + assign-to-slot. (May land as a follow-up phase.)
+
+No schema migration intended. Code-first, compile-last; CHANGELOG under [Unreleased].
+
 ## Completed Step - 2026-06-06: Fleetplanner — player event page layout fix
 
 Live screenshot review (Admiral, public Testing Operation): Fleet Requirements table rendered
