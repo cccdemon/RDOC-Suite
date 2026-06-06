@@ -13,6 +13,15 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-06",
+    title: "Smarter fleet import & sortable ship list",
+    changes: [
+      "Fleet import now matches short ship names to the full catalog name (e.g. \"Ares Ion\" → Ares Star Fighter Ion), so far more of your ships import automatically.",
+      "Any ship that still doesn't match is listed after the import so you can search the ship database and assign the right one — or skip it.",
+      "Your Owned Ships list is now sortable: click a column header (Ship, Nickname, Manufacturer, Size, Career, Role, Crew) to sort.",
+    ],
+  },
+  {
+    date: "2026-06-06",
     title: "Mission cover generator",
     changes: [
       "New Mission Cover page on each operation (operators): generate a cinematic Star-Citizen briefing cover from the op's own data, or open the editor to fine-tune background, logos, fonts and effects.",
