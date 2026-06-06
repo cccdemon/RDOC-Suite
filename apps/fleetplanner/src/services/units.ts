@@ -3,12 +3,14 @@ import { specForShip, specForSquad } from "./seats.js";
 import type { Prisma, Ship } from "@prisma/client";
 
 export type RegisterUnitInput = {
-  unitType: "ship" | "squad";
+  unitType: "ship" | "squad" | "vehicle";
   shipId?: string;
   squadName?: string;
   squadSize?: number;
   requirementId?: string;
   captainNote?: string;
+  /** Required for unitType "vehicle": the parent ship unit that carries it. */
+  carrierUnitId?: string;
 };
 
 export async function registerUnit(
@@ -16,15 +18,34 @@ export async function registerUnit(
   captainId: string,
   input: RegisterUnitInput,
 ) {
-  if (input.unitType === "ship" && !input.shipId) throw new Error("shipId required for ship units");
+  // A ship OR a ground vehicle is picked from the ship catalog (vehicles live
+  // there too); a squad is free-formed.
+  const isShipLike = input.unitType === "ship" || input.unitType === "vehicle";
+  if (isShipLike && !input.shipId) throw new Error("shipId required for ship/vehicle units");
   if (input.unitType === "squad" && (!input.squadName || !input.squadSize)) {
     throw new Error("squadName and squadSize required for squad units");
+  }
+
+  // A vehicle must attach to a ship unit in the same op; it inherits the
+  // carrier's accept/reject status so the operator accepts "ship + vehicle".
+  let vehicleStatus = "pending";
+  if (input.unitType === "vehicle") {
+    if (!input.carrierUnitId) throw new Error("A vehicle must be carried by a ship");
+    const carrier = await prisma.fleetUnit.findUnique({
+      where: { id: input.carrierUnitId },
+      select: { operationId: true, status: true, unitType: true },
+    });
+    if (!carrier || carrier.operationId !== operationId) {
+      throw new Error("Carrier ship not found in this operation");
+    }
+    if (carrier.unitType !== "ship") throw new Error("Vehicles can only attach to a ship");
+    vehicleStatus = carrier.status;
   }
 
   // Validate the ship and compute seat specs BEFORE writing anything, so a
   // bad shipId can never leave an orphan unit row behind.
   let specs;
-  if (input.unitType === "ship" && input.shipId) {
+  if (isShipLike && input.shipId) {
     const ship = await prisma.ship.findUnique({ where: { id: input.shipId } });
     if (!ship) throw new Error("Ship not found");
     specs = specForShip(ship);
@@ -43,9 +64,10 @@ export async function registerUnit(
         shipId: input.shipId ?? null,
         squadName: input.squadName ?? null,
         squadSize: input.squadSize ?? null,
+        carrierUnitId: input.unitType === "vehicle" ? input.carrierUnitId : null,
         requirementId: input.requirementId ?? null,
         captainNote: input.captainNote ?? null,
-        status: "pending",
+        status: input.unitType === "vehicle" ? vehicleStatus : "pending",
       },
     });
 
@@ -79,13 +101,21 @@ export async function setUnitStatus(
   status: "accepted" | "rejected",
   note?: string,
 ) {
-  // A rejected unit holds nobody — free its seats so no one keeps a phantom
-  // "claimed seat" in a ship that was turned down.
+  // Carried vehicles follow their carrier ship's accept/reject decision
+  // ("accept the ship with its vehicle").
+  const vehicleIds = (
+    await prisma.fleetUnit.findMany({ where: { carrierUnitId: unitId }, select: { id: true } })
+  ).map((v) => v.id);
+  // A rejected unit (and its vehicles) holds nobody — free their seats so no
+  // one keeps a phantom "claimed seat" in something that was turned down.
   if (status === "rejected") {
     await prisma.seatAssignment.updateMany({
-      where: { unitId, userId: { not: null } },
+      where: { unitId: { in: [unitId, ...vehicleIds] }, userId: { not: null } },
       data: { userId: null },
     });
+  }
+  if (vehicleIds.length) {
+    await prisma.fleetUnit.updateMany({ where: { id: { in: vehicleIds } }, data: { status } });
   }
   return prisma.fleetUnit.update({
     where: { id: unitId },
@@ -110,7 +140,7 @@ function categoryForUnit(unit: {
   ship?: Ship | null;
 }): string {
   if (unit.requirement?.category) return unit.requirement.category;
-  if (unit.unitType === "squad") return "ground";
+  if (unit.unitType === "squad" || unit.unitType === "vehicle") return "ground";
   const career = unit.ship?.career.toLowerCase() ?? "";
   if (career.includes("ground") || career.includes("vehicle")) return "ground";
   if (career.includes("mining")) return "mining";

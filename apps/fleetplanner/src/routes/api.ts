@@ -76,7 +76,7 @@ function opReturnUrl(
   return basePath(`/ops/${opId}?flash=${flash}`);
 }
 
-const UNIT_TYPES = ["ship", "squad"] as const;
+const UNIT_TYPES = ["ship", "squad", "vehicle"] as const;
 const REQUIREMENT_CATEGORIES = [
   "fps",
   "capital",
@@ -503,6 +503,7 @@ export async function apiRoutes(app: FastifyInstance) {
         squadSize,
         requirementId,
         captainNote,
+        carrierUnitId,
       } = req.body;
 
       // Verify operation exists and is open
@@ -518,11 +519,16 @@ export async function apiRoutes(app: FastifyInstance) {
         if (!UNIT_TYPES.includes(unitType as (typeof UNIT_TYPES)[number])) {
           throw new Error("Invalid unit type");
         }
-        const selectedShipId = unitType === "ship" ? shipId || ownedShipId : undefined;
-        if (unitType === "ship") {
-          if (!selectedShipId) throw new Error("Select or search a ship");
+        const isShipLike = unitType === "ship" || unitType === "vehicle";
+        const selectedShipId = isShipLike ? shipId || ownedShipId : undefined;
+        if (isShipLike) {
+          if (!selectedShipId)
+            throw new Error(unitType === "vehicle" ? "Select a vehicle" : "Select or search a ship");
           const ship = await prisma.ship.findUnique({ where: { id: selectedShipId } });
           if (!ship) throw new Error("Ship not found");
+        }
+        if (unitType === "vehicle" && !carrierUnitId) {
+          throw new Error("A vehicle must be carried by a ship");
         }
         const parsedSquadSize = squadSize ? parsePositiveInt(squadSize, 0) : undefined;
         if (
@@ -540,7 +546,7 @@ export async function apiRoutes(app: FastifyInstance) {
           unitType,
           selectedShipId,
         );
-        if (unitType === "ship" && selectedShipId && storeOwnedShip === "1") {
+        if (isShipLike && selectedShipId && storeOwnedShip === "1") {
           await prisma.userShip.upsert({
             where: { userId_shipId: { userId: ctx.user.id, shipId: selectedShipId } },
             create: { userId: ctx.user.id, shipId: selectedShipId },
@@ -548,12 +554,13 @@ export async function apiRoutes(app: FastifyInstance) {
           });
         }
         await registerUnit(req.params.id, ctx.user.id, {
-          unitType: unitType as "ship" | "squad",
+          unitType: unitType as "ship" | "squad" | "vehicle",
           shipId: selectedShipId,
           squadName: squadName || undefined,
           squadSize: parsedSquadSize,
           requirementId: requirementId || undefined,
           captainNote: captainNote || undefined,
+          carrierUnitId: unitType === "vehicle" ? carrierUnitId || undefined : undefined,
         });
         return reply.redirect(
           opReturnUrl(req.params.id, req.body, "ok:Unit+registered.", "fleet"),

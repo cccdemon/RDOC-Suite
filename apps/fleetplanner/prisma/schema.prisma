@@ -407,11 +407,14 @@ model CompositionRequirement {
 model FleetUnit {
   id          String @id @default(cuid())
   operationId String
-  unitType    String @default("ship") // ship | squad
+  unitType    String @default("ship") // ship | squad | vehicle
 
   shipId    String? // → Ship.id  (null for FPS squads)
   squadName String? // e.g. "Alpha Squad"
   squadSize Int? // total incl. captain, 2–8
+
+  // A ground vehicle is a crewable sub-unit carried by a parent ship unit.
+  carrierUnitId String?
 
   captainId     String
   requirementId String?
@@ -424,6 +427,8 @@ model FleetUnit {
   ship         Ship?                   @relation(fields: [shipId], references: [id])
   captain      User                    @relation("UnitCaptain", fields: [captainId], references: [id])
   requirement  CompositionRequirement? @relation(fields: [requirementId], references: [id])
+  carrier      FleetUnit?              @relation("CarrierVehicles", fields: [carrierUnitId], references: [id], onDelete: Cascade)
+  vehicles     FleetUnit[]             @relation("CarrierVehicles")
   seats        SeatAssignment[]
   voiceChannel FleetVoiceChannel?
   primaryForUsers OpPrimaryUnit[]

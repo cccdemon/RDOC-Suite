@@ -1682,7 +1682,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       : safe("")}
     ${(() => {
       if (!canManage) return safe("");
-      const unslotted = op.units.filter((u) => u.status === "accepted" && !u.requirementId);
+      const unslotted = op.units.filter(
+        (u) => u.status === "accepted" && !u.requirementId && u.unitType !== "vehicle",
+      );
       if (unslotted.length === 0) return safe("");
       // Open only when there are pending units to deal with (the urgent case).
       return html`<details class="mg-board-sub" ${pendingUnits.length ? safe("open") : safe("")}>
@@ -3720,13 +3722,10 @@ export function opJoinPage(opts: {
     })
     .filter((u) => u.open > 0);
   // Accepted units + their seats (who's seated / open), so players see the
-  // current composition and can claim/release directly on the page.
-  const acceptedRoster = acceptedUnits.map((u) => ({
-    id: u.id,
-    name: u.squadName || u.ship?.name || "Unit",
-    kind: u.unitType === "ship" ? "Ship" : "FPS Fireteam",
-    isMyUnit: !!myId && u.captainId === myId,
-    seats: u.seats
+  // current composition and can claim/release directly on the page. Ground
+  // vehicles are nested under their carrier ship.
+  const seatView = (u: (typeof acceptedUnits)[number]) =>
+    u.seats
       .filter((s) => s.active)
       .map((s) => ({
         id: s.id,
@@ -3734,9 +3733,26 @@ export function opJoinPage(opts: {
         user: (s as { user?: { username?: string } }).user?.username ?? null,
         mine: !!myId && s.userId === myId,
         open: !s.userId,
-      })),
-    editSeats: u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
-  }));
+      }));
+  const acceptedRoster = acceptedUnits
+    .filter((u) => u.unitType !== "vehicle")
+    .map((u) => ({
+      id: u.id,
+      name: u.squadName || u.ship?.name || "Unit",
+      kind: u.unitType === "ship" ? "Ship" : "FPS Fireteam",
+      isShip: u.unitType === "ship",
+      isMyUnit: !!myId && u.captainId === myId,
+      seats: seatView(u),
+      editSeats: u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
+      vehicles: acceptedUnits
+        .filter((v) => v.unitType === "vehicle" && v.carrierUnitId === u.id)
+        .map((v) => ({
+          id: v.id,
+          name: v.ship?.name || "Vehicle",
+          isMine: !!myId && v.captainId === myId,
+          seats: seatView(v),
+        })),
+    }));
   // Captain seat-config form (rename + enable/disable) — usable on a pending
   // OR accepted own unit; reuses the captain-gated /units/:id/seats route.
   const seatEditDetails = (
@@ -3781,6 +3797,64 @@ export function opJoinPage(opts: {
         Withdraw ship
       </button>
     </form>`;
+  // One seat row — reused for carrier-ship seats and nested vehicle seats.
+  // captainConfirm: warn before a unit captain leaves the pilot seat.
+  type RosterSeat = { id: string; label: string; user: string | null; mine: boolean; open: boolean };
+  const seatRowHtml = (s: RosterSeat, captainConfirm: boolean) =>
+    html`<div class="roster-seat${s.open ? " open" : s.mine ? " mine" : ""}">
+      <span class="roster-seat-label">${s.label}</span>
+      ${s.open
+        ? isOpen && myId
+          ? html`<form method="post" action="${bp}/api/seats/${s.id}/claim" class="inline">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="ui" value="player" />
+              <input type="hidden" name="tab" value="fleet" />
+              <button
+                type="submit"
+                class="btn btn-sm btn-green"
+                ${captainConfirm
+                  ? safe(
+                      ` onclick="return confirm('You are the captain of this ship. Taking another seat empties the pilot seat — make sure someone else captains it, or you may lose Command Net voice. Continue?')"`,
+                    )
+                  : safe("")}
+              >
+                Claim
+              </button>
+            </form>`
+          : html`<span class="free">open</span>`
+        : s.mine
+          ? html`<span class="roster-occ roster-you">You</span>
+              <form method="post" action="${bp}/api/seats/${s.id}/unclaim" class="inline">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <input type="hidden" name="ui" value="player" />
+                <input type="hidden" name="tab" value="fleet" />
+                <button type="submit" class="btn btn-sm btn-ghost">Release</button>
+              </form>`
+          : html`<span class="roster-occ">${s.user ?? "Taken"}</span>`}
+    </div>`;
+  // Captain attaches a ground vehicle (catalog pick) to their ship.
+  const addVehicleForm = (carrierUnitId: string) =>
+    html`<details class="roster-edit">
+      <summary>Add a ground vehicle</summary>
+      <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form join-unit-form" novalidate>
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        <input type="hidden" name="ui" value="player" />
+        <input type="hidden" name="tab" value="fleet" />
+        <input type="hidden" name="unitType" value="vehicle" />
+        <input type="hidden" name="carrierUnitId" value="${carrierUnitId}" />
+        <div class="form-errors join-unit-errors" hidden></div>
+        <label>Vehicle (from catalog)</label>
+        <input
+          type="search"
+          class="join-ship-search"
+          placeholder="Search e.g. Cyclone, Nova, ATLS…"
+          autocomplete="off"
+        />
+        <input type="hidden" name="shipId" class="join-ship-id-field" />
+        <div class="ship-results join-ship-results"></div>
+        <button type="submit" class="btn btn-sm btn-green mt-1">Add vehicle</button>
+      </form>
+    </details>`;
   const requirements = op.groups.flatMap((g) => g.requirements);
   const ownedShips = opts.ownedShips ?? [];
   // Open composition slots (accepted units < requested) the player can target
@@ -3867,6 +3941,9 @@ export function opJoinPage(opts: {
       .ja-radio:focus-visible + .ja-opt { outline: 2px solid var(--cyan, #35d0e0); outline-offset: 2px; }
       .ja-panel { display: none; padding: 14px 16px 6px; border: 1px solid rgba(53,208,224,.22); border-top: none; }
       .ja-radio:checked + .ja-opt + .ja-panel { display: block; }
+      .ja-radio:disabled + .ja-opt { opacity: .4; cursor: not-allowed; }
+      .roster-vehicle { margin: .4rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--cyan-28, rgba(53,208,224,.28)); }
+      .roster-veh-icon { color: var(--cyan, #35d0e0); }
       .join-seat { display: flex; justify-content: space-between; gap: .75rem; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
       .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; white-space: nowrap; }
       .roster-unit { border: 1px solid rgba(255,255,255,.08); padding: .6rem .8rem; margin-bottom: .6rem; }
@@ -3976,7 +4053,7 @@ export function opJoinPage(opts: {
               : html`<section class="card join-asst">
                   <h3 class="wiz-sum-h">I want to join</h3>
 
-                  <input type="radio" name="join-mode" id="jm-assign" class="ja-radio" checked />
+                  <input type="radio" name="join-mode" id="jm-assign" class="ja-radio" ${openSeats.length ? safe("checked") : safe("")} />
                   <label for="jm-assign" class="ja-opt">
                     <span class="ico">Assign</span>
                     <span class="ja-txt"
@@ -4003,7 +4080,7 @@ export function opJoinPage(opts: {
                     </form>
                   </div>
 
-                  <input type="radio" name="join-mode" id="jm-seat" class="ja-radio" />
+                  <input type="radio" name="join-mode" id="jm-seat" class="ja-radio" ${openSeats.length ? safe("") : safe("disabled")} />
                   <label for="jm-seat" class="ja-opt">
                     <span class="ico">Seat</span>
                     <span class="ja-txt"
@@ -4038,7 +4115,7 @@ export function opJoinPage(opts: {
                         </p>`}
                   </div>
 
-                  <input type="radio" name="join-mode" id="jm-ship" class="ja-radio" />
+                  <input type="radio" name="join-mode" id="jm-ship" class="ja-radio" ${openSeats.length ? safe("") : safe("checked")} />
                   <label for="jm-ship" class="ja-opt">
                     <span class="ico">Offer</span>
                     <span class="ja-txt"
@@ -4144,42 +4221,21 @@ export function opJoinPage(opts: {
                       >${u.seats.filter((s) => !s.open).length}/${u.seats.length} crew</span
                     >
                   </div>
-                  <div class="roster-seats">
-                    ${u.seats.map(
-                      (s) => html`<div class="roster-seat${s.open ? " open" : s.mine ? " mine" : ""}">
-                        <span class="roster-seat-label">${s.label}</span>
-                        ${s.open
-                          ? isOpen && myId
-                            ? html`<form method="post" action="${bp}/api/seats/${s.id}/claim" class="inline">
-                                <input type="hidden" name="_csrf" value="${csrf}" />
-                                <input type="hidden" name="ui" value="player" />
-                                <input type="hidden" name="tab" value="fleet" />
-                                <button
-                                  type="submit"
-                                  class="btn btn-sm btn-green"
-                                  ${u.isMyUnit
-                                    ? safe(
-                                        ` onclick="return confirm('You are the captain of this ship. Taking another seat empties the pilot seat — make sure someone else captains it, or you may lose Command Net voice. Continue?')"`,
-                                      )
-                                    : safe("")}
-                                >
-                                  Claim
-                                </button>
-                              </form>`
-                            : html`<span class="free">open</span>`
-                          : s.mine
-                            ? html`<span class="roster-occ roster-you">You</span>
-                                <form method="post" action="${bp}/api/seats/${s.id}/unclaim" class="inline">
-                                  <input type="hidden" name="_csrf" value="${csrf}" />
-                                  <input type="hidden" name="ui" value="player" />
-                                  <input type="hidden" name="tab" value="fleet" />
-                                  <button type="submit" class="btn btn-sm btn-ghost">Release</button>
-                                </form>`
-                            : html`<span class="roster-occ">${s.user ?? "Taken"}</span>`}
-                      </div>`,
-                    )}
-                  </div>
-                  ${u.isMyUnit ? html`${seatEditDetails(u.id, u.editSeats)} ${withdrawShipForm(u.id)}` : safe("")}
+                  <div class="roster-seats">${u.seats.map((s) => seatRowHtml(s, u.isMyUnit))}</div>
+                  ${u.vehicles.map(
+                    (v) => html`<div class="roster-vehicle">
+                      <div class="roster-unit-head">
+                        <span class="roster-veh-icon">⬓</span> <strong>${v.name}</strong>
+                        <span class="tag tag-dim">Vehicle</span>
+                      </div>
+                      <div class="roster-seats">${v.seats.map((s) => seatRowHtml(s, false))}</div>
+                      ${v.isMine ? withdrawShipForm(v.id) : safe("")}
+                    </div>`,
+                  )}
+                  ${u.isMyUnit
+                    ? html`${seatEditDetails(u.id, u.editSeats)} ${u.isShip ? addVehicleForm(u.id) : safe("")}
+                        ${withdrawShipForm(u.id)}`
+                    : safe("")}
                 </div>`,
               )
             : html`<p class="text-dim text-sm">No ships or fireteams accepted yet.</p>`}

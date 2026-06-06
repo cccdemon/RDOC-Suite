@@ -13,8 +13,10 @@ vi.mock("../../db.js", () => ({
     fleetUnit: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findMany: vi.fn(),
       delete: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     user: { findUnique: vi.fn() },
     $transaction: vi.fn(),
@@ -212,6 +214,7 @@ describe("deleteUnit", () => {
 // ── setUnitStatus ─────────────────────────────────────────────────────────────
 
 describe("setUnitStatus", () => {
+  beforeEach(() => db.fleetUnit.findMany.mockResolvedValue([])); // no carried vehicles
   it("sets accepted status", async () => {
     db.fleetUnit.update.mockResolvedValue({ id: "unit-1", status: "accepted" });
     await setUnitStatus("unit-1", "accepted");

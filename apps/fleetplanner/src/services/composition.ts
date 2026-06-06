@@ -22,8 +22,9 @@ export function matchesCategory(category: string, unit: UnitLike): boolean {
   const cat = (category ?? "").toLowerCase().trim();
   if (cat === "" || cat === "any") return true;
 
-  // Ground / FPS categories are about squads, not ships.
-  if (cat === "fps" || cat === "ground") return unit.unitType === "squad";
+  // Ground / FPS categories are about squads and ground vehicles, not ships.
+  if (cat === "fps" || cat === "ground")
+    return unit.unitType === "squad" || unit.unitType === "vehicle";
 
   // Remaining categories are ship categories — a squad never matches.
   if (unit.unitType !== "ship") return false;
