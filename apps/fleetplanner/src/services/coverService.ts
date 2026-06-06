@@ -104,3 +104,10 @@ export async function getCover(id: string): Promise<CoverResponse | null> {
   await expectOk(res, "get");
   return (await res.json()) as CoverResponse;
 }
+
+/** Delete a stored cover artifact in the service (idempotent). */
+export async function deleteCover(id: string): Promise<void> {
+  const res = await coverFetch(`/v1/covers/${encodeURIComponent(id)}`, { method: "DELETE" });
+  if (res.status === 404 || res.status === 204) return;
+  await expectOk(res, "delete");
+}

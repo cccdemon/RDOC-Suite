@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { getEnv } from "../config/env.js";
 import { coverRequestSchema, AUTHOR_CREDIT, type CoverMeta, type CoverResponse } from "../schema.js";
 import { renderCover } from "../services/render.js";
-import { getMeta, getPng, isValidId, newId, saveCover } from "../services/store.js";
+import { deleteCover, getMeta, getPng, isValidId, newId, saveCover } from "../services/store.js";
 
 function publicPngUrl(id: string): string {
   return `${getEnv().MISSIONCOVER_PUBLIC_URL.replace(/\/$/, "")}/covers/${id}.png`;
@@ -69,6 +69,15 @@ export function registerCoverRoutes(app: FastifyInstance): void {
     const meta = await getMeta(id);
     if (!meta) return reply.code(404).send({ error: "not_found" });
     return reply.send(toResponse(meta));
+  });
+
+  // ── M2M: delete a stored cover (cleanup) ───────────────────────────────────
+  app.delete<{ Params: { id: string } }>("/v1/covers/:id", async (req, reply) => {
+    if (!requireServiceAuth(req, reply)) return;
+    const { id } = req.params;
+    if (!isValidId(id)) return reply.code(400).send({ error: "invalid_id" });
+    await deleteCover(id);
+    return reply.code(204).send();
   });
 
   // ── Public: the rendered image (read-only, unguessable id) ──────────────────

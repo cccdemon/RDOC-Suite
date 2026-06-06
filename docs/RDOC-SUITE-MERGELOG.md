@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Mission-Cover image cleanup service (FR-P4)
+
+User: clean up cover images only when the op is closed/cancelled AND older than 14 days.
+- mission-cover: `DELETE /v1/covers/:id` (Bearer) + `store.deleteCover()` (rm png+meta, drop op-index entry).
+- fleetplanner: `coverService.deleteCover()`; new `services/coverCleanup.ts` scheduler
+  (`startCoverCleanupScheduler`, runs 30s after boot then every 6h, gated on coverServiceConfigured):
+  `prisma.opCover` where `operation.status in (completed,cancelled)` AND `operation.scheduledAt <
+  now-14d` → service delete + drop OpCover row. Started in index.ts.
+- Also: manual `POST /api/ops/:id/cover/delete` now purges the service artifact too (was DB-pointer only → leak).
+Retention/statuses are constants in coverCleanup.ts (14d, completed+cancelled). Uses scheduledAt
+(event date) as the age basis, not updatedAt.
+
 ## Completed Step - 2026-06-06: Fleetplanner — import token-match + sortable Owned Ships
 
 1. **Fleet-import matching:** live import left 11 unmatched (Ares Ion, Aurora MR, G12, Merchantman,

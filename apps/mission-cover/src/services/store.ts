@@ -87,6 +87,21 @@ export async function getCoverByOp(opId: string): Promise<CoverMeta | null> {
   return id ? getMeta(id) : null;
 }
 
+// Delete a stored cover (png + meta) and drop any op-index entry pointing at it.
+export async function deleteCover(id: string): Promise<void> {
+  await fs.rm(pngPath(id), { force: true });
+  await fs.rm(metaPath(id), { force: true });
+  const idx = await readIndex();
+  let changed = false;
+  for (const [opId, coverId] of Object.entries(idx)) {
+    if (coverId === id) {
+      delete idx[opId];
+      changed = true;
+    }
+  }
+  if (changed) await writeIndex(idx);
+}
+
 // Validate an id shape before touching the filesystem (path-traversal guard).
 export function isValidId(id: string): boolean {
   return /^cov_[0-9a-f]{24}$/.test(id);

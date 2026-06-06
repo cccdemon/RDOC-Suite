@@ -9,6 +9,7 @@ import { coverPage } from "../web/coverPage.js";
 import { errorPage, loginRequiredPage } from "../web/pages.js";
 import {
   requestCover,
+  deleteCover,
   coverServiceConfigured,
   type CoverData,
   type CoverFormat,
@@ -155,7 +156,14 @@ export async function coverRoutes(app: FastifyInstance): Promise<void> {
       const ctx = await guardManage(req, reply);
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.auth.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      await prisma.opCover.deleteMany({ where: { opId: ctx.op.id } });
+      const existing = await prisma.opCover.findUnique({ where: { opId: ctx.op.id } });
+      if (existing) {
+        // Purge the artifact in the service too (best-effort), then the pointer.
+        await deleteCover(existing.coverId).catch((err) =>
+          req.log.warn(err, "mission-cover delete failed (non-fatal)"),
+        );
+        await prisma.opCover.delete({ where: { opId: ctx.op.id } });
+      }
       return reply.redirect(coverUrl(ctx.op.id, "ok:Cover+entfernt."), 302);
     },
   );

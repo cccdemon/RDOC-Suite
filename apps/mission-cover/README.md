@@ -22,6 +22,7 @@ M2M endpoints require `Authorization: Bearer <MISSIONCOVER_SERVICE_SECRET>`.
 |---|---|---|---|
 | `POST` | `/v1/covers` | Bearer | Render + store a cover. Body = `CoverRequest` (see `src/schema.ts`). → `201 CoverResponse`. |
 | `GET` | `/v1/covers/:id` | Bearer | Cover metadata + link. |
+| `DELETE` | `/v1/covers/:id` | Bearer | Delete a stored cover (cleanup). |
 | `GET` | `/covers/:id.png` | **public** | The rendered image (read-only, unguessable id). Public via Caddy `/cover/covers*`. |
 | `GET` | `/health` · `/about` | public | Liveness / author credit. |
 
