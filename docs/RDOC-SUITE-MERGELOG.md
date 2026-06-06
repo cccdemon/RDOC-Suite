@@ -5,7 +5,7 @@ RDOC-VoiceRelayBots into this repository.
 
 ## Queued Step - 2026-06-05: PLAN DOC — Partner Event Distribution + Federation Voice + Recurring Events
 
-Planning only — write `docs/partner-events-plan.md` (approved design, NO code), add it to the CLAUDE.md "Planungsdokumente — NOCH NICHT IMPLEMENTIERT" table. Covers three user-requested features:
+Planning only — write `docs/FR-P2-partner-events-plan.md` (FeatureRequest, Prio 2; approved design, NO code), add it to the CLAUDE.md "Planungsdokumente — NOCH NICHT IMPLEMENTIERT" table. Covers three user-requested features:
 - **F1 Event Distribution:** cross-post a host op's Discord scheduled event into all active partner guilds, gated by target-guild confirmation (host auto). Per-partnership allowlist (auto-share vs per-event approval). Approval via Discord DM with "Teilen"/"Ablehnen" buttons (needs Fleetplanner-bot interaction handling) + web fallback.
 - **F2 Federation Voice:** per-event mode "All on one Discord" (current relay model) vs "Homeoffice party" (each guild stays on own Discord, relay bots per partner guild bridge a shared LiveKit federation room). Companion guests + per-guild relay bot for announcements. Voice line restricted to host + deputies.
 - **F3 Recurring Events:** RRULE-style recurrence on Operation; scheduler materialises the next instance (Discord has no native recurring-event API).

@@ -1,5 +1,7 @@
 # Partner Events: Distribution + Federation Voice + Recurring — Plan
 
+**FeatureRequest — Priority 2** (scale 1 highest … 5 lowest)
+
 **For:** implementation agent (Claude Opus)
 **From:** Architecture session 2026-06-05
 **Status:** Plan approved by user, **NOT yet implemented**. No schema/code exists for any of this. Read fully before touching anything.

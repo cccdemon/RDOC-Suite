@@ -258,7 +258,7 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 | [docs/orgmodule-implementationplan.md](docs/orgmodule-implementationplan.md) | Org-Modul: SC-Orgs als First-Class-Entities (`Org`, `OrgMembership`, `OrgInvite`) | Plan, kein Code |
 | [docs/composition-rebuild-plan.md](docs/composition-rebuild-plan.md) | Composition Board + Leader-Assign + Auto-Match (Schritte 1+2 im Code, Schritte 3-5 offen) | Teilweise umgesetzt |
 | [docs/handover.to.opus-model.md](docs/handover.to.opus-model.md) | Bridge-Admin in Fleetplanner absorbieren (Phasen 1-4 done, Raid-Planer bleibt im Bridge-UI) | Phasen 1-4 done |
-| [docs/partner-events-plan.md](docs/partner-events-plan.md) | Partner-Events: F1 Event-Distribution über Partner-Discords (Allowlist + DM-Approval), F2 Federation Voice (Homeoffice-Party / shared LiveKit room, host+deputies), F3 wiederkehrende Events (RRULE) | Plan, kein Code |
+| [docs/FR-P2-partner-events-plan.md](docs/FR-P2-partner-events-plan.md) | **FeatureRequest, Prio 2.** Partner-Events: F1 Event-Distribution über Partner-Discords (Allowlist + DM-Approval), F2 Federation Voice (Homeoffice-Party / shared LiveKit room, host+deputies), F3 wiederkehrende Events (RRULE) | Plan, kein Code |
 
 ### Naming & URL-Konventionen
 
