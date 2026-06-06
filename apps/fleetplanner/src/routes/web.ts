@@ -426,47 +426,13 @@ export async function webRoutes(app: FastifyInstance) {
   });
 
   // ── Participant join view (focused sign-up page) ─────────────────────
+  // Legacy alias — the canonical player route is /ops/:id. Redirect so old
+  // links (and the former ?view=player preview) land on the single player page.
   app.get<{ Params: { id: string }; Querystring: { flash?: string; view?: string } }>(
     "/ops/:id/join",
     async (req, reply) => {
-      const ctx = await requireAuth(req, reply);
-      if (!ctx) return;
-      const op = await getOperation(req.params.id);
-      if (!op) {
-        return htmlReply(
-          reply,
-          errorPage({ basePath: basePath(), currentUser: ctx.user, status: 404, message: "Operation not found" }),
-        );
-      }
-      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
-      if (!role) {
-        return htmlReply(
-          reply,
-          errorPage({ basePath: basePath(), currentUser: ctx.user, status: 404, message: "Operation not found" }),
-        );
-      }
-      const [voiceChannels, joinGuildRow] = await Promise.all([
-        fetchGuildVoiceChannels(op.guildId),
-        prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } }),
-      ]);
-      const voiceChannelName =
-        voiceChannels.find((c) => c.id === op.eventVoiceChannelId)?.name ?? null;
-      htmlReply(
-        reply,
-        opJoinPage({
-          basePath: basePath(),
-          currentUser: ctx.user,
-          csrfToken: ctx.csrfToken,
-          flash: req.query.flash,
-          op,
-          guildTimezone: (joinGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
-          voiceChannelName,
-          isLeader:
-            req.query.view === "player"
-              ? false
-              : role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id),
-        }),
-      );
+      const qs = req.query.flash ? `?flash=${encodeURIComponent(req.query.flash)}` : "";
+      return reply.redirect(basePath(`/ops/${req.params.id}${qs}`), 302);
     },
   );
 
@@ -488,7 +454,7 @@ export async function webRoutes(app: FastifyInstance) {
         });
         await logAudit(op.id, ctx.user.id, ctx.user.username, "question", "");
       }
-      return reply.redirect(basePath(`/ops/${op.id}/join?flash=ok:Question+sent.`), 302);
+      return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Question+sent.`), 302);
     },
   );
 
@@ -508,7 +474,7 @@ export async function webRoutes(app: FastifyInstance) {
         await logAudit(req.params.id, ctx.user.id, ctx.user.username, "answer", "");
       }
       return reply.redirect(
-        basePath(`/ops/${req.params.id}/join?flash=ok:Antwort+gespeichert.`),
+        basePath(`/ops/${req.params.id}/manage?tab=admin&flash=ok:Antwort+gespeichert.`),
         302,
       );
     },
@@ -556,12 +522,21 @@ export async function webRoutes(app: FastifyInstance) {
       canManage = role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id);
     }
 
-    const [voiceChannels, guildRow] = await Promise.all([
+    const [voiceChannels, guildRow, ownedShips] = await Promise.all([
       fetchGuildVoiceChannels(op.guildId).catch(() => []),
       prisma.guild.findUnique({
         where: { id: op.guildId },
         select: { timezone: true },
       }),
+      ctx
+        ? prisma.userShip
+            .findMany({
+              where: { userId: ctx.user.id },
+              include: { ship: true },
+              orderBy: { ship: { name: "asc" } },
+            })
+            .then((rows) => rows.map((owned) => owned.ship))
+        : Promise.resolve([]),
     ]);
     const voiceChannelName =
       voiceChannels.find((c) => c.id === op.eventVoiceChannelId)?.name ?? null;
@@ -576,7 +551,7 @@ export async function webRoutes(app: FastifyInstance) {
         op,
         guildTimezone: (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
         voiceChannelName,
-        isLeader: false,
+        ownedShips,
         canManage,
       }),
     );
@@ -585,7 +560,7 @@ export async function webRoutes(app: FastifyInstance) {
   // ── Operation detail ─────────────────────────────────────────────────
   app.get<{
     Params: { id: string };
-    Querystring: { flash?: string; viewAs?: string; tab?: string };
+    Querystring: { flash?: string; tab?: string };
   }>("/ops/:id/manage", async (req, reply) => {
     const ctx = await optionalAuth(req);
     const op = await getOperation(req.params.id);
@@ -616,36 +591,8 @@ export async function webRoutes(app: FastifyInstance) {
           loginRequiredPage({ basePath: basePath() }),
         );
       }
-      reply.header("Cache-Control", "no-store");
-      const guestGuildRow = (await (prisma.guild.findUnique as any)({
-        where: { id: op.guildId },
-        select: { name: true, orgName: true, timezone: true, discordInviteUrl: true },
-      })) as { name?: string; orgName?: string | null; timezone?: string; discordInviteUrl?: string | null } | null;
-      return htmlReply(
-        reply,
-        opDetailPageV2({
-          basePath: basePath(),
-          currentUser: null,
-          op,
-          ownedShips: [],
-          assignableUsers: [],
-          guildVoiceChannels: [],
-          availableVoiceBotCount: 0,
-          voiceEnabled: false,
-          guildTimezone: guestGuildRow?.timezone ?? DEFAULT_TIMEZONE,
-          guildName: guestGuildRow?.name,
-          orgName: guestGuildRow?.orgName ?? null,
-          visibility: "public",
-          canEditVisibility: false,
-          joinInviteUrl: null,
-          guildDiscordInviteUrl: guestGuildRow?.discordInviteUrl ?? null,
-          participants: null,
-          primaryAssignments: [],
-          canManagePrimary: false,
-          redactNames: true,
-          tab: req.query.tab,
-        }),
-      );
+      // The management shell is operator-only. Send guests to the player page.
+      return reply.redirect(basePath(`/ops/${op.id}`), 302);
     }
     // Authenticated: access if member of the op's guild OR the op is
     // public OR partner-visible to a guild the user belongs to. This is
@@ -674,9 +621,9 @@ export async function webRoutes(app: FastifyInstance) {
     const canAssignSeats =
       opRoleForView === "fleetoperator" ||
       op.leaders.some((leader) => leader.user.id === ctx.user.id);
-    if (!canAssignSeats && !req.query.tab && !req.query.viewAs) {
+    if (!canAssignSeats && !req.query.tab) {
       const qs = req.query.flash ? `?flash=${encodeURIComponent(req.query.flash)}` : "";
-      return reply.redirect(basePath(`/ops/${op.id}/join${qs}`), 302);
+      return reply.redirect(basePath(`/ops/${op.id}${qs}`), 302);
     }
     // Only op leaders (fleetoperator in the op's guild or a listed
     // OperationLeader) may change visibility — captains/crew cannot.
@@ -832,7 +779,6 @@ export async function webRoutes(app: FastifyInstance) {
         fleetVoiceLinks,
         commanderRoster,
         voiceControl,
-        viewAsRole: req.query.viewAs,
         tab: req.query.tab,
         visibility: opVisibility ?? "private",
         canEditVisibility,

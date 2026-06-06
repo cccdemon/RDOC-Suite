@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Fleetplanner: player/operator UI design-fix (post-Codex review) (2026-06-06)
+
+- **Ship-offer flow now works.** The player page "Offer a ship" action led nowhere (anchored to the crew-request box, no ship form existed). Added a real ship/fireteam offer form (`#offer-ship`) on the player page — owned-ship picker + catalog search + optional composition slot, posting to the existing `POST /api/ops/:id/units` and returning to the player page.
+- **Player page is player-only.** Removed the Audit-Log and question answer-forms that bled into the player signup page for leaders. Moved Questions (with answer) + Audit Log into the manage shell's **Admin tab** (`/ops/:id/manage?tab=admin`), where they belong.
+- **Single canonical player route.** `/ops/:id/join` now redirects to `/ops/:id`; the former `?view=player` preview and the divergent prop-passing across the two routes are gone. Crew and management redirects point at `/ops/:id`.
+- **Removed dead `viewAs` role-simulator** from `opDetailPageV2` (superseded by the explicit Operator/Player switch).
+- **Guests no longer see the operator shell.** A logged-out guest opening a public op's `/ops/:id/manage` is redirected to the player page `/ops/:id`.
+
 ### Changed - Fleetplanner: event links are now player-first (2026-06-06)
 
 - `/ops/:id` now renders the final player signup event UI by default: hero, event facts, join assistant, Open Seats, Fleet Requirements table, briefing, questions, and My Signup.

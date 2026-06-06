@@ -505,7 +505,6 @@ type OpDetailPageOptions = {
       location: "here" | "elsewhere" | "offline";
     }>;
   }> | null;
-  viewAsRole?: string;
   /** Op visibility: private | partners | public. */
   visibility?: string;
   /** Whether the current viewer may change the op's visibility. */
@@ -577,20 +576,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const csrf = opts.csrfToken ?? "";
   const realUser = opts.currentUser;
-  const previewRoles = ["guest", "crew", "fleetoperator", "superadmin"];
   const multiPos = multiPositionUserIds(op);
   const canRealManage =
     !!realUser && (realUser.role === "superadmin" || realUser.role === "fleetoperator");
-  const viewAsRole =
-    canRealManage && opts.viewAsRole && previewRoles.includes(opts.viewAsRole)
-      ? opts.viewAsRole
-      : "";
-  const user =
-    viewAsRole === "guest"
-      ? null
-      : viewAsRole && realUser
-        ? ({ ...realUser, role: viewAsRole } as typeof realUser)
-        : realUser;
+  // Player preview is a dedicated route (/ops/:id) now — no in-shell role
+  // simulation. The shell always renders for the real user.
+  const user = realUser;
   const canManage = !!user && (user.role === "superadmin" || user.role === "fleetoperator");
   const isLeader = !!user && (canManage || op.leaders.some((leader) => leader.user.id === user.id));
   // Guest view of a public op (not logged in): hide member usernames for privacy.
@@ -1988,6 +1979,46 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </form>`
         : safe("")}
     </section>
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Ask the Fleet Operator</div>
+      ${op.questions.length
+        ? op.questions.map(
+            (q) => html`<div class="opv2-row" style="display:block">
+              <div><strong>${nm(q.asker)}:</strong> ${q.body}</div>
+              ${q.answer
+                ? html`<div class="text-sm" style="color:var(--green,#3ad07a);margin-top:4px">
+                    Reply from <strong>${q.answeredBy}:</strong> ${q.answer}
+                  </div>`
+                : canManage
+                  ? html`<form
+                      method="post"
+                      action="${bp}/ops/${op.id}/questions/${q.id}/answer"
+                      class="opv2-form mt-1"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input name="answer" maxlength="1000" placeholder="Answer..." />
+                      <button type="submit" class="btn btn-sm btn-green mt-1">Answer</button>
+                    </form>`
+                  : html`<div class="text-dim text-sm" style="margin-top:4px">Not answered yet</div>`}
+            </div>`,
+          )
+        : html`<p class="text-dim text-sm">No questions yet.</p>`}
+    </section>
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Audit Log</div>
+      ${op.auditLogs.length
+        ? html`<div class="text-sm" style="line-height:1.7">
+            ${op.auditLogs.slice(0, 30).map(
+              (a) => html`<div style="border-bottom:1px solid rgba(255,255,255,.05);padding:3px 0">
+                <span class="text-dim">${fmtDate(a.createdAt, gtz)}</span>
+                <strong>${nm(a.actor)}</strong> ${a.action}${a.detail
+                  ? html` <span class="text-dim">(${a.detail})</span>`
+                  : safe("")}
+              </div>`,
+            )}
+          </div>`
+        : html`<p class="text-dim text-sm">No audit entries yet.</p>`}
+    </section>
   </div>`;
 
   // All tab panels are rendered; client-side JS toggles visibility so switching
@@ -3230,7 +3261,7 @@ export function opJoinPage(opts: {
   op: NonNullable<OpFull>;
   guildTimezone?: string;
   voiceChannelName?: string | null;
-  isLeader?: boolean;
+  ownedShips?: Ship[];
   canManage?: boolean;
 }): SafeHtml {
   const bp = opts.basePath;
@@ -3264,11 +3295,18 @@ export function opJoinPage(opts: {
     })
     .filter((u) => u.open > 0);
   const requirements = op.groups.flatMap((g) => g.requirements);
-  const isLeader = opts.isLeader === true;
+  const ownedShips = opts.ownedShips ?? [];
+  // Open composition slots (accepted units < requested) the player can target
+  // when offering a ship. Phase-1: no allowed-ship restriction yet (FR-P1 §5).
+  const availableSlots = requirements
+    .filter((r) => r.fleetUnits.filter((u) => u.status === "accepted").length < r.count)
+    .map((r) => ({ id: r.id, label: r.label }));
   const minP = (op as { minParticipants?: number }).minParticipants ?? 0;
   const maxP = (op as { maxParticipants?: number | null }).maxParticipants ?? null;
-  const myQuestions = isLeader ? op.questions : op.questions.filter((q) => q.askerId === myId);
-  const canManage = opts.canManage === true || isLeader;
+  // Player view only ever shows the viewer's own questions. Operators answer in
+  // the manage shell (opDetailPageV2 Admin tab), not on this signup page.
+  const myQuestions = op.questions.filter((q) => q.askerId === myId);
+  const canManage = opts.canManage === true;
   const requirementRows = requirements.map((r) => {
     const fulfilled = r.fleetUnits.filter((u) => u.status === "accepted").length;
     const pending = r.fleetUnits.filter((u) => u.status === "pending").length;
@@ -3412,7 +3450,7 @@ export function opJoinPage(opts: {
             >
             <span class="arr">&gt;</span>
           </a>
-          <a class="join-opt" href="#signup">
+          <a class="join-opt" href="#offer-ship">
             <span class="ico">Ship</span>
             <span
               ><span class="ttl">Offer a ship</span><br /><span class="sub"
@@ -3486,6 +3524,74 @@ export function opJoinPage(opts: {
           </section>
         </div>
 
+        <section class="card" id="offer-ship" style="margin-top:1rem">
+          <h3 class="wiz-sum-h">Offer a ship or fireteam</h3>
+          ${!myId
+            ? html`<p class="text-dim text-sm">Sign in to offer a ship for this mission.</p>
+                <a class="btn btn-sm btn-green" href="${bp}/login">Sign in</a>`
+            : !isOpen
+              ? html`<p class="text-dim text-sm">Sign-up is closed.</p>`
+              : html`<form
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/units"
+                  class="opv2-form join-unit-form"
+                  novalidate
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  <input type="hidden" name="ui" value="player" />
+                  <input type="hidden" name="tab" value="fleet" />
+                  <div class="form-errors join-unit-errors" hidden></div>
+                  <label>Fleet need <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                  <select name="requirementId">
+                    <option value="">Unslotted — let the operator place it</option>
+                    ${availableSlots.map(
+                      (s) => html`<option value="${s.id}">${s.label}</option>`,
+                    )}
+                  </select>
+                  <label>Type</label>
+                  <select name="unitType" class="join-unit-type">
+                    <option value="ship">Ship</option>
+                    <option value="squad">FPS fireteam</option>
+                  </select>
+                  <div class="unit-ship-fields">
+                    <label>From your hangar</label>
+                    <select name="ownedShipId" class="join-owned-ship-select">
+                      <option value="">Select an owned ship…</option>
+                      ${ownedShips.map(
+                        (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
+                      )}
+                    </select>
+                    <label>…or search the ship catalog</label>
+                    <input
+                      type="search"
+                      class="join-ship-search"
+                      placeholder="Search ship catalog…"
+                      autocomplete="off"
+                    />
+                    <input type="hidden" name="shipId" class="join-ship-id-field" />
+                    <label style="font-weight:normal">
+                      <input type="checkbox" name="storeOwnedShip" value="1" /> Save this ship to my
+                      hangar
+                    </label>
+                    <div class="ship-results join-ship-results"></div>
+                  </div>
+                  <div class="unit-squad-fields" hidden>
+                    <label>Fireteam name</label>
+                    <input type="text" name="squadName" maxlength="80" placeholder="FPS Team" />
+                    <label>Fireteam size</label>
+                    <input type="number" name="squadSize" min="2" max="8" value="4" />
+                  </div>
+                  <label>Note to the Fleet Operator <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                  <input
+                    type="text"
+                    name="captainNote"
+                    maxlength="240"
+                    placeholder="Role, loadout, crew preference…"
+                  />
+                  <button type="submit" class="btn btn-green mt-1">Offer</button>
+                </form>`}
+        </section>
+
         <section class="card" style="margin-top:1rem">
           <h3 class="wiz-sum-h">Briefing</h3>
           ${op.description
@@ -3495,40 +3601,15 @@ export function opJoinPage(opts: {
 
         ${myQuestions.length
           ? html`<section class="card" style="margin-top:1rem">
-              <h3 class="wiz-sum-h">Questions</h3>
+              <h3 class="wiz-sum-h">My Questions</h3>
               ${myQuestions.map(
                 (q) => html`<div class="join-q">
                   <div><b>${q.asker}:</b> ${q.body}</div>
                   ${q.answer
                     ? html`<div class="join-a">Reply from <b>${q.answeredBy}:</b> ${q.answer}</div>`
-                    : isLeader
-                      ? html`<form
-                          method="post"
-                          action="${bp}/ops/${op.id}/questions/${q.id}/answer"
-                          class="join-ans"
-                        >
-                          <input type="hidden" name="_csrf" value="${csrf}" />
-                          <input name="answer" maxlength="1000" placeholder="Answer..." />
-                          <button type="submit" class="btn btn-sm btn-green">Answer</button>
-                        </form>`
-                      : html`<div class="join-a text-dim">Not answered yet</div>`}
+                    : html`<div class="join-a text-dim">Not answered yet</div>`}
                 </div>`,
               )}
-            </section>`
-          : safe("")}
-        ${isLeader && op.auditLogs.length
-          ? html`<section class="card" style="margin-top:1rem">
-              <h3 class="wiz-sum-h">Audit-Log</h3>
-              <div class="join-audit">
-                ${op.auditLogs.slice(0, 20).map(
-                  (a) => html`<div class="join-au">
-                    <span class="text-dim">${fmtDateLocal(a.createdAt, gtz)}</span>
-                    <b>${a.actor}</b> ${a.action}${a.detail
-                      ? html` <span class="text-dim">(${a.detail})</span>`
-                      : safe("")}
-                  </div>`,
-                )}
-              </div>
             </section>`
           : safe("")}
       </div>
@@ -3581,7 +3662,107 @@ export function opJoinPage(opts: {
         </p>
       </aside>
     </div>
-    </div>`;
+    </div>
+    <script>
+      document.querySelectorAll(".join-unit-form").forEach((form) => {
+        const unitType = form.querySelector(".join-unit-type");
+        const shipFields = form.querySelector(".unit-ship-fields");
+        const squadFields = form.querySelector(".unit-squad-fields");
+        const owned = form.querySelector(".join-owned-ship-select");
+        const search = form.querySelector(".join-ship-search");
+        const shipId = form.querySelector(".join-ship-id-field");
+        const results = form.querySelector(".join-ship-results");
+        const errBox = form.querySelector(".join-unit-errors");
+        let timer;
+        const esc = (s) =>
+          String(s)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#39;");
+        const sync = () => {
+          if (!unitType || !shipFields || !squadFields) return;
+          const isShip = unitType.value === "ship";
+          shipFields.hidden = !isShip;
+          squadFields.hidden = isShip;
+        };
+        if (unitType) {
+          unitType.addEventListener("change", sync);
+          sync();
+        }
+        if (owned && shipId) {
+          owned.addEventListener("change", () => {
+            if (owned.value) {
+              shipId.value = "";
+              if (search) search.value = "";
+              if (results) results.innerHTML = "";
+            }
+          });
+        }
+        if (search && results && shipId) {
+          search.addEventListener("input", () => {
+            clearTimeout(timer);
+            const q = search.value.trim();
+            shipId.value = "";
+            if (owned) owned.value = "";
+            if (q.length < 2) {
+              results.innerHTML = "";
+              return;
+            }
+            timer = setTimeout(async () => {
+              const res = await fetch("${bp}/api/ships?q=" + encodeURIComponent(q));
+              const ships = await res.json();
+              results.innerHTML = ships
+                .map(
+                  (s) =>
+                    '<button type="button" class="ship-row" data-id="' +
+                    esc(s.id) +
+                    '" data-name="' +
+                    esc(s.name) +
+                    '"><strong>' +
+                    esc(s.name) +
+                    "</strong><span>" +
+                    esc(s.manufacturer || "") +
+                    " // " +
+                    esc(s.size || "") +
+                    "</span></button>",
+                )
+                .join("");
+            }, 180);
+          });
+          results.addEventListener("click", (event) => {
+            const el = event.target.closest(".ship-row");
+            if (!el) return;
+            results.querySelectorAll(".ship-row").forEach((r) => r.classList.remove("selected"));
+            el.classList.add("selected");
+            shipId.value = el.dataset.id || "";
+            search.value = el.dataset.name || "";
+            if (owned) owned.value = "";
+          });
+        }
+        form.addEventListener("submit", (e) => {
+          const missing = [];
+          const isShip = !unitType || unitType.value === "ship";
+          if (isShip) {
+            if (!(owned && owned.value) && !(shipId && shipId.value))
+              missing.push("a ship (hangar or catalog search)");
+          } else {
+            const sn = form.querySelector('[name="squadName"]');
+            if (!sn || !sn.value.trim()) missing.push("a fireteam name");
+          }
+          if (missing.length) {
+            e.preventDefault();
+            if (errBox) {
+              errBox.textContent = "Please provide: " + missing.join(", ") + ".";
+              errBox.hidden = false;
+            }
+          } else if (errBox) {
+            errBox.hidden = true;
+          }
+        });
+      });
+    </script>`;
 
   return layout({
     title: `Join: ${op.title}`,

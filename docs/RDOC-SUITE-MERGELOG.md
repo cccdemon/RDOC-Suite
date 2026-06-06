@@ -1,5 +1,34 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner player/operator UI design-fix (post-Codex review)
+
+Verification: `pnpm --filter @rdoc-suite/fleetplanner build` (tsc) passed locally. Commit + deploy
+left to the user.
+
+Review of the Codex wizard/join-view work (commits 7ecd050→d9fca90) against
+`docs/GUI Architekturplan-Assistenssystem-MissonCreationFlow.md` +
+`docs/FR-P1-fleetplanner-gui-ux-implementation.md` found design errors. Fix:
+
+1. **Ship-offer flow missing (feature gap).** Player page "Offer a ship" pointed at
+   `#signup` with no ship form. Add a real `#offer-ship` register-unit form on the player
+   page (`opJoinPage`), reusing the existing `POST /api/ops/:id/units` (ui=player → returns
+   to player page) + owned-ship/catalog-search/unit-type JS. FR-P1 Phase-3 "offer a ship".
+2. **Player/leader page split.** `opJoinPage` was doing double duty — Audit-Log + question
+   answer-forms (management) rendered inside the player signup page for leaders. Strip those
+   from `opJoinPage` (pure player view: own questions read + ask-question). Move Questions
+   (with answer) + Audit-Log panels into the manage shell `opDetailPageV2` Admin tab (the
+   only place they belong; opDetailPageV2 previously rendered neither).
+3. **Route collapse.** `/ops/:id/join` now 302 → `/ops/:id` (single canonical player route);
+   update crew-redirect + questions POST redirects accordingly. `/ops/:id` loads ownedShips +
+   composition slots for the offer form.
+4. **Dead `viewAs` role-simulator removed.** `?viewAs=<role>` simulation in `opDetailPageV2`
+   (replaced earlier by the explicit Operator/Player switch) is dead plumbing — remove opt +
+   web.ts wiring + simulation block.
+5. **Guest no longer sees operator shell.** Guest on a public op `/ops/:id/manage` 302 →
+   `/ops/:id` (player view) instead of rendering the redacted management shell.
+
+No schema migration. Code-first, compile-last; CHANGELOG under [Unreleased].
+
 ## Completed Step - 2026-06-06: Fleetplanner final player-first UI replacement
 
 Replaced the old operation detail default with the final player-first event UI. `/ops/:id` becomes
