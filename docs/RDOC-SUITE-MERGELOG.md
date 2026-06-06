@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — vehicle-carrier capability + operator attach
+
+User: a ground vehicle can only attach to a CAPABLE ship (Paladin no, Perseus/Asgard yes, fighters
+never); the operator backend must also be able to attach one.
+- `shipCanCarryVehicle(ship)` (scwiki.ts): true only if the catalog `cargo_grids` has an opening
+  ≥ 2.4 × 2.4 × ≥4 m. Verified on prod catalog: Paladin grid 1.25×1.25×5 → no; Perseus
+  10×2.5×7.5 + Asgard 6.25×5×11.25 → yes; fighters (no grid) → no; a vehicle never carries one.
+- `registerUnit` enforces it on vehicle attach (throws "This ship cannot carry a ground vehicle").
+- Player page + manage shell only show "Add a ground vehicle" on capable ships. Manage: vehicles
+  nest under their carrier card; the operator can add/remove a vehicle (capable ships only).
+- **Verified on prod DB** (temp data): Paladin attach blocked, Perseus attach allowed. Build + 235
+  tests pass.
+
 ## Completed Step - 2026-06-06: Fleetplanner — ground vehicles as crewable sub-units carried by a ship
 
 User: a ground vehicle is added to a CAPABLE ship before accepting; the operator accepts the

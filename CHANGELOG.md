@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetplanner: only vehicle-capable ships carry a ground vehicle (2026-06-06)
+
+- A ground vehicle can only be attached to a ship with a big-enough cargo bay (cargo-grid opening ≥ 2.4 × 2.4 × ≥4 m) — e.g. Perseus / Asgard yes, Paladin and fighters no. Enforced on attach; "Add a ground vehicle" only appears on capable ships. The operator can also attach/remove a vehicle from the manage shell, where vehicles now nest under their carrier ship.
+
+### Added - Mission-cover render microservice (FR-P4, Step 1+2) (2026-06-06)
+
+- New self-contained microservice **`@rdoc-suite/mission-cover`** (`apps/mission-cover`, container `rdoc-suite-mission-cover`). Engine = the **MissionCover** Star-Citizen briefing-cover generator copied into `engine/` (built to a single-file bundle). Author **Vi5E** credited in the engine header (vi5e.net / Twitch / YouTube) — fixed attribution; CCO branding kept as default cover branding.
+- **Server-side render** via headless Chromium (Playwright): seeds the engine's own localStorage config → loads the bundle → screenshots the `#mission-cover-canvas` node. No engine logic change needed for config injection.
+- **M2M API** (Bearer `MISSIONCOVER_SERVICE_SECRET`): `POST /v1/covers` (op payload → render + store), `GET /v1/covers/:id` (metadata). **Public** `GET /covers/:id.png` (read-only, unguessable id) served via Caddy `/cover/covers*`; `/v1/*` never exposed. Artifacts in volume `mission_cover_data`.
+- Egress lockdown in the renderer (anti-SSRF): only `file:`/`data:` + font CDNs + a configurable host allowlist; everything else aborted. Inputs Zod-validated, dimensions/payload capped, runs as non-root.
+- **Fleetplanner** stays thin: client `services/coverService.ts` (mirrors `bridge.ts`), env-gated via `MISSIONCOVER_SERVICE_SECRET` (`coverServiceConfigured()`); compose wires `MISSIONCOVER_SERVICE_URL`. UI button + op→cover persistence land in a follow-up step.
+
 ### Added - Fleetplanner: ground vehicles carried by a ship (2026-06-06)
 
 - A captain can **add a ground vehicle to their ship** (catalog pick). The vehicle is a crewable sub-unit with its own seats, nested under the carrier ship on the event page; players claim/release vehicle seats like ship seats.
