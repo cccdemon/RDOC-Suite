@@ -1620,6 +1620,24 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       : html`<p class="text-dim text-sm">
           No Fleet Requirements defined.${canManage ? " Add the ships and squads you need in the Fleet tab." : ""}
         </p>`}
+    ${(() => {
+      if (!canManage || compRows.length === 0) return safe("");
+      const unslotted = op.units.filter((u) => u.status === "accepted" && !u.requirementId);
+      if (unslotted.length === 0) return safe("");
+      return html`<div style="margin-top:.85rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.06)">
+        <div class="text-sm" style="margin-bottom:.4rem">
+          <strong>${String(unslotted.length)} accepted unit${unslotted.length === 1 ? "" : "s"} not assigned to a requirement</strong>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center">
+          ${unslotted.map(
+            (u) => html`<span class="tag tag-gold">${u.squadName || u.ship?.name || "Unit"}</span>`,
+          )}
+          <a class="text-sm" href="${tabUrl("fleet")}" style="margin-left:.25rem"
+            >Assign in Fleet tab &gt;</a
+          >
+        </div>
+      </div>`;
+    })()}
   </section>`;
 
   const participantsPanel =
