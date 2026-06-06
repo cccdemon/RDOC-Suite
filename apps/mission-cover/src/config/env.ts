@@ -30,7 +30,9 @@ const schema = z.object({
   RENDER_TIMEOUT_MS: z.coerce.number().default(20000),
   RENDER_SCALE: z.coerce.number().min(1).max(4).default(2),
   MAX_DIMENSION: z.coerce.number().default(4000),
-  MAX_PAYLOAD_BYTES: z.coerce.number().default(8 * 1024 * 1024),
+  // Editor saves carry full-res background + custom-logo data URLs, so the
+  // request body can be large. Operator-gated (token), so allow generous size.
+  MAX_PAYLOAD_BYTES: z.coerce.number().default(32 * 1024 * 1024),
 
   // Comma-separated host allowlist for images the headless browser may fetch
   // (e.g. guild logo CDN). Empty = block all external egress (data: only).
