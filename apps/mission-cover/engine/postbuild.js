@@ -5,15 +5,19 @@ const indexPath = path.resolve('dist/index.html');
 if (fs.existsSync(indexPath)) {
   let html = fs.readFileSync(indexPath, 'utf8');
 
-  // Replace type="module" with standard script tags + defer to bypass CORS on file:// and wait for DOM parsing
-  html = html.replace(/<script type="module" crossorigin>/g, '<script defer>');
-  html = html.replace(/<script type="module">/g, '<script defer>');
+  // Keep the inlined bundle as type="module": inline module scripts are
+  // deferred by default (they run AFTER the DOM, so #root exists when React
+  // mounts) and, since vite-plugin-singlefile inlines everything, they make no
+  // external request — no CORS issue even under file://. Downgrading them to a
+  // plain <script defer> breaks mounting, because `defer` is ignored on INLINE
+  // scripts in <head>: the bundle then runs before <body>/#root → React #299.
 
-  // Remove modulepreload links which trigger CORS errors on file://
+  // Remove modulepreload links (they reference no-longer-existing external
+  // chunks after inlining and trigger CORS errors on file://).
   html = html.replace(/<link rel="modulepreload"[^>]*>/g, '');
 
   fs.writeFileSync(indexPath, html, 'utf8');
-  console.log('Post-build: Successfully converted dist/index.html with defer script for file:// compatibility.');
+  console.log('Post-build: stripped modulepreload links; kept inline module scripts.');
 } else {
   console.error('Post-build error: dist/index.html not found.');
 }
