@@ -645,7 +645,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ...(user ? ["admin"] : []),
   ];
   const activeTab = tabNames.includes(opts.tab ?? "") ? opts.tab! : "overview";
-  const tabUrl = (tab: string) => `${bp}/ops/${op.id}?tab=${tab}`;
+  const tabUrl = (tab: string) => `${bp}/ops/${op.id}/manage?tab=${tab}`;
   const returnFields = (tab: string) => html`
     <input type="hidden" name="ui" value="new" />
     <input type="hidden" name="tab" value="${tab}" />
@@ -2033,8 +2033,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ? html`<div class="opv2-cta">
                 <div class="opv2-cta-h">I want to join</div>
                 <div class="opv2-cta-actions">
-                  <a class="btn btn-green" href="${bp}/ops/${op.id}/join">Join</a>
-                  <a class="btn" href="${bp}/ops/${op.id}?tab=fleet">Choose an open seat</a>
+                  <a class="btn btn-green" href="${bp}/ops/${op.id}">Join</a>
+                  <a class="btn" href="${bp}/ops/${op.id}#open-seats">Choose an open seat</a>
                 </div>
               </div>`
             : op.status === "locked"
@@ -2076,8 +2076,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           ${canRealManage
             ? html`<div class="opv2-view-switch">
                 <span class="text-dim text-sm">View</span>
-                <a class="active" href="${bp}/ops/${op.id}?tab=${activeTab}">Operator</a>
-                <a href="${bp}/ops/${op.id}/join?view=player">Player Signup</a>
+                <a class="active" href="${bp}/ops/${op.id}/manage?tab=${activeTab}">Operator</a>
+                <a href="${bp}/ops/${op.id}">Player Signup</a>
               </div>`
             : ""}
         </div>
@@ -3231,6 +3231,7 @@ export function opJoinPage(opts: {
   guildTimezone?: string;
   voiceChannelName?: string | null;
   isLeader?: boolean;
+  canManage?: boolean;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -3267,6 +3268,22 @@ export function opJoinPage(opts: {
   const minP = (op as { minParticipants?: number }).minParticipants ?? 0;
   const maxP = (op as { maxParticipants?: number | null }).maxParticipants ?? null;
   const myQuestions = isLeader ? op.questions : op.questions.filter((q) => q.askerId === myId);
+  const canManage = opts.canManage === true || isLeader;
+  const requirementRows = requirements.map((r) => {
+    const fulfilled = r.fleetUnits.filter((u) => u.status === "accepted").length;
+    const pending = r.fleetUnits.filter((u) => u.status === "pending").length;
+    return {
+      label: r.label,
+      category: categoryLabel(r.category),
+      requested: r.count,
+      fulfilled,
+      pending,
+      open: Math.max(0, r.count - fulfilled),
+    };
+  });
+  const requestedTotal = requirementRows.reduce((sum, r) => sum + r.requested, 0);
+  const fulfilledTotal = requirementRows.reduce((sum, r) => sum + r.fulfilled, 0);
+  const openTotal = requirementRows.reduce((sum, r) => sum + r.open, 0);
   const statusUpper = op.status.toUpperCase();
   const visUpper = ((op as { visibility?: string }).visibility ?? "private").toUpperCase();
 
@@ -3279,27 +3296,51 @@ export function opJoinPage(opts: {
         : safe("");
 
   const body = html` <style>
-      .join-badges { display: flex; gap: 8px; flex-wrap: wrap; margin: -6px 0 14px; }
-      .join-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 6px; border: 1px solid currentColor; }
+      .event-shell { max-width: 1180px; margin: 0 auto; }
+      .event-hero {
+        min-height: 250px;
+        display: grid;
+        align-content: end;
+        gap: 1rem;
+        padding: 1.25rem;
+        border: 1px solid var(--cyan-28);
+        background-size: cover;
+        background-position: center;
+        margin-bottom: 1rem;
+      }
+      .event-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+      .event-hero h1 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.55rem); line-height: 1.05; }
+      .event-hero p { margin: .45rem 0 0; color: var(--dim); font-size: .95rem; }
+      .event-manage { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
+      .join-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+      .join-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 4px; border: 1px solid currentColor; background: rgba(0,0,0,.35); }
       .join-badge.open { color: var(--green, #3ad07a); }
       .join-badge.pub { color: var(--cyan, #35d0e0); }
-      .join-badge.time { color: var(--dim, #7a8a96); }
-      .join-meta { display: flex; gap: 18px; flex-wrap: wrap; padding: 12px 14px; margin-bottom: 1rem; font-size: 0.85rem; color: var(--dim, #7a8a96); }
-      .join-meta b { color: var(--text, #cdd9e1); font-weight: 600; }
-      .join-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1rem; align-items: start; }
+      .join-badge.time { color: var(--text); }
+      .event-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-bottom: 1rem; }
+      .event-fact { border: 1px solid var(--border); background: var(--bg2); padding: .85rem; min-width: 0; }
+      .event-fact span { display: block; color: var(--dim); font-family: var(--font-mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
+      .event-fact strong { display: block; margin-top: .35rem; overflow-wrap: anywhere; }
+      .join-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 1rem; align-items: start; }
       .join-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
-      .join-opt { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; margin-top: 10px; text-decoration: none; color: inherit; }
-      .join-opt:hover { border-color: var(--cyan, #35d0e0); }
-      .join-opt .ico { flex: none; width: 3.4rem; font-family: var(--font-mono); font-size: .72rem; color: var(--cyan); text-transform: uppercase; }
-      .join-opt .ttl { font-weight: 600; }
+      .join-opt { display: grid; grid-template-columns: 4rem minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid rgba(255,255,255,0.1); margin-top: 10px; text-decoration: none; color: inherit; background: rgba(255,255,255,.015); }
+      .join-opt:hover { border-color: var(--cyan, #35d0e0); background: var(--cyan-08); }
+      .join-opt .ico { font-family: var(--font-mono); font-size: .72rem; color: var(--cyan); text-transform: uppercase; }
+      .join-opt .ttl { font-weight: 700; }
       .join-opt .sub { font-size: 0.8rem; color: var(--dim, #7a8a96); }
-      .join-opt .arr { margin-left: auto; color: var(--dim, #7a8a96); }
-      .join-seat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
-      .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; }
-      .join-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-      .join-chip { font-size: 0.78rem; padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.14); }
-      .join-md { white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5; color: var(--text, #cdd9e1); }
-      .join-aside textarea { width: 100%; box-sizing: border-box; min-height: 90px; margin: 6px 0 10px; }
+      .join-opt .arr { color: var(--dim, #7a8a96); }
+      .join-seat { display: flex; justify-content: space-between; gap: .75rem; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
+      .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; white-space: nowrap; }
+      .req-table { display: grid; gap: .35rem; }
+      .req-row { display: grid; grid-template-columns: minmax(0, 1fr) 5.8rem 5.8rem 6.5rem; gap: .5rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+      .req-head { color: var(--dim); font-family: var(--font-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
+      .req-name { min-width: 0; }
+      .req-name strong { display: block; overflow-wrap: anywhere; }
+      .req-name span { color: var(--dim); font-size: .76rem; }
+      .req-num { font-family: var(--font-mono); font-weight: 700; }
+      .join-md { white-space: pre-wrap; font-size: 0.9rem; line-height: 1.55; color: var(--text, #cdd9e1); }
+      .join-aside { position: sticky; top: 1rem; }
+      .join-aside textarea { width: 100%; box-sizing: border-box; min-height: 100px; margin: 6px 0 10px; }
       .join-cta-btn { width: 100%; }
       .join-q { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
       .join-a { margin-top: 4px; color: var(--green, #3ad07a); }
@@ -3308,21 +3349,45 @@ export function opJoinPage(opts: {
       .join-audit { font-size: 0.8rem; line-height: 1.7; }
       .join-au { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 0; }
       @media (max-width: 900px) {
-        .join-layout { grid-template-columns: 1fr; }
-        .join-row2 { grid-template-columns: 1fr; }
+        .event-hero-top { flex-direction: column; }
+        .event-facts, .join-layout, .join-row2 { grid-template-columns: 1fr; }
+        .join-aside { position: static; }
+        .req-row { grid-template-columns: 1fr 4.5rem 4.5rem 5rem; }
       }
     </style>
-    <div class="page-header"><h1 class="page-title">${op.title}</h1></div>
-    <div class="join-badges">
-      <span class="join-badge ${isOpen ? "open" : ""}">${statusUpper}</span>
-      <span class="join-badge pub">${visUpper}</span>
-      <span class="join-badge time">${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
-    </div>
-    <div class="join-meta card">
-      <span>Rendezvous: <b>${op.meetingLocation || "Not set"}</b></span>
-      <span>System: <b>${systemLabel(op.meetingSystem)}</b></span>
-      <span>Voice: <b>${opts.voiceChannelName || "Not set"}</b></span>
-      <span>Participants: <b>${minP > 0 ? `Min ${minP}` : "No minimum"}${maxP ? ` / Max ${maxP}` : ""}</b></span>
+    <div class="event-shell">
+    <section
+      class="event-hero"
+      style="background-image:linear-gradient(90deg, rgba(5,8,16,.96), rgba(5,8,16,.76), rgba(5,8,16,.3)), url('${missionImageUrl(
+        bp,
+        op.opType,
+      )}')"
+    >
+      <div class="event-hero-top">
+        <div class="join-badges">
+          <span class="join-badge ${isOpen ? "open" : ""}">${statusUpper}</span>
+          <span class="join-badge pub">${visUpper}</span>
+          <span class="join-badge time">${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
+        </div>
+        ${canManage
+          ? html`<div class="event-manage">
+              <a class="btn btn-sm btn-cyan" href="${bp}/ops/${op.id}/manage">Manage Event</a>
+            </div>`
+          : safe("")}
+      </div>
+      <div>
+        <h1>${op.title}</h1>
+        <p>${op.meetingLocation || "Rendezvous not set"} · ${systemLabel(op.meetingSystem)}</p>
+      </div>
+    </section>
+    <div class="event-facts">
+      <div class="event-fact"><span>Rendezvous</span><strong>${op.meetingLocation || "Not set"}</strong></div>
+      <div class="event-fact"><span>System</span><strong>${systemLabel(op.meetingSystem)}</strong></div>
+      <div class="event-fact"><span>Voice</span><strong>${opts.voiceChannelName || "Not set"}</strong></div>
+      <div class="event-fact">
+        <span>Participants</span>
+        <strong>${minP > 0 ? `Min ${minP}` : "No minimum"}${maxP ? ` / Max ${maxP}` : ""}</strong>
+      </div>
     </div>
 
     <div class="join-layout">
@@ -3338,7 +3403,7 @@ export function opJoinPage(opts: {
             >
             <span class="arr">&gt;</span>
           </a>
-          <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
+          <a class="join-opt" href="#open-seats">
             <span class="ico">Seat</span>
             <span
               ><span class="ttl">Choose an open seat</span><br /><span class="sub"
@@ -3347,7 +3412,7 @@ export function opJoinPage(opts: {
             >
             <span class="arr">&gt;</span>
           </a>
-          <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
+          <a class="join-opt" href="#signup">
             <span class="ico">Ship</span>
             <span
               ><span class="ttl">Offer a ship</span><br /><span class="sub"
@@ -3359,39 +3424,63 @@ export function opJoinPage(opts: {
         </section>
 
         <div class="join-row2">
-          <section class="card">
+          <section class="card" id="open-seats">
             <h3 class="wiz-sum-h">Open Seats</h3>
             ${openSeats.length
               ? openSeats.map(
                   (s) =>
                     html`<div class="join-seat">
                       <span>${s.unit} - ${s.label}</span>
-                      ${isOpen
+                      ${isOpen && myId
                         ? html`<form
                             method="post"
                             action="${bp}/api/seats/${s.seatId}/claim"
                             class="inline"
                           >
                             <input type="hidden" name="_csrf" value="${csrf}" />
-                            <input type="hidden" name="ui" value="new" />
+                            <input type="hidden" name="ui" value="player" />
                             <input type="hidden" name="tab" value="fleet" />
                             <button type="submit" class="btn btn-sm btn-green">Claim</button>
                           </form>`
+                        : isOpen
+                          ? html`<a class="btn btn-sm btn-green" href="${bp}/login">Sign in</a>`
                         : html`<span class="free">open</span>`}
                     </div>`,
                 )
               : html`<p class="text-dim text-sm">No open seats right now.</p>`}
-            <a href="${bp}/ops/${op.id}?tab=fleet" class="text-sm" style="display:inline-block;margin-top:8px"
-              >View all positions &gt;</a
-            >
+            ${canManage
+              ? html`<a
+                  href="${bp}/ops/${op.id}/manage?tab=fleet"
+                  class="text-sm"
+                  style="display:inline-block;margin-top:8px"
+                  >Manage all positions &gt;</a
+                >`
+              : safe("")}
           </section>
           <section class="card">
             <h3 class="wiz-sum-h">Fleet Requirements</h3>
-            ${requirements.length
-              ? html`<div class="join-chips">
-                  ${requirements.map(
-                    (r) => html`<span class="join-chip">${r.count}x ${r.label}</span>`,
+            ${requirementRows.length
+              ? html`<div class="req-table">
+                  <div class="req-row req-head">
+                    <span>Requirement</span>
+                    <span>Requested</span>
+                    <span>Fulfilled</span>
+                    <span>Open Slots</span>
+                  </div>
+                  ${requirementRows.map(
+                    (r) => html`<div class="req-row">
+                      <span class="req-name"><strong>${r.label}</strong><span>${r.category}</span></span>
+                      <span class="req-num">${r.requested}</span>
+                      <span class="req-num">${r.fulfilled}${r.pending ? html` <span class="tag tag-gold">${r.pending} pending</span>` : safe("")}</span>
+                      <span class="req-num">${r.open}</span>
+                    </div>`,
                   )}
+                  <div class="req-row">
+                    <span class="req-name"><strong>Total</strong><span>Accepted units count as fulfilled</span></span>
+                    <span class="req-num">${requestedTotal}</span>
+                    <span class="req-num">${fulfilledTotal}</span>
+                    <span class="req-num">${openTotal}</span>
+                  </div>
                 </div>`
               : html`<p class="text-dim text-sm">No requirements defined.</p>`}
           </section>
@@ -3447,10 +3536,13 @@ export function opJoinPage(opts: {
       <aside class="card join-aside" id="signup">
         <h3 class="wiz-sum-h">My Signup</h3>
         ${stateBanner}
-        ${isOpen && !hasSeat && !hasReq
+        ${!myId
+          ? html`<p class="text-dim text-sm">Sign in to claim seats, offer ships, or ask the Fleet Operator a question.</p>
+              <a class="btn btn-green join-cta-btn" href="${bp}/login">Sign in</a>`
+          : isOpen && !hasSeat && !hasReq
           ? html`<form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
               <input type="hidden" name="_csrf" value="${csrf}" />
-              <input type="hidden" name="ui" value="new" />
+              <input type="hidden" name="ui" value="player" />
               <input type="hidden" name="tab" value="crew" />
               <label
                 >Note to Fleet Operator
@@ -3466,12 +3558,14 @@ export function opJoinPage(opts: {
           : !hasSeat && !hasReq
             ? html`<p class="text-dim text-sm">Not signed up yet.</p>`
             : safe("")}
-        <form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">
-          <input type="hidden" name="_csrf" value="${csrf}" />
-          <label>Ask a question</label>
-          <textarea name="body" maxlength="1000" placeholder="e.g. which loadouts? exact time?"></textarea>
-          <button type="submit" class="btn btn-ghost join-cta-btn">Ask a question</button>
-        </form>
+        ${myId
+          ? html`<form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <label>Ask a question</label>
+              <textarea name="body" maxlength="1000" placeholder="e.g. which loadouts? exact time?"></textarea>
+              <button type="submit" class="btn btn-ghost join-cta-btn">Ask a question</button>
+            </form>`
+          : safe("")}
         ${seatSummary.length
           ? html`<div style="margin-top:14px">
               <div class="wiz-sum-h" style="font-size:.9rem">Available Seats</div>
@@ -3486,6 +3580,7 @@ export function opJoinPage(opts: {
           Your signup is visible to the operator once you join.
         </p>
       </aside>
+    </div>
     </div>`;
 
   return layout({

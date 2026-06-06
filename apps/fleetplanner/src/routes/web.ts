@@ -514,11 +514,79 @@ export async function webRoutes(app: FastifyInstance) {
     },
   );
 
+  // ── Player-facing operation page ────────────────────────────────────
+  app.get<{
+    Params: { id: string };
+    Querystring: { flash?: string };
+  }>("/ops/:id", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    const op = await getOperation(req.params.id);
+    if (!op) {
+      return htmlReply(
+        reply,
+        errorPage({
+          basePath: basePath(),
+          currentUser: ctx?.user ?? null,
+          status: 404,
+          message: "Operation not found",
+        }),
+      );
+    }
+
+    const opVisibility = (op as Record<string, unknown>).visibility as string | undefined;
+    if (!ctx && opVisibility !== "public") {
+      reply.code(401);
+      return htmlReply(reply, loginRequiredPage({ basePath: basePath() }));
+    }
+
+    let canManage = false;
+    if (ctx) {
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+      if (!role) {
+        return htmlReply(
+          reply,
+          errorPage({
+            basePath: basePath(),
+            currentUser: ctx.user,
+            status: 404,
+            message: "Operation not found",
+          }),
+        );
+      }
+      canManage = role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id);
+    }
+
+    const [voiceChannels, guildRow] = await Promise.all([
+      fetchGuildVoiceChannels(op.guildId).catch(() => []),
+      prisma.guild.findUnique({
+        where: { id: op.guildId },
+        select: { timezone: true },
+      }),
+    ]);
+    const voiceChannelName =
+      voiceChannels.find((c) => c.id === op.eventVoiceChannelId)?.name ?? null;
+    reply.header("Cache-Control", "no-store");
+    return htmlReply(
+      reply,
+      opJoinPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+        flash: req.query.flash,
+        op,
+        guildTimezone: (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
+        voiceChannelName,
+        isLeader: false,
+        canManage,
+      }),
+    );
+  });
+
   // ── Operation detail ─────────────────────────────────────────────────
   app.get<{
     Params: { id: string };
     Querystring: { flash?: string; viewAs?: string; tab?: string };
-  }>("/ops/:id", async (req, reply) => {
+  }>("/ops/:id/manage", async (req, reply) => {
     const ctx = await optionalAuth(req);
     const op = await getOperation(req.params.id);
     if (!op) {
@@ -834,7 +902,7 @@ export async function webRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       if (!bridgeConfigured())
         return reply.redirect(
-          basePath(`/ops/${req.params.id}?flash=error:Bridge+not+configured.`),
+          basePath(`/ops/${req.params.id}/manage?tab=voice&flash=error:Bridge+not+configured.`),
           302,
         );
       const op = await getOperation(req.params.id);
@@ -843,14 +911,14 @@ export async function webRoutes(app: FastifyInstance) {
         const r = await moveUnitCrewToChannel(op, req.params.unitId);
         return reply.redirect(
           basePath(
-            `/ops/${op.id}?flash=ok:Moved+${r.moved}+(skipped+${r.skipped}%2C+failed+${r.failed}).`,
+            `/ops/${op.id}/manage?tab=voice&flash=ok:Moved+${r.moved}+(skipped+${r.skipped}%2C+failed+${r.failed}).`,
           ),
           302,
         );
       } catch (err) {
         app.log.error(err, "move unit crew failed");
         return reply.redirect(
-          basePath(`/ops/${op.id}?flash=error:Move+failed+(bridge+unreachable%3F).`),
+          basePath(`/ops/${op.id}/manage?tab=voice&flash=error:Move+failed+(bridge+unreachable%3F).`),
           302,
         );
       }
@@ -866,17 +934,17 @@ export async function webRoutes(app: FastifyInstance) {
     if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
     if (!bridgeConfigured())
       return reply.redirect(
-        basePath(`/ops/${req.params.id}?flash=error:Bridge+not+configured.`),
+        basePath(`/ops/${req.params.id}/manage?tab=voice&flash=error:Bridge+not+configured.`),
         302,
       );
     const op = await getOperation(req.params.id);
     if (!op) return reply.redirect(basePath("/?flash=error:Operation+not+found."), 302);
     try {
       await moveOpMemberToUnit(op, req.params.unitId, req.params.userId);
-      return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Member+moved.`), 302);
+      return reply.redirect(basePath(`/ops/${op.id}/manage?tab=voice&flash=ok:Member+moved.`), 302);
     } catch (err) {
       app.log.error(err, "move op member failed");
-      return reply.redirect(basePath(`/ops/${op.id}?flash=error:Move+failed.`), 302);
+      return reply.redirect(basePath(`/ops/${op.id}/manage?tab=voice&flash=error:Move+failed.`), 302);
     }
   });
 
@@ -1026,7 +1094,7 @@ export async function webRoutes(app: FastifyInstance) {
       if (scheduledAt && !parsedDate) {
         const target =
           req.body.ui === "new"
-            ? `/ops/${req.params.id}?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Invalid+date`
+            ? `/ops/${req.params.id}/manage?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Invalid+date`
             : `/ops/${req.params.id}/edit?flash=error:Invalid+date`;
         return reply.redirect(basePath(target), 302);
       }
@@ -1060,13 +1128,13 @@ export async function webRoutes(app: FastifyInstance) {
 
         const target =
           req.body.ui === "new"
-            ? `/ops/${req.params.id}?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=ok:Saved.`
-            : `/ops/${req.params.id}?flash=ok:Saved.`;
+            ? `/ops/${req.params.id}/manage?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=ok:Saved.`
+            : `/ops/${req.params.id}/manage?flash=ok:Saved.`;
         return reply.redirect(basePath(target), 302);
       } catch {
         const target =
           req.body.ui === "new"
-            ? `/ops/${req.params.id}?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Save+failed`
+            ? `/ops/${req.params.id}/manage?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=error:Save+failed`
             : `/ops/${req.params.id}/edit?flash=error:Save+failed`;
         return reply.redirect(basePath(target), 302);
       }
@@ -1096,7 +1164,7 @@ export async function webRoutes(app: FastifyInstance) {
         }
         return reply.redirect(basePath("/?flash=ok:Operation+deleted."), 302);
       } catch {
-        return reply.redirect(basePath(`/ops/${req.params.id}?flash=error:Delete+failed`), 302);
+        return reply.redirect(basePath(`/ops/${req.params.id}/manage?tab=admin&flash=error:Delete+failed`), 302);
       }
     },
   );

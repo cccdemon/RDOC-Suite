@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: event links are now player-first (2026-06-06)
+
+- `/ops/:id` now renders the final player signup event UI by default: hero, event facts, join assistant, Open Seats, Fleet Requirements table, briefing, questions, and My Signup.
+- Fleet Operators get a clear **Manage Event** entry point; the legacy operation management shell moved to `/ops/:id/manage`.
+- Management tabs and management form redirects now stay under `/manage`; player signup forms return to the player event page.
+
 ### Fixed - Fleetplanner: Fleet Operators can open the real player signup preview (2026-06-06)
 
 - Replaced the ambiguous operator-only "View as" role selector with an explicit **Operator / Player Signup** switch. The player signup preview links to `/ops/:id/join?view=player`, hiding leader-only join-page extras so Fleet Operators can verify the actual player-facing flow.

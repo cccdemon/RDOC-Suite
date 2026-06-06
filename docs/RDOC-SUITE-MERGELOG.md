@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner final player-first UI replacement
+
+Replaced the old operation detail default with the final player-first event UI. `/ops/:id` becomes
+the public/player signup experience, Fleet Operators get a clear Manage Event entry point, and the
+legacy management shell moves behind `/ops/:id/manage`. Redesign the player view around the agreed
+layout: event hero, facts, "I want to join" assistant, Open Seats, Fleet Requirements with
+Requested/Fulfilled/Open Slots semantics, briefing, questions, and My Signup. No schema migration.
+
+Verification: `pnpm --filter @rdoc-suite/fleetplanner build` and `pnpm --filter
+@rdoc-suite/fleetplanner test` passed locally.
+
 ## Completed Step - 2026-06-06: Fleetplanner explicit player signup preview
 
 Fixed the remaining UX confusion for Fleet Operators: the operator page still shows the management

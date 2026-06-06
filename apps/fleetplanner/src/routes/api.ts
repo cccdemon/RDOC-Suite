@@ -70,9 +70,10 @@ function opReturnUrl(
   fallbackTab = "overview",
 ): string {
   const tab = body.tab?.trim() || fallbackTab;
-  const ui =
-    body.ui === "new" ? `?tab=${encodeURIComponent(tab)}&flash=${flash}` : `?flash=${flash}`;
-  return basePath(`/ops/${opId}${ui}`);
+  if (body.ui === "new") {
+    return basePath(`/ops/${opId}/manage?tab=${encodeURIComponent(tab)}&flash=${flash}`);
+  }
+  return basePath(`/ops/${opId}?flash=${flash}`);
 }
 
 const UNIT_TYPES = ["ship", "squad"] as const;
