@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Fleetplanner: participant join CTA on op-detail (Mission Creation Flow Phase 2, 2026-06-06)
+
+- Op-detail now shows a logged-in non-leader their join state at a glance, above the tabs: "✓ Du bist eingeteilt", "✓ Anmeldung eingegangen", or — while the op is open — a single clear "Mitmachen?" card with **Sitz claimen** (→ Fleet tab) and **Als Crew anmelden** (→ Crew tab). Locked ops show "Anmeldung geschlossen". Mobile: full-width stacked actions. Pure additive (no schema/route change); reuses the existing seat/crew controls. FR-P1 mobile/join focus.
+
 ### Added — Fleetplanner: guided op-creation wizard (Mission Creation Flow Phase 1, 2026-06-06)
 
 - New stepped admin assistant at `/ops/new/wizard`: Grundlagen → Ort → Sichtbarkeit/Voice → Briefing → Vorschau, with a progress stepper, per-step validation, and a review before publish. Posts to the existing `POST /ops/new` (same field names) — no backend/schema change. A "✨ Assistent" link sits on the classic `/ops/new` form; the wizard links back to the classic form. First slice of FR-P1-eventcreation-simplification (branch `feat/mission-creation-wizard`).

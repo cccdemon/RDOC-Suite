@@ -453,6 +453,18 @@ a:hover { color: #fff; }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .btn-sm { padding: 0.35rem 0.8rem; font-size: 0.75rem; }
+
+/* Participant join CTA (FR-P1 Phase 2 — mobile/join focus). */
+.opv2-cta { margin: 0 0 1rem; padding: 0.95rem 1.05rem; border: 1px solid var(--cyan); border-radius: 10px; background: rgba(53, 208, 224, 0.06); }
+.opv2-cta.done { border-color: var(--green, #3ad07a); background: rgba(58, 208, 122, 0.07); color: var(--green, #3ad07a); font-weight: 600; }
+.opv2-cta.closed { border-color: rgba(255, 255, 255, 0.14); background: transparent; color: var(--text-dim, #7a8a96); }
+.opv2-cta-h { font-weight: 700; letter-spacing: 0.5px; margin-bottom: 0.6rem; }
+.opv2-cta-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+@media (max-width: 680px) {
+  .opv2-cta-actions { flex-direction: column; }
+  .opv2-cta-actions .btn { width: 100%; text-align: center; box-sizing: border-box; }
+}
+
 .btn-danger { border-color: rgba(255,68,68,0.38); background: var(--red-08); color: var(--red); }
 .btn-danger:hover { background: rgba(255,68,68,0.18); border-color: var(--red); }
 .btn-gold   { border-color: var(--gold-38); background: var(--gold-08); color: var(--gold); }

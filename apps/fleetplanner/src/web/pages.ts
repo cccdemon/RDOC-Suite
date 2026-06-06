@@ -1956,6 +1956,36 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       </div>`
     : safe("");
 
+  // Participant join CTA (FR-P1 Phase 2 mobile/join focus): a logged-in
+  // non-leader instantly sees their join state — eingeteilt / angemeldet — or a
+  // single clear "Mitmachen" action while the op is open. Leaders/managers skip
+  // it (they have the admin controls).
+  const myId = user?.id;
+  const hasSeat = !!myId && activeSeats.some((seat) => seat.userId === myId);
+  const hasCrewReq = !!myId && op.crewRequests.some((r) => r.user.id === myId);
+  const participantCta =
+    !user || isLeader
+      ? safe("")
+      : hasSeat
+        ? html`<div class="opv2-cta done">✓ Du bist eingeteilt.</div>`
+        : hasCrewReq
+          ? html`<div class="opv2-cta done">
+              ✓ Anmeldung eingegangen — wartet auf Zuweisung durch den FleetOperator.
+            </div>`
+          : op.status === "open"
+            ? html`<div class="opv2-cta">
+                <div class="opv2-cta-h">Mitmachen?</div>
+                <div class="opv2-cta-actions">
+                  <a class="btn btn-green" href="${bp}/ops/${op.id}?tab=fleet">▶ Sitz claimen</a>
+                  <a class="btn" href="${bp}/ops/${op.id}?tab=crew">Als Crew anmelden</a>
+                </div>
+              </div>`
+            : op.status === "locked"
+              ? html`<div class="opv2-cta closed">
+                  Anmeldung geschlossen — sprich den FleetOperator an.
+                </div>`
+              : safe("");
+
   const body = html`${guestBanner}${joinInviteBanner(opts.joinInviteUrl)}<div class="opv2-shell">
       <header
         class="opv2-hero opv2-hero-mission"
@@ -2033,6 +2063,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
       ${actionDetailsPanel}
 
+      ${participantCta}
       <nav class="opv2-tabs">
         ${shellLink("overview", "Overview")} ${shellLink("fleet", "Fleet")}
         ${shellLink("crew", "Crew")} ${shellLink("voice", "Voice")}
