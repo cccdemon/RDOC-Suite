@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Public /roadmap page + German Fleetplanner overview doc
+
+DONE: in-app roadmap — `lib/roadmap.ts` (curated, German) + `roadmapPage` + `/roadmap` route + nav
+link (mirrors changelog). Basic FR-P3 roadmap-tab (Discord auto-ingest still open). Plus
+`docs/FLEETPLANNER-UEBERBLICK.md` — complete German explanation of the Fleetplanner. Build passes.
+
 ## Queued / Planned Step - 2026-06-07: FR — Member Last-Seen + 6-month inactivity alert
 
 Capture FeatureRequest as `docs/FR-P3-inactivity-alert.md` + ROADMAP. Fleetmanager bot gains a

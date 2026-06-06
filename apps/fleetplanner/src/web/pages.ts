@@ -10,6 +10,7 @@ import {
 } from "../lib/timezone.js";
 import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
+import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
 import { matchesCategory, suggestSlot } from "../services/composition.js";
 import { shipCanCarryVehicle } from "../services/scwiki.js";
 import type { MissionParticipant } from "../services/participants.js";
@@ -7189,6 +7190,57 @@ export function changelogPage(opts: {
 
   return layout({
     title: "Changelog",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+export function roadmapPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const groups: Array<{ key: RoadmapStatus; label: string; tag: string }> = [
+    { key: "planned", label: "Geplant", tag: "tag-gold" },
+    { key: "blocked", label: "Blockiert", tag: "tag-dim" },
+    { key: "done", label: "Erledigt", tag: "tag-green" },
+  ];
+  const sections = groups.map((g) => {
+    const items = ROADMAP.filter((r) => r.status === g.key);
+    if (!items.length) return safe("");
+    return html`<div class="section">
+      <div class="section-title">${g.label} (${items.length})</div>
+      ${items.map(
+        (r) => html`<div class="card" style="padding:1rem 1.25rem;max-width:52rem;margin-bottom:.85rem">
+          <div class="card-header" style="margin-bottom:.6rem;padding-bottom:.55rem">
+            <span class="card-title" style="flex:1">${r.title}</span>
+            <span class="tag ${g.tag}">${g.label}</span>
+          </div>
+          <p style="margin:0">${r.desc}</p>
+          ${r.note ? html`<p class="text-dim text-sm" style="margin:.4rem 0 0">${r.note}</p>` : safe("")}
+        </div>`,
+      )}
+    </div>`;
+  });
+
+  const body = html`<div class="page-header">
+      <h1 class="page-title">ROADMAP</h1>
+      <div class="page-subtitle">Was geplant ist und was schon umgesetzt wurde.</div>
+    </div>
+    ${sections}
+    <div class="section">
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p class="text-dim text-sm">
+          Idee oder Wunsch? Nutze den <a href="${bp}/feedback">Feedback</a>-Tab.
+        </p>
+      </div>
+    </div>`;
+
+  return layout({
+    title: "Roadmap",
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

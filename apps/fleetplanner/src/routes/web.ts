@@ -11,6 +11,7 @@ import {
   opWizardPage,
   opJoinPage,
   profilePage,
+  roadmapPage,
   shipsPage,
   feedbackPage,
   adminPage,
@@ -1230,6 +1231,18 @@ export async function webRoutes(app: FastifyInstance) {
     htmlReply(
       reply,
       changelogPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+      }),
+    );
+  });
+
+  app.get("/roadmap", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(
+      reply,
+      roadmapPage({
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,

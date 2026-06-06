@@ -12,6 +12,13 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-06-07",
+    title: "Roadmap page",
+    changes: [
+      "New Roadmap tab shows what's planned, blocked and already shipped.",
+    ],
+  },
+  {
     date: "2026-06-06",
     title: "Mission cover editor fixes",
     changes: [
