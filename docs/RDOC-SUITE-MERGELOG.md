@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — reject frees seats; edit/withdraw own ship before accept
+
+User bugs: (1) editing your offered ship was only possible AFTER accept (wrong order — want it
+while offering); (2) a rejected ship still left you "holding a seat"; (3) couldn't withdraw your
+ship.
+- `setUnitStatus("rejected")` now clears all seat occupants of that unit. **Verified on prod DB**
+  (temp data): captain seated after accept → 0 occupied after reject.
+- `opJoinPage.hasSeat` counts **accepted** units only (a pending/rejected unit no longer shows
+  "You hold a seat").
+- Player page shows the viewer's **own pending ships** with a seat-edit form (rename + enable/
+  disable) and a **Withdraw ship** button — so seats are configured while the ship is still
+  pending (before accept). Accepted own ships also get Withdraw. Shared `seatEditDetails` +
+  `withdrawShipForm` helpers; both reuse the captain-gated `/units/:id/seats` + `/units/:id/delete`
+  routes with `ui=player`. Build + 235 tests pass.
+
 ## Completed Step - 2026-06-06: Fleetplanner — same-unit seat move, captain-leave guard, player seat editing
 
 User feedback on the player roster:

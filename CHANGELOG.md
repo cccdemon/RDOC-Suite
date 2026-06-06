@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Fleetplanner: reject frees seats; edit/withdraw own ship before accept (2026-06-06)
+
+- Rejecting a unit now **frees its seats** — you no longer "hold a seat" in a rejected ship (and "You hold a seat" only counts accepted units).
+- You can **configure your offered ship's seats while it's still pending** (before the operator accepts) and **withdraw the ship** from the operation — both shown on the player page for ships you captain (pending or accepted).
+
 ### Changed - Fleetplanner: seat moves, captain-leave guard, player seat editing (2026-06-06)
 
 - Claiming another seat **in the same ship** now moves you (the old seat is released) instead of double-booking.
