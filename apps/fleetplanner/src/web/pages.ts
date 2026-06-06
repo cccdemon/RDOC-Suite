@@ -2583,9 +2583,6 @@ export function opFormPage(opts: {
 
   const body = html` <div class="page-header">
       <h1 class="page-title">${op ? "EDIT OPERATION" : "NEW OPERATION"}</h1>
-      ${!op
-        ? html`<a href="${bp}/ui-mode?to=new" class="btn btn-ghost">✨ Assistent (neu)</a>`
-        : safe("")}
     </div>
     <div class="card">
       <form method="post" action="${action}" id="op-form" novalidate>
@@ -2871,7 +2868,6 @@ export function opWizardPage(opts: {
       .wiz-sum dt { color: var(--dim, #7a8a96); }
       .wiz-sum dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
       .wiz-aside-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
-      .wiz-classic { display: block; text-align: center; margin-top: 10px; font-size: .8rem; opacity: .7; }
       .wiz-md-prev { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 12px 14px; background: rgba(0,0,0,.2); min-height: 120px; }
       .wiz-md-prev h4 { margin: .7rem 0 .25rem; color: var(--cyan, #35d0e0); }
       .wiz-md-prev h4:first-child { margin-top: 0; }
@@ -3056,7 +3052,6 @@ export function opWizardPage(opts: {
             <button type="submit" class="btn btn-green" id="wiz-submit" hidden>Create Event</button>
             <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ Back</button>
           </div>
-          <a href="${bp}/ui-mode?to=classic" class="wiz-classic">↩ Classic form</a>
         </aside>
       </div>
     </form>

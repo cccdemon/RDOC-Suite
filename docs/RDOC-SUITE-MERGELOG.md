@@ -1,5 +1,22 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — remove Classic create View entirely
+
+Verified: `pnpm --filter @rdoc-suite/fleetplanner build` + `test` (235) pass. Commit + deploy
+by the user/agent.
+
+User: the wizard is the only event-create UI. Remove the classic create form path + the
+alt/neu toggle.
+
+- `routes/web.ts`: delete the `/ui-mode` route (+ `fpui` cookie). `GET /ops/new` now 302 →
+  `/ops/new/wizard` (preserve `_guild`); it no longer renders `opFormPage` for new ops.
+- `web/pages.ts`: remove the wizard "↩ Classic form" link + `.wiz-classic` CSS, and the
+  "✨ Assistent (neu)" link in `opFormPage`.
+- `opFormPage` stays — it is still the **edit** form (`GET /ops/:id/edit`). Only its dead
+  new-op branches become unreachable.
+
+No schema migration. Code-first, compile-last; CHANGELOG under [Unreleased].
+
 ## Completed Step - 2026-06-06: Fleetplanner player/operator UI design-fix (post-Codex review)
 
 Verification: `pnpm --filter @rdoc-suite/fleetplanner build` (tsc) passed locally. Commit + deploy

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed - Fleetplanner: classic event-create form (2026-06-06)
+
+- The guided wizard (`/ops/new/wizard`) is now the only event-creation UI. `GET /ops/new` redirects to it; the `/ui-mode` toggle + `fpui` cookie and the "Classic form" / "Assistent (neu)" switch links are gone. `opFormPage` remains as the edit form (`/ops/:id/edit`).
+
 ### Fixed - Fleetplanner: player/operator UI design-fix (post-Codex review) (2026-06-06)
 
 - **Ship-offer flow now works.** The player page "Offer a ship" action led nowhere (anchored to the crew-request box, no ship form existed). Added a real ship/fireteam offer form (`#offer-ship`) on the player page — owned-ship picker + catalog search + optional composition slot, posting to the existing `POST /api/ops/:id/units` and returning to the player page.

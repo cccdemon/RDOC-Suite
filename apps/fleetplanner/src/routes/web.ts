@@ -218,66 +218,14 @@ export async function webRoutes(app: FastifyInstance) {
     );
   });
 
-  // ── New operation form — guild picker when user has multiple servers ─────
-  // UI-mode switch (alt/neu): persist a cookie + bounce to the matching create UI.
-  app.get<{ Querystring: { to?: string } }>("/ui-mode", async (req, reply) => {
-    const mode = req.query.to === "new" ? "new" : "classic";
-    reply.setCookie("fpui", mode, {
-      path: "/",
-      httpOnly: false,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 365,
-    });
-    return reply.redirect(basePath(mode === "new" ? "/ops/new/wizard" : "/ops/new"), 302);
-  });
-
+  // ── New operation — the guided wizard is the only create UI ──────────────
   app.get<{ Querystring: { flash?: string; _guild?: string } }>("/ops/new", async (req, reply) => {
     const ctx = await requireAuth(req, reply);
     if (!ctx) return;
-    // UI-mode preference: users who chose the new UI land on the wizard.
-    if ((req.cookies as Record<string, string | undefined>).fpui === "new") {
-      return reply.redirect(
-        basePath("/ops/new/wizard") +
-          (req.query._guild ? `?_guild=${encodeURIComponent(req.query._guild)}` : ""),
-        302,
-      );
-    }
-    const memberships = await listUserGuilds(ctx.user.id);
-    const operatorGuilds = memberships
-      .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
-      .map((m) => ({ id: m.guildId, name: m.guild.name }));
-    if (operatorGuilds.length === 0) return reply.code(403).send({ error: "forbidden" });
-    const selectedOperatorGuildId = operatorGuilds.some((g) => g.id === req.query._guild)
-      ? req.query._guild
-      : operatorGuilds.length === 1
-        ? operatorGuilds[0].id
-        : undefined;
-    const [guildVoiceChannels, newOpGuildRow] = await Promise.all([
-      selectedOperatorGuildId
-        ? fetchGuildVoiceChannels(selectedOperatorGuildId)
-        : Promise.resolve([]),
-      selectedOperatorGuildId
-        ? prisma.guild.findUnique({
-            where: { id: selectedOperatorGuildId },
-            select: { timezone: true },
-          })
-        : Promise.resolve(null),
-    ]);
-    htmlReply(
-      reply,
-      opFormPage({
-        basePath: basePath(),
-        currentUser: ctx.user,
-        csrfToken: ctx.csrfToken,
-        flash: req.query.flash,
-        op: null,
-        operatorGuilds,
-        selectedOperatorGuildId,
-        guildVoiceChannels,
-        locations: await searchLocations(undefined, "", 0, true),
-        guildTimezone:
-          (newOpGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
-      }),
+    return reply.redirect(
+      basePath("/ops/new/wizard") +
+        (req.query._guild ? `?_guild=${encodeURIComponent(req.query._guild)}` : ""),
+      302,
     );
   });
 
