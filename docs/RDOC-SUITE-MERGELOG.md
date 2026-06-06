@@ -5,12 +5,12 @@ RDOC-VoiceRelayBots into this repository.
 
 ## Queued Step - 2026-06-05: PLAN DOC — Partner Event Distribution + Federation Voice + Recurring Events
 
-Planning only — write `docs/FR-P2-partner-events-plan.md` (FeatureRequest, Prio 2; approved design, NO code), add it to the CLAUDE.md "Planungsdokumente — NOCH NICHT IMPLEMENTIERT" table. Covers three user-requested features:
-- **F1 Event Distribution:** cross-post a host op's Discord scheduled event into all active partner guilds, gated by target-guild confirmation (host auto). Per-partnership allowlist (auto-share vs per-event approval). Approval via Discord DM with "Teilen"/"Ablehnen" buttons (needs Fleetplanner-bot interaction handling) + web fallback.
-- **F2 Federation Voice:** per-event mode "All on one Discord" (current relay model) vs "Homeoffice party" (each guild stays on own Discord, relay bots per partner guild bridge a shared LiveKit federation room). Companion guests + per-guild relay bot for announcements. Voice line restricted to host + deputies.
-- **F3 Recurring Events:** RRULE-style recurrence on Operation; scheduler materialises the next instance (Discord has no native recurring-event API).
+Planning only — design docs, NO code. Now **one file per feature** (split from the former combined `FR-P2-partner-events-plan.md`), each with its own FeatureRequest priority + explicit dependency block; all listed in the CLAUDE.md "Planungsdokumente" table:
+- **`docs/FR-P1-event-distribution.md` (Prio 1):** cross-post a host op's Discord scheduled event into all active partner guilds, target-guild confirmation (host auto), allowlist (`PartnerSharePolicy`) + approval via named contact person (DM buttons / web inbox). Base feature, no deps.
+- **`docs/FR-P3-federation-voice.md` (Prio 3):** "All on one Discord" vs "Homeoffice party" (per-guild relay bots bridge a shared LiveKit federation room), host+deputies voice line, cap 16, **relay-bots multi-session refactor** for concurrent isolated events. **Depends on FR-P1** + the refactor.
+- **`docs/FR-P3-recurring-events.md` (Prio 3):** RRULE template + scheduler materialises op instances; native Discord `recurrence_rule` (approach A). Core standalone; series-distribution soft-depends on FR-P1.
 
-No schema/code in this step — design doc only.
+No schema/code in this step — design docs only.
 
 ## Completed Step - 2026-06-05: Fleetplanner OG/embed enrichment + Guild.orgName field (public ops only) — commit f9b1865
 

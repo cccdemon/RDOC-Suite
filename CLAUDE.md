@@ -258,7 +258,9 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 | [docs/orgmodule-implementationplan.md](docs/orgmodule-implementationplan.md) | Org-Modul: SC-Orgs als First-Class-Entities (`Org`, `OrgMembership`, `OrgInvite`) | Plan, kein Code |
 | [docs/composition-rebuild-plan.md](docs/composition-rebuild-plan.md) | Composition Board + Leader-Assign + Auto-Match (Schritte 1+2 im Code, Schritte 3-5 offen) | Teilweise umgesetzt |
 | [docs/handover.to.opus-model.md](docs/handover.to.opus-model.md) | Bridge-Admin in Fleetplanner absorbieren (Phasen 1-4 done, Raid-Planer bleibt im Bridge-UI) | Phasen 1-4 done |
-| [docs/FR-P2-partner-events-plan.md](docs/FR-P2-partner-events-plan.md) | **FeatureRequest, Prio 2.** Partner-Events: F1 Event-Distribution über Partner-Discords (Allowlist + DM-Approval), F2 Federation Voice (Homeoffice-Party / shared LiveKit room, host+deputies), F3 wiederkehrende Events (RRULE) | Plan, kein Code |
+| [docs/FR-P1-event-distribution.md](docs/FR-P1-event-distribution.md) | **FeatureRequest, Prio 1.** Event-Distribution: Op-Discord-Event an alle aktiven Partner-Discords cross-posten, Allowlist (`PartnerSharePolicy`) + Approval (DM-Buttons/Web-Inbox) durch benannte Kontaktperson pro Event×Guild. Basis für FR-P3-federation-voice. | Plan, kein Code |
+| [docs/FR-P3-federation-voice.md](docs/FR-P3-federation-voice.md) | **FeatureRequest, Prio 3.** Federation Voice (Homeoffice-Party / shared LiveKit room, host+deputies, Cap 16) + Relay-Bots-Multi-Session-Umbau für gleichzeitige isolierte Events. **Hängt an FR-P1.** | Plan, kein Code |
+| [docs/FR-P3-recurring-events.md](docs/FR-P3-recurring-events.md) | **FeatureRequest, Prio 3.** Wiederkehrende Events: RRULE-Template + Scheduler materialisiert Op-Instanzen; nativer Discord `recurrence_rule` (Approach A). Kern eigenständig; Serien-Distribution soft-hängt an FR-P1. | Plan, kein Code |
 
 ### Naming & URL-Konventionen
 
