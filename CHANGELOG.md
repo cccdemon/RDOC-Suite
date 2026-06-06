@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: complete GUI overhaul (player-first + assistant manage workspace) (2026-06-06)
+
+A full front-end redesign of the operation experience (the individual entries below detail each step):
+
+- **Player event page** (`/ops/:id`) is now the default, player-first view: mission hero, fact strip, a **radio-driven "I want to join" assistant** (let the operator place me / take an open seat / offer a ship-or-CQB-team), **Accepted Units roster** with inline claim/release, full-width Fleet Requirements, rendered Markdown briefing, and a "My Signup" panel — all self-service (no edit mode), with a Manage Event entry point for operators.
+- **Operator manage shell** rebuilt from the old tabbed V2 look into a workflow workspace: mission-art hero, **status spine** (Draft→Open→Locked→Starting→Live→Done), a sticky command rail (Next step / Open tasks / Readiness / Delete), and **attention tabs** (active = yellow, tabs needing action = gold-outlined) covering Overview / Fleet / Crew / Voice / Voice Access / Admin. Composition board with accept-into-slot + auto-match.
+- **Element-level updates** — operator actions (accept/assign/claim/move…) submit via fetch and swap only the work area, keeping the active tab, instead of a full page reload.
+- **Event creation = single guided wizard** (the classic form is gone): stepped Basics → Briefing (with Markdown help) → Discord → Fleet Requirements (templates) → Review, landing the operator in the manage shell.
+- Full-width layouts (dropped the centered max-width caps), consistent card/tab styling, readable Fleet Requirements table.
+
+### Changed - Fleetplanner: fleet-import matching, manual-assign resolver, sortable Owned Ships (2026-06-06)
+
+- **Better import matching:** a CCU short name now matches the fuller catalog name by **token subset** (all input words present, order-independent, most-specific name wins) — e.g. "Ares Ion" → *Ares Star Fighter Ion*, "Merchantman" → *Banu Merchantman*, "G12" → *Greycat G12*.
+- **Unmatched resolver:** any import name that still doesn't match is listed on the profile with a row to **search the local ship database and assign the right ship**, or **Skip** it.
+- **Sortable Owned Ships:** the table headers (Ship / Nickname / Manufacturer / Size / Career / Role / Crew) are click-to-sort — Size by class rank, Crew numeric, others alphabetical, asc/desc toggle.
+
 ### Added - Fleetplanner: JSON fleet import on profile (2026-06-06)
 
 - The profile page can **import a CCU-Game JSON export** ("Import fleet (JSON)") to bulk-add owned ships. Each model is matched to the ship catalog (case-insensitive); the import reports how many were added, already owned, and unmatched. (FR-P2.)
