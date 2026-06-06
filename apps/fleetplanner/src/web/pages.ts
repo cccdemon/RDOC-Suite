@@ -2777,140 +2777,194 @@ export function opWizardPage(opts: {
       system: l.systemSlug,
       label: `${l.name} // ${l.system}${l.classification ? ` // ${l.classification}` : ""}`,
     }));
-  const steps = ["Grundlagen", "Ort", "Sichtbarkeit & Voice", "Briefing", "Vorschau"];
+  const steps = ["Basisdaten", "Ort", "Sichtbarkeit & Voice", "Briefing", "Review"];
 
   const body = html` <style>
-      .wiz-stepper { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 18px; flex-wrap: wrap; }
-      .wiz-dot { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; opacity: .5; font-size: .8rem; }
-      .wiz-dot.active { opacity: 1; border-color: var(--cyan, #35d0e0); color: var(--cyan, #35d0e0); }
-      .wiz-num { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid currentColor; font-size: .7rem; }
-      .wiz-nav { display: flex; gap: 8px; margin-top: 20px; align-items: center; }
-      .wiz-review { display: grid; grid-template-columns: 160px 1fr; gap: 6px 14px; margin: 0; }
-      .wiz-review dt { color: var(--dim, #7a8a96); font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; }
-      .wiz-review dd { margin: 0; }
-      .wiz-h3 { margin: 0 0 12px; }
+      .wiz-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 1rem; align-items: start; }
+      .wiz-rail ol { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+      .wiz-rail-step { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; opacity: .5; }
+      .wiz-rail-step.active { opacity: 1; background: rgba(53,208,224,.08); color: var(--cyan, #35d0e0); }
+      .wiz-rail-step.done { opacity: .85; cursor: pointer; }
+      .wiz-rnum { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid currentColor; font-size: .75rem; flex: none; }
+      .wiz-rail-hint { color: var(--dim, #7a8a96); font-size: .75rem; margin-top: 16px; line-height: 1.45; }
+      .wiz-main .wiz-step { padding: 1.1rem 1.2rem; }
+      .wiz-aside-h { font-weight: 700; display: flex; align-items: center; gap: 8px; margin: 0 0 14px; }
+      .wiz-ready { list-style: none; padding: 0; margin: 0 0 20px; display: flex; flex-direction: column; gap: 10px; }
+      .wiz-ready li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: .85rem; }
+      .wiz-tag { font-size: .62rem; padding: 2px 7px; border-radius: 5px; font-weight: 700; letter-spacing: .5px; white-space: nowrap; }
+      .wiz-tag.ok { color: var(--green, #3ad07a); border: 1px solid var(--green, #3ad07a); }
+      .wiz-tag.warn { color: #e0b835; border: 1px solid #e0b835; }
+      .wiz-tag.info { color: var(--dim, #7a8a96); border: 1px solid rgba(255,255,255,.18); }
+      .wiz-sum-h { font-weight: 700; margin: 0 0 10px; }
+      .wiz-sum { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; font-size: .82rem; margin: 0; }
+      .wiz-sum dt { color: var(--dim, #7a8a96); }
+      .wiz-sum dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+      .wiz-aside-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+      .wiz-classic { display: block; text-align: center; margin-top: 10px; font-size: .8rem; opacity: .7; }
+      .wiz-md-prev { border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 12px 14px; background: rgba(0,0,0,.2); min-height: 120px; }
+      .wiz-md-prev h4 { margin: .7rem 0 .25rem; color: var(--cyan, #35d0e0); }
+      .wiz-md-prev h4:first-child { margin-top: 0; }
+      @media (max-width: 1100px) {
+        .wiz-layout { grid-template-columns: 1fr; }
+        .wiz-rail ol { flex-direction: row; flex-wrap: wrap; }
+        .wiz-rail-hint { display: none; }
+      }
     </style>
-    <div class="page-header"><h1 class="page-title">NEUE OPERATION — ASSISTENT</h1></div>
-    <div class="card">
-      <ol class="wiz-stepper">
-        ${steps.map(
-          (s, i) =>
-            html`<li class="wiz-dot${i === 0 ? safe(" active") : ""}" data-dot="${i}">
-              <span class="wiz-num">${i + 1}</span><span class="wiz-lbl">${s}</span>
-            </li>`,
-        )}
-      </ol>
-      <form method="post" action="${bp}/ops/new" id="wiz-form" novalidate>
-        <input type="hidden" name="_csrf" value="${csrf}" />
-        <div class="form-errors" id="wiz-errors" hidden></div>
+    <div class="page-header"><h1 class="page-title">EVENT ERSTELLEN</h1></div>
+    <form method="post" action="${bp}/ops/new" id="wiz-form" novalidate>
+      <input type="hidden" name="_csrf" value="${csrf}" />
+      <div class="wiz-layout">
+        <aside class="wiz-rail card">
+          <ol>
+            ${steps.map(
+              (s, i) =>
+                html`<li class="wiz-rail-step${i === 0 ? safe(" active") : ""}" data-rs="${i}">
+                  <span class="wiz-rnum">${i + 1}</span><span>${s}</span>
+                </li>`,
+            )}
+          </ol>
+          <p class="wiz-rail-hint">
+            Erstelle ein Event in wenigen Schritten. Du kannst jederzeit als Draft speichern.
+          </p>
+        </aside>
 
-        <section class="wiz-step" data-step="0">
-          ${opts.operatorGuilds && opts.operatorGuilds.length > 0
-            ? html` <div class="form-group">
-                <label>Server <span class="req" title="Pflichtfeld">*</span></label>
-                ${selectedOperatorGuild
-                  ? html`<input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
-                      <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
-                  : opts.operatorGuilds.length === 1
-                    ? html`<input type="hidden" name="guildId" value="${opts.operatorGuilds[0].id}" />
-                        <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
-                    : html`<select name="guildId" required class="guild-picker-select-form">
-                        <option value="">— Server wählen —</option>
-                        ${opts.operatorGuilds.map(
-                          (g) => html`<option value="${g.id}">${g.name}</option>`,
-                        )}
-                      </select>`}
-              </div>`
-            : safe("")}
-          <div class="form-group">
-            <label>Operation Title <span class="req" title="Pflichtfeld">*</span></label>
-            <input type="text" name="title" required placeholder="Operation Darkstar" />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Datum/Zeit (${gtz}) <span class="req" title="Pflichtfeld">*</span></label>
-              <input type="datetime-local" name="scheduledAt" required />
-            </div>
-            <div class="form-group">
-              <label>Operation Type</label>
-              <select name="opType">
-                ${opTypes.map((t) => html`<option value="${t}">${t}</option>`)}
-              </select>
-            </div>
-          </div>
-        </section>
+        <div class="wiz-main">
+          <div class="form-errors" id="wiz-errors" hidden></div>
 
-        <section class="wiz-step" data-step="1" hidden>
-          <div class="form-row">
+          <section class="wiz-step card" data-step="0">
+            <h3 class="wiz-sum-h">Basisdaten</h3>
+            ${opts.operatorGuilds && opts.operatorGuilds.length > 0
+              ? html` <div class="form-group">
+                  <label>Server <span class="req" title="Pflichtfeld">*</span></label>
+                  ${selectedOperatorGuild
+                    ? html`<input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
+                        <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
+                    : opts.operatorGuilds.length === 1
+                      ? html`<input type="hidden" name="guildId" value="${opts.operatorGuilds[0].id}" />
+                          <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
+                      : html`<select name="guildId" required class="guild-picker-select-form">
+                          <option value="">— Server wählen —</option>
+                          ${opts.operatorGuilds.map(
+                            (g) => html`<option value="${g.id}">${g.name}</option>`,
+                          )}
+                        </select>`}
+                </div>`
+              : safe("")}
             <div class="form-group">
-              <label>Meeting System</label>
-              <select name="meetingSystem" id="meeting-system-select">
-                ${SYSTEMS.map((s) => html`<option value="${s}">${systemLabel(s)}</option>`)}
-              </select>
+              <label>Eventname <span class="req" title="Pflichtfeld">*</span></label>
+              <input type="text" name="title" required placeholder="Operation Darkstar" />
             </div>
-            <div class="form-group">
-              <label>Meeting Location (Treffpunkt)</label>
-              <select name="meetingLocationSlug" id="meeting-location-select">
-                <option value="" data-system="">-- Location wählen --</option>
-                ${locationOptions.map(
-                  (l) =>
-                    html`<option value="${l.slug}" data-system="${l.system}" data-label="${l.value}">
-                      ${l.label}
-                    </option>`,
-                )}
-              </select>
-              <input type="hidden" name="meetingLocation" id="meeting-location-label" value="" />
+            <div class="form-row">
+              <div class="form-group">
+                <label>Startzeit (${gtz}) <span class="req" title="Pflichtfeld">*</span></label>
+                <input type="datetime-local" name="scheduledAt" required />
+              </div>
+              <div class="form-group">
+                <label>Missionstyp</label>
+                <select name="opType">
+                  ${opTypes.map((t) => html`<option value="${t}">${t}</option>`)}
+                </select>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="wiz-step" data-step="2" hidden>
-          <div class="form-group">
-            <label>Sichtbarkeit</label>
-            <select name="visibility">
-              <option value="private" selected>🔒 Privat (nur dieser Discord)</option>
-              <option value="partners">🤝 Partner (dieser + verbundene)</option>
-              <option value="public">🌐 Öffentlich (alle eingeloggten)</option>
-            </select>
-          </div>
-          ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
-            ? html` <div class="form-group">
-                <label
-                  >Discord Event Voice Channel
-                  <span style="font-weight:normal;opacity:.65">(optional)</span></label
-                >
-                <select name="eventVoiceChannelId">
-                  <option value="">— Kein Voice-Channel —</option>
-                  ${opts.guildVoiceChannels.map(
-                    (ch) => html`<option value="${ch.id}">${ch.name}</option>`,
+          <section class="wiz-step card" data-step="1" hidden>
+            <h3 class="wiz-sum-h">Ort / Treffpunkt</h3>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Meeting System</label>
+                <select name="meetingSystem" id="meeting-system-select">
+                  ${SYSTEMS.map((s) => html`<option value="${s}">${systemLabel(s)}</option>`)}
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Treffpunkt</label>
+                <select name="meetingLocationSlug" id="meeting-location-select">
+                  <option value="" data-system="">-- Location wählen --</option>
+                  ${locationOptions.map(
+                    (l) =>
+                      html`<option value="${l.slug}" data-system="${l.system}" data-label="${l.value}">
+                        ${l.label}
+                      </option>`,
                   )}
                 </select>
-              </div>`
-            : safe("")}
-        </section>
+                <input type="hidden" name="meetingLocation" id="meeting-location-label" value="" />
+              </div>
+            </div>
+          </section>
 
-        <section class="wiz-step" data-step="3" hidden>
-          <div class="form-group">
-            <label>Briefing <span style="font-weight:normal;opacity:.65">(Markdown)</span></label>
-            <textarea name="description" rows="10" placeholder="## Missionsziel&#10;Der Mauler muss fallen&#10;&#10;## RoE&#10;…"></textarea>
-          </div>
-        </section>
+          <section class="wiz-step card" data-step="2" hidden>
+            <h3 class="wiz-sum-h">Sichtbarkeit & Voice</h3>
+            <div class="form-group">
+              <label>Sichtbarkeit</label>
+              <select name="visibility">
+                <option value="private" selected>🔒 Privat (nur dieser Discord)</option>
+                <option value="partners">🤝 Partner (dieser + verbundene)</option>
+                <option value="public">🌐 Öffentlich (alle eingeloggten)</option>
+              </select>
+            </div>
+            ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
+              ? html` <div class="form-group">
+                  <label
+                    >Discord Event Voice Channel
+                    <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                  >
+                  <select name="eventVoiceChannelId">
+                    <option value="">— Kein Voice-Channel —</option>
+                    ${opts.guildVoiceChannels.map(
+                      (ch) => html`<option value="${ch.id}">${ch.name}</option>`,
+                    )}
+                  </select>
+                </div>`
+              : safe("")}
+          </section>
 
-        <section class="wiz-step" data-step="4" hidden>
-          <h3 class="wiz-h3">Vorschau</h3>
-          <dl class="wiz-review" id="wiz-review"></dl>
-        </section>
+          <section class="wiz-step card" data-step="3" hidden>
+            <div
+              class="form-group"
+              style="display:flex;align-items:center;justify-content:space-between;gap:8px"
+            >
+              <label style="margin:0"
+                >Briefing <span style="font-weight:normal;opacity:.65">(Markdown)</span></label
+              >
+              <button type="button" class="btn btn-sm btn-ghost" id="wiz-md-toggle">Vorschau</button>
+            </div>
+            <textarea
+              name="description"
+              id="wiz-md"
+              rows="12"
+              placeholder="## Missionsziel&#10;Der Mauler muss fallen&#10;&#10;## RoE&#10;…"
+            ></textarea>
+            <div class="wiz-md-prev" id="wiz-md-prev" hidden></div>
+          </section>
 
-        <div class="wiz-nav">
-          <button type="button" class="btn btn-ghost" id="wiz-back" hidden>Zurück</button>
-          <button type="button" class="btn" id="wiz-next">Weiter</button>
-          <button type="submit" class="btn" id="wiz-submit" hidden>Operation erstellen</button>
-          <a href="${bp}/ops/new" class="btn btn-ghost" style="margin-left:auto"
-            >Klassisches Formular</a
-          >
+          <section class="wiz-step card" data-step="4" hidden>
+            <h3 class="wiz-sum-h">Review</h3>
+            <dl class="wiz-sum" id="wiz-review"></dl>
+            <p class="wiz-rail-hint" style="margin-top:14px">
+              Composition (Fireteams/Schiffe) konfigurierst du nach dem Erstellen auf der Op-Seite —
+              der geführte Composition-Schritt kommt in Phase 3.
+            </p>
+          </section>
         </div>
-      </form>
-    </div>
+
+        <aside class="wiz-aside card">
+          <div class="wiz-aside-h">✓ Bereit zum Öffnen</div>
+          <ul class="wiz-ready" id="wiz-ready"></ul>
+          <div class="wiz-sum-h">Zusammenfassung</div>
+          <dl class="wiz-sum" id="wiz-summary"></dl>
+          <div class="wiz-aside-actions">
+            <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ Zurück</button>
+            <button type="button" class="btn btn-green" id="wiz-next">Weiter ›</button>
+            <button type="submit" class="btn btn-green" id="wiz-submit" hidden>
+              Operation erstellen
+            </button>
+            <button type="submit" class="btn btn-ghost" id="wiz-draft">💾 Als Draft speichern</button>
+          </div>
+          <a href="${bp}/ops/new" class="wiz-classic">Klassisches Formular</a>
+        </aside>
+      </div>
+    </form>
     <script>
       (function () {
         const ms = document.getElementById("meeting-system-select");
@@ -2919,6 +2973,7 @@ export function opWizardPage(opts: {
         function syncLabel() {
           if (!ml || !mlab) return;
           mlab.value = ml.selectedOptions[0]?.dataset.label || "";
+          updateAside();
         }
         function filterLoc() {
           if (!ml || !ms) return;
@@ -2934,53 +2989,104 @@ export function opWizardPage(opts: {
         ml?.addEventListener("change", syncLabel);
         filterLoc();
 
-        const steps = Array.from(document.querySelectorAll(".wiz-step"));
-        const dots = Array.from(document.querySelectorAll(".wiz-dot"));
+        const sections = Array.from(document.querySelectorAll(".wiz-step"));
+        const rail = Array.from(document.querySelectorAll(".wiz-rail-step"));
         const back = document.getElementById("wiz-back");
         const next = document.getElementById("wiz-next");
         const submit = document.getElementById("wiz-submit");
         const errs = document.getElementById("wiz-errors");
         const review = document.getElementById("wiz-review");
+        const summary = document.getElementById("wiz-summary");
+        const ready = document.getElementById("wiz-ready");
         let cur = 0;
-        function show(i) {
-          steps.forEach((s, n) => (s.hidden = n !== i));
-          dots.forEach((d, n) => d.classList.toggle("active", n <= i));
-          back.hidden = i === 0;
-          next.hidden = i === steps.length - 1;
-          submit.hidden = i !== steps.length - 1;
-          errs.hidden = true;
-          if (i === steps.length - 1) buildReview();
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }
-        function validate(i) {
-          const miss = [];
-          steps[i].querySelectorAll("[required]").forEach((el) => {
-            el.classList.remove("field-error");
-            if (!el.value || !el.value.trim()) { miss.push(el); el.classList.add("field-error"); }
-          });
-          if (miss.length) { errs.textContent = "Bitte Pflichtfelder ausfüllen."; errs.hidden = false; miss[0].focus(); }
-          return miss.length === 0;
-        }
+
         function val(name) {
           const el = document.querySelector('[name="' + name + '"]');
           if (!el) return "";
           if (el.tagName === "SELECT") return el.selectedOptions[0]?.textContent.trim() || el.value;
           return el.value;
         }
-        function buildReview() {
-          const server = document.querySelector(".guild-selected-badge")?.textContent?.trim() || val("guildId") || "—";
-          const rows = [
-            ["Server", server], ["Titel", val("title")], ["Datum", val("scheduledAt")],
-            ["Typ", val("opType")], ["Ort", document.getElementById("meeting-location-label")?.value || "—"],
+        function esc(s) { return String(s || "—").replace(/</g, "&lt;"); }
+        function rows() {
+          const server =
+            document.querySelector(".guild-selected-badge")?.textContent?.trim() || val("guildId") || "—";
+          return [
+            ["Titel", val("title") || "—"], ["Startzeit", val("scheduledAt") || "—"],
+            ["Missionstyp", val("opType")], ["Treffpunkt", document.getElementById("meeting-location-label")?.value || "—"],
             ["Sichtbarkeit", val("visibility")], ["Voice", val("eventVoiceChannelId") || "—"],
+            ["Server", server],
           ];
-          review.innerHTML = rows
-            .map((r) => "<dt>" + r[0] + "</dt><dd>" + String(r[1] || "—").replace(/</g, "&lt;") + "</dd>")
-            .join("");
         }
-        next.addEventListener("click", () => { if (validate(cur) && cur < steps.length - 1) { cur++; show(cur); } });
+        function dl(node) {
+          node.innerHTML = rows().map((r) => "<dt>" + r[0] + "</dt><dd>" + esc(r[1]) + "</dd>").join("");
+        }
+        function updateAside() {
+          dl(summary);
+          const checks = [
+            ["Titel", !!val("title").trim(), false],
+            ["Startzeit", !!val("scheduledAt").trim(), false],
+            ["Voice-Channel", !!val("eventVoiceChannelId"), true],
+          ];
+          ready.innerHTML =
+            checks
+              .map((c) => {
+                const tag = c[1]
+                  ? '<span class="wiz-tag ok">OK</span>'
+                  : c[2]
+                    ? '<span class="wiz-tag info">OPTIONAL</span>'
+                    : '<span class="wiz-tag warn">FEHLT</span>';
+                return "<li><span>" + c[0] + "</span>" + tag + "</li>";
+              })
+              .join("") + '<li><span>Composition</span><span class="wiz-tag info">PHASE 3</span></li>';
+        }
+
+        function show(i) {
+          sections.forEach((s, n) => (s.hidden = n !== i));
+          rail.forEach((r, n) => { r.classList.toggle("active", n === i); r.classList.toggle("done", n < i); });
+          back.hidden = i === 0;
+          next.hidden = i === sections.length - 1;
+          submit.hidden = i !== sections.length - 1;
+          errs.hidden = true;
+          if (i === sections.length - 1) dl(review);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        function validate(i) {
+          const miss = [];
+          sections[i].querySelectorAll("[required]").forEach((el) => {
+            el.classList.remove("field-error");
+            if (!el.value || !el.value.trim()) { miss.push(el); el.classList.add("field-error"); }
+          });
+          if (miss.length) { errs.textContent = "Bitte Pflichtfelder ausfüllen."; errs.hidden = false; miss[0].focus(); }
+          return miss.length === 0;
+        }
+
+        // Markdown preview (minimal: ## heading, **bold**, line breaks).
+        const mdToggle = document.getElementById("wiz-md-toggle");
+        const md = document.getElementById("wiz-md");
+        const mdPrev = document.getElementById("wiz-md-prev");
+        function renderMd(t) {
+          return esc(t)
+            .replace(/^##\\s?(.*)$/gm, "<h4>$1</h4>")
+            .replace(/\\*\\*(.+?)\\*\\*/g, "<b>$1</b>")
+            .replace(/\\n/g, "<br>");
+        }
+        mdToggle?.addEventListener("click", () => {
+          if (mdPrev.hidden) {
+            mdPrev.innerHTML = renderMd(md.value);
+            mdPrev.hidden = false; md.hidden = true; mdToggle.textContent = "Bearbeiten";
+          } else {
+            mdPrev.hidden = true; md.hidden = false; mdToggle.textContent = "Vorschau";
+          }
+        });
+
+        const form = document.getElementById("wiz-form");
+        form.addEventListener("input", updateAside);
+        form.addEventListener("change", updateAside);
+        rail.forEach((r, n) => r.addEventListener("click", () => { if (n < cur) { cur = n; show(cur); } }));
+        next.addEventListener("click", () => { if (validate(cur) && cur < sections.length - 1) { cur++; show(cur); } });
         back.addEventListener("click", () => { if (cur > 0) { cur--; show(cur); } });
         show(0);
+        updateAside();
       })();
     </script>`;
 

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Fleetplanner: op-creation wizard restyled to 3-column layout (Mission Creation Flow, 2026-06-06)
+
+- The `/ops/new/wizard` assistant now matches the target design: a vertical step rail (Basisdaten → Ort → Sichtbarkeit & Voice → Briefing → Review), the form in the centre, and a right "Bereit zum Öffnen" readiness panel + live "Zusammenfassung" that update as you type. Briefing step gains a Markdown preview toggle. Still posts to the existing `POST /ops/new` — no backend change. Composition + min-participants readiness land with Phase 3/5.
+
 ### Added — Fleetplanner: participant join CTA on op-detail (Mission Creation Flow Phase 2, 2026-06-06)
 
 - Op-detail now shows a logged-in non-leader their join state at a glance, above the tabs: "✓ Du bist eingeteilt", "✓ Anmeldung eingegangen", or — while the op is open — a single clear "Mitmachen?" card with **Sitz claimen** (→ Fleet tab) and **Als Crew anmelden** (→ Crew tab). Locked ops show "Anmeldung geschlossen". Mobile: full-width stacked actions. Pure additive (no schema/route change); reuses the existing seat/crew controls. FR-P1 mobile/join focus.
