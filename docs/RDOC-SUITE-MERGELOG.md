@@ -9,7 +9,9 @@ column `minmax(0,1fr)` (collapses to ~50px) inside the cramped `.join-row2` half
 Also large dead margins left/right from `.event-shell` max-width 1180 on wide monitors.
 
 Fix (CSS in `opJoinPage`): remove the char-shredding overflow-wrap (→ normal word wrap), label
-column `minmax(8rem,1fr)` + narrower numeric cols, shell max-width 1180 → 1480. Build passed.
+column `minmax(8rem,1fr)` + narrower numeric cols. Shell: dropped the `max-width` cap entirely
+(`width:100%`) — `.main` is already full-width with 3rem page padding, so the cap was the sole
+source of the dead left/right margins. Build passed.
 
 ## Completed Step - 2026-06-06: Fleetplanner — remove Classic create View entirely
 

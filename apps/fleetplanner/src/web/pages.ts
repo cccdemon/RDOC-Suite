@@ -3329,7 +3329,7 @@ export function opJoinPage(opts: {
         : safe("");
 
   const body = html` <style>
-      .event-shell { max-width: 1480px; margin: 0 auto; }
+      .event-shell { width: 100%; }
       .event-hero {
         min-height: 250px;
         display: grid;

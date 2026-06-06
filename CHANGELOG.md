@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed - Fleetplanner: player event page layout (2026-06-06)
 
 - Fleet Requirements table was unreadable — labels wrapped one character per line and the header columns overlapped ("REQUIREREQUESTED"). Removed the `overflow-wrap: anywhere` char-shredding on requirement names and gave the label column a real minimum width (`minmax(8rem, 1fr)`, narrower numeric columns).
-- Widened the event page shell (1180px → 1480px) so it uses more of the viewport and leaves less dead margin left/right on wide monitors.
+- Event page now uses the full content width (removed the `.event-shell` max-width cap, which was the sole cause of the large dead margins — `.main` is already full-width with page padding).
 
 ### Removed - Fleetplanner: classic event-create form (2026-06-06)
 
