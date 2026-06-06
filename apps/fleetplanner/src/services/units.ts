@@ -152,6 +152,9 @@ export async function claimSeat(seatId: string, userId: string) {
 
   const operationId = seat.fleetUnit.operationId;
   const targetCategory = categoryForUnit(seat.fleetUnit);
+  const unitName =
+    seat.fleetUnit.squadName || seat.fleetUnit.ship?.name || "Unit";
+  let vacatedCaptainSeat = false;
 
   // Race-safe claim. Two concurrent requests could both pass the checks
   // above, so do the single-seat-per-op check and the claim inside one
@@ -159,6 +162,20 @@ export async function claimSeat(seatId: string, userId: string) {
   // that only succeeds if the seat is still empty. count===0 means another
   // request won the seat between our read and write.
   await prisma.$transaction(async (tx) => {
+    // Moving to another seat in the SAME unit: release the seat the user
+    // already holds here first (so they switch instead of double-booking).
+    const priorHere = await tx.seatAssignment.findMany({
+      where: { unitId: seat.unitId, userId, active: true, id: { not: seatId } },
+      select: { id: true, order: true },
+    });
+    if (priorHere.some((s) => s.order === 0)) vacatedCaptainSeat = true;
+    if (priorHere.length) {
+      await tx.seatAssignment.updateMany({
+        where: { id: { in: priorHere.map((s) => s.id) } },
+        data: { userId: null },
+      });
+    }
+
     await assertUserCanTakeSeat(tx, operationId, userId, targetCategory);
 
     const result = await tx.seatAssignment.updateMany({
@@ -167,6 +184,7 @@ export async function claimSeat(seatId: string, userId: string) {
     });
     if (result.count === 0) throw new Error("Seat already taken");
   });
+  return { operationId, unitName, vacatedCaptainSeat };
 }
 
 export async function assignSeat(seatId: string, targetUserId: string) {

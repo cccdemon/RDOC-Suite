@@ -1,5 +1,22 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — same-unit seat move, captain-leave guard, player seat editing
+
+User feedback on the player roster:
+- **Same-unit seat move:** `claimSeat` now releases any seat the user already holds in THAT unit
+  before taking the new one (switch instead of double-book). Cross-unit still blocked by
+  `assertUserCanTakeSeat`.
+- **Captain leaving the pilot seat:** when the viewer is the unit captain, the roster Claim
+  buttons show a `confirm()` warning (empties the pilot seat / may lose Command Net voice / make
+  sure someone else captains it). When a claim actually vacates the order-0 (pilot) seat,
+  `claimSeat` reports it → the `/api/seats/:id/claim` route writes an audit entry and **DMs the op
+  leaders** ("X left the captain seat of <ship> — may need a new captain"). Best-effort notify.
+- **Player edits their offered ship's seats:** the Accepted Units roster now shows a collapsible
+  "Edit seats" form on units the viewer captains — rename seats + toggle availability (e.g. a
+  Paladin captain disables 2 of 3 gunners). Posts to the existing `/units/:id/seats` (already
+  captain-gated), `ui=player` → returns to the player page. Pilot seat stays always-active.
+Build + 235 tests pass.
+
 ## Completed Step - 2026-06-06: Fleetplanner — player page shows accepted units + inline self-edit
 
 User: on the player event page a participant couldn't see the accepted composition/ships/squads

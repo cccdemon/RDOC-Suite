@@ -1157,7 +1157,30 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!claimRole) return reply.code(403).send({ error: "Forbidden" });
 
       try {
-        await claimSeat(req.params.seatId, ctx.user.id);
+        const claimResult = await claimSeat(req.params.seatId, ctx.user.id);
+        if (claimResult.vacatedCaptainSeat) {
+          // Captain moved off the pilot seat — record it and ping the op leaders
+          // so they can confirm the ship still has a captain.
+          await logAudit(
+            opId,
+            ctx.user.id,
+            ctx.user.username,
+            "captain_left_pilot_seat",
+            claimResult.unitName,
+          );
+          try {
+            const leaders = await prisma.operationLeader.findMany({
+              where: { operationId: opId },
+              select: { userId: true },
+            });
+            const msg = `⚠️ ${ctx.user.username} left the captain (pilot) seat of "${claimResult.unitName}" — this ship may need a new captain.`;
+            await Promise.all(
+              leaders.map((l) => sendDiscordDm(l.userId, msg).catch(() => {})),
+            );
+          } catch {
+            /* notification is best-effort */
+          }
+        }
         return reply.redirect(opReturnUrl(opId, req.body, "ok:Seat+claimed.", "fleet"), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed";

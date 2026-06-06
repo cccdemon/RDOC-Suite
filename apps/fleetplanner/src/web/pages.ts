@@ -3714,8 +3714,10 @@ export function opJoinPage(opts: {
   // Accepted units + their seats (who's seated / open), so players see the
   // current composition and can claim/release directly on the page.
   const acceptedRoster = acceptedUnits.map((u) => ({
+    id: u.id,
     name: u.squadName || u.ship?.name || "Unit",
     kind: u.unitType === "ship" ? "Ship" : "FPS Fireteam",
+    isMyUnit: !!myId && u.captainId === myId,
     seats: u.seats
       .filter((s) => s.active)
       .map((s) => ({
@@ -3725,6 +3727,7 @@ export function opJoinPage(opts: {
         mine: !!myId && s.userId === myId,
         open: !s.userId,
       })),
+    editSeats: u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
   }));
   const requirements = op.groups.flatMap((g) => g.requirements);
   const ownedShips = opts.ownedShips ?? [];
@@ -3824,6 +3827,10 @@ export function opJoinPage(opts: {
       .roster-seat-label { color: var(--dim); }
       .roster-occ { font-weight: 600; }
       .roster-you { color: var(--green, #3ad07a); font-weight: 700; }
+      .roster-edit { margin-top: .5rem; }
+      .roster-edit > summary { cursor: pointer; color: var(--cyan, #35d0e0); font-size: .78rem; }
+      .roster-edit-row { display: flex; align-items: center; gap: .6rem; margin: .35rem 0; }
+      .roster-edit-row input[type="text"] { flex: 1; max-width: 18rem; }
       .req-table { display: grid; gap: .35rem; }
       .req-row { display: grid; grid-template-columns: minmax(8rem, 1fr) 5rem 5rem 5.5rem; gap: .5rem; align-items: center; padding: .55rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
       .req-head { color: var(--dim); font-family: var(--font-mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -4065,7 +4072,17 @@ export function opJoinPage(opts: {
                                 <input type="hidden" name="_csrf" value="${csrf}" />
                                 <input type="hidden" name="ui" value="player" />
                                 <input type="hidden" name="tab" value="fleet" />
-                                <button type="submit" class="btn btn-sm btn-green">Claim</button>
+                                <button
+                                  type="submit"
+                                  class="btn btn-sm btn-green"
+                                  ${u.isMyUnit
+                                    ? safe(
+                                        ` onclick="return confirm('You are the captain of this ship. Taking another seat empties the pilot seat — make sure someone else captains it, or you may lose Command Net voice. Continue?')"`,
+                                      )
+                                    : safe("")}
+                                >
+                                  Claim
+                                </button>
                               </form>`
                             : html`<span class="free">open</span>`
                           : s.mine
@@ -4080,6 +4097,38 @@ export function opJoinPage(opts: {
                       </div>`,
                     )}
                   </div>
+                  ${u.isMyUnit
+                    ? html`<details class="roster-edit">
+                        <summary>Edit seats — rename or enable / disable</summary>
+                        <form method="post" action="${bp}/api/ops/${op.id}/units/${u.id}/seats">
+                          <input type="hidden" name="_csrf" value="${csrf}" />
+                          <input type="hidden" name="ui" value="player" />
+                          <input type="hidden" name="tab" value="fleet" />
+                          ${u.editSeats.map(
+                            (s) => html`<div class="roster-edit-row">
+                              <input
+                                type="text"
+                                name="label_${s.id}"
+                                value="${s.label}"
+                                maxlength="40"
+                              />
+                              ${s.order === 0
+                                ? html`<span class="tag tag-dim">pilot</span>`
+                                : html`<label class="seat-toggle"
+                                    ><input
+                                      type="checkbox"
+                                      name="active_${s.id}"
+                                      value="1"
+                                      ${s.active ? safe("checked") : ""}
+                                    />
+                                    available</label
+                                  >`}
+                            </div>`,
+                          )}
+                          <button type="submit" class="btn btn-sm mt-1">Save seats</button>
+                        </form>
+                      </details>`
+                    : safe("")}
                 </div>`,
               )
             : html`<p class="text-dim text-sm">No ships or fireteams accepted yet.</p>`}

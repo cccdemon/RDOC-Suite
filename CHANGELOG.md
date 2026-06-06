@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner: seat moves, captain-leave guard, player seat editing (2026-06-06)
+
+- Claiming another seat **in the same ship** now moves you (the old seat is released) instead of double-booking.
+- If you're the **captain**, claiming a different seat asks for confirmation (it empties the pilot seat / you may lose Command Net voice); when a captain actually leaves the pilot seat, the **operation leaders are notified** (Discord DM + audit entry).
+- A captain can **edit their offered ship's seats on the player page** — rename seats and enable/disable them (e.g. a Paladin with only one active turret gunner). The pilot seat stays active.
+
 ### Changed - Fleetplanner: player event page shows accepted units + inline self-edit (2026-06-06)
 
 - The player event page now has an **Accepted Units** section: each accepted ship/fireteam with its seats and who's in them. **Open seats have a Claim button and your own seat a Release button, directly on the page** — no edit mode. Waitlisted players get a **Withdraw request** button.
