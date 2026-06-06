@@ -419,7 +419,12 @@ export async function webRoutes(app: FastifyInstance) {
           /* ignore malformed composition */
         }
       }
-      return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Operation+created.`), 302);
+      // The creator is an operator — land in the management shell so they can
+      // open the op, add leaders, launch voice, etc. (not the player signup page).
+      return reply.redirect(
+        basePath(`/ops/${op.id}/manage?flash=ok:Operation+created.+Open+it+when+ready.`),
+        302,
+      );
     } catch {
       return reply.redirect(basePath("/ops/new?flash=error:Failed+to+create+operation"), 302);
     }

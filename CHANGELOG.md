@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Single canonical player route.** `/ops/:id/join` now redirects to `/ops/:id`; the former `?view=player` preview and the divergent prop-passing across the two routes are gone. Crew and management redirects point at `/ops/:id`.
 - **Removed dead `viewAs` role-simulator** from `opDetailPageV2` (superseded by the explicit Operator/Player switch).
 - **Guests no longer see the operator shell.** A logged-out guest opening a public op's `/ops/:id/manage` is redirected to the player page `/ops/:id`.
+- **Event creation lands the operator in the manage shell.** After creating an op (wizard or classic form) the operator is redirected to `/ops/:id/manage` (to open it / add leaders / launch voice), not the player signup page.
 
 ### Changed - Fleetplanner: event links are now player-first (2026-06-06)
 

@@ -27,6 +27,11 @@ Review of the Codex wizard/join-view work (commits 7ecd050→d9fca90) against
 5. **Guest no longer sees operator shell.** Guest on a public op `/ops/:id/manage` 302 →
    `/ops/:id` (player view) instead of rendering the redacted management shell.
 
+Follow-up (same review): `POST /ops/new` redirected the operator to the player page `/ops/:id`
+after creating an op — wrong for the creator, who needs to open it / add leaders / launch voice.
+Now redirects to `/ops/:id/manage`. (Wizard "Save as Draft" + "Create Event" both create a draft
+by design; opening stays on the proper status control so Discord/voice hooks fire.)
+
 No schema migration. Code-first, compile-last; CHANGELOG under [Unreleased].
 
 ## Completed Step - 2026-06-06: Fleetplanner final player-first UI replacement
