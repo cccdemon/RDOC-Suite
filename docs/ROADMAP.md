@@ -1,0 +1,39 @@
+# RDOC-Suite Roadmap
+
+Single overview of planned FeatureRequests (FR), their priority (1 highest … 5 lowest), dependencies, and the recommended work order. Detail lives in each `FR-P*-*.md`. Past work = [CHANGELOG.md](../CHANGELOG.md); ground-truth log = [RDOC-SUITE-MERGELOG.md](RDOC-SUITE-MERGELOG.md).
+
+> Convention: one feature per file, `docs/FR-P<n>-<feature>.md`, with a dependency block. New features get added here.
+
+## Planned features
+
+| Prio | Feature | Doc | Depends on | Status |
+|---|---|---|---|---|
+| P1 | Event Distribution (cross-post to partner Discords) | [FR-P1-event-distribution.md](FR-P1-event-distribution.md) | live partnerships only | Plan |
+| P1 | Event Creation Simplification (Mobile join + Admin wizard) | [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) | — (sight "Vi5E Tools") | Plan |
+| P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | Plan |
+| P3 | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | **FR-P1 event-distribution** + relay-bots multi-session refactor | Plan |
+| P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | Plan |
+| P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
+| P5 | Rolling Crew Positions (rotate seats) | [FR-P5-rolling-crew-positions.md](FR-P5-rolling-crew-positions.md) | FleetUnit/Seat | Plan |
+| P5 | Item Database (loot/distribution) | [FR-P5-item-database.md](FR-P5-item-database.md) | **blocked: no items API** | Plan |
+
+## Recommended order
+1. **FR-P1 event-distribution** — base; unlocks federation voice + recurring series-distribution.
+2. **FR-P1 eventcreation-simplification** — core UX baseline before more event features (sight "Vi5E Tools" first).
+3. **FR-P2 fleet-import-json** — concrete data ready, self-contained.
+4. **FR-P3 recurring-events** — standalone, low risk.
+5. **FR-P3 roadmap-tab** — surfaces everything else + feedback intake.
+6. **FR-P3 federation-voice** — largest/riskiest; needs FR-P1 + relay-bots refactor.
+7. **FR-P5 rolling-crew-positions**, **FR-P5 item-database** (item-db blocked on data source).
+
+## Bugs / improvements (tracked in [FLEETPLANNER-BACKLOG.md](FLEETPLANNER-BACKLOG.md))
+| Item | Source | Status |
+|---|---|---|
+| PTT custom press/release sound | Feedback (Mimosenherkules) | ✓ Done — commit 1efbb17 (Companion, local build pending) |
+| 404 on accepted link when not logged in → show login note | Feedback (exrelax) | Quick-win — in progress this batch |
+| Fleet naming: non-capital lead = "Pilot" not "Captain" | Feedback (Mimosenherkules) | Quick-win — in progress this batch |
+| Rolling crew positions | Feedback (Vi5E) | → FR-P5-rolling-crew-positions.md |
+
+## Needs sighting / clarification (no doc yet)
+- **"Vi5E Tools"** — tools to be reviewed before locking the eventcreation admin wizard scope.
+- **"silentknight: Paul Content nachliefern"** — unclear; needs clarification before it can be triaged.

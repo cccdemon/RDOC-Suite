@@ -249,6 +249,7 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 |---|---|
 | [docs/RDOC-SUITE-MERGELOG.md](docs/RDOC-SUITE-MERGELOG.md) | **Primäre Quelle** — Queued/Completed/Decisions. Vor jeder Änderung lesen und schreiben. |
 | [docs/MERGELOG-archive-pre-2026-06-02.md](docs/MERGELOG-archive-pre-2026-06-02.md) | Archiv (nicht pflegen): topic-basierte Früh-Historie inkl. Tenant-Overhaul + erster Fleetplanner-Feature-Dump. |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | **Roadmap-Übersicht** — alle FR-P* mit Prio/Deps/Reihenfolge + Bug-/Feedback-Liste + „needs sighting". Forward-looking (Changelog = Vergangenheit). |
 | [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md) | Feature-Backlog Fleetplanner — was done, was fehlt. |
 | [docs/admin-guide.md](docs/admin-guide.md) | Slash-Commands, Bot-Invite, Credential-Flow |
 | [docs/commander-guide.md](docs/commander-guide.md) | Companion-Install, Hotkey, Audio |
@@ -273,6 +274,11 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 | [docs/FR-P1-event-distribution.md](docs/FR-P1-event-distribution.md) | **FeatureRequest, Prio 1.** Event-Distribution: Op-Discord-Event an alle aktiven Partner-Discords cross-posten, Allowlist (`PartnerSharePolicy`) + Approval (DM-Buttons/Web-Inbox) durch benannte Kontaktperson pro Event×Guild. Basis für FR-P3-federation-voice. | Plan, kein Code |
 | [docs/FR-P3-federation-voice.md](docs/FR-P3-federation-voice.md) | **FeatureRequest, Prio 3.** Federation Voice (Homeoffice-Party / shared LiveKit room, host+deputies, Cap 16) + Relay-Bots-Multi-Session-Umbau für gleichzeitige isolierte Events. **Hängt an FR-P1.** | Plan, kein Code |
 | [docs/FR-P3-recurring-events.md](docs/FR-P3-recurring-events.md) | **FeatureRequest, Prio 3.** Wiederkehrende Events: RRULE-Template + Scheduler materialisiert Op-Instanzen; nativer Discord `recurrence_rule` (Approach A). Kern eigenständig; Serien-Distribution soft-hängt an FR-P1. | Plan, kein Code |
+| [docs/FR-P1-eventcreation-simplification.md](docs/FR-P1-eventcreation-simplification.md) | **FeatureRequest, Prio 1.** Event-Anlage vereinfachen: 2 Views (Mobile-Join + Admin-Wizard). „Vi5E Tools" noch sichten. | Plan, kein Code |
+| [docs/FR-P2-fleet-import-json.md](docs/FR-P2-fleet-import-json.md) | **FeatureRequest, Prio 2.** Flotten-Import via JSON (CCU-Game-Format) → UserShips; = Backlog #1. | Plan, kein Code |
+| [docs/FR-P3-roadmap-tab.md](docs/FR-P3-roadmap-tab.md) | **FeatureRequest, Prio 3.** Roadmap-Tab + Auto-Ingest Discord-Feedback (Reverse des Feedback-Ticket-Flows). | Plan, kein Code |
+| [docs/FR-P5-rolling-crew-positions.md](docs/FR-P5-rolling-crew-positions.md) | **FeatureRequest, Prio 5.** Crew rotiert Positionen alle 30 Min, default off, Leiter-Toggle. | Plan, kein Code |
+| [docs/FR-P5-item-database.md](docs/FR-P5-item-database.md) | **FeatureRequest, Prio 5.** Loot-/Item-DB. Blockiert: keine Items-API. | Plan, kein Code |
 
 ### Naming & URL-Konventionen
 

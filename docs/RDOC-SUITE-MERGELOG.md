@@ -3,6 +3,24 @@
 This file is the handover log for consolidating RDCC, RDOC-RTC, and
 RDOC-VoiceRelayBots into this repository.
 
+## Queued Step - 2026-06-06: Roadmap intake — 5 neue FR-Docs + Backlog/Roadmap + 2 Quick-Win-Fixes
+
+User-Dump (Weiterentwicklungen + Discord-Feedback) triagiert. Bestehende FR-Docs (event-distribution, federation-voice, recurring-events) unverändert; PTT-Custom-Sound bereits erledigt (commit 1efbb17).
+
+**Neue FR-Docs (Plan, kein Code):**
+- `docs/FR-P1-eventcreation-simplification.md` — Event-Anlage vereinfachen, 2 Views: Mobile-Join (Anmelder) + Admin-Wizard (assistentengeführt). „Vi5E Tools" noch zu sichten.
+- `docs/FR-P2-fleet-import-json.md` — Flotten-Import via JSON (CCU-Game-Format) für UserShips; = Backlog #1 CCU Chain Import; Beispiel-JSON (Vi5E) liegt vor.
+- `docs/FR-P3-roadmap-tab.md` — Roadmap-Tab: geplante Features + Reihenfolge + Auto-Ingest von Discord-Bugs/Vorschlägen (Reverse des bestehenden Feedback-Tickets-Flows) mit besserer Formatierung.
+- `docs/FR-P5-rolling-crew-positions.md` — Rollierendes System: Crew rotiert Positionen alle 30 Min, default off, Leiter-Toggle.
+- `docs/FR-P5-item-database.md` — Loot-/Item-DB (wer lootet was, Verteilung). Low-Prio, keine API.
+- Zentrales `docs/ROADMAP.md` — Übersicht aller FRs + Bugs + Prios + Reihenfolge.
+
+**Quick-Win-Code (Fleetplanner):**
+- **404→Login bei Gast:** `/ops/:id` zeigt nicht-eingeloggten Gästen auf nicht-public Ops bisher „Operation not found" (404) — Accept-DM-Links wirken kaputt (Feedback exrelax). Fix: generische „Login erforderlich"-Seite mit Login-Link (return-to), ohne Op-Details zu leaken.
+- **Fleet-Naming Captain/Pilot:** Unit-Lead-Label ist immer „Captain"; nur Capital-Ships führen „Captain", sonst „Pilot" (Feedback Mimosenherkules). Zentraler Helper `unitLeadTitle(ship)` an Lead-Label-Sites.
+
+**Backlog:** 404-Bug + Fleet-Naming als Einträge; PTT-Sound als Done markieren.
+
 ## Queued Step - 2026-06-05: PLAN DOC — Partner Event Distribution + Federation Voice + Recurring Events
 
 Planning only — design docs, NO code. Now **one file per feature** (split from the former combined `FR-P2-partner-events-plan.md`), each with its own FeatureRequest priority + explicit dependency block; all listed in the CLAUDE.md "Planungsdokumente" table:
