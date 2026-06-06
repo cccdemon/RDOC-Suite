@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-07: FR — Member Last-Seen + 6-month inactivity alert
+
+Capture FeatureRequest as `docs/FR-P3-inactivity-alert.md` + ROADMAP. Fleetmanager bot gains a
+gateway connection to track real Discord activity (message/voice/interaction + GuildMembers roster
+baseline), daily scheduler alerts into a per-guild channel at a configurable threshold (default 6
+months). Plan only, Prio 3. Needs GUILD_MEMBERS privileged intent (portal toggle).
+
 ## Queued / Planned Step - 2026-06-07: FR — Org Fleet (guild ship roster) [SilentKnight]
 
 Capture FeatureRequest as `docs/FR-P3-org-fleet.md` + ROADMAP. Guild-scoped "Org Fleet" tab: which

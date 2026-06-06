@@ -17,6 +17,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
 | P3 | Language Switch / i18n (Fleetplanner + Companion + MissionCover) | [FR-P3-language-switch.md](FR-P3-language-switch.md) | `User` profile as single source of truth | Plan (large/phased) |
 | P3 | Org Fleet (guild ship roster — who owns what) | [FR-P3-org-fleet.md](FR-P3-org-fleet.md) | UserShip + GuildMembership + ship catalog (exists) | Plan |
+| P3 | Member Last-Seen + 6-month inactivity alert | [FR-P3-inactivity-alert.md](FR-P3-inactivity-alert.md) | Fleetmanager bot **gateway** + GUILD_MEMBERS intent | Plan |
 | P4 | Mission-Cover Microservice (server-render API, op→cover image) | [FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md) | — (standalone svc; synergy → FR-P1 cross-post) | ✓ Steps 1–5 (Discord-image/cross-post open) |
 | P5 | Item Database (loot/distribution) | [FR-P5-item-database.md](FR-P5-item-database.md) | **blocked: no items API** | Plan |
 

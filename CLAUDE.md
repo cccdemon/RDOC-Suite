@@ -279,6 +279,7 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 | [docs/FR-P3-roadmap-tab.md](docs/FR-P3-roadmap-tab.md) | **FeatureRequest, Prio 3.** Roadmap-Tab + Auto-Ingest Discord-Feedback (Reverse des Feedback-Ticket-Flows). | Plan, kein Code |
 | [docs/FR-P3-language-switch.md](docs/FR-P3-language-switch.md) | **FeatureRequest, Prio 3.** Sprachumschaltung (DE/EN/EN_US/FR/ES), eine Präferenz im User-Profil für Fleetplanner + Companion + MissionCover. | Plan, kein Code (groß/phasenweise) |
 | [docs/FR-P3-org-fleet.md](docs/FR-P3-org-fleet.md) | **FeatureRequest, Prio 3.** Org-Fleet-Tab: welches Guild-Mitglied welches Schiff hat (aus UserShip+Membership), zum Ausleihen/Ansehen, optional DC-Kontakt. | Plan, kein Code |
+| [docs/FR-P3-inactivity-alert.md](docs/FR-P3-inactivity-alert.md) | **FeatureRequest, Prio 3.** Member Last-Seen via Fleetmanager-Gateway-Bot (echte Discord-Aktivität) + Alert in Channel bei konfigurierbarer Inaktivität (default 6 Mon.). Braucht GUILD_MEMBERS Intent. | Plan, kein Code |
 | [docs/FR-P5-item-database.md](docs/FR-P5-item-database.md) | **FeatureRequest, Prio 5.** Loot-/Item-DB. Blockiert: keine Items-API. | Plan, kein Code |
 
 ### Naming & URL-Konventionen
