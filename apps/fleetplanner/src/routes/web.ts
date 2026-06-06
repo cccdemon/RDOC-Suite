@@ -200,6 +200,22 @@ export async function webRoutes(app: FastifyInstance) {
     const ops = [...opById.values()].sort(
       (a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime(),
     );
+    // Per-op signup state for the current user, for the overview "joined /
+    // waitlist" card badge. A claimed seat = joined (wins); a crew request = waitlist.
+    const [signedSeats, signedReqs] = await Promise.all([
+      prisma.seatAssignment.findMany({
+        where: { userId: ctx.user.id, active: true },
+        select: { fleetUnit: { select: { operationId: true } } },
+      }),
+      prisma.crewAssignmentRequest.findMany({
+        where: { userId: ctx.user.id },
+        select: { operationId: true },
+      }),
+    ]);
+    const signupState = new Map<string, "joined" | "waitlist">();
+    for (const r of signedReqs) signupState.set(r.operationId, "waitlist");
+    for (const s of signedSeats)
+      if (s.fleetUnit?.operationId) signupState.set(s.fleetUnit.operationId, "joined");
     // Operator guilds for the "New Op" picker
     const operatorGuilds = memberships
       .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
@@ -214,6 +230,7 @@ export async function webRoutes(app: FastifyInstance) {
         ops,
         includePast,
         operatorGuilds,
+        signupState,
       }),
     );
   });

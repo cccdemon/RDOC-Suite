@@ -301,6 +301,8 @@ export function homePage(opts: {
   includePast: boolean;
   /** Guilds the user can create ops for — shown in the quick guild picker. */
   operatorGuilds?: Array<{ id: string; name: string }>;
+  /** Per-op signup state for the viewer: "joined" (claimed seat) | "waitlist" (crew request). */
+  signupState?: Map<string, "joined" | "waitlist">;
 }): SafeHtml {
   const bp = opts.basePath;
   const canCreate = (opts.operatorGuilds?.length ?? 0) > 0;
@@ -388,20 +390,33 @@ export function homePage(opts: {
               ${group.ops.map((op) => {
                 const accepted = op.units.filter((u) => u.status === "accepted").length;
                 const total = op.units.length;
+                const pct = total ? Math.round((accepted / total) * 100) : 0;
                 const leaders = op.leaders.map((leader) => leader.user.username).join(", ");
+                const sign = opts.signupState?.get(op.id);
                 return html` <a
                   href="${bp}/ops/${op.id}"
                   class="op-card ${opTypeClass(op.opType)}"
+                  data-op-status="${op.status}"
+                  data-op-type="${op.opType}"
+                  data-op-title="${op.title.toLowerCase()}"
+                  data-op-signed="${sign ?? ""}"
                   style="color:inherit;text-decoration:none;"
                 >
                   <div class="op-card-top">
                     <span class="op-card-time">${fmtTime(op)}</span>
-                    <span class="op-type-pill">${op.opType.toUpperCase()}</span>
+                    ${sign === "joined"
+                      ? html`<span class="op-sign joined">✓ Joined</span>`
+                      : sign === "waitlist"
+                        ? html`<span class="op-sign wait">Waitlisted</span>`
+                        : html`<span class="op-type-pill">${op.opType.toUpperCase()}</span>`}
                   </div>
                   <div class="op-card-title">${op.title}</div>
                   <div class="op-card-meta">
                     <span class="op-guild-badge ${guildClass(op.guild.id)}">${op.guild.name}</span>
                     ${statusTag(op.status)}
+                  </div>
+                  <div class="op-fill" title="${accepted}/${total} units accepted">
+                    <div class="op-fill-bar" style="width:${pct}%"></div>
                   </div>
                   <div class="op-card-footer">
                     <span>${accepted}/${total} units</span>
@@ -438,7 +453,20 @@ export function homePage(opts: {
       })()
     : safe("");
 
-  const body = html` <div class="page-header">
+  const showMine = !!opts.signupState && opts.signupState.size > 0;
+  const body = html` <style>
+      .op-fill { height: 5px; background: rgba(255,255,255,.08); border-radius: 3px; overflow: hidden; margin: .5rem 0 .35rem; }
+      .op-fill-bar { height: 100%; background: var(--cyan, #35d0e0); }
+      .op-sign { font-size: .62rem; font-weight: 700; letter-spacing: .5px; padding: 2px 8px; border-radius: 4px; border: 1px solid currentColor; }
+      .op-sign.joined { color: var(--green, #3ad07a); }
+      .op-sign.wait { color: var(--gold, #e0b835); }
+      .ov-filter { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin: 0 0 1rem; }
+      .ov-filter input[type=search], .ov-filter select { padding: .4rem .6rem; }
+      .ov-filter input[type=search] { flex: 1; min-width: 12rem; max-width: 24rem; }
+      .ov-filter .ov-mine { display: flex; align-items: center; gap: .35rem; font-size: .85rem; color: var(--dim, #7a8a96); }
+      .op-day-group[hidden] { display: none; }
+    </style>
+    <div class="page-header">
       <h1 class="page-title">FLEET OPERATIONS</h1>
       <p class="page-subtitle">Star Citizen – RDOC operation calendar</p>
     </div>
@@ -448,7 +476,56 @@ export function homePage(opts: {
         ? html`<a href="${bp}/" class="btn btn-sm btn-ghost">Hide Past</a>`
         : html`<a href="${bp}/?past=1" class="btn btn-sm btn-ghost">Show Past</a>`}
     </div>
-    <div class="mt-2">${rows}</div>`;
+    <div class="ov-filter">
+      <input type="search" id="ov-search" placeholder="Search operations…" autocomplete="off" />
+      <select id="ov-status">
+        <option value="">Any status</option>
+        ${["open", "locked", "starting", "in_progress", "draft", "completed", "cancelled"].map(
+          (s) => html`<option value="${s}">${s.replace("_", " ")}</option>`,
+        )}
+      </select>
+      <select id="ov-type">
+        <option value="">Any type</option>
+        ${OP_TYPES.map((t) => html`<option value="${t}">${t}</option>`)}
+      </select>
+      ${showMine
+        ? html`<label class="ov-mine"><input type="checkbox" id="ov-mine" /> My signups</label>`
+        : safe("")}
+    </div>
+    <div class="mt-2">${rows}</div>
+    <script>
+      (function () {
+        const q = document.getElementById("ov-search");
+        const st = document.getElementById("ov-status");
+        const ty = document.getElementById("ov-type");
+        const mine = document.getElementById("ov-mine");
+        const cards = Array.from(document.querySelectorAll(".op-card"));
+        const groups = Array.from(document.querySelectorAll(".op-day-group"));
+        function apply() {
+          const text = (q && q.value.trim().toLowerCase()) || "";
+          const status = (st && st.value) || "";
+          const type = (ty && ty.value) || "";
+          const onlyMine = !!(mine && mine.checked);
+          cards.forEach((c) => {
+            const ok =
+              (!text || (c.dataset.opTitle || "").includes(text)) &&
+              (!status || c.dataset.opStatus === status) &&
+              (!type || c.dataset.opType === type) &&
+              (!onlyMine || !!c.dataset.opSigned);
+            c.style.display = ok ? "" : "none";
+          });
+          groups.forEach((g) => {
+            const any = g.querySelectorAll('.op-card:not([style*="display: none"])').length > 0;
+            g.hidden = !any;
+          });
+        }
+        [q, st, ty, mine].forEach((el) => {
+          if (!el) return;
+          el.addEventListener("input", apply);
+          el.addEventListener("change", apply);
+        });
+      })();
+    </script>`;
 
   return layout({
     title: "Operations",
