@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — Fleetplanner: wizard + join view aligned to the operator/player design spec (2026-06-06)
+
+- **Wizard:** 5 steps now (Basics — incl. rendezvous + visibility — / Briefing / Discord / Fleet Requirements / Review), English labels, "Ready to Open" readiness items (Event Voice Channel, Announcement Channel, Fleet Requirements, Minimum Participants, Commander Net), "Save as Draft" as the primary action, live Summary. "Composition" is now "Fleet Requirements".
+- **Join view (player):** English throughout — "I want to join" with the three paths (Let the operator assign me / Choose an open seat / Offer a ship), "Mission Needs" chips, "Open Seats" with inline claim, and a "My Signup" sidebar (state, Join, Ask a question, **Available Seats** summary). Terminology per spec (Requested / Open Seats).
+
 ### Added — Fleetplanner: audit log, ask-the-operator, min/max participants, "starting" status, inline seat claim (Mission Creation Flow Phase 4/5, 2026-06-06)
 
 - **Schema migration** (`20260606120000_phase5_…`): `Operation.minParticipants/maxParticipants`, plus `AuditLog` and `OpQuestion` tables (actor/asker denormalised — no User FK).

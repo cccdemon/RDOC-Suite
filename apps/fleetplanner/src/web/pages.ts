@@ -2816,7 +2816,7 @@ export function opWizardPage(opts: {
       system: l.systemSlug,
       label: `${l.name} // ${l.system}${l.classification ? ` // ${l.classification}` : ""}`,
     }));
-  const steps = ["Basisdaten", "Ort", "Sichtbarkeit & Voice", "Briefing", "Composition", "Review"];
+  const steps = ["Basics", "Briefing", "Discord", "Fleet Requirements", "Review"];
 
   const body = html` <style>
       .wiz-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 1rem; align-items: start; }
@@ -2849,7 +2849,7 @@ export function opWizardPage(opts: {
         .wiz-rail-hint { display: none; }
       }
     </style>
-    <div class="page-header"><h1 class="page-title">EVENT ERSTELLEN</h1></div>
+    <div class="page-header"><h1 class="page-title">CREATE EVENT</h1></div>
     <form method="post" action="${bp}/ops/new" id="wiz-form" novalidate>
       <input type="hidden" name="_csrf" value="${csrf}" />
       <div class="wiz-layout">
@@ -2863,7 +2863,7 @@ export function opWizardPage(opts: {
             )}
           </ol>
           <p class="wiz-rail-hint">
-            Erstelle ein Event in wenigen Schritten. Du kannst jederzeit als Draft speichern.
+            Create an event in a few steps. You can save as draft at any time.
           </p>
         </aside>
 
@@ -2871,10 +2871,10 @@ export function opWizardPage(opts: {
           <div class="form-errors" id="wiz-errors" hidden></div>
 
           <section class="wiz-step card" data-step="0">
-            <h3 class="wiz-sum-h">Basisdaten</h3>
+            <h3 class="wiz-sum-h">Basics</h3>
             ${opts.operatorGuilds && opts.operatorGuilds.length > 0
               ? html` <div class="form-group">
-                  <label>Server <span class="req" title="Pflichtfeld">*</span></label>
+                  <label>Server <span class="req" title="required">*</span></label>
                   ${selectedOperatorGuild
                     ? html`<input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
                         <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
@@ -2882,7 +2882,7 @@ export function opWizardPage(opts: {
                       ? html`<input type="hidden" name="guildId" value="${opts.operatorGuilds[0].id}" />
                           <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
                       : html`<select name="guildId" required class="guild-picker-select-form">
-                          <option value="">— Server wählen —</option>
+                          <option value="">— select server —</option>
                           ${opts.operatorGuilds.map(
                             (g) => html`<option value="${g.id}">${g.name}</option>`,
                           )}
@@ -2890,36 +2890,32 @@ export function opWizardPage(opts: {
                 </div>`
               : safe("")}
             <div class="form-group">
-              <label>Eventname <span class="req" title="Pflichtfeld">*</span></label>
+              <label>Event Name <span class="req" title="required">*</span></label>
               <input type="text" name="title" required placeholder="Operation Darkstar" />
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Startzeit (${gtz}) <span class="req" title="Pflichtfeld">*</span></label>
+                <label>Start Time (${gtz}) <span class="req" title="required">*</span></label>
                 <input type="datetime-local" name="scheduledAt" required />
               </div>
               <div class="form-group">
-                <label>Missionstyp</label>
+                <label>Mission Type</label>
                 <select name="opType">
                   ${opTypes.map((t) => html`<option value="${t}">${t}</option>`)}
                 </select>
               </div>
             </div>
-          </section>
-
-          <section class="wiz-step card" data-step="1" hidden>
-            <h3 class="wiz-sum-h">Ort / Treffpunkt</h3>
             <div class="form-row">
               <div class="form-group">
-                <label>Meeting System</label>
+                <label>System</label>
                 <select name="meetingSystem" id="meeting-system-select">
                   ${SYSTEMS.map((s) => html`<option value="${s}">${systemLabel(s)}</option>`)}
                 </select>
               </div>
               <div class="form-group">
-                <label>Treffpunkt</label>
+                <label>Rendezvous</label>
                 <select name="meetingLocationSlug" id="meeting-location-select">
-                  <option value="" data-system="">-- Location wählen --</option>
+                  <option value="" data-system="">-- select location --</option>
                   ${locationOptions.map(
                     (l) =>
                       html`<option value="${l.slug}" data-system="${l.system}" data-label="${l.value}">
@@ -2930,35 +2926,17 @@ export function opWizardPage(opts: {
                 <input type="hidden" name="meetingLocation" id="meeting-location-label" value="" />
               </div>
             </div>
-          </section>
-
-          <section class="wiz-step card" data-step="2" hidden>
-            <h3 class="wiz-sum-h">Sichtbarkeit & Voice</h3>
             <div class="form-group">
-              <label>Sichtbarkeit</label>
+              <label>Visibility</label>
               <select name="visibility">
-                <option value="private" selected>🔒 Privat (nur dieser Discord)</option>
-                <option value="partners">🤝 Partner (dieser + verbundene)</option>
-                <option value="public">🌐 Öffentlich (alle eingeloggten)</option>
+                <option value="private" selected>🔒 Private (this Discord only)</option>
+                <option value="partners">🤝 Partners (this + linked)</option>
+                <option value="public">🌐 Public (any logged-in user)</option>
               </select>
             </div>
-            ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
-              ? html` <div class="form-group">
-                  <label
-                    >Discord Event Voice Channel
-                    <span style="font-weight:normal;opacity:.65">(optional)</span></label
-                  >
-                  <select name="eventVoiceChannelId">
-                    <option value="">— Kein Voice-Channel —</option>
-                    ${opts.guildVoiceChannels.map(
-                      (ch) => html`<option value="${ch.id}">${ch.name}</option>`,
-                    )}
-                  </select>
-                </div>`
-              : safe("")}
           </section>
 
-          <section class="wiz-step card" data-step="3" hidden>
+          <section class="wiz-step card" data-step="1" hidden>
             <div
               class="form-group"
               style="display:flex;align-items:center;justify-content:space-between;gap:8px"
@@ -2966,68 +2944,87 @@ export function opWizardPage(opts: {
               <label style="margin:0"
                 >Briefing <span style="font-weight:normal;opacity:.65">(Markdown)</span></label
               >
-              <button type="button" class="btn btn-sm btn-ghost" id="wiz-md-toggle">Vorschau</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="wiz-md-toggle">Preview</button>
             </div>
             <textarea
               name="description"
               id="wiz-md"
               rows="12"
-              placeholder="## Missionsziel&#10;Der Mauler muss fallen&#10;&#10;## RoE&#10;…"
+              placeholder="## Mission Objective&#10;…&#10;&#10;## RoE&#10;…&#10;&#10;## Equipment&#10;…"
             ></textarea>
             <div class="wiz-md-prev" id="wiz-md-prev" hidden></div>
           </section>
 
-          <section class="wiz-step card" data-step="4" hidden>
+          <section class="wiz-step card" data-step="2" hidden>
+            <h3 class="wiz-sum-h">Discord</h3>
+            ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
+              ? html` <div class="form-group">
+                  <label
+                    >Event Voice Channel
+                    <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                  >
+                  <select name="eventVoiceChannelId">
+                    <option value="">— none —</option>
+                    ${opts.guildVoiceChannels.map(
+                      (ch) => html`<option value="${ch.id}">${ch.name}</option>`,
+                    )}
+                  </select>
+                </div>`
+              : html`<p class="text-dim text-sm">No Discord voice channels available for this server.</p>`}
+            <p class="wiz-rail-hint" style="margin-top:10px">
+              Announcement channel + Commander Net are configured in Server Settings.
+            </p>
+          </section>
+
+          <section class="wiz-step card" data-step="3" hidden>
             <div
               class="form-group"
               style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"
             >
-              <h3 class="wiz-sum-h" style="margin:0">Composition</h3>
+              <h3 class="wiz-sum-h" style="margin:0">Fleet Requirements</h3>
               <select id="wiz-tpl" class="guild-picker-select-form" style="max-width:230px">
-                <option value="">📁 Vorlage laden…</option>
+                <option value="">📁 Load template…</option>
                 ${COMPOSITION_TEMPLATES.map((t, i) => html`<option value="${i}">${t.name}</option>`)}
               </select>
             </div>
             <p class="wiz-rail-hint" style="margin:0 0 12px">
-              Was braucht die Mission? Soll-Werte je Rolle — Crew claimt später die Sitze.
+              What does the mission need? Requested counts per role — crew claims the seats later.
             </p>
             <div id="wiz-comp-rows"></div>
             <button type="button" class="btn btn-sm btn-ghost" id="wiz-comp-add" style="margin-top:8px">
-              + Zeile hinzufügen
+              + Add requirement
             </button>
             <input type="hidden" name="compositionJson" id="wiz-comp-json" value="[]" />
             <div class="form-row" style="margin-top:16px">
               <div class="form-group">
-                <label>Min. Teilnehmer</label>
+                <label>Minimum Participants</label>
                 <input type="number" name="minParticipants" min="0" value="0" />
               </div>
               <div class="form-group">
-                <label>Max. Teilnehmer <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                <label>Maximum Participants <span style="font-weight:normal;opacity:.65">(optional)</span></label>
                 <input type="number" name="maxParticipants" min="0" placeholder="—" />
               </div>
             </div>
           </section>
 
-          <section class="wiz-step card" data-step="5" hidden>
+          <section class="wiz-step card" data-step="4" hidden>
             <h3 class="wiz-sum-h">Review</h3>
             <dl class="wiz-sum" id="wiz-review"></dl>
           </section>
         </div>
 
         <aside class="wiz-aside card">
-          <div class="wiz-aside-h">✓ Bereit zum Öffnen</div>
+          <div class="wiz-aside-h">✓ Ready to Open</div>
           <ul class="wiz-ready" id="wiz-ready"></ul>
-          <div class="wiz-sum-h">Zusammenfassung</div>
+          <div class="wiz-sum-h">Summary</div>
           <dl class="wiz-sum" id="wiz-summary"></dl>
           <div class="wiz-aside-actions">
-            <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ Zurück</button>
-            <button type="button" class="btn btn-green" id="wiz-next">Weiter ›</button>
-            <button type="submit" class="btn btn-green" id="wiz-submit" hidden>
-              Operation erstellen
-            </button>
-            <button type="submit" class="btn btn-ghost" id="wiz-draft">💾 Als Draft speichern</button>
+            <button type="submit" class="btn btn-green" id="wiz-draft">💾 Save as Draft</button>
+            <button type="button" class="btn btn-ghost" id="wiz-next">Continue ›</button>
+            <button type="submit" class="btn btn-green" id="wiz-submit" hidden>Create Event</button>
+            <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ Back</button>
           </div>
-          <a href="${bp}/ui-mode?to=classic" class="wiz-classic">↩ Klassisches Formular (alt)</a>
+          <a href="${bp}/ui-mode?to=classic" class="wiz-classic">↩ Classic form</a>
         </aside>
       </div>
     </form>
@@ -3077,9 +3074,9 @@ export function opWizardPage(opts: {
           const server =
             document.querySelector(".guild-selected-badge")?.textContent?.trim() || val("guildId") || "—";
           return [
-            ["Titel", val("title") || "—"], ["Startzeit", val("scheduledAt") || "—"],
-            ["Missionstyp", val("opType")], ["Treffpunkt", document.getElementById("meeting-location-label")?.value || "—"],
-            ["Sichtbarkeit", val("visibility")], ["Voice", val("eventVoiceChannelId") || "—"],
+            ["Name", val("title") || "—"], ["Start", val("scheduledAt") || "—"],
+            ["Mission Type", val("opType")], ["Rendezvous", document.getElementById("meeting-location-label")?.value || "—"],
+            ["Visibility", val("visibility")], ["Voice", val("eventVoiceChannelId") || "—"],
             ["Server", server],
           ];
         }
@@ -3088,39 +3085,27 @@ export function opWizardPage(opts: {
         }
         function updateAside() {
           dl(summary);
-          const checks = [
-            ["Titel", !!val("title").trim(), false],
-            ["Startzeit", !!val("scheduledAt").trim(), false],
-            ["Voice-Channel", !!val("eventVoiceChannelId"), true],
-          ];
-          ready.innerHTML =
-            checks
-              .map((c) => {
-                const tag = c[1]
-                  ? '<span class="wiz-tag ok">OK</span>'
-                  : c[2]
-                    ? '<span class="wiz-tag info">OPTIONAL</span>'
-                    : '<span class="wiz-tag warn">FEHLT</span>';
-                return "<li><span>" + c[0] + "</span>" + tag + "</li>";
-              })
-              .join("");
-          let compN = 0;
-          try { compN = JSON.parse(document.getElementById("wiz-comp-json")?.value || "[]").length; } catch (e) {}
-          ready.innerHTML += compN
-            ? '<li><span>Composition</span><span class="wiz-tag ok">' + compN + " Rollen</span></li>"
-            : '<li><span>Composition</span><span class="wiz-tag warn">LEER</span></li>';
-          const minP = parseInt(val("minParticipants") || "0", 10) || 0;
-          let compTotal = 0;
+          let compN = 0, compTotal = 0;
           try {
-            JSON.parse(document.getElementById("wiz-comp-json")?.value || "[]").forEach(
-              (r) => (compTotal += r.count || 0),
-            );
+            const arr = JSON.parse(document.getElementById("wiz-comp-json")?.value || "[]");
+            compN = arr.length;
+            arr.forEach((r) => (compTotal += r.count || 0));
           } catch (e) {}
-          if (minP > 0) {
-            ready.innerHTML += compTotal >= minP
-              ? '<li><span>Min. Teilnehmer</span><span class="wiz-tag ok">' + compTotal + " / " + minP + "</span></li>"
-              : '<li><span>Min. Teilnehmer</span><span class="wiz-tag warn">' + compTotal + " / " + minP + "</span></li>";
-          }
+          const minP = parseInt(val("minParticipants") || "0", 10) || 0;
+          const items = [];
+          const voiceOk = !!val("eventVoiceChannelId");
+          items.push(["Event Voice Channel", voiceOk ? "ok" : "info", voiceOk ? "OK" : "OPTIONAL"]);
+          items.push(["Announcement Channel", "info", "SETTINGS"]);
+          items.push(["Fleet Requirements", compN ? "ok" : "warn", compN ? compN + " roles" : "EMPTY"]);
+          items.push(
+            minP > 0
+              ? ["Minimum Participants", compTotal >= minP ? "ok" : "warn", compTotal + " / " + minP]
+              : ["Minimum Participants", "info", "—"],
+          );
+          items.push(["Commander Net", "info", "SETTINGS"]);
+          ready.innerHTML = items
+            .map((it) => '<li><span>' + it[0] + '</span><span class="wiz-tag ' + it[1] + '">' + it[2] + "</span></li>")
+            .join("");
         }
 
         function show(i) {
@@ -3200,7 +3185,7 @@ export function opWizardPage(opts: {
           const lbl = ((row && row.label) || "").replace(/"/g, "&quot;");
           div.innerHTML =
             '<select class="comp-cat">' + opts + "</select>" +
-            '<input class="comp-label" type="text" placeholder="z. B. Fireteam Alpha" value="' + lbl + '">' +
+            '<input class="comp-label" type="text" placeholder="e.g. Fireteam Alpha" value="' + lbl + '">' +
             '<input class="comp-count" type="number" min="1" max="99" value="' + ((row && row.count) || 1) + '">' +
             '<button type="button" class="btn btn-sm btn-ghost comp-del">✕</button>';
           compRows.appendChild(div);
@@ -3266,6 +3251,16 @@ export function opJoinPage(opts: {
         })),
     )
     .slice(0, 24);
+  const seatSummary = acceptedUnits
+    .map((u) => {
+      const seats = u.seats.filter((s) => s.active);
+      return {
+        name: u.squadName || u.ship?.name || "Unit",
+        open: seats.filter((s) => !s.userId).length,
+        total: seats.length,
+      };
+    })
+    .filter((u) => u.open > 0);
   const requirements = op.groups.flatMap((g) => g.requirements);
   const isLeader = opts.isLeader === true;
   const minP = (op as { minParticipants?: number }).minParticipants ?? 0;
@@ -3275,11 +3270,11 @@ export function opJoinPage(opts: {
   const visUpper = ((op as { visibility?: string }).visibility ?? "private").toUpperCase();
 
   const stateBanner = hasSeat
-    ? html`<div class="opv2-cta done">✓ Du bist eingeteilt.</div>`
+    ? html`<div class="opv2-cta done">✓ Seat claimed.</div>`
     : hasReq
-      ? html`<div class="opv2-cta done">✓ Anmeldung eingegangen — wartet auf Zuweisung.</div>`
+      ? html`<div class="opv2-cta done">✓ Waiting for operator assignment.</div>`
       : !isOpen
-        ? html`<div class="opv2-cta closed">Anmeldung geschlossen.</div>`
+        ? html`<div class="opv2-cta closed">Sign-up closed.</div>`
         : safe("");
 
   const body = html` <style>
@@ -3323,21 +3318,21 @@ export function opJoinPage(opts: {
       <span class="join-badge time">🕑 ${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
     </div>
     <div class="join-meta card">
-      <span>📍 Treffpunkt: <b>${op.meetingLocation || "—"}</b></span>
+      <span>📍 Rendezvous: <b>${op.meetingLocation || "—"}</b></span>
       <span>🪐 System: <b>${systemLabel(op.meetingSystem)}</b></span>
       <span>🎙 Voice: <b>${opts.voiceChannelName || "—"}</b></span>
-      <span>👥 Teilnehmer: <b>${minP > 0 ? `${minP}` : "—"}${maxP ? `–${maxP}` : ""}</b></span>
+      <span>👥 Participants: <b>${minP > 0 ? `${minP}` : "—"}${maxP ? `–${maxP}` : ""}</b></span>
     </div>
 
     <div class="join-layout">
       <div class="join-main">
         <section class="card">
-          <h3 class="wiz-sum-h">Ich will teilnehmen</h3>
+          <h3 class="wiz-sum-h">I want to join</h3>
           <a class="join-opt" href="#anmeldung">
             <span class="ico">🧭</span>
             <span
-              ><span class="ttl">Vom Operator zuweisen lassen</span><br /><span class="sub"
-                >Ich bin flexibel oder brauche einen Platz.</span
+              ><span class="ttl">Let the operator assign me</span><br /><span class="sub"
+                >I am flexible or need help finding a role.</span
               ></span
             >
             <span class="arr">›</span>
@@ -3345,8 +3340,8 @@ export function opJoinPage(opts: {
           <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
             <span class="ico">💺</span>
             <span
-              ><span class="ttl">Freien Sitz wählen</span><br /><span class="sub"
-                >Direkt in ein Schiff oder Fireteam eintragen.</span
+              ><span class="ttl">Choose an open seat</span><br /><span class="sub"
+                >Pick an available seat in an accepted ship or fireteam.</span
               ></span
             >
             <span class="arr">›</span>
@@ -3354,8 +3349,8 @@ export function opJoinPage(opts: {
           <a class="join-opt" href="${bp}/ops/${op.id}?tab=fleet">
             <span class="ico">🚀</span>
             <span
-              ><span class="ttl">Schiff stellen</span><br /><span class="sub"
-                >Nur erlaubte Schiffe aus der Composition anbieten.</span
+              ><span class="ttl">Offer a ship</span><br /><span class="sub"
+                >Offer one of your ships for this mission.</span
               ></span
             >
             <span class="arr">›</span>
@@ -3364,7 +3359,7 @@ export function opJoinPage(opts: {
 
         <div class="join-row2">
           <section class="card">
-            <h3 class="wiz-sum-h">Freie Plätze</h3>
+            <h3 class="wiz-sum-h">Open Seats</h3>
             ${openSeats.length
               ? openSeats.map(
                   (s) =>
@@ -3384,20 +3379,20 @@ export function opJoinPage(opts: {
                         : html`<span class="free">offen</span>`}
                     </div>`,
                 )
-              : html`<p class="text-dim text-sm">Aktuell keine offenen Plätze.</p>`}
+              : html`<p class="text-dim text-sm">No open seats right now.</p>`}
             <a href="${bp}/ops/${op.id}?tab=fleet" class="text-sm" style="display:inline-block;margin-top:8px"
-              >Alle Positionen anzeigen ›</a
+              >View all positions ›</a
             >
           </section>
           <section class="card">
-            <h3 class="wiz-sum-h">Mission braucht</h3>
+            <h3 class="wiz-sum-h">Mission Needs</h3>
             ${requirements.length
               ? html`<div class="join-chips">
                   ${requirements.map(
                     (r) => html`<span class="join-chip">${r.count}× ${r.label}</span>`,
                   )}
                 </div>`
-              : html`<p class="text-dim text-sm">Keine Composition definiert.</p>`}
+              : html`<p class="text-dim text-sm">No requirements defined.</p>`}
           </section>
         </div>
 
@@ -3405,12 +3400,12 @@ export function opJoinPage(opts: {
           <h3 class="wiz-sum-h">Briefing</h3>
           ${op.description
             ? html`<div class="join-md">${op.description}</div>`
-            : html`<p class="text-dim text-sm">Kein Briefing hinterlegt.</p>`}
+            : html`<p class="text-dim text-sm">No briefing yet.</p>`}
         </section>
 
         ${myQuestions.length
           ? html`<section class="card" style="margin-top:1rem">
-              <h3 class="wiz-sum-h">Fragen an den FleetOperator</h3>
+              <h3 class="wiz-sum-h">Questions</h3>
               ${myQuestions.map(
                 (q) => html`<div class="join-q">
                   <div><b>${q.asker}:</b> ${q.body}</div>
@@ -3423,10 +3418,10 @@ export function opJoinPage(opts: {
                           class="join-ans"
                         >
                           <input type="hidden" name="_csrf" value="${csrf}" />
-                          <input name="answer" maxlength="1000" placeholder="Antwort…" />
-                          <button type="submit" class="btn btn-sm btn-green">Antworten</button>
+                          <input name="answer" maxlength="1000" placeholder="Answer…" />
+                          <button type="submit" class="btn btn-sm btn-green">Answer</button>
                         </form>`
-                      : html`<div class="join-a text-dim">— noch nicht beantwortet</div>`}
+                      : html`<div class="join-a text-dim">— not answered yet</div>`}
                 </div>`,
               )}
             </section>`
@@ -3449,36 +3444,51 @@ export function opJoinPage(opts: {
       </div>
 
       <aside class="card join-aside" id="anmeldung">
-        <h3 class="wiz-sum-h">Meine Anmeldung</h3>
+        <h3 class="wiz-sum-h">My Signup</h3>
         ${stateBanner}
         ${isOpen && !hasSeat && !hasReq
           ? html`<form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
               <input type="hidden" name="_csrf" value="${csrf}" />
               <input type="hidden" name="ui" value="new" />
               <input type="hidden" name="tab" value="crew" />
-              <label>Notiz an den FleetOperator</label>
+              <label
+                >Note to Fleet Operator
+                <span style="font-weight:normal;opacity:.65">(optional)</span></label
+              >
               <textarea
                 name="note"
                 maxlength="240"
-                placeholder="z. B. Erfahrung, bevorzugte Rolle, verfügbare Schiffe … (optional)"
+                placeholder="e.g. experience, preferred role, ships you can bring…"
               ></textarea>
-              <button type="submit" class="btn btn-green join-cta-btn">Teilnehmen ›</button>
+              <button type="submit" class="btn btn-green join-cta-btn">Join</button>
             </form>`
-          : safe("")}
+          : !hasSeat && !hasReq
+            ? html`<p class="text-dim text-sm">Not signed up yet.</p>`
+            : safe("")}
         <form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">
           <input type="hidden" name="_csrf" value="${csrf}" />
-          <label>Frage an den FleetOperator</label>
-          <textarea name="body" maxlength="1000" placeholder="z. B. Welche Loadouts? Wann genau?"></textarea>
-          <button type="submit" class="btn btn-ghost join-cta-btn">💬 Frage stellen</button>
+          <label>Ask a question</label>
+          <textarea name="body" maxlength="1000" placeholder="e.g. which loadouts? exact time?"></textarea>
+          <button type="submit" class="btn btn-ghost join-cta-btn">💬 Ask a question</button>
         </form>
+        ${seatSummary.length
+          ? html`<div style="margin-top:14px">
+              <div class="wiz-sum-h" style="font-size:.9rem">Available Seats</div>
+              ${seatSummary.map(
+                (s) => html`<div class="join-seat">
+                  <span>${s.name}</span><span class="free">${s.open}/${s.total} open</span>
+                </div>`,
+              )}
+            </div>`
+          : safe("")}
         <p class="text-dim text-sm" style="margin-top:10px">
-          Deine Anmeldung ist für den Operator sichtbar, sobald du teilnimmst.
+          Your signup is visible to the operator once you join.
         </p>
       </aside>
     </div>`;
 
   return layout({
-    title: `Mitmachen: ${op.title}`,
+    title: `Join: ${op.title}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
