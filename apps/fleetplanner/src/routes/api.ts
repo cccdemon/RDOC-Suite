@@ -11,7 +11,7 @@ import {
   assignSeat,
   unclaimSeat,
 } from "../services/units.js";
-import { setStatus, addLeader, removeLeader, getOperation } from "../services/operations.js";
+import { setStatus, addLeader, removeLeader, getOperation, logAudit } from "../services/operations.js";
 import { setPrimaryUnit, clearPrimaryUnit } from "../services/primaryUnits.js";
 import {
   discordUserIdForFleetplannerUser,
@@ -885,7 +885,7 @@ export async function apiRoutes(app: FastifyInstance) {
       const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      const valid = ["draft", "open", "locked", "in_progress", "completed", "cancelled"];
+      const valid = ["draft", "open", "locked", "starting", "in_progress", "completed", "cancelled"];
       const newStatus = req.body.status;
       if (!valid.includes(newStatus)) return reply.code(400).send({ error: "Invalid status" });
       const previous = await prisma.operation.findUnique({
@@ -893,6 +893,13 @@ export async function apiRoutes(app: FastifyInstance) {
         select: { status: true },
       });
       const updated = await setStatus(req.params.id, newStatus);
+      await logAudit(
+        req.params.id,
+        ctx.user.id,
+        ctx.user.username,
+        `status:${newStatus}`,
+        previous?.status ? `von ${previous.status}` : "",
+      );
 
       // Mission voice session: open/in_progress → create rooms + grant roles
       if (newStatus === "open" || newStatus === "in_progress") {

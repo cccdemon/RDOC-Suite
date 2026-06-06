@@ -274,7 +274,9 @@ model Operation {
   meetingSystem   String   @default("stanton")
   meetingLocation String   @default("")
   scheduledAt     DateTime
-  status          String   @default("draft") // draft | open | locked | in_progress | completed | cancelled
+  status          String   @default("draft") // draft | open | locked | starting | in_progress | completed | cancelled
+  minParticipants Int      @default(0) // minimum participants the host wants
+  maxParticipants Int? // optional cap
   createdById     String
   discordEventId        String?   // id of the Discord scheduled event created when opened
   eventVoiceChannelId   String?   // Discord voice channel id to use as event location (overrides Guild.eventChannelId)
@@ -293,6 +295,42 @@ model Operation {
   voiceChannels            FleetVoiceChannel[]
   missionVoiceParticipants MissionVoiceParticipant[]
   primaryUnits             OpPrimaryUnit[]
+  auditLogs                AuditLog[]
+  questions                OpQuestion[]
+}
+
+// ── Audit log (per operation) ──────────────────────────────────────
+// Who changed what. Actor is denormalised (username snapshot + optional
+// fleetplanner userId) so entries survive user deletion without FK churn.
+model AuditLog {
+  id          String   @id @default(cuid())
+  operationId String
+  actorId     String? // fleetplanner userId (no FK)
+  actor       String // username at the time
+  action      String // "created" | "status:open" | "joined" | "question" | …
+  detail      String   @default("")
+  createdAt   DateTime @default(now())
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@index([operationId])
+}
+
+// ── Ask the FleetOperator: per-op question queue ───────────────────
+model OpQuestion {
+  id          String    @id @default(cuid())
+  operationId String
+  askerId     String // fleetplanner userId (no FK)
+  asker       String // username snapshot
+  body        String
+  answer      String?
+  answeredBy  String?
+  createdAt   DateTime  @default(now())
+  answeredAt  DateTime?
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@index([operationId])
 }
 
 // Manually-added Command Net participants. Captains of accepted units and

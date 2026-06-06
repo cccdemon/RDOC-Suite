@@ -1082,7 +1082,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     : [html`<p class="text-dim text-sm">No fleet needs have been defined yet.</p>`];
   const statusControls = canManage
     ? html`<div class="opv2-actions">
-        ${["draft", "open", "locked", "in_progress", "completed", "cancelled"].map((status) =>
+        ${["draft", "open", "locked", "starting", "in_progress", "completed", "cancelled"].map((status) =>
           status !== op.status
             ? html`<form method="post" action="${bp}/api/ops/${op.id}/status" class="inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
@@ -2996,6 +2996,16 @@ export function opWizardPage(opts: {
               + Zeile hinzufügen
             </button>
             <input type="hidden" name="compositionJson" id="wiz-comp-json" value="[]" />
+            <div class="form-row" style="margin-top:16px">
+              <div class="form-group">
+                <label>Min. Teilnehmer</label>
+                <input type="number" name="minParticipants" min="0" value="0" />
+              </div>
+              <div class="form-group">
+                <label>Max. Teilnehmer <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                <input type="number" name="maxParticipants" min="0" placeholder="—" />
+              </div>
+            </div>
           </section>
 
           <section class="wiz-step card" data-step="5" hidden>
@@ -3099,6 +3109,18 @@ export function opWizardPage(opts: {
           ready.innerHTML += compN
             ? '<li><span>Composition</span><span class="wiz-tag ok">' + compN + " Rollen</span></li>"
             : '<li><span>Composition</span><span class="wiz-tag warn">LEER</span></li>';
+          const minP = parseInt(val("minParticipants") || "0", 10) || 0;
+          let compTotal = 0;
+          try {
+            JSON.parse(document.getElementById("wiz-comp-json")?.value || "[]").forEach(
+              (r) => (compTotal += r.count || 0),
+            );
+          } catch (e) {}
+          if (minP > 0) {
+            ready.innerHTML += compTotal >= minP
+              ? '<li><span>Min. Teilnehmer</span><span class="wiz-tag ok">' + compTotal + " / " + minP + "</span></li>"
+              : '<li><span>Min. Teilnehmer</span><span class="wiz-tag warn">' + compTotal + " / " + minP + "</span></li>";
+          }
         }
 
         function show(i) {
@@ -3222,6 +3244,7 @@ export function opJoinPage(opts: {
   op: NonNullable<OpFull>;
   guildTimezone?: string;
   voiceChannelName?: string | null;
+  isLeader?: boolean;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -3232,15 +3255,22 @@ export function opJoinPage(opts: {
   const hasSeat = !!myId && op.units.some((u) => u.seats.some((s) => s.active && s.userId === myId));
   const hasReq = !!myId && op.crewRequests.some((r) => r.user.id === myId);
   const acceptedUnits = op.units.filter((u) => u.status === "accepted");
-  const openUnits = acceptedUnits
-    .map((u) => {
-      const seats = u.seats.filter((s) => s.active);
-      const open = seats.filter((s) => !s.userId).length;
-      const name = u.squadName || u.ship?.name || "Einheit";
-      return { name, open, total: seats.length };
-    })
-    .filter((u) => u.open > 0);
+  const openSeats = acceptedUnits
+    .flatMap((u) =>
+      u.seats
+        .filter((s) => s.active && !s.userId)
+        .map((s) => ({
+          unit: u.squadName || u.ship?.name || "Einheit",
+          seatId: s.id,
+          label: s.label,
+        })),
+    )
+    .slice(0, 24);
   const requirements = op.groups.flatMap((g) => g.requirements);
+  const isLeader = opts.isLeader === true;
+  const minP = (op as { minParticipants?: number }).minParticipants ?? 0;
+  const maxP = (op as { maxParticipants?: number | null }).maxParticipants ?? null;
+  const myQuestions = isLeader ? op.questions : op.questions.filter((q) => q.askerId === myId);
   const statusUpper = op.status.toUpperCase();
   const visUpper = ((op as { visibility?: string }).visibility ?? "private").toUpperCase();
 
@@ -3275,6 +3305,12 @@ export function opJoinPage(opts: {
       .join-md { white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5; color: var(--text, #cdd9e1); }
       .join-aside textarea { width: 100%; box-sizing: border-box; min-height: 90px; margin: 6px 0 10px; }
       .join-cta-btn { width: 100%; }
+      .join-q { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
+      .join-a { margin-top: 4px; color: var(--green, #3ad07a); }
+      .join-ans { display: flex; gap: 6px; margin-top: 6px; }
+      .join-ans input { flex: 1; }
+      .join-audit { font-size: 0.8rem; line-height: 1.7; }
+      .join-au { border-bottom: 1px solid rgba(255,255,255,0.05); padding: 3px 0; }
       @media (max-width: 900px) {
         .join-layout { grid-template-columns: 1fr; }
         .join-row2 { grid-template-columns: 1fr; }
@@ -3290,6 +3326,7 @@ export function opJoinPage(opts: {
       <span>📍 Treffpunkt: <b>${op.meetingLocation || "—"}</b></span>
       <span>🪐 System: <b>${systemLabel(op.meetingSystem)}</b></span>
       <span>🎙 Voice: <b>${opts.voiceChannelName || "—"}</b></span>
+      <span>👥 Teilnehmer: <b>${minP > 0 ? `${minP}` : "—"}${maxP ? `–${maxP}` : ""}</b></span>
     </div>
 
     <div class="join-layout">
@@ -3328,11 +3365,23 @@ export function opJoinPage(opts: {
         <div class="join-row2">
           <section class="card">
             <h3 class="wiz-sum-h">Freie Plätze</h3>
-            ${openUnits.length
-              ? openUnits.map(
-                  (u) =>
+            ${openSeats.length
+              ? openSeats.map(
+                  (s) =>
                     html`<div class="join-seat">
-                      <span>${u.name}</span><span class="free">${u.open}/${u.total} frei</span>
+                      <span>${s.unit} — ${s.label}</span>
+                      ${isOpen
+                        ? html`<form
+                            method="post"
+                            action="${bp}/api/seats/${s.seatId}/claim"
+                            class="inline"
+                          >
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            <input type="hidden" name="ui" value="new" />
+                            <input type="hidden" name="tab" value="fleet" />
+                            <button type="submit" class="btn btn-sm btn-green">Claim</button>
+                          </form>`
+                        : html`<span class="free">offen</span>`}
                     </div>`,
                 )
               : html`<p class="text-dim text-sm">Aktuell keine offenen Plätze.</p>`}
@@ -3358,6 +3407,45 @@ export function opJoinPage(opts: {
             ? html`<div class="join-md">${op.description}</div>`
             : html`<p class="text-dim text-sm">Kein Briefing hinterlegt.</p>`}
         </section>
+
+        ${myQuestions.length
+          ? html`<section class="card" style="margin-top:1rem">
+              <h3 class="wiz-sum-h">Fragen an den FleetOperator</h3>
+              ${myQuestions.map(
+                (q) => html`<div class="join-q">
+                  <div><b>${q.asker}:</b> ${q.body}</div>
+                  ${q.answer
+                    ? html`<div class="join-a">↳ <b>${q.answeredBy}:</b> ${q.answer}</div>`
+                    : isLeader
+                      ? html`<form
+                          method="post"
+                          action="${bp}/ops/${op.id}/questions/${q.id}/answer"
+                          class="join-ans"
+                        >
+                          <input type="hidden" name="_csrf" value="${csrf}" />
+                          <input name="answer" maxlength="1000" placeholder="Antwort…" />
+                          <button type="submit" class="btn btn-sm btn-green">Antworten</button>
+                        </form>`
+                      : html`<div class="join-a text-dim">— noch nicht beantwortet</div>`}
+                </div>`,
+              )}
+            </section>`
+          : safe("")}
+        ${isLeader && op.auditLogs.length
+          ? html`<section class="card" style="margin-top:1rem">
+              <h3 class="wiz-sum-h">Audit-Log</h3>
+              <div class="join-audit">
+                ${op.auditLogs.slice(0, 20).map(
+                  (a) => html`<div class="join-au">
+                    <span class="text-dim">${fmtDateLocal(a.createdAt, gtz)}</span>
+                    <b>${a.actor}</b> ${a.action}${a.detail
+                      ? html` <span class="text-dim">(${a.detail})</span>`
+                      : safe("")}
+                  </div>`,
+                )}
+              </div>
+            </section>`
+          : safe("")}
       </div>
 
       <aside class="card join-aside" id="anmeldung">
@@ -3377,9 +3465,12 @@ export function opJoinPage(opts: {
               <button type="submit" class="btn btn-green join-cta-btn">Teilnehmen ›</button>
             </form>`
           : safe("")}
-        <button class="btn btn-ghost join-cta-btn" style="margin-top:8px" disabled title="kommt mit Phase 5">
-          💬 Frage stellen
-        </button>
+        <form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">
+          <input type="hidden" name="_csrf" value="${csrf}" />
+          <label>Frage an den FleetOperator</label>
+          <textarea name="body" maxlength="1000" placeholder="z. B. Welche Loadouts? Wann genau?"></textarea>
+          <button type="submit" class="btn btn-ghost join-cta-btn">💬 Frage stellen</button>
+        </form>
         <p class="text-dim text-sm" style="margin-top:10px">
           Deine Anmeldung ist für den Operator sichtbar, sobald du teilnimmst.
         </p>

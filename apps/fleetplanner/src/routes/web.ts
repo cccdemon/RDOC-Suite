@@ -46,6 +46,7 @@ import { basePath, getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import {
   createOperation,
+  logAudit,
   getOperation,
   listOperations,
   listPublicOperations,
@@ -371,7 +372,13 @@ export async function webRoutes(app: FastifyInstance) {
         meetingLocation: meeting.meetingLocation,
         scheduledAt: parsedDate,
         eventVoiceChannelId: eventVoiceChannelId?.trim() || undefined,
+        minParticipants: Math.max(0, parseInt(req.body.minParticipants ?? "", 10) || 0),
+        maxParticipants:
+          req.body.maxParticipants && parseInt(req.body.maxParticipants, 10) > 0
+            ? parseInt(req.body.maxParticipants, 10)
+            : null,
       });
+      await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "");
       // Wizard composition (Phase 3): optional JSON of requirement rows. Create
       // one "Fleet Requirements" group + requirements. Bad input is ignored so
       // op creation never fails on it.
@@ -454,7 +461,53 @@ export async function webRoutes(app: FastifyInstance) {
           op,
           guildTimezone: (joinGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
           voiceChannelName,
+          isLeader:
+            role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id),
         }),
+      );
+    },
+  );
+
+  // ── Ask the FleetOperator: post a question ───────────────────────────
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/ops/:id/questions",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const op = await getOperation(req.params.id);
+      if (!op) return reply.code(404).send({ error: "not found" });
+      if (!(await effectiveOpRole(ctx.user.id, ctx.user.role, op.id)))
+        return reply.code(404).send({ error: "not found" });
+      const body = (req.body.body ?? "").trim().slice(0, 1000);
+      if (body) {
+        await prisma.opQuestion.create({
+          data: { operationId: op.id, askerId: ctx.user.id, asker: ctx.user.username, body },
+        });
+        await logAudit(op.id, ctx.user.id, ctx.user.username, "question", "");
+      }
+      return reply.redirect(basePath(`/ops/${op.id}/join?flash=ok:Frage+gesendet.`), 302);
+    },
+  );
+
+  // ── Answer a question (operator) ─────────────────────────────────────
+  app.post<{ Params: { id: string; qid: string }; Body: Record<string, string> }>(
+    "/ops/:id/questions/:qid/answer",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const answer = (req.body.answer ?? "").trim().slice(0, 1000);
+      if (answer) {
+        await prisma.opQuestion.update({
+          where: { id: req.params.qid },
+          data: { answer, answeredBy: ctx.user.username, answeredAt: new Date() },
+        });
+        await logAudit(req.params.id, ctx.user.id, ctx.user.username, "answer", "");
+      }
+      return reply.redirect(
+        basePath(`/ops/${req.params.id}/join?flash=ok:Antwort+gespeichert.`),
+        302,
       );
     },
   );

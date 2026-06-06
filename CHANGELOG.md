@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Fleetplanner: audit log, ask-the-operator, min/max participants, "starting" status, inline seat claim (Mission Creation Flow Phase 4/5, 2026-06-06)
+
+- **Schema migration** (`20260606120000_phase5_…`): `Operation.minParticipants/maxParticipants`, plus `AuditLog` and `OpQuestion` tables (actor/asker denormalised — no User FK).
+- **Audit log:** op creation and every status change are recorded; the join page shows the log to leaders.
+- **Ask the FleetOperator:** participants post questions from the join page (`POST /ops/:id/questions`); leaders answer inline (`…/answer`); both see the Q&A thread.
+- **Min/Max participants:** wizard Composition step gains the inputs; the "Bereit zum Öffnen" panel shows a Min-Teilnehmer check (planned roles vs minimum).
+- **"starting" status:** added to the status flow (dropdown + API validation) — voice/Squad-Link links handed out while final Discord prep happens.
+- **Phase 4:** the join page "Freie Plätze" now lists individual open seats with an inline **Claim** button (reuses `/api/seats/:id/claim`).
+
 ### Added — Fleetplanner: composition step in the creation wizard + alt/neu UI switch (Mission Creation Flow Phase 3, 2026-06-06)
 
 - The wizard gains a **Composition** step: load a starter template (Tactical Strike Groups / Hator / Rockbreaker / Stormbreaker), add/remove requirement rows (category + label + count), serialized to a hidden field. `POST /ops/new` creates a "Fleet Requirements" group + requirements from it (validated, capped, failures ignored so creation never breaks). The right "Bereit zum Öffnen" panel now shows the composition row count. No schema change — min/max participants + audit log stay Phase 5.

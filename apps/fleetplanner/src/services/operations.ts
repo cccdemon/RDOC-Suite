@@ -18,7 +18,27 @@ export type CreateOperationInput = {
   meetingLocation?: string;
   scheduledAt: Date;
   eventVoiceChannelId?: string;
+  minParticipants?: number;
+  maxParticipants?: number | null;
 };
+
+/** Append an audit entry (best-effort; never throws into the caller). */
+export async function logAudit(
+  operationId: string,
+  actorId: string | null,
+  actor: string,
+  action: string,
+  detail = "",
+) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (prisma as any).auditLog.create({
+      data: { operationId, actorId, actor, action, detail },
+    });
+  } catch {
+    /* audit must never break the action */
+  }
+}
 
 export async function createOperation(createdById: string, input: CreateOperationInput) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -34,6 +54,8 @@ export async function createOperation(createdById: string, input: CreateOperatio
     createdById,
     status: "draft",
     eventVoiceChannelId: input.eventVoiceChannelId || null,
+    minParticipants: input.minParticipants ?? 0,
+    maxParticipants: input.maxParticipants ?? null,
   };
   return prisma.operation.create({ data });
 }
@@ -91,6 +113,8 @@ export async function getOperation(id: string) {
         },
         orderBy: { createdAt: "asc" },
       },
+      auditLogs: { orderBy: { createdAt: "desc" }, take: 50 },
+      questions: { orderBy: { createdAt: "desc" } },
     },
   });
 }
