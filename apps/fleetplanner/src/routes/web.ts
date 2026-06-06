@@ -218,9 +218,29 @@ export async function webRoutes(app: FastifyInstance) {
   });
 
   // ── New operation form — guild picker when user has multiple servers ─────
+  // UI-mode switch (alt/neu): persist a cookie + bounce to the matching create UI.
+  app.get<{ Querystring: { to?: string } }>("/ui-mode", async (req, reply) => {
+    const mode = req.query.to === "new" ? "new" : "classic";
+    reply.setCookie("fpui", mode, {
+      path: "/",
+      httpOnly: false,
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365,
+    });
+    return reply.redirect(basePath(mode === "new" ? "/ops/new/wizard" : "/ops/new"), 302);
+  });
+
   app.get<{ Querystring: { flash?: string; _guild?: string } }>("/ops/new", async (req, reply) => {
     const ctx = await requireAuth(req, reply);
     if (!ctx) return;
+    // UI-mode preference: users who chose the new UI land on the wizard.
+    if ((req.cookies as Record<string, string | undefined>).fpui === "new") {
+      return reply.redirect(
+        basePath("/ops/new/wizard") +
+          (req.query._guild ? `?_guild=${encodeURIComponent(req.query._guild)}` : ""),
+        302,
+      );
+    }
     const memberships = await listUserGuilds(ctx.user.id);
     const operatorGuilds = memberships
       .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
@@ -352,6 +372,46 @@ export async function webRoutes(app: FastifyInstance) {
         scheduledAt: parsedDate,
         eventVoiceChannelId: eventVoiceChannelId?.trim() || undefined,
       });
+      // Wizard composition (Phase 3): optional JSON of requirement rows. Create
+      // one "Fleet Requirements" group + requirements. Bad input is ignored so
+      // op creation never fails on it.
+      if (req.body.compositionJson) {
+        try {
+          const VALID = new Set([
+            "fps", "capital", "subcapital", "fighter", "support", "ground",
+            "transport", "mining", "salvage", "exploration", "any",
+          ]);
+          const rows = (JSON.parse(req.body.compositionJson) as unknown[])
+            .filter(
+              (r): r is { category: string; label: string; count?: number } =>
+                !!r &&
+                typeof r === "object" &&
+                VALID.has((r as { category?: unknown }).category as string) &&
+                typeof (r as { label?: unknown }).label === "string" &&
+                ((r as { label: string }).label.trim().length > 0),
+            )
+            .slice(0, 30);
+          if (rows.length) {
+            await prisma.compositionGroup.create({
+              data: {
+                operationId: op.id,
+                name: "Fleet Requirements",
+                order: 0,
+                requirements: {
+                  create: rows.map((r, i) => ({
+                    category: r.category,
+                    label: r.label.trim().slice(0, 80),
+                    count: Math.min(99, Math.max(1, Math.round(Number(r.count) || 1))),
+                    order: i,
+                  })),
+                },
+              },
+            });
+          }
+        } catch {
+          /* ignore malformed composition */
+        }
+      }
       return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Operation+created.`), 302);
     } catch {
       return reply.redirect(basePath("/ops/new?flash=error:Failed+to+create+operation"), 302);

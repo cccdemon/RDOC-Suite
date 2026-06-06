@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Fleetplanner: composition step in the creation wizard + alt/neu UI switch (Mission Creation Flow Phase 3, 2026-06-06)
+
+- The wizard gains a **Composition** step: load a starter template (Tactical Strike Groups / Hator / Rockbreaker / Stormbreaker), add/remove requirement rows (category + label + count), serialized to a hidden field. `POST /ops/new` creates a "Fleet Requirements" group + requirements from it (validated, capped, failures ignored so creation never breaks). The right "Bereit zum Öffnen" panel now shows the composition row count. No schema change — min/max participants + audit log stay Phase 5.
+- **Alt/neu UI switch:** the "✨ Assistent (neu)" / "↩ Klassisch (alt)" links now persist the choice via an `fpui` cookie (`/ui-mode?to=new|classic`); `/ops/new` honours it (new → wizard).
+
 ### Added — Fleetplanner: dedicated participant join view (Mission Creation Flow Phase 2/4, 2026-06-06)
 
 - New `/ops/:id/join` page (mobile-first): status/visibility badges + When/System/Voice meta, an "Ich will teilnehmen" card with the three sign-up paths (vom Operator zuweisen lassen / freien Sitz wählen / Schiff stellen), "Freie Plätze" per unit, "Mission braucht" composition chips, the briefing, and a "Meine Anmeldung" sidebar with state + a crew-request form (Notiz → Teilnehmen). Reuses the existing crew-request + seat-claim endpoints; "Frage stellen" is stubbed for Phase 5. The op-detail "Mitmachen?" CTA now links here.

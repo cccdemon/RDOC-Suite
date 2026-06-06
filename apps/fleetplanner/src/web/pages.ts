@@ -37,6 +37,45 @@ const REQUIREMENT_CATEGORIES = [
   "any",
 ] as const;
 
+// Composition starter templates for the creation wizard (FR-P1 Phase 3). Hosts
+// load one and then tweak rows; nothing is locked. Categories must be valid
+// REQUIREMENT_CATEGORIES.
+const COMPOSITION_TEMPLATES = [
+  {
+    name: "Tactical Strike Groups",
+    requirements: [
+      { category: "fps", label: "Fireteam Alpha", count: 1 },
+      { category: "fps", label: "Fireteam Bravo", count: 1 },
+      { category: "fighter", label: "Jäger", count: 6 },
+      { category: "support", label: "Support", count: 1 },
+    ],
+  },
+  {
+    name: "Hator",
+    requirements: [
+      { category: "capital", label: "Großkampfschiff", count: 1 },
+      { category: "subcapital", label: "Subcapital", count: 2 },
+      { category: "fighter", label: "Jäger-Eskorte", count: 4 },
+    ],
+  },
+  {
+    name: "Rockbreaker",
+    requirements: [
+      { category: "mining", label: "Mining-Schiff", count: 3 },
+      { category: "transport", label: "Transport", count: 1 },
+      { category: "fighter", label: "Eskorte", count: 2 },
+    ],
+  },
+  {
+    name: "Stormbreaker",
+    requirements: [
+      { category: "subcapital", label: "Großkampfschiff", count: 2 },
+      { category: "fighter", label: "Jäger", count: 6 },
+      { category: "fps", label: "Boarding-Team", count: 2 },
+    ],
+  },
+] as const;
+
 function categoryLabel(category: string): string {
   return (
     {
@@ -2513,7 +2552,7 @@ export function opFormPage(opts: {
   const body = html` <div class="page-header">
       <h1 class="page-title">${op ? "EDIT OPERATION" : "NEW OPERATION"}</h1>
       ${!op
-        ? html`<a href="${bp}/ops/new/wizard" class="btn btn-ghost">✨ Assistent</a>`
+        ? html`<a href="${bp}/ui-mode?to=new" class="btn btn-ghost">✨ Assistent (neu)</a>`
         : safe("")}
     </div>
     <div class="card">
@@ -2777,7 +2816,7 @@ export function opWizardPage(opts: {
       system: l.systemSlug,
       label: `${l.name} // ${l.system}${l.classification ? ` // ${l.classification}` : ""}`,
     }));
-  const steps = ["Basisdaten", "Ort", "Sichtbarkeit & Voice", "Briefing", "Review"];
+  const steps = ["Basisdaten", "Ort", "Sichtbarkeit & Voice", "Briefing", "Composition", "Review"];
 
   const body = html` <style>
       .wiz-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 1rem; align-items: start; }
@@ -2939,12 +2978,29 @@ export function opWizardPage(opts: {
           </section>
 
           <section class="wiz-step card" data-step="4" hidden>
+            <div
+              class="form-group"
+              style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"
+            >
+              <h3 class="wiz-sum-h" style="margin:0">Composition</h3>
+              <select id="wiz-tpl" class="guild-picker-select-form" style="max-width:230px">
+                <option value="">📁 Vorlage laden…</option>
+                ${COMPOSITION_TEMPLATES.map((t, i) => html`<option value="${i}">${t.name}</option>`)}
+              </select>
+            </div>
+            <p class="wiz-rail-hint" style="margin:0 0 12px">
+              Was braucht die Mission? Soll-Werte je Rolle — Crew claimt später die Sitze.
+            </p>
+            <div id="wiz-comp-rows"></div>
+            <button type="button" class="btn btn-sm btn-ghost" id="wiz-comp-add" style="margin-top:8px">
+              + Zeile hinzufügen
+            </button>
+            <input type="hidden" name="compositionJson" id="wiz-comp-json" value="[]" />
+          </section>
+
+          <section class="wiz-step card" data-step="5" hidden>
             <h3 class="wiz-sum-h">Review</h3>
             <dl class="wiz-sum" id="wiz-review"></dl>
-            <p class="wiz-rail-hint" style="margin-top:14px">
-              Composition (Fireteams/Schiffe) konfigurierst du nach dem Erstellen auf der Op-Seite —
-              der geführte Composition-Schritt kommt in Phase 3.
-            </p>
           </section>
         </div>
 
@@ -2961,7 +3017,7 @@ export function opWizardPage(opts: {
             </button>
             <button type="submit" class="btn btn-ghost" id="wiz-draft">💾 Als Draft speichern</button>
           </div>
-          <a href="${bp}/ops/new" class="wiz-classic">Klassisches Formular</a>
+          <a href="${bp}/ui-mode?to=classic" class="wiz-classic">↩ Klassisches Formular (alt)</a>
         </aside>
       </div>
     </form>
@@ -3037,7 +3093,12 @@ export function opWizardPage(opts: {
                     : '<span class="wiz-tag warn">FEHLT</span>';
                 return "<li><span>" + c[0] + "</span>" + tag + "</li>";
               })
-              .join("") + '<li><span>Composition</span><span class="wiz-tag info">PHASE 3</span></li>';
+              .join("");
+          let compN = 0;
+          try { compN = JSON.parse(document.getElementById("wiz-comp-json")?.value || "[]").length; } catch (e) {}
+          ready.innerHTML += compN
+            ? '<li><span>Composition</span><span class="wiz-tag ok">' + compN + " Rollen</span></li>"
+            : '<li><span>Composition</span><span class="wiz-tag warn">LEER</span></li>';
         }
 
         function show(i) {
@@ -3085,6 +3146,55 @@ export function opWizardPage(opts: {
         rail.forEach((r, n) => r.addEventListener("click", () => { if (n < cur) { cur = n; show(cur); } }));
         next.addEventListener("click", () => { if (validate(cur) && cur < sections.length - 1) { cur++; show(cur); } });
         back.addEventListener("click", () => { if (cur > 0) { cur--; show(cur); } });
+
+        // ── Composition editor (Phase 3) ─────────────────────────────
+        const TPL = ${safe(JSON.stringify(COMPOSITION_TEMPLATES))};
+        const CATS = ${safe(JSON.stringify(REQUIREMENT_CATEGORIES))};
+        const CATLBL = ${safe(
+          JSON.stringify(Object.fromEntries(REQUIREMENT_CATEGORIES.map((c) => [c, categoryLabel(c)]))),
+        )};
+        const compRows = document.getElementById("wiz-comp-rows");
+        const compJsonEl = document.getElementById("wiz-comp-json");
+        function compSerialize() {
+          const data = Array.from(compRows.querySelectorAll(".comp-row"))
+            .map((r) => ({
+              category: r.querySelector(".comp-cat").value,
+              label: r.querySelector(".comp-label").value.trim(),
+              count: Math.max(1, Math.min(99, parseInt(r.querySelector(".comp-count").value, 10) || 1)),
+            }))
+            .filter((x) => x.label);
+          compJsonEl.value = JSON.stringify(data);
+          updateAside();
+        }
+        function compAddRow(row) {
+          const div = document.createElement("div");
+          div.className = "comp-row";
+          div.style.cssText =
+            "display:grid;grid-template-columns:1.2fr 1.6fr 70px 34px;gap:8px;margin-bottom:8px;align-items:center";
+          const cat = (row && row.category) || CATS[0];
+          const opts = CATS.map(
+            (c) => '<option value="' + c + '"' + (c === cat ? " selected" : "") + ">" + (CATLBL[c] || c) + "</option>",
+          ).join("");
+          const lbl = ((row && row.label) || "").replace(/"/g, "&quot;");
+          div.innerHTML =
+            '<select class="comp-cat">' + opts + "</select>" +
+            '<input class="comp-label" type="text" placeholder="z. B. Fireteam Alpha" value="' + lbl + '">' +
+            '<input class="comp-count" type="number" min="1" max="99" value="' + ((row && row.count) || 1) + '">' +
+            '<button type="button" class="btn btn-sm btn-ghost comp-del">✕</button>';
+          compRows.appendChild(div);
+          div.querySelector(".comp-del").addEventListener("click", () => { div.remove(); compSerialize(); });
+          div.querySelectorAll("input,select").forEach((el) => el.addEventListener("input", compSerialize));
+        }
+        document.getElementById("wiz-comp-add").addEventListener("click", () => { compAddRow(); compSerialize(); });
+        document.getElementById("wiz-tpl").addEventListener("change", (e) => {
+          if (e.target.value === "") return;
+          compRows.innerHTML = "";
+          (TPL[e.target.value].requirements || []).forEach(compAddRow);
+          compSerialize();
+          e.target.value = "";
+        });
+        compSerialize();
+
         show(0);
         updateAside();
       })();
