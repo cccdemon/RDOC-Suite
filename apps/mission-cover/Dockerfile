@@ -22,7 +22,9 @@ FROM mcr.microsoft.com/playwright:v1.49.1-noble AS builder
 ENV CI=true
 # Browsers already in the base image — don't let `playwright` re-download them.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+# Install pnpm directly: the Playwright image's bundled corepack fails signature
+# verification for pnpm ("Cannot find matching keyid") on its Node 22.12 build.
+RUN npm install -g pnpm@10.33.0
 WORKDIR /app
 
 # Manifests first for layer cache.
