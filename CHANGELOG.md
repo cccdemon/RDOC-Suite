@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Fleetplanner: guided op-creation wizard (Mission Creation Flow Phase 1, 2026-06-06)
+
+- New stepped admin assistant at `/ops/new/wizard`: Grundlagen → Ort → Sichtbarkeit/Voice → Briefing → Vorschau, with a progress stepper, per-step validation, and a review before publish. Posts to the existing `POST /ops/new` (same field names) — no backend/schema change. A "✨ Assistent" link sits on the classic `/ops/new` form; the wizard links back to the classic form. First slice of FR-P1-eventcreation-simplification (branch `feat/mission-creation-wizard`).
+
 ### Fixed — Fleetplanner: accepted-link 404 for logged-out users (2026-06-06)
 
 - Opening an op link (e.g. the accepted-captain Discord link) while logged out returned a 404 "Operation not found" for private/partner ops, which looked like a broken URL (feedback: exrelax). Guests now get a clear "Login required" page (HTTP 401) with a login link, without leaking op details.

@@ -1,5 +1,26 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-06: Mission Creation Flow — Admin-Wizard (Phase 1, branch feat/mission-creation-wizard)
+
+Implementierung gestartet auf Branch `feat/mission-creation-wizard` für FR-P1-eventcreation-simplification
+(+ Inhalt aus `docs/GUI Architekturplan-Assistenssystem-MissonCreationFlow.md`).
+
+**Phasen-Plan** (eine Scheibe pro Commit, jede für sich lauffähig):
+- **Phase 1 (dieser Step): Admin-Wizard-Scaffold.** Stepped single-page Op-Erstellung
+  (`opWizardPage` in [pages.ts](apps/fleetplanner/src/web/pages.ts)) als geführter Flow:
+  Grundlagen → Ort → Sichtbarkeit/Voice → Briefing → Vorschau. Client-seitige Schritt-Navigation
+  (progressive reveal, FR-P1 open-decision #1 „stepped single page first"), Per-Step-Validierung,
+  Review vor Submit. Postet auf die BESTEHENDE `POST /ops/new` (gleiche Feldnamen) — kein
+  Schema-/Backend-Change, kein Risiko. Route `GET /ops/new/wizard`; Link von `/ops/new`.
+- Phase 2: Mobile/Join-View (responsive Variante von `opDetailPageV2`).
+- Phase 3: Composition im Wizard (CompositionGroup/Requirement-Editor) + Templates
+  (Tactical Strike Groups, Hator, Rockbreaker, Stormbreaker) + Min/Max-Teilnehmer.
+- Phase 4: Anmelde-Assistent (will-teilnehmen → Schiff stellen / Seat claim / zuweisen lassen).
+- Phase 5: Status `starting` ergänzen + AuditLog-Modell (Statuswechsel/An-/Abmeldungen) +
+  „Ask the Fleetoperator"-Nachrichtenqueue. (Schema-Migration — separat.)
+
+Kein lokaler Build (Regel 5); Code-first, Docker baut server-seitig. CHANGELOG unter [Unreleased] gepflegt.
+
 ## Queued / Planned Step - 2026-06-06: PLAN DOC - P1 Fleetplanner GUI UX implementation plan
 
 Planning only - add a Prio-1 implementation plan for Fleetplanner GUI UX cleanup:

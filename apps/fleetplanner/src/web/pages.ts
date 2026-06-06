@@ -2481,6 +2481,9 @@ export function opFormPage(opts: {
 
   const body = html` <div class="page-header">
       <h1 class="page-title">${op ? "EDIT OPERATION" : "NEW OPERATION"}</h1>
+      ${!op
+        ? html`<a href="${bp}/ops/new/wizard" class="btn btn-ghost">✨ Assistent</a>`
+        : safe("")}
     </div>
     <div class="card">
       <form method="post" action="${action}" id="op-form" novalidate>
@@ -2703,6 +2706,255 @@ ${op?.description ?? ""}</textarea
 
   return layout({
     title: op ? `Edit: ${op.title}` : "New Operation",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
+    body,
+  });
+}
+
+// ── Operation creation wizard (Admin assistant, FR-P1 Phase 1) ───────
+// Stepped single-page guided create flow. Same field NAMES as opFormPage so
+// it posts to the existing POST /ops/new — no backend/schema change.
+export function opWizardPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  operatorGuilds?: Array<{ id: string; name: string }>;
+  selectedOperatorGuildId?: string;
+  guildVoiceChannels?: Array<{ id: string; name: string }>;
+  locations: Pick<
+    Location,
+    "slug" | "name" | "system" | "systemSlug" | "parentName" | "classification"
+  >[];
+  guildTimezone?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
+  const csrf = opts.csrfToken ?? "";
+  const opTypes = OP_TYPES;
+  const selectedOperatorGuild = opts.operatorGuilds?.find(
+    (g) => g.id === opts.selectedOperatorGuildId,
+  );
+  const locationOptions = opts.locations
+    .filter((l) => SYSTEMS.includes(l.systemSlug as (typeof SYSTEMS)[number]))
+    .map((l) => ({
+      slug: l.slug,
+      value: `${l.name}${l.parentName ? ` (${l.parentName})` : ""}`,
+      system: l.systemSlug,
+      label: `${l.name} // ${l.system}${l.classification ? ` // ${l.classification}` : ""}`,
+    }));
+  const steps = ["Grundlagen", "Ort", "Sichtbarkeit & Voice", "Briefing", "Vorschau"];
+
+  const body = html` <style>
+      .wiz-stepper { display: flex; gap: 6px; list-style: none; padding: 0; margin: 0 0 18px; flex-wrap: wrap; }
+      .wiz-dot { display: flex; align-items: center; gap: 7px; padding: 6px 10px; border: 1px solid rgba(255,255,255,.12); border-radius: 20px; opacity: .5; font-size: .8rem; }
+      .wiz-dot.active { opacity: 1; border-color: var(--cyan, #35d0e0); color: var(--cyan, #35d0e0); }
+      .wiz-num { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 50%; border: 1px solid currentColor; font-size: .7rem; }
+      .wiz-nav { display: flex; gap: 8px; margin-top: 20px; align-items: center; }
+      .wiz-review { display: grid; grid-template-columns: 160px 1fr; gap: 6px 14px; margin: 0; }
+      .wiz-review dt { color: var(--dim, #7a8a96); font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; }
+      .wiz-review dd { margin: 0; }
+      .wiz-h3 { margin: 0 0 12px; }
+    </style>
+    <div class="page-header"><h1 class="page-title">NEUE OPERATION — ASSISTENT</h1></div>
+    <div class="card">
+      <ol class="wiz-stepper">
+        ${steps.map(
+          (s, i) =>
+            html`<li class="wiz-dot${i === 0 ? safe(" active") : ""}" data-dot="${i}">
+              <span class="wiz-num">${i + 1}</span><span class="wiz-lbl">${s}</span>
+            </li>`,
+        )}
+      </ol>
+      <form method="post" action="${bp}/ops/new" id="wiz-form" novalidate>
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        <div class="form-errors" id="wiz-errors" hidden></div>
+
+        <section class="wiz-step" data-step="0">
+          ${opts.operatorGuilds && opts.operatorGuilds.length > 0
+            ? html` <div class="form-group">
+                <label>Server <span class="req" title="Pflichtfeld">*</span></label>
+                ${selectedOperatorGuild
+                  ? html`<input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
+                      <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
+                  : opts.operatorGuilds.length === 1
+                    ? html`<input type="hidden" name="guildId" value="${opts.operatorGuilds[0].id}" />
+                        <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
+                    : html`<select name="guildId" required class="guild-picker-select-form">
+                        <option value="">— Server wählen —</option>
+                        ${opts.operatorGuilds.map(
+                          (g) => html`<option value="${g.id}">${g.name}</option>`,
+                        )}
+                      </select>`}
+              </div>`
+            : safe("")}
+          <div class="form-group">
+            <label>Operation Title <span class="req" title="Pflichtfeld">*</span></label>
+            <input type="text" name="title" required placeholder="Operation Darkstar" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Datum/Zeit (${gtz}) <span class="req" title="Pflichtfeld">*</span></label>
+              <input type="datetime-local" name="scheduledAt" required />
+            </div>
+            <div class="form-group">
+              <label>Operation Type</label>
+              <select name="opType">
+                ${opTypes.map((t) => html`<option value="${t}">${t}</option>`)}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="wiz-step" data-step="1" hidden>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Meeting System</label>
+              <select name="meetingSystem" id="meeting-system-select">
+                ${SYSTEMS.map((s) => html`<option value="${s}">${systemLabel(s)}</option>`)}
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Meeting Location (Treffpunkt)</label>
+              <select name="meetingLocationSlug" id="meeting-location-select">
+                <option value="" data-system="">-- Location wählen --</option>
+                ${locationOptions.map(
+                  (l) =>
+                    html`<option value="${l.slug}" data-system="${l.system}" data-label="${l.value}">
+                      ${l.label}
+                    </option>`,
+                )}
+              </select>
+              <input type="hidden" name="meetingLocation" id="meeting-location-label" value="" />
+            </div>
+          </div>
+        </section>
+
+        <section class="wiz-step" data-step="2" hidden>
+          <div class="form-group">
+            <label>Sichtbarkeit</label>
+            <select name="visibility">
+              <option value="private" selected>🔒 Privat (nur dieser Discord)</option>
+              <option value="partners">🤝 Partner (dieser + verbundene)</option>
+              <option value="public">🌐 Öffentlich (alle eingeloggten)</option>
+            </select>
+          </div>
+          ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
+            ? html` <div class="form-group">
+                <label
+                  >Discord Event Voice Channel
+                  <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                >
+                <select name="eventVoiceChannelId">
+                  <option value="">— Kein Voice-Channel —</option>
+                  ${opts.guildVoiceChannels.map(
+                    (ch) => html`<option value="${ch.id}">${ch.name}</option>`,
+                  )}
+                </select>
+              </div>`
+            : safe("")}
+        </section>
+
+        <section class="wiz-step" data-step="3" hidden>
+          <div class="form-group">
+            <label>Briefing <span style="font-weight:normal;opacity:.65">(Markdown)</span></label>
+            <textarea name="description" rows="10" placeholder="## Missionsziel&#10;Der Mauler muss fallen&#10;&#10;## RoE&#10;…"></textarea>
+          </div>
+        </section>
+
+        <section class="wiz-step" data-step="4" hidden>
+          <h3 class="wiz-h3">Vorschau</h3>
+          <dl class="wiz-review" id="wiz-review"></dl>
+        </section>
+
+        <div class="wiz-nav">
+          <button type="button" class="btn btn-ghost" id="wiz-back" hidden>Zurück</button>
+          <button type="button" class="btn" id="wiz-next">Weiter</button>
+          <button type="submit" class="btn" id="wiz-submit" hidden>Operation erstellen</button>
+          <a href="${bp}/ops/new" class="btn btn-ghost" style="margin-left:auto"
+            >Klassisches Formular</a
+          >
+        </div>
+      </form>
+    </div>
+    <script>
+      (function () {
+        const ms = document.getElementById("meeting-system-select");
+        const ml = document.getElementById("meeting-location-select");
+        const mlab = document.getElementById("meeting-location-label");
+        function syncLabel() {
+          if (!ml || !mlab) return;
+          mlab.value = ml.selectedOptions[0]?.dataset.label || "";
+        }
+        function filterLoc() {
+          if (!ml || !ms) return;
+          for (const o of Array.from(ml.options)) {
+            if (!o.value) { o.hidden = false; o.disabled = false; continue; }
+            const ok = o.dataset.system === ms.value;
+            o.hidden = !ok; o.disabled = !ok;
+            if (o.selected && !ok) ml.value = "";
+          }
+          syncLabel();
+        }
+        ms?.addEventListener("change", filterLoc);
+        ml?.addEventListener("change", syncLabel);
+        filterLoc();
+
+        const steps = Array.from(document.querySelectorAll(".wiz-step"));
+        const dots = Array.from(document.querySelectorAll(".wiz-dot"));
+        const back = document.getElementById("wiz-back");
+        const next = document.getElementById("wiz-next");
+        const submit = document.getElementById("wiz-submit");
+        const errs = document.getElementById("wiz-errors");
+        const review = document.getElementById("wiz-review");
+        let cur = 0;
+        function show(i) {
+          steps.forEach((s, n) => (s.hidden = n !== i));
+          dots.forEach((d, n) => d.classList.toggle("active", n <= i));
+          back.hidden = i === 0;
+          next.hidden = i === steps.length - 1;
+          submit.hidden = i !== steps.length - 1;
+          errs.hidden = true;
+          if (i === steps.length - 1) buildReview();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+        function validate(i) {
+          const miss = [];
+          steps[i].querySelectorAll("[required]").forEach((el) => {
+            el.classList.remove("field-error");
+            if (!el.value || !el.value.trim()) { miss.push(el); el.classList.add("field-error"); }
+          });
+          if (miss.length) { errs.textContent = "Bitte Pflichtfelder ausfüllen."; errs.hidden = false; miss[0].focus(); }
+          return miss.length === 0;
+        }
+        function val(name) {
+          const el = document.querySelector('[name="' + name + '"]');
+          if (!el) return "";
+          if (el.tagName === "SELECT") return el.selectedOptions[0]?.textContent.trim() || el.value;
+          return el.value;
+        }
+        function buildReview() {
+          const server = document.querySelector(".guild-selected-badge")?.textContent?.trim() || val("guildId") || "—";
+          const rows = [
+            ["Server", server], ["Titel", val("title")], ["Datum", val("scheduledAt")],
+            ["Typ", val("opType")], ["Ort", document.getElementById("meeting-location-label")?.value || "—"],
+            ["Sichtbarkeit", val("visibility")], ["Voice", val("eventVoiceChannelId") || "—"],
+          ];
+          review.innerHTML = rows
+            .map((r) => "<dt>" + r[0] + "</dt><dd>" + String(r[1] || "—").replace(/</g, "&lt;") + "</dd>")
+            .join("");
+        }
+        next.addEventListener("click", () => { if (validate(cur) && cur < steps.length - 1) { cur++; show(cur); } });
+        back.addEventListener("click", () => { if (cur > 0) { cur--; show(cur); } });
+        show(0);
+      })();
+    </script>`;
+
+  return layout({
+    title: "Neue Operation — Assistent",
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

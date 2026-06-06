@@ -1,7 +1,11 @@
 # Event Creation Simplification — Mobile join view + Admin wizard
 
 **FeatureRequest — Priority 1** (scale 1 highest … 5 lowest)
-**Status:** Plan, **NOT yet implemented**. Captured from roadmap dump 2026-06-06.
+**Status:** In Arbeit. **Phase 1 (Admin-Wizard-Scaffold) implementiert** auf Branch
+`feat/mission-creation-wizard` (2026-06-06): stepped `/ops/new/wizard` (`opWizardPage`),
+postet auf bestehende `POST /ops/new`, kein Schema-Change. Phasen 2-5 (Mobile-View,
+Composition+Templates, Anmelde-Assistent, `starting`-Status/AuditLog/Ask-Operator) offen —
+siehe Mergelog. Captured from roadmap dump 2026-06-06.
 
 ## Dependencies
 - Touches the existing op-create/edit form (`opFormPage` in [pages.ts](apps/fleetplanner/src/web/pages.ts)) + op-detail (`opDetailPageV2`) + responsive CSS in [render.ts](apps/fleetplanner/src/web/render.ts).

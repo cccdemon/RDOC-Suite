@@ -8,6 +8,7 @@ import {
   homePage,
   opDetailPageV2,
   opFormPage,
+  opWizardPage,
   profilePage,
   shipsPage,
   feedbackPage,
@@ -257,6 +258,51 @@ export async function webRoutes(app: FastifyInstance) {
       }),
     );
   });
+
+  // Guided admin wizard — same data + POST target as /ops/new, stepped UI.
+  app.get<{ Querystring: { flash?: string; _guild?: string } }>(
+    "/ops/new/wizard",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      const memberships = await listUserGuilds(ctx.user.id);
+      const operatorGuilds = memberships
+        .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
+        .map((m) => ({ id: m.guildId, name: m.guild.name }));
+      if (operatorGuilds.length === 0) return reply.code(403).send({ error: "forbidden" });
+      const selectedOperatorGuildId = operatorGuilds.some((g) => g.id === req.query._guild)
+        ? req.query._guild
+        : operatorGuilds.length === 1
+          ? operatorGuilds[0].id
+          : undefined;
+      const [guildVoiceChannels, wizGuildRow] = await Promise.all([
+        selectedOperatorGuildId
+          ? fetchGuildVoiceChannels(selectedOperatorGuildId)
+          : Promise.resolve([]),
+        selectedOperatorGuildId
+          ? prisma.guild.findUnique({
+              where: { id: selectedOperatorGuildId },
+              select: { timezone: true },
+            })
+          : Promise.resolve(null),
+      ]);
+      htmlReply(
+        reply,
+        opWizardPage({
+          basePath: basePath(),
+          currentUser: ctx.user,
+          csrfToken: ctx.csrfToken,
+          flash: req.query.flash,
+          operatorGuilds,
+          selectedOperatorGuildId,
+          guildVoiceChannels,
+          locations: await searchLocations(undefined, "", 0, true),
+          guildTimezone:
+            (wizGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
+        }),
+      );
+    },
+  );
 
   app.post<{ Body: Record<string, string> }>("/ops/new", async (req, reply) => {
     const ctx = await requireAuth(req, reply);
