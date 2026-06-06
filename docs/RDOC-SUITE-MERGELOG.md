@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Mission-Cover editor bug fixes (HEADWiG report, FR-P4)
+
+Four editor bugs + 1 FR.
+- **Edits not persisted (bug1):** editor always rebuilt config from op data. Now the service stores the
+  engine config (+bg) sidecar (`<id>.config.json`) on every save/generate; `GET /v1/covers/:id/config`
+  (Bearer) returns it; editor token carries `coverId` and the editor reopens the saved config when present.
+- **Style switch wiped inputs (bug4):** engine `handleSelectPreset` now merges ONLY style fields
+  (colors/fonts/effects via STYLE_FIELDS), keeping texts/positions/badges/bg/logo.
+- **Cancel → 5xx (bug3):** editor got a separate `cancelUrl` (cover page); cancel used to hit the save
+  callback (`/cover/saved`) without a token (+ an umlaut in the redirect flash) → error page. Flash text ASCII now.
+- **Save bar overlap (bug2):** bar shrinks `.app-container` to `calc(100vh - 56px)` instead of body padding.
+- FR (attach screenshots to Bug Reporter): logged in ROADMAP, not implemented.
+Touched: engine App.jsx; mission-cover store.ts/routes covers.ts+editor.ts/services editor.ts;
+fleetplanner routes/cover.ts. Deployed mission-cover + fleetplanner.
+
 ## Completed Step - 2026-06-06: Drop FR-P5 Rolling Crew Positions
 
 User: no real use case → removed without replacement. Deleted `docs/FR-P5-rolling-crew-positions.md`;

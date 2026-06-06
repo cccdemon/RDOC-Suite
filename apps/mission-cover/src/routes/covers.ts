@@ -1,8 +1,18 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { getEnv } from "../config/env.js";
 import { coverRequestSchema, AUTHOR_CREDIT, type CoverMeta, type CoverResponse } from "../schema.js";
-import { renderCover } from "../services/render.js";
-import { deleteCover, getMeta, getPng, isValidId, newId, saveCover } from "../services/store.js";
+import { renderEngineConfig } from "../services/render.js";
+import { buildEngineConfig } from "../services/prefill.js";
+import {
+  deleteCover,
+  getConfig,
+  getMeta,
+  getPng,
+  isValidId,
+  newId,
+  saveConfig,
+  saveCover,
+} from "../services/store.js";
 
 function publicPngUrl(id: string): string {
   return `${getEnv().MISSIONCOVER_PUBLIC_URL.replace(/\/$/, "")}/covers/${id}.png`;
@@ -43,7 +53,9 @@ export function registerCoverRoutes(app: FastifyInstance): void {
     }
 
     try {
-      const { png, width, height } = await renderCover(parsed.data);
+      const config = buildEngineConfig(parsed.data);
+      const bg = parsed.data.data.backgroundImage ?? null;
+      const { png, width, height } = await renderEngineConfig(config, bg);
       const meta: CoverMeta = {
         id: newId(),
         opId: parsed.data.opId,
@@ -54,11 +66,23 @@ export function registerCoverRoutes(app: FastifyInstance): void {
         createdAt: new Date().toISOString(),
       };
       await saveCover(meta, png);
+      // Persist the engine config so the editor can reopen this cover.
+      await saveConfig(meta.id, { config, bg });
       return reply.code(201).send(toResponse(meta));
     } catch (err) {
       req.log.error({ err, opId: parsed.data.opId }, "cover render failed");
       return reply.code(500).send({ error: "render_failed" });
     }
+  });
+
+  // ── M2M: saved engine config (editor reopen) ───────────────────────────────
+  app.get<{ Params: { id: string } }>("/v1/covers/:id/config", async (req, reply) => {
+    if (!requireServiceAuth(req, reply)) return;
+    const { id } = req.params;
+    if (!isValidId(id)) return reply.code(400).send({ error: "invalid_id" });
+    const cfg = await getConfig(id);
+    if (!cfg) return reply.code(404).send({ error: "not_found" });
+    return reply.send(cfg);
   });
 
   // ── M2M: cover metadata ────────────────────────────────────────────────────

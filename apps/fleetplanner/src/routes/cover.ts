@@ -186,14 +186,17 @@ export async function coverRoutes(app: FastifyInstance): Promise<void> {
       const secret = env.MISSIONCOVER_SERVICE_SECRET;
       if (!secret) return reply.redirect(coverUrl(op.id, "error:Cover-Service+nicht+konfiguriert."), 302);
 
-      const returnUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/ops/${op.id}/cover/saved`;
+      const baseUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+      const existing = await prisma.opCover.findUnique({ where: { opId: op.id } });
       const token = signCoverToken(
         {
           opId: op.id,
-          returnUrl,
+          returnUrl: `${baseUrl}/ops/${op.id}/cover/saved`,
+          cancelUrl: `${baseUrl}/ops/${op.id}/cover`,
           format: pickFormat(req.query.format),
           preset: pickPreset(req.query.preset),
           data: opToCoverData(op),
+          ...(existing ? { coverId: existing.coverId } : {}),
         },
         secret,
         1800,
@@ -220,7 +223,7 @@ export async function coverRoutes(app: FastifyInstance): Promise<void> {
       const secret = getEnv().MISSIONCOVER_SERVICE_SECRET;
       const payload = secret && req.query.ct ? verifyCoverToken<ResultToken>(req.query.ct, secret) : null;
       if (!payload || payload.opId !== op.id) {
-        return reply.redirect(coverUrl(op.id, "error:Ungültiger+Speicher-Token."), 302);
+        return reply.redirect(coverUrl(op.id, "error:Invalid+save+token."), 302);
       }
       await upsertCover(op.id, {
         id: payload.coverId,

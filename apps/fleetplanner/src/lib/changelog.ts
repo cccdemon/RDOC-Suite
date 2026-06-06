@@ -13,6 +13,16 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-06",
+    title: "Mission cover editor fixes",
+    changes: [
+      "Your edits now persist: reopening the cover editor loads your last saved cover (positions, texts, background and logo) instead of starting over.",
+      "Switching the style preset now keeps all your inputs and only changes the look (colors, fonts, effects) — it no longer wipes your texts and placements.",
+      "Fixed: clicking \"Abbrechen\" in the editor now returns to the cover page instead of showing an error.",
+      "The bottom save bar no longer covers the editor.",
+    ],
+  },
+  {
+    date: "2026-06-06",
     title: "Recurring events",
     changes: [
       "Operations can now repeat: pick \"Repeat\" in the create wizard (weekly, every 2 weeks, monthly on the same weekday, or yearly) — the pattern follows your start date.",

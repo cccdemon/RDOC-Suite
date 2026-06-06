@@ -32,6 +32,26 @@ function pngPath(id: string): string {
 function metaPath(id: string): string {
   return path.join(dir(), `${id}.json`);
 }
+function configPath(id: string): string {
+  return path.join(dir(), `${id}.config.json`);
+}
+
+// Full engine config + bg, kept so the editor can reopen a saved cover and
+// continue editing (instead of rebuilding from op data and losing edits).
+export type CoverConfig = { config: unknown; bg: string | null };
+
+export async function saveConfig(id: string, payload: CoverConfig): Promise<void> {
+  await ensureStore();
+  await fs.writeFile(configPath(id), JSON.stringify(payload), "utf8");
+}
+
+export async function getConfig(id: string): Promise<CoverConfig | null> {
+  try {
+    return JSON.parse(await fs.readFile(configPath(id), "utf8")) as CoverConfig;
+  } catch {
+    return null;
+  }
+}
 function indexPath(): string {
   return path.join(dir(), OP_INDEX);
 }
@@ -60,6 +80,7 @@ export async function saveCover(meta: CoverMeta, png: Buffer): Promise<void> {
   if (prev && prev !== meta.id) {
     await fs.rm(pngPath(prev), { force: true });
     await fs.rm(metaPath(prev), { force: true });
+    await fs.rm(configPath(prev), { force: true });
   }
   idx[meta.opId] = meta.id;
   await writeIndex(idx);
@@ -91,6 +112,7 @@ export async function getCoverByOp(opId: string): Promise<CoverMeta | null> {
 export async function deleteCover(id: string): Promise<void> {
   await fs.rm(pngPath(id), { force: true });
   await fs.rm(metaPath(id), { force: true });
+  await fs.rm(configPath(id), { force: true });
   const idx = await readIndex();
   let changed = false;
   for (const [opId, coverId] of Object.entries(idx)) {

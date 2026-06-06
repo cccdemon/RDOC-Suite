@@ -35,6 +35,8 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | PTT custom press/release sound | Feedback (Mimosenherkules) | ✓ Done — commit 1efbb17 (Companion, local build pending) |
 | 404 on accepted link when not logged in → show login note | Feedback (exrelax) | Quick-win — in progress this batch |
 | Fleet naming: non-capital lead = "Pilot" not "Captain" | Feedback (Mimosenherkules) | Quick-win — in progress this batch |
+| Mission cover editor: edits/positions persist, style-switch keeps inputs, cancel fix, save-bar overlap | Bug (HEADWiG) | ✓ Done 2026-06-06 |
+| Bug Reporter: attach screenshots | Feature request (HEADWiG) | Open — feedback form posts to Discord; needs file upload → Discord attachment |
 
 ## Needs sighting / clarification (no doc yet)
 - **"Vi5E Tools"** — tools to be reviewed before locking the eventcreation admin wizard scope.

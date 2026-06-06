@@ -28,8 +28,9 @@ export type EditorBootstrap = {
   config: EngineConfig;
   bg: string | null;
   saveUrl: string; // service endpoint the save bar POSTs to
-  token: string; // capability token (carries opId + returnUrl), echoed on save
-  returnUrl: string; // fleetplanner page to cancel back to
+  token: string; // capability token, echoed on save
+  returnUrl: string; // save callback (service appends ?ct=)
+  cancelUrl: string; // where "Abbrechen" navigates (cover page)
   opTitle: string;
 };
 
@@ -45,13 +46,14 @@ export async function buildEditorHtml(boot: EditorBootstrap): Promise<string> {
   })();</script>`;
 
   const bar = `<script>(function(){
-    var BOOT=${safeJson({ saveUrl: boot.saveUrl, token: boot.token, returnUrl: boot.returnUrl, opTitle: boot.opTitle })};
+    var BOOT=${safeJson({ saveUrl: boot.saveUrl, token: boot.token, returnUrl: boot.returnUrl, cancelUrl: boot.cancelUrl, opTitle: boot.opTitle })};
+    var BAR_H=56;
     function el(t,p){var e=document.createElement(t);Object.assign(e,p||{});return e;}
     window.addEventListener('load',function(){
-      var bar=el('div');bar.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;display:flex;gap:12px;align-items:center;justify-content:flex-end;padding:10px 16px;background:rgba(2,8,20,.92);border-top:1px solid #1e293b;font-family:system-ui,sans-serif';
+      var bar=el('div');bar.style.cssText='position:fixed;left:0;right:0;bottom:0;height:'+BAR_H+'px;box-sizing:border-box;z-index:99999;display:flex;gap:12px;align-items:center;justify-content:flex-end;padding:0 16px;background:rgba(2,8,20,.95);border-top:1px solid #1e293b;font-family:system-ui,sans-serif';
       var label=el('span',{textContent:'Mission Cover — '+BOOT.opTitle});label.style.cssText='margin-right:auto;color:#94a3b8;font-size:13px';
       var cancel=el('button',{textContent:'Abbrechen'});cancel.style.cssText='padding:8px 14px;border:1px solid #334155;background:transparent;color:#cbd5e1;border-radius:6px;cursor:pointer';
-      cancel.onclick=function(){window.location.href=BOOT.returnUrl;};
+      cancel.onclick=function(){window.location.href=BOOT.cancelUrl;};
       var save=el('button',{textContent:'In Operation speichern'});save.style.cssText='padding:8px 16px;border:1px solid #0ea5e9;background:#0284c7;color:#fff;border-radius:6px;cursor:pointer;font-weight:600';
       save.onclick=async function(){
         save.disabled=true;save.textContent='Speichere…';
@@ -66,7 +68,10 @@ export async function buildEditorHtml(boot: EditorBootstrap): Promise<string> {
       };
       bar.appendChild(label);bar.appendChild(cancel);bar.appendChild(save);
       document.body.appendChild(bar);
-      document.body.style.paddingBottom='64px';
+      // Reserve space so the bar never covers the editor: shrink the app shell.
+      var shell=document.querySelector('.app-container');
+      if(shell){shell.style.height='calc(100vh - '+BAR_H+'px)';}
+      else{document.body.style.paddingBottom=BAR_H+'px';}
     });
   })();</script>`;
 

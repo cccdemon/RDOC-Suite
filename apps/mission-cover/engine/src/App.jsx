@@ -231,16 +231,23 @@ export default function App() {
     }));
   };
 
-  // Switch between presets, but retain custom background if uploaded
+  // Switch the visual STYLE only — keep all of the user's content (texts,
+  // positions, badges, background, logo). Previously this replaced the whole
+  // config with the preset, wiping every edit on a style change.
+  const STYLE_FIELDS = [
+    'primaryColor', 'secondaryColor', 'glowColor', 'backgroundColor', 'textColor',
+    'accentColor', 'fontTitle', 'fontBody', 'scanlinesIntensity', 'noiseIntensity',
+    'vignetteIntensity', 'glitchIntensity', 'chromaticAberration', 'gridOverlay',
+  ];
   const handleSelectPreset = (presetId) => {
     const preset = defaultTemplates.find(t => t.id === presetId);
     if (preset) {
-      setConfig(prev => ({
-        ...preset,
-        customLogoUrl: prev.customLogoUrl || preset.customLogoUrl,
-        logoType: prev.logoType === 'custom' ? 'custom' : preset.logoType,
-        layers: prev.layers || { ...defaultLayers }
-      }));
+      setConfig(prev => {
+        const next = { ...prev, id: preset.id, name: preset.name };
+        for (const k of STYLE_FIELDS) next[k] = preset[k];
+        if (!next.layers) next.layers = { ...defaultLayers };
+        return next;
+      });
     }
   };
 

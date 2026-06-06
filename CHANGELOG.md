@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Mission-cover: editor bugs (HEADWiG bug report) (2026-06-06)
+
+- **Edits now persist:** the engine config (+ background) is stored alongside the rendered artifact; reopening the editor loads the last saved cover via the new `GET /v1/covers/:id/config` instead of rebuilding from op data (positions/texts/logo/bg were lost every session).
+- **Style switch keeps inputs:** `handleSelectPreset` now merges only the visual style fields (colors/fonts/effects); it no longer replaces the whole config and wipe the user's texts and placements.
+- **"Abbrechen" fixed:** the editor now has a separate `cancelUrl` (the cover page); cancel previously navigated to the save callback without a token and hit the 5xx error page.
+- **Save bar no longer overlaps** the editor: it shrinks the engine app shell to `calc(100vh - 56px)` instead of relying on body padding (ignored by the fixed-height layout).
+
 ### Added - Fleetplanner: recurring events (FR-P3) (2026-06-06)
 
 - An operation can **repeat** (weekly / every 2 weeks / monthly on the same weekday / yearly) — set "Repeat" in the create wizard; the pattern follows the start date you pick. Each occurrence becomes its own operation with its own roster, and the Discord scheduled event shows the native recurring badge.
