@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetplanner: ground vehicles carried by a ship (2026-06-06)
+
+- A captain can **add a ground vehicle to their ship** (catalog pick). The vehicle is a crewable sub-unit with its own seats, nested under the carrier ship on the event page; players claim/release vehicle seats like ship seats.
+- The operator accepts/rejects the **ship together with its vehicles** — accept/reject cascades to carried vehicles (reject also frees their seats). Captains can withdraw a vehicle.
+- The "Offer" option renamed (Offer — Ship / CQB Team / Ground vehicle); when no seat is open the join assistant defaults to Offer and disables the Seat choice.
+
 ### Fixed - Fleetplanner: reject frees seats; edit/withdraw own ship before accept (2026-06-06)
 
 - Rejecting a unit now **frees its seats** — you no longer "hold a seat" in a rejected ship (and "You hold a seat" only counts accepted units).

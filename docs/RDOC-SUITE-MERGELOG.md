@@ -1,5 +1,41 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-06: Fleetplanner — ground vehicles as crewable sub-units carried by a ship
+
+User: a ground vehicle is added to a CAPABLE ship before accepting; the operator accepts the
+"ship + vehicle". Chosen model (via question): vehicle = its own crewable unit linked to a carrier
+ship.
+- Schema: `FleetUnit.carrierUnitId` self-relation (onDelete Cascade) + migration
+  `20260606130000_fleet_unit_carrier_vehicle`; `unitType` adds `vehicle`. Migration applied on prod.
+- `registerUnit`: a vehicle is a catalog pick (`shipId`) attached to a ship unit (`carrierUnitId`,
+  same op, carrier must be a ship); inherits the carrier's status; seats via `specForShip`.
+  `categoryForUnit`/`matchesCategory`: a vehicle counts as **ground**.
+- `setUnitStatus` cascades accept/reject to the carrier's vehicles (and frees their seats on
+  reject) — accepting/rejecting the ship decides its vehicles too.
+- Player page: vehicles render **nested under their carrier** with claim/release seats; a captain
+  can **Add a ground vehicle** to their ship (catalog search) + **Withdraw** it. Join assistant:
+  when no open seat exists, defaults to **Offer** and disables the **Seat** option.
+- Manage board excludes vehicles from the slot-assign list.
+- **Verified on prod Postgres** (temp data, 6/6 PASS): attach, status-inherit, own seats,
+  accept-cascade, reject-cascade, reject-frees-seats. Build + 235 tests pass.
+
+## Queued / Planned Step - 2026-06-06: Mission-Cover microservice — Step 1+2 scaffold (FR-P4)
+
+Implementing [docs/FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md). New self-contained
+microservice `apps/mission-cover` (`@rdoc-suite/mission-cover`, container `rdoc-suite-mission-cover`):
+- **engine/** = MissionCover Gen2 copied verbatim from `addOns/MissionCover/MissionCover` (own npm build → `engine/dist/index.html`).
+- **Server-render** via Playwright headless Chromium: seed the engine's localStorage keys
+  (`star-citizen-cover-generator-config`/`-bg`) → load `engine/dist/index.html` → screenshot the
+  cover export-root node. Config injection needs NO engine logic change (engine already hydrates
+  from localStorage); only minimal engine hooks: `id="cover-export-root"` on the cover node +
+  fixed Vi5E credit (vi5e.net / twitch.tv/vi5e / youtube @Vi5E_).
+- **API (M2M, Bearer MISSIONCOVER_SERVICE_SECRET):** `POST /v1/covers` (op payload → render+store),
+  `GET /v1/covers/:id` (meta), `GET /covers/:id.png` (public read-only, unguessable id).
+- Artifacts in own volume `mission_cover_data:/app/data/covers`. Fleetplanner stays thin: client
+  `coverService.ts` (mirrors bridgeFetch), stores only opId→url, env-gated like BRIDGE_FLEET_SECRET.
+Decisions: engine **copied** (not submodule); MVP **auto-render only** (editor = later phase).
+Defer: actual deploy (user deploys). Build is Docker-only (no local pnpm/npm per project rules).
+
 ## Completed Step - 2026-06-06: Fleetplanner — reject frees seats; edit/withdraw own ship before accept
 
 User bugs: (1) editing your offered ship was only possible AFTER accept (wrong order — want it
