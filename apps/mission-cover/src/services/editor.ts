@@ -36,11 +36,13 @@ export type EditorBootstrap = {
 export async function buildEditorHtml(boot: EditorBootstrap): Promise<string> {
   const html = await engineHtml();
 
-  const seed = `<script>(function(){try{
-    localStorage.setItem('star-citizen-cover-generator-config', ${safeJson(JSON.stringify(boot.config))});
-    localStorage.setItem('star-citizen-cover-generator-lang','de');
-    ${boot.bg ? `localStorage.setItem('star-citizen-cover-generator-bg', ${safeJson(boot.bg)});` : `localStorage.removeItem('star-citizen-cover-generator-bg');`}
-  }catch(e){}})();</script>`;
+  // Seed via window globals (not localStorage) so large uploaded images survive
+  // — the engine reads __MC_CONFIG__/__MC_BG__ on init.
+  const seed = `<script>(function(){
+    window.__MC_CONFIG__ = ${safeJson(boot.config)};
+    window.__MC_BG__ = ${boot.bg ? safeJson(boot.bg) : "null"};
+    try{ localStorage.setItem('star-citizen-cover-generator-lang','de'); }catch(e){}
+  })();</script>`;
 
   const bar = `<script>(function(){
     var BOOT=${safeJson({ saveUrl: boot.saveUrl, token: boot.token, returnUrl: boot.returnUrl, opTitle: boot.opTitle })};
@@ -54,8 +56,9 @@ export async function buildEditorHtml(boot: EditorBootstrap): Promise<string> {
       save.onclick=async function(){
         save.disabled=true;save.textContent='Speichere…';
         try{
-          var config=localStorage.getItem('star-citizen-cover-generator-config');
-          var bg=localStorage.getItem('star-citizen-cover-generator-bg');
+          var st=window.__MC_STATE__||{};
+          var config=JSON.stringify(st.config||{});
+          var bg=st.bgImage||null;
           var r=await fetch(BOOT.saveUrl,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token:BOOT.token,config:config,bg:bg})});
           if(!r.ok){throw new Error('HTTP '+r.status);}
           var j=await r.json();window.location.href=j.redirect;

@@ -1,13 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { chromium, type Browser } from "playwright";
 import { getEnv, allowedImageHosts } from "../config/env.js";
-import {
-  buildEngineConfig,
-  cssDimensions,
-  ENGINE_BG_KEY,
-  ENGINE_CONFIG_KEY,
-  type EngineConfig,
-} from "./prefill.js";
+import { buildEngineConfig, cssDimensions, type EngineConfig } from "./prefill.js";
 import type { CoverRequest } from "../schema.js";
 
 let _browser: Browser | null = null;
@@ -96,20 +90,20 @@ async function doRender(config: EngineConfig, bg: string | null, w: number, h: n
   try {
     const page = await ctx.newPage();
 
-    // Seed the engine's localStorage BEFORE its scripts run, so it hydrates
-    // straight into the requested cover. No engine logic change needed.
+    // Seed via window globals BEFORE the engine's scripts run. Globals (not
+    // localStorage) so large uploaded images — background and custom logo data
+    // URLs — never hit the localStorage quota and silently vanish.
     await page.addInitScript(
-      (args: { ck: string; cfg: string; bk: string; bg: string | null }) => {
+      (args: { config: unknown; bg: string | null }) => {
+        (window as unknown as { __MC_CONFIG__: unknown }).__MC_CONFIG__ = args.config;
+        (window as unknown as { __MC_BG__: string | null }).__MC_BG__ = args.bg;
         try {
-          localStorage.setItem(args.ck, args.cfg);
           localStorage.setItem("star-citizen-cover-generator-lang", "de");
-          if (args.bg) localStorage.setItem(args.bk, args.bg);
-          else localStorage.removeItem(args.bk);
         } catch {
-          /* localStorage unavailable — engine falls back to defaults */
+          /* ignore */
         }
       },
-      { ck: ENGINE_CONFIG_KEY, cfg: JSON.stringify(config), bk: ENGINE_BG_KEY, bg },
+      { config, bg },
     );
 
     await page.goto(pathToFileURL(env.ENGINE_HTML).href, {

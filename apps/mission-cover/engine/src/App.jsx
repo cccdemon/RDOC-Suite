@@ -123,6 +123,13 @@ export default function App() {
 
   // 2. Load initial configuration
   const getInitialConfig = () => {
+    // Server-render / editor prefill: globals win over localStorage so uploaded
+    // images (bg, custom logo) never have to fit the localStorage quota.
+    if (typeof window !== 'undefined' && window.__MC_CONFIG__ && typeof window.__MC_CONFIG__ === 'object') {
+      const injected = window.__MC_CONFIG__;
+      if (!injected.layers) injected.layers = { ...defaultLayers };
+      return injected;
+    }
     const saved = safeStorage.getItem(LOCAL_STORAGE_KEY);
     if (saved) {
       try {
@@ -155,8 +162,18 @@ export default function App() {
 
   // 4. Other core states
   const [bgImage, setBgImage] = useState(() => {
+    if (typeof window !== 'undefined' && window.__MC_BG__) return window.__MC_BG__;
     return safeStorage.getItem(LOCAL_STORAGE_BG_KEY) || null;
   });
+
+  // Publish live state so the server-render/editor save can read the real
+  // current cover (bg + custom logo included) without relying on localStorage,
+  // which silently drops large data-URL images when the quota is exceeded.
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__MC_STATE__ = { config, bgImage };
+    }
+  }, [config, bgImage]);
 
   const [customPresets, setCustomPresets] = useState(() => {
     const saved = safeStorage.getItem(LOCAL_STORAGE_PRESETS_KEY);
