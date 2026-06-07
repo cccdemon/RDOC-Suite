@@ -6,6 +6,7 @@ import { prisma } from "../db.js";
 import { getEnv } from "../config/env.js";
 import type { ExternalProfile } from "./providers.js";
 import { syncUserGuildMemberships } from "../services/guilds.js";
+import { claimInterestShadows } from "../services/eventInterest.js";
 
 export type IdentityResult =
   | { ok: true; userId: string }
@@ -41,8 +42,12 @@ export async function resolveIdentity(profile: ExternalProfile): Promise<Identit
       where: { id: existing.user.id },
       data: { lastSeenAt: new Date(), username: profile.username },
     });
-    if (profile.provider === "discord" && profile.discordGuildIds) {
-      await syncUserGuildMemberships(existing.user.id, profile.discordGuildIds).catch(() => {});
+    if (profile.provider === "discord") {
+      if (profile.discordGuildIds) {
+        await syncUserGuildMemberships(existing.user.id, profile.discordGuildIds).catch(() => {});
+      }
+      // FR-P2: claim any shadow event-interest captured before this login.
+      await claimInterestShadows(existing.user.id, profile.providerId).catch(() => {});
     }
     return { ok: true, userId: existing.user.id };
   }
@@ -68,8 +73,11 @@ export async function resolveIdentity(profile: ExternalProfile): Promise<Identit
       },
     },
   });
-  if (profile.provider === "discord" && profile.discordGuildIds) {
-    await syncUserGuildMemberships(user.id, profile.discordGuildIds).catch(() => {});
+  if (profile.provider === "discord") {
+    if (profile.discordGuildIds) {
+      await syncUserGuildMemberships(user.id, profile.discordGuildIds).catch(() => {});
+    }
+    await claimInterestShadows(user.id, profile.providerId).catch(() => {});
   }
   return { ok: true, userId: user.id };
 }
@@ -115,6 +123,8 @@ export async function linkIdentity(
     if (profile.discordGuildIds) {
       await syncUserGuildMemberships(userId, profile.discordGuildIds).catch(() => {});
     }
+    // FR-P2: claim shadow event-interest now that this Discord id is linked.
+    await claimInterestShadows(userId, profile.providerId).catch(() => {});
   }
   return { ok: true, userId };
 }

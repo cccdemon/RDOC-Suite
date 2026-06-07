@@ -1984,6 +1984,35 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             Drag a crewmember onto an open accepted seat to assign them.
           </p>`
         : safe("")}
+      ${op.eventInterests.length
+        ? html`<div style="margin-top:.85rem;border-top:1px solid var(--border);padding-top:.6rem">
+            <div class="text-dim text-sm" style="margin-bottom:.4rem">
+              Interested via Discord${
+                op.eventInterests.filter((i) => !i.userId).length
+                  ? safe(
+                      ` · <strong>${String(
+                        op.eventInterests.filter((i) => !i.userId).length,
+                      )}</strong> dem System bisher unbekannt`,
+                    )
+                  : safe("")
+              }
+            </div>
+            <div class="opv2-crew-drag-list">
+              ${op.eventInterests.map(
+                (i) =>
+                  html`<div
+                    class="opv2-crew-chip"
+                    draggable="${isLeader && i.userId ? "true" : "false"}"
+                    data-crew-user-id="${i.userId ?? ""}"
+                    title="Clicked Interested on the Discord event"
+                  >
+                    <strong>${nm(i.displayName)}</strong>
+                    <span>${i.userId ? "Discord-interessiert" : "Discord — kein Konto"}</span>
+                  </div>`,
+              )}
+            </div>
+          </div>`
+        : safe("")}
       <div id="opv2-dnd-assign-forms" hidden>
         ${activeUnits.flatMap((unit) =>
           unit.seats
@@ -2425,6 +2454,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
         ${metric("Fleet Requirements", `${compositionFilled}/${compositionTotal}`)}
         ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
+        ${
+          op.eventInterests.length
+            ? metric(
+                "Discord interessiert",
+                `${op.eventInterests.filter((i) => i.userId).length}+${op.eventInterests.filter((i) => !i.userId).length}?`,
+              )
+            : safe("")
+        }
       </div>
 
       ${statusSpine}
@@ -4255,7 +4292,7 @@ export function opJoinPage(opts: {
             class="event-cover"
             src="${op.cover.url}"
             alt="Mission cover"
-            style="width:100%;max-height:340px;object-fit:cover;border-radius:10px;margin:8px 0"
+            style="display:block;width:100%;height:auto;object-fit:contain;border-radius:10px;margin:8px 0"
           />`
         : safe("")}
       <div>

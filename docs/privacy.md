@@ -12,6 +12,7 @@ This document describes exactly what data the Channel Commander system collects,
 | Session **start/stop timestamps** | SQLite/Postgres `CommanderSession.startedAt` / `endedAt` | Audit log | Until the admin deletes the row |
 | Companion **session JWT** | On the commander's PC, in `%APPDATA%\com.head87x.dccc.companion\settings.json` (or platform equivalent) | So the commander does not have to sign in on every app restart | Until the commander clicks **Sign out** or the token expires (15 min default) |
 | **Bridge logs** (pino, console) | Stderr of the bridge process | Operational debugging | Whatever the operator chooses to keep |
+| Discord **event-interest RSVPs** (snowflake + display name per operation) | Postgres `EventInterest` (Fleetplanner) | FR-P2: a pilot who clicks "Interested" on an op's Discord scheduled event is surfaced to the operator as a participant needing assignment | Deleted with the operation (FK cascade); set to `withdrawn` when the pilot un-clicks Interested |
 
 ## What is **never** collected
 

@@ -13,6 +13,22 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-07",
+    title: "Mission cover now shown in full",
+    changes: [
+      "The mission-cover image on the operation page is no longer cropped to a thin strip — the whole poster is shown.",
+    ],
+  },
+  {
+    date: "2026-06-07",
+    title: "Discord \"Interested\" auto-joins the op",
+    changes: [
+      "Click \"Interested\" on an operation's Discord event and you now show up automatically in the op's Need Assignment list — no separate signup needed.",
+      "Un-click Interested on Discord and you're removed again (and any seat you held is freed).",
+      "Pilots who haven't logged into the Fleetplanner yet show up by their Discord name and are counted separately as \"unknown to the system\"; logging in once with Discord links them up.",
+    ],
+  },
+  {
+    date: "2026-06-07",
     title: "Share events with partner Discords",
     changes: [
       "Partner & public operations can now be cross-posted to your partner Discords as their own scheduled event (linking back to the operation page).",

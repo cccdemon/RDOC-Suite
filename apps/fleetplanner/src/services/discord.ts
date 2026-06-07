@@ -557,6 +557,54 @@ export async function updatePartnerScheduledEvent(
   }
 }
 
+// FR-P2: list users who clicked "Interested" on a scheduled event. REST read,
+// bot token only — NO privileged gateway intent. Paginates via ?after.
+export type ScheduledEventUser = { discordUserId: string; displayName: string };
+
+export async function listScheduledEventUsers(
+  guildId: string,
+  eventId: string,
+): Promise<ScheduledEventUser[]> {
+  const token = fleetplannerBotToken();
+  if (!token) return [];
+
+  const out: ScheduledEventUser[] = [];
+  let after: string | undefined;
+  // Safety bound: 100/page × 20 pages = 2000 interested users max.
+  for (let page = 0; page < 20; page++) {
+    const url = new URL(
+      `${DISCORD_API}/guilds/${guildId}/scheduled-events/${eventId}/users`,
+    );
+    url.searchParams.set("limit", "100");
+    url.searchParams.set("with_member", "true");
+    if (after) url.searchParams.set("after", after);
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bot ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText);
+      throw new Error(`Discord scheduled-event users fetch failed (${res.status}): ${err}`);
+    }
+    const batch = (await res.json()) as Array<{
+      user: { id: string; username: string; global_name?: string | null };
+      member?: { nick?: string | null } | null;
+    }>;
+    if (batch.length === 0) break;
+    for (const row of batch) {
+      out.push({
+        discordUserId: row.user.id,
+        displayName:
+          row.member?.nick || row.user.global_name || row.user.username || row.user.id,
+      });
+    }
+    if (batch.length < 100) break;
+    after = batch[batch.length - 1].user.id;
+  }
+  return out;
+}
+
 export async function deleteScheduledEvent(guildId: string, eventId: string): Promise<void> {
   const token = fleetplannerBotToken();
   if (!token) return;

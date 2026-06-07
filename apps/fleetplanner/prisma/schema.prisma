@@ -30,6 +30,7 @@ model User {
   ownedGuilds      Guild[]                 @relation("GuildOwner")
   missionVoiceParticipations MissionVoiceParticipant[]
   opPrimaryUnits   OpPrimaryUnit[]
+  eventInterests   EventInterest[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -343,8 +344,31 @@ model Operation {
   questions                OpQuestion[]
   cover                    OpCover?
   distributions            EventDistribution[]
+  eventInterests           EventInterest[]
 
   @@index([recurrenceId])
+}
+
+// FR-P2: a pilot who clicked "Interested" on the op's Discord scheduled event.
+// Captured by polling the scheduled-event users REST endpoint. `userId` is null
+// for a "shadow" interest (Discord user with no Fleetplanner account yet); it's
+// claimed on their first Discord login. Bare interest is NOT a FleetUnit.
+model EventInterest {
+  id            String   @id @default(cuid())
+  operationId   String
+  discordUserId String // Discord snowflake — always known
+  userId        String? // resolved Fleetplanner user once linked (null = shadow)
+  displayName   String // Discord username/nick at capture time (shadow display)
+  status        String   @default("interested") // interested | withdrawn | converted
+  firstSeenAt   DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([operationId, discordUserId])
+  @@index([userId])
+  @@index([discordUserId])
 }
 
 // FR-P3: a recurring-operation series. Approach A — one native recurring

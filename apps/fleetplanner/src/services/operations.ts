@@ -117,6 +117,11 @@ export async function getOperation(id: string) {
       questions: { orderBy: { createdAt: "desc" } },
       cover: true,
       recurrence: true,
+      // FR-P2: pilots who clicked "Interested" on the Discord event (active only).
+      eventInterests: {
+        where: { status: "interested" },
+        orderBy: { firstSeenAt: "asc" },
+      },
     },
   });
 }

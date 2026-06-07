@@ -1,5 +1,46 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Bugfix — Mission-Cover im Op-Header beschnitten
+
+`opJoinPage`-Hero zeigte das Mission-Cover als `<img>` mit `object-fit:cover` + `max-height:340px`
+→ das 16:9-Poster (2400×1350) wurde auf einen 340px-Streifen beschnitten, nur Ausschnitt sichtbar.
+Fix: `object-fit:contain`, `height:auto`, max-height raus → ganzes Poster sichtbar, skaliert mit
+Container-Breite, kein Crop. CSS-only inline-style an der `.event-cover`-Stelle in pages.ts.
+
+## Completed Step - 2026-06-07: FR-P2 Discord-Event-Interest — Implementierung
+
+DONE. Bau von [docs/FR-P2-discord-event-interest.md](FR-P2-discord-event-interest.md) (Decisions 2026-06-07).
+- Schema `EventInterest { id, operationId, discordUserId, userId?, displayName, status
+  (interested|withdrawn|converted), firstSeenAt, updatedAt, @@unique([operationId,discordUserId]) }`
+  + `Operation.eventInterests` + Migration.
+- `discord.ts` `listScheduledEventUsers(guildId, eventId)` (REST
+  `/guilds/{g}/scheduled-events/{e}/users?with_member=true`, paginiert, Bot-Token).
+- `services/eventInterest.ts`: `syncOpInterest(op)` (Liste holen, Diff: neu→upsert interested +
+  userId via UserIdentity-Lookup oder Schatten; weg→withdrawn + **Seat freigeben** wenn linked user
+  Seat in der Op hält [Decision 2]); `claimInterestShadows(userId, discordId)` (beim Discord-Login);
+  `interestSummary(opId)` → {linked, unknown}.
+- Scheduler: eigener 5-Min-Tick in index.ts (nur Ops mit discordEventId + open/locked/in_progress).
+- Manage-Board: Interessenten in "Need Assignment" + Zahl "Dem System bisher unbekannte Nutzer"
+  (interested & userId=null). getOperation include erweitern.
+- Discord-Login (auth callback): `claimInterestShadows` nach UserIdentity-Upsert.
+- privacy.md: neue Datenklasse (Discord-Interesse-RSVP = Snowflake + Anzeigename pro Op).
+- CHANGELOG [Unreleased] + Website-Changelog.
+Kein lokaler Build (Regel 5); Code-first, compile-last.
+
+## Queued / Planned Step - 2026-06-07: PLAN DOC — FR-P2 Discord-Event-Interest → auto "needs assignment"
+
+Planning only — FR-Doc `docs/FR-P2-discord-event-interest.md` (Prio 2) + ROADMAP + CLAUDE-Tabelle.
+Wer im Discord-Scheduled-Event auf "Interested" klickt, soll im Fleetplanner-Op automatisch als
+unassigned Teilnehmer ("muss zugewiesen werden") erscheinen.
+- **Mechanik:** Poll `GET /guilds/{guildId}/scheduled-events/{eventId}/users?with_member=true`
+  (REST, Bot-Token, KEIN privilegierter Intent) im bestehenden Scheduler-Takt; Diff gegen bekannte
+  Interessenten → neue Schatten-Teilnehmer anlegen, entfernte als "interest withdrawn" markieren.
+- **Identität:** vorhandene `UserIdentity(discord,snowflake)` → direkt mappen; sonst Schatten-
+  Eintrag (Discord-id+name), beim ersten Discord-Login geclaimed/gemerged.
+- **Daten:** neues `EventInterest`-Modell (opId, discordUserId, userId?, status, firstSeenAt).
+- Surface im Manage-Board als unassigned (kein FleetUnit bis Schiff/Seat).
+Kein Code in diesem Step.
+
 ## Completed Step - 2026-06-07: FR-P1 Event-Distribution — Phase 2 (Approval)
 
 DONE: Approval-Flow. **User-Abweichung vom FR-Doc:** Empfänger = ALLE Fleetoperators des

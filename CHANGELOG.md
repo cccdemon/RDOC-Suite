@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Fleetplanner: mission cover cropped in the op header (2026-06-07)
+
+- The mission-cover image in the operation hero used `object-fit:cover` + a 340px max-height, so the 16:9 poster (2400×1350) was cut to a thin horizontal slice. Now shown in full (`object-fit:contain`, `height:auto`, no max-height) — the whole poster scales to the container width, no crop.
+
+### Added - Fleetplanner: Discord-event "Interested" → auto needs-assignment (FR-P2) (2026-06-07)
+
+- A pilot who clicks **"Interested"** on an op's Discord scheduled event now shows up in the op's **Need Assignment** list automatically — no manual Fleetplanner signup first. Withdrawing interest on Discord removes them again **and frees any seat** they were holding (decision: the Discord RSVP is the source of truth for bare interest).
+- Pilots **without** a Fleetplanner account appear as **shadow** participants (Discord name only) and are surfaced separately as a **"Dem System bisher unbekannte Nutzer"** count; they don't count toward participant min/max until linked. On their first Discord login the shadow is claimed/merged into the new account.
+- Mechanism: a 5-minute scheduler polls `GET /guilds/{guildId}/scheduled-events/{eventId}/users` (REST, bot token, **no privileged intent**) and diffs against `EventInterest` rows. New `EventInterest` model + migration `20260607160000_event_interest`; new `services/eventInterest.ts` (`syncOpInterest` / `claimInterestShadows` / `interestSummary` / scheduler) + `discord.ts` `listScheduledEventUsers`. Privacy: the new data class is documented in `docs/privacy.md`.
+
 ### Added - Fleetplanner: event distribution approval — Phase 2 (FR-P1) (2026-06-07)
 
 - Non-auto partners now get a real **approval flow**. **Recipients = every fleetoperator of the target guild** (per-guild role) — not a single named contact (user decision, diverges from the FR doc's contact-person model). Any of them can decide; decline is per-event only and never mutes future invites.

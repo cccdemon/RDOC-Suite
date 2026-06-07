@@ -12,6 +12,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P1 | Event Creation Simplification (Mobile join + Admin wizard) | [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) | — (sight "Vi5E Tools") | ✓ Core done (guided wizard + dedicated join view live); pending: sight "Vi5E Tools" |
 | P1 | Fleetplanner GUI UX (Join view + Fleet Requirements wording) | [FR-P1-fleetplanner-gui-ux-implementation.md](FR-P1-fleetplanner-gui-ux-implementation.md) | existing Fleetplanner SSR + Composition/FleetUnit models | ✓ Done (2026-06-06) |
 | P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | ✓ Done |
+| P2 | Discord-event "Interested" → auto needs-assignment | [FR-P2-discord-event-interest.md](FR-P2-discord-event-interest.md) | per-op Discord event (live); bot REST poll, no privileged intent | ✓ Done (2026-06-07) |
 | ~~P3~~ | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | — | ✗ **Abgelehnt** (Begründung folgt) |
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | ✓ Done (2026-06-06; series-distribution deferred → FR-P1) |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
@@ -23,8 +24,9 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 
 ## Recommended order (open items only)
 *Done: FR-P1 gui-ux, FR-P1 eventcreation (core), FR-P2 fleet-import, FR-P3 recurring-events, FR-P4 mission-cover.*
-1. **FR-P1 event-distribution** — base; unlocks federation voice + recurring series-distribution.
-2. **FR-P3 org-fleet** — light, most infra exists (needs `UserShip.quantity`).
+1. ~~**FR-P1 event-distribution**~~ — ✓ Done (Phase 1+2, 2026-06-07).
+2. ~~**FR-P2 discord-event-interest**~~ — ✓ Done (2026-06-07).
+3. **FR-P3 org-fleet** — light, most infra exists (needs `UserShip.quantity`).
 3. **FR-P3 roadmap-tab** — surfaces everything else + feedback intake.
 4. **FR-P3 inactivity-alert** — gateway bot + GUILD_MEMBERS intent.
 5. **FR-P3 language-switch / i18n** — large/phased; cross-app.
