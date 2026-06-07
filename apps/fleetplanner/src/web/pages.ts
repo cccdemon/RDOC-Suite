@@ -6882,11 +6882,46 @@ export function howToPage(opts: {
           coordinated through Discord and posted as Discord scheduled events.
         </p>
         <p style="margin-top:.5rem">
-          During an operation, mission voice connects the team through the
-          <strong>RDOC Squad Link</strong> companion app: a <span class="text-mono">Command Net</span>
-          for mission leaders and a <span class="text-mono">Global Radio Net</span> that broadcasts
-          into Discord voice channels. See <strong>Mission voice</strong> below.
+          The core — planning operations and posting them as Discord scheduled events — needs nothing
+          but this web app and the Fleetplanner Discord bot. Voice, briefing covers and metrics are
+          <strong>optional add-ons</strong> (see below).
         </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Optional features</div>
+      <div class="card" style="padding:1rem;max-width:52rem">
+        <p style="margin-top:0">
+          These extend the Fleetplanner but are not required to plan and run operations:
+        </p>
+        <table class="user-table" style="width:100%;margin-top:.75rem">
+          <thead>
+            <tr><th>Add-on</th><th>What it adds</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tag tag-cyan">RDOC Squad Link (Companion)</span></td>
+              <td>
+                The desktop app for <strong>mission voice</strong> (Command Net + Global Radio Net).
+                Only needed by people who use voice during an op, and only when a server has voice
+                enabled by the SuperAdmin. Without it, planning still works fully.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-gold">Mission Cover</span></td>
+              <td>
+                A generator for cinematic briefing-cover images per operation (banner, share preview,
+                Discord-event image). If the cover service isn't configured, the op simply uses no
+                custom cover.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-dim">Monitoring</span></td>
+              <td>Operational metrics dashboard for operators of the instance. Not player-facing.</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -6935,10 +6970,12 @@ export function howToPage(opts: {
       <div class="section-title">Mission voice</div>
       <div class="card" style="padding:1rem;max-width:52rem">
         <p style="margin-top:0">
-          Mission voice runs over a separate LiveKit audio path (Discord audio is never touched) and
-          is reached through the <strong>RDOC Squad Link</strong> companion app using two push-to-talk
-          keys. It is granted per operation via the <strong>Commanders</strong> tab — a mission
-          roster, not an admin roster. Fleet admins are not on the nets unless assigned a mission role.
+          <em>Optional add-on.</em> Mission voice runs over a separate LiveKit audio path (Discord
+          audio is never touched) and is reached through the optional <strong>RDOC Squad Link</strong>
+          companion app using two push-to-talk keys. It requires the server to have voice enabled by
+          the SuperAdmin. It is granted per operation via the <strong>Commanders</strong> tab — a
+          mission roster, not an admin roster. Fleet admins are not on the nets unless assigned a
+          mission role.
         </p>
         <table class="user-table" style="width:100%;margin-top:.75rem">
           <thead>
@@ -6994,25 +7031,36 @@ export function howToPage(opts: {
             bot on your server. You become that server's Admiral.
           </li>
           <li>
-            Go to <strong>Servers → Settings</strong> to set an optional event voice channel and
-            Discord-role mapping (auto-assigns Admiral permissions on login).
+            Go to <strong>Servers → Settings</strong> to set an optional event voice channel, a
+            Discord invite link (shown to guests on the signup page), and Discord-role mapping
+            (auto-assigns Admiral permissions on login).
           </li>
           <li>
-            Click <strong>+ New Operation</strong>, fill in title, date, meeting location, and op
-            type. Save as draft.
+            Click <strong>+ New Operation</strong> to launch the <strong>guided wizard</strong>:
+            basics (title, date in your server's timezone, type) → briefing (Markdown) → Discord →
+            <strong>Fleet Requirements</strong> (with templates) → review. Optionally make it
+            <strong>recurring</strong> (weekly / every 2 weeks / monthly / yearly) and/or jump to the
+            Mission Cover after creating.
           </li>
-          <li>Add <strong>Fleet Requirements</strong> to define which ship types and teams you need.</li>
+          <li>
+            You land in the <strong>management workspace</strong> (status flow Draft → Open → Live →
+            Done, with a "next step" button and attention tabs).
+          </li>
           <li>
             Set status to <strong>Open</strong> — a Discord scheduled event is posted automatically
-            to your server.
+            (with the cover image if you made one).
           </li>
           <li>
-            Accept incoming unit registrations. Accepted units get their seats opened
-            for Crew.
+            Accept incoming ships / CQB teams (and any carried ground vehicles). Accepted units open
+            their seats for crew; assign people to composition slots as needed.
           </li>
           <li>
-            When done, set status to <strong>Completed</strong> or <strong>Cancelled</strong> (event
-            is removed from Discord).
+            Optionally (with voice enabled): prepare mission voice and pull unit crews into their
+            Discord voice channels.
+          </li>
+          <li>
+            When done, set status to <strong>Completed</strong> (export participants as CSV) or
+            <strong>Cancelled</strong> (event removed from Discord).
           </li>
         </ol>
       </div>
@@ -7024,16 +7072,26 @@ export function howToPage(opts: {
         <ol style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem">
           <li>
             <strong>Login</strong> and make sure your Discord account is linked (required to see
-            your server's operations).
+            your server's operations). Guests of public ops can use the <strong>Discord</strong>
+            invite link on the signup page to join the server.
           </li>
           <li>
-            Open an operation and click <strong>Register a Unit</strong>. Pick your ship (search or
-            use your hangar) or create an FPS squad.
+            Open an operation — the <strong>signup page</strong> has an "I want to join" assistant
+            with three choices: <strong>let the operator place me</strong>, <strong>take an open
+            seat</strong>, or <strong>offer a ship / CQB team</strong>.
           </li>
-          <li>Wait for the Admiral to <strong>accept</strong> your unit.</li>
-          <li>Once accepted, open seats become visible — crew members can claim them.</li>
           <li>
-            Add ships to <strong>Profile → My Hangar</strong> for quick access when registering.
+            If you offer a ship: configure its seats (rename, enable/disable) while it's still
+            pending, withdraw it if needed, and (on a ship with a big-enough cargo bay) add a
+            <strong>ground vehicle</strong> as a crewable sub-unit. Wait for the operator to accept.
+          </li>
+          <li>
+            See the <strong>accepted units</strong> right on the page and claim/release seats inline —
+            no separate edit mode.
+          </li>
+          <li>
+            Fill <strong>Profile → Owned Ships</strong> for quick selection — type by hand or
+            <strong>import a CCU-Game JSON</strong> export; unmatched names can be assigned manually.
           </li>
         </ol>
       </div>

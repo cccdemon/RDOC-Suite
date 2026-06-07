@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Refresh How-to page (current flows + optional features)
+
+`howToPage` was stale (classic "Register a Unit"/draft flow). Updated: guided creation wizard,
+recurring events, player signup page + join assistant (claim seat / offer ship-or-CQB / let operator
+place me), fleet JSON import, ground vehicles, Discord invite. Added an **Optional features** section
+clearly marking Companion (mission voice), Mission Cover, and Monitoring as optional.
+
 ## Completed Step - 2026-06-07: Player signup shows the guild Discord invite link
 
 Bug: opJoinPage didn't surface the guild's `discordInviteUrl`. Add `discordInviteUrl` to the
