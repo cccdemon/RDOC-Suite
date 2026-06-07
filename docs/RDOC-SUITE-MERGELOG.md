@@ -1,5 +1,82 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: FR-P1 Event-Distribution — Phase 2 (Approval)
+
+DONE: Approval-Flow. **User-Abweichung vom FR-Doc:** Empfänger = ALLE Fleetoperators des
+Ziel-Discords (nicht eine benannte contactUserId). Jeder kann teilen/ablehnen. Touched:
+- `services/eventDistribution.ts`: `approveDistribution`/`declineDistribution` (idempotent nur aus
+  pending, role-guard via `isTargetFleetoperator`), `listIncomingDistributions`,
+  `countIncomingDistributions`, `getTargetFleetoperators`, `isTargetFleetoperator`,
+  `notifyTargetFleetoperators` (DM-Fan-out beim NEUEN pending; nur wenn !existing → kein Re-DM).
+- `services/discord.ts`: `sendDiscordDmComponents` (DM mit Embed+Buttons) + `verifyDiscordInteraction`
+  (Ed25519 via Node `crypto`, SPKI-Prefix-Trick, kein Dep) + Embed/Component-Typen.
+- **Web-Inbox = source of truth:** in die Partnerships-Page integriert ("Shared with us"-Section,
+  Teilen/Ablehnen, CSRF). Routes `POST /guilds/partnerships/event/:id/{approve,decline}`. Badge auf
+  dem Settings-"Partnerships"-Button (`countIncomingDistributions`).
+- **Discord DM-Buttons:** custom_id `evt-share:<id>`/`evt-decline:<id>`. Neuer
+  `routes/discordInteractions.ts` `POST /discord/interactions` (encapsulated raw-body-Parser für
+  Signatur; PING→PONG; Button→Discord-id→fleetplanner-user→approve/decline→message-update/ephemeral).
+  In app.ts registriert.
+- Env `DISCORD_FLEETPLANNER_PUBLIC_KEY` (env.ts + .env.example + .env.prod.template).
+- CHANGELOG [Unreleased] + Website-Changelog gepflegt.
+Kein lokaler Build (Regel 5) — erster Docker `--build` = Typecheck. Commit/Deploy: User.
+**Kein neuer Bot / keine neue Verbindung:** Cross-Post nutzt den EINEN bereits in allen
+Partner-Guilds installierten Fleetplanner-Bot (`createPartnerScheduledEvent` POSTet mit dem
+Bot-Token in `/guilds/{targetGuildId}/scheduled-events`). Partner-Beziehung = bestehendes
+Partner-Token / `GuildPartnership`. Nichts pro Partner einzurichten.
+**Optionales App-Setup (nur für DM-Buttons, einmalig, app-global):** Fleetplanner-App → Public Key
+in `.env`, Interactions-Endpoint-URL = `<FLEETPLANNER_PUBLIC_URL>/fleetplanner/discord/interactions`.
+Bereits durch `handle_path /fleetplanner*` (Caddy) erreichbar — KEINE Caddy-Änderung nötig. Ohne
+Public Key funktioniert Approval voll über die Web-Inbox.
+**FR-P1 damit vollständig** (Phase 1+2).
+
+## Completed Step - 2026-06-07: FR-P1 Event-Distribution — Phase 1 (schema + auto-share fan-out)
+
+DONE: [docs/FR-P1-event-distribution.md](FR-P1-event-distribution.md) Build-Order Schritt 1,
+**auto-share only** (Approval-Flow = Phase 2). Touched:
+- Schema (fleetplanner): `EventDistribution { id, operationId, sourceGuildId, targetGuildId,
+  status, contactUserId?, discordEventId?, decidedByUserId?, decidedAt?,
+  @@unique([operationId,targetGuildId]) }` + `PartnerSharePolicy { @@id([ownerGuildId,
+  partnerGuildId]), autoShare, defaultContactUserId? }` + `Operation.distributions`. Migration
+  `20260607120000_event_distribution`.
+- `services/discord.ts`: `createPartnerScheduledEvent(targetGuildId, op)` +
+  `updatePartnerScheduledEvent(...)` — immer EXTERNAL, location=HOST-op-URL (Decision F1.3),
+  reuse cover/opType-image + `buildEventDescription`.
+- `services/eventDistribution.ts`: `distributeOperation(op)` (idempotent je Target via
+  `getActivePartnerGuildIds`; Policy owner=Target/partner=Host; autoShare→post+row status="auto",
+  sonst row "pending" ohne Post), `updateDistributedEvents`, `deleteDistributedEvents`
+  (Discord-Delete + row→revoked), `getAutoShareMap`/`setAutoShare`.
+- Lifecycle-Hooks: `api.ts` op→open (visibility partners|public) → distribute (fire&forget);
+  op→cancelled → deleteDistributed. `web.ts` op-edit (open) → distribute + updateDistributed;
+  op-delete → deleteDistributed VOR `deleteOperation` (FK-Cascade würde sonst Partner-Events
+  verwaisen lassen).
+- UI: Partnerships-Page Active-Tabelle neue Spalte "Their events" mit Auto-share-Toggle pro
+  aktivem Partner; Route `POST /guilds/partnerships/:partnerGuildId/auto-share` (gated auf
+  active partner). `PartnershipView` um `partnerGuildId`+`autoShare` erweitert.
+- CHANGELOG [Unreleased] + Website-Changelog (`lib/changelog.ts`) gepflegt.
+Alle Fan-out best-effort/non-fatal. Kein lokaler Build (Regel 5) — erster Docker `--build` =
+echter Typecheck + `prisma migrate deploy` beim Container-Start. Commit/Deploy: User.
+**Phase 2 offen:** Approval (web inbox = source of truth, dann Discord-DM-Buttons via
+HTTP-Interactions-Endpoint), Contact-Person-Auswahl pro Event×Target, mission-role-Label.
+
+## Completed Step - 2026-06-07: Bug Reporter — Screenshot-Attachments (HEADWiG FR)
+
+DONE (Fleetplanner): Feedback-Form (`/feedback`) kann jetzt Screenshots anhängen → gehen als
+Discord-Message-Attachments mit. Touched:
+- `package.json`: Dependency `@fastify/multipart` ^9.0.3.
+- `app.ts`: `multipart` registriert mit Hard-Limit `fileSize 8 MB / files 4 / fields 10`.
+- `web/pages.ts` `feedbackPage`: `enctype=multipart/form-data` +
+  `<input type=file name=screenshots multiple accept="image/*">` + Hinweis (max 4, 8 MB).
+- `routes/web.ts` `POST /feedback`: ein Stream-Pass über `req.parts()` — Textfelder +
+  Bild-Parts; Mime-Allowlist (png/jpeg/gif/webp), Leerdatei-Skip, Dateiname sanitisiert,
+  Über-Limit→`toBuffer` wirft→Error-Flash, unbekannte File-Parts drained. CSRF gegen
+  gesammelte Felder. Non-multipart-Fallback auf `req.body`.
+- `services/discord.ts` `sendDiscordChannelMessage(channelId, content, attachments?)`: bei
+  Attachments multipart (`payload_json` + `files[n]`, 20s timeout), sonst JSON wie bisher.
+  Neuer Export-Typ `DiscordAttachment`.
+- CHANGELOG.md [Unreleased] + Website-Changelog (`lib/changelog.ts`) gepflegt.
+Kein lokaler Build (Regel 5) — erster Docker `--build` = echter Typecheck. Commit/Deploy: User.
+
 ## Completed Step - 2026-06-07: Refresh How-to page (current flows + optional features)
 
 `howToPage` was stale (classic "Register a Unit"/draft flow). Updated: guided creation wizard,

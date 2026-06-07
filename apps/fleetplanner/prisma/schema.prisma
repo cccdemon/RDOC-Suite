@@ -87,6 +87,46 @@ model GuildPartnership {
   @@index([status])
 }
 
+// ── Event distribution (FR-P1) ─────────────────────────────────────
+// One row per (operation, target partner guild). A host op's Discord
+// scheduled event is offered to every active partner guild; each target
+// gets its own EXTERNAL event (location = host op page) once approved or
+// auto-shared. Directional sharing policy lives in PartnerSharePolicy.
+model EventDistribution {
+  id             String    @id @default(cuid())
+  operationId    String
+  sourceGuildId  String // host guild that created the op
+  targetGuildId  String // partner guild the event is offered to
+  status         String    @default("pending") // pending | approved | declined | auto | revoked
+  contactUserId  String? // named contact person on the target guild (member of targetGuildId)
+  discordEventId String? // scheduled-event id created in the target guild (null until posted)
+  decidedByUserId String?
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, targetGuildId])
+  @@index([targetGuildId])
+  @@index([status])
+}
+
+// Directional sharing policy: ownerGuildId decides whether partnerGuildId's
+// events auto-post into ownerGuildId's Discord. A dedicated directional row
+// (not the symmetric GuildPartnership) avoids A/B-order confusion.
+model PartnerSharePolicy {
+  ownerGuildId         String // the guild that receives events and sets the policy
+  partnerGuildId       String // the guild whose events this policy governs
+  autoShare            Boolean @default(false)
+  defaultContactUserId String? // pre-fill contact person for events from partnerGuildId
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@id([ownerGuildId, partnerGuildId])
+  @@index([partnerGuildId])
+}
+
 model GuildVoiceBot {
   id                String   @id @default(cuid())
   guildId           String
@@ -302,6 +342,7 @@ model Operation {
   auditLogs                AuditLog[]
   questions                OpQuestion[]
   cover                    OpCover?
+  distributions            EventDistribution[]
 
   @@index([recurrenceId])
 }

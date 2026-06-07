@@ -4,6 +4,7 @@ import { requireAuth, requireGuildRole } from "../auth/middleware.js";
 import { installGuild, getMembership, listUserGuilds, deactivateGuild } from "../services/guilds.js";
 import { addGuildVoiceBot, deleteGuildVoiceBot, updateGuildVoiceBot } from "../services/voiceBots.js";
 import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
+import { countIncomingDistributions } from "../services/eventDistribution.js";
 import { prisma } from "../db.js";
 import { rawHtml, noGuildPage, guildSettingsPage, guildsListPage, guildDiagnosticsPage } from "../web/pages.js";
 
@@ -141,7 +142,7 @@ export async function guildRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const gctx = await requireGuildRole(req, reply, "fleetoperator");
       if (!gctx) return;
-      const [guild, memberships, voiceBots] = await Promise.all([
+      const [guild, memberships, voiceBots, incomingShared] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
           id: true, name: true, orgName: true, ownerUserId: true, voiceChannelCategoryId: true,
@@ -175,6 +176,7 @@ export async function guildRoutes(app: FastifyInstance) {
           },
           orderBy: { createdAt: "asc" },
         }),
+        countIncomingDistributions(gctx.guildId),
       ]);
       if (!guild) return reply.redirect(basePath("/guilds/none"), 302);
       const canRemove = guild.ownerUserId === gctx.user.id || gctx.user.role === "superadmin";
@@ -184,6 +186,7 @@ export async function guildRoutes(app: FastifyInstance) {
         csrfToken: gctx.csrfToken,
         flash: req.query.flash,
         guild,
+        incomingShared,
         memberships,
         voiceBots,
         activeGuildId: gctx.guildId,

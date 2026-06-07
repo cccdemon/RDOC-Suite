@@ -38,6 +38,10 @@ const schema = z.object({
   DISCORD_FLEETPLANNER_CLIENT_ID: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_SECRET: z.string().optional(),
   DISCORD_FLEETPLANNER_BOT_TOKEN: z.string().optional(),
+  // Ed25519 public key of the Fleetplanner Discord app — required to verify
+  // incoming HTTP interactions (FR-P1 event-distribution approval buttons).
+  // Set the app's "Interactions Endpoint URL" to <WEB_PUBLIC_URL>/discord/interactions.
+  DISCORD_FLEETPLANNER_PUBLIC_KEY: z.string().optional(),
   // Companion app OAuth — uses the RDOC-RTC Bot (separate from the Fleetmanager Bot)
   DISCORD_COMPANION_BOT_ID: z.string().optional(),
   DISCORD_COMPANION_BOT_KEY: z.string().optional(),

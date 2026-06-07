@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createPublicKey, verify as cryptoVerify } from "node:crypto";
 import sharp from "sharp";
 import { getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
@@ -470,6 +471,92 @@ export async function updateScheduledEvent(op: {
   }
 }
 
+// ── Partner event distribution (FR-P1) ─────────────────────────────
+// A distributed event lives in a PARTNER guild but always points back to
+// the HOST op page (entity_type EXTERNAL, location = host op URL — decision
+// F1.3). Voice/relay is F2's concern and is never baked into this event.
+
+type PartnerEventOp = {
+  id: string;
+  title: string;
+  description: string;
+  scheduledAt: Date;
+  opType?: string | null;
+  cover?: { url: string } | null;
+};
+
+function partnerEventBody(op: PartnerEventOp, image: string | undefined) {
+  const env = getEnv();
+  const startTime = op.scheduledAt.toISOString();
+  const endTime = new Date(op.scheduledAt.getTime() + 3 * 60 * 60 * 1000).toISOString();
+  return {
+    name: op.title,
+    description: buildEventDescription(op.id, op.description).slice(0, 1000),
+    privacy_level: 2,
+    scheduled_start_time: startTime,
+    scheduled_end_time: endTime,
+    entity_type: 3, // EXTERNAL
+    entity_metadata: {
+      location: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${op.id}`,
+    },
+    ...(image ? { image } : {}),
+  };
+}
+
+/** Create a scheduled event in a partner guild that links back to the host op. */
+export async function createPartnerScheduledEvent(
+  targetGuildId: string,
+  op: PartnerEventOp,
+): Promise<DiscordEventResult> {
+  const token = fleetplannerBotToken();
+  if (!token) return null;
+
+  const image = (op.cover?.url ? await coverImageDataUri(op.cover.url) : null)
+    ?? (await opTypeImageDataUri(op.opType));
+  const body = partnerEventBody(op, image);
+
+  const res = await fetch(`${DISCORD_API}/guilds/${targetGuildId}/scheduled-events`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(
+      `Discord partner event creation failed for guild ${targetGuildId} (${res.status}): ${err}`,
+    );
+  }
+  return (await res.json()) as { id: string };
+}
+
+/** Update an already-distributed partner event in place. */
+export async function updatePartnerScheduledEvent(
+  targetGuildId: string,
+  eventId: string,
+  op: PartnerEventOp,
+): Promise<void> {
+  const token = fleetplannerBotToken();
+  if (!token) return;
+
+  const image = await opTypeImageDataUri(op.opType);
+  const body = partnerEventBody(op, image);
+
+  const res = await fetch(
+    `${DISCORD_API}/guilds/${targetGuildId}/scheduled-events/${eventId}`,
+    {
+      method: "PATCH",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(8000),
+    },
+  );
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`Discord partner event update failed (${res.status}): ${err}`);
+  }
+}
+
 export async function deleteScheduledEvent(guildId: string, eventId: string): Promise<void> {
   const token = fleetplannerBotToken();
   if (!token) return;
@@ -481,20 +568,56 @@ export async function deleteScheduledEvent(guildId: string, eventId: string): Pr
   });
 }
 
-export async function sendDiscordChannelMessage(channelId: string, content: string): Promise<void> {
+export type DiscordAttachment = {
+  filename: string;
+  contentType: string;
+  data: Uint8Array;
+};
+
+export async function sendDiscordChannelMessage(
+  channelId: string,
+  content: string,
+  attachments: DiscordAttachment[] = [],
+): Promise<void> {
   const token = fleetplannerBotToken();
   if (!token) throw new Error("Discord Fleetplanner Bot integration is not configured");
   if (!channelId.trim()) throw new Error("Feedback channel is not configured");
 
-  const res = await fetch(`${DISCORD_API}/channels/${encodeURIComponent(channelId.trim())}/messages`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bot ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ content: content.slice(0, 1900), allowed_mentions: { parse: [] } }),
-    signal: AbortSignal.timeout(8000),
-  });
+  const url = `${DISCORD_API}/channels/${encodeURIComponent(channelId.trim())}/messages`;
+  const payload = {
+    content: content.slice(0, 1900),
+    allowed_mentions: { parse: [] as string[] },
+    ...(attachments.length
+      ? { attachments: attachments.map((a, i) => ({ id: i, filename: a.filename })) }
+      : {}),
+  };
+
+  let res: Response;
+  if (attachments.length) {
+    // Discord file upload = multipart/form-data with a payload_json part + files[n].
+    const form = new FormData();
+    form.append("payload_json", JSON.stringify(payload));
+    attachments.forEach((a, i) => {
+      form.append(
+        `files[${i}]`,
+        new Blob([a.data], { type: a.contentType || "application/octet-stream" }),
+        a.filename,
+      );
+    });
+    res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bot ${token}` },
+      body: form,
+      signal: AbortSignal.timeout(20000),
+    });
+  } else {
+    res = await fetch(url, {
+      method: "POST",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(8000),
+    });
+  }
 
   if (!res.ok) {
     const err = await res.text().catch(() => res.statusText);
@@ -536,6 +659,97 @@ export async function sendDiscordDm(userId: string, content: string): Promise<vo
   if (!messageRes.ok) {
     const err = await messageRes.text().catch(() => messageRes.statusText);
     throw new Error(`Discord DM send failed (${messageRes.status}): ${err}`);
+  }
+}
+
+// Minimal Discord message-component / embed shapes (FR-P1 approval DMs).
+export type DiscordEmbed = {
+  title?: string;
+  description?: string;
+  url?: string;
+  color?: number;
+  fields?: Array<{ name: string; value: string; inline?: boolean }>;
+};
+export type DiscordComponentRow = {
+  type: 1;
+  components: Array<{
+    type: 2;
+    style: number;
+    label: string;
+    custom_id: string;
+  }>;
+};
+
+/**
+ * DM a fleetplanner user an embed + message components (buttons). Used for the
+ * FR-P1 event-distribution approval prompt. Best-effort: throws on hard failure
+ * so the caller can count/log, but callers treat it as non-fatal.
+ */
+export async function sendDiscordDmComponents(
+  userId: string,
+  payload: { content?: string; embeds?: DiscordEmbed[]; components?: DiscordComponentRow[] },
+): Promise<void> {
+  const token = fleetplannerBotToken();
+  if (!token) throw new Error("Discord Fleetplanner Bot integration is not configured");
+  const discordUserId = await discordRecipientIdForUser(userId);
+
+  const channelRes = await fetch(`${DISCORD_API}/users/@me/channels`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ recipient_id: discordUserId }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!channelRes.ok) {
+    const err = await channelRes.text().catch(() => channelRes.statusText);
+    throw new Error(`Discord DM channel creation failed (${channelRes.status}): ${err}`);
+  }
+  const channel = (await channelRes.json()) as { id: string };
+  const messageRes = await fetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      content: payload.content?.slice(0, 1900),
+      embeds: payload.embeds,
+      components: payload.components,
+      allowed_mentions: { parse: [] },
+    }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!messageRes.ok) {
+    const err = await messageRes.text().catch(() => messageRes.statusText);
+    throw new Error(`Discord DM send failed (${messageRes.status}): ${err}`);
+  }
+}
+
+// SPKI DER prefix for an Ed25519 raw public key (RFC 8410) — lets us build a
+// KeyObject from Discord's 32-byte hex key without any external dependency.
+const ED25519_SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
+
+/**
+ * Verify a Discord HTTP-interaction signature (Ed25519 over timestamp+body).
+ * Returns false on any malformed input — never throws.
+ */
+export function verifyDiscordInteraction(
+  rawBody: string,
+  signatureHex: string,
+  timestamp: string,
+): boolean {
+  const publicKeyHex = getEnv().DISCORD_FLEETPLANNER_PUBLIC_KEY;
+  if (!publicKeyHex || !signatureHex || !timestamp) return false;
+  try {
+    const key = createPublicKey({
+      key: Buffer.concat([ED25519_SPKI_PREFIX, Buffer.from(publicKeyHex, "hex")]),
+      format: "der",
+      type: "spki",
+    });
+    return cryptoVerify(
+      null,
+      Buffer.from(timestamp + rawBody),
+      key,
+      Buffer.from(signatureHex, "hex"),
+    );
+  } catch {
+    return false;
   }
 }
 

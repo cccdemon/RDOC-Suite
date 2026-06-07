@@ -14,6 +14,10 @@ import {
 import { setStatus, addLeader, removeLeader, getOperation, logAudit } from "../services/operations.js";
 import { setPrimaryUnit, clearPrimaryUnit } from "../services/primaryUnits.js";
 import {
+  distributeOperation,
+  deleteDistributedEvents,
+} from "../services/eventDistribution.js";
+import {
   discordUserIdForFleetplannerUser,
   createScheduledEvent,
   deleteScheduledEvent,
@@ -968,6 +972,17 @@ export async function apiRoutes(app: FastifyInstance) {
             app.log.warn(err, `Discord event creation failed for guild ${op.guildId} (non-fatal)`);
             discordEventCreationFlash = `warn:Status+updated,+Discord+event+failed:+${encodeURIComponent(msg)}`;
           }
+          // FR-P1: offer the op to active partner guilds (auto-share posts now,
+          // manual partners get a pending row for the Phase-2 approval inbox).
+          if (op.visibility === "partners" || op.visibility === "public") {
+            distributeOperation(op)
+              .then((r) =>
+                app.log.info(
+                  `Event distribution for op ${req.params.id}: ${r.auto} auto, ${r.pending} pending, ${r.failed} failed`,
+                ),
+              )
+              .catch((err) => app.log.warn(err, "Event distribution failed (non-fatal)"));
+          }
         }
       }
       if (newStatus === "cancelled" && updated.discordEventId) {
@@ -979,6 +994,12 @@ export async function apiRoutes(app: FastifyInstance) {
             }),
           )
           .catch((err) => app.log.warn(err, "Discord event deletion failed (non-fatal)"));
+      }
+      // FR-P1: cancelling also tears down any distributed partner events.
+      if (newStatus === "cancelled") {
+        deleteDistributedEvents(req.params.id).catch((err) =>
+          app.log.warn(err, "Partner event distribution teardown failed (non-fatal)"),
+        );
       }
       if (newStatus === "in_progress") {
         try {

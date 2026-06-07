@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import formbody from "@fastify/formbody";
+import multipart from "@fastify/multipart";
 import { getEnv } from "./config/env.js";
 import { authRoutes } from "./routes/auth.js";
 import { webRoutes } from "./routes/web.js";
@@ -9,6 +10,7 @@ import { guildRoutes } from "./routes/guilds.js";
 import { partnershipRoutes } from "./routes/partnerships.js";
 import { bridgeAdminRoutes } from "./routes/bridgeAdmin.js";
 import { coverRoutes } from "./routes/cover.js";
+import { discordInteractionRoutes } from "./routes/discordInteractions.js";
 import { registerMetrics } from "./services/metrics.js";
 
 export async function buildApp() {
@@ -35,6 +37,11 @@ export async function buildApp() {
 
   await app.register(cookie);
   await app.register(formbody);
+  // Feedback form screenshot uploads (multipart). Limits are also enforced
+  // per-file in the /feedback route; this is the hard plugin-level guard.
+  await app.register(multipart, {
+    limits: { fileSize: 8 * 1024 * 1024, files: 4, fields: 10 },
+  });
 
   // Prometheus metrics (HTTP histogram + /metrics route). Registered early so
   // the onResponse hook covers all subsequent routes.
@@ -49,6 +56,7 @@ export async function buildApp() {
   await app.register(webRoutes);
   await app.register(bridgeAdminRoutes);
   await app.register(coverRoutes);
+  await app.register(discordInteractionRoutes);
   await app.register(apiRoutes);
 
   return app;

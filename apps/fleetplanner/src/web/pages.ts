@@ -4813,7 +4813,12 @@ export function feedbackPage(opts: {
       <p class="page-subtitle">Send a bug report, idea, or issue to the fleetplanner team.</p>
     </div>
     <div class="section">
-      <form method="post" action="${bp}/feedback" style="max-width:48rem">
+      <form
+        method="post"
+        action="${bp}/feedback"
+        enctype="multipart/form-data"
+        style="max-width:48rem"
+      >
         <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
         <div class="form-group">
           <label>Subject</label>
@@ -4827,6 +4832,13 @@ export function feedbackPage(opts: {
             required
             placeholder="What happened? What should happen instead?"
           ></textarea>
+        </div>
+        <div class="form-group">
+          <label>Screenshots <span style="opacity:.6">(optional)</span></label>
+          <input type="file" name="screenshots" accept="image/*" multiple />
+          <p class="form-hint" style="opacity:.6;font-size:.85rem;margin-top:.35rem">
+            Up to 4 images, max 8&nbsp;MB each (PNG, JPG, GIF, WebP).
+          </p>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn">Send Feedback</button>
@@ -7805,6 +7817,7 @@ export function guildSettingsPage(opts: {
     voiceEnabled: boolean;
     timezone: string;
   };
+  incomingShared?: number;
   voiceBots: Array<{
     id: string;
     label: string;
@@ -7924,7 +7937,9 @@ export function guildSettingsPage(opts: {
     <div class="page-header">
       <h1 class="page-title">SERVER SETTINGS<span class="sep"> // </span><em>${g.name}</em></h1>
       <div class="page-actions">
-        <a href="${bp}/guilds/partnerships" class="btn btn-gold btn-sm">Partnerships</a>
+        <a href="${bp}/guilds/partnerships" class="btn btn-gold btn-sm">Partnerships${
+          opts.incomingShared ? safe(` <span class="tag tag-gold">${String(opts.incomingShared)}</span>`) : safe("")
+        }</a>
         <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">Run Install Tests</a>
       </div>
     </div>
@@ -8261,10 +8276,23 @@ export type PartnershipView = {
   id: string;
   label: string;
   status: string;
+  partnerGuildId: string | null;
   partnerGuildName: string | null;
   isInitiator: boolean;
   activatedAt: Date | null;
   createdAt: Date;
+  /** FR-P1: auto-post THIS partner's events into our Discord. */
+  autoShare?: boolean;
+};
+
+export type IncomingDistributionView = {
+  id: string;
+  opTitle: string;
+  scheduledAt: Date;
+  meetingSystem: string;
+  meetingLocation: string;
+  hostGuildName: string;
+  hostOrgName: string | null;
 };
 
 export function partnershipsPage(opts: {
@@ -8275,12 +8303,53 @@ export function partnershipsPage(opts: {
   activeGuildId: string;
   activeGuildName: string;
   partnerships: PartnershipView[];
+  incoming?: IncomingDistributionView[];
   freshInviteUrl?: string;
   prefillToken?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const active = opts.partnerships.filter((p) => p.status === "active");
   const pending = opts.partnerships.filter((p) => p.status === "pending");
+  const incoming = opts.incoming ?? [];
+
+  const incomingSection = incoming.length
+    ? html`<div class="section">
+        <div class="section-title">
+          Shared with us <span class="tag tag-gold">${String(incoming.length)}</span>
+        </div>
+        <p class="text-dim text-sm" style="margin:-.25rem 0 .75rem">
+          Partner Discords want to post these operations into <em>${opts.activeGuildName}</em>.
+          Any fleetoperator can decide. Approving creates the event in your Discord; declining is
+          per-event only and never blocks future invites.
+        </p>
+        <div class="card" style="padding:0">
+          <table>
+            <thead><tr><th>Operation</th><th>From</th><th>When</th><th></th></tr></thead>
+            <tbody>
+              ${incoming.map(
+                (d) => html`<tr>
+                  <td><strong>${d.opTitle}</strong>
+                    <div class="text-dim text-sm">${d.meetingLocation ? `${d.meetingSystem} · ${d.meetingLocation}` : d.meetingSystem}</div>
+                  </td>
+                  <td>${d.hostOrgName ? html`<strong>${d.hostOrgName}</strong><div class="text-dim text-sm">${d.hostGuildName}</div>` : html`<strong>${d.hostGuildName}</strong>`}</td>
+                  <td><span class="text-mono text-sm">${fmtDate(d.scheduledAt)}</span></td>
+                  <td class="text-right" style="white-space:nowrap">
+                    <form method="post" action="${bp}/guilds/partnerships/event/${d.id}/approve" class="inline">
+                      <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+                      <button type="submit" class="btn btn-green btn-sm">Teilen</button>
+                    </form>
+                    <form method="post" action="${bp}/guilds/partnerships/event/${d.id}/decline" class="inline">
+                      <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+                      <button type="submit" class="btn btn-ghost btn-sm">Ablehnen</button>
+                    </form>
+                  </td>
+                </tr>`,
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>`
+    : safe("");
 
   const activeRows = active.length
     ? active.map(
@@ -8288,6 +8357,18 @@ export function partnershipsPage(opts: {
           <td><strong>${p.partnerGuildName ?? "—"}</strong></td>
           <td><span class="text-dim text-sm">${p.label}</span></td>
           <td><span class="text-mono text-sm">${p.activatedAt ? fmtDate(p.activatedAt) : "—"}</span></td>
+          <td>
+            ${p.partnerGuildId
+              ? html`<form method="post" action="${bp}/guilds/partnerships/${p.partnerGuildId}/auto-share" class="inline">
+                  <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
+                  <input type="hidden" name="autoShare" value="${p.autoShare ? "0" : "1"}" />
+                  <button type="submit" class="btn btn-sm ${p.autoShare ? "btn-green" : "btn-ghost"}"
+                    title="When on, this partner's operations auto-post into our Discord with no per-event approval.">
+                    ${p.autoShare ? "Auto-share: ON" : "Auto-share: off"}
+                  </button>
+                </form>`
+              : safe("—")}
+          </td>
           <td class="text-right">
             <form method="post" action="${bp}/guilds/partnerships/${p.id}/revoke" class="inline"
               onsubmit="return confirm('Really end the partnership with ${p.partnerGuildName ?? "this Discord"}? This is permanent.');">
@@ -8297,7 +8378,7 @@ export function partnershipsPage(opts: {
           </td>
         </tr>`,
       )
-    : [html`<tr><td colspan="4"><span class="text-dim text-sm">No active partnerships.</span></td></tr>`];
+    : [html`<tr><td colspan="5"><span class="text-dim text-sm">No active partnerships.</span></td></tr>`];
 
   const pendingRows = pending.map(
     (p) => html`<tr>
@@ -8342,11 +8423,13 @@ export function partnershipsPage(opts: {
 
     ${fresh}
 
+    ${incomingSection}
+
     <div class="section">
       <div class="section-title">Active partners</div>
       <div class="card" style="padding:0">
         <table>
-          <thead><tr><th>Discord</th><th>Label</th><th>Since</th><th></th></tr></thead>
+          <thead><tr><th>Discord</th><th>Label</th><th>Since</th><th>Their events</th><th></th></tr></thead>
           <tbody>${activeRows}</tbody>
         </table>
       </div>

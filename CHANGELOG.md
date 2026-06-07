@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetplanner: event distribution approval — Phase 2 (FR-P1) (2026-06-07)
+
+- Non-auto partners now get a real **approval flow**. **Recipients = every fleetoperator of the target guild** (per-guild role) — not a single named contact (user decision, diverges from the FR doc's contact-person model). Any of them can decide; decline is per-event only and never mutes future invites.
+- **Web inbox (source of truth):** a "Shared with us" section on the Partnerships page lists pending incoming events (op title, host org/Discord, when) with **Teilen / Ablehnen** (server-rendered, CSRF). A badge on the Server-Settings "Partnerships" button shows the pending count.
+- **Discord DM buttons:** when a pending distribution is created, every target-guild fleetoperator is DM'd an embed (From / When / Where) with Teilen/Ablehnen buttons. New `POST /discord/interactions` endpoint verifies the Ed25519 signature (`DISCORD_FLEETPLANNER_PUBLIC_KEY`, Node `crypto`, no new dep) in an encapsulated raw-body parser, maps the clicker's Discord id → fleetplanner user, re-checks the fleetoperator role against the distribution's own target guild, then approves/declines and updates the message. Set the app's Interactions Endpoint URL to `<WEB_PUBLIC_URL>/discord/interactions`.
+- New service fns: `approveDistribution` / `declineDistribution` (idempotent on `pending`, role-guarded) / `listIncomingDistributions` / `countIncomingDistributions` / `getTargetFleetoperators` / `isTargetFleetoperator`; `notifyTargetFleetoperators` (DM fan-out on new pending). New `discord.ts` `sendDiscordDmComponents` + `verifyDiscordInteraction`. New env `DISCORD_FLEETPLANNER_PUBLIC_KEY` (optional — web inbox works without it).
+
+### Added - Fleetplanner: event distribution to partner Discords — Phase 1 (FR-P1) (2026-06-07)
+
+- A host op with visibility `partners`/`public` is now offered to every **active partner guild** when it's opened. Each target guild gets its own **EXTERNAL** Discord scheduled event linking back to the host op page (decision F1.3). Op edits fan out to the partner events; cancel/delete tears them down (before the cascade so partner events aren't orphaned).
+- **Auto-share only this phase.** Per-partner directional policy `PartnerSharePolicy { ownerGuildId, partnerGuildId, autoShare, defaultContactUserId? }`: a guild toggles **Auto-share** for each partner on the Partnerships page (owner decides whether that partner's events auto-post into *its* Discord). Auto partners post immediately (`EventDistribution.status="auto"`); non-auto partners get a `pending` row and **no** post yet — the approval inbox + Discord DM buttons land in Phase 2.
+- New `EventDistribution` model (one row per op×target guild, `@@unique([operationId,targetGuildId])`) + migration `20260607120000_event_distribution`. New `services/eventDistribution.ts` (`distributeOperation` / `updateDistributedEvents` / `deleteDistributedEvents` / `getAutoShareMap` / `setAutoShare`). New `discord.ts` `createPartnerScheduledEvent` / `updatePartnerScheduledEvent`. All partner fan-out is best-effort/non-fatal — the host event and op lifecycle never depend on it.
+
+### Added - Fleetplanner: attach screenshots to feedback (HEADWiG FR) (2026-06-07)
+
+- The `/feedback` form now accepts **image attachments** (up to 4, max 8 MB each: PNG/JPG/GIF/WebP). They are forwarded to the Discord feedback channel as message attachments alongside the text.
+- Added `@fastify/multipart` (registered in `app.ts` with a hard 8 MB / 4-file limit). The `POST /feedback` route parses multipart in one stream pass (text fields + image parts, mime-allowlist + per-file size guard, filename sanitised). `sendDiscordChannelMessage(channelId, content, attachments?)` now sends multipart (`payload_json` + `files[n]`) to Discord when attachments are present, JSON otherwise.
+
 ### Fixed - How-to/What-is: role model corrected to match the app (2026-06-07)
 
 - The How-to "Roles" table was outdated (listed `Superadmin / Fleetadmin / Captain / Crew`). The app only has **three** roles — `superadmin` (tag **ADMIRAL**), `fleetoperator` (tag **FLEET OP**), `crew` (tag **CREW**) — and "Captain" is **not** a role but a per-unit/per-op status you get by registering a ship/CQB team. Rewrote the table around the actual tags and added that clarification. Renamed the bogus "Fleetcommander" voice row to "Fleet Op (operator)". Aligned the "Was ist das?" beginner page accordingly.

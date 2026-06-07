@@ -8,7 +8,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 
 | Prio | Feature | Doc | Depends on | Status |
 |---|---|---|---|---|
-| P1 | Event Distribution (cross-post to partner Discords) | [FR-P1-event-distribution.md](FR-P1-event-distribution.md) | live partnerships only | Plan |
+| P1 | Event Distribution (cross-post to partner Discords) | [FR-P1-event-distribution.md](FR-P1-event-distribution.md) | live partnerships only | ✓ Done (2026-06-07: Phase 1 auto-share + Phase 2 approval inbox + DM buttons). Recipients = all target-guild fleetoperators |
 | P1 | Event Creation Simplification (Mobile join + Admin wizard) | [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) | — (sight "Vi5E Tools") | ✓ Core done (guided wizard + dedicated join view live); pending: sight "Vi5E Tools" |
 | P1 | Fleetplanner GUI UX (Join view + Fleet Requirements wording) | [FR-P1-fleetplanner-gui-ux-implementation.md](FR-P1-fleetplanner-gui-ux-implementation.md) | existing Fleetplanner SSR + Composition/FleetUnit models | ✓ Done (2026-06-06) |
 | P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | ✓ Done |
@@ -41,7 +41,7 @@ Also pending (no FR doc): sight **"Vi5E Tools"** to finalize the eventcreation w
 | 404 on accepted link when not logged in → show login note | Feedback (exrelax) | ✓ Done (loginRequiredPage) |
 | Fleet naming: non-capital lead = "Pilot" not "Captain" | Feedback (Mimosenherkules) | ✓ Done (unitLeadTitle) |
 | Mission cover editor: edits/positions persist, style-switch keeps inputs, cancel fix, save-bar overlap | Bug (HEADWiG) | ✓ Done 2026-06-06 |
-| Bug Reporter: attach screenshots | Feature request (HEADWiG) | Open — feedback form posts to Discord; needs file upload → Discord attachment |
+| Bug Reporter: attach screenshots | Feature request (HEADWiG) | ✓ Done 2026-06-07 — `/feedback` accepts up to 4 images (≤8 MB), forwarded as Discord attachments |
 
 ## Needs sighting / clarification (no doc yet)
 - **"Vi5E Tools"** — tools to be reviewed before locking the eventcreation admin wizard scope.

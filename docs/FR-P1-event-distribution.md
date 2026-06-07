@@ -1,7 +1,7 @@
 # Event Distribution — cross-post ops to partner Discords
 
 **FeatureRequest — Priority 1** (scale 1 highest … 5 lowest)
-**Status:** Plan approved 2026-06-05, **NOT yet implemented**. No schema/code exists.
+**Status:** ✓ **Fully implemented 2026-06-07** (Phase 1 + Phase 2). Phase 1: schema `EventDistribution`+`PartnerSharePolicy`, auto-share fan-out on op open/edit/cancel/delete, Partnerships auto-share toggle. Phase 2: approval via web inbox ("Shared with us" on the Partnerships page) + Discord DM buttons (`/discord/interactions`, Ed25519). **Design change vs. this doc:** approval recipients are **all fleetoperators of the target guild** (per-guild role), NOT a single named per-event contact person (user decision). `EventDistribution.contactUserId` / `PartnerSharePolicy.defaultContactUserId` remain in the schema but are unused by the role-based flow.
 **Split from:** the former combined `partner-events-plan.md` (now one file per feature).
 
 ## Dependencies

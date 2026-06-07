@@ -13,6 +13,22 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-07",
+    title: "Share events with partner Discords",
+    changes: [
+      "Partner & public operations can now be cross-posted to your partner Discords as their own scheduled event (linking back to the operation page).",
+      "On the Partnerships page you can turn on \"Auto-share\" per partner — their operations then appear in your Discord automatically.",
+      "For partners without auto-share, every fleetoperator of the receiving Discord gets a \"Shared with us\" inbox on the Partnerships page (and a Discord DM with Teilen/Ablehnen buttons) to approve or decline each event.",
+    ],
+  },
+  {
+    date: "2026-06-07",
+    title: "Attach screenshots to feedback",
+    changes: [
+      "The Feedback form now lets you attach screenshots (up to 4 images, max 8 MB each) — they're sent straight to the team along with your message.",
+    ],
+  },
+  {
+    date: "2026-06-07",
     title: "\"Was ist das?\" beginner page",
     changes: [
       "New \"Was ist das?\" tab: a plain-language, non-technical intro to what the Fleetmanager is and how an operation works — for newcomers.",

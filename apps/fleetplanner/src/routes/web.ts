@@ -67,7 +67,13 @@ import {
   fetchGuildVoiceChannels,
   sendDiscordChannelMessage,
   updateScheduledEvent,
+  type DiscordAttachment,
 } from "../services/discord.js";
+import {
+  distributeOperation,
+  updateDistributedEvents,
+  deleteDistributedEvents,
+} from "../services/eventDistribution.js";
 import { closeMissionVoiceSession, hasVoicePermission } from "../services/voiceSession.js";
 import { listMissionCommanders } from "../services/missionCommanders.js";
 import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
@@ -1018,12 +1024,49 @@ export async function webRoutes(app: FastifyInstance) {
     );
   });
 
-  app.post<{ Body: Record<string, string> }>("/feedback", async (req, reply) => {
+  app.post("/feedback", async (req, reply) => {
     const ctx = await requireRole(req, reply, "crew");
     if (!ctx) return;
-    if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-    const subject = req.body.subject?.trim().slice(0, 120) ?? "";
-    const message = req.body.message?.trim().slice(0, 1800) ?? "";
+
+    const feedbackErr = (msg: string) =>
+      reply.redirect(basePath(`/feedback?flash=error:${encodeURIComponent(msg)}`), 302);
+
+    // The form posts multipart/form-data (screenshot uploads). Collect text
+    // fields and image parts in a single pass over the stream.
+    const ALLOWED_IMAGE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+    const fields: Record<string, string> = {};
+    const attachments: DiscordAttachment[] = [];
+    try {
+      if (req.isMultipart()) {
+        for await (const part of req.parts()) {
+          if (part.type === "file") {
+            if (part.fieldname !== "screenshots") {
+              part.file.resume(); // drain unknown file parts
+              continue;
+            }
+            const buf = await part.toBuffer(); // throws if over the plugin fileSize limit
+            if (buf.length === 0) continue; // empty file input
+            if (!ALLOWED_IMAGE.has(part.mimetype)) {
+              return feedbackErr("Only PNG, JPG, GIF or WebP images are allowed.");
+            }
+            const safeName = (part.filename || `screenshot-${attachments.length + 1}`)
+              .replace(/[^A-Za-z0-9._-]/g, "_")
+              .slice(0, 80);
+            attachments.push({ filename: safeName, contentType: part.mimetype, data: buf });
+          } else {
+            fields[part.fieldname] = typeof part.value === "string" ? part.value : "";
+          }
+        }
+      } else {
+        Object.assign(fields, (req.body as Record<string, string>) ?? {});
+      }
+    } catch {
+      return feedbackErr("An image was too large (max 8 MB each).");
+    }
+
+    if (!csrfOk(fields, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+    const subject = fields.subject?.trim().slice(0, 120) ?? "";
+    const message = fields.message?.trim().slice(0, 1800) ?? "";
     if (!subject || !message) {
       return reply.redirect(
         basePath("/feedback?flash=error:Subject+and+message+are+required"),
@@ -1039,11 +1082,11 @@ export async function webRoutes(app: FastifyInstance) {
       message,
     ].join("\n");
     try {
-      await sendDiscordChannelMessage(channelId, content);
+      await sendDiscordChannelMessage(channelId, content, attachments);
       return reply.redirect(basePath("/feedback?flash=ok:Feedback+sent."), 302);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Feedback could not be sent";
-      return reply.redirect(basePath(`/feedback?flash=error:${encodeURIComponent(msg)}`), 302);
+      return feedbackErr(msg);
     }
   });
 
@@ -1127,6 +1170,19 @@ export async function webRoutes(app: FastifyInstance) {
           );
         }
 
+        // FR-P1: keep distributed partner events in sync, and pick up any
+        // newly-eligible partners (e.g. visibility raised to partners/public).
+        if (updatedOp?.status === "open") {
+          if (updatedOp.visibility === "partners" || updatedOp.visibility === "public") {
+            distributeOperation(updatedOp).catch((err) =>
+              app.log.warn(err, "Event distribution failed after operation edit"),
+            );
+          }
+          updateDistributedEvents(updatedOp).catch((err) =>
+            app.log.warn(err, "Partner event sync failed after operation edit"),
+          );
+        }
+
         const target =
           req.body.ui === "new"
             ? `/ops/${req.params.id}/manage?tab=${encodeURIComponent(req.body.tab || "overview")}&flash=ok:Saved.`
@@ -1156,6 +1212,12 @@ export async function webRoutes(app: FastifyInstance) {
         );
         await cleanupOperationVoiceChannels(req.params.id).catch((err) =>
           app.log.warn(err, "Voice channel cleanup failed before operation delete"),
+        );
+        // FR-P1: tear down distributed partner events BEFORE deleteOperation —
+        // the EventDistribution rows cascade-delete with the op, which would
+        // otherwise orphan the partner-guild Discord events.
+        await deleteDistributedEvents(req.params.id).catch((err) =>
+          app.log.warn(err, "Partner event teardown failed before operation delete"),
         );
         await deleteOperation(req.params.id);
         if (op?.discordEventId) {
