@@ -4314,6 +4314,73 @@ export function opJoinPage(opts: {
         : safe("")}
     </div>
 
+    ${op.visibility === "public" && opts.publicUrl
+      ? (() => {
+          const shareUrl = `${opts.publicUrl}/ops/${op.id}`;
+          const shareText = `${op.title} — ${fmtDateLocal(op.scheduledAt, gtz)}`;
+          const img = op.cover ? op.cover.url : "";
+          const e = encodeURIComponent;
+          const textUrl = `${shareText} ${shareUrl}`;
+          return html`<div
+              class="event-share"
+              data-share-url="${shareUrl}"
+              data-share-text="${shareText}"
+              data-share-image="${img}"
+              style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:0 0 1rem"
+            >
+              <span class="text-dim text-sm" style="margin-right:.25rem">Teilen</span>
+              <button type="button" class="btn btn-sm btn-cyan" data-share-native hidden>
+                📤 Teilen…
+              </button>
+              <a class="btn btn-sm" target="_blank" rel="noopener"
+                href="https://twitter.com/intent/tweet?text=${e(shareText)}&url=${e(shareUrl)}">X</a>
+              <a class="btn btn-sm" target="_blank" rel="noopener"
+                href="https://www.facebook.com/sharer/sharer.php?u=${e(shareUrl)}">Facebook</a>
+              <a class="btn btn-sm" target="_blank" rel="noopener"
+                href="https://www.threads.net/intent/post?text=${e(textUrl)}">Threads</a>
+              <a class="btn btn-sm" target="_blank" rel="noopener"
+                href="https://wa.me/?text=${e(textUrl)}">WhatsApp</a>
+              <a class="btn btn-sm" target="_blank" rel="noopener"
+                href="https://t.me/share/url?url=${e(shareUrl)}&text=${e(shareText)}">Telegram</a>
+              <button type="button" class="btn btn-sm" data-share-copy>Link kopieren</button>
+            </div>
+            <script>
+              (function () {
+                var box = document.querySelector(".event-share");
+                if (!box) return;
+                var url = box.getAttribute("data-share-url");
+                var text = box.getAttribute("data-share-text");
+                var img = box.getAttribute("data-share-image");
+                var nativeBtn = box.querySelector("[data-share-native]");
+                var copyBtn = box.querySelector("[data-share-copy]");
+                if (navigator.share && nativeBtn) {
+                  nativeBtn.hidden = false;
+                  nativeBtn.addEventListener("click", function () {
+                    var data = { title: text, text: text, url: url };
+                    var go = function () { navigator.share(data).catch(function () {}); };
+                    if (img && navigator.canShare) {
+                      fetch(img).then(function (r) { return r.blob(); }).then(function (b) {
+                        var f = new File([b], "mission-cover.png", { type: b.type || "image/png" });
+                        if (navigator.canShare({ files: [f] })) data.files = [f];
+                        go();
+                      }).catch(go);
+                    } else { go(); }
+                  });
+                }
+                if (copyBtn) {
+                  copyBtn.addEventListener("click", function () {
+                    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+                      .then(function () {
+                        copyBtn.textContent = "Kopiert ✓";
+                        setTimeout(function () { copyBtn.textContent = "Link kopieren"; }, 1500);
+                      }).catch(function () {});
+                  });
+                }
+              })();
+            </script>`;
+        })()
+      : safe("")}
+
     <div class="join-layout">
       <div class="join-main">
         ${!myId

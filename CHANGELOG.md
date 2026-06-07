@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetplanner: share a public operation (2026-06-07)
+
+- Public operation pages now have a **Share** row. On mobile it uses the **Web Share API** (`navigator.share`) → the native OS share sheet, which covers every installed app (Instagram, Snapchat, TikTok, WhatsApp, …); when a mission cover exists and the device allows it, the **cover PNG is attached as a file** so image-first apps get the actual picture, not just a link.
+- Desktop / no Web-Share fallback: explicit buttons for **X, Facebook, Threads, WhatsApp, Telegram** + **copy link**. (Instagram/Snapchat/TikTok have no web share-intent URL and are reachable only via the native sheet — by design.)
+- Shown only for `public` ops (the link has to work for logged-out guests). The existing OG meta (mission cover as `og:image`) already drives the rich link previews on X/Facebook/Threads/WhatsApp/Discord.
+
 ### Changed - Fleetplanner: mission cover as the op-header background (2026-06-07)
 
 - The mission cover is now the **background image of the operation hero**, dimmed with a semi-transparent dark overlay (`linear-gradient(180deg, rgba(5,8,16,.45)→.85)`) so the foreground text stays readable. Replaces the earlier cropped inline `<img>` (which `object-fit:cover` cut to a thin slice). When no cover exists, the generic opType image is used as before.

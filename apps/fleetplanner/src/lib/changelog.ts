@@ -13,6 +13,14 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-07",
+    title: "Share a public operation",
+    changes: [
+      "Public operation pages now have a Share row: on mobile it opens your phone's native share sheet (Instagram, Snapchat, TikTok, WhatsApp and everything else) and attaches the mission cover image when available.",
+      "On desktop you get direct buttons for X, Facebook, Threads, WhatsApp, Telegram and a copy-link button.",
+    ],
+  },
+  {
+    date: "2026-06-07",
     title: "Mission cover as page backdrop",
     changes: [
       "The mission cover is now the operation page's header background, gently dimmed so the title and details stay easy to read.",

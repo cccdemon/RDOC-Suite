@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Op teilbar machen (Share-Buttons + Web-Share-API)
+
+DONE. User: Op/Cover teilbar (Twitter/X, Facebook, Threads, WhatsApp, Telegram, Snapchat, Instagram,
+TikTok …). Plan (nur public Ops — der Link muss für Gäste funktionieren; OG-Embeds existieren bereits
+für public):
+- **Web Share API** primär (`navigator.share`): auf Mobile native Share-Sheet → deckt ALLE Apps inkl.
+  Instagram/Snapchat/TikTok/WhatsApp ab. Wenn Cover vorhanden + `navigator.canShare({files})`:
+  Cover-PNG als File mitsharen (Bild direkt teilbar an Bild-Apps), sonst nur Titel+Link.
+- **Fallback-Buttons** (Desktop/kein Web-Share): explizite Intent-URLs X / Facebook /
+  Threads / WhatsApp / Telegram + "Copy link". Instagram/Snapchat/TikTok haben KEINE
+  Web-Share-Intent-URL → nur über Web-Share-Sheet erreichbar (dokumentieren).
+- Share-Sektion in `opJoinPage`, nur bei `visibility=public`. Inline-JS (Web-Share + File-Fetch +
+  Copy). Bestehende OG-Meta (Cover als `og:image`) liefert die Link-Previews.
+CHANGELOG + Website-Changelog. CSS/JS-only, kein Schema.
+
 ## Completed Step - 2026-06-07: Mission-Cover als halbtransparentes Hero-Background
 
 User-Wunsch (Folge auf den Crop-Fix): Cover NICHT als separates Bild, sondern als Hintergrundbild
