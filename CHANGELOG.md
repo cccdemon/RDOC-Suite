@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - How-to/What-is: role model corrected to match the app (2026-06-07)
+
+- The How-to "Roles" table was outdated (listed `Superadmin / Fleetadmin / Captain / Crew`). The app only has **three** roles — `superadmin` (tag **ADMIRAL**), `fleetoperator` (tag **FLEET OP**), `crew` (tag **CREW**) — and "Captain" is **not** a role but a per-unit/per-op status you get by registering a ship/CQB team. Rewrote the table around the actual tags and added that clarification. Renamed the bogus "Fleetcommander" voice row to "Fleet Op (operator)". Aligned the "Was ist das?" beginner page accordingly.
+
 ### Fixed - Mission-cover: editor bugs (HEADWiG bug report) (2026-06-06)
 
 - **Edits now persist:** the engine config (+ background) is stored alongside the rendered artifact; reopening the editor loads the last saved cover via the new `GET /v1/covers/:id/config` instead of rebuilding from op data (positions/texts/logo/bg were lost every session).

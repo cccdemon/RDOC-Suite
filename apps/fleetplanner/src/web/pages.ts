@@ -6910,9 +6910,9 @@ export function whatIsPage(opts: {
         <table class="user-table" style="width:100%">
           <thead><tr><th>Rolle</th><th>Aufgabe</th></tr></thead>
           <tbody>
-            <tr><td><strong>Admiral / Fleetadmin</strong></td><td>plant die Operation: Was, Wann, Wo. Der Veranstalter.</td></tr>
-            <tr><td><strong>Captain</strong></td><td>meldet ein Schiff an und bestimmt, wie viele Plätze es hat.</td></tr>
-            <tr><td><strong>Crew</strong></td><td>schaut, welche Schiffe mitfliegen, und schnappt sich einen Platz.</td></tr>
+            <tr><td><strong>Fleet&nbsp;Op</strong> <span class="text-dim">(Operator)</span></td><td>plant die Operation: Was, Wann, Wo. Der Veranstalter.</td></tr>
+            <tr><td><strong>Crew</strong></td><td>jedes Mitglied. Schaut, welche Schiffe mitfliegen, und schnappt sich einen Platz.</td></tr>
+            <tr><td><strong>Captain</strong> <span class="text-dim">(kein Rang)</span></td><td>wirst du automatisch, sobald du ein Schiff anmeldest — du verwaltest dann dessen Plätze. Gilt nur für dieses eine Schiff in dieser Operation.</td></tr>
           </tbody>
         </table>
       </div>
@@ -6922,9 +6922,9 @@ export function whatIsPage(opts: {
       <div class="section-title">So läuft eine Operation ab</div>
       <div class="${card}" style="padding:1.1rem;max-width:54rem">
         <ol style="margin:0;padding-left:1.2rem;line-height:1.7">
-          <li><strong>Admiral legt die Operation an</strong> — Titel, Zeit, Treffpunkt. Sie erscheint sofort als Discord-Event.</li>
+          <li><strong>Der Fleet Op legt die Operation an</strong> — Titel, Zeit, Treffpunkt. Sie erscheint sofort als Discord-Event.</li>
           <li><strong>Captains bieten ihre Schiffe an</strong> — „Ich bringe meine Carrack mit, 4 Plätze".</li>
-          <li><strong>Der Admiral nimmt Schiffe an</strong> — angenommene Schiffe bekommen ihre Sitzplätze.</li>
+          <li><strong>Der Fleet Op nimmt Schiffe an</strong> — angenommene Schiffe bekommen ihre Sitzplätze.</li>
           <li><strong>Crew schnappt sich Plätze</strong> — jeder sieht, was noch frei ist, und klickt sich rein.</li>
           <li><strong>Es geht los</strong> — alle wissen, wo sie hingehören. Danach gibt's eine Teilnehmerliste.</li>
         </ol>
@@ -7032,40 +7032,47 @@ export function howToPage(opts: {
       <div class="section-title">Roles</div>
       <div class="card" style="padding:1rem;max-width:52rem">
         <p style="margin-top:0">
-          Fleet-level roles and mission roles are separate. A fleet role grants platform or server
-          permissions; it does <strong>not</strong> automatically grant mission voice access — that is
-          assigned per operation.
+          There are only <strong>three</strong> roles, shown as a coloured tag next to your name.
+          Fleet roles and mission roles are separate: a fleet role grants platform/server
+          permissions; it does <strong>not</strong> automatically grant mission voice — that is
+          assigned per operation (see Mission voice).
         </p>
         <table class="user-table" style="width:100%;margin-top:.75rem">
           <thead>
             <tr>
-              <th>Fleet role</th>
+              <th>Tag</th>
+              <th>Role</th>
               <th>What they can do</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td><span class="tag tag-role">Superadmin</span></td>
-              <td>Instance-wide admin: manage all Discord servers, ban/unban servers, trigger ship sync, configure the bridge.</td>
+              <td><span class="tag tag-role">ADMIRAL</span></td>
+              <td>Superadmin</td>
+              <td>Instance owner. Manage all Discord servers, ban/unban servers, trigger ship sync, configure the voice bridge. One per instance.</td>
             </tr>
             <tr>
-              <td><span class="tag tag-role">Fleetadmin</span></td>
+              <td><span class="tag tag-role">FLEET OP</span></td>
+              <td>Fleetoperator</td>
               <td>
-                A server's admin (the &ldquo;Admiral&rdquo;). Add the bot to a Discord server, create &amp;
-                manage operations, accept/reject units, assign mission leaders, manage composition,
-                post Discord scheduled events.
+                A server's operator. Add the bot to a Discord, create &amp; manage operations,
+                accept/reject units, assign mission leaders, manage composition, post Discord
+                scheduled events. (Auto-assigned from the server's mapped Discord role; the
+                installing user becomes Fleet Op.)
               </td>
             </tr>
             <tr>
-              <td><span class="tag tag-role">Captain</span></td>
-              <td>Register ships or FPS squads, manage own unit seats, and assign crew to their unit.</td>
-            </tr>
-            <tr>
-              <td><span class="tag tag-role">Crew</span></td>
-              <td>Claim open seats and submit crew assignment requests. The default role for new members.</td>
+              <td><span class="tag tag-role">CREW</span></td>
+              <td>Crew</td>
+              <td>Default role for every member. Claim open seats, request assignments, and offer ships/CQB teams.</td>
             </tr>
           </tbody>
         </table>
+        <p class="text-dim text-sm" style="margin-top:.75rem;margin-bottom:0">
+          <strong>"Captain" is not a fleet role.</strong> Anyone — Crew or Fleet Op — becomes the
+          <em>captain</em> of a unit simply by registering a ship or CQB team in an operation; they
+          then manage that unit's seats. It is per-unit and per-operation, not a rank.
+        </p>
       </div>
     </div>
 
@@ -7110,16 +7117,16 @@ export function howToPage(opts: {
             <tr><td>Event Leader</td><td>Yes</td><td>Yes</td></tr>
             <tr><td>Raidleader</td><td>Yes</td><td>Yes</td></tr>
             <tr><td>Wingcommander (deputy)</td><td>Yes</td><td>Yes</td></tr>
-            <tr><td>Fleetcommander</td><td>No by default</td><td>No by default</td></tr>
+            <tr><td>Fleet Op (operator)</td><td>No by default</td><td>No by default</td></tr>
             <tr><td>Ship Captain</td><td>Yes</td><td>No by default</td></tr>
             <tr><td>CQB Captain</td><td>Yes</td><td>No by default</td></tr>
             <tr><td>Added Commander</td><td>Yes</td><td>Optional</td></tr>
           </tbody>
         </table>
         <p class="text-dim text-sm" style="margin-top:.75rem;margin-bottom:0">
-          Fleetcommander manages mission needs and confirms units but is not automatically on the
-          Command Net. To request Global Radio (RelayBot) voice for your server, contact the
-          SuperAdmin (see Contact &amp; support below).
+          The Fleet Op (server operator) manages mission needs and confirms units but is not
+          automatically on the Command Net. To request Global Radio (RelayBot) voice for your server,
+          contact the SuperAdmin (see Contact &amp; support below).
         </p>
       </div>
     </div>
