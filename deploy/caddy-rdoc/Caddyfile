@@ -82,5 +82,13 @@ monitoring.raumdock.org:9443 {
 # container on loopback (deploy/docker-compose.proxy.yml). reverse_proxy upgrades
 # WebSockets automatically. coturn is NOT here (STUN-only for now).
 squadlink.raumdock.org:9443 {
-	reverse_proxy 127.0.0.1:8090
+	# Installer download (served from the caddy ./downloads volume).
+	handle_path /download* {
+		root * /srv/downloads/squadlink
+		file_server browse
+	}
+	# Everything else → InitConnection (signaling + session REST + /j landing).
+	handle {
+		reverse_proxy 127.0.0.1:8090
+	}
 }
