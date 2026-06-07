@@ -1,7 +1,7 @@
 // Player-facing roadmap shown at /roadmap. Curated + readable — not the internal
 // FR docs. Keep in sync with docs/ROADMAP.md when status changes.
 
-export type RoadmapStatus = "planned" | "blocked" | "done";
+export type RoadmapStatus = "planned" | "blocked" | "rejected" | "done";
 
 export type RoadmapItem = {
   title: string;
@@ -39,10 +39,13 @@ export const ROADMAP: RoadmapItem[] = [
     status: "planned",
     desc: "Eine Sprache pro Nutzer (DE / EN / EN-US / FR / ES) im Profil — gilt für Fleetplanner, Companion und Mission-Cover. Eigennamen (Schiffe, Funknetze) bleiben englisch.",
   },
+
+  // ── Abgelehnt ────────────────────────────────────────────────────────
   {
     title: "Federation Voice",
-    status: "planned",
-    desc: "Gemeinsamer Sprachraum über mehrere Guilds/Events hinweg (Host + Stellvertreter). Größtes Vorhaben — baut auf der Event-Verteilung auf.",
+    status: "rejected",
+    desc: "Gemeinsamer Sprachraum über mehrere Guilds/Events hinweg (Host + Stellvertreter).",
+    note: "Abgelehnt — Begründung folgt.",
   },
 
   // ── Blockiert ────────────────────────────────────────────────────────

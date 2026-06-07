@@ -1,7 +1,8 @@
 # Federation Voice — cross-Discord voice for partner events
 
 **FeatureRequest — Priority 3** (scale 1 highest … 5 lowest)
-**Status:** Plan approved 2026-06-05, **NOT yet implemented**. No schema/code exists.
+**Status:** ✗ **REJECTED (2026-06-07)** — user decision; not planned. Begründung folgt (to be added).
+No schema/code exists. Doc kept for context/history.
 **Split from:** the former combined `partner-events-plan.md`.
 
 ## Dependencies

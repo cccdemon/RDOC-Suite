@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Federation Voice → Rejected (not planned)
+
+User decision: Federation Voice is **rejected**, not planned (reason to follow). Marked as
+"Abgelehnt" on the in-app /roadmap (new `rejected` status), in ROADMAP.md, the FR doc header, and
+CLAUDE.md; removed from the recommended order.
+
 ## Completed Step - 2026-06-07: Public /roadmap page + German Fleetplanner overview doc
 
 DONE: in-app roadmap — `lib/roadmap.ts` (curated, German) + `roadmapPage` + `/roadmap` route + nav

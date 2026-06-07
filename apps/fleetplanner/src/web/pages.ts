@@ -7206,6 +7206,7 @@ export function roadmapPage(opts: {
   const groups: Array<{ key: RoadmapStatus; label: string; tag: string }> = [
     { key: "planned", label: "Geplant", tag: "tag-gold" },
     { key: "blocked", label: "Blockiert", tag: "tag-dim" },
+    { key: "rejected", label: "Abgelehnt", tag: "tag-red" },
     { key: "done", label: "Erledigt", tag: "tag-green" },
   ];
   const sections = groups.map((g) => {

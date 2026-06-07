@@ -12,7 +12,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P1 | Event Creation Simplification (Mobile join + Admin wizard) | [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) | — (sight "Vi5E Tools") | ✓ Core done (guided wizard + dedicated join view live); pending: sight "Vi5E Tools" |
 | P1 | Fleetplanner GUI UX (Join view + Fleet Requirements wording) | [FR-P1-fleetplanner-gui-ux-implementation.md](FR-P1-fleetplanner-gui-ux-implementation.md) | existing Fleetplanner SSR + Composition/FleetUnit models | ✓ Done (2026-06-06) |
 | P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | ✓ Done |
-| P3 | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | **FR-P1 event-distribution** + relay-bots multi-session refactor | Plan |
+| ~~P3~~ | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | — | ✗ **Abgelehnt** (Begründung folgt) |
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | ✓ Done (2026-06-06; series-distribution deferred → FR-P1) |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
 | P3 | Language Switch / i18n (Fleetplanner + Companion + MissionCover) | [FR-P3-language-switch.md](FR-P3-language-switch.md) | `User` profile as single source of truth | Plan (large/phased) |
@@ -28,8 +28,9 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 3. **FR-P3 roadmap-tab** — surfaces everything else + feedback intake.
 4. **FR-P3 inactivity-alert** — gateway bot + GUILD_MEMBERS intent.
 5. **FR-P3 language-switch / i18n** — large/phased; cross-app.
-6. **FR-P3 federation-voice** — largest/riskiest; needs FR-P1 + relay-bots refactor.
-7. **FR-P5 item-database** — blocked on data source.
+6. **FR-P5 item-database** — blocked on data source.
+
+*Rejected:* **FR-P3 federation-voice** (Begründung folgt).
 
 Also pending (no FR doc): sight **"Vi5E Tools"** to finalize the eventcreation wizard scope.
 
