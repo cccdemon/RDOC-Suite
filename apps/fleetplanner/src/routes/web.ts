@@ -1224,6 +1224,20 @@ export async function webRoutes(app: FastifyInstance) {
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,
+        lang: "de",
+      }),
+    );
+  });
+
+  app.get("/what-is", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(
+      reply,
+      whatIsPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+        lang: "en",
       }),
     );
   });

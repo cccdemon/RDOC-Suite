@@ -6865,10 +6865,17 @@ export function whatIsPage(opts: {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];
   csrfToken?: string;
+  lang?: "de" | "en";
 }): SafeHtml {
   const bp = opts.basePath;
   const card = "card";
-  const body = html` <div class="page-header">
+  const de = (opts.lang ?? "de") === "de";
+
+  const langToggle = html`<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
+    <a href="${bp}/${de ? "what-is" : "was-ist"}" class="btn btn-sm">${de ? "🇬🇧 English version" : "🇩🇪 Deutsche Version"}</a>
+  </div>`;
+
+  const deBody = html` <div class="page-header">
       <h1 class="page-title">WAS IST DER FLEETMANAGER?</h1>
       <p class="page-subtitle">Kurz erklärt — ohne Technik-Kauderwelsch.</p>
     </div>
@@ -6936,7 +6943,12 @@ export function whatIsPage(opts: {
       <div class="${card}" style="padding:1.1rem;max-width:54rem">
         <ul style="margin:0;padding-left:1.2rem;line-height:1.7">
           <li><strong>Mission Cover</strong> — ein schickes Briefing-Poster für die Operation, automatisch aus den Daten erzeugt.</li>
-          <li><strong>Voice / Funk</strong> — Sprach-Kanäle und Funk-Verbindungen für die Mission.</li>
+          <li><strong>Voice / Funk</strong> — Sprach-Kanäle für die Mission, <strong>über die Raumdock-Infrastruktur</strong>. Das bringt zwei Dinge (einfach gesagt):
+            <ul style="margin:.35rem 0 0;padding-left:1.1rem;line-height:1.6">
+              <li><strong>Geschlossener Missions-Funk:</strong> nur wer zur Mission gehört, hört mit — und das über Channel-Grenzen hinweg (ähnlich „Whisper to" bei TeamSpeak).</li>
+              <li><strong>Durchsage in Discord-Kanäle:</strong> einer spricht, alle hören — direkt in euren Discord-Sprachkanälen.</li>
+            </ul>
+          </li>
           <li><strong>Erinnerungen</strong> — Discord schickt rechtzeitig eine Nachricht, bevor es losgeht.</li>
           <li><strong>Partner-Server</strong> — befreundete Orgs können gemeinsame Einsätze sehen und mitmachen.</li>
         </ul>
@@ -6955,12 +6967,104 @@ export function whatIsPage(opts: {
       <a href="${bp}/how-to" class="btn btn-cyan">Weiter zur ausführlichen Anleitung →</a>
     </div>`;
 
+  const enBody = html` <div class="page-header">
+      <h1 class="page-title">WHAT IS THE FLEETMANAGER?</h1>
+      <p class="page-subtitle">The short version — no tech jargon.</p>
+    </div>
+
+    <div class="section">
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          The <strong>Fleetmanager</strong> is a planning tool for Star Citizen operations. Picture
+          your org heading out with 30 people and 10 ships — coordinating all that in a Discord chat
+          turns into chaos fast. The Fleetmanager turns it into a tidy list:
+          <strong>who flies what, who sits where, when it kicks off.</strong>
+        </p>
+        <p style="margin-top:.6rem">
+          It plugs straight into your Discord server. Whatever you plan here shows up as a
+          <strong>Discord event</strong> — nobody has to learn a new app.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">The simple idea</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">Think of a <strong>wedding seating plan</strong> — just for spaceships:</p>
+        <table class="user-table" style="width:100%;margin-top:.75rem">
+          <thead><tr><th>In the Fleetmanager</th><th>Is like…</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Operation</strong></td><td>the event (e.g. "Daymar raid, Saturday 8pm")</td></tr>
+            <tr><td><strong>Ship / unit</strong></td><td>a table</td></tr>
+            <tr><td><strong>Seat</strong></td><td>a chair at the table (pilot, gunner, medic …)</td></tr>
+            <tr><td><strong>Crew</strong></td><td>the guests who grab a chair</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Who does what?</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <table class="user-table" style="width:100%">
+          <thead><tr><th>Role</th><th>Job</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Fleet&nbsp;Op</strong> <span class="text-dim">(operator)</span></td><td>plans the operation: what, when, where. The host.</td></tr>
+            <tr><td><strong>Crew</strong></td><td>every member. Sees which ships are flying and grabs a seat.</td></tr>
+            <tr><td><strong>Captain</strong> <span class="text-dim">(not a rank)</span></td><td>you become one automatically the moment you register a ship — you then manage its seats. Only for that one ship in that one operation.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">How an operation runs</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <ol style="margin:0;padding-left:1.2rem;line-height:1.7">
+          <li><strong>The Fleet Op creates the operation</strong> — title, time, rendezvous. It instantly appears as a Discord event.</li>
+          <li><strong>Captains offer their ships</strong> — "I'll bring my Carrack, 4 seats".</li>
+          <li><strong>The Fleet Op accepts ships</strong> — accepted ships open their seats.</li>
+          <li><strong>Crew grab seats</strong> — everyone sees what's still free and clicks in.</li>
+          <li><strong>It kicks off</strong> — everyone knows where they belong. Afterwards there's a participant list.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Nice extras (optional)</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <ul style="margin:0;padding-left:1.2rem;line-height:1.7">
+          <li><strong>Mission Cover</strong> — a slick briefing-poster image for the operation, generated automatically from its data.</li>
+          <li><strong>Voice / comms</strong> — mission voice channels, <strong>powered by the Raumdock infrastructure</strong>. In plain terms it gives you two things:
+            <ul style="margin:.35rem 0 0;padding-left:1.1rem;line-height:1.6">
+              <li><strong>Closed mission comms:</strong> only people in the mission hear it — across channel boundaries (like TeamSpeak's "Whisper to").</li>
+              <li><strong>Broadcast into Discord channels:</strong> one person talks, everyone hears — straight into your Discord voice channels.</li>
+            </ul>
+          </li>
+          <li><strong>Reminders</strong> — Discord pings everyone in time before it starts.</li>
+          <li><strong>Partner servers</strong> — friendly orgs can see and join shared operations.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="${card}" style="padding:1.1rem;max-width:54rem;border-left:3px solid var(--cyan,#22d3ee)">
+        <p style="margin:0"><strong>Important:</strong> the Fleetmanager changes <em>nothing in the game</em>.
+        It's the organisation <em>around</em> it — planning, seats, coordination. In game everyone
+        still flies for themselves. 🚀</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <a href="${bp}/how-to" class="btn btn-cyan">On to the detailed guide →</a>
+    </div>`;
+
   return layout({
-    title: "Was ist der Fleetmanager?",
+    title: de ? "Was ist der Fleetmanager?" : "What is the Fleetmanager?",
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
-    body,
+    body: html`${langToggle}${de ? deBody : enBody}`,
   });
 }
 
