@@ -75,3 +75,12 @@ voice.raumdock.org:9443 {
 monitoring.raumdock.org:9443 {
 	reverse_proxy 127.0.0.1:3001
 }
+
+# RDOC SquadLink Lite — serverless P2P voice-mesh signaling (InitConnection).
+# Separate project (repo RDOC-SACompanion), only co-hosted here behind the shared
+# front door. Caddy terminates TLS and forwards the WebSocket to the init
+# container on loopback (deploy/docker-compose.proxy.yml). reverse_proxy upgrades
+# WebSockets automatically. coturn is NOT here (STUN-only for now).
+squadlink.raumdock.org:9443 {
+	reverse_proxy 127.0.0.1:8090
+}
