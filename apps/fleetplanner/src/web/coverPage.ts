@@ -65,12 +65,10 @@ export function coverPage(opts: CoverPageOptions): SafeHtml {
           (<code>MISSIONCOVER_SERVICE_SECRET</code> fehlt). Sobald gesetzt, kann hier ein Cover
           gerendert werden.
         </p>
-        <p><a href="${manageUrl}">← Zurück zur Operation</a></p>
       </section>`
     : html`<section class="panel">
         <div class="cover-head">
           <h1>Mission Cover</h1>
-          <a href="${manageUrl}" class="btn-link">← Zurück zur Operation</a>
         </div>
         <p class="muted">Operation: <strong>${opts.op.title}</strong></p>
 
@@ -108,12 +106,17 @@ export function coverPage(opts: CoverPageOptions): SafeHtml {
         ${generateForm}
       </section>`;
 
+  // Always-visible way back to the operation being managed.
+  const backBar = html`<div style="margin-bottom:14px">
+    <a href="${manageUrl}" class="btn btn-cyan">← Zurück zur Mission</a>
+  </div>`;
+
   return layout({
     title: "Mission Cover",
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
     flash: opts.flash ?? null,
-    body,
+    body: html`${backBar}${body}`,
   });
 }
