@@ -7222,6 +7222,15 @@ export function roadmapPage(opts: {
           </div>
           <p style="margin:0">${r.desc}</p>
           ${r.note ? html`<p class="text-dim text-sm" style="margin:.4rem 0 0">${r.note}</p>` : safe("")}
+          ${r.reason
+            ? html`<div style="margin:.5rem 0 0;border-left:2px solid var(--red,#e0556b);padding-left:.8rem">
+                ${r.reason.split("\n\n").map((p, i) =>
+                  i === 0
+                    ? html`<p style="margin:0 0 .4rem;font-weight:600">${p}</p>`
+                    : html`<p class="text-dim" style="margin:0 0 .4rem">${p}</p>`,
+                )}
+              </div>`
+            : safe("")}
         </div>`,
       )}
     </div>`;

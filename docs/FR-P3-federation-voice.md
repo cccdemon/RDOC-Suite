@@ -1,9 +1,46 @@
 # Federation Voice — cross-Discord voice for partner events
 
 **FeatureRequest — Priority 3** (scale 1 highest … 5 lowest)
-**Status:** ✗ **REJECTED (2026-06-07)** — user decision; not planned. Begründung folgt (to be added).
+**Status:** ✗ **REJECTED (2026-06-07)** — user decision; not planned (Begründung unten).
 No schema/code exists. Doc kept for context/history.
 **Split from:** the former combined `partner-events-plan.md`.
+
+## Begründung der Ablehnung (2026-06-07)
+
+**Warum wir dieses Feature derzeit nicht umsetzen**
+
+Uns wurde der Wunsch nach einem organisationsübergreifenden Sprachraum vorgetragen, bei dem mehrere
+Organisationen während gemeinsamer Operationen verbunden werden können, ohne dass Mitglieder ihren
+jeweiligen Discord-Server verlassen müssen.
+
+Die dahinterstehende Motivation ist nachvollziehbar: Organisationen möchten ihren Mitgliedern eine
+vertraute Umgebung bieten und gleichzeitig vermeiden, dass diese unmittelbar mit anderen Communities
+in Kontakt kommen, die möglicherweise aktiver oder größer erscheinen.
+
+Dennoch entspricht ein solches Konzept nicht der Philosophie, die wir mit dem Raumdock und dem RDOC
+Fleetmanager verfolgen.
+
+Unser Ziel ist es, die deutschsprachige Star-Citizen-Community miteinander zu vernetzen und
+Zusammenarbeit zwischen Organisationen zu fördern. Gemeinsame Operationen sollen Begegnungen
+ermöglichen, Brücken bauen und den Austausch zwischen Spielern und Communities erleichtern. Wir
+glauben an ein offenes „Jump-on, Jump-off“-Prinzip, bei dem Organisationen temporär zusammenarbeiten
+können, ohne sich voneinander abzuschotten.
+
+Eine technische Lösung, deren primärer Zweck darin besteht, die Sichtbarkeit anderer Communities zu
+reduzieren, sehen wir daher kritisch. Die langfristige Bindung von Mitgliedern entsteht aus einer
+aktiven Gemeinschaft, interessanten Inhalten, guter Organisation und einem attraktiven Miteinander.
+Diese Verantwortung liegt bei jeder Organisation selbst.
+
+Wenn Mitglieder ausschließlich deshalb gehalten werden können, weil ihnen Alternativen verborgen
+bleiben, löst Technologie nicht das eigentliche Problem. Unser Anspruch ist es nicht, solche
+Herausforderungen zu kaschieren, sondern Werkzeuge bereitzustellen, die Zusammenarbeit, Transparenz
+und gemeinsames Wachstum fördern.
+
+Deshalb werden wir ein Feature, das primär auf die Abschottung von Communities abzielt, aktuell nicht
+in unsere Roadmap aufnehmen.
+
+---
+*(Ursprünglicher Plan unten als Historie.)*
 
 ## Dependencies
 - **Hard depends on [FR-P1-event-distribution.md](FR-P1-event-distribution.md):** federation is opt-in *after* a partner accepts the F1 distribution; the opt-in flag lives on `EventDistribution`. Without F1 there is no partner-event to join.
