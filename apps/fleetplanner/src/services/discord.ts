@@ -600,7 +600,7 @@ export async function sendDiscordChannelMessage(
     attachments.forEach((a, i) => {
       form.append(
         `files[${i}]`,
-        new Blob([a.data], { type: a.contentType || "application/octet-stream" }),
+        new Blob([a.data as BlobPart], { type: a.contentType || "application/octet-stream" }),
         a.filename,
       );
     });
