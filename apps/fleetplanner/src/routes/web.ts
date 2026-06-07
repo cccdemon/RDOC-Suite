@@ -543,7 +543,7 @@ export async function webRoutes(app: FastifyInstance) {
       fetchGuildVoiceChannels(op.guildId).catch(() => []),
       prisma.guild.findUnique({
         where: { id: op.guildId },
-        select: { timezone: true },
+        select: { timezone: true, discordInviteUrl: true },
       }),
       ctx
         ? prisma.userShip
@@ -571,6 +571,8 @@ export async function webRoutes(app: FastifyInstance) {
         ownedShips,
         canManage,
         publicUrl: `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH ?? ""}`,
+        discordInvite:
+          (guildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null,
       }),
     );
   });

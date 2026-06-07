@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Player signup shows the guild Discord invite link
+
+Bug: opJoinPage didn't surface the guild's `discordInviteUrl`. Add `discordInviteUrl` to the
+opJoinPage route's guild select, pass `discordInvite` into the page, render a "Discord" fact linking
+to the server invite (helps guests/non-members of public/partner ops join).
+
 ## Completed Step - 2026-06-07: Federation Voice → Rejected (not planned)
 
 User decision: Federation Voice is **rejected**, not planned (reason to follow). Marked as

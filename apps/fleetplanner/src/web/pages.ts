@@ -3926,6 +3926,7 @@ export function opJoinPage(opts: {
   ownedShips?: Ship[];
   canManage?: boolean;
   publicUrl?: string;
+  discordInvite?: string | null;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -4270,6 +4271,16 @@ export function opJoinPage(opts: {
         <span>Participants</span>
         <strong>${minP > 0 ? `Min ${minP}` : "No minimum"}${maxP ? ` / Max ${maxP}` : ""}</strong>
       </div>
+      ${opts.discordInvite
+        ? html`<div class="event-fact">
+            <span>Discord</span>
+            <strong
+              ><a href="${opts.discordInvite}" target="_blank" rel="noopener noreferrer"
+                >Server beitreten ↗</a
+              ></strong
+            >
+          </div>`
+        : safe("")}
     </div>
 
     <div class="join-layout">
