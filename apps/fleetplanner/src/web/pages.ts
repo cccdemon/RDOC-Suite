@@ -6861,6 +6861,109 @@ export function loginRequiredPage(opts: {
 
 // ── Public info pages ────────────────────────────────────────────────
 
+export function whatIsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const card = "card";
+  const body = html` <div class="page-header">
+      <h1 class="page-title">WAS IST DER FLEETMANAGER?</h1>
+      <p class="page-subtitle">Kurz erklärt — ohne Technik-Kauderwelsch.</p>
+    </div>
+
+    <div class="section">
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          Der <strong>Fleetmanager</strong> ist ein Planungs-Werkzeug für Star-Citizen-Einsätze
+          („Operations"). Stell dir vor, deine Org will mit 30 Leuten und 10 Schiffen losziehen —
+          den ganzen Kram im Discord-Chat zu organisieren wird schnell Chaos. Der Fleetmanager
+          macht daraus eine ordentliche Liste: <strong>Wer fliegt was, wer sitzt wo, wann geht's los.</strong>
+        </p>
+        <p style="margin-top:.6rem">
+          Er hängt direkt an deinem Discord-Server. Was du hier planst, taucht als
+          <strong>Discord-Event</strong> auf — niemand muss eine neue App lernen.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Die einfache Idee</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">Denk an einen <strong>Tischplan für eine Hochzeit</strong> — nur für Raumschiffe:</p>
+        <table class="user-table" style="width:100%;margin-top:.75rem">
+          <thead><tr><th>Im Fleetmanager</th><th>Ist wie…</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Operation</strong></td><td>die Veranstaltung (z. B. „Angriff auf Daymar, Samstag 20 Uhr")</td></tr>
+            <tr><td><strong>Schiff / Einheit</strong></td><td>ein Tisch</td></tr>
+            <tr><td><strong>Sitzplatz</strong></td><td>ein Stuhl am Tisch (Pilot, Gunner, Sanitäter …)</td></tr>
+            <tr><td><strong>Crew</strong></td><td>die Gäste, die sich einen Stuhl schnappen</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Wer macht was?</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <table class="user-table" style="width:100%">
+          <thead><tr><th>Rolle</th><th>Aufgabe</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Admiral / Fleetadmin</strong></td><td>plant die Operation: Was, Wann, Wo. Der Veranstalter.</td></tr>
+            <tr><td><strong>Captain</strong></td><td>meldet ein Schiff an und bestimmt, wie viele Plätze es hat.</td></tr>
+            <tr><td><strong>Crew</strong></td><td>schaut, welche Schiffe mitfliegen, und schnappt sich einen Platz.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">So läuft eine Operation ab</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <ol style="margin:0;padding-left:1.2rem;line-height:1.7">
+          <li><strong>Admiral legt die Operation an</strong> — Titel, Zeit, Treffpunkt. Sie erscheint sofort als Discord-Event.</li>
+          <li><strong>Captains bieten ihre Schiffe an</strong> — „Ich bringe meine Carrack mit, 4 Plätze".</li>
+          <li><strong>Der Admiral nimmt Schiffe an</strong> — angenommene Schiffe bekommen ihre Sitzplätze.</li>
+          <li><strong>Crew schnappt sich Plätze</strong> — jeder sieht, was noch frei ist, und klickt sich rein.</li>
+          <li><strong>Es geht los</strong> — alle wissen, wo sie hingehören. Danach gibt's eine Teilnehmerliste.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Nette Extras (optional)</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <ul style="margin:0;padding-left:1.2rem;line-height:1.7">
+          <li><strong>Mission Cover</strong> — ein schickes Briefing-Poster für die Operation, automatisch aus den Daten erzeugt.</li>
+          <li><strong>Voice / Funk</strong> — Sprach-Kanäle und Funk-Verbindungen für die Mission.</li>
+          <li><strong>Erinnerungen</strong> — Discord schickt rechtzeitig eine Nachricht, bevor es losgeht.</li>
+          <li><strong>Partner-Server</strong> — befreundete Orgs können gemeinsame Einsätze sehen und mitmachen.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="${card}" style="padding:1.1rem;max-width:54rem;border-left:3px solid var(--cyan,#22d3ee)">
+        <p style="margin:0"><strong>Wichtig:</strong> Der Fleetmanager ändert <em>nichts im Spiel</em>.
+        Er ist die Organisation <em>drumherum</em> — Planung, Plätze, Absprache. Im Spiel fliegt
+        natürlich weiter jeder selbst. 🚀</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <a href="${bp}/how-to" class="btn btn-cyan">Weiter zur ausführlichen Anleitung →</a>
+    </div>`;
+
+  return layout({
+    title: "Was ist der Fleetmanager?",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
 export function howToPage(opts: {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];

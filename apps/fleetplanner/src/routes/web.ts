@@ -20,6 +20,7 @@ import {
   loginPage,
   accountPage,
   howToPage,
+  whatIsPage,
   changelogPage,
   impressumPage,
   datenschutzPage,
@@ -1215,6 +1216,18 @@ export async function webRoutes(app: FastifyInstance) {
   });
 
   // ── Public info pages (no login required) ────────────────────────────
+  app.get("/was-ist", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    htmlReply(
+      reply,
+      whatIsPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+      }),
+    );
+  });
+
   app.get("/how-to", async (req, reply) => {
     const ctx = await optionalAuth(req);
     htmlReply(

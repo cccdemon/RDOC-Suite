@@ -13,6 +13,13 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-07",
+    title: "\"Was ist das?\" beginner page",
+    changes: [
+      "New \"Was ist das?\" tab: a plain-language, non-technical intro to what the Fleetmanager is and how an operation works — for newcomers.",
+    ],
+  },
+  {
+    date: "2026-06-07",
     title: "Roadmap page",
     changes: [
       "New Roadmap tab shows what's planned, blocked and already shipped.",

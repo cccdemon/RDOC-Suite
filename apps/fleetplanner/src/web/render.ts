@@ -124,6 +124,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
     <span class="nav-brand">RDOC // FLEETPLANNER</span>
     <a href="${bp}/">Operations</a>
     ${u ? html`<a href="${bp}/guilds">Servers</a>` : ""}
+    <a href="${bp}/was-ist">Was ist das?</a>
     <a href="${bp}/how-to">How to</a>
     <a href="${bp}/why-unsigned">Unsigned Binary</a>
     <a href="${bp}/roadmap">Roadmap</a>
