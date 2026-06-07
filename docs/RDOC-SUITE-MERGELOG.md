@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-07: Mission-Cover als halbtransparentes Hero-Background
+
+User-Wunsch (Folge auf den Crop-Fix): Cover NICHT als separates Bild, sondern als Hintergrundbild
+der Op-Hero, halbtransparent abgedunkelt, damit der Vordergrund-Text lesbar bleibt.
+- `opJoinPage`-Hero `background-image`: wenn `op.cover` → dunkler 180deg-Overlay
+  `rgba(5,8,16,.45)→.85` über `url(cover)` (background-size:cover, center), sonst weiter das
+  opType-Bild wie bisher. min-height bei Cover auf 340px.
+- Separates `<img class="event-cover">` entfernt (durch Background ersetzt → kein Workaround-Rest).
+CSS-only in pages.ts.
+
 ## Completed Step - 2026-06-07: Bugfix — Mission-Cover im Op-Header beschnitten
 
 `opJoinPage`-Hero zeigte das Mission-Cover als `<img>` mit `object-fit:cover` + `max-height:340px`

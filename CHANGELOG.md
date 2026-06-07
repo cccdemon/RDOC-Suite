@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed - Fleetplanner: mission cover cropped in the op header (2026-06-07)
+### Changed - Fleetplanner: mission cover as the op-header background (2026-06-07)
 
-- The mission-cover image in the operation hero used `object-fit:cover` + a 340px max-height, so the 16:9 poster (2400×1350) was cut to a thin horizontal slice. Now shown in full (`object-fit:contain`, `height:auto`, no max-height) — the whole poster scales to the container width, no crop.
+- The mission cover is now the **background image of the operation hero**, dimmed with a semi-transparent dark overlay (`linear-gradient(180deg, rgba(5,8,16,.45)→.85)`) so the foreground text stays readable. Replaces the earlier cropped inline `<img>` (which `object-fit:cover` cut to a thin slice). When no cover exists, the generic opType image is used as before.
 
 ### Added - Fleetplanner: Discord-event "Interested" → auto needs-assignment (FR-P2) (2026-06-07)
 

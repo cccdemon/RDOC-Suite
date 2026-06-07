@@ -13,9 +13,9 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-06-07",
-    title: "Mission cover now shown in full",
+    title: "Mission cover as page backdrop",
     changes: [
-      "The mission-cover image on the operation page is no longer cropped to a thin strip — the whole poster is shown.",
+      "The mission cover is now the operation page's header background, gently dimmed so the title and details stay easy to read.",
     ],
   },
   {

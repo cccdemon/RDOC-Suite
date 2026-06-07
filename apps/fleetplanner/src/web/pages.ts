@@ -4270,10 +4270,12 @@ export function opJoinPage(opts: {
     <div class="event-shell">
     <section
       class="event-hero"
-      style="background-image:linear-gradient(90deg, rgba(5,8,16,.96), rgba(5,8,16,.76), rgba(5,8,16,.3)), url('${missionImageUrl(
-        bp,
-        op.opType,
-      )}')"
+      style="${op.cover
+        ? `min-height:340px;background-image:linear-gradient(180deg, rgba(5,8,16,.45), rgba(5,8,16,.85)), url('${op.cover.url}')`
+        : `background-image:linear-gradient(90deg, rgba(5,8,16,.96), rgba(5,8,16,.76), rgba(5,8,16,.3)), url('${missionImageUrl(
+            bp,
+            op.opType,
+          )}')`}"
     >
       <div class="event-hero-top">
         <div class="join-badges">
@@ -4287,14 +4289,6 @@ export function opJoinPage(opts: {
             </div>`
           : safe("")}
       </div>
-      ${op.cover
-        ? html`<img
-            class="event-cover"
-            src="${op.cover.url}"
-            alt="Mission cover"
-            style="display:block;width:100%;height:auto;object-fit:contain;border-radius:10px;margin:8px 0"
-          />`
-        : safe("")}
       <div>
         <h1>${op.title}</h1>
         <p>${op.meetingLocation || "Rendezvous not set"} · ${systemLabel(op.meetingSystem)}</p>
