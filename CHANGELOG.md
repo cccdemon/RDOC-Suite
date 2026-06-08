@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Op join page: status on top, assistant collapses, headcount + direct claim (2026-06-09)
+
+- When you're already signed up, the **"I want to join" assistant is now collapsed** behind a one-line prompt — *"Want to contribute something else to the mission, or additionally claim another seat?"* — with your green signed-up banner above it. Not-yet-signed-up users still see it expanded.
+- The top fact row gained a **"Gemeldet / Bestätigt"** box (signed-up / confirmed headcount): confirmed = people holding a seat; signed up = everyone who joined in any form (seat, crew request, CQB, or own pending ship offer).
+- New **"Claim a seat directly"** card right under the assistant — pick an open seat without going through the assistant at all.
+
 ### Fixed - Your own signup status is now always visible (2026-06-09)
 
 - You couldn't tell you were already signed up — especially after a **CQB signup**. Two gaps:

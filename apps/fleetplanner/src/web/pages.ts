@@ -4427,6 +4427,19 @@ export function opJoinPage(opts: {
           ✓ You're signed up — ${signupParts.join(" · ")}.
         </div>`
       : safe("");
+  // Headcount for the top fact row. Bestätigt (confirmed) = people actually
+  // holding a seat; Gemeldet (signed up) = everyone who signed up in any form
+  // (seat, crew request, CQB, or an own ship offer awaiting review).
+  const seatedUserIds = acceptedUnits.flatMap((u) =>
+    u.seats.filter((s) => s.active && s.userId).map((s) => s.userId as string),
+  );
+  const confirmedCount = new Set(seatedUserIds).size;
+  const signedUpCount = new Set<string>([
+    ...seatedUserIds,
+    ...op.crewRequests.map((r) => r.user.id),
+    ...(op.cqbSignups ?? []).map((s) => s.userId),
+    ...op.units.filter((u) => u.status === "pending").map((u) => u.captainId),
+  ]).size;
 
   const body = html` <style>
       .event-shell { width: 100%; }
@@ -4464,6 +4477,14 @@ export function opJoinPage(opts: {
       .join-opt .arr { color: var(--dim, #7a8a96); }
       /* Radio-driven join assistant: CSS-only inline disclosure, no JS. */
       .join-asst .ja-radio { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+      details.join-asst > summary.ja-card-summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+      details.join-asst > summary.ja-card-summary::-webkit-details-marker { display: none; }
+      details.join-asst > summary .wiz-sum-h { font-size: 1.05rem; }
+      details.join-asst > summary::after { content: "▾"; color: var(--cyan, #35d0e0); font-size: .9rem; }
+      details.join-asst[open] > summary::after { content: "▴"; }
+      .direct-seats { display: grid; gap: .7rem; }
+      .direct-seat-unit-name { font-weight: 600; margin-bottom: .35rem; }
+      .direct-seat-btns { display: flex; flex-wrap: wrap; gap: 6px; }
       .ja-opt { display: grid; grid-template-columns: 4rem minmax(0, 1fr) 18px; align-items: center; gap: 14px; padding: 13px 16px; border: 1px solid rgba(255,255,255,0.1); margin-top: 10px; cursor: pointer; background: rgba(255,255,255,.015); }
       .ja-opt .ico { font-family: var(--font-mono); font-size: .72rem; color: var(--cyan); text-transform: uppercase; }
       .ja-txt { display: flex; flex-direction: column; min-width: 0; }
@@ -4552,6 +4573,10 @@ export function opJoinPage(opts: {
       <div class="event-fact">
         <span>Participants</span>
         <strong>${minP > 0 ? `Min ${minP}` : "No minimum"}${maxP ? ` / Max ${maxP}` : ""}</strong>
+      </div>
+      <div class="event-fact">
+        <span>Gemeldet / Bestätigt</span>
+        <strong>${signedUpCount} / ${confirmedCount}</strong>
       </div>
       ${opts.discordInvite
         ? html`<div class="event-fact">
@@ -4648,9 +4673,13 @@ export function opJoinPage(opts: {
                 <h3 class="wiz-sum-h">I want to join</h3>
                 <div class="opv2-cta closed">Sign-up is closed.</div>
               </section>`
-            : html`<section class="card join-asst">
-                  <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;flex-wrap:wrap">
-                    <h3 class="wiz-sum-h" style="margin:0">I want to join</h3>
+            : html`<details class="card join-asst"${signedUp ? safe("") : safe(" open")}>
+                  <summary class="ja-card-summary">
+                    <span class="wiz-sum-h" style="margin:0">${signedUp
+                      ? "Want to contribute something else to the mission, or additionally claim another seat?"
+                      : "I want to join"}</span>
+                  </summary>
+                  <div style="display:flex;justify-content:flex-end;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:.6rem">
                     <button type="button" id="jw-open" class="btn btn-sm btn-cyan">
                       ${signedUp ? "Restart sign-up assistant" : "Sign-up assistant"}
                     </button>
@@ -4976,7 +5005,41 @@ export function opJoinPage(opts: {
                       if (!${signedUp ? "true" : "false"}) openOv();
                     })();
                   </script>
-                </section>`}
+                </details>`}
+
+        ${isOpen && myId && openSeats.length
+          ? html`<section class="card direct-claim" style="margin-top:1rem">
+              <h3 class="wiz-sum-h">Claim a seat directly</h3>
+              <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">
+                Don't want the assistant? Pick an open seat right here.
+              </p>
+              <div class="direct-seats">
+                ${seatShipUnits.map(
+                  (u) => html`<div class="direct-seat-unit">
+                    <div class="direct-seat-unit-name">
+                      ${u.name}${u.cls ? html` <span class="tag tag-dim">${u.cls}</span>` : safe("")}
+                    </div>
+                    <div class="direct-seat-btns">
+                      ${u.seats.map((s) =>
+                        s.open
+                          ? html`<form
+                              method="post"
+                              action="${bp}/api/seats/${s.id}/claim"
+                              class="inline"
+                            >
+                              <input type="hidden" name="_csrf" value="${csrf}" />
+                              <input type="hidden" name="ui" value="player" />
+                              <input type="hidden" name="tab" value="fleet" />
+                              <button type="submit" class="btn btn-sm btn-green">${s.label}</button>
+                            </form>`
+                          : safe(""),
+                      )}
+                    </div>
+                  </div>`,
+                )}
+              </div>
+            </section>`
+          : safe("")}
 
         ${myPendingUnits.length
           ? html`<section class="card" style="margin-top:1rem">

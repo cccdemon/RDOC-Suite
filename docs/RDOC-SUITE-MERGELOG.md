@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Join-Seite UX-Politur (Status oben, Assistent collapsed, Headcount, Direkt-Claim)
+
+Folge-Iteration zum Anmeldestatus (nach Commit 29d33ae). Alles in `opJoinPage` (pages.ts):
+- **Status oben + Assistent collapsed**: Bei `signedUp` ist die "I want to join"-Card jetzt ein
+  collapsed `<details class="join-asst">`; Summary = engl. Frage "Want to contribute something else to
+  the mission, or additionally claim another seat?". Nicht-angemeldet → `<details open>` mit "I want to
+  join". Grünes `signupSummaryBanner` steht darüber (bereits in 29d33ae).
+- **Headcount-Box** in der `event-facts`-Reihe oben: "Gemeldet / Bestätigt" = `signedUpCount` /
+  `confirmedCount`. Bestätigt = distinct Sitz-Inhaber; Gemeldet = distinct(Sitze ∪ crewRequests ∪
+  CQB ∪ eigene pending Ship-Offers).
+- **Direkt-Claim ohne Assistent**: neue Card "Claim a seat directly" direkt unter dem Assistenten
+  (gated `isOpen && myId && openSeats.length`), rendert pro Unit die offenen Sitze als direkte
+  Claim-Buttons (POST /api/seats/:id/claim) — unabhängig vom Assistenten.
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Completed Step - 2026-06-09: Test-Coverage Fortsetzung — scwiki-Shipclass + Route-Injection (Prio 3)
 
 DONE. (Prio 5) `scwiki.shipclass.test.ts`: pure `shipCategory` (alle Kategorie-Zweige) + `shipCanCarryVehicle`
