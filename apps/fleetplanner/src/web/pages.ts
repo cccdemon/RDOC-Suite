@@ -4432,75 +4432,48 @@ export function opJoinPage(opts: {
                 </section>`
               : html`<section class="card join-asst">
                   <h3 class="wiz-sum-h">I want to join</h3>
+                  <p class="text-dim text-sm" style="margin:-.35rem 0 .7rem">
+                    Pick how you'll contribute — every step is optional. In a hurry? Use
+                    <em>"Let the operator place me"</em> at the bottom.
+                  </p>
 
-                  <input type="radio" name="join-mode" id="jm-assign" class="ja-radio" ${openSeats.length ? safe("checked") : safe("")} />
-                  <label for="jm-assign" class="ja-opt">
-                    <span class="ico">Assign</span>
-                    <span class="ja-txt"
-                      ><span class="ttl">Let the operator place me</span
-                      ><span class="sub">I'm flexible or need help finding a role.</span></span
-                    >
-                    <span class="ja-chk"></span>
-                  </label>
-                  <div class="ja-panel">
-                    <form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
-                      <input type="hidden" name="_csrf" value="${csrf}" />
-                      <input type="hidden" name="ui" value="player" />
-                      <input type="hidden" name="tab" value="crew" />
-                      <label
-                        >Note to the Fleet Operator
-                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
-                      >
-                      <textarea
-                        name="note"
-                        maxlength="240"
-                        placeholder="e.g. experience, preferred role, ships you can bring…"
-                      ></textarea>
-                      <button type="submit" class="btn btn-green mt-1">Request a spot</button>
-                    </form>
-                  </div>
-
-                  <input type="radio" name="join-mode" id="jm-seat" class="ja-radio" ${openSeats.length ? safe("") : safe("disabled")} />
-                  <label for="jm-seat" class="ja-opt">
-                    <span class="ico">Seat</span>
-                    <span class="ja-txt"
-                      ><span class="ttl">Take an open seat</span
-                      ><span class="sub"
-                        >${openSeats.length
-                          ? `${openSeats.length} open seat${openSeats.length === 1 ? "" : "s"} in accepted units.`
-                          : "Pick a seat in an accepted ship or fireteam."}</span
-                      ></span
-                    >
-                    <span class="ja-chk"></span>
-                  </label>
-                  <div class="ja-panel">
-                    ${openSeats.length
-                      ? openSeats.map(
-                          (s) => html`<div class="join-seat">
-                            <span>${s.unit} · ${s.label}</span>
-                            <form
-                              method="post"
-                              action="${bp}/api/seats/${s.seatId}/claim"
-                              class="inline"
-                            >
-                              <input type="hidden" name="_csrf" value="${csrf}" />
-                              <input type="hidden" name="ui" value="player" />
-                              <input type="hidden" name="tab" value="fleet" />
-                              <button type="submit" class="btn btn-sm btn-green">Claim</button>
-                            </form>
-                          </div>`,
-                        )
-                      : html`<p class="text-dim text-sm">
-                          No open seats right now — try "Offer a ship" or let the operator place you.
-                        </p>`}
-                  </div>
+                  ${openSeats.length
+                    ? html`<input type="radio" name="join-mode" id="jm-seat" class="ja-radio" checked />
+                        <label for="jm-seat" class="ja-opt">
+                          <span class="ico">Seat</span>
+                          <span class="ja-txt"
+                            ><span class="ttl">Take an open seat</span
+                            ><span class="sub"
+                              >${openSeats.length} open seat${openSeats.length === 1 ? "" : "s"} in accepted units.</span
+                            ></span
+                          >
+                          <span class="ja-chk"></span>
+                        </label>
+                        <div class="ja-panel">
+                          ${openSeats.map(
+                            (s) => html`<div class="join-seat">
+                              <span>${s.unit} · ${s.label}</span>
+                              <form
+                                method="post"
+                                action="${bp}/api/seats/${s.seatId}/claim"
+                                class="inline"
+                              >
+                                <input type="hidden" name="_csrf" value="${csrf}" />
+                                <input type="hidden" name="ui" value="player" />
+                                <input type="hidden" name="tab" value="fleet" />
+                                <button type="submit" class="btn btn-sm btn-green">Claim</button>
+                              </form>
+                            </div>`,
+                          )}
+                        </div>`
+                    : safe("")}
 
                   <input type="radio" name="join-mode" id="jm-ship" class="ja-radio" ${openSeats.length ? safe("") : safe("checked")} />
                   <label for="jm-ship" class="ja-opt">
-                    <span class="ico">Offer</span>
+                    <span class="ico">Ship</span>
                     <span class="ja-txt"
-                      ><span class="ttl">Offer a Ship / CQB Team</span
-                      ><span class="sub">Bring one of your ships, or form a CQB team.</span></span
+                      ><span class="ttl">Offer a ship</span
+                      ><span class="sub">Bring one of your ships; crew fill its seats.</span></span
                     >
                     <span class="ja-chk"></span>
                   </label>
@@ -4514,16 +4487,12 @@ export function opJoinPage(opts: {
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="ui" value="player" />
                       <input type="hidden" name="tab" value="fleet" />
+                      <input type="hidden" name="unitType" class="join-unit-type" value="ship" />
                       <div class="form-errors join-unit-errors" hidden></div>
                       <label>Fleet need <span style="font-weight:normal;opacity:.65">(optional)</span></label>
                       <select name="requirementId">
                         <option value="">Unslotted — let the operator place it</option>
                         ${availableSlots.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
-                      </select>
-                      <label>Type</label>
-                      <select name="unitType" class="join-unit-type">
-                        <option value="ship">Ship</option>
-                        <option value="squad">FPS fireteam</option>
                       </select>
                       <div class="unit-ship-fields">
                         <label>From your hangar</label>
@@ -4547,9 +4516,49 @@ export function opJoinPage(opts: {
                         </label>
                         <div class="ship-results join-ship-results"></div>
                       </div>
-                      <div class="unit-squad-fields" hidden>
+                      <label
+                        >Note to the Fleet Operator
+                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                      >
+                      <input
+                        type="text"
+                        name="captainNote"
+                        maxlength="240"
+                        placeholder="Role, loadout, crew preference…"
+                      />
+                      <button type="submit" class="btn btn-green mt-1">Offer ship</button>
+                    </form>
+                  </div>
+
+                  <input type="radio" name="join-mode" id="jm-cqb" class="ja-radio" />
+                  <label for="jm-cqb" class="ja-opt">
+                    <span class="ico">CQB</span>
+                    <span class="ja-txt"
+                      ><span class="ttl">Bring a CQB team</span
+                      ><span class="sub">Form a ground / boarding fireteam.</span></span
+                    >
+                    <span class="ja-chk"></span>
+                  </label>
+                  <div class="ja-panel">
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/units"
+                      class="opv2-form join-unit-form"
+                      novalidate
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="ui" value="player" />
+                      <input type="hidden" name="tab" value="fleet" />
+                      <input type="hidden" name="unitType" class="join-unit-type" value="squad" />
+                      <div class="form-errors join-unit-errors" hidden></div>
+                      <label>Fleet need <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                      <select name="requirementId">
+                        <option value="">Unslotted — let the operator place it</option>
+                        ${availableSlots.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
+                      </select>
+                      <div class="unit-squad-fields">
                         <label>Fireteam name</label>
-                        <input type="text" name="squadName" maxlength="80" placeholder="FPS Team" />
+                        <input type="text" name="squadName" maxlength="80" placeholder="CQB Team" />
                         <label>Fireteam size</label>
                         <input type="number" name="squadSize" min="2" max="8" value="4" />
                       </div>
@@ -4561,9 +4570,36 @@ export function opJoinPage(opts: {
                         type="text"
                         name="captainNote"
                         maxlength="240"
-                        placeholder="Role, loadout, crew preference…"
+                        placeholder="Loadout, role preference…"
                       />
-                      <button type="submit" class="btn btn-green mt-1">Offer</button>
+                      <button type="submit" class="btn btn-green mt-1">Offer CQB team</button>
+                    </form>
+                  </div>
+
+                  <input type="radio" name="join-mode" id="jm-assign" class="ja-radio" />
+                  <label for="jm-assign" class="ja-opt">
+                    <span class="ico">Place</span>
+                    <span class="ja-txt"
+                      ><span class="ttl">Let the operator place me</span
+                      ><span class="sub">I'm flexible or need help finding a role.</span></span
+                    >
+                    <span class="ja-chk"></span>
+                  </label>
+                  <div class="ja-panel">
+                    <form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="ui" value="player" />
+                      <input type="hidden" name="tab" value="crew" />
+                      <label
+                        >Note to the Fleet Operator
+                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                      >
+                      <textarea
+                        name="note"
+                        maxlength="240"
+                        placeholder="e.g. experience, preferred role, ships you can bring…"
+                      ></textarea>
+                      <button type="submit" class="btn btn-green mt-1">Request a spot</button>
                     </form>
                   </div>
                 </section>`}

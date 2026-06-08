@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 3 (geführter Join-Wizard, Reihenfolge B)
+
+Join-Seite (`opJoinPage`, `.join-asst`): flache 3-Radio-Liste → **geführter Wizard Reihenfolge B**:
+konkrete Beiträge zuerst (Sitz claimen → Schiff anbieten → CQB-Team), "Operator platziert mich" als
+letzter Fallback; irrelevante Schritte ausgeblendet (Sitz-Schritt nur bei freien Sitzen). Offer-Form
+in **zwei getrennte Formulare** gesplittet (Schiff vs CQB) — lesbarer. JS bleibt (null-guarded);
+`unitType` als hidden `.join-unit-type` (ship/squad) je Form, damit Submit-Validierung korrekt bleibt.
+**Vorhandene Backends** (seat claim, units, crew-requests) — kein Schema. CQB-Pfad nutzt interim
+`unitType=squad`; wird in Schritt 4 auf CqbSignup geswappt. Build/Deploy fleetplanner.
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Rollout 1 (Board Hull/CQB-Split) — 4fc847e
 
 Schritt 1 umgesetzt: "Fleet Requirements"-Board → **"Fleet Needs"**, gesplittet in **Hull-Need

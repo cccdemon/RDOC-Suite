@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Guided join wizard on the signup page (FR-P1, 2026-06-08)
+
+- The operation join page's "I want to join" assistant is now a **guided, order-B wizard**: concrete contributions first (**take an open seat → offer a ship → bring a CQB team**), with **"Let the operator place me"** as the final fallback. Steps that don't apply are hidden (the seat step only shows when seats are actually open). The old single "Offer a Ship / CQB Team" form is split into **two separate, clearer forms** (ship vs CQB) — addresses the feedback that offering was hard to read. Uses existing endpoints; no schema change. (The CQB path still creates a `unitType=squad` unit for now; it switches to per-person `CqbSignup` in FR-P1 step 4.)
+
 ### Changed - Fleet Needs board split into Hull vs CQB (FR-P1, 2026-06-08)
 
 - The operation overview's "Fleet Requirements" board is now **"Fleet Needs"** and split into two clearly separated groups: **Hull-Need (Schiffe)** and **CQB-Need (Soldaten)**, each with its own Soll/Ist/Offen subtotal, plus a grand total. Directly addresses the feedback that Fleet Needs was hard to understand by separating the two fundamentally different demand types (ships vs soldiers). Read-only display change; no schema/migration. New `isCqbCategory` helper in `services/composition.ts`. First step of [FR-P1-fleet-needs-and-guided-join.md](docs/FR-P1-fleet-needs-and-guided-join.md).
