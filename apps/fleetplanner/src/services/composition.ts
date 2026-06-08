@@ -17,6 +17,16 @@ export type UnitLike = {
   ship?: ShipLike | null;
 };
 
+/**
+ * CQB (soldier / personnel) categories vs ship-hull categories. The two
+ * fleet-need axes: hull-needs are satisfied by ships, CQB-needs by soldiers
+ * the operator bundles into squads. (FR-P1 fleet-needs redesign.)
+ */
+export function isCqbCategory(category: string): boolean {
+  const c = (category ?? "").toLowerCase().trim();
+  return c === "fps" || c === "ground";
+}
+
 /** Does a unit plausibly satisfy a requirement category? */
 export function matchesCategory(category: string, unit: UnitLike): boolean {
   const cat = (category ?? "").toLowerCase().trim();

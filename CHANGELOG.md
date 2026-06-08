@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleet Needs board split into Hull vs CQB (FR-P1, 2026-06-08)
+
+- The operation overview's "Fleet Requirements" board is now **"Fleet Needs"** and split into two clearly separated groups: **Hull-Need (Schiffe)** and **CQB-Need (Soldaten)**, each with its own Soll/Ist/Offen subtotal, plus a grand total. Directly addresses the feedback that Fleet Needs was hard to understand by separating the two fundamentally different demand types (ships vs soldiers). Read-only display change; no schema/migration. New `isCqbCategory` helper in `services/composition.ts`. First step of [FR-P1-fleet-needs-and-guided-join.md](docs/FR-P1-fleet-needs-and-guided-join.md).
+
 ### Fixed - Mission-Cover editor: element positions not saved correctly (2026-06-08)
 
 - Dragging the badges / QR in the cover editor could silently drop the move (positions came out wrong or unsaved). Root cause was the engine's `useHistory` hook: `setState` read the history `pointer` from a stale `useCallback` closure, so the two state updates a drag fires per mousemove (X then Y, batched by React) clobbered each other — the second sliced history at the stale pointer and discarded the first. Sliders masked it (single field); drag (X+Y) exposed it. Fixed by keeping `{stack, pointer}` in one state object and reading the pointer inside the functional updater. Engine-only change (`apps/mission-cover/engine/src/hooks/useHistory.js`); render/save round-trip was already correct.

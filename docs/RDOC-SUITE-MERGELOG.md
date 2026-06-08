@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 1+2 (Composition Board + Sitz-/Turm-Karte)
+
+Umsetzung Schritt 1+2 aus [FR-P1-fleet-needs-and-guided-join.md](FR-P1-fleet-needs-and-guided-join.md),
+**read-only, kein Schema, keine Migration**:
+- Schritt 1: **Composition Board** — Bedarf je Op als Soll/Ist/Offen, getrennt in **Hull-Needs**
+  (Schiffe) vs **CQB-Need** (category `fps`/`ground` = Soldaten). Neue reine Helper in
+  `services/composition.ts` (Aggregation) + Render-Komponente in `web/pages.ts` (Overview-Tab).
+- Schritt 2: **Sitz-/Turm-Karte Stufe 1** — abstrakte Chips `[Pilot][Turm 1][Engineer]` aus
+  `Ship.maxCrew/weaponCrew/operationCrew` + belegte Sitze; Render in Fleet-Unit-Cards.
+Keine Backend-Routes, keine neuen Tabellen. Build/Typecheck via Server-Docker-Build (kein lokaler pnpm).
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — §7-Entscheidungen eingearbeitet — d134edd
 
 User-Entscheidungen 2026-06-08: (1) KEINE Rollen-Taxonomie — Personal-Achse = nur **CQB**

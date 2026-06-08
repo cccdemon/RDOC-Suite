@@ -11,7 +11,7 @@ import {
 import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
-import { matchesCategory, suggestSlot } from "../services/composition.js";
+import { matchesCategory, suggestSlot, isCqbCategory } from "../services/composition.js";
 import { shipCanCarryVehicle } from "../services/scwiki.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
@@ -1609,6 +1609,56 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   };
   const compTone = (r: CompRow) =>
     r.open === 0 ? "tag-green" : r.fulfilled === 0 ? "tag-dim" : "tag-gold";
+  // Two fleet-need axes (FR-P1): hull-needs (ships) vs CQB-need (soldiers).
+  const hullRows = compRows.filter((r) => !isCqbCategory(r.category));
+  const cqbRows = compRows.filter((r) => isCqbCategory(r.category));
+  // Render one need-group as its own Soll/Ist/Offen table; empty group → nothing.
+  const reqGroupTable = (title: string, sumWord: string, rows: CompRow[]): SafeHtml => {
+    if (rows.length === 0) return safe("");
+    const req = rows.reduce((a, r) => a + r.count, 0);
+    const ful = rows.reduce((a, r) => a + r.fulfilled, 0);
+    const opn = rows.reduce((a, r) => a + r.open, 0);
+    return html`<div class="fleet-req-board" style="margin-bottom:1rem">
+      <div class="fleet-req-row fleet-req-head">
+        <span>${title}</span>
+        <span>Soll</span>
+        <span>Ist</span>
+        <span>Offen</span>
+      </div>
+      ${rows.map(
+        (r) => html`<div class="comp-row">
+          <div class="comp-row-head">
+            <div class="fleet-req-name">
+              <strong>${r.label}</strong>
+              <span class="tag tag-dim">${categoryLabel(r.category)}</span>
+              ${r.group ? html`<span class="text-dim text-sm">${r.group}</span>` : safe("")}
+            </div>
+            <strong class="fleet-req-num">${r.count}</strong>
+            <span class="fleet-req-num">
+              <span class="tag ${compTone(r)}">${r.fulfilled}</span>
+              ${r.pending ? html`<span class="tag tag-gold">${r.pending} pending</span>` : safe("")}
+              ${r.mismatches
+                ? html`<span class="tag tag-gold" title="Accepted units not matching the category"
+                    >${r.mismatches} mismatch</span
+                  >`
+                : safe("")}
+            </span>
+            <span class="fleet-req-num">
+              <span class="tag ${r.open ? "tag-red" : "tag-green"}">${r.open}</span>
+              ${r.extra ? html`<span class="tag tag-cyan">+${r.extra} extra</span>` : safe("")}
+            </span>
+          </div>
+          <div class="comp-chips">${compChips(r)}</div>
+        </div>`,
+      )}
+      <div class="fleet-req-row fleet-req-total">
+        <span>Summe ${sumWord}</span>
+        <strong>${req}</strong>
+        <strong>${ful}</strong>
+        <strong>${opn}</strong>
+      </div>
+    </div>`;
+  };
   // Open requirement slots (for accept-into-slot + auto-match suggestion).
   const openSlots = op.groups.flatMap((g) =>
     g.requirements.map((r) => ({
@@ -1645,53 +1695,21 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </form>`;
   };
   const compositionBoard = html`<section class="opv2-panel">
-    <div class="opv2-panel-title">Fleet Requirements</div>
+    <div class="opv2-panel-title">Fleet Needs</div>
     ${compRows.length
-      ? html`<div class="fleet-req-board">
-            <div class="fleet-req-row fleet-req-head">
-              <span>Fleet Requirement</span>
-              <span>Requested</span>
-              <span>Fulfilled</span>
-              <span>Open Slots</span>
-            </div>
-            ${compRows.map(
-              (r) => html`<div class="comp-row">
-                <div class="comp-row-head">
-                  <div class="fleet-req-name">
-                    <strong>${r.label}</strong>
-                    <span class="tag tag-dim">${categoryLabel(r.category)}</span>
-                    ${r.group ? html`<span class="text-dim text-sm">${r.group}</span>` : safe("")}
-                  </div>
-                  <strong class="fleet-req-num">${r.count}</strong>
-                  <span class="fleet-req-num">
-                    <span class="tag ${compTone(r)}">${r.fulfilled}</span>
-                    ${r.pending ? html`<span class="tag tag-gold">${r.pending} pending</span>` : safe("")}
-                    ${r.mismatches
-                      ? html`<span class="tag tag-gold" title="Accepted units not matching the category"
-                          >${r.mismatches} mismatch</span
-                        >`
-                      : safe("")}
-                  </span>
-                  <span class="fleet-req-num">
-                    <span class="tag ${r.open ? "tag-red" : "tag-green"}">${r.open}</span>
-                    ${r.extra ? html`<span class="tag tag-cyan">+${r.extra} extra</span>` : safe("")}
-                  </span>
-                </div>
-                <div class="comp-chips">${compChips(r)}</div>
-              </div>`,
-            )}
-            <div class="fleet-req-row fleet-req-total">
-              <span>Total</span>
-              <strong>${compRequested}</strong>
-              <strong>${compFulfilled}</strong>
-              <strong>${compOpen}</strong>
-            </div>
-            <p class="text-dim text-sm" style="margin:.6rem 0 0">
-              Fulfilled = accepted ships or teams. Open Slots = still needed mission requirements.
-            </p>
-          </div>`
+      ? html`${reqGroupTable("Hull-Need (Schiffe)", "Schiffe", hullRows)}
+          ${reqGroupTable("CQB-Need (Soldaten)", "Teams", cqbRows)}
+          <div class="fleet-req-row fleet-req-total">
+            <span>Gesamt</span>
+            <strong>${compRequested}</strong>
+            <strong>${compFulfilled}</strong>
+            <strong>${compOpen}</strong>
+          </div>
+          <p class="text-dim text-sm" style="margin:.6rem 0 0">
+            Ist = akzeptierte Schiffe/Teams. Offen = noch benötigt. Hull = Schiffe, CQB = Soldaten.
+          </p>`
       : html`<p class="text-dim text-sm">
-          No Fleet Requirements defined.${canManage ? " Add the ships and squads you need in the Fleet tab." : ""}
+          Noch keine Fleet Needs definiert.${canManage ? " Lege im Fleet-Tab die benötigten Schiffe und Squads an." : ""}
         </p>`}
     ${canManage && pendingUnits.length
       ? html`<details class="mg-board-sub" open>
