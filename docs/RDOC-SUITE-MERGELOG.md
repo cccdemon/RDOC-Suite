@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Join: Assistent als zentriertes Overlay (Akkordeon bleibt)
+
+User-Korrektur: alte Akkordeon-Ansicht behalten; Wizard als **zentriertes Overlay**, auto bei nicht-
+angemeldet, sonst manuell per "Sign-up assistant"-Button neu startbar; "Disable assistant (Cancel)"
+muss schließen → Akkordeon nutzbar; Ja/Nein darf nicht zurückwerfen.
+- Step-Wizard (75ae5a2) zurückgerollt → Akkordeon-Ansicht (Stand e96db4c) wiederhergestellt.
+- Overlay `#jw-ov` (position:fixed, zentriert) = reiner Guide: **Ja** setzt das passende Akkordeon-Radio
+  (jm-seat/ship/cqb/assign) + schließt + scrollt hin; **Nein** strikt i++ (nie zurück), Ende → Done.
+  Cancel/Esc/Backdrop schließt. signedUp-Flag (hasSeat||hasReq||pending||myCqb) → Auto-Open nur wenn false.
+- Kein Doppel-Markup (Overlay steuert das bestehende Akkordeon).
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Join: echter Schritt-für-Schritt-Wizard
 
 User: "unterschiedliches Verständnis von Wizard" — Akkordeon (alle Optionen offen) statt geführt.

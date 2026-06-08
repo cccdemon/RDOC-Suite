@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed - Join: real step-by-step wizard instead of accordion (FR-P1, 2026-06-08)
+### Changed - Join: sign-up assistant as a centered overlay over the classic view (FR-P1, 2026-06-08)
 
-- The join page's "I want to join" is now a true **one-question-at-a-time wizard** (Yes/No → next), per the original request: **Take an open seat? → Offer a ship? → Join as CQB? → Let the operator place you?** (order B). "Yes" reveals that step's form/ship-cards; "No" advances. A persistent **"Skip — just let the operator place me"** button is always shown for the one-click casual path. Replaces the radio-accordion (all options expanded at once). No-JS fallback shows all steps. Wizard stays available after you've registered, so you can come back to add more.
+- The classic in-page "I want to join" view (all options visible) is kept. On top of it, a **centered modal sign-up assistant** asks one question at a time (Yes/No): **Take an open seat? → Offer a ship? → Join as CQB? → Let the operator place you?** (order B). **Yes** opens the matching option on the page and closes the overlay; **No** strictly advances (never loops back). The overlay **auto-opens on first visit** (when you haven't signed up yet) and can be **re-opened any time via a "Sign-up assistant" button** once you've claimed a seat / offered a ship / etc. It has a **"Disable assistant (Cancel)"** button (plus Esc / backdrop) that closes it and leaves the classic view fully usable, and a one-click **"Skip — just let the operator place me"**.
 
 ### Added - Ship class, seat/turret map, Fleetyards cache, CQB drag (FR-P1 steps 5/6 + follow-up, 2026-06-08)
 
