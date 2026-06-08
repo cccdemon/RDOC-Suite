@@ -1,6 +1,6 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-08: Mission-Cover — Element-Positionen werden nicht korrekt gespeichert (useHistory stale-pointer)
+## Completed Step - 2026-06-08: Mission-Cover — Element-Positionen werden nicht korrekt gespeichert (useHistory stale-pointer) — c1c37af
 
 Folge-Bug zu 404b839: User berichten weiterhin, dass Element-Positionen (Badges/QR per Drag) nicht
 korrekt gespeichert werden. Root cause NICHT im Save-Round-Trip (der ist korrekt + deployed), sondern
