@@ -4806,7 +4806,7 @@ export function opJoinPage(opts: {
                     <span class="ja-chk"></span>
                   </label>
                   <div class="ja-panel">
-                    <form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
+                    <form id="jw-place-form" method="post" action="${bp}/api/ops/${op.id}/crew-requests">
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="ui" value="player" />
                       <input type="hidden" name="tab" value="crew" />
@@ -4907,7 +4907,15 @@ export function opJoinPage(opts: {
                       }
                       function openOv() { i = 0; render(); ov.hidden = false; document.body.style.overflow = "hidden"; }
                       function closeOv() { ov.hidden = true; document.body.style.overflow = ""; }
+                      function placeSubmit() {
+                        var f = document.getElementById("jw-place-form");
+                        if (f) { closeOv(); f.submit(); }
+                        else pick("jm-assign");
+                      }
                       function pick(target) {
+                        // "Let the operator place me" needs no extra input — submit it
+                        // straight away so the answer actually does something.
+                        if (target === "jm-assign") { placeSubmit(); return; }
                         var r = document.getElementById(target);
                         var lbl = document.querySelector('label[for="' + target + '"]');
                         if (r) r.checked = true;
@@ -4925,7 +4933,7 @@ export function opJoinPage(opts: {
                       });
                       ov.querySelectorAll("[data-jw-cancel]").forEach(function (b) { b.addEventListener("click", closeOv); });
                       var skip = ov.querySelector("[data-jw-skip]");
-                      if (skip) skip.addEventListener("click", function () { pick("jm-assign"); });
+                      if (skip) skip.addEventListener("click", placeSubmit);
                       ov.addEventListener("click", function (e) { if (e.target === ov) closeOv(); });
                       document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !ov.hidden) closeOv(); });
                       var openBtn = document.getElementById("jw-open");
