@@ -1412,16 +1412,17 @@ export async function apiRoutes(app: FastifyInstance) {
         return reply.code(403).send({ error: "csrf" });
       const raw = req.body.signupId;
       const signupIds = Array.isArray(raw) ? raw : raw ? [raw] : [];
+      const body = req.body as Record<string, string>;
       if (signupIds.length === 0) {
         return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "error:Select+at+least+one+signup", "fleet"),
+          opReturnUrl(req.params.id, body, "error:Select+at+least+one+signup", "fleet"),
           302,
         );
       }
       const nameRaw = req.body.name;
       const name = (typeof nameRaw === "string" ? nameRaw : "").trim().slice(0, 80) || "Squad";
       await bundleCqbSquad(req.params.id, name, signupIds);
-      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Squad+created.", "fleet"), 302);
+      return reply.redirect(opReturnUrl(req.params.id, body, "ok:Squad+created.", "fleet"), 302);
     },
   );
 
