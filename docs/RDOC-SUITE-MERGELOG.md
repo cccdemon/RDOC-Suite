@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Join: echter Schritt-für-Schritt-Wizard
+
+User: "unterschiedliches Verständnis von Wizard" — Akkordeon (alle Optionen offen) statt geführt.
+Umgebaut auf **eine Frage pro Screen** (Ja/Nein → weiter), Reihenfolge B: Sitz → Schiff → CQB →
+Operator-Platzierung. "Ja" zeigt das Step-Formular/Schiff-Cards, "Nein" weiter; persistenter
+"Skip — just place me"-Button immer da; No-JS-Fallback zeigt alle Steps. Radio-Akkordeon (.ja-*)
+ersetzt durch .jw-step + kleiner JS-State-Machine. Inhalte (Sitz-Cards mit Silhouette, Schiff-/CQB-/
+Place-Form) unverändert wiederverwendet.
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Silhouette in Join-Wizard (groß, statt Manager)
 
 User-Feedback: Schiff nicht sichtbar / zu klein / soll für Anmelder, nicht Manager.

@@ -4609,37 +4609,49 @@ export function opJoinPage(opts: {
                 <h3 class="wiz-sum-h">I want to join</h3>
                 <div class="opv2-cta closed">Sign-up is closed.</div>
               </section>`
-            : html`<section class="card join-asst">
+            : html`<section class="card join-asst" id="join-wiz">
+                  <style>
+                    #join-wiz .jw-q { font-size: 1.05rem; font-weight: 700; margin: .2rem 0 .2rem; }
+                    #join-wiz .jw-sub { color: var(--dim,#7a8a96); font-size: .85rem; margin-bottom: .8rem; }
+                    #join-wiz .jw-yesno { display: flex; gap: .6rem; margin-bottom: .6rem; }
+                    #join-wiz .jw-step { animation: jwfade .15s ease; }
+                    #join-wiz .jw-prog { font-family: var(--font-mono); font-size: .72rem; color: var(--cyan); letter-spacing: 1px; margin-bottom: .5rem; }
+                    @keyframes jwfade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+                  </style>
+                  <noscript
+                    ><style>
+                      #join-wiz .jw-step, #join-wiz .jw-body { display: block !important; }
+                      #join-wiz .jw-yesno { display: none !important; }
+                    </style></noscript
+                  >
                   <h3 class="wiz-sum-h">I want to join</h3>
-                  <p class="text-dim text-sm" style="margin:-.35rem 0 .7rem">
-                    Pick how you'll contribute — steps are optional and you can do several:
-                    <strong>CQB, a seat and a ship are NOT mutually exclusive</strong>. In a hurry?
-                    Use <em>"Let the operator place me"</em> at the bottom.
+                  <p class="text-dim text-sm" style="margin:-.35rem 0 .8rem">
+                    Step by step — answer each question. CQB, a seat and a ship are
+                    <strong>not mutually exclusive</strong>; come back any time to add more.
                   </p>
                   ${hasSeat
                     ? html`<p class="text-dim text-sm" style="margin:0 0 .6rem">
-                        You already hold a seat — you can still add more below.
+                        You already hold a seat — you can still add more.
                       </p>`
                     : safe("")}
                   ${myPendingUnits.length
                     ? html`<p class="text-dim text-sm" style="margin:0 0 .6rem">
-                        You have a ship pending review — you can still contribute more below.
+                        You have a ship pending review — you can still contribute more.
                       </p>`
                     : safe("")}
 
                   ${openSeats.length
-                    ? html`<input type="radio" name="join-mode" id="jm-seat" class="ja-radio" checked />
-                        <label for="jm-seat" class="ja-opt">
-                          <span class="ico">Seat</span>
-                          <span class="ja-txt"
-                            ><span class="ttl">Take an open seat</span
-                            ><span class="sub"
-                              >${openSeats.length} open seat${openSeats.length === 1 ? "" : "s"} in accepted units.</span
-                            ></span
-                          >
-                          <span class="ja-chk"></span>
-                        </label>
-                        <div class="ja-panel">
+                    ? html`<div class="jw-step" data-jw-step hidden>
+                        <div class="jw-prog">Step 1</div>
+                        <div class="jw-q">Take an open seat?</div>
+                        <div class="jw-sub">
+                          ${openSeats.length} open seat${openSeats.length === 1 ? "" : "s"} in accepted units.
+                        </div>
+                        <div class="jw-yesno">
+                          <button type="button" class="btn btn-green" data-jw-yes>Yes</button>
+                          <button type="button" class="btn" data-jw-no>No</button>
+                        </div>
+                        <div class="jw-body" hidden>
                           ${seatShipUnits.map(
                             (u) => html`<div
                               class="join-ship-card"
@@ -4690,19 +4702,19 @@ export function opJoinPage(opts: {
                               </div>
                             </div>`,
                           )}
-                        </div>`
+                        </div>
+                      </div>`
                     : safe("")}
 
-                  <input type="radio" name="join-mode" id="jm-ship" class="ja-radio" ${openSeats.length ? safe("") : safe("checked")} />
-                  <label for="jm-ship" class="ja-opt">
-                    <span class="ico">Ship</span>
-                    <span class="ja-txt"
-                      ><span class="ttl">Offer a ship</span
-                      ><span class="sub">Bring one of your ships; crew fill its seats.</span></span
-                    >
-                    <span class="ja-chk"></span>
-                  </label>
-                  <div class="ja-panel">
+                  <div class="jw-step" data-jw-step hidden>
+                    <div class="jw-prog">Offer a ship</div>
+                    <div class="jw-q">Bring one of your ships?</div>
+                    <div class="jw-sub">Crew will fill its seats.</div>
+                    <div class="jw-yesno">
+                      <button type="button" class="btn btn-green" data-jw-yes>Yes</button>
+                      <button type="button" class="btn" data-jw-no>No</button>
+                    </div>
+                    <div class="jw-body" hidden>
                     <form
                       method="post"
                       action="${bp}/api/ops/${op.id}/units"
@@ -4753,18 +4765,18 @@ export function opJoinPage(opts: {
                       />
                       <button type="submit" class="btn btn-green mt-1">Offer ship</button>
                     </form>
+                    </div>
                   </div>
 
-                  <input type="radio" name="join-mode" id="jm-cqb" class="ja-radio" />
-                  <label for="jm-cqb" class="ja-opt">
-                    <span class="ico">CQB</span>
-                    <span class="ja-txt"
-                      ><span class="ttl">Join as a CQB soldier</span
-                      ><span class="sub">Sign up as infantry; the operator forms the squad.</span></span
-                    >
-                    <span class="ja-chk"></span>
-                  </label>
-                  <div class="ja-panel">
+                  <div class="jw-step" data-jw-step hidden>
+                    <div class="jw-prog">Join as CQB</div>
+                    <div class="jw-q">Join as a CQB soldier?</div>
+                    <div class="jw-sub">Sign up as infantry; the operator forms the squad.</div>
+                    <div class="jw-yesno">
+                      <button type="button" class="btn btn-green" data-jw-yes>Yes</button>
+                      <button type="button" class="btn" data-jw-no>No</button>
+                    </div>
+                    <div class="jw-body" hidden>
                     <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups">
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="ui" value="player" />
@@ -4785,18 +4797,18 @@ export function opJoinPage(opts: {
                       />
                       <button type="submit" class="btn btn-green mt-1">Sign up as CQB</button>
                     </form>
+                    </div>
                   </div>
 
-                  <input type="radio" name="join-mode" id="jm-assign" class="ja-radio" />
-                  <label for="jm-assign" class="ja-opt">
-                    <span class="ico">Place</span>
-                    <span class="ja-txt"
-                      ><span class="ttl">Let the operator place me</span
-                      ><span class="sub">I'm flexible or need help finding a role.</span></span
-                    >
-                    <span class="ja-chk"></span>
-                  </label>
-                  <div class="ja-panel">
+                  <div class="jw-step" data-jw-step hidden>
+                    <div class="jw-prog">Operator</div>
+                    <div class="jw-q">Let the operator place you?</div>
+                    <div class="jw-sub">I'm flexible or need help finding a role.</div>
+                    <div class="jw-yesno">
+                      <button type="button" class="btn btn-green" data-jw-yes>Yes</button>
+                      <button type="button" class="btn" data-jw-no>No</button>
+                    </div>
+                    <div class="jw-body" hidden>
                     <form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="ui" value="player" />
@@ -4812,7 +4824,60 @@ export function opJoinPage(opts: {
                       ></textarea>
                       <button type="submit" class="btn btn-green mt-1">Request a spot</button>
                     </form>
+                    </div>
                   </div>
+
+                  <div class="jw-done" hidden>
+                    <p class="text-dim text-sm" style="margin:.4rem 0">
+                      Nothing selected. Reload the page any time to contribute again, or just let the
+                      operator place you below.
+                    </p>
+                  </div>
+
+                  <form
+                    method="post"
+                    action="${bp}/api/ops/${op.id}/crew-requests"
+                    style="margin-top:1rem;border-top:1px solid rgba(255,255,255,.08);padding-top:.8rem"
+                  >
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <input type="hidden" name="ui" value="player" />
+                    <input type="hidden" name="tab" value="crew" />
+                    <button type="submit" class="btn btn-sm btn-ghost">
+                      Skip — just let the operator place me
+                    </button>
+                  </form>
+
+                  <script>
+                    (function () {
+                      var wiz = document.getElementById("join-wiz");
+                      if (!wiz) return;
+                      var steps = [].slice.call(wiz.querySelectorAll(".jw-step"));
+                      var done = wiz.querySelector(".jw-done");
+                      var cur = 0;
+                      function show(i) {
+                        steps.forEach(function (s, n) { s.hidden = n !== i; });
+                        if (done) done.hidden = true;
+                      }
+                      function finish() {
+                        steps.forEach(function (s) { s.hidden = true; });
+                        if (done) done.hidden = false;
+                      }
+                      steps.forEach(function (s) {
+                        var yes = s.querySelector("[data-jw-yes]");
+                        var no = s.querySelector("[data-jw-no]");
+                        var body = s.querySelector(".jw-body");
+                        var yn = s.querySelector(".jw-yesno");
+                        if (yes) yes.addEventListener("click", function () {
+                          if (body) body.hidden = false;
+                          if (yn) yn.hidden = true;
+                        });
+                        if (no) no.addEventListener("click", function () {
+                          if (cur < steps.length - 1) { cur++; show(cur); } else { finish(); }
+                        });
+                      });
+                      if (steps.length) show(0);
+                    })();
+                  </script>
                 </section>`}
 
         ${myPendingUnits.length

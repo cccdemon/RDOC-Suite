@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Join: real step-by-step wizard instead of accordion (FR-P1, 2026-06-08)
+
+- The join page's "I want to join" is now a true **one-question-at-a-time wizard** (Yes/No → next), per the original request: **Take an open seat? → Offer a ship? → Join as CQB? → Let the operator place you?** (order B). "Yes" reveals that step's form/ship-cards; "No" advances. A persistent **"Skip — just let the operator place me"** button is always shown for the one-click casual path. Replaces the radio-accordion (all options expanded at once). No-JS fallback shows all steps. Wizard stays available after you've registered, so you can come back to add more.
+
 ### Added - Ship class, seat/turret map, Fleetyards cache, CQB drag (FR-P1 steps 5/6 + follow-up, 2026-06-08)
 
 - **Ship class** is now shown on every fleet unit (a `shipClass()` label derived from catalog `size×career×role`), and the operator already sees category mismatch hints on the board + an auto-match "✓" when accepting into a slot. (FR-P1 step 5.)
