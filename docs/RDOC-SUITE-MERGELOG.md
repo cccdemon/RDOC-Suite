@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: FR-Doc Fleet-Need-Redesign (Plan, kein Code)
+
+Neue FR-Doc `docs/FR-P1-fleet-need-structured.md` — strukturierte Bedarfe statt Freitext.
+Entscheidungen User 2026-06-09: Ship-Need = Schiffstyp-Multiselect (je 1, Typen aus Fleetyards),
+Fighter-Squad = 2 (Wingman+Wingman), CQB-Team = 4/5, kein "What do you need", max. 1 Detailzeile,
+alt→neu auto-migriert (nicht abwärtskompatibel). Plus Manage-Drag&Drop: Verbände bilden, FPS-Team
+in Schiff (außer Fighter) einbetten, Fahrzeug in Schiff mit Fit-Check. Baut auf CQB-Squad-Size+Join
+(`ee98350`). NUR Doc — Implementierung wartet auf explizites Go.
+
+## Queued / Planned Step - 2026-06-09: Join-Briefing in event-hero (rechte Seite, gleiche Höhe)
+
+`opJoinPage`: Briefing-Card aus join-main raus, als rechte Spalte in `section.event-hero` (zweispaltig,
+gleiche Höhe wie Hero-Content). Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Completed Step - 2026-06-09: Test-DB-Harness — echte Route-Injection-Tests gegen Docker-Postgres
 
 Fleetplanner-Integrationstest-Harness: `vitest.db.config.ts` (separater `test:db`-Lauf) + globalSetup

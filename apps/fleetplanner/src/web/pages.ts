@@ -4501,6 +4501,14 @@ export function opJoinPage(opts: {
       .event-hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
       .event-hero h1 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.55rem); line-height: 1.05; }
       .event-hero p { margin: .45rem 0 0; color: var(--dim); font-size: .95rem; }
+      .event-hero-main { display: grid; align-content: end; gap: 1rem; min-width: 0; }
+      .event-hero-brief { min-width: 0; background: rgba(5,8,16,.62); border: 1px solid var(--cyan-28); padding: .7rem .9rem; overflow: auto; color: var(--text, #cdd9e1); }
+      .event-hero-brief-h { font-weight: 700; margin-bottom: .4rem; color: var(--cyan, #35d0e0); font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; font-family: var(--font-mono); }
+      .event-hero-brief .join-md, .event-hero-brief p { font-size: .88rem; line-height: 1.5; }
+      @media (min-width: 901px) {
+        .event-hero.has-brief { grid-template-columns: minmax(0, 1fr) minmax(300px, 440px); align-content: stretch; align-items: stretch; }
+        .event-hero.has-brief .event-hero-brief { max-height: 340px; align-self: stretch; }
+      }
       .event-manage { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; }
       .join-badges { display: flex; gap: 8px; flex-wrap: wrap; }
       .join-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px; padding: 4px 10px; border-radius: 4px; border: 1px solid currentColor; background: rgba(0,0,0,.35); }
@@ -4585,7 +4593,7 @@ export function opJoinPage(opts: {
     </style>
     <div class="event-shell">
     <section
-      class="event-hero"
+      class="event-hero has-brief"
       style="${op.cover
         ? `min-height:340px;background-image:linear-gradient(180deg, rgba(5,8,16,.45), rgba(5,8,16,.85)), url('${op.cover.url}')`
         : `background-image:linear-gradient(90deg, rgba(5,8,16,.96), rgba(5,8,16,.76), rgba(5,8,16,.3)), url('${missionImageUrl(
@@ -4593,22 +4601,30 @@ export function opJoinPage(opts: {
             op.opType,
           )}')`}"
     >
-      <div class="event-hero-top">
-        <div class="join-badges">
-          <span class="join-badge ${isOpen ? "open" : ""}">${statusUpper}</span>
-          <span class="join-badge pub">${visUpper}</span>
-          <span class="join-badge time">${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
+      <div class="event-hero-main">
+        <div class="event-hero-top">
+          <div class="join-badges">
+            <span class="join-badge ${isOpen ? "open" : ""}">${statusUpper}</span>
+            <span class="join-badge pub">${visUpper}</span>
+            <span class="join-badge time">${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</span>
+          </div>
+          ${canManage
+            ? html`<div class="event-manage">
+                <a class="btn btn-sm btn-cyan" href="${bp}/ops/${op.id}/manage">Manage Event</a>
+              </div>`
+            : safe("")}
         </div>
-        ${canManage
-          ? html`<div class="event-manage">
-              <a class="btn btn-sm btn-cyan" href="${bp}/ops/${op.id}/manage">Manage Event</a>
-            </div>`
-          : safe("")}
+        <div>
+          <h1>${op.title}</h1>
+          <p>${op.meetingLocation || "Rendezvous not set"} · ${systemLabel(op.meetingSystem)}</p>
+        </div>
       </div>
-      <div>
-        <h1>${op.title}</h1>
-        <p>${op.meetingLocation || "Rendezvous not set"} · ${systemLabel(op.meetingSystem)}</p>
-      </div>
+      <aside class="event-hero-brief">
+        <div class="event-hero-brief-h">Briefing</div>
+        ${op.description
+          ? renderMarkdown(op.description)
+          : html`<p class="text-dim text-sm">No briefing yet.</p>`}
+      </aside>
     </section>
     <div class="event-facts">
       <div class="event-fact"><span>Time</span><strong>${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</strong></div>
@@ -5205,13 +5221,6 @@ export function opJoinPage(opts: {
                 </div>
               </div>`
             : html`<p class="text-dim text-sm">No requirements defined.</p>`}
-        </section>
-
-        <section class="card" style="margin-top:1rem">
-          <h3 class="wiz-sum-h">Briefing</h3>
-          ${op.description
-            ? renderMarkdown(op.description)
-            : html`<p class="text-dim text-sm">No briefing yet.</p>`}
         </section>
 
         ${myQuestions.length

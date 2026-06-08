@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Op join page: briefing moved into the hero (2026-06-09)
+
+- The **Briefing** is now the right-hand column of the event hero (same height as the hero on wide screens, stacked below on mobile) instead of a separate card further down the page.
+
 ### Added - CQB squads get a target size and players can join one directly (2026-06-09)
 
 - CQB squads (operator-bundled fireteams) can now have a **target size**. The operator sets it when creating a squad or via a small size field on each squad row; auto-bundle uses its chunk size as the target. Squad rows show **members / target** and a **full** tag.
