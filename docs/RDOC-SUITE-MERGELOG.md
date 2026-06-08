@@ -1,5 +1,13 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — §7-Entscheidungen einarbeiten
+
+User-Entscheidungen 2026-06-08: (1) KEINE Rollen-Taxonomie — Personal-Achse = nur **CQB**
+(Soldaten, keine Rollenzuweisung) → Role-Need kollabiert auf eine Sorte "CQB", Q1 = "In ein
+CQB-Team?". (2) Auto-Match = nur **Warnung**. (3) Squad-Bündelung = **beides** (Operator-Drag +
+Auto-Vorschlag). (4) **Fleetyards jetzt** (Stufe 2), Daten **lokal speichern wie Schiff-DB**
+(DB-Cache + Sync-State, analog ShipSyncState). FR-Doc §3.1/§3.2/§3.5/§4/§6/§7 anpassen. Plan, kein Code.
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Operator-View Tab-Konsolidierung (§3.5->§3.4 ergänzt) — 15abd36
 
 User: im Operator-View Tabs zusammenfassen — "Fleet" + "Crew" → **"Fleet & Personal Management"**
