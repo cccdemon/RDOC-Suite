@@ -1995,6 +1995,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const cqbSignups = op.cqbSignups ?? [];
   const cqbPool = cqbSignups.filter((s) => !s.assignedGroupId);
   const cqbSquads = op.groups.filter((g) => g.kind === "squad");
+  // Phase 4b: non-fighter accepted ships a CQB team can be embedded in.
+  const carrierShips = op.units.filter(
+    (u) => u.unitType === "ship" && u.status === "accepted" && shipClass(u.ship) !== "Fighter",
+  );
   const cqbPanel =
     cqbSignups.length || cqbSquads.length || canManage
       ? html`<section class="opv2-panel">
@@ -2009,6 +2013,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           ${cqbSquads.map((g) => {
             const members = cqbSignups.filter((s) => s.assignedGroupId === g.id);
             const cap = (g as { targetSize?: number | null }).targetSize ?? null;
+            const carrierId = (g as { carrierUnitId?: string | null }).carrierUnitId ?? null;
+            const carrierUnit = carrierId ? op.units.find((u) => u.id === carrierId) : null;
             return html`<div class="opv2-row mg-board-row cqb-squad-drop" data-cqb-group="${g.id}">
               <div>
                 <strong>${g.name}</strong>
@@ -2017,9 +2023,29 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <div class="text-dim text-sm">
                   ${members.map((m) => nm(m.user.username)).join(", ") || "empty"}
                 </div>
+                ${carrierUnit
+                  ? html`<div class="text-dim text-sm">rides in <strong>${unitName(carrierUnit)}</strong></div>`
+                  : safe("")}
               </div>
               ${canManage
                 ? html`<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+                    ${carrierShips.length
+                      ? html`<form
+                          method="post"
+                          action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/carrier"
+                          class="inline"
+                          title="Embed this team in a ship (non-fighter)"
+                        >
+                          <input type="hidden" name="_csrf" value="${csrf}" />
+                          ${returnFields("fleet")}
+                          <select name="carrierUnitId" onchange="this.form.submit()">
+                            <option value="">— no ship —</option>
+                            ${carrierShips.map(
+                              (s) => html`<option value="${s.id}" ${carrierId === s.id ? safe("selected") : ""}>${unitName(s)}</option>`,
+                            )}
+                          </select>
+                        </form>`
+                      : safe("")}
                     <form
                       method="post"
                       action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/size"

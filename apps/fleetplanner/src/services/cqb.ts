@@ -3,6 +3,7 @@
 // bundles signups into squads (CompositionGroup.kind = "squad"). Pure DB ops.
 
 import { prisma } from "../db.js";
+import { shipClass } from "./composition.js";
 
 /** Player: volunteer as a CQB soldier (idempotent per op+user). */
 export async function createSignup(operationId: string, userId: string, note: string | null) {
@@ -137,6 +138,35 @@ export async function joinSquad(
     update: { assignedGroupId: groupId, status: "accepted" },
   });
   return { ok: true, name: group.name };
+}
+
+/**
+ * Operator: embed a CQB team into (or detach from) a non-fighter ship.
+ * carrierUnitId null = detach. Fighters can't carry a team.
+ */
+export async function setSquadCarrier(
+  operationId: string,
+  groupId: string,
+  carrierUnitId: string | null,
+): Promise<{ ok: boolean; reason?: "group_not_found" | "ship_not_found" | "fighter" }> {
+  const group = await prisma.compositionGroup.findFirst({
+    where: { id: groupId, operationId, kind: "squad" },
+    select: { id: true },
+  });
+  if (!group) return { ok: false, reason: "group_not_found" };
+  if (carrierUnitId) {
+    const carrier = await prisma.fleetUnit.findFirst({
+      where: { id: carrierUnitId, operationId, unitType: "ship" },
+      select: { id: true, ship: { select: { size: true, career: true, role: true } } },
+    });
+    if (!carrier) return { ok: false, reason: "ship_not_found" };
+    if (shipClass(carrier.ship) === "Fighter") return { ok: false, reason: "fighter" };
+  }
+  await prisma.compositionGroup.updateMany({
+    where: { id: groupId, operationId, kind: "squad" },
+    data: { carrierUnitId },
+  });
+  return { ok: true };
 }
 
 /** Operator: dissolve a squad group → its members return to the pool. */

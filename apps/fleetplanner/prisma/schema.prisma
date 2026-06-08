@@ -537,15 +537,18 @@ model CompositionGroup {
   id          String @id @default(cuid())
   operationId String
   name        String
-  kind        String @default("fleet") // fleet | squad (squad = operator-bundled CQB soldiers)
+  kind        String @default("fleet") // fleet | squad | fighter_squad | formation
   order       Int    @default(0)
   targetSize  Int? // squads only: how many soldiers the squad wants (null = no cap)
+  // FR-P1 Phase 4b: a CQB team can be embedded in (ride in) a non-fighter ship.
+  carrierUnitId String?
 
   operation    Operation                @relation(fields: [operationId], references: [id], onDelete: Cascade)
   requirements CompositionRequirement[]
   cqbSignups   CqbSignup[]
   // FR-P1 Phase 4: ships assigned to this group when kind="formation".
   formationUnits FleetUnit[]            @relation("Formation")
+  carrier      FleetUnit?              @relation("SquadCarrier", fields: [carrierUnitId], references: [id], onDelete: SetNull)
 }
 
 // FR-P1: a single person volunteering as a CQB soldier (no role taxonomy —
@@ -620,6 +623,7 @@ model FleetUnit {
   carrier      FleetUnit?              @relation("CarrierVehicles", fields: [carrierUnitId], references: [id], onDelete: Cascade)
   vehicles     FleetUnit[]             @relation("CarrierVehicles")
   formation    CompositionGroup?       @relation("Formation", fields: [formationId], references: [id], onDelete: SetNull)
+  carriedSquads CompositionGroup[]     @relation("SquadCarrier")
   seats        SeatAssignment[]
   voiceChannel FleetVoiceChannel?
   primaryForUsers OpPrimaryUnit[]

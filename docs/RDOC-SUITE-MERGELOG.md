@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 4b — FPS-Team in Schiff einbetten
+
+- Schema: `CompositionGroup.carrierUnitId String?` → FleetUnit, Back-Relation `carriedSquads`.
+  Migration `20260609200000_squad_carrier` (Spalte + Index + FK SetNull).
+- `services/cqb.ts`: `setSquadCarrier(op,group,carrierUnitId)` — validiert kind=squad + Trägerschiff
+  ist `unitType=ship` und **kein Fighter** (`shipClass !== "Fighter"`).
+- `routes/api.ts`: POST `/cqb/squads/:groupId/carrier`.
+- `pages.ts` CQB-Panel: pro Team Carrier-Select (Non-Fighter-Schiffe, auto-submit) + Anzeige
+  „rides in <Schiff>". Select-basiert (D&D optional später).
+Nur fleetplanner. Build/Deploy: fleetplanner (generate + migrate deploy + tsc).
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 4a — Formations (Verbände)
 
 Erstes der drei Phase-4-Manage-Features. (4b FPS→Schiff, 4c Fahrzeug-Fit-Check folgen.)

@@ -22,6 +22,7 @@ import {
   assignToSquad as assignCqbToSquad,
   setSquadSize as setCqbSquadSize,
   joinSquad as joinCqbSquad,
+  setSquadCarrier as setCqbSquadCarrier,
 } from "../services/cqb.js";
 import {
   addShipNeeds,
@@ -1867,6 +1868,24 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       await setCqbTeams(req.params.id, parseInt(req.body.count ?? "0", 10), parseInt(req.body.size ?? "4", 10));
       return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:CQB+teams+set.", "fleet"), 302);
+    },
+  );
+
+  // Operator: embed a CQB team into a non-fighter ship (Phase 4b). Empty = detach.
+  app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/squads/:groupId/carrier",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const carrierUnitId = (req.body.carrierUnitId ?? "").trim() || null;
+      const res = await setCqbSquadCarrier(req.params.id, req.params.groupId, carrierUnitId);
+      const flash = res.ok
+        ? "ok:Team+embedding+updated."
+        : res.reason === "fighter"
+          ? "error:Fighters+can't+carry+a+team."
+          : "error:Could+not+embed+the+team.";
+      return reply.redirect(opReturnUrl(req.params.id, req.body, flash, "fleet"), 302);
     },
   );
 
