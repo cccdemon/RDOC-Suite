@@ -12,6 +12,7 @@ import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
 import { matchesCategory, suggestSlot, isCqbCategory, shipClass } from "../services/composition.js";
+import { normShipName } from "../services/fleetyards.js";
 import { shipCanCarryVehicle } from "../services/scwiki.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
@@ -607,6 +608,9 @@ type OpDetailPageOptions = {
   canManagePrimary?: boolean;
   /** Guest view of a public op (not logged in): redact member usernames. */
   redactNames?: boolean;
+  /** FR-P1 step 6: normalized-ship-name → Fleetyards silhouette URL, for the
+   *  seat/turret card background. Built in the route via `silhouettesFor`. */
+  shipSilhouettes?: Record<string, string>;
 };
 
 /** Banner shown to viewers who are NOT members of the op's host Discord, so
@@ -871,14 +875,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   // FR-P1 step 6: compact seat/turret map — one chip per seat, coloured by
   // state (filled / open / disabled). A quick visual of "who sits where, what's
-  // free" above the detailed seat list. (Silhouette background = follow-up.)
+  // free" above the detailed seat list, over a faint Fleetyards silhouette.
+  const shipSilhouettes = opts.shipSilhouettes ?? {};
   const seatTurretMap = (unit: UnitFull): SafeHtml => {
     if (!unit.seats.length) return safe("");
-    return html`<div
-      class="seat-map"
-      style="display:flex;flex-wrap:wrap;gap:4px;margin:.1rem 0 .5rem"
-    >
-      ${unit.seats.map((seat) => {
+    const sil = unit.ship ? shipSilhouettes[normShipName(unit.ship.name)] : undefined;
+    const chips = unit.seats.map((seat) => {
         const state = !seat.active ? "disabled" : seat.userId ? "filled" : "open";
         const color =
           state === "filled"
@@ -896,7 +898,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;padding:3px 6px;border-radius:3px;border:1px solid ${color};color:${color};opacity:${state === "disabled" ? "0.5" : "1"}"
           ><span style="width:6px;height:6px;border-radius:50%;background:${color}"></span>${seat.label}</span
         >`;
-      })}
+    });
+    return html`<div
+      class="seat-map"
+      style="position:relative;border-radius:4px;margin:.1rem 0 .5rem;${sil
+        ? "padding:6px;border:1px solid var(--border,#222);min-height:40px;"
+        : ""}"
+    >
+      ${sil
+        ? html`<img
+            src="${sil}"
+            alt=""
+            aria-hidden="true"
+            style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.18;pointer-events:none"
+          />`
+        : safe("")}
+      <div style="position:relative;display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
     </div>`;
   };
 

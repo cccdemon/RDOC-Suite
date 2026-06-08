@@ -60,6 +60,7 @@ import {
   isOpVisibility,
 } from "../services/operations.js";
 import { searchLocalShips } from "../services/scwiki.js";
+import { silhouettesFor } from "../services/fleetyards.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { createSeriesForOp } from "../services/recurrence.js";
 import {
@@ -781,6 +782,11 @@ export async function webRoutes(app: FastifyInstance) {
     const participants = op.status === "completed" ? await getMissionParticipants(op.id) : null;
     // Multi-position users (2+ units) + their primary-channel choice.
     const primaryAssignments = await getMultiPositionAssignments(op.id);
+    // FR-P1 step 6: Fleetyards silhouettes for the units' ships (seat/turret card bg).
+    const shipNames = op.units
+      .map((u) => u.ship?.name)
+      .filter((n): n is string => Boolean(n));
+    const shipSilhouettes = Object.fromEntries(await silhouettesFor(shipNames));
     reply.header("Cache-Control", "no-store");
     htmlReply(
       reply,
@@ -795,6 +801,7 @@ export async function webRoutes(app: FastifyInstance) {
         guildVoiceChannels,
         availableVoiceBotCount,
         voiceEnabled,
+        shipSilhouettes,
         guildTimezone: opGuildTz,
         guildName: opGuildName,
         orgName: opGuildOrgName,

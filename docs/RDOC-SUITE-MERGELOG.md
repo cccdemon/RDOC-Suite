@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Silhouette-Render in Sitz-/Turm-Karte
+
+Follow-up: Fleetyards-Silhouette wird jetzt faint hinter den Sitz-Chips gerendert.
+`OpDetailPageOptions.shipSilhouettes` (nameKey→url); Route web.ts batched `silhouettesFor(shipNames)`
+je Op; `seatTurretMap` legt `<img>` (opacity .18) hinter die Chips. Import `normShipName` in pages.ts.
+Kein Schema. Build/Deploy fleetplanner.
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Rollout 5+6+Drag — 6babf4a + 6a9b340 (Fleetyards-Shape-Fix)
 
 Deployed + verifiziert: shipClass-Label, Sitz-/Turm-Karte, CQB-Drag (/cqb/assign), Fleetyards-Cache
