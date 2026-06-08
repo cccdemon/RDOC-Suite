@@ -121,10 +121,13 @@ serverseitiger Validierung (Fighter-Ausschluss, Fit-Check). Anzeige als verschac
 
 ## Entschieden (2026-06-09)
 - Ship-Menge: **Multiselect = je 1**. · Typen: **aus Fleetyards**. · Fighter-Squad = **2**. ·
-  CQB-Team = **4/5**. · Kein Freitext-Bedarf; max. 1 Detailzeile. · Alt→Neu **auto-migriert**.
+  Kein Freitext-Bedarf; max. 1 Detailzeile. · Alt→Neu **auto-migriert**.
+- **Fighter-Join: jeder bringt seinen eigenen Fighter** → Squad = **2 Pilot-Slots**, jeder Slot =
+  ein Pilot mit eigenem Fighter-Hull (kein reiner Zähler). Join wie CQB (kapazitätsgeprüft, =2).
+- **Squads/Teams eager materialisiert**: leere Teams sind sichtbar und beitretbar (nicht lazy).
+- **CQB-Team-Größe: Default 4, erweiterbar bis max 8** (Operator kann pro Team hochsetzen).
+  → `clampSize` Squad-Range bleibt 1..24, aber CQB-UI-Default 4, Vorschlag/Max 8.
 
-## Noch zu klären (vor Implementierung)
-- Fighter-Join-Semantik (Pilot-Slots vs. Hull-Zähler).
-- Eager vs. lazy Squad-Materialisierung.
-- CQB-Team-Default-Größe (4 oder 5?) wenn Operator nichts wählt.
-- Fleetyards-Typ-Granularität (welche Achsen ergeben die Auswahlliste).
+## Noch offen (klein, beim Bau entscheidbar)
+- Fleetyards-Typ-Granularität (welche Achsen size × career × role die Auswahlliste ergeben).
+- Backfill-Heuristik-Feinschliff für bestehende Freitext-Requirements.
