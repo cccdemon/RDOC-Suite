@@ -1606,6 +1606,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     group: string;
     label: string;
     category: string;
+    needType: string;
     count: number;
     fulfilled: number;
     pending: number;
@@ -1615,6 +1616,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   };
   const compRows: CompRow[] = op.groups.flatMap((g) =>
     g.requirements.map((r) => {
+      const needType =
+        (r as { needType?: string | null }).needType ?? (isCqbCategory(r.category) ? "cqb_team" : "ship");
       const accepted = r.fleetUnits.filter((u) => u.status === "accepted");
       const pending = r.fleetUnits.filter((u) => u.status === "pending").length;
       const fulfilled = accepted.length;
@@ -1625,6 +1628,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         group: g.name,
         label: r.label,
         category: r.category,
+        needType,
         count: r.count,
         fulfilled,
         pending,
@@ -1634,9 +1638,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       };
     }),
   );
-  const compRequested = compRows.reduce((a, r) => a + r.count, 0);
-  const compFulfilled = compRows.reduce((a, r) => a + r.fulfilled, 0);
-  const compOpen = compRows.reduce((a, r) => a + r.open, 0);
   const compChips = (r: CompRow) => {
     const filledOk = Math.max(0, r.fulfilled - r.mismatches);
     const chips: SafeHtml[] = [];
@@ -1648,9 +1649,57 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   };
   const compTone = (r: CompRow) =>
     r.open === 0 ? "tag-green" : r.fulfilled === 0 ? "tag-dim" : "tag-gold";
-  // Two fleet-need axes (FR-P1): hull-needs (ships) vs CQB-need (soldiers).
-  const hullRows = compRows.filter((r) => !isCqbCategory(r.category));
-  const cqbRows = compRows.filter((r) => isCqbCategory(r.category));
+  // Three fleet-need axes (FR-P1 structured): hulls (ships, from requirements),
+  // fighter squads and CQB teams (from materialized CompositionGroups — they
+  // hold CqbSignups, not FleetUnits, so fulfilled comes from team membership).
+  const hullRows = compRows.filter((r) => r.needType === "ship");
+  const teamAxis = (kind: string) => {
+    const groups = op.groups.filter((g) => g.kind === kind);
+    const teams = groups.map((g) => {
+      const members = (op.cqbSignups ?? []).filter((s) => s.assignedGroupId === g.id).length;
+      const cap = (g as { targetSize?: number | null }).targetSize ?? 0;
+      return { name: g.name, members, cap, open: Math.max(0, cap - members) };
+    });
+    const slots = teams.reduce((a, t) => a + t.cap, 0);
+    const filled = teams.reduce((a, t) => a + t.members, 0);
+    return { teams, slots, filled, open: Math.max(0, slots - filled) };
+  };
+  const fighterAxis = teamAxis("fighter_squad");
+  const cqbAxis = teamAxis("squad");
+  const teamAxisTable = (
+    title: string,
+    sumWord: string,
+    axis: ReturnType<typeof teamAxis>,
+  ): SafeHtml =>
+    axis.teams.length
+      ? html`<div class="fleet-req-board" style="margin-bottom:1rem">
+          <div class="fleet-req-row fleet-req-head">
+            <span>${title}</span><span>Soll</span><span>Ist</span><span>Offen</span>
+          </div>
+          ${axis.teams.map(
+            (t) => html`<div class="comp-row">
+              <div class="comp-row-head">
+                <div class="fleet-req-name"><strong>${t.name}</strong></div>
+                <strong class="fleet-req-num">${t.cap}</strong>
+                <span class="fleet-req-num"
+                  ><span class="tag ${t.open === 0 ? "tag-green" : t.members === 0 ? "tag-dim" : "tag-gold"}"
+                    >${t.members}</span
+                  ></span
+                >
+                <span class="fleet-req-num"
+                  ><span class="tag ${t.open ? "tag-red" : "tag-green"}">${t.open}</span></span
+                >
+              </div>
+            </div>`,
+          )}
+          <div class="fleet-req-row fleet-req-total">
+            <span>Summe ${sumWord}</span>
+            <strong>${axis.slots}</strong>
+            <strong>${axis.filled}</strong>
+            <strong>${axis.open}</strong>
+          </div>
+        </div>`
+      : safe("");
   // Render one need-group as its own Soll/Ist/Offen table; empty group → nothing.
   const reqGroupTable = (title: string, sumWord: string, rows: CompRow[]): SafeHtml => {
     if (rows.length === 0) return safe("");
@@ -1733,22 +1782,29 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       <button type="submit" class="btn btn-sm btn-green">${actionLabel}</button>
     </form>`;
   };
+  const boardRequested =
+    hullRows.reduce((a, r) => a + r.count, 0) + fighterAxis.slots + cqbAxis.slots;
+  const boardFulfilled =
+    hullRows.reduce((a, r) => a + r.fulfilled, 0) + fighterAxis.filled + cqbAxis.filled;
+  const boardOpen = hullRows.reduce((a, r) => a + r.open, 0) + fighterAxis.open + cqbAxis.open;
+  const boardHasNeeds = hullRows.length || fighterAxis.teams.length || cqbAxis.teams.length;
   const compositionBoard = html`<section class="opv2-panel">
     <div class="opv2-panel-title">Fleet Needs</div>
-    ${compRows.length
+    ${boardHasNeeds
       ? html`${reqGroupTable("Hull-Need (Schiffe)", "Schiffe", hullRows)}
-          ${reqGroupTable("CQB-Need (Soldaten)", "Teams", cqbRows)}
+          ${teamAxisTable("Fighter-Need (Squads)", "Pilots", fighterAxis)}
+          ${teamAxisTable("CQB-Need (Soldaten)", "Soldiers", cqbAxis)}
           <div class="fleet-req-row fleet-req-total">
             <span>Gesamt</span>
-            <strong>${compRequested}</strong>
-            <strong>${compFulfilled}</strong>
-            <strong>${compOpen}</strong>
+            <strong>${boardRequested}</strong>
+            <strong>${boardFulfilled}</strong>
+            <strong>${boardOpen}</strong>
           </div>
           <p class="text-dim text-sm" style="margin:.6rem 0 0">
-            Ist = akzeptierte Schiffe/Teams. Offen = noch benötigt. Hull = Schiffe, CQB = Soldaten.
+            Ist = akzeptierte Schiffe + besetzte Squad-/Team-Plätze. Offen = noch frei.
           </p>`
       : html`<p class="text-dim text-sm">
-          Noch keine Fleet Needs definiert.${canManage ? " Lege im Fleet-Tab die benötigten Schiffe und Squads an." : ""}
+          Noch keine Fleet Needs definiert.${canManage ? " Lege im Fleet-Tab Schiffe, Fighter-Squads und CQB-Teams an." : ""}
         </p>`}
     ${canManage && pendingUnits.length
       ? html`<details class="mg-board-sub" open>
@@ -4514,12 +4570,17 @@ export function opJoinPage(opts: {
   // target size). Open = not yet full; "mine" = the viewer is already in it.
   const myCqbGroupId = (op.cqbSignups ?? []).find((s) => s.userId === myId)?.assignedGroupId ?? null;
   const joinableSquads = op.groups
-    .filter((g) => g.kind === "squad" && (g as { targetSize?: number | null }).targetSize != null)
+    .filter(
+      (g) =>
+        (g.kind === "squad" || g.kind === "fighter_squad") &&
+        (g as { targetSize?: number | null }).targetSize != null,
+    )
     .map((g) => {
       const members = (op.cqbSignups ?? []).filter((s) => s.assignedGroupId === g.id);
       const cap = (g as { targetSize?: number | null }).targetSize ?? null;
       return {
         id: g.id,
+        kind: g.kind,
         name: g.name,
         cap,
         count: members.length,
@@ -4528,6 +4589,50 @@ export function opJoinPage(opts: {
         memberNames: members.map((m) => m.user.username),
       };
     });
+  const cqbJoinSquads = joinableSquads.filter((s) => s.kind === "squad");
+  const fighterJoinSquads = joinableSquads.filter((s) => s.kind === "fighter_squad");
+  const squadJoinCard = (
+    title: string,
+    sub: string,
+    list: typeof joinableSquads,
+    joinLabel: string,
+  ): SafeHtml =>
+    isOpen && myId && list.length
+      ? html`<section class="card" style="margin-top:1rem">
+          <h3 class="wiz-sum-h">${title}</h3>
+          <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">${sub}</p>
+          <div class="direct-seats">
+            ${list.map(
+              (sq) => html`<div class="direct-seat-unit">
+                <div class="direct-seat-unit-name">
+                  ${sq.name}
+                  <span class="tag tag-dim">${sq.count}${sq.cap ? ` / ${sq.cap}` : ""}</span>
+                  ${sq.mine ? html` <span class="tag tag-green">You're in</span>` : safe("")}
+                </div>
+                <div class="text-dim text-sm" style="margin-bottom:.35rem">
+                  ${sq.memberNames.join(", ") || "empty"}
+                </div>
+                <div class="direct-seat-btns">
+                  ${sq.mine
+                    ? safe("")
+                    : sq.open
+                      ? html`<form
+                          method="post"
+                          action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join"
+                          class="inline"
+                        >
+                          <input type="hidden" name="_csrf" value="${csrf}" />
+                          <input type="hidden" name="ui" value="player" />
+                          <input type="hidden" name="tab" value="fleet" />
+                          <button type="submit" class="btn btn-sm btn-green">${joinLabel}</button>
+                        </form>`
+                      : html`<span class="tag tag-gold">Full</span>`}
+                </div>
+              </div>`,
+            )}
+          </div>
+        </section>`
+      : safe("");
 
   const body = html` <style>
       .event-shell { width: 100%; }
@@ -5146,44 +5251,18 @@ export function opJoinPage(opts: {
             </section>`
           : safe("")}
 
-        ${isOpen && myId && joinableSquads.length
-          ? html`<section class="card" style="margin-top:1rem">
-              <h3 class="wiz-sum-h">Join a CQB squad</h3>
-              <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">
-                Pick a named fireteam and take a spot directly — no assistant needed.
-              </p>
-              <div class="direct-seats">
-                ${joinableSquads.map(
-                  (sq) => html`<div class="direct-seat-unit">
-                    <div class="direct-seat-unit-name">
-                      ${sq.name}
-                      <span class="tag tag-dim">${sq.count}${sq.cap ? ` / ${sq.cap}` : ""}</span>
-                      ${sq.mine ? html` <span class="tag tag-green">You're in</span>` : safe("")}
-                    </div>
-                    <div class="text-dim text-sm" style="margin-bottom:.35rem">
-                      ${sq.memberNames.join(", ") || "empty"}
-                    </div>
-                    <div class="direct-seat-btns">
-                      ${sq.mine
-                        ? safe("")
-                        : sq.open
-                          ? html`<form
-                              method="post"
-                              action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join"
-                              class="inline"
-                            >
-                              <input type="hidden" name="_csrf" value="${csrf}" />
-                              <input type="hidden" name="ui" value="player" />
-                              <input type="hidden" name="tab" value="fleet" />
-                              <button type="submit" class="btn btn-sm btn-green">Join squad</button>
-                            </form>`
-                          : html`<span class="tag tag-gold">Full</span>`}
-                    </div>
-                  </div>`,
-                )}
-              </div>
-            </section>`
-          : safe("")}
+        ${squadJoinCard(
+          "Join a CQB squad",
+          "Pick a named fireteam and take a spot directly — no assistant needed.",
+          cqbJoinSquads,
+          "Join squad",
+        )}
+        ${squadJoinCard(
+          "Join a fighter squad",
+          "Wingman pairs — bring your own fighter and take a slot.",
+          fighterJoinSquads,
+          "Join wing",
+        )}
 
         ${myPendingUnits.length
           ? html`<section class="card" style="margin-top:1rem">

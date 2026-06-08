@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 3 — Fighter-Join + Board aufs neue Modell
+
+- `services/cqb.ts`: `joinSquad` akzeptiert jetzt `kind in (squad, fighter_squad)` → Fighter-Squads joinbar.
+- `pages.ts` Join-Seite: `joinableSquads` inkl. fighter_squad + `kind`; Split in `cqbJoinSquads` /
+  `fighterJoinSquads`; `squadJoinCard`-Helper → zwei Karten "Join a CQB squad" + "Join a fighter squad"
+  (bring your own fighter, Paar=2).
+- `pages.ts` Fleet-Needs-Board: needType-basiert. Hull-Need aus ship-Requirements (reqGroupTable),
+  Fighter-/CQB-Need aus materialisierten Teams (CompositionGroups + CqbSignups, nicht FleetUnits):
+  `teamAxis`/`teamAxisTable` zeigt pro Team Soll(targetSize)/Ist(members)/Offen; Gesamt neu summiert.
+- Hinweis: Banner/„Signed up as CQB" Wording deckt Fighter-Wing mit ab (Detailfeinschliff später).
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 2 — Operator Need-Editor + eager Teams
 
 Strukturierter Need-Editor ersetzt das Freitext-"What do you need" im Fleet-Tab.

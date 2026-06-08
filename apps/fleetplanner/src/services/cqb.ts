@@ -116,7 +116,7 @@ export async function joinSquad(
   groupId: string,
 ): Promise<{ ok: true; name: string } | { ok: false; reason: "not_found" | "full" }> {
   const group = await prisma.compositionGroup.findFirst({
-    where: { id: groupId, operationId, kind: "squad" },
+    where: { id: groupId, operationId, kind: { in: ["squad", "fighter_squad"] } },
     select: { id: true, name: true, targetSize: true },
   });
   if (!group) return { ok: false, reason: "not_found" };
