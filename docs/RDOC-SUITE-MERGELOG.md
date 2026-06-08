@@ -1,6 +1,6 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Operator-View Tab-Konsolidierung ergänzen
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Operator-View Tab-Konsolidierung (§3.5->§3.4 ergänzt) — 15abd36
 
 User: im Operator-View Tabs zusammenfassen — "Fleet" + "Crew" → **"Fleet & Personal Management"**
 (= Hull-Achse + Personal/Role-Achse); "Voice" + "Voice Access" → **ein "Voice"-Tab** (Setup +
