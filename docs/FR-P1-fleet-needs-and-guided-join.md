@@ -115,7 +115,28 @@ Festliste `category` ablösen: Klassen aus Katalog ableiten (`Ship.size × caree
 Mapping-Tabelle (siehe composition-rebuild-plan §3.4). Hull-Need referenziert eine **abgeleitete
 Klasse** statt Freitext; ermöglicht Auto-Match-Vorschlag (Schiff↔Slot) als Warnung, keine Sperre.
 
-### 3.4 Grafik: Sitz-/Turm-Karte + Bildquellen
+### 3.4 Operator-View — Tabs konsolidieren (User 2026-06-08)
+
+Heutige Operator-Tabs (`tabDefs`, [pages.ts:2380](../apps/fleetplanner/src/web/pages.ts#L2380)):
+`Overview · Fleet · Crew · Voice · Voice Access · Admin` — zu viele, thematisch zerfasert.
+
+Zusammenfassen — passt 1:1 auf die zwei Bedarfs-Achsen (§3.1):
+
+| Neu | Fasst zusammen | Sub-Sektionen |
+|---|---|---|
+| **Overview** | (unverändert) | Composition Board (Hull + Role getrennt) |
+| **Fleet & Personal Management** | `Fleet` + `Crew` | **Fleet** (Schiffe/Hull-Needs, Composition) + **Personal** (Sitze/Crew-Requests/Role-Signups, Squad-Bündelung) |
+| **Voice** | `Voice` + `Voice Access` | **Voice Setup** (Channels/Bots) + **Voice Access** (Commander-Roster, manage-only) |
+| **Admin** | (unverändert) | Fragen/Genehmigungen |
+
+- Reine **View-/Tab-Restrukturierung** — Panels existieren bereits (fleetPanel, crew, voice,
+  commanders), werden nur unter gemeinsamen Tabs als Sub-Sektionen gestapelt. Kein Schema, keine
+  Daten betroffen.
+- Tab-`attn`-Flags (offene Sitze, Voice-Access etc.) werden auf den zusammengefassten Tab gemappt.
+- Namensgebung: "Personal" = Personal/Mannschaft (deckt Crew **und** Role-Signups) → konsistent zur
+  Hull-vs-Role-Trennung.
+
+### 3.5 Grafik: Sitz-/Turm-Karte + Bildquellen
 
 - **Stufe 1 (jetzt, ohne neue Daten):** abstrakte **Sitz-/Turm-Karte** aus `Ship.maxCrew /
   weaponCrew / operationCrew`: gelabelte Chips `[Pilot][Co-Pilot][Turm 1][Turm 2][Engineer]`,

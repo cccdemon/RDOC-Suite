@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Operator-View Tab-Konsolidierung ergänzen
+
+User: im Operator-View Tabs zusammenfassen — "Fleet" + "Crew" → **"Fleet & Personal Management"**
+(= Hull-Achse + Personal/Role-Achse); "Voice" + "Voice Access" → **ein "Voice"-Tab** (Setup +
+Commander-Access als Sub-Sektionen). Als §3.5 in FR-P1-fleet-needs-and-guided-join.md aufnehmen
+(Plan, kein Code). Betrifft `tabDefs` (pages.ts:2380) + Panels Fleet/Crew/Voice/commanders.
+
 ## Completed Step - 2026-06-08: FR-Doc — Fleet-Needs-Redesign + geführter Anmelde-Wizard — 551e6d4 (Plan, kein Code)
 
 Konzept-Doc (KEIN Code) für die User-Pain-Points "Fleet Needs unverständlich" + "Anmeldung soll
