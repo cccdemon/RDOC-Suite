@@ -4567,6 +4567,7 @@ export function opJoinPage(opts: {
       </div>
     </section>
     <div class="event-facts">
+      <div class="event-fact"><span>Time</span><strong>${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</strong></div>
       <div class="event-fact"><span>Rendezvous</span><strong>${op.meetingLocation || "Not set"}</strong></div>
       <div class="event-fact"><span>System</span><strong>${systemLabel(op.meetingSystem)}</strong></div>
       <div class="event-fact"><span>Voice</span><strong>${opts.voiceChannelName || "Not set"}</strong></div>

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Op join page: scheduled time as its own fact box (2026-06-09)
+
+- The op time now has its own **"Time"** box in the top fact row (next to Rendezvous / System / Voice / Participants), not just the hero badge.
+
 ### Changed - Op join page: status on top, assistant collapses, headcount + direct claim (2026-06-09)
 
 - When you're already signed up, the **"I want to join" assistant is now collapsed** behind a one-line prompt — *"Want to contribute something else to the mission, or additionally claim another seat?"* — with your green signed-up banner above it. Not-yet-signed-up users still see it expanded.

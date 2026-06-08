@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Join-Seite — Uhrzeit als eigene Fakten-Box
+
+`opJoinPage` event-facts: neue erste Box "Time" mit `fmtDateLocal(op.scheduledAt, gtz)` (+gtz),
+analog Rendezvous/System/Voice/Participants. Zeit stand bisher nur im Hero-Badge. Nur fleetplanner,
+kein Schema. Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Join-Seite UX-Politur (Status oben, Assistent collapsed, Headcount, Direkt-Claim)
 
 Folge-Iteration zum Anmeldestatus (nach Commit 29d33ae). Alles in `opJoinPage` (pages.ts):
