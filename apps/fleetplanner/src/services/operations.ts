@@ -122,6 +122,12 @@ export async function getOperation(id: string) {
         where: { status: "interested" },
         orderBy: { firstSeenAt: "asc" },
       },
+      // FR-P1: CQB personnel pool (individuals; operator bundles into squads).
+      cqbSignups: {
+        where: { status: { not: "rejected" } },
+        include: { user: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 }

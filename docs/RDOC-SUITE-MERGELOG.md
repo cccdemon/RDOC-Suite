@@ -1,5 +1,33 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: Monitoring — RelayNoAudioWhileActive Fehlalarm-Fix + neue NeverHadAudio-Alert
+
+`relay_last_audio_timestamp_seconds` ist `0` wenn der Relay seit Start nie Audio bekam (adminServer.ts:189).
+Alert-Expr `time() - relay_last_audio_timestamp_seconds > 300` rechnet dann `time() - 0` = Unix-Epoch-Distanz
+(~20612d / 56 Jahre) → feuert immer sobald commanders aktiv. Das ist der beobachtete Fehlalarm
+("Last relay audio was 20612d ... ago").
+- `apps/monitoring/alerts.yml`: `RelayNoAudioWhileActive`-Expr um `relay_last_audio_timestamp_seconds > 0`
+  guarden → feuert nur noch wenn Relay Audio HATTE und dann 5m+ verstummt (= Intent laut Kommentar Z.26-27).
+- Neue Alert `RelayNeverReceivedAudio`: `rate(relay_frames_received_total[5m]) == 0 and on() (dccc_commanders_active > 0)`,
+  for: 10m, warning — deckt den vorher mitgefangenen "von Anfang an kaputt"-Fall sauber ab (keine 0-Timestamp-Arithmetik).
+Nur Config, kein Code. Deploy: monitoring-Image neu bauen / Prometheus reload.
+
+## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 4 (CqbSignup + Squad-Bündelung)
+
+**Erste Migration.** Personal-Achse echt: Einzelperson meldet sich als CQB-Soldat, Operator bündelt
+zu Squads.
+- Schema: neue Tabelle `CqbSignup` (operationId, userId, note, status, assignedGroupId, @@unique[op,user])
+  + `CompositionGroup.kind` (`fleet|squad`, default fleet). Relations auf User/Operation/CompositionGroup.
+  Migration `20260608xxxxxx_cqb_signups` (Postgres, additiv). Prod: `prisma migrate deploy` beim Start.
+- getOperation: `cqbSignups` (incl user) ins include.
+- `services/cqb.ts`: createSignup/withdraw/bundleSquad(selected→neue Group kind=squad)/autoBundle(chunk N)/unbundle.
+- routes/api.ts: POST cqb-signups (player), /withdraw, /cqb/bundle, /cqb/auto-bundle, /cqb/unbundle/:groupId (operator).
+- Wizard CQB-Schritt: postet jetzt CqbSignup (statt unitType=squad).
+- Operator-UI: CQB-Personnel-Panel (Pending-Signups Checkbox-Select → Squad erstellen, Auto-Bundle Größe N, Squads mit Members + Unbundle).
+- **Drag verschoben** (Polish, vorhandenes crew-DnD-Muster später). Voice/Participants-Integration für
+  CQB-Squads = späterer Schritt (Squad = CompositionGroup, kein FleetUnit → noch kein Voice-Channel).
+Build/Deploy fleetplanner (prisma generate + migrate deploy + tsc).
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Rollout 3 (geführter Join-Wizard, Reihenfolge B) — fde77ec
 
 Join-Seite (`opJoinPage`, `.join-asst`): flache 3-Radio-Liste → **geführter Wizard Reihenfolge B**:

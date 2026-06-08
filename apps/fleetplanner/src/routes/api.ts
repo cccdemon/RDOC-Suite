@@ -14,6 +14,13 @@ import {
 import { setStatus, addLeader, removeLeader, getOperation, logAudit } from "../services/operations.js";
 import { setPrimaryUnit, clearPrimaryUnit } from "../services/primaryUnits.js";
 import {
+  createSignup as createCqbSignup,
+  withdrawSignup as withdrawCqbSignup,
+  bundleSquad as bundleCqbSquad,
+  autoBundle as autoBundleCqb,
+  unbundle as unbundleCqb,
+} from "../services/cqb.js";
+import {
   distributeOperation,
   deleteDistributedEvents,
 } from "../services/eventDistribution.js";
@@ -1343,6 +1350,105 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Crew+request+removed.", "crew"),
+        302,
+      );
+    },
+  );
+
+  // ── CQB personnel pool (FR-P1) ───────────────────────────────────────
+  // Player volunteers as a CQB soldier; the operator bundles signups into squads.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb-signups",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const op = await prisma.operation.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, status: true },
+      });
+      if (!op) return reply.code(404).send({ error: "Operation not found" });
+      if (op.status !== "open" && op.status !== "draft") {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Operation+is+not+open+for+registration", "fleet"),
+          302,
+        );
+      }
+      const note = req.body.note?.trim().slice(0, 240) || null;
+      await createCqbSignup(req.params.id, ctx.user.id, note);
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Signed+up+as+CQB.", "fleet"),
+        302,
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb-signups/withdraw",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const targetUserId = req.body.userId || ctx.user.id;
+      const isOperator =
+        (await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id)) === "fleetoperator";
+      if (targetUserId !== ctx.user.id && !isOperator) {
+        return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Forbidden", "fleet"), 302);
+      }
+      await withdrawCqbSignup(req.params.id, targetUserId);
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:CQB+signup+removed.", "fleet"),
+        302,
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string | string[]> }>(
+    "/api/ops/:id/cqb/bundle",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body as Record<string, unknown>, ctx.csrfToken))
+        return reply.code(403).send({ error: "csrf" });
+      const raw = req.body.signupId;
+      const signupIds = Array.isArray(raw) ? raw : raw ? [raw] : [];
+      if (signupIds.length === 0) {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Select+at+least+one+signup", "fleet"),
+          302,
+        );
+      }
+      const nameRaw = req.body.name;
+      const name = (typeof nameRaw === "string" ? nameRaw : "").trim().slice(0, 80) || "Squad";
+      await bundleCqbSquad(req.params.id, name, signupIds);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Squad+created.", "fleet"), 302);
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/auto-bundle",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const size = parseInt(req.body.size ?? "4", 10);
+      const created = await autoBundleCqb(req.params.id, Number.isFinite(size) ? size : 4);
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, `ok:Auto-bundled+into+${created}+squad(s).`, "fleet"),
+        302,
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/unbundle/:groupId",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await unbundleCqb(req.params.id, req.params.groupId);
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Squad+dissolved.", "fleet"),
         302,
       );
     },

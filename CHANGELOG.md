@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - CQB personnel pool + operator squad bundling (FR-P1, 2026-06-08)
+
+- Players can now **sign up as a CQB soldier** as an individual (no role taxonomy — "they are soldiers, nothing more"); the Fleet Operator **bundles signups into squads**. New `CqbSignup` model + `CompositionGroup.kind` (`fleet`/`squad`); migration `20260608170000_cqb_signups`. Operator gets a **CQB Personnel** panel in the Fleet tab: pick unassigned soldiers to **create a squad**, **auto-bundle into squads of N**, dissolve squads, remove signups. New endpoints `/api/ops/:id/cqb-signups` (+ `/withdraw`) and operator `/api/ops/:id/cqb/{bundle,auto-bundle,unbundle/:groupId}`. The guided join wizard's CQB step now creates a signup instead of a whole squad unit.
+- **CQB, claiming a seat, and offering a ship are explicitly NOT mutually exclusive** — the join wizard stays available after you already hold a seat or have a ship pending, so you can contribute in several ways. (Previously a seat/ship signup hid the whole wizard.)
+- Deferred to a follow-up: drag-and-drop bundling (checkbox select + auto-bundle ship now), and voice-channel/participants integration for CQB squads (a squad is a `CompositionGroup`, not a `FleetUnit`).
+
+### Fixed - Monitoring: RelayNoAudioWhileActive false-firing on cold relay (2026-06-08)
+
+- `RelayNoAudioWhileActive` was firing with nonsense durations ("Last relay audio was 20612d ... ago") whenever commanders were connected but the relay had not yet received any audio. Root cause: `relay_last_audio_timestamp_seconds` is emitted as `0` when the relay never got audio since start (`adminServer.ts:189`), so the expr `time() - 0` ≈ 56 years, always `> 300`. Guarded the expr with `relay_last_audio_timestamp_seconds > 0` so it only fires for the intended case — relay *had* audio then went silent ≥5m. ([apps/monitoring/alerts.yml](apps/monitoring/alerts.yml))
+- Added `RelayNeverReceivedAudio` (`rate(relay_frames_received_total[5m]) == 0 and on() dccc_commanders_active > 0`, for 10m) to cover the "broken from process start" case the old alert was accidentally catching — frame-rate based, no epoch-0 arithmetic.
+
 ### Changed - Guided join wizard on the signup page (FR-P1, 2026-06-08)
 
 - The operation join page's "I want to join" assistant is now a **guided, order-B wizard**: concrete contributions first (**take an open seat → offer a ship → bring a CQB team**), with **"Let the operator place me"** as the final fallback. Steps that don't apply are hidden (the seat step only shows when seats are actually open). The old single "Offer a Ship / CQB Team" form is split into **two separate, clearer forms** (ship vs CQB) — addresses the feedback that offering was hard to read. Uses existing endpoints; no schema change. (The CQB path still creates a `unitType=squad` unit for now; it switches to per-person `CqbSignup` in FR-P1 step 4.)

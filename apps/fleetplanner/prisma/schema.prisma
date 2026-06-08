@@ -31,6 +31,7 @@ model User {
   missionVoiceParticipations MissionVoiceParticipant[]
   opPrimaryUnits   OpPrimaryUnit[]
   eventInterests   EventInterest[]
+  cqbSignups       CqbSignup[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -345,6 +346,7 @@ model Operation {
   cover                    OpCover?
   distributions            EventDistribution[]
   eventInterests           EventInterest[]
+  cqbSignups               CqbSignup[]
 
   @@index([recurrenceId])
 }
@@ -507,10 +509,35 @@ model CompositionGroup {
   id          String @id @default(cuid())
   operationId String
   name        String
+  kind        String @default("fleet") // fleet | squad (squad = operator-bundled CQB soldiers)
   order       Int    @default(0)
 
   operation    Operation                @relation(fields: [operationId], references: [id], onDelete: Cascade)
   requirements CompositionRequirement[]
+  cqbSignups   CqbSignup[]
+}
+
+// FR-P1: a single person volunteering as a CQB soldier (no role taxonomy —
+// "they are soldiers, nothing more"). The fleet operator bundles signups into
+// squads (a CompositionGroup with kind="squad") via assignedGroupId. This is
+// NOT a FleetUnit (no ship/seats); it's the personnel pool.
+model CqbSignup {
+  id              String   @id @default(cuid())
+  operationId     String
+  userId          String
+  note            String?
+  status          String   @default("pending") // pending | accepted | rejected
+  assignedGroupId String? // → CompositionGroup(kind=squad), set by the operator
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  operation     Operation         @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignedGroup CompositionGroup? @relation(fields: [assignedGroupId], references: [id], onDelete: SetNull)
+
+  @@unique([operationId, userId])
+  @@index([userId])
+  @@index([assignedGroupId])
 }
 
 model CompositionRequirement {

@@ -1896,7 +1896,97 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ${statusControls}
   </div>`;
 
+  // ── CQB personnel pool + operator squad bundling (FR-P1 step 4) ──────
+  const cqbSignups = op.cqbSignups ?? [];
+  const cqbPool = cqbSignups.filter((s) => !s.assignedGroupId);
+  const cqbSquads = op.groups.filter((g) => g.kind === "squad");
+  const cqbPanel =
+    cqbSignups.length || cqbSquads.length || canManage
+      ? html`<section class="opv2-panel">
+          <div class="opv2-panel-title">CQB Personnel</div>
+          ${cqbSignups.length === 0 && cqbSquads.length === 0
+            ? html`<p class="text-dim text-sm">
+                No CQB signups yet.${canManage
+                  ? " Players sign up as CQB on the join page; bundle them into squads here."
+                  : ""}
+              </p>`
+            : safe("")}
+          ${cqbSquads.map((g) => {
+            const members = cqbSignups.filter((s) => s.assignedGroupId === g.id);
+            return html`<div class="opv2-row mg-board-row">
+              <div>
+                <strong>${g.name}</strong> <span class="tag tag-green">${members.length}</span>
+                <div class="text-dim text-sm">
+                  ${members.map((m) => nm(m.user.username)).join(", ") || "empty"}
+                </div>
+              </div>
+              ${canManage
+                ? html`<form
+                    method="post"
+                    action="${bp}/api/ops/${op.id}/cqb/unbundle/${g.id}"
+                    class="inline"
+                  >
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <button type="submit" class="btn btn-sm btn-ghost">Dissolve</button>
+                  </form>`
+                : safe("")}
+            </div>`;
+          })}
+          ${cqbPool.length
+            ? canManage
+              ? html`<form method="post" action="${bp}/api/ops/${op.id}/cqb/bundle" class="mt-2">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <div class="text-dim text-sm" style="margin-bottom:.3rem">
+                      Unassigned soldiers (${String(cqbPool.length)}) — pick some to form a squad:
+                    </div>
+                    ${cqbPool.map(
+                      (s) => html`<label
+                        style="display:flex;justify-content:space-between;gap:.5rem;padding:.25rem 0;cursor:pointer"
+                      >
+                        <span
+                          ><input type="checkbox" name="signupId" value="${s.id}" />
+                          ${nm(s.user.username)}${s.note
+                            ? html` <span class="text-dim text-sm">— ${s.note}</span>`
+                            : safe("")}</span
+                        >
+                      </label>`,
+                    )}
+                    <div
+                      style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem;flex-wrap:wrap"
+                    >
+                      <input
+                        type="text"
+                        name="name"
+                        maxlength="80"
+                        placeholder="Squad name"
+                        style="flex:1;min-width:120px"
+                      />
+                      <button type="submit" class="btn btn-sm btn-green">Create squad from selected</button>
+                    </div>
+                  </form>
+                  <form
+                    method="post"
+                    action="${bp}/api/ops/${op.id}/cqb/auto-bundle"
+                    class="mt-1"
+                    style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap"
+                  >
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <span class="text-dim text-sm">or auto-bundle into squads of</span>
+                    <input type="number" name="size" min="2" max="8" value="4" style="width:64px" />
+                    <button type="submit" class="btn btn-sm">Auto-bundle</button>
+                  </form>`
+              : html`<p class="text-dim text-sm mt-1">
+                  ${String(cqbPool.length)} soldier(s) waiting to be assigned to a squad.
+                </p>`
+            : safe("")}
+        </section>`
+      : safe("");
+
   const fleetPanel = html`<div class="opv2-grid">
+    ${cqbPanel}
     <section class="opv2-panel">
       <div class="opv2-panel-title">Fleet Units</div>
       <div class="opv2-stack">${unitRows}</div>
@@ -4409,33 +4499,28 @@ export function opJoinPage(opts: {
               </p>
               <a class="btn btn-green" href="${bp}/login">Sign in</a>
             </section>`
-          : hasSeat
+          : !isOpen
             ? html`<section class="card">
-                <h3 class="wiz-sum-h">You're signed up</h3>
-                <p class="text-dim text-sm">
-                  You hold a seat — see <strong>Accepted Units</strong> below to release it or take a
-                  different open seat. Ask the operator a question in the panel on the right.
-                </p>
+                <h3 class="wiz-sum-h">I want to join</h3>
+                <div class="opv2-cta closed">Sign-up is closed.</div>
               </section>`
-            : myPendingUnits.length
-              ? html`<section class="card">
-                  <h3 class="wiz-sum-h">Ship offered — pending review</h3>
-                  <p class="text-dim text-sm">
-                    Your ship is awaiting the Fleet Operator's decision. See
-                    <strong>Your offered ship</strong> below to configure seats or withdraw it.
-                  </p>
-                </section>`
-              : !isOpen
-              ? html`<section class="card">
-                  <h3 class="wiz-sum-h">I want to join</h3>
-                  <div class="opv2-cta closed">Sign-up is closed.</div>
-                </section>`
-              : html`<section class="card join-asst">
+            : html`<section class="card join-asst">
                   <h3 class="wiz-sum-h">I want to join</h3>
                   <p class="text-dim text-sm" style="margin:-.35rem 0 .7rem">
-                    Pick how you'll contribute — every step is optional. In a hurry? Use
-                    <em>"Let the operator place me"</em> at the bottom.
+                    Pick how you'll contribute — steps are optional and you can do several:
+                    <strong>CQB, a seat and a ship are NOT mutually exclusive</strong>. In a hurry?
+                    Use <em>"Let the operator place me"</em> at the bottom.
                   </p>
+                  ${hasSeat
+                    ? html`<p class="text-dim text-sm" style="margin:0 0 .6rem">
+                        You already hold a seat — you can still add more below.
+                      </p>`
+                    : safe("")}
+                  ${myPendingUnits.length
+                    ? html`<p class="text-dim text-sm" style="margin:0 0 .6rem">
+                        You have a ship pending review — you can still contribute more below.
+                      </p>`
+                    : safe("")}
 
                   ${openSeats.length
                     ? html`<input type="radio" name="join-mode" id="jm-seat" class="ja-radio" checked />
@@ -4534,45 +4619,31 @@ export function opJoinPage(opts: {
                   <label for="jm-cqb" class="ja-opt">
                     <span class="ico">CQB</span>
                     <span class="ja-txt"
-                      ><span class="ttl">Bring a CQB team</span
-                      ><span class="sub">Form a ground / boarding fireteam.</span></span
+                      ><span class="ttl">Join as a CQB soldier</span
+                      ><span class="sub">Sign up as infantry; the operator forms the squad.</span></span
                     >
                     <span class="ja-chk"></span>
                   </label>
                   <div class="ja-panel">
-                    <form
-                      method="post"
-                      action="${bp}/api/ops/${op.id}/units"
-                      class="opv2-form join-unit-form"
-                      novalidate
-                    >
+                    <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups">
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="ui" value="player" />
                       <input type="hidden" name="tab" value="fleet" />
-                      <input type="hidden" name="unitType" class="join-unit-type" value="squad" />
-                      <div class="form-errors join-unit-errors" hidden></div>
-                      <label>Fleet need <span style="font-weight:normal;opacity:.65">(optional)</span></label>
-                      <select name="requirementId">
-                        <option value="">Unslotted — let the operator place it</option>
-                        ${availableSlots.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
-                      </select>
-                      <div class="unit-squad-fields">
-                        <label>Fireteam name</label>
-                        <input type="text" name="squadName" maxlength="80" placeholder="CQB Team" />
-                        <label>Fireteam size</label>
-                        <input type="number" name="squadSize" min="2" max="8" value="4" />
-                      </div>
+                      <p class="text-dim text-sm" style="margin:0 0 .5rem">
+                        You sign up as a single soldier. The Fleet Operator bundles everyone who
+                        signs up into squads — you don't form the team yourself.
+                      </p>
                       <label
                         >Note to the Fleet Operator
                         <span style="font-weight:normal;opacity:.65">(optional)</span></label
                       >
                       <input
                         type="text"
-                        name="captainNote"
+                        name="note"
                         maxlength="240"
-                        placeholder="Loadout, role preference…"
+                        placeholder="Loadout, experience, preferred squad…"
                       />
-                      <button type="submit" class="btn btn-green mt-1">Offer CQB team</button>
+                      <button type="submit" class="btn btn-green mt-1">Sign up as CQB</button>
                     </form>
                   </div>
 
