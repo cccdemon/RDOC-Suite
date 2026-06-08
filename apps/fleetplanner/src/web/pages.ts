@@ -4287,6 +4287,9 @@ export function opJoinPage(opts: {
   const gtz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const csrf = opts.csrfToken ?? "";
   const myId = opts.currentUser?.id;
+  // Guests (not signed in) never see other members' names (privacy — the guest
+  // banner promises this). Signed-in members do.
+  const hideNames = !opts.currentUser;
   const isOpen = op.status === "open";
   const acceptedUnits = op.units.filter((u) => u.status === "accepted");
   // You only "hold a seat" in an ACCEPTED unit. Seats in pending/rejected units
@@ -4348,7 +4351,7 @@ export function opJoinPage(opts: {
       .map((s) => ({
         id: s.id,
         label: s.label,
-        user: (s as { user?: { username?: string } }).user?.username ?? null,
+        user: hideNames ? null : ((s as { user?: { username?: string } }).user?.username ?? null),
         mine: !!myId && s.userId === myId,
         open: !s.userId,
       }));
@@ -4561,7 +4564,7 @@ export function opJoinPage(opts: {
         count: members.length,
         mine: myCqbGroupId === g.id,
         open: cap == null ? true : members.length < cap,
-        memberNames: members.map((m) => m.user.username),
+        memberNames: hideNames ? [] : members.map((m) => m.user.username),
       };
     });
   const cqbJoinSquads = joinableSquads.filter((s) => s.kind === "squad");
@@ -4572,7 +4575,7 @@ export function opJoinPage(opts: {
     list: typeof joinableSquads,
     joinLabel: string,
   ): SafeHtml =>
-    isOpen && myId && list.length
+    isOpen && list.length
       ? html`<section class="card" style="margin-top:1rem">
           <h3 class="wiz-sum-h">${title}</h3>
           <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">${sub}</p>
@@ -4581,27 +4584,33 @@ export function opJoinPage(opts: {
               (sq) => html`<div class="direct-seat-unit">
                 <div class="direct-seat-unit-name">
                   ${sq.name}
-                  <span class="tag tag-dim">${sq.count}${sq.cap ? ` / ${sq.cap}` : ""}</span>
+                  <span class="tag ${sq.open ? "tag-green" : "tag-gold"}">${sq.count}${sq.cap ? ` / ${sq.cap}` : ""}</span>
                   ${sq.mine ? html` <span class="tag tag-green">You're in</span>` : safe("")}
                 </div>
                 <div class="text-dim text-sm" style="margin-bottom:.35rem">
-                  ${sq.memberNames.join(", ") || "empty"}
+                  ${sq.memberNames.length
+                    ? sq.memberNames.join(", ")
+                    : sq.count
+                      ? `${sq.count} belegt`
+                      : "leer"}
                 </div>
                 <div class="direct-seat-btns">
                   ${sq.mine
                     ? safe("")
-                    : sq.open
-                      ? html`<form
-                          method="post"
-                          action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join"
-                          class="inline"
-                        >
-                          <input type="hidden" name="_csrf" value="${csrf}" />
-                          <input type="hidden" name="ui" value="player" />
-                          <input type="hidden" name="tab" value="fleet" />
-                          <button type="submit" class="btn btn-sm btn-green">${joinLabel}</button>
-                        </form>`
-                      : html`<span class="tag tag-gold">Full</span>`}
+                    : !sq.open
+                      ? html`<span class="tag tag-gold">Full</span>`
+                      : myId
+                        ? html`<form
+                            method="post"
+                            action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join"
+                            class="inline"
+                          >
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            <input type="hidden" name="ui" value="player" />
+                            <input type="hidden" name="tab" value="fleet" />
+                            <button type="submit" class="btn btn-sm btn-green">${joinLabel}</button>
+                          </form>`
+                        : html`<a class="btn btn-sm" href="${bp}/login">Sign in to join</a>`}
                 </div>
               </div>`,
             )}

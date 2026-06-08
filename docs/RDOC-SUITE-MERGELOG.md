@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Join-Seite — Gast-Namen-Leak fix + Teams sichtbar/joinbar + Auto-Materialisierung
+
+User-Bug (öffentliche Op, ausgeloggt): (1) Klarnamen sichtbar trotz „names hidden", (2) FPS-Teams + freie
+Plätze für Spieler nicht sichtbar. Layout-Mockup vom User freigegeben (Gast=keine Namen, Teams einzeln
+mit Plätzen+Beitreten, leere Teams Option B=auto-materialisieren).
+- `services/needs.ts`: `ensureTeamsMaterialized(op)` — öffnet fehlende Fighter/CQB-Teams gemäß Need-Count
+  (reconcile). `routes/web.ts` GET `/ops/:id` ruft es vor `getOperation` (catch-noop).
+- `pages.ts opJoinPage`: `hideNames = !currentUser` → seatView-User + Squad-memberNames für Gäste
+  redacted (Sitz zeigt „Taken", Team zeigt „N belegt"). `squadJoinCard` jetzt auch für Gäste sichtbar
+  (Gate `isOpen` statt `isOpen && myId`); Button = Join (eingeloggt) / „Sign in to join" (Gast); Tag
+  grün/gold je offen.
+- TODO (Folgeschritt, vom User freigegeben): volle Reorder „Wo ist Platz" (Ships+Teams gruppiert),
+  doppelte Boards mergen, Share nach unten. Diese Runde = Bug-Fixes + Teams sichtbar.
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Create-Op-Wizard → strukturierte Needs (Server-seitig)
 
 Wizard-UI bleibt unangetastet (fragiles Client-JS), aber `routes/web.ts` Op-Create-Handler trichtert

@@ -63,7 +63,7 @@ import { searchLocalShips } from "../services/scwiki.js";
 import { silhouettesFor } from "../services/fleetyards.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { createSeriesForOp } from "../services/recurrence.js";
-import { addShipNeeds, setFighterSquads, setCqbTeams } from "../services/needs.js";
+import { addShipNeeds, setFighterSquads, setCqbTeams, ensureTeamsMaterialized } from "../services/needs.js";
 import {
   deleteScheduledEvent,
   fetchGuildVoiceChannels,
@@ -521,6 +521,9 @@ export async function webRoutes(app: FastifyInstance) {
     Querystring: { flash?: string };
   }>("/ops/:id", async (req, reply) => {
     const ctx = await optionalAuth(req);
+    // Option B: lazily open the fighter/CQB teams a need asks for, so players
+    // always see joinable teams (covers ops created before eager materialization).
+    await ensureTeamsMaterialized(req.params.id).catch(() => {});
     const op = await getOperation(req.params.id);
     if (!op) {
       return htmlReply(

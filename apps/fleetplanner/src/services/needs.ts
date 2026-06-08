@@ -195,6 +195,25 @@ export async function setCqbTeams(operationId: string, count: number, size: numb
   await reconcileTeams(operationId, "squad", CQB_PREFIX, n, sz);
 }
 
+/**
+ * Lazily materialize the eager teams for an op's fighter/CQB needs (option B):
+ * if a need asks for N teams but fewer exist, create the missing empty ones.
+ * Safe to call on every op view. Reconcile only creates/removes EMPTY surplus.
+ */
+export async function ensureTeamsMaterialized(operationId: string): Promise<void> {
+  const reqs = await prisma.compositionRequirement.findMany({
+    where: { group: { operationId }, needType: { in: ["cqb_team", "fighter_squad"] } },
+    select: { needType: true, count: true, squadSize: true },
+  });
+  for (const r of reqs) {
+    if (r.needType === "fighter_squad") {
+      await reconcileTeams(operationId, "fighter_squad", FIGHTER_PREFIX, r.count, FIGHTER_SQUAD_SIZE);
+    } else {
+      await reconcileTeams(operationId, "squad", CQB_PREFIX, r.count, r.squadSize ?? CQB_TEAM_DEFAULT);
+    }
+  }
+}
+
 /** Operator: delete a single ship need. */
 export async function removeShipNeed(operationId: string, reqId: string): Promise<void> {
   await prisma.compositionRequirement.deleteMany({
