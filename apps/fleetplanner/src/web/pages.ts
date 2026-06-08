@@ -5053,7 +5053,7 @@ export function opJoinPage(opts: {
         ${!myId
           ? html`<p class="text-dim text-sm">Sign in to claim seats, offer ships, or ask the Fleet Operator a question.</p>
               <a class="btn btn-green join-cta-btn" href="${bp}/login">Sign in</a>`
-          : !hasSeat && !hasReq
+          : !hasSeat && !hasReq && !myCqb
             ? html`<p class="text-dim text-sm">Use “I want to join” on the left to sign up.</p>`
             : safe("")}
         ${myId && hasReq && !hasSeat
@@ -5069,6 +5069,19 @@ export function opJoinPage(opts: {
                 Withdraw request
               </button>
             </form>`
+          : safe("")}
+        ${myId && myCqb
+          ? html`<div style="margin-top:10px">
+              <p class="text-dim text-sm" style="margin:0 0 .35rem">Signed up as CQB soldier.</p>
+              <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups/withdraw">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <input type="hidden" name="ui" value="player" />
+                <input type="hidden" name="tab" value="crew" />
+                <button type="submit" class="btn btn-sm btn-ghost join-cta-btn">
+                  Withdraw CQB signup
+                </button>
+              </form>
+            </div>`
           : safe("")}
         ${myId
           ? html`<form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">
