@@ -31,22 +31,16 @@ function pick(...vals: unknown[]): string | null {
   return null;
 }
 
-// Defensive extraction across a few plausible Fleetyards field shapes.
+// Fleetyards v1 shape: media.angledView = top-down "fleetchart" silhouette,
+// media.storeImage = promo render. Each has url + smallUrl.
 function extract(m: FyModel): { silhouette: string | null; store: string | null } {
   const media = obj(m.media);
-  const silhouette = pick(
-    obj(media.fleetchart).source,
-    obj(media.fleetchartImage).source,
-    m.fleetchartImage,
-    obj(media.topView).source,
-    m.topView,
-  );
-  const store = pick(
-    obj(media.storeImage).source,
-    obj(media.storeImageMedium).source,
-    m.storeImage,
-  );
-  return { silhouette, store };
+  const angled = obj(media.angledView);
+  const store = obj(media.storeImage);
+  return {
+    silhouette: pick(angled.smallUrl, angled.url),
+    store: pick(store.smallUrl, store.url),
+  };
 }
 
 /** Pull the Fleetyards model list into the local cache. Returns count synced. */
@@ -64,8 +58,9 @@ export async function syncFleetyards(): Promise<{ count: number }> {
         signal: AbortSignal.timeout(15000),
       });
       if (!res.ok) break;
-      const list = (await res.json()) as FyModel[];
-      if (!Array.isArray(list) || list.length === 0) break;
+      const body = (await res.json()) as { items?: FyModel[] };
+      const list = Array.isArray(body.items) ? body.items : [];
+      if (list.length === 0) break;
       for (const m of list) {
         const slug = str(m.slug);
         if (!slug) continue;
