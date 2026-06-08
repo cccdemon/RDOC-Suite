@@ -12,7 +12,10 @@ Alert-Expr `time() - relay_last_audio_timestamp_seconds > 300` rechnet dann `tim
   for: 10m, warning — deckt den vorher mitgefangenen "von Anfang an kaputt"-Fall sauber ab (keine 0-Timestamp-Arithmetik).
 Nur Config, kein Code. Deploy: monitoring-Image neu bauen / Prometheus reload.
 
-## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 4 (CqbSignup + Squad-Bündelung)
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Rollout 4 (CqbSignup + Squad-Bündelung) — 29837f7
+## (Hinweis) User-Korrektur eingearbeitet: CQB / Sitz / Schiff NICHT exklusiv — Join-Wizard bleibt offen auch mit Sitz/pending Schiff (vorher versteckt).
+
+### Ursprünglicher Plan:
 
 **Erste Migration.** Personal-Achse echt: Einzelperson meldet sich als CQB-Soldat, Operator bündelt
 zu Squads.
