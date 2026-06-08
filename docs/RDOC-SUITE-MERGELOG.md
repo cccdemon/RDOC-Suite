@@ -1,5 +1,13 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-09: Test-Coverage Fortsetzung — scwiki-Shipclass + Route-Injection (Prio 3)
+
+DONE. (Prio 5) `scwiki.shipclass.test.ts`: pure `shipCategory` (alle Kategorie-Zweige) + `shipCanCarryVehicle`
+(Grid-Schwellen, null/vehicle/bad-json). (Prio 3 Starter) `web/app.inject.test.ts`: echtes Fastify
+`buildApp()` + `.inject()` — Static-Pages (privacy/license/impressum/how-to/changelog → 200 html), 404,
+unauth-POST → 302/4xx (kein 2xx). DB-freie Routen, kein Test-DB nötig. Fleetplanner gesamt **297 passed**
+(28 Files). DB-backed Route-Tests (echte Op-Flows) brauchen weiterhin eine Test-DB-Harness (offen).
+
 ## Queued / Planned Step - 2026-06-09: Eigener Anmeldestatus immer sichtbar (Join-Seite + Startseite)
 
 User-Bug: man sieht nicht, dass man bereits angemeldet ist — v.a. CQB-Signups. Ursache zweifach:
