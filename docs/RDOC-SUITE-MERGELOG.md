@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 2 — Operator Need-Editor + eager Teams
+
+Strukturierter Need-Editor ersetzt das Freitext-"What do you need" im Fleet-Tab.
+- `services/needs.ts` (neu): `SHIP_TYPES` (Fleetyards-Klassifikation minus fighter/fps/ground),
+  `addShipNeeds` (je Pick = 1 Hull), `setFighterSquads` (N Squads à 2), `setCqbTeams` (N Teams,
+  Default 4 / max 8), `reconcileTeams` materialisiert eager CompositionGroups (kind=squad für CQB →
+  joinbar; kind=fighter_squad für Fighter → Join in Phase 3). Schreibt weiter legacy category/label/count.
+- `routes/api.ts`: `POST /needs/ships`, `/needs/fighters`, `/needs/cqb`, `/needs/:reqId/delete`.
+- `pages.ts`: Fleet-Tab „Add Need"-Freitextblock → 3-Block-Editor (Ship-Chips-Multiselect, Fighter-Zahl,
+  CQB-Zahl×Größe) + Ship-Need-Tags mit Löschen. Alte Advanced-Groups + Board bleiben (Phase 5 entfernt).
+- Hinweis: Fighter-Teams in Phase 2 nur materialisiert, noch nicht sichtbar/joinbar (Phase 3).
+Nur fleetplanner, kein Schema-Change (nutzt Phase-1-Felder). Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 1 — Modell + Migration + Backfill
 
 FR-P1-fleet-need-structured, Phase 1 (additiv, nichts entfernt — alte `category/label/count` bleiben

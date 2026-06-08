@@ -12,6 +12,7 @@ import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
 import { matchesCategory, suggestSlot, isCqbCategory, shipClass } from "../services/composition.js";
+import { SHIP_TYPES, shipTypeLabel, CQB_TEAM_DEFAULT, CQB_TEAM_MAX } from "../services/needs.js";
 import { normShipName } from "../services/fleetyards.js";
 import { shipCanCarryVehicle } from "../services/scwiki.js";
 import type { MissionParticipant } from "../services/participants.js";
@@ -2098,6 +2099,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         </section>`
       : safe("");
 
+  // FR-P1 Phase 2: structured needs derived from requirements (needType).
+  type NeedReq = {
+    id: string;
+    count: number;
+    needType?: string | null;
+    shipType?: string | null;
+    squadSize?: number | null;
+  };
+  const allNeedReqs = op.groups.flatMap((g) => g.requirements) as unknown as NeedReq[];
+  const shipNeeds = allNeedReqs.filter((r) => r.needType === "ship");
+  const fighterReq = allNeedReqs.find((r) => r.needType === "fighter_squad");
+  const cqbReq = allNeedReqs.find((r) => r.needType === "cqb_team");
+  const fighterCount = fighterReq?.count ?? 0;
+  const cqbCount = cqbReq?.count ?? 0;
+  const cqbSize = cqbReq?.squadSize ?? CQB_TEAM_DEFAULT;
+
   const fleetPanel = html`<div class="opv2-grid">
     ${cqbPanel}
     <section class="opv2-panel">
@@ -2252,52 +2269,79 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ),
         )}
       </div>
-      <div class="opv2-panel-title mt-2">Fleet Requirements</div>
+      <div class="opv2-panel-title mt-2">Fleet Needs</div>
       ${canManage
-        ? html`<details class="opv2-edit-block mt-1" open>
-            <summary class="btn btn-sm">Add Need</summary>
-            <form method="post" action="${bp}/api/ops/${op.id}/requirements" class="opv2-form mt-1">
+        ? html`<div class="need-editor mt-1">
+            <style>
+              .need-editor { display: grid; gap: .8rem; }
+              .need-block { border: 1px solid rgba(255,255,255,.08); padding: .6rem .7rem; }
+              .need-h { font-weight: 600; margin-bottom: .45rem; }
+              .need-chips { display: flex; flex-wrap: wrap; gap: .35rem .8rem; margin-bottom: .5rem; }
+              .need-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .85rem; }
+              .need-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+              .need-row input[type="text"] { flex: 1; min-width: 10rem; }
+              .need-list { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
+              .need-tag { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--cyan-28, rgba(53,208,224,.28)); padding: .15rem .5rem; font-size: .82rem; }
+              .need-x { background: none; border: none; color: var(--red, #e0556a); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0; }
+            </style>
+            <form method="post" action="${bp}/api/ops/${op.id}/needs/ships" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <div class="opv2-form-grid">
-                <div>
-                  <label>What do you need?</label>
-                  <input
-                    type="text"
-                    name="label"
-                    maxlength="80"
-                    placeholder="e.g. 4-man Squad, Capital Ship, Fighter"
-                    required
-                  />
-                </div>
-                <div>
-                  <label>Type</label>
-                  <select name="category">
-                    ${REQUIREMENT_CATEGORIES.map(
-                      (category) =>
-                        html`<option value="${category}">${categoryLabel(category)}</option>`,
+              <div class="need-h">Ships <span class="text-dim text-sm">— each pick = 1 hull</span></div>
+              <div class="need-chips">
+                ${SHIP_TYPES.map(
+                  (t) => html`<label class="need-chip"
+                    ><input type="checkbox" name="shipType" value="${t.slug}" /> ${t.label}</label
+                  >`,
+                )}
+              </div>
+              <div class="need-row">
+                <input type="text" name="details" maxlength="160" placeholder="Details (optional)" />
+                <button type="submit" class="btn btn-sm btn-green">Add ship need(s)</button>
+              </div>
+              ${shipNeeds.length
+                ? html`<div class="need-list">
+                    ${shipNeeds.map(
+                      (n) => html`<span class="need-tag"
+                        >${shipTypeLabel(n.shipType ?? "any")}
+                        <button
+                          type="submit"
+                          formaction="${bp}/api/ops/${op.id}/needs/${n.id}/delete"
+                          class="need-x"
+                          title="Remove"
+                        >
+                          ×
+                        </button></span
+                      >`,
                     )}
-                  </select>
-                </div>
-              </div>
-              <div class="opv2-form-grid">
-                <div>
-                  <label>How many?</label>
-                  <input type="number" name="count" value="1" min="1" max="20" />
-                </div>
-                <div>
-                  <label>Details</label>
-                  <input
-                    type="text"
-                    name="note"
-                    maxlength="160"
-                    placeholder="e.g. 4 people each, medical, cargo, bomber loadout"
-                  />
-                </div>
-              </div>
-              <button type="submit" class="btn btn-sm mt-1">Add Need</button>
+                  </div>`
+                : safe("")}
             </form>
-          </details>`
+
+            <form method="post" action="${bp}/api/ops/${op.id}/needs/fighters" class="need-block">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              ${returnFields("fleet")}
+              <div class="need-h">Fighter squads <span class="text-dim text-sm">— 2 pilots each, own fighter</span></div>
+              <div class="need-row">
+                <input type="number" name="count" min="0" max="50" value="${String(fighterCount)}" style="width:72px" />
+                <span class="text-dim text-sm">squad(s)</span>
+                <button type="submit" class="btn btn-sm">Save</button>
+              </div>
+            </form>
+
+            <form method="post" action="${bp}/api/ops/${op.id}/needs/cqb" class="need-block">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              ${returnFields("fleet")}
+              <div class="need-h">CQB teams <span class="text-dim text-sm">— soldiers, default 4 (max ${String(CQB_TEAM_MAX)})</span></div>
+              <div class="need-row">
+                <input type="number" name="count" min="0" max="50" value="${String(cqbCount)}" style="width:72px" />
+                <span class="text-dim text-sm">team(s) ×</span>
+                <input type="number" name="size" min="1" max="${String(CQB_TEAM_MAX)}" value="${String(cqbSize)}" style="width:64px" />
+                <span class="text-dim text-sm">soldiers</span>
+                <button type="submit" class="btn btn-sm">Save</button>
+              </div>
+            </form>
+          </div>`
         : safe("")}
       <div class="opv2-stack">${compositionRows}</div>
       ${canManage

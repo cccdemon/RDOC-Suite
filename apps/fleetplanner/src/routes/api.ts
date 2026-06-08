@@ -24,6 +24,12 @@ import {
   joinSquad as joinCqbSquad,
 } from "../services/cqb.js";
 import {
+  addShipNeeds,
+  setFighterSquads,
+  setCqbTeams,
+  removeShipNeed,
+} from "../services/needs.js";
+import {
   distributeOperation,
   deleteDistributedEvents,
 } from "../services/eventDistribution.js";
@@ -1813,6 +1819,61 @@ export async function apiRoutes(app: FastifyInstance) {
         },
       });
       return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Need+added.", "fleet"), 302);
+    },
+  );
+
+  // ── Structured fleet-need editor (FR-P1 Phase 2) ───────────────────────────
+  // Ship needs: each picked type = exactly one hull.
+  app.post<{ Params: { id: string }; Body: Record<string, string | string[]> }>(
+    "/api/ops/:id/needs/ships",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body as Record<string, unknown>, ctx.csrfToken))
+        return reply.code(403).send({ error: "csrf" });
+      const raw = req.body.shipType;
+      const types = Array.isArray(raw) ? raw : raw ? [raw] : [];
+      const details = typeof req.body.details === "string" ? req.body.details : null;
+      const added = await addShipNeeds(req.params.id, types, details);
+      const body = req.body as Record<string, string>;
+      const flash = added ? `ok:Added+${added}+ship+need(s).` : "error:Pick+at+least+one+ship+type.";
+      return reply.redirect(opReturnUrl(req.params.id, body, flash, "fleet"), 302);
+    },
+  );
+
+  // Fighter need: N squads (each = 2 pilots, own fighter). Eager teams.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/needs/fighters",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await setFighterSquads(req.params.id, parseInt(req.body.count ?? "0", 10));
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Fighter+squads+set.", "fleet"), 302);
+    },
+  );
+
+  // CQB need: N teams of `size` (4..8). Eager teams.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/needs/cqb",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await setCqbTeams(req.params.id, parseInt(req.body.count ?? "0", 10), parseInt(req.body.size ?? "4", 10));
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:CQB+teams+set.", "fleet"), 302);
+    },
+  );
+
+  // Delete a single ship need.
+  app.post<{ Params: { id: string; reqId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/needs/:reqId/delete",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await removeShipNeed(req.params.id, req.params.reqId);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Ship+need+removed.", "fleet"), 302);
     },
   );
 

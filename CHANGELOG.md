@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Structured Fleet Needs editor replaces free-text requirements (2026-06-09)
+
+- The operator no longer writes a free-text "What do you need". The Fleet tab now has a structured **Fleet Needs** editor with three blocks: **Ships** (pick types — each pick = exactly one hull), **Fighter squads** (a number; 2 pilots each, everyone brings their own fighter), and **CQB teams** (a number × team size, default 4, max 8). CQB/fighter teams are created **eagerly** so players can see and join empty teams. (Part of the fleet-need redesign — see [docs/FR-P1-fleet-need-structured.md](docs/FR-P1-fleet-need-structured.md).)
+
 ### Changed - Op join page: briefing moved into the hero (2026-06-09)
 
 - The **Briefing** is now the right-hand column of the event hero (same height as the hero on wide screens, stacked below on mobile) instead of a separate card further down the page.
