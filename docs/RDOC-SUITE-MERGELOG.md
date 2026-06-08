@@ -24,7 +24,13 @@ Fleetplanner Admin/Bridge + Bridge Admin UI). Reine UI-Deaktivierung, keine Rout
 - Container (livekit, relay-bots, bridge) unangetastet. Revert = Kommentare/Items wieder rein.
 Build/Deploy: bridge + fleetplanner neu bauen.
 
-## Queued / Planned Step - 2026-06-08: Test-Coverage — Tests committen + mission-cover testbar + cqb/Service-Tests
+## Completed Step - 2026-06-08: Test-Coverage — Tests committen + mission-cover testbar + cqb-Tests
+
+DONE. (1) committed c5383c2 (coverToken/fleetImport/primaryUnits/render + coverage-setup). (2) **Prio 1**:
+apps/mission-cover testbar — vitest war devDep aber nicht installiert; `pnpm install --filter mission-cover`
+(Lock unverändert) + neuer `src/__tests__/prefill.test.ts` (8 passed) → `pnpm -r test` bricht nicht mehr
+früh ab. (3) **Prio 5**: `src/__tests__/services/cqb.test.ts` (11 passed, prisma gemockt, autoBundle-Chunking).
+Fleetplanner gesamt **286 passed** (26 Files). Bridge-WS (Prio 2) bewusst NICHT angefasst (Voice-nah).
 
 Aus separatem Testbericht-Lauf (docs/claude-code-testbericht-rdoc-suite.md). User-Entscheid:
 1. **Committen**: 4 neue Fleetplanner-Tests (coverToken/fleetImport/primaryUnits/render) + Coverage-Setup
