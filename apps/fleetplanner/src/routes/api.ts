@@ -20,6 +20,8 @@ import {
   autoBundle as autoBundleCqb,
   unbundle as unbundleCqb,
   assignToSquad as assignCqbToSquad,
+  setSquadSize as setCqbSquadSize,
+  joinSquad as joinCqbSquad,
 } from "../services/cqb.js";
 import {
   distributeOperation,
@@ -1422,8 +1424,54 @@ export async function apiRoutes(app: FastifyInstance) {
       }
       const nameRaw = req.body.name;
       const name = (typeof nameRaw === "string" ? nameRaw : "").trim().slice(0, 80) || "Squad";
-      await bundleCqbSquad(req.params.id, name, signupIds);
+      const sizeRaw = typeof body.size === "string" ? parseInt(body.size, 10) : NaN;
+      const targetSize = Number.isFinite(sizeRaw) ? sizeRaw : null;
+      await bundleCqbSquad(req.params.id, name, signupIds, targetSize);
       return reply.redirect(opReturnUrl(req.params.id, body, "ok:Squad+created.", "fleet"), 302);
+    },
+  );
+
+  // Operator: set (or clear) a squad's target size.
+  app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/squads/:groupId/size",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const sizeRaw = parseInt(req.body.size ?? "", 10);
+      await setCqbSquadSize(req.params.id, req.params.groupId, Number.isFinite(sizeRaw) ? sizeRaw : null);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Squad+size+saved.", "fleet"), 302);
+    },
+  );
+
+  // Player: join a named CQB squad directly (capacity-gated by its target size).
+  app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/squads/:groupId/join",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const op = await prisma.operation.findUnique({
+        where: { id: req.params.id },
+        select: { id: true, status: true },
+      });
+      if (!op) return reply.code(404).send({ error: "Operation not found" });
+      // Same gate as seat claim: any effective role on the op may join.
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id);
+      if (!role) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Forbidden", "fleet"), 302);
+      if (op.status !== "open" && op.status !== "draft") {
+        return reply.redirect(
+          opReturnUrl(req.params.id, req.body, "error:Operation+is+not+open+for+registration", "fleet"),
+          302,
+        );
+      }
+      const res = await joinCqbSquad(req.params.id, ctx.user.id, req.params.groupId);
+      const flash = res.ok
+        ? `ok:Joined+squad+${encodeURIComponent(res.name)}.`
+        : res.reason === "full"
+          ? "error:That+squad+is+full."
+          : "error:Squad+not+found.";
+      return reply.redirect(opReturnUrl(req.params.id, req.body, flash, "fleet"), 302);
     },
   );
 

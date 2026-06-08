@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - CQB squads get a target size and players can join one directly (2026-06-09)
+
+- CQB squads (operator-bundled fireteams) can now have a **target size**. The operator sets it when creating a squad or via a small size field on each squad row; auto-bundle uses its chunk size as the target. Squad rows show **members / target** and a **full** tag.
+- Players can **join a named squad directly** from the op join page — a new **"Join a CQB squad"** card lists sized squads with their current/target headcount and a **Join squad** button (capacity-gated; full squads show "Full", your own shows "You're in"). No operator bundling step required. (Previously a squad was a pure operator construct with no seats, so there was nothing to claim — see the Stormbreaker "chaos team 1" report.)
+- New column `CompositionGroup.targetSize` (migration `20260609120000_squad_target_size`); routes `POST /api/ops/:id/cqb/squads/:groupId/size` (operator) and `…/join` (player).
+
 ### Changed - Op join page: scheduled time as its own fact box (2026-06-09)
 
 - The op time now has its own **"Time"** box in the top fact row (next to Rendezvous / System / Voice / Participants), not just the hero badge.

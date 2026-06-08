@@ -539,6 +539,7 @@ model CompositionGroup {
   name        String
   kind        String @default("fleet") // fleet | squad (squad = operator-bundled CQB soldiers)
   order       Int    @default(0)
+  targetSize  Int? // squads only: how many soldiers the squad wants (null = no cap)
 
   operation    Operation                @relation(fields: [operationId], references: [id], onDelete: Cascade)
   requirements CompositionRequirement[]

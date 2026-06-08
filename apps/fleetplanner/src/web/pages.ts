@@ -1951,23 +1951,40 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             : safe("")}
           ${cqbSquads.map((g) => {
             const members = cqbSignups.filter((s) => s.assignedGroupId === g.id);
+            const cap = (g as { targetSize?: number | null }).targetSize ?? null;
             return html`<div class="opv2-row mg-board-row cqb-squad-drop" data-cqb-group="${g.id}">
               <div>
-                <strong>${g.name}</strong> <span class="tag tag-green">${members.length}</span>
+                <strong>${g.name}</strong>
+                <span class="tag tag-green">${members.length}${cap ? ` / ${cap}` : ""}</span>
+                ${cap && members.length >= cap ? html` <span class="tag tag-gold">full</span>` : safe("")}
                 <div class="text-dim text-sm">
                   ${members.map((m) => nm(m.user.username)).join(", ") || "empty"}
                 </div>
               </div>
               ${canManage
-                ? html`<form
-                    method="post"
-                    action="${bp}/api/ops/${op.id}/cqb/unbundle/${g.id}"
-                    class="inline"
-                  >
-                    <input type="hidden" name="_csrf" value="${csrf}" />
-                    ${returnFields("fleet")}
-                    <button type="submit" class="btn btn-sm btn-ghost">Dissolve</button>
-                  </form>`
+                ? html`<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/size"
+                      class="inline"
+                      style="display:flex;gap:.3rem;align-items:center"
+                      title="Target squad size (empty = no cap)"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <input type="number" name="size" min="1" max="24" value="${cap ?? ""}" style="width:58px" />
+                      <button type="submit" class="btn btn-sm">Size</button>
+                    </form>
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/cqb/unbundle/${g.id}"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <button type="submit" class="btn btn-sm btn-ghost">Dissolve</button>
+                    </form>
+                  </div>`
                 : safe("")}
             </div>`;
           })}
@@ -2004,6 +2021,15 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         maxlength="80"
                         placeholder="Squad name"
                         style="flex:1;min-width:120px"
+                      />
+                      <input
+                        type="number"
+                        name="size"
+                        min="1"
+                        max="24"
+                        placeholder="Size"
+                        title="Target squad size (optional — lets players join until full)"
+                        style="width:72px"
                       />
                       <button type="submit" class="btn btn-sm btn-green">Create squad from selected</button>
                     </div>
@@ -4440,6 +4466,24 @@ export function opJoinPage(opts: {
     ...(op.cqbSignups ?? []).map((s) => s.userId),
     ...op.units.filter((u) => u.status === "pending").map((u) => u.captainId),
   ]).size;
+  // CQB squads a player can join directly (sized squads = operator gave them a
+  // target size). Open = not yet full; "mine" = the viewer is already in it.
+  const myCqbGroupId = (op.cqbSignups ?? []).find((s) => s.userId === myId)?.assignedGroupId ?? null;
+  const joinableSquads = op.groups
+    .filter((g) => g.kind === "squad" && (g as { targetSize?: number | null }).targetSize != null)
+    .map((g) => {
+      const members = (op.cqbSignups ?? []).filter((s) => s.assignedGroupId === g.id);
+      const cap = (g as { targetSize?: number | null }).targetSize ?? null;
+      return {
+        id: g.id,
+        name: g.name,
+        cap,
+        count: members.length,
+        mine: myCqbGroupId === g.id,
+        open: cap == null ? true : members.length < cap,
+        memberNames: members.map((m) => m.user.username),
+      };
+    });
 
   const body = html` <style>
       .event-shell { width: 100%; }
@@ -5035,6 +5079,45 @@ export function opJoinPage(opts: {
                             </form>`
                           : safe(""),
                       )}
+                    </div>
+                  </div>`,
+                )}
+              </div>
+            </section>`
+          : safe("")}
+
+        ${isOpen && myId && joinableSquads.length
+          ? html`<section class="card" style="margin-top:1rem">
+              <h3 class="wiz-sum-h">Join a CQB squad</h3>
+              <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">
+                Pick a named fireteam and take a spot directly — no assistant needed.
+              </p>
+              <div class="direct-seats">
+                ${joinableSquads.map(
+                  (sq) => html`<div class="direct-seat-unit">
+                    <div class="direct-seat-unit-name">
+                      ${sq.name}
+                      <span class="tag tag-dim">${sq.count}${sq.cap ? ` / ${sq.cap}` : ""}</span>
+                      ${sq.mine ? html` <span class="tag tag-green">You're in</span>` : safe("")}
+                    </div>
+                    <div class="text-dim text-sm" style="margin-bottom:.35rem">
+                      ${sq.memberNames.join(", ") || "empty"}
+                    </div>
+                    <div class="direct-seat-btns">
+                      ${sq.mine
+                        ? safe("")
+                        : sq.open
+                          ? html`<form
+                              method="post"
+                              action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join"
+                              class="inline"
+                            >
+                              <input type="hidden" name="_csrf" value="${csrf}" />
+                              <input type="hidden" name="ui" value="player" />
+                              <input type="hidden" name="tab" value="fleet" />
+                              <button type="submit" class="btn btn-sm btn-green">Join squad</button>
+                            </form>`
+                          : html`<span class="tag tag-gold">Full</span>`}
                     </div>
                   </div>`,
                 )}

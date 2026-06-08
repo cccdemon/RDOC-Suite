@@ -18,14 +18,33 @@ export async function withdrawSignup(operationId: string, userId: string) {
   await prisma.cqbSignup.deleteMany({ where: { operationId, userId } });
 }
 
+/** Clamp a requested squad size into a sane range, or null for "no cap". */
+function clampSize(size: number | null | undefined): number | null {
+  if (size == null || !Number.isFinite(size)) return null;
+  const n = Math.floor(size);
+  if (n <= 0) return null;
+  return Math.min(24, n);
+}
+
 /** Operator: create a squad group from selected (still-unassigned) signups. */
-export async function bundleSquad(operationId: string, name: string, signupIds: string[]) {
+export async function bundleSquad(
+  operationId: string,
+  name: string,
+  signupIds: string[],
+  targetSize?: number | null,
+) {
   const last = await prisma.compositionGroup.aggregate({
     where: { operationId },
     _max: { order: true },
   });
   const group = await prisma.compositionGroup.create({
-    data: { operationId, name, kind: "squad", order: (last._max.order ?? -1) + 1 },
+    data: {
+      operationId,
+      name,
+      kind: "squad",
+      order: (last._max.order ?? -1) + 1,
+      targetSize: clampSize(targetSize),
+    },
   });
   if (signupIds.length) {
     await prisma.cqbSignup.updateMany({
@@ -68,10 +87,56 @@ export async function autoBundle(operationId: string, size: number): Promise<num
   for (let i = 0; i < pending.length; i += sz) {
     const chunk = pending.slice(i, i + sz).map((s) => s.id);
     if (chunk.length === 0) continue;
-    await bundleSquad(operationId, `Squad ${existing + created + 1}`, chunk);
+    await bundleSquad(operationId, `Squad ${existing + created + 1}`, chunk, sz);
     created++;
   }
   return created;
+}
+
+/** Operator: set (or clear) a squad's target size. */
+export async function setSquadSize(
+  operationId: string,
+  groupId: string,
+  size: number | null,
+): Promise<void> {
+  await prisma.compositionGroup.updateMany({
+    where: { id: groupId, operationId, kind: "squad" },
+    data: { targetSize: clampSize(size) },
+  });
+}
+
+/**
+ * Player: join a named CQB squad directly (a "seat" in the squad). Capacity-
+ * gated by the squad's targetSize. Returns the squad name on success, or a
+ * failure reason ("not_found" | "full").
+ */
+export async function joinSquad(
+  operationId: string,
+  userId: string,
+  groupId: string,
+): Promise<{ ok: true; name: string } | { ok: false; reason: "not_found" | "full" }> {
+  const group = await prisma.compositionGroup.findFirst({
+    where: { id: groupId, operationId, kind: "squad" },
+    select: { id: true, name: true, targetSize: true },
+  });
+  if (!group) return { ok: false, reason: "not_found" };
+  if (group.targetSize != null) {
+    const members = await prisma.cqbSignup.count({
+      where: { operationId, assignedGroupId: groupId, status: { not: "rejected" } },
+    });
+    // Already in this squad? Re-joining is a no-op success, not "full".
+    const alreadyIn = await prisma.cqbSignup.count({
+      where: { operationId, userId, assignedGroupId: groupId },
+    });
+    if (!alreadyIn && members >= group.targetSize) return { ok: false, reason: "full" };
+  }
+  // One CQB signup per op+user — joining a squad moves the player into it.
+  await prisma.cqbSignup.upsert({
+    where: { operationId_userId: { operationId, userId } },
+    create: { operationId, userId, assignedGroupId: groupId, status: "accepted" },
+    update: { assignedGroupId: groupId, status: "accepted" },
+  });
+  return { ok: true, name: group.name };
 }
 
 /** Operator: dissolve a squad group → its members return to the pool. */
