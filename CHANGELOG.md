@@ -13,8 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Seat/turret map**: each unit card now has a compact chip strip — one chip per seat, coloured filled / open / off — for an at-a-glance "who sits where, what's free" above the detailed seat list. (FR-P1 step 6, stage 1.)
 - **Fleetyards cache**: new `FleetyardsShip` + `FleetyardsSyncState` tables + `services/fleetyards.ts` sync (top-down silhouette + hardpoints), seeded/refreshed on boot (best-effort, like the ship catalog). Migration `20260608180000_fleetyards`. (Rendering the silhouette into the seat/turret card is a small follow-up — the cache is in place.)
 - **CQB drag**: operators can drag a pooled soldier onto an existing squad (in addition to checkbox-select + auto-bundle). New `/api/ops/:id/cqb/assign` endpoint.
-- **Seat/turret card now renders the Fleetyards silhouette** faintly behind the seat chips (operation manage view). The route batches one `silhouettesFor()` lookup per op (name-matched) and passes `shipSilhouettes` to the page.
-- Deferred: voice-channel/participants for CQB squads; the interactive offer-time mismatch warning.
+- **Join wizard's "Take an open seat" step now shows each ship as a card** with a large Fleetyards silhouette + derived class + per-seat claim buttons, so the people signing up actually see the ship they're joining. (Moved off the manager view — the manager keeps the compact seat chips. Silhouette matched by ship name against the local Fleetyards cache.) The join wizard also stays available after you've already registered, so you can keep adding contributions.
+- Deferred: voice-channel/participants for CQB squads; the interactive offer-time mismatch warning; improving the ~73% Fleetyards name-match rate.
 
 ### Added - CQB personnel pool + operator squad bundling (FR-P1, 2026-06-08)
 

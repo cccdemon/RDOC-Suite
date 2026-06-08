@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Silhouette in Join-Wizard (groß, statt Manager)
+
+User-Feedback: Schiff nicht sichtbar / zu klein / soll für Anmelder, nicht Manager.
+- Silhouette aus Manager-`seatTurretMap` entfernt (nur Chips); `OpDetailPageOptions.shipSilhouettes` weg.
+- Join-Wizard "Take an open seat": pro Unit **Schiff-Card** mit **großer Silhouette** (96px) + Klasse +
+  Claim-Buttons je offenem Sitz. `opJoinPage.shipSilhouettes` + Route web.ts (join) batched `silhouettesFor`.
+- Wizard bleibt nach Registrierung verfügbar (frühere Non-Exklusiv-Änderung) → weitere Beiträge möglich.
+- Offen: Name-Match-Rate ~73% verbessern (Manufacturer-Präfix/Varianten).
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Silhouette-Render in Sitz-/Turm-Karte
 
 Follow-up: Fleetyards-Silhouette wird jetzt faint hinter den Sitz-Chips gerendert.

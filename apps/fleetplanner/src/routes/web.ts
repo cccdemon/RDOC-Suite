@@ -565,6 +565,11 @@ export async function webRoutes(app: FastifyInstance) {
     ]);
     const voiceChannelName =
       voiceChannels.find((c) => c.id === op.eventVoiceChannelId)?.name ?? null;
+    // FR-P1 step 6: Fleetyards silhouettes for the units' ships (join seat step).
+    const joinShipNames = op.units
+      .map((u) => u.ship?.name)
+      .filter((n): n is string => Boolean(n));
+    const shipSilhouettes = Object.fromEntries(await silhouettesFor(joinShipNames));
     reply.header("Cache-Control", "no-store");
     return htmlReply(
       reply,
@@ -577,6 +582,7 @@ export async function webRoutes(app: FastifyInstance) {
         guildTimezone: (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
         voiceChannelName,
         ownedShips,
+        shipSilhouettes,
         canManage,
         publicUrl: `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH ?? ""}`,
         discordInvite:
@@ -782,11 +788,6 @@ export async function webRoutes(app: FastifyInstance) {
     const participants = op.status === "completed" ? await getMissionParticipants(op.id) : null;
     // Multi-position users (2+ units) + their primary-channel choice.
     const primaryAssignments = await getMultiPositionAssignments(op.id);
-    // FR-P1 step 6: Fleetyards silhouettes for the units' ships (seat/turret card bg).
-    const shipNames = op.units
-      .map((u) => u.ship?.name)
-      .filter((n): n is string => Boolean(n));
-    const shipSilhouettes = Object.fromEntries(await silhouettesFor(shipNames));
     reply.header("Cache-Control", "no-store");
     htmlReply(
       reply,
@@ -801,7 +802,6 @@ export async function webRoutes(app: FastifyInstance) {
         guildVoiceChannels,
         availableVoiceBotCount,
         voiceEnabled,
-        shipSilhouettes,
         guildTimezone: opGuildTz,
         guildName: opGuildName,
         orgName: opGuildOrgName,

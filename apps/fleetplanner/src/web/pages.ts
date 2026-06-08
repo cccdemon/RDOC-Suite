@@ -608,9 +608,6 @@ type OpDetailPageOptions = {
   canManagePrimary?: boolean;
   /** Guest view of a public op (not logged in): redact member usernames. */
   redactNames?: boolean;
-  /** FR-P1 step 6: normalized-ship-name → Fleetyards silhouette URL, for the
-   *  seat/turret card background. Built in the route via `silhouettesFor`. */
-  shipSilhouettes?: Record<string, string>;
 };
 
 /** Banner shown to viewers who are NOT members of the op's host Discord, so
@@ -874,12 +871,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const availableSlots = availableSlotsForUnit();
 
   // FR-P1 step 6: compact seat/turret map — one chip per seat, coloured by
-  // state (filled / open / disabled). A quick visual of "who sits where, what's
-  // free" above the detailed seat list, over a faint Fleetyards silhouette.
-  const shipSilhouettes = opts.shipSilhouettes ?? {};
+  // state (filled / open / disabled). Quick "who sits where, what's free" above
+  // the detailed seat list. (Manager view = chips only; the big ship silhouette
+  // lives in the JOIN wizard where players actually sign up.)
   const seatTurretMap = (unit: UnitFull): SafeHtml => {
     if (!unit.seats.length) return safe("");
-    const sil = unit.ship ? shipSilhouettes[normShipName(unit.ship.name)] : undefined;
     const chips = unit.seats.map((seat) => {
         const state = !seat.active ? "disabled" : seat.userId ? "filled" : "open";
         const color =
@@ -901,19 +897,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     });
     return html`<div
       class="seat-map"
-      style="position:relative;border-radius:4px;margin:.1rem 0 .5rem;${sil
-        ? "padding:6px;border:1px solid var(--border,#222);min-height:40px;"
-        : ""}"
+      style="display:flex;flex-wrap:wrap;gap:4px;margin:.1rem 0 .5rem"
     >
-      ${sil
-        ? html`<img
-            src="${sil}"
-            alt=""
-            aria-hidden="true"
-            style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:.18;pointer-events:none"
-          />`
-        : safe("")}
-      <div style="position:relative;display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
+      ${chips}
     </div>`;
   };
 
@@ -4173,6 +4159,9 @@ export function opJoinPage(opts: {
   canManage?: boolean;
   publicUrl?: string;
   discordInvite?: string | null;
+  /** FR-P1 step 6: normalized-ship-name → Fleetyards silhouette URL, shown big
+   *  in the join wizard's seat step. Built in the route via `silhouettesFor`. */
+  shipSilhouettes?: Record<string, string>;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -4212,6 +4201,21 @@ export function opJoinPage(opts: {
       };
     })
     .filter((u) => u.open > 0);
+  // FR-P1 step 6: per-unit cards for the wizard seat step — big Fleetyards
+  // silhouette + class + claimable open seats, so signers see the actual ship.
+  const shipSilhouettes = opts.shipSilhouettes ?? {};
+  const seatShipUnits = acceptedUnits
+    .filter((u) => u.unitType !== "vehicle")
+    .map((u) => ({
+      name: u.squadName || u.ship?.name || "Unit",
+      isShip: u.unitType === "ship",
+      cls: u.ship ? shipClass(u.ship) : "",
+      sil: u.ship ? shipSilhouettes[normShipName(u.ship.name)] : undefined,
+      seats: u.seats
+        .filter((s) => s.active)
+        .map((s) => ({ id: s.id, label: s.label, open: !s.userId })),
+    }))
+    .filter((u) => u.seats.some((s) => s.open));
   // Accepted units + their seats (who's seated / open), so players see the
   // current composition and can claim/release directly on the page. Ground
   // vehicles are nested under their carrier ship.
@@ -4636,19 +4640,54 @@ export function opJoinPage(opts: {
                           <span class="ja-chk"></span>
                         </label>
                         <div class="ja-panel">
-                          ${openSeats.map(
-                            (s) => html`<div class="join-seat">
-                              <span>${s.unit} · ${s.label}</span>
-                              <form
-                                method="post"
-                                action="${bp}/api/seats/${s.seatId}/claim"
-                                class="inline"
-                              >
-                                <input type="hidden" name="_csrf" value="${csrf}" />
-                                <input type="hidden" name="ui" value="player" />
-                                <input type="hidden" name="tab" value="fleet" />
-                                <button type="submit" class="btn btn-sm btn-green">Claim</button>
-                              </form>
+                          ${seatShipUnits.map(
+                            (u) => html`<div
+                              class="join-ship-card"
+                              style="border:1px solid var(--border,#26303d);border-radius:8px;padding:12px;margin-bottom:12px;background:var(--panel,rgba(13,17,23,.5))"
+                            >
+                              <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                                ${u.sil
+                                  ? html`<img
+                                      src="${u.sil}"
+                                      alt="${u.name}"
+                                      loading="lazy"
+                                      style="height:96px;width:200px;max-width:55%;object-fit:contain;flex:0 0 auto"
+                                    />`
+                                  : safe("")}
+                                <div style="flex:1;min-width:140px">
+                                  <div style="font-size:15px;font-weight:600">
+                                    ${u.name}${u.cls
+                                      ? html` <span class="tag tag-dim">${u.cls}</span>`
+                                      : safe("")}
+                                  </div>
+                                  <div class="text-dim text-sm" style="margin:.15rem 0 .5rem">
+                                    ${u.seats.filter((s) => s.open).length} open seat${u.seats.filter((s) => s.open).length === 1 ? "" : "s"}
+                                  </div>
+                                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                                    ${u.seats.map((s) =>
+                                      s.open
+                                        ? html`<form
+                                            method="post"
+                                            action="${bp}/api/seats/${s.id}/claim"
+                                            class="inline"
+                                          >
+                                            <input type="hidden" name="_csrf" value="${csrf}" />
+                                            <input type="hidden" name="ui" value="player" />
+                                            <input type="hidden" name="tab" value="fleet" />
+                                            <button type="submit" class="btn btn-sm btn-green">
+                                              ${s.label}
+                                            </button>
+                                          </form>`
+                                        : html`<span
+                                            class="tag tag-dim"
+                                            style="opacity:.55"
+                                            title="taken"
+                                            >${s.label}</span
+                                          >`,
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>`,
                           )}
                         </div>`
