@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: Mission-Cover — Element-Positionen werden nicht korrekt gespeichert (useHistory stale-pointer)
+
+Folge-Bug zu 404b839: User berichten weiterhin, dass Element-Positionen (Badges/QR per Drag) nicht
+korrekt gespeichert werden. Root cause NICHT im Save-Round-Trip (der ist korrekt + deployed), sondern
+in `apps/mission-cover/engine/src/hooks/useHistory.js`:
+- `setState` hält `pointer` per `useCallback`-Closure (`const currentPointer = pointer`).
+- Ein Drag feuert pro Mousemove ZWEI `onChangeField` (X dann Y), von React gebatcht vor Re-Render.
+  Beide Updater laufen mit demselben STALE `pointer` → `base = prev.slice(0, currentPointer+1)` des
+  zweiten Calls (Y) schneidet das X-Update wieder ab → X verloren, Position verfälscht.
+- Slider verdecken es (ein Feld, gleicher Key); Drag (X+Y-Paar) legt es offen.
+Fix: History als EIN atomarer State `{stack, pointer}`, `pointer` IM functional-Updater lesen (kein
+stale Closure, kein `setPointer` im Updater). Engine-only Change; Service/Fleetplanner unverändert.
+Danach: mission-cover Image neu bauen (engine/dist wird im Docker-engine-stage gebaut), redeploy.
+
 ## Completed Step - 2026-06-07: Op teilbar machen (Share-Buttons + Web-Share-API)
 
 DONE. User: Op/Cover teilbar (Twitter/X, Facebook, Threads, WhatsApp, Telegram, Snapchat, Instagram,

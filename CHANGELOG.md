@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Mission-Cover editor: element positions not saved correctly (2026-06-08)
+
+- Dragging the badges / QR in the cover editor could silently drop the move (positions came out wrong or unsaved). Root cause was the engine's `useHistory` hook: `setState` read the history `pointer` from a stale `useCallback` closure, so the two state updates a drag fires per mousemove (X then Y, batched by React) clobbered each other — the second sliced history at the stale pointer and discarded the first. Sliders masked it (single field); drag (X+Y) exposed it. Fixed by keeping `{stack, pointer}` in one state object and reading the pointer inside the functional updater. Engine-only change (`apps/mission-cover/engine/src/hooks/useHistory.js`); render/save round-trip was already correct.
+
 ### Added - Fleetplanner: share a public operation (2026-06-07)
 
 - Public operation pages now have a **Share** row. On mobile it uses the **Web Share API** (`navigator.share`) → the native OS share sheet, which covers every installed app (Instagram, Snapchat, TikTok, WhatsApp, …); when a mission cover exists and the device allows it, the **cover PNG is attached as a file** so image-first apps get the actual picture, not just a link.
