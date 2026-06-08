@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: FR-Doc — Fleet-Needs-Redesign + geführter Anmelde-Wizard
+
+Konzept-Doc (KEIN Code) für die User-Pain-Points "Fleet Needs unverständlich" + "Anmeldung soll
+Schritt-für-Schritt geführt sein". Bündelt:
+1. 2-Achsen-Bedarf: Hull-Need (Schiff) vs Role-Need (Person meldet sich als Rolle → Operator
+   bündelt Einzelne zu Squad/Staffel; FPS/Jägerpilot = Einzelmeldung, nicht fertiges Squad).
+2. Geführter Anmelde-Wizard (Mobile-Join, eine Frage/Screen, irrelevante Schritte übersprungen).
+   Reihenfolge **B** (User-Entscheid 2026-06-08): konkrete Beiträge zuerst, "zuweisen lassen" als
+   letzter Fallback + immer sichtbarer Skip-Button.
+3. Dynamische Schiffsklassen (aus Katalog size/career/role statt Festliste).
+4. Grafik: Sitz-/Turm-Karte Stufe 1 (aus crew-Daten) + Bildquellen (Wiki/Fleetyards).
+Datei `docs/FR-P1-fleet-needs-and-guided-join.md` (Prio 1). Baut auf
+[composition-rebuild-plan.md](composition-rebuild-plan.md) + [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) auf.
+In ROADMAP-Planungstabelle eintragen. Umsetzung erst nach Freigabe.
+
 ## Completed Step - 2026-06-08: Mission-Cover — Element-Positionen werden nicht korrekt gespeichert (useHistory stale-pointer) — c1c37af
 
 Folge-Bug zu 404b839: User berichten weiterhin, dass Element-Positionen (Badges/QR per Drag) nicht
