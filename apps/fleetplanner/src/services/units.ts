@@ -1,6 +1,6 @@
 import { prisma } from "../db.js";
 import { specForShip, specForSquad } from "./seats.js";
-import { shipCanCarryVehicle } from "./scwiki.js";
+import { shipCanCarryVehicle, vehicleFitsInShip } from "./scwiki.js";
 import type { Prisma, Ship } from "@prisma/client";
 
 export type RegisterUnitInput = {
@@ -43,6 +43,12 @@ export async function registerUnit(
     if (!shipCanCarryVehicle(carrier.ship)) {
       throw new Error("This ship cannot carry a ground vehicle");
     }
+    // Per-vehicle fit check: does this specific vehicle fit the ship's bay?
+    const vehShip = input.shipId
+      ? await prisma.ship.findUnique({ where: { id: input.shipId }, select: { rawJson: true } })
+      : null;
+    const fit = vehicleFitsInShip(vehShip, carrier.ship);
+    if (!fit.fits) throw new Error(fit.reason ?? "This vehicle does not fit in the ship");
     vehicleStatus = carrier.status;
   }
 

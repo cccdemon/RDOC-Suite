@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 4c — Fahrzeug→Schiff Fit-Check (Phase 4 fertig)
+
+- `services/scwiki.ts`: `vehicleFitsInShip(vehicle, carrier)` — vergleicht Fahrzeug-`dimension`
+  (length/width/height) gegen die `cargo_grids`-Öffnungen des Schiffs, mit 90°-Yaw (L/W tauschbar).
+  Unbekannte Maße → erlauben. Nutzt bestehendes `shipCanCarryVehicle` als Vorfilter.
+- `services/units.ts`: vehicle-Zweig prüft jetzt per-Fahrzeug-Fit; bei Nichtpassen `throw` mit klarer
+  Meldung → /units-Route flasht `err.message`. Greift für Operator- UND Spieler-Fahrzeug-Add.
+- Kein Schema. Phase 4 (a Verbände, b FPS→Schiff, c Fahrzeug-Fit) damit komplett.
+Nur fleetplanner. Build/Deploy: fleetplanner (tsc).
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 4b — FPS-Team in Schiff einbetten
 
 - Schema: `CompositionGroup.carrierUnitId String?` → FleetUnit, Back-Relation `carriedSquads`.

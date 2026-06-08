@@ -10,7 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added - Formations (Verbände) + embed CQB teams into ships (2026-06-09)
 
 - Operators can group accepted ships into named **formations** in the Fleet tab: create a formation, assign ships to it, see its members, and dissolve it.
-- A **CQB team can be embedded into a non-fighter ship** ("rides in …") from the CQB panel — fighters are rejected as carriers. (Phase 4 manage features; vehicle fit-check follows.)
+- A **CQB team can be embedded into a non-fighter ship** ("rides in …") from the CQB panel — fighters are rejected as carriers.
+- **Vehicle ↔ ship fit check**: adding a ground vehicle to a ship now verifies the vehicle actually fits the ship's cargo-bay opening (with a 90° rotation allowance); a vehicle that's too big is rejected with a clear message. Completes the Phase 4 manage features.
 
 ### Added - Join fighter squads + fleet-needs board on the structured model (2026-06-09)
 
