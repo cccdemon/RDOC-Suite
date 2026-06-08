@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 1 — Modell + Migration + Backfill
+
+FR-P1-fleet-need-structured, Phase 1 (additiv, nichts entfernt — alte `category/label/count` bleiben
+lesbar, damit bestehender Code/UI weiterläuft; UI-Umstellung in Phase 2+).
+- Schema `CompositionRequirement` + 3 nullable Felder: `needType` (ship|fighter_squad|cqb_team),
+  `shipType` (Fleetyards-Slug, nur ship), `squadSize` (fighter=2, cqb=4..8).
+- Migration `20260609170000_fleet_need_structured`: Spalten + Backfill aus `category`:
+  `fighter`→fighter_squad/2; `fps`,`ground`→cqb_team/4; sonst→ship/shipType=category.
+- Idempotent genug (läuft einmal via migrate deploy). Verifizieren: migrierte Rows in prod
+  (Stormbreaker + andere), keine NULL needType danach.
+Nur fleetplanner. Build/Deploy: fleetplanner (generate + migrate deploy + tsc).
+
 ## Queued / Planned Step - 2026-06-09: FR-Doc Fleet-Need-Redesign (Plan, kein Code)
 
 Neue FR-Doc `docs/FR-P1-fleet-need-structured.md` — strukturierte Bedarfe statt Freitext.

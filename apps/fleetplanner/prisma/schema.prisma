@@ -578,6 +578,12 @@ model CompositionRequirement {
   note     String?
   order    Int     @default(0)
 
+  // FR-P1 structured-need redesign (additive; old category/label kept readable
+  // during the migration phases). needType drives the new editor + join flow.
+  needType  String? // ship | fighter_squad | cqb_team
+  shipType  String? // Fleetyards type slug (needType=ship; null = any ship)
+  squadSize Int? // fighter_squad = 2, cqb_team = 4..8 (default 4)
+
   group      CompositionGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
   fleetUnits FleetUnit[]
 }
