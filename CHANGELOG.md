@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Formations (Verbände) in the manage view (2026-06-09)
+
+- Operators can group accepted ships into named **formations** in the Fleet tab: create a formation, assign ships to it, see its members, and dissolve it. (First of the Phase 4 manage features; FPS-team-into-ship and vehicle fit-check follow.)
+
 ### Added - Join fighter squads + fleet-needs board on the structured model (2026-06-09)
 
 - Players can now **join a fighter squad** on the op join page (wingman pairs of 2 — bring your own fighter), alongside CQB teams. Both are capacity-gated; full shows "Full", your own shows "You're in".

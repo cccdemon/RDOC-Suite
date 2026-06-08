@@ -30,6 +30,11 @@ import {
   removeShipNeed,
 } from "../services/needs.js";
 import {
+  createFormation,
+  deleteFormation,
+  assignUnitToFormation,
+} from "../services/formations.js";
+import {
   distributeOperation,
   deleteDistributedEvents,
 } from "../services/eventDistribution.js";
@@ -1862,6 +1867,45 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       await setCqbTeams(req.params.id, parseInt(req.body.count ?? "0", 10), parseInt(req.body.size ?? "4", 10));
       return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:CQB+teams+set.", "fleet"), 302);
+    },
+  );
+
+  // ── Formations (Verbände, Phase 4a) ────────────────────────────────────────
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/formations",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const name = (req.body.name ?? "").trim();
+      if (!name) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Formation+name+required", "fleet"), 302);
+      await createFormation(req.params.id, name);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Formation+created.", "fleet"), 302);
+    },
+  );
+
+  app.post<{ Params: { id: string; fid: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/formations/:fid/delete",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await deleteFormation(req.params.id, req.params.fid);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Formation+removed.", "fleet"), 302);
+    },
+  );
+
+  // Assign/detach a ship to a formation (formationId empty = detach).
+  app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/units/:unitId/formation",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const fid = (req.body.formationId ?? "").trim() || null;
+      const res = await assignUnitToFormation(req.params.id, req.params.unitId, fid);
+      const flash = res.ok ? "ok:Formation+updated." : "error:Only+ships+can+join+a+formation.";
+      return reply.redirect(opReturnUrl(req.params.id, req.body, flash, "fleet"), 302);
     },
   );
 

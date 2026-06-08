@@ -2171,8 +2171,71 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const cqbCount = cqbReq?.count ?? 0;
   const cqbSize = cqbReq?.squadSize ?? CQB_TEAM_DEFAULT;
 
+  // FR-P1 Phase 4a: formations (Verbände) — group accepted ships.
+  const formationGroups = op.groups.filter((g) => g.kind === "formation");
+  const acceptedShipsForFm = op.units.filter(
+    (u) => u.unitType === "ship" && u.status === "accepted",
+  );
+  const fmShipFormationId = (u: (typeof op.units)[number]) =>
+    (u as { formationId?: string | null }).formationId ?? null;
+  const formations = formationGroups.map((g) => ({
+    id: g.id,
+    name: g.name,
+    ships: acceptedShipsForFm.filter((u) => fmShipFormationId(u) === g.id),
+  }));
+  const formationsPanel = canManage || formations.length
+    ? html`<section class="opv2-panel">
+        <div class="opv2-panel-title">Formations (Verbände)</div>
+        ${formations.length
+          ? formations.map(
+              (f) => html`<div class="opv2-row mg-board-row">
+                <div>
+                  <strong>${f.name}</strong>
+                  <span class="tag tag-cyan">${f.ships.length} ship${f.ships.length === 1 ? "" : "s"}</span>
+                  <div class="text-dim text-sm">
+                    ${f.ships.map((s) => unitName(s)).join(", ") || "empty"}
+                  </div>
+                </div>
+                ${canManage
+                  ? html`<form method="post" action="${bp}/api/ops/${op.id}/formations/${f.id}/delete" class="inline">
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <button type="submit" class="btn btn-sm btn-ghost">Dissolve</button>
+                    </form>`
+                  : safe("")}
+              </div>`,
+            )
+          : html`<p class="text-dim text-sm">No formations yet.</p>`}
+        ${canManage
+          ? html`<form method="post" action="${bp}/api/ops/${op.id}/formations" class="opv2-inline-form mt-1">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                ${returnFields("fleet")}
+                <input type="text" name="name" maxlength="80" placeholder="Formation name (e.g. Task Force Alpha)" required />
+                <button type="submit" class="btn btn-sm">Add formation</button>
+              </form>
+              ${acceptedShipsForFm.length && formationGroups.length
+                ? html`<div class="text-dim text-sm mt-2" style="margin-bottom:.3rem">Assign ships to a formation:</div>
+                    ${acceptedShipsForFm.map(
+                      (s) => html`<form method="post" action="${bp}/api/ops/${op.id}/units/${s.id}/formation" class="opv2-inline-form" style="margin:.2rem 0">
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        ${returnFields("fleet")}
+                        <span style="flex:1;min-width:8rem">${unitName(s)}</span>
+                        <select name="formationId" onchange="this.form.submit()">
+                          <option value="">— none —</option>
+                          ${formationGroups.map(
+                            (f) => html`<option value="${f.id}" ${fmShipFormationId(s) === f.id ? safe("selected") : ""}>${f.name}</option>`,
+                          )}
+                        </select>
+                      </form>`,
+                    )}`
+                : safe("")}`
+          : safe("")}
+      </section>`
+    : safe("");
+
   const fleetPanel = html`<div class="opv2-grid">
     ${cqbPanel}
+    ${formationsPanel}
     <section class="opv2-panel">
       <div class="opv2-panel-title">Fleet Units</div>
       <div class="opv2-stack">${unitRows}</div>

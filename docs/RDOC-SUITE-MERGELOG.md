@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 4a — Formations (Verbände)
+
+Erstes der drei Phase-4-Manage-Features. (4b FPS→Schiff, 4c Fahrzeug-Fit-Check folgen.)
+- Schema: `FleetUnit.formationId String?` → `CompositionGroup`(kind="formation"), Back-Relation
+  `formationUnits`. Migration `20260609190000_fleet_formations` (Spalte + Index + FK onDelete SetNull).
+- `services/formations.ts`: createFormation / deleteFormation / assignUnitToFormation (nur ships).
+- `routes/api.ts`: POST `/formations`, `/formations/:fid/delete`, `/units/:unitId/formation`.
+- `pages.ts` Fleet-Tab: neues „Formations (Verbände)"-Panel — anlegen, auflisten (mit Schiffen),
+  auflösen, Schiff→Formation per Select (auto-submit). **Select-basiert statt HTML5-D&D** (zuverlässig;
+  D&D-Politur optional später).
+Nur fleetplanner. Build/Deploy: fleetplanner (generate + migrate deploy + tsc).
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 3 — Fighter-Join + Board aufs neue Modell
 
 - `services/cqb.ts`: `joinSquad` akzeptiert jetzt `kind in (squad, fighter_squad)` → Fighter-Squads joinbar.

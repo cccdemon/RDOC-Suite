@@ -544,6 +544,8 @@ model CompositionGroup {
   operation    Operation                @relation(fields: [operationId], references: [id], onDelete: Cascade)
   requirements CompositionRequirement[]
   cqbSignups   CqbSignup[]
+  // FR-P1 Phase 4: ships assigned to this group when kind="formation".
+  formationUnits FleetUnit[]            @relation("Formation")
 }
 
 // FR-P1: a single person volunteering as a CQB soldier (no role taxonomy —
@@ -601,6 +603,9 @@ model FleetUnit {
   // A ground vehicle is a crewable sub-unit carried by a parent ship unit.
   carrierUnitId String?
 
+  // FR-P1 Phase 4: ships grouped into operator formations (Verbände).
+  formationId String?
+
   captainId     String
   requirementId String?
   status        String   @default("pending") // pending | accepted | rejected
@@ -614,6 +619,7 @@ model FleetUnit {
   requirement  CompositionRequirement? @relation(fields: [requirementId], references: [id])
   carrier      FleetUnit?              @relation("CarrierVehicles", fields: [carrierUnitId], references: [id], onDelete: Cascade)
   vehicles     FleetUnit[]             @relation("CarrierVehicles")
+  formation    CompositionGroup?       @relation("Formation", fields: [formationId], references: [id], onDelete: SetNull)
   seats        SeatAssignment[]
   voiceChannel FleetVoiceChannel?
   primaryForUsers OpPrimaryUnit[]
