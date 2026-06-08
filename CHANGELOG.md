@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Players can now **join a fighter squad** on the op join page (wingman pairs of 2 — bring your own fighter), alongside CQB teams. Both are capacity-gated; full shows "Full", your own shows "You're in".
 - The operator **Fleet Needs** board is rebuilt on the structured model: three axes — **Hull-Need** (ships, from requirements), **Fighter-Need** and **CQB-Need** (from the materialized squads/teams, showing Soll/Ist/Offen per team).
 
+### Changed - New ops created via the wizard now use the structured needs (2026-06-09)
+
+- Operations created through the create wizard now produce **structured fleet needs** with eagerly materialized, joinable fighter/CQB teams (the same as the manage editor), instead of plain free-text requirements. The wizard UI is unchanged; the conversion happens server-side.
+
 ### Removed - Legacy free-text fleet-need entry in the manage view (2026-06-09)
 
 - The old free-text need editing is gone from the Fleet tab: the per-need "What do you need? / type / count" edit form is replaced by a plain delete, and the "Advanced: Groups" block (free-text groups + requirement add) is removed. The structured Fleet Needs editor is now the only way to define needs. (The create-op wizard still uses the older template flow — a separate follow-up.)

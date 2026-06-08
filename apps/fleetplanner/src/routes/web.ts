@@ -63,6 +63,7 @@ import { searchLocalShips } from "../services/scwiki.js";
 import { silhouettesFor } from "../services/fleetyards.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { createSeriesForOp } from "../services/recurrence.js";
+import { addShipNeeds, setFighterSquads, setCqbTeams } from "../services/needs.js";
 import {
   deleteScheduledEvent,
   fetchGuildVoiceChannels,
@@ -405,9 +406,11 @@ export async function webRoutes(app: FastifyInstance) {
           /* recurrence is optional — never fail op creation on it */
         }
       }
-      // Wizard composition (Phase 3): optional JSON of requirement rows. Create
-      // one "Fleet Requirements" group + requirements. Bad input is ignored so
-      // op creation never fails on it.
+      // Wizard composition (FR-P1 structured): the wizard still posts the legacy
+      // {category,label,count} rows, but we now funnel them through the SAME
+      // structured-need service as the manage editor — so wizard-created ops get
+      // proper needType + eagerly materialized fighter/CQB teams (joinable).
+      // Bad input is ignored so op creation never fails on it.
       if (req.body.compositionJson) {
         try {
           const VALID = new Set([
@@ -416,31 +419,24 @@ export async function webRoutes(app: FastifyInstance) {
           ]);
           const rows = (JSON.parse(req.body.compositionJson) as unknown[])
             .filter(
-              (r): r is { category: string; label: string; count?: number } =>
+              (r): r is { category: string; count?: number } =>
                 !!r &&
                 typeof r === "object" &&
-                VALID.has((r as { category?: unknown }).category as string) &&
-                typeof (r as { label?: unknown }).label === "string" &&
-                ((r as { label: string }).label.trim().length > 0),
+                VALID.has((r as { category?: unknown }).category as string),
             )
             .slice(0, 30);
-          if (rows.length) {
-            await prisma.compositionGroup.create({
-              data: {
-                operationId: op.id,
-                name: "Fleet Requirements",
-                order: 0,
-                requirements: {
-                  create: rows.map((r, i) => ({
-                    category: r.category,
-                    label: r.label.trim().slice(0, 80),
-                    count: Math.min(99, Math.max(1, Math.round(Number(r.count) || 1))),
-                    order: i,
-                  })),
-                },
-              },
-            });
+          const shipSlugs: string[] = [];
+          let fighterTotal = 0;
+          let cqbTotal = 0;
+          for (const r of rows) {
+            const count = Math.min(99, Math.max(1, Math.round(Number(r.count) || 1)));
+            if (r.category === "fighter") fighterTotal += count;
+            else if (r.category === "fps" || r.category === "ground") cqbTotal += count;
+            else for (let i = 0; i < count; i++) shipSlugs.push(r.category); // ship hull
           }
+          if (shipSlugs.length) await addShipNeeds(op.id, shipSlugs, null);
+          if (fighterTotal > 0) await setFighterSquads(op.id, fighterTotal);
+          if (cqbTotal > 0) await setCqbTeams(op.id, cqbTotal, 4);
         } catch {
           /* ignore malformed composition */
         }

@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Create-Op-Wizard → strukturierte Needs (Server-seitig)
+
+Wizard-UI bleibt unangetastet (fragiles Client-JS), aber `routes/web.ts` Op-Create-Handler trichtert
+die Wizard-`compositionJson`-Rows jetzt durch denselben `needs.ts`-Service wie der Manage-Editor:
+- ship-Kategorien → `addShipNeeds` (count× pro Slug = je 1 Hull), `fighter` → `setFighterSquads`
+  (Summe), `fps`/`ground` → `setCqbTeams` (Summe, Größe 4). Dadurch bekommen Wizard-erstellte Ops
+  `needType` + **eager materialisierte Fighter-/CQB-Teams (joinbar)** statt nur Freitext-Requirements.
+- Altes manuelles `compositionGroup.create` raus; `label` wird ignoriert (Service setzt Label).
+Schließt den Phase-5-Follow-up (Wizard-Freitext erzeugte vorher needType-lose Requirements).
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 5 — Legacy-Freitext-Pfade raus
 
 - `pages.ts`: Manage-Freitext-UI entfernt — alte per-Need-Edit-Form (label/category/count) → nur noch
