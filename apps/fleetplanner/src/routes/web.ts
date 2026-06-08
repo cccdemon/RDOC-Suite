@@ -213,7 +213,7 @@ export async function webRoutes(app: FastifyInstance) {
     );
     // Per-op signup state for the current user, for the overview "joined /
     // waitlist" card badge. A claimed seat = joined (wins); a crew request = waitlist.
-    const [signedSeats, signedReqs] = await Promise.all([
+    const [signedSeats, signedReqs, cqbSignups, pendingShips] = await Promise.all([
       prisma.seatAssignment.findMany({
         where: { userId: ctx.user.id, active: true },
         select: { fleetUnit: { select: { operationId: true } } },
@@ -222,11 +222,25 @@ export async function webRoutes(app: FastifyInstance) {
         where: { userId: ctx.user.id },
         select: { operationId: true },
       }),
+      // CQB signups = a committed personnel signup → counts as "joined".
+      prisma.cqbSignup.findMany({
+        where: { userId: ctx.user.id, status: { not: "rejected" } },
+        select: { operationId: true },
+      }),
+      // Own ship offers still awaiting the operator's decision → "waitlist".
+      prisma.fleetUnit.findMany({
+        where: { captainId: ctx.user.id, status: "pending" },
+        select: { operationId: true },
+      }),
     ]);
+    // Waitlist first, then "joined" overwrites — a committed signup (seat/CQB)
+    // always wins over a pending request/offer for the same op.
     const signupState = new Map<string, "joined" | "waitlist">();
     for (const r of signedReqs) signupState.set(r.operationId, "waitlist");
+    for (const u of pendingShips) signupState.set(u.operationId, "waitlist");
     for (const s of signedSeats)
       if (s.fleetUnit?.operationId) signupState.set(s.fleetUnit.operationId, "joined");
+    for (const c of cqbSignups) signupState.set(c.operationId, "joined");
     // Operator guilds for the "New Op" picker
     const operatorGuilds = memberships
       .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")

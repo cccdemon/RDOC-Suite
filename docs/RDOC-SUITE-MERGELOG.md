@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Eigener Anmeldestatus immer sichtbar (Join-Seite + Startseite)
+
+User-Bug: man sieht nicht, dass man bereits angemeldet ist — v.a. CQB-Signups. Ursache zweifach:
+1. **Join-Seite** (`opJoinPage`): "My Signup"-Status lebte nur im rechten `join-aside`, der auf Mobile
+   (`.join-layout` 1-spaltig, `.join-aside` static) ans Seitenende rutscht; oben stand weiter "I want to
+   join". Assistant-Card-Hints deckten `hasSeat`/pending-ship ab, aber NICHT `myCqb`. Fix: prominentes
+   `signupSummaryBanner` (`opv2-cta done`, grün) ganz oben in `.join-main`, baut Liste aus
+   seat/pending-ship/CQB/awaiting-placement.
+2. **Startseite** (`homePage` op-cards): Badge "✓ Joined"/"Waitlisted" kam aus `signupState`-Map, die nur
+   SeatAssignment (joined) + CrewAssignmentRequest (waitlist) abfragte — CQB-Signups + eigene pending
+   Ship-Offers fehlten → CQB-Anmelder sah KEIN Badge. Fix in `routes/web.ts`: zwei extra Queries
+   (`cqbSignup` status≠rejected → "joined", `fleetUnit` captain+pending → "waitlist"), precedence
+   waitlist→joined (committed gewinnt).
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-08: Root-Redirect suite.raumdock.org → /fleetplanner
 
 User: Root-Host soll auf `/fleetplanner` weiterleiten. Caddy (`deploy/caddy-rdoc/Caddyfile`) ist der

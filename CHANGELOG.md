@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Your own signup status is now always visible (2026-06-09)
+
+- You couldn't tell you were already signed up — especially after a **CQB signup**. Two gaps:
+  - **Op join page**: the "My Signup" status only lived in the right-hand aside, which drops to the very bottom on mobile, while the top still said "I want to join". A new green **"✓ You're signed up — …"** banner now sits at the very top of the join column (covers seat / pending ship / CQB / awaiting placement). The assistant card previously never even hinted at a CQB signup.
+  - **Start page (op cards)**: the **✓ Joined / Waitlisted** badge was driven by a signup map that only knew about claimed seats and crew requests. CQB signups and your own pending ship offers are now included, so a CQB-only signup finally shows a badge on the overview.
+
 ### Changed - Root host redirects to the Fleetplanner (2026-06-08)
 
 - `https://suite.raumdock.org/` now **302-redirects to `/fleetplanner`**, the public entry point. Caddy-only change (`deploy/caddy-rdoc/Caddyfile`): an exact-path `handle /` block in front of the catch-all; every other path is unaffected. Deploy: rebuild/reload the `caddy-rdoc` container.

@@ -4411,6 +4411,22 @@ export function opJoinPage(opts: {
       : !isOpen
         ? html`<div class="opv2-cta closed">Sign-up closed.</div>`
         : safe("");
+  // Always-visible "you're signed up" confirmation at the very top of the join
+  // column. The detailed "My Signup" aside lives in the right rail, which drops
+  // to the bottom on mobile — so a signed-up user (especially CQB-only, which
+  // the assistant card never hinted at) otherwise saw no confirmation up top.
+  const signupParts: string[] = [];
+  if (hasSeat) signupParts.push("seat claimed");
+  if (myPendingUnits.length)
+    signupParts.push(myPendingUnits.length === 1 ? "1 ship pending review" : `${myPendingUnits.length} ships pending review`);
+  if (myCqb) signupParts.push("signed up as CQB soldier");
+  if (hasReq && !hasSeat) signupParts.push("awaiting operator placement");
+  const signupSummaryBanner =
+    signedUp && signupParts.length
+      ? html`<div class="opv2-cta done" style="margin-bottom:1rem">
+          ✓ You're signed up — ${signupParts.join(" · ")}.
+        </div>`
+      : safe("");
 
   const body = html` <style>
       .event-shell { width: 100%; }
@@ -4618,6 +4634,7 @@ export function opJoinPage(opts: {
 
     <div class="join-layout">
       <div class="join-main">
+        ${signupSummaryBanner}
         ${!myId
           ? html`<section class="card">
               <h3 class="wiz-sum-h">I want to join</h3>
