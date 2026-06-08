@@ -1,5 +1,34 @@
 # RDOC Suite Merge Log
 
+## Completed Step - 2026-06-09: Test-DB-Harness — echte Route-Injection-Tests gegen Docker-Postgres
+
+Fleetplanner-Integrationstest-Harness: `vitest.db.config.ts` (separater `test:db`-Lauf) + globalSetup
+`src/__tests__/db/global-setup.ts` startet **Postgres in Docker** (postgres:16-alpine, Port 55433) +
+`prisma db push`, teardown entfernt Container. `op-lifecycle.test.ts` fährt via `buildApp().inject()`
+mit geseedeter Session einen echten Op-Flow (create→open→group+requirement→cqb signup/withdraw→render
+→unauth-reject→delete) gegen echte DB. **Graceful**: kein Docker-Daemon → globalSetup `provide("dbReady",false)`
+→ `describe.skipIf` skippt sauber (verifiziert: 7 skipped, exit 0). Default-`vitest.config` excludt
+`src/__tests__/db/**` (Unit-Lauf bleibt schnell). Voller grüner Lauf erfordert laufendes Docker Desktop —
+`pnpm --filter @rdoc-suite/fleetplanner test:db`. Nur Harness-Files committed (cqb/schema werden parallel editiert).
+
+## Queued / Planned Step - 2026-06-09: CQB-Squads — Zielgröße + direkter Spieler-Beitritt (Erweiterung FR-P1)
+
+User-Entscheidung 2026-06-09: CQB-Squads (`CompositionGroup.kind=squad`) erweitern — eigene
+**Zielgröße** (gespeichert) + Spieler können **direkt einem benannten Squad beitreten**, nicht nur
+Operator-Bündelung. (Diagnose vorab: "chaos team 1" ist eine CompositionGroup ohne SeatAssignment-Sitze,
+daher nichts claimbar; squadSize gab es nie als Feld.)
+- **Schema**: `CompositionGroup.targetSize Int?` (nullable, additiv). Migration
+  `20260609120000_squad_target_size`. Prod: `migrate deploy` beim Start.
+- **services/cqb.ts**: `bundleSquad(..., targetSize?)` speichert Size; `setSquadSize(op,group,size)`;
+  `joinSquad(op,user,group)` kapazitätsgeprüft (members < targetSize, sonst null), upsert CqbSignup
+  mit assignedGroupId + status accepted.
+- **routes/api.ts**: Spieler `POST /api/ops/:id/cqb/squads/:groupId/join` (effectiveOpRole≠null + op open
+  + Kapazität); Operator `POST /api/ops/:id/cqb/squads/:groupId/size`; bundle-Route liest `size`.
+- **pages.ts**: Operator-CQB-Panel zeigt `members/targetSize` + Size-Setzen + Size-Feld im Bundle-Form.
+  Join-Seite: neue Card "Join a CQB squad" (offene Squads mit freien Plätzen + Join-Button), analog
+  Direkt-Sitz-Claim.
+Nur fleetplanner. Build/Deploy: fleetplanner (prisma generate + migrate deploy + tsc).
+
 ## Queued / Planned Step - 2026-06-09: Join-Seite — Uhrzeit als eigene Fakten-Box
 
 `opJoinPage` event-facts: neue erste Box "Time" mit `fmtDateLocal(op.scheduledAt, gtz)` (+gtz),
