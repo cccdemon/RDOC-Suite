@@ -1,6 +1,6 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 3 (geführter Join-Wizard, Reihenfolge B)
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Rollout 3 (geführter Join-Wizard, Reihenfolge B) — fde77ec
 
 Join-Seite (`opJoinPage`, `.join-asst`): flache 3-Radio-Liste → **geführter Wizard Reihenfolge B**:
 konkrete Beiträge zuerst (Sitz claimen → Schiff anbieten → CQB-Team), "Operator platziert mich" als
