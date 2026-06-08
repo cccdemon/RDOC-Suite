@@ -1117,8 +1117,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       })
     : [html`<p class="text-dim text-sm">No registered units yet.</p>`];
 
-  const compositionRows = op.groups.length
-    ? op.groups.map(
+  const needGroups = op.groups.filter((g) => g.requirements.length > 0);
+  const compositionRows = needGroups.length
+    ? needGroups.map(
         (group) =>
           html`<div class="opv2-composition-group">
             <div class="opv2-panel-title">${group.name}</div>
@@ -1137,81 +1138,21 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     <span class="tag tag-dim">${categoryLabel(requirement.category)}</span>
                     <strong>${filled}/${requirement.count}</strong>
                     ${canManage
-                      ? html`<details class="opv2-edit-block">
-                          <summary class="btn btn-sm btn-ghost">Edit</summary>
-                          <form
-                            method="post"
-                            action="${bp}/api/ops/${op.id}/requirements/${requirement.id}/edit"
-                            class="opv2-form mt-1"
+                      ? html`<form
+                          method="post"
+                          action="${bp}/api/ops/${op.id}/requirements/${requirement.id}/delete"
+                          class="inline"
+                        >
+                          <input type="hidden" name="_csrf" value="${csrf}" />
+                          ${returnFields("fleet")}
+                          <button
+                            type="submit"
+                            class="btn btn-sm btn-ghost"
+                            onclick="return confirm('Delete this need?')"
                           >
-                            <input type="hidden" name="_csrf" value="${csrf}" />
-                            ${returnFields("fleet")}
-                            <div class="opv2-form-grid">
-                              <div>
-                                <label>What do you need?</label>
-                                <input
-                                  type="text"
-                                  name="label"
-                                  maxlength="80"
-                                  value="${requirement.label}"
-                                  required
-                                />
-                              </div>
-                              <div>
-                                <label>Type</label>
-                                <select name="category">
-                                  ${REQUIREMENT_CATEGORIES.map(
-                                    (category) =>
-                                      html`<option
-                                        value="${category}"
-                                        ${requirement.category === category ? safe("selected") : ""}
-                                      >
-                                        ${categoryLabel(category)}
-                                      </option>`,
-                                  )}
-                                </select>
-                              </div>
-                            </div>
-                            <div class="opv2-form-grid">
-                              <div>
-                                <label>How many?</label>
-                                <input
-                                  type="number"
-                                  name="count"
-                                  value="${requirement.count}"
-                                  min="${Math.max(1, filled)}"
-                                  max="20"
-                                />
-                              </div>
-                              <div>
-                                <label>Details</label>
-                                <input
-                                  type="text"
-                                  name="note"
-                                  maxlength="160"
-                                  value="${requirement.note ?? ""}"
-                                  placeholder="e.g. 4 people each, medical, cargo"
-                                />
-                              </div>
-                            </div>
-                            <button type="submit" class="btn btn-sm mt-1">Save Need</button>
-                          </form>
-                          <form
-                            method="post"
-                            action="${bp}/api/ops/${op.id}/requirements/${requirement.id}/delete"
-                            class="inline mt-1"
-                          >
-                            <input type="hidden" name="_csrf" value="${csrf}" />
-                            ${returnFields("fleet")}
-                            <button
-                              type="submit"
-                              class="btn btn-sm btn-danger"
-                              onclick="return confirm('Delete this need?')"
-                            >
-                              Delete Need
-                            </button>
-                          </form>
-                        </details>`
+                            Delete
+                          </button>
+                        </form>`
                       : safe("")}
                   </div>`;
                 })
@@ -2489,61 +2430,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </div>`
         : safe("")}
       <div class="opv2-stack">${compositionRows}</div>
-      ${canManage
-        ? html`<details class="opv2-edit-block mt-1">
-            <summary class="btn btn-sm btn-ghost">Advanced: Groups</summary>
-            <form
-              method="post"
-              action="${bp}/api/ops/${op.id}/groups"
-              class="opv2-inline-form mt-1"
-            >
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              ${returnFields("fleet")}
-              <input type="text" name="name" placeholder="Group name" maxlength="80" required />
-              <button type="submit" class="btn btn-sm">Add Group</button>
-            </form>
-            ${op.groups.map(
-              (group) =>
-                html`<div class="opv2-composition-group mt-1">
-                  <div class="opv2-panel-title">${group.name}</div>
-                  <form
-                    method="post"
-                    action="${bp}/api/ops/${op.id}/groups/${group.id}/requirements"
-                    class="opv2-form"
-                  >
-                    <input type="hidden" name="_csrf" value="${csrf}" />
-                    ${returnFields("fleet")}
-                    <div class="opv2-form-grid">
-                      <div>
-                        <label>Need</label>
-                        <input type="text" name="label" maxlength="80" required />
-                      </div>
-                      <div>
-                        <label>Type</label>
-                        <select name="category">
-                          ${REQUIREMENT_CATEGORIES.map(
-                            (category) =>
-                              html`<option value="${category}">${categoryLabel(category)}</option>`,
-                          )}
-                        </select>
-                      </div>
-                    </div>
-                    <div class="opv2-form-grid">
-                      <div>
-                        <label>Count</label>
-                        <input type="number" name="count" value="1" min="1" max="20" />
-                      </div>
-                      <div>
-                        <label>Note</label>
-                        <input type="text" name="note" maxlength="160" />
-                      </div>
-                    </div>
-                    <button type="submit" class="btn btn-sm mt-1">Add Need</button>
-                  </form>
-                </div>`,
-            )}
-          </details>`
-        : safe("")}
     </section>
   </div>`;
 

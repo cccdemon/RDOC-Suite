@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 5 — Legacy-Freitext-Pfade raus
+
+- `pages.ts`: Manage-Freitext-UI entfernt — alte per-Need-Edit-Form (label/category/count) → nur noch
+  Delete; „Advanced: Groups"-Block (Freitext-Gruppen + Requirement-Add) komplett raus. `compositionRows`
+  filtert jetzt auf Gruppen MIT Requirements (kein Leerrauschen von squad/fighter_squad/formation-Gruppen).
+- `routes/api.ts`: tote Routen gelöscht — `POST /groups`, `/groups/:groupId/requirements`,
+  `POST /requirements`, `/requirements/:reqId/edit`. **Behalten**: `/requirements/:reqId/delete`,
+  `/groups/:groupId/delete` (Delete) — von compositionRows genutzt.
+- **`category` bleibt intern** (Ship-Slot-Matching `matchesCategory`/`suggestSlot` + Create-Op-Wizard
+  nutzen es weiter; der strukturierte Editor schreibt es gespiegelt). **Offen/Follow-up:** Create-Op-Wizard
+  (`compositionJson`, web.ts) erzeugt noch Freitext-category-Requirements ohne needType — Board/Editor
+  fangen das per Fallback ab, aber Wizard-UI auf strukturiert umstellen = separater Schritt.
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner (tsc). Damit Fleet-Need-Redesign 1–5 fertig.
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Need-Redesign Phase 4c — Fahrzeug→Schiff Fit-Check (Phase 4 fertig)
 
 - `services/scwiki.ts`: `vehicleFitsInShip(vehicle, carrier)` — vergleicht Fahrzeug-`dimension`
