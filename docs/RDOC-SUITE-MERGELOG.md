@@ -1,15 +1,14 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 1+2 (Composition Board + Sitz-/Turm-Karte)
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Rollout 1 (Board Hull/CQB-Split) — 4fc847e
 
-Umsetzung Schritt 1+2 aus [FR-P1-fleet-needs-and-guided-join.md](FR-P1-fleet-needs-and-guided-join.md),
-**read-only, kein Schema, keine Migration**:
-- Schritt 1: **Composition Board** — Bedarf je Op als Soll/Ist/Offen, getrennt in **Hull-Needs**
-  (Schiffe) vs **CQB-Need** (category `fps`/`ground` = Soldaten). Neue reine Helper in
-  `services/composition.ts` (Aggregation) + Render-Komponente in `web/pages.ts` (Overview-Tab).
-- Schritt 2: **Sitz-/Turm-Karte Stufe 1** — abstrakte Chips `[Pilot][Turm 1][Engineer]` aus
-  `Ship.maxCrew/weaponCrew/operationCrew` + belegte Sitze; Render in Fleet-Unit-Cards.
-Keine Backend-Routes, keine neuen Tabellen. Build/Typecheck via Server-Docker-Build (kein lokaler pnpm).
+Schritt 1 umgesetzt: "Fleet Requirements"-Board → **"Fleet Needs"**, gesplittet in **Hull-Need
+(Schiffe)** vs **CQB-Need (Soldaten)** via `isCqbCategory(category)` (`fps`/`ground` = CQB), je
+eigene Soll/Ist/Offen-Summe + Gesamtsumme. Reine Anzeige, kein Schema. `services/composition.ts`
+(+`isCqbCategory`) + `web/pages.ts` (reqGroupTable, hull/cqbRows). CHANGELOG gepflegt.
+**Schritt 2 (Sitz-/Turm-Karte) bewusst verschoben** → mit Fleetyards (Schritt 6) bündeln, da pro
+Unit bereits eine volle Sitz-Liste (`seatRow`) existiert; abstrakte Chip-Karte allein = Redundanz.
+Build/Deploy fleetplanner auf LXC 103 zur TS-Verifikation.
 
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — §7-Entscheidungen eingearbeitet — d134edd
 
