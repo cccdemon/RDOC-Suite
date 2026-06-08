@@ -1,6 +1,16 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 5+6+Drag (Klassen/Auto-Match, Sitz-Turm-Karte, Fleetyards, CQB-Drag)
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — Rollout 5+6+Drag — 6babf4a + 6a9b340 (Fleetyards-Shape-Fix)
+
+Deployed + verifiziert: shipClass-Label, Sitz-/Turm-Karte, CQB-Drag (/cqb/assign), Fleetyards-Cache
+(Migration 20260608180000_fleetyards angewandt; Sync **241 Schiffe mit Silhouette**, lastResult "OK").
+Fleetyards-API-Shape war geraten → Fix 6a9b340 (`body.items[]` + `media.angledView` Silhouette).
+Tests: vitest composition+fleetyards (13 passing, lokal grün) + manuelle Checkliste
+[FR-P1-fleet-needs-testcases.md](FR-P1-fleet-needs-testcases.md).
+**DEFERRED**: Silhouette-Render in der Sitz-/Turm-Karte (Cache da, Route-Plumbing nötig);
+CQB-Squad Voice/Participants; interaktive Offer-Zeit-Match-Warnung.
+
+### Ursprünglicher Plan:
 
 Bündel (ein Deploy):
 - **Schritt 5**: `shipClass()`-Ableitung (size×career×role) + Klassen-Label an Units; Auto-Match
