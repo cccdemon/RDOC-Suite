@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Ship class, seat/turret map, Fleetyards cache, CQB drag (FR-P1 steps 5/6 + follow-up, 2026-06-08)
+
+- **Ship class** is now shown on every fleet unit (a `shipClass()` label derived from catalog `size×career×role`), and the operator already sees category mismatch hints on the board + an auto-match "✓" when accepting into a slot. (FR-P1 step 5.)
+- **Seat/turret map**: each unit card now has a compact chip strip — one chip per seat, coloured filled / open / off — for an at-a-glance "who sits where, what's free" above the detailed seat list. (FR-P1 step 6, stage 1.)
+- **Fleetyards cache**: new `FleetyardsShip` + `FleetyardsSyncState` tables + `services/fleetyards.ts` sync (top-down silhouette + hardpoints), seeded/refreshed on boot (best-effort, like the ship catalog). Migration `20260608180000_fleetyards`. (Rendering the silhouette into the seat/turret card is a small follow-up — the cache is in place.)
+- **CQB drag**: operators can drag a pooled soldier onto an existing squad (in addition to checkbox-select + auto-bundle). New `/api/ops/:id/cqb/assign` endpoint.
+- Deferred: voice-channel/participants for CQB squads; the silhouette render; the interactive offer-time mismatch warning.
+
 ### Added - CQB personnel pool + operator squad bundling (FR-P1, 2026-06-08)
 
 - Players can now **sign up as a CQB soldier** as an individual (no role taxonomy — "they are soldiers, nothing more"); the Fleet Operator **bundles signups into squads**. New `CqbSignup` model + `CompositionGroup.kind` (`fleet`/`squad`); migration `20260608170000_cqb_signups`. Operator gets a **CQB Personnel** panel in the Fleet tab: pick unassigned soldiers to **create a squad**, **auto-bundle into squads of N**, dissolve squads, remove signups. New endpoints `/api/ops/:id/cqb-signups` (+ `/withdraw`) and operator `/api/ops/:id/cqb/{bundle,auto-bundle,unbundle/:groupId}`. The guided join wizard's CQB step now creates a signup instead of a whole squad unit.

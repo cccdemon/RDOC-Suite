@@ -11,7 +11,7 @@ import {
 import { getEnv } from "../config/env.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
-import { matchesCategory, suggestSlot, isCqbCategory } from "../services/composition.js";
+import { matchesCategory, suggestSlot, isCqbCategory, shipClass } from "../services/composition.js";
 import { shipCanCarryVehicle } from "../services/scwiki.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
@@ -869,6 +869,37 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   const availableSlots = availableSlotsForUnit();
 
+  // FR-P1 step 6: compact seat/turret map — one chip per seat, coloured by
+  // state (filled / open / disabled). A quick visual of "who sits where, what's
+  // free" above the detailed seat list. (Silhouette background = follow-up.)
+  const seatTurretMap = (unit: UnitFull): SafeHtml => {
+    if (!unit.seats.length) return safe("");
+    return html`<div
+      class="seat-map"
+      style="display:flex;flex-wrap:wrap;gap:4px;margin:.1rem 0 .5rem"
+    >
+      ${unit.seats.map((seat) => {
+        const state = !seat.active ? "disabled" : seat.userId ? "filled" : "open";
+        const color =
+          state === "filled"
+            ? "var(--green,#3ad07a)"
+            : state === "open"
+              ? "var(--gold,#e0b835)"
+              : "var(--dim,#6b7280)";
+        const who = seat.user
+          ? ` · ${nm(seat.user.username)}`
+          : state === "open"
+            ? " · open"
+            : " · off";
+        return html`<span
+          title="${seat.label}${who}"
+          style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;padding:3px 6px;border-radius:3px;border:1px solid ${color};color:${color};opacity:${state === "disabled" ? "0.5" : "1"}"
+          ><span style="width:6px;height:6px;border-radius:50%;background:${color}"></span>${seat.label}</span
+        >`;
+      })}
+    </div>`;
+  };
+
   const unitRows = activeUnits.length
     ? activeUnits
         .filter((u) => u.unitType !== "vehicle")
@@ -1029,6 +1060,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 >${unitTypeLabel(unit)}</span
               >
               <span class="opv2-unit-detail">${unitTypeDetail(unit)}</span>
+              ${unit.ship
+                ? html`<span class="tag tag-dim" title="Derived ship class">${shipClass(unit.ship)}</span>`
+                : safe("")}
               <span class="tag ${free > 0 ? "tag-green" : "tag-dim"}">${free} free</span>
               <span class="text-mono">${assigned}/${seats.length} seats</span>
               ${statusTag(unit.status)}
@@ -1036,6 +1070,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </summary>
           <div class="opv2-unit-body">
             ${unitActions}
+            ${seatTurretMap(unit)}
             <div class="opv2-seat-list">${unit.seats.map((seat) => seatRow(unit, seat))}</div>
             ${activeUnits
               .filter((v) => v.unitType === "vehicle" && v.carrierUnitId === unit.id)
@@ -1913,7 +1948,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             : safe("")}
           ${cqbSquads.map((g) => {
             const members = cqbSignups.filter((s) => s.assignedGroupId === g.id);
-            return html`<div class="opv2-row mg-board-row">
+            return html`<div class="opv2-row mg-board-row cqb-squad-drop" data-cqb-group="${g.id}">
               <div>
                 <strong>${g.name}</strong> <span class="tag tag-green">${members.length}</span>
                 <div class="text-dim text-sm">
@@ -1943,7 +1978,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     </div>
                     ${cqbPool.map(
                       (s) => html`<label
-                        style="display:flex;justify-content:space-between;gap:.5rem;padding:.25rem 0;cursor:pointer"
+                        class="cqb-pool-item"
+                        draggable="true"
+                        data-cqb-signup="${s.id}"
+                        title="Drag onto a squad above, or tick + create squad"
+                        style="display:flex;justify-content:space-between;gap:.5rem;padding:.25rem 0;cursor:grab"
                       >
                         <span
                           ><input type="checkbox" name="signupId" value="${s.id}" />
@@ -1981,6 +2020,51 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               : html`<p class="text-dim text-sm mt-1">
                   ${String(cqbPool.length)} soldier(s) waiting to be assigned to a squad.
                 </p>`
+            : safe("")}
+          ${canManage && cqbSquads.length && cqbPool.length
+            ? html`<form
+                  id="cqb-assign-form-${op.id}"
+                  method="post"
+                  action="${bp}/api/ops/${op.id}/cqb/assign"
+                  hidden
+                >
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <input type="hidden" name="signupId" />
+                  <input type="hidden" name="groupId" />
+                </form>
+                <script>
+                  (function () {
+                    var form = document.getElementById("cqb-assign-form-${op.id}");
+                    if (!form) return;
+                    var dragId = null;
+                    document.querySelectorAll(".cqb-pool-item").forEach(function (el) {
+                      el.addEventListener("dragstart", function (e) {
+                        dragId = el.getAttribute("data-cqb-signup");
+                        if (e.dataTransfer) e.dataTransfer.setData("text/plain", dragId || "");
+                      });
+                    });
+                    document.querySelectorAll(".cqb-squad-drop").forEach(function (row) {
+                      row.addEventListener("dragover", function (e) {
+                        e.preventDefault();
+                        row.style.outline = "1px dashed var(--cyan,#3cf)";
+                      });
+                      row.addEventListener("dragleave", function () {
+                        row.style.outline = "";
+                      });
+                      row.addEventListener("drop", function (e) {
+                        e.preventDefault();
+                        row.style.outline = "";
+                        var sid = dragId || (e.dataTransfer && e.dataTransfer.getData("text/plain"));
+                        var gid = row.getAttribute("data-cqb-group");
+                        if (!sid || !gid) return;
+                        form.querySelector('[name="signupId"]').value = sid;
+                        form.querySelector('[name="groupId"]').value = gid;
+                        form.submit();
+                      });
+                    });
+                  })();
+                </script>`
             : safe("")}
         </section>`
       : safe("");

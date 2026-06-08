@@ -300,6 +300,34 @@ model ShipSyncState {
   updatedAt    DateTime  @updatedAt
 }
 
+// FR-P1 step 6: Fleetyards.net data cached locally (like the ship catalog) for
+// top-down silhouettes + hardpoint counts used by the seat/turret card. Loose
+// link to Ship by normalized name (Fleetyards slugs differ from the wiki's).
+model FleetyardsShip {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  name          String   @default("")
+  nameKey       String   @default("") // normalized name for matching local Ship
+  silhouetteUrl String? // top-down "fleetchart" outline
+  storeImageUrl String?
+  hardpointsJson String  @default("[]")
+  rawJson       String   @default("{}")
+  syncedAt      DateTime @default(now())
+
+  @@index([nameKey])
+}
+
+model FleetyardsSyncState {
+  id           String    @id @default("singleton")
+  enabled      Boolean   @default(true)
+  intervalDays Int       @default(7)
+  lastRunAt    DateTime?
+  lastResult   String?
+  running      Boolean   @default(false)
+  shipCount    Int       @default(0)
+  updatedAt    DateTime  @updatedAt
+}
+
 // ── Operations ─────────────────────────────────────────────────────
 model AppSetting {
   key       String   @id

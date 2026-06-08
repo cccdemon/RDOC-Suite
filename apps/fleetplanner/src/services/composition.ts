@@ -68,6 +68,27 @@ export function matchesCategory(category: string, unit: UnitLike): boolean {
   }
 }
 
+/**
+ * Human-readable ship class derived from catalog attributes (size×career×role).
+ * Replaces the static category list for display + auto-match hints. (FR-P1 step 5.)
+ */
+export function shipClass(ship: ShipLike | null | undefined): string {
+  if (!ship) return "Ship";
+  const size = (ship.size ?? "").toLowerCase();
+  const career = (ship.career ?? "").toLowerCase();
+  const role = (ship.role ?? "").toLowerCase();
+  if (size === "capital") return "Capital";
+  if (size === "large") return "Sub-capital";
+  if (role.includes("fighter") || (size === "small" && career === "combat")) return "Fighter";
+  if (career === "transport" || role.includes("cargo") || role.includes("transport")) return "Transport";
+  if (career === "mining" || role.includes("mining")) return "Mining";
+  if (career === "salvage" || role.includes("salvage")) return "Salvage";
+  if (career === "exploration" || role.includes("explor")) return "Exploration";
+  if (career === "support" || role.includes("support") || role.includes("medical")) return "Support";
+  if (size === "vehicle") return "Ground vehicle";
+  return ship.size ? String(ship.size) : "Ship";
+}
+
 export type SlotLike = {
   id: string;
   category: string;

@@ -19,6 +19,7 @@ import {
   bundleSquad as bundleCqbSquad,
   autoBundle as autoBundleCqb,
   unbundle as unbundleCqb,
+  assignToSquad as assignCqbToSquad,
 } from "../services/cqb.js";
 import {
   distributeOperation,
@@ -1436,6 +1437,22 @@ export async function apiRoutes(app: FastifyInstance) {
       const created = await autoBundleCqb(req.params.id, Number.isFinite(size) ? size : 4);
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, `ok:Auto-bundled+into+${created}+squad(s).`, "fleet"),
+        302,
+      );
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/assign",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const signupId = req.body.signupId;
+      const groupId = req.body.groupId;
+      if (signupId && groupId) await assignCqbToSquad(req.params.id, signupId, groupId);
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Soldier+assigned.", "fleet"),
         302,
       );
     },

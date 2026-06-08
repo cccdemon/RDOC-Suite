@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — Rollout 5+6+Drag (Klassen/Auto-Match, Sitz-Turm-Karte, Fleetyards, CQB-Drag)
+
+Bündel (ein Deploy):
+- **Schritt 5**: `shipClass()`-Ableitung (size×career×role) + Klassen-Label an Units; Auto-Match
+  **Warnung** (kein Block) im Offer-Ship-Form (client-JS: gewählte Schiffsklasse vs gewählter Fleet-Need).
+- **Schritt 6 Grafik**: **Sitz-/Turm-Karte** (Chips aus seat-Daten: Pilot/Gunner/Operation/flex, belegt/offen)
+  auf Unit-Cards; **Fleetyards-Silhouette** als Hintergrund wenn vorhanden.
+- **Schritt 6 Fleetyards**: neue Tabellen `FleetyardsShip` + `FleetyardsSyncState` (Migration), Sync-Service
+  (`services/fleetyards.ts`, HTTP best-effort, lokal gecacht wie Schiff-DB), Admin "Sync now"-Route,
+  batched Silhouette-Lookup je Op.
+- **Follow-up Drag**: CQB-Pool-Soldaten per Drag in Squad (zusätzlich zu Checkbox/Auto).
+- **DEFERRED**: CQB-Squad Voice/Participants (Voice-Bot/LiveKit-Allokation an FleetUnit gebunden → separater Schritt).
+Danach: Deploy + Testcases (vitest für pure Helpers + manuelle Checkliste).
+
 ## Queued / Planned Step - 2026-06-08: Monitoring — RelayNoAudioWhileActive Fehlalarm-Fix + neue NeverHadAudio-Alert
 
 `relay_last_audio_timestamp_seconds` ist `0` wenn der Relay seit Start nie Audio bekam (adminServer.ts:189).

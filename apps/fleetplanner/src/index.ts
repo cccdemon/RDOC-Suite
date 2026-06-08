@@ -7,6 +7,7 @@ import { startVoiceSessionScheduler } from "./services/voiceSession.js";
 import { startCoverCleanupScheduler } from "./services/coverCleanup.js";
 import { startRecurrenceScheduler } from "./services/recurrence.js";
 import { startEventInterestScheduler } from "./services/eventInterest.js";
+import { ensureFleetyardsFresh } from "./services/fleetyards.js";
 
 const env = getEnv();
 const app = await buildApp();
@@ -46,6 +47,8 @@ try {
     info: (msg) => app.log.info(msg),
     error: (e, msg) => app.log.error(e, msg),
   });
+  // FR-P1 step 6: seed/refresh the Fleetyards silhouette cache (best-effort).
+  void ensureFleetyardsFresh();
 } catch (err) {
   app.log.error(err);
   process.exit(1);
