@@ -1,6 +1,6 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-08: FR-Doc — Fleet-Needs-Redesign + geführter Anmelde-Wizard
+## Completed Step - 2026-06-08: FR-Doc — Fleet-Needs-Redesign + geführter Anmelde-Wizard — 551e6d4 (Plan, kein Code)
 
 Konzept-Doc (KEIN Code) für die User-Pain-Points "Fleet Needs unverständlich" + "Anmeldung soll
 Schritt-für-Schritt geführt sein". Bündelt:
