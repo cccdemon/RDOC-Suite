@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Root host redirects to the Fleetplanner (2026-06-08)
+
+- `https://suite.raumdock.org/` now **302-redirects to `/fleetplanner`**, the public entry point. Caddy-only change (`deploy/caddy-rdoc/Caddyfile`): an exact-path `handle /` block in front of the catch-all; every other path is unaffected. Deploy: rebuild/reload the `caddy-rdoc` container.
+
+### Changed - Voice temporarily disabled in the GUI while it is reworked (2026-06-08)
+
+- The whole voice part is hidden in the web GUI while **Command Net / Global Radio Net** are being overhauled. **Containers (LiveKit, relay-bots, bridge) keep running** — this is a UI-only change; no routes, backends or infra were touched.
+- **Operation page**: the **"Voice Access"** tab is removed and the **"Voice"** tab now shows a maintenance banner ("Command Net / Global Radio Net is being reworked … the relay and signaling services keep running") instead of the live voice panel.
+- **Fleetplanner Admin → Bridge**: the **Discord Voice** and **Relay Bots** tabs are removed from the guild nav (the pages stay reachable by direct URL).
+- **Bridge Admin UI**: the **RELAY BOTS** and **DISCORD VOICE** nav items are removed (routes stay live).
+- Revert is a one-liner per surface — the original `voicePanel` / `commandersPanel` and the nav items are kept in place, just not rendered.
+
 ### Changed - Join: sign-up assistant as a centered overlay over the classic view (FR-P1, 2026-06-08)
 
 - The classic in-page "I want to join" view (all options visible) is kept. On top of it, a **centered modal sign-up assistant** asks one question at a time (Yes/No): **Take an open seat? → Offer a ship? → Join as CQB? → Let the operator place you?** (order B). **Yes** opens the matching option on the page and closes the overlay; **No** strictly advances (never loops back). The overlay **auto-opens on first visit** (when you haven't signed up yet) and can be **re-opened any time via a "Sign-up assistant" button** once you've claimed a seat / offered a ship / etc. It has a **"Disable assistant (Cancel)"** button (plus Esc / backdrop) that closes it and leaves the classic view fully usable, and a one-click **"Skip — just let the operator place me"**. Answering **Yes** to "Let the operator place you?" (and Skip) now **submits the request immediately** (it created a crew request that shows under the operator's *Need Assignment*) instead of only opening the form.

@@ -2,7 +2,9 @@
 #
 # TLS-Terminierung läuft NICHT hier — Traefik auf dem LXC-Host terminiert
 # suite.raumdock.org routet:
-#   /      -> http://127.0.0.1:8787  (bridge / web interfaces)
+#   /              -> 302 redirect to /fleetplanner (root has no own page)
+#   /fleetplanner  -> http://127.0.0.1:3200  (fleetplanner, public entry point)
+#   /  (other)     -> http://127.0.0.1:8787  (bridge / web interfaces, catch-all)
 # voice.raumdock.org routet:
 #   /      -> http://127.0.0.1:7880  (livekit signaling)
 # Traefik bekommt das Cert via Cloudflare-DNS-01 (siehe /etc/traefik/...).

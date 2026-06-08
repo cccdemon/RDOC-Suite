@@ -1,5 +1,29 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: Root-Redirect suite.raumdock.org → /fleetplanner
+
+User: Root-Host soll auf `/fleetplanner` weiterleiten. Caddy (`deploy/caddy-rdoc/Caddyfile`) ist der
+Router; bisher Catch-all `/` → bridge:8787. Neuer `handle /`-Block (exakter Pfad `/`) mit
+`redir * /fleetplanner 302` VOR der Catch-all. Trifft nur den exakten Root — `/fleetplanner*`,
+`/monitoring*`, `/cover*`, alle anderen Pfade laufen unverändert weiter (handle-Blöcke sind
+mutually exclusive nach Spezifität, Rest fällt auf die Catch-all reverse_proxy). 302 (temporär)
+statt 308, damit reversibel. Nur Caddyfile, kein App-Code. Deploy: caddy-rdoc neu bauen/reload.
+
+## Queued / Planned Step - 2026-06-08: Voice-GUI temporär deaktivieren (Container bleiben an)
+
+User: ganzen Voice-Part in der GUI ausblenden, Container weiterlaufen lassen, Banner "Command Net /
+Global Radio Net wird überarbeitet". Companion NICHT angefasst (User-Scope: nur Fleetplanner Op-Tabs +
+Fleetplanner Admin/Bridge + Bridge Admin UI). Reine UI-Deaktivierung, keine Route/Backend/Infra-Änderung.
+- **Fleetplanner Op-Detailseite** (`apps/fleetplanner/src/web/pages.ts`): "Voice Access"-Tab (commanders)
+  entfernt; "Voice"-Tab zeigt jetzt `voiceReworkPanel` (flash-warn Banner) statt `voicePanel`. `voicePanel`
+  + `commandersPanel` bleiben definiert (unused, kein noUnusedLocals) → 1-Zeilen-Revert wenn Voice zurückkommt.
+- **Fleetplanner Admin/Bridge** (pages.ts Guild-Nav ~Z.6133): Nav-Links "Discord Voice" + "Relay Bots"
+  entfernt. Routes/Panels in `routes/bridgeAdmin.ts` bleiben registriert (per Direkt-URL erreichbar).
+- **Bridge Admin UI** (`apps/bridge/src/admin/views.ts` renderNav): Nav-Items "RELAY BOTS" + "DISCORD VOICE"
+  entfernt. Routes bleiben live.
+- Container (livekit, relay-bots, bridge) unangetastet. Revert = Kommentare/Items wieder rein.
+Build/Deploy: bridge + fleetplanner neu bauen.
+
 ## Queued / Planned Step - 2026-06-08: Test-Coverage — Tests committen + mission-cover testbar + cqb/Service-Tests
 
 Aus separatem Testbericht-Lauf (docs/claude-code-testbericht-rdoc-suite.md). User-Entscheid:

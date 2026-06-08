@@ -687,8 +687,7 @@ function renderNav(opts: {
       ${switcher}
       <div class="cc-nav-items">
         ${item("sessions", "SESSIONS", `${opts.navBase}/sessions`)}
-        ${item("relay-bots", "RELAY BOTS", `${opts.navBase}/relay-bots`)}
-        ${item("discord-voice", "DISCORD VOICE", `${opts.navBase}/discord-voice`)}
+        <!-- RELAY BOTS + DISCORD VOICE nav items disabled while voice is reworked (routes stay live). -->
         ${item("monitoring", "MONITORING", `${opts.navBase}/monitoring`)}
         ${item("audit", "AUDIT", `${opts.navBase}/audit`)}
         ${item("admins", "ADMINS", `${opts.navBase}/admins`)}

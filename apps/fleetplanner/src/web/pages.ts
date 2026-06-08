@@ -2577,7 +2577,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     { id: "fleet", label: "Fleet" },
     { id: "crew", label: "Crew" },
     { id: "voice", label: "Voice" },
-    ...(canManage ? [{ id: "commanders", label: "Voice Access" }] : []),
+    // "Voice Access" (commanders) tab disabled while voice is reworked.
     ...(user ? [{ id: "admin", label: "Admin" }] : []),
   ];
   const firstAttn = tabDefs.find((t) => tabAttn[t.id]);
@@ -2592,6 +2592,25 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </div>`;
   const section = (id: string, title: string, panel: SafeHtml) =>
     html`<section class="mg-section" id="${id}"><h3>${title}</h3>${panel}</section>`;
+
+  // Voice temporarily disabled in the GUI (containers stay up). The full
+  // voicePanel/commandersPanel are kept defined below for a one-line revert;
+  // we just render this notice instead. See RDOC-SUITE-MERGELOG 2026-06-08.
+  const voiceReworkPanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Voice</div>
+      <div
+        class="flash flash-warn"
+        style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap"
+      >
+        <span
+          ><strong>Command Net / Global Radio Net is being reworked.</strong>
+          Voice is temporarily unavailable while we overhaul it. The relay and
+          signaling services keep running — no action needed.</span
+        >
+      </div>
+    </section>
+  </div>`;
 
   const body = html`${guestBanner}${joinInviteBanner(opts.joinInviteUrl)}<div class="opv2-shell">
       <header
@@ -2758,8 +2777,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             )}
           </div>
           ${mgTabPage("overview", overviewPanel)} ${mgTabPage("fleet", fleetPanel)}
-          ${mgTabPage("crew", crewPanel)} ${mgTabPage("voice", voicePanel)}
-          ${canManage ? mgTabPage("commanders", commandersPanel) : safe("")}
+          ${mgTabPage("crew", crewPanel)} ${mgTabPage("voice", voiceReworkPanel)}
           ${user ? mgTabPage("admin", adminPanel) : safe("")}
         </div>
       </div>
@@ -6130,8 +6148,7 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
         &nbsp;·&nbsp;
         <a href="${bp}/admin/bridge/${opts.guildId}/dashboard">Dashboard</a> &nbsp;·&nbsp;
         <a href="${bp}/admin/bridge/${opts.guildId}/sessions">Sessions</a> &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/discord-voice">Discord Voice</a> &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/relay-bots">Relay Bots</a> &nbsp;·&nbsp;
+        <!-- Discord Voice + Relay Bots tabs disabled while voice is reworked (routes stay live). -->
         <a href="${bp}/admin/bridge/${opts.guildId}/downloads">Downloads</a> &nbsp;·&nbsp;
         <a href="${bp}/admin/bridge/${opts.guildId}/monitoring">Monitoring</a> &nbsp;·&nbsp;
         <a href="${bp}/admin/bridge/${opts.guildId}/audit">Audit log</a>

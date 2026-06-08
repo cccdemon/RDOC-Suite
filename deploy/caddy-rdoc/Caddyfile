@@ -5,6 +5,15 @@
 }
 
 suite.raumdock.org:9443 {
+	# Root host has no landing page of its own — send the bare "/" to the
+	# Fleetplanner, which is the public entry point. Exact-path matcher, so
+	# only "/" is redirected; every other path falls through to the handlers
+	# below (and ultimately the bridge catch-all). 302 = temporary, easy to
+	# revert if the root ever gets its own page.
+	handle / {
+		redir * /fleetplanner 302
+	}
+
 	handle_path /fleetplanner* {
 		reverse_proxy 127.0.0.1:3200 {
 			@upstream_5xx status 5xx

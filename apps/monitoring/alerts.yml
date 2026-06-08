@@ -25,14 +25,32 @@ groups:
 
       # Relay received audio before but has gone silent while commanders are
       # connected on the bridge — points at a broken relay path.
+      # The `> 0` guard excludes the sentinel value emitted when the relay has
+      # never received audio since start (lastAudioAt=0 → timestamp 0). Without
+      # it `time() - 0` is ~56 years and the alert false-fires on every cold
+      # relay. The never-had-audio case is covered by RelayNeverReceivedAudio.
       - alert: RelayNoAudioWhileActive
-        expr: (time() - relay_last_audio_timestamp_seconds > 300) and on() (dccc_commanders_active > 0)
+        expr: (relay_last_audio_timestamp_seconds > 0 and time() - relay_last_audio_timestamp_seconds > 300) and on() (dccc_commanders_active > 0)
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "Relay has no inbound audio while commanders are connected"
           description: "Last relay audio was {{ $value | humanizeDuration }} ago while bridge commanders are active (sustained 5m). Relay → Discord audio may be broken."
+
+      # Relay has received no audio frames at all in the last 5m while
+      # commanders are connected — catches a relay path that is broken from
+      # process start (where relay_last_audio_timestamp_seconds is still 0 and
+      # the timestamp-based alert intentionally skips). Frame-rate based, so no
+      # epoch-0 arithmetic.
+      - alert: RelayNeverReceivedAudio
+        expr: rate(relay_frames_received_total[5m]) == 0 and on() (dccc_commanders_active > 0)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Relay is receiving no audio frames while commanders are connected"
+          description: "No PCM frames received from LiveKit in 5m while bridge commanders are active (sustained 10m). The relay → Discord audio path may have never come up."
 
       # Buffer overflows chop audio into the 'robotic' artifact.
       - alert: RelayBufferOverflow
