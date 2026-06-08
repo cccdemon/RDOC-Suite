@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-08: Test-Coverage — Tests committen + mission-cover testbar + cqb/Service-Tests
+
+Aus separatem Testbericht-Lauf (docs/claude-code-testbericht-rdoc-suite.md). User-Entscheid:
+1. **Committen**: 4 neue Fleetplanner-Tests (coverToken/fleetImport/primaryUnits/render) + Coverage-Setup
+   (@vitest/coverage-v8, vitest.config json-summary) + Bericht-Doc. (Lokal grün: 18 neue / 275 gesamt.)
+2. **Prio 1**: apps/mission-cover testbar machen (vitest devDep + config + Basistest) → `pnpm -r test`
+   bricht nicht mehr ab.
+3. **Prio 5**: cqb-Service-Tests (mein Code, prisma gemockt) + ggf. weitere Nicht-Voice-Services.
+NICHT: Bridge-WS (Prio 2, Voice-nah, ausgeschlossen). monitoring/alerts.yml bleibt separat.
+
 ## Completed Step - 2026-06-08: FR-P1 fleet-needs — Join: Assistent als zentriertes Overlay (Akkordeon bleibt)
 
 User-Korrektur: alte Akkordeon-Ansicht behalten; Wizard als **zentriertes Overlay**, auto bei nicht-
