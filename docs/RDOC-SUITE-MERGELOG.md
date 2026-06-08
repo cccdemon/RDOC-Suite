@@ -1,6 +1,6 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-08: FR-P1 fleet-needs — §7-Entscheidungen einarbeiten
+## Completed Step - 2026-06-08: FR-P1 fleet-needs — §7-Entscheidungen eingearbeitet — d134edd
 
 User-Entscheidungen 2026-06-08: (1) KEINE Rollen-Taxonomie — Personal-Achse = nur **CQB**
 (Soldaten, keine Rollenzuweisung) → Role-Need kollabiert auf eine Sorte "CQB", Q1 = "In ein
