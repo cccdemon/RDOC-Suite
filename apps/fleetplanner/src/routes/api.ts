@@ -20,6 +20,7 @@ import {
   autoBundle as autoBundleCqb,
   unbundle as unbundleCqb,
   reassignSignup as reassignCqbSignup,
+  renameSquad as renameCqbSquad,
   setSquadSize as setCqbSquadSize,
   joinSquad as joinCqbSquad,
   setSquadCarrier as setCqbSquadCarrier,
@@ -1440,6 +1441,48 @@ export async function apiRoutes(app: FastifyInstance) {
       const targetSize = Number.isFinite(sizeRaw) ? sizeRaw : null;
       await bundleCqbSquad(req.params.id, name, signupIds, targetSize);
       return reply.redirect(opReturnUrl(req.params.id, body, "ok:Squad+created.", "fleet"), 302);
+    },
+  );
+
+  // Operator: rename a CQB squad.
+  app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/squads/:groupId/rename",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const name = (req.body.name ?? "").trim();
+      if (!name) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Name+required", "fleet"), 302);
+      await renameCqbSquad(req.params.id, req.params.groupId, name);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Squad+renamed.", "fleet"), 302);
+    },
+  );
+
+  // Operator: give a participant a secondary position — assign them to an open
+  // ship seat (in addition to their CQB team etc.).
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/seats/assign",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const seatId = (req.body.seatId ?? "").trim();
+      const userId = (req.body.userId ?? "").trim();
+      if (!seatId || !userId) {
+        return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Seat+and+user+required", "fleet"), 302);
+      }
+      const seat = await prisma.seatAssignment.findFirst({
+        where: { id: seatId, fleetUnit: { operationId: req.params.id } },
+        select: { id: true },
+      });
+      if (!seat) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Seat+not+found", "fleet"), 302);
+      try {
+        await assignSeat(seatId, userId);
+        return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Secondary+seat+assigned.", "fleet"), 302);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to assign seat";
+        return reply.redirect(opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"), 302);
+      }
     },
   );
 

@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: CQB secondary-seat + Team-Rename + Gold-CTA Assistent
+
+- **Secondary position**: pro CQB-Member zweites Dropdown „Reassign secondary position…" (offene
+  Schiffssitze). Route `POST /api/ops/:id/seats/assign` (operator, body seatId+userId → `assignSeat`).
+  Member behält Team + bekommt zusätzlich einen Sitz (Modell stützt beides).
+- **Team umbenennen**: `cqb.renameSquad`, Route `/cqb/squads/:groupId/rename`, Rename-Input in den
+  Team-Controls. „CQB Team N" nur Default.
+- **Gold-CTA**: collapsed Assistent-Summary (signedUp) jetzt goldener Banner-Button
+  (`.ja-more-cta`), Text „➕ Want to contribute something else, or claim another seat?".
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Operator „Participants"-Tab (volle Teilnehmerliste) + Reassign-to-Header
 
 - Crew-Tab → „Participants": `participantRows` (Name + Position) aus Sitzen (Schiff — Sitz), CQB/Fighter-

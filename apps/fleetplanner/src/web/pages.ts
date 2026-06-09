@@ -2004,6 +2004,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const carrierShips = op.units.filter(
     (u) => u.unitType === "ship" && u.status === "accepted" && shipClass(u.ship) !== "Fighter",
   );
+  // Open ship seats — for giving a participant a secondary position.
+  const openSeatOptions = acceptedUnits.flatMap((u) =>
+    u.seats
+      .filter((s) => s.active && !s.userId)
+      .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || "Unit"} — ${s.label}` })),
+  );
   const cqbPanel =
     cqbSignups.length || cqbSquads.length || canManage
       ? html`<section class="opv2-panel">
@@ -2029,8 +2035,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   ? members.length
                     ? html`<div class="cqb-members" style="display:flex;flex-direction:column;gap:.25rem;margin-top:.35rem">
                         ${members.map(
-                          (m) => html`<div class="cqb-member-row" style="display:flex;align-items:center;gap:.5rem;justify-content:space-between;max-width:22rem">
-                            <span class="cqb-member-name">${nm(m.user.username)}</span>
+                          (m) => html`<div class="cqb-member-row" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+                            <span class="cqb-member-name" style="min-width:8rem">${nm(m.user.username)}</span>
                             <form method="post" action="${bp}/api/ops/${op.id}/cqb/assign" class="inline">
                               <input type="hidden" name="_csrf" value="${csrf}" />
                               ${returnFields("fleet")}
@@ -2043,6 +2049,19 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                                 )}
                               </select>
                             </form>
+                            ${openSeatOptions.length
+                              ? html`<form method="post" action="${bp}/api/ops/${op.id}/seats/assign" class="inline">
+                                  <input type="hidden" name="_csrf" value="${csrf}" />
+                                  ${returnFields("fleet")}
+                                  <input type="hidden" name="userId" value="${m.userId}" />
+                                  <select name="seatId" onchange="this.form.submit()" title="Assign a secondary ship seat">
+                                    <option value="" disabled selected hidden>Reassign secondary position…</option>
+                                    ${openSeatOptions.map(
+                                      (s) => html`<option value="${s.id}">${s.label}</option>`,
+                                    )}
+                                  </select>
+                                </form>`
+                              : safe("")}
                           </div>`,
                         )}
                       </div>`
@@ -2056,6 +2075,18 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               </div>
               ${canManage
                 ? html`<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/rename"
+                      class="inline"
+                      style="display:flex;gap:.3rem;align-items:center"
+                      title="Rename squad"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <input type="text" name="name" value="${g.name}" maxlength="80" style="width:9rem" />
+                      <button type="submit" class="btn btn-sm">Rename</button>
+                    </form>
                     ${carrierShips.length
                       ? html`<form
                           method="post"
@@ -4790,6 +4821,10 @@ export function opJoinPage(opts: {
       details.join-asst > summary.ja-card-summary::-webkit-details-marker { display: none; }
       details.join-asst > summary .wiz-sum-h { font-size: 1.05rem; }
       details.join-asst > summary::after { content: "▾"; color: var(--cyan, #35d0e0); font-size: .9rem; }
+      details.join-asst > summary.ja-more-cta { background: var(--gold-08, rgba(224,184,74,.12)); border: 1px solid var(--gold, #e0b84a); padding: .75rem 1rem; border-radius: 6px; }
+      details.join-asst > summary.ja-more-cta:hover { background: rgba(224,184,74,.2); }
+      details.join-asst > summary.ja-more-cta .wiz-sum-h { color: var(--gold, #e0b84a); font-weight: 700; }
+      details.join-asst > summary.ja-more-cta::after { color: var(--gold, #e0b84a); }
       details.join-asst[open] > summary::after { content: "▴"; }
       .direct-seats { display: grid; gap: .7rem; }
       .direct-seat-unit-name { font-weight: 600; margin-bottom: .35rem; }
@@ -4995,9 +5030,9 @@ export function opJoinPage(opts: {
                 <div class="opv2-cta closed">Sign-up is closed.</div>
               </section>`
             : html`<details class="card join-asst"${signedUp ? safe("") : safe(" open")}>
-                  <summary class="ja-card-summary">
+                  <summary class="ja-card-summary${signedUp ? " ja-more-cta" : ""}">
                     <span class="wiz-sum-h" style="margin:0">${signedUp
-                      ? "Want to contribute something else to the mission, or additionally claim another seat?"
+                      ? "➕ Want to contribute something else, or claim another seat?"
                       : "I want to join"}</span>
                   </summary>
                   <div style="display:flex;justify-content:flex-end;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:.6rem">

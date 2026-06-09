@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Secondary ship seat for CQB members, squad rename, prominent re-join CTA (2026-06-09)
+
+- Operators can give a CQB soldier a **secondary position**: a per-member "Reassign secondary position…" dropdown assigns them an open ship seat (in addition to their team).
+- Operators can **rename a CQB squad** ("CQB Team N" is just the default).
+- When you're already signed up, the assistant's re-open prompt is now a prominent **gold banner button** ("➕ Want to contribute something else, or claim another seat?").
+
 ### Changed - Operator "Participants" tab lists everyone with their position (2026-06-09)
 
 - The operator **Crew** tab is now **Participants**: a single list of every participant with their position (ship + seat, CQB/fighter team, CQB pool, requested placement, or pending ship offer). Multi-seated members appear once per seat.

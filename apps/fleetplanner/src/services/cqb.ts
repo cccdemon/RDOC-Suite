@@ -121,6 +121,20 @@ export async function autoBundle(operationId: string, size: number): Promise<num
   return created;
 }
 
+/** Operator: rename a squad ("CQB Team N" is only the default). */
+export async function renameSquad(
+  operationId: string,
+  groupId: string,
+  name: string,
+): Promise<void> {
+  const n = name.trim().slice(0, 80);
+  if (!n) return;
+  await prisma.compositionGroup.updateMany({
+    where: { id: groupId, operationId, kind: "squad" },
+    data: { name: n },
+  });
+}
+
 /** Operator: set (or clear) a squad's target size. */
 export async function setSquadSize(
   operationId: string,
