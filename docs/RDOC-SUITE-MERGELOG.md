@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Add-Vehicle auch bei angebotenen (pending) eigenen Schiffen
+
+Join-Seite: „Your offered ships"-Sektion (pending eigene Schiffe) hatte kein `addVehicleForm` — nur
+accepted hatten es. Jetzt `${u.unitType==="ship" ? addVehicleForm(u.id) : ""}` auch bei pending →
+Spieler kann beim Anbieten direkt ein Ground-Vehicle ins eigene Schiff packen (vehicle erbt pending).
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Units-Liste höhenbegrenzt (scroll)
 
 Bei vielen Units schob die lange Fleet-Units-Liste die rechten/folgenden Boxen weit nach unten.

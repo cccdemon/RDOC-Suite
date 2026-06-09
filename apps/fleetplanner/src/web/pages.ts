@@ -5558,6 +5558,7 @@ export function opJoinPage(opts: {
                     u.id,
                     u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
                   )}
+                  ${u.unitType === "ship" ? addVehicleForm(u.id) : safe("")}
                   ${withdrawShipForm(u.id)}
                 </div>`,
               )}

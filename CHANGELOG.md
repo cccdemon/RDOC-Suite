@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Players can add a ground vehicle to their own ship while it's still pending (2026-06-09)
+
+- The "Your offered ships" section now has **Add ground vehicle** too (it was only on accepted ships), so a player can pack a vehicle into their own ship right when they offer it — not just after the operator accepts it.
+
 ### Added - Assign any player to a CQB team (2026-06-09)
 
 - CQB teams now have the same operator **Assign…** picker as ship seats — pick any assignable user to add them straight into a (even empty) team.
