@@ -1856,6 +1856,33 @@ export async function apiRoutes(app: FastifyInstance) {
     },
   );
 
+  // Assign/move a ground vehicle to a carrier ship (carrierUnitId empty = detach).
+  app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/units/:unitId/carrier",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const veh = await prisma.fleetUnit.findFirst({
+        where: { id: req.params.unitId, operationId: req.params.id, unitType: "vehicle" },
+        select: { id: true },
+      });
+      if (!veh) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Vehicle+not+found", "fleet"), 302);
+      const carrierId = (req.body.carrierUnitId ?? "").trim() || null;
+      if (carrierId) {
+        const ship = await prisma.fleetUnit.findFirst({
+          where: { id: carrierId, operationId: req.params.id, unitType: "ship" },
+          select: { status: true },
+        });
+        if (!ship) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Carrier+ship+not+found", "fleet"), 302);
+        await prisma.fleetUnit.update({ where: { id: req.params.unitId }, data: { carrierUnitId: carrierId, status: ship.status } });
+      } else {
+        await prisma.fleetUnit.update({ where: { id: req.params.unitId }, data: { carrierUnitId: null } });
+      }
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Vehicle+carrier+updated.", "fleet"), 302);
+    },
+  );
+
   // Delete a single ship need.
   app.post<{ Params: { id: string; reqId: string }; Body: Record<string, string> }>(
     "/api/ops/:id/needs/:reqId/delete",

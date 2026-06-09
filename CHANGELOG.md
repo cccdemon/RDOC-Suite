@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Async edits + vehicle carrier assignment + manage polish (2026-06-09)
+
+- Editing a squad's **name or size**, **reassigning** a soldier, embedding a team, or moving a vehicle no longer reloads the whole page — these now submit asynchronously with a small ✓/✕ confirmation. (Moves show in the list after the next refresh.)
+- **Vehicles can be (re)assigned to a ship** after the fact: each vehicle has a carrier dropdown (move/detach) and unassigned vehicles get an "Unassigned vehicles" section with an "Assign to ship…" picker — fixes a vehicle that was added without a ship.
+- Polish: long member names are clipped to 30 chars in the list; per-team size is a 2–8 dropdown; guest seats show **Sign in** (like teams) instead of a passive "open"; the unit action buttons (Add vehicle / Edit / Seat Setup) sit side by side.
+
 ### Changed - Better readability of secondary ("dim") text (2026-06-09)
 
 - The dim/secondary text colour is now a solid lighter blue-grey instead of a 45%-opacity overlay, so subtitles, meta and hints stay readable on tinted/blue panels (not just the plain dark background).

@@ -668,7 +668,16 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // Manage/claim controls are already gated on `user` (null here), so they vanish.
   const redactNames = opts.redactNames === true;
   const nm = (name?: string | null) => (redactNames ? "Mitglied" : (name ?? "?"));
+  // Display-only clip (does not change stored names) — keeps long handles tidy.
+  const clip = (s?: string | null, n = 30) => {
+    const t = s ?? "";
+    return t.length > n ? `${t.slice(0, n - 1)}…` : t;
+  };
   const activeUnits = op.units.filter((unit) => unit.status !== "rejected");
+  // Vehicle carrier reassignment (Phase 4): ships a vehicle can ride in + any
+  // vehicle that is currently not assigned to a ship (orphan).
+  const carrierShipUnits = activeUnits.filter((u) => u.unitType === "ship");
+  const orphanVehicles = activeUnits.filter((u) => u.unitType === "vehicle" && !u.carrierUnitId);
   const pendingUnits = op.units.filter((unit) => unit.status === "pending");
   const acceptedUnits = op.units.filter((unit) => unit.status === "accepted");
   const activeSeats = activeUnits.flatMap((unit) => unit.seats.filter((seat) => seat.active));
@@ -1095,18 +1104,29 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   </div>
                   <div class="opv2-seat-list">${v.seats.map((seat) => seatRow(v, seat))}</div>
                   ${canManage
-                    ? html`<form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/delete" class="inline">
+                    ? html`<div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.35rem">
+                      <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/carrier" class="inline" data-async title="Move to / detach from a ship">
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        ${returnFields("fleet")}
+                        <select name="carrierUnitId" onchange="this.form.requestSubmit()">
+                          <option value="">— detach —</option>
+                          ${carrierShipUnits.map((s) => html`<option value="${s.id}" ${s.id === unit.id ? safe("selected") : ""}>${unitName(s)}</option>`)}
+                        </select>
+                      </form>
+                      <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/delete" class="inline">
                         <input type="hidden" name="_csrf" value="${csrf}" />
                         ${returnFields("fleet")}
                         <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Remove this vehicle?')">
                           Remove vehicle
                         </button>
-                      </form>`
+                      </form>
+                    </div>`
                     : safe("")}
                 </div>`,
               )}
+            <div class="opv2-unit-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-start;margin-top:.5rem">
             ${canManage && unit.unitType === "ship"
-              ? html`<details class="opv2-edit-block mt-1">
+              ? html`<details class="opv2-edit-block">
                   <summary class="btn btn-sm btn-ghost">Add ground vehicle</summary>
                   <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form mt-1" novalidate>
                     <input type="hidden" name="_csrf" value="${csrf}" />
@@ -1122,6 +1142,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 </details>`
               : safe("")}
             ${editUnit} ${seatSetup(unit)}
+            </div>
           </div>
         </details>`;
       })
@@ -2014,6 +2035,28 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     cqbSignups.length || cqbSquads.length || canManage
       ? html`<section class="opv2-panel">
           <div class="opv2-panel-title">CQB Personnel</div>
+          <script>
+            (function () {
+              function flash(form, ok) {
+                var b = form.querySelector('button[type=submit]');
+                if (b) { var o = b.textContent; b.textContent = ok ? "✓" : "✕"; setTimeout(function () { b.textContent = o; }, 1100); return; }
+                form.style.outline = ok ? "2px solid #3ad07a" : "2px solid #e0556a";
+                setTimeout(function () { form.style.outline = ""; }, 1000);
+              }
+              function init() {
+                document.querySelectorAll("form[data-async]").forEach(function (f) {
+                  if (f.__async) return; f.__async = true;
+                  f.addEventListener("submit", function (e) {
+                    e.preventDefault();
+                    fetch(f.action, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams(new FormData(f)) })
+                      .then(function (r) { flash(f, r.ok); })
+                      .catch(function () { flash(f, false); });
+                  });
+                });
+              }
+              if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+            })();
+          </script>
           ${cqbSignups.length === 0 && cqbSquads.length === 0
             ? html`<p class="text-dim text-sm">
                 No CQB signups yet.${canManage
@@ -2036,12 +2079,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     ? html`<div class="cqb-members" style="display:flex;flex-direction:column;gap:.25rem;margin-top:.35rem">
                         ${members.map(
                           (m) => html`<div class="cqb-member-row" style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-                            <span class="cqb-member-name" style="min-width:8rem">${nm(m.user.username)}</span>
-                            <form method="post" action="${bp}/api/ops/${op.id}/cqb/assign" class="inline">
+                            <span class="cqb-member-name" style="flex:0 0 12rem;max-width:12rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${nm(m.user.username)}">${clip(nm(m.user.username))}</span>
+                            <form method="post" action="${bp}/api/ops/${op.id}/cqb/assign" class="inline" data-async>
                               <input type="hidden" name="_csrf" value="${csrf}" />
                               ${returnFields("fleet")}
                               <input type="hidden" name="signupId" value="${m.id}" />
-                              <select name="groupId" onchange="this.form.submit()" title="Reassign soldier">
+                              <select name="groupId" onchange="this.form.requestSubmit()" title="Reassign soldier">
                                 <option value="" disabled selected hidden>Reassign to…</option>
                                 <option value="">— pool —</option>
                                 ${cqbSquads.map(
@@ -2050,12 +2093,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                               </select>
                             </form>
                             ${openSeatOptions.length
-                              ? html`<form method="post" action="${bp}/api/ops/${op.id}/seats/assign" class="inline">
+                              ? html`<form method="post" action="${bp}/api/ops/${op.id}/seats/assign" class="inline" data-async>
                                   <input type="hidden" name="_csrf" value="${csrf}" />
                                   ${returnFields("fleet")}
                                   <input type="hidden" name="userId" value="${m.userId}" />
-                                  <select name="seatId" onchange="this.form.submit()" title="Assign a secondary ship seat">
-                                    <option value="" disabled selected hidden>Reassign secondary position…</option>
+                                  <select name="seatId" onchange="this.form.requestSubmit()" title="Assign a secondary ship seat">
+                                    <option value="" disabled selected hidden>+ Secondary seat…</option>
                                     ${openSeatOptions.map(
                                       (s) => html`<option value="${s.id}">${s.label}</option>`,
                                     )}
@@ -2079,6 +2122,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       method="post"
                       action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/rename"
                       class="inline"
+                      data-async
                       style="display:flex;gap:.3rem;align-items:center"
                       title="Rename squad"
                     >
@@ -2092,11 +2136,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           method="post"
                           action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/carrier"
                           class="inline"
+                          data-async
                           title="Embed this team in a ship (non-fighter)"
                         >
                           <input type="hidden" name="_csrf" value="${csrf}" />
                           ${returnFields("fleet")}
-                          <select name="carrierUnitId" onchange="this.form.submit()">
+                          <select name="carrierUnitId" onchange="this.form.requestSubmit()">
                             <option value="">— no ship —</option>
                             ${carrierShips.map(
                               (s) => html`<option value="${s.id}" ${carrierId === s.id ? safe("selected") : ""}>${unitName(s)}</option>`,
@@ -2108,12 +2153,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       method="post"
                       action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/size"
                       class="inline"
+                      data-async
                       style="display:flex;gap:.3rem;align-items:center"
-                      title="Target squad size (empty = no cap)"
+                      title="Target squad size (2–8)"
                     >
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       ${returnFields("fleet")}
-                      <input type="number" name="size" min="1" max="24" value="${cap ?? ""}" style="width:58px" />
+                      <select name="size" title="Squad size (2–8)">
+                        ${[2, 3, 4, 5, 6, 7, 8].map(
+                          (n) => html`<option value="${n}" ${cap === n ? safe("selected") : ""}>${n}</option>`,
+                        )}
+                      </select>
                       <button type="submit" class="btn btn-sm">Size</button>
                     </form>
                     <form
@@ -2323,6 +2373,24 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     <section class="opv2-panel">
       <div class="opv2-panel-title">Fleet Units</div>
       <div class="opv2-stack">${unitRows}</div>
+      ${canManage && orphanVehicles.length
+        ? html`<div class="opv2-edit-block mt-2">
+            <div class="opv2-panel-title" style="font-size:.9rem">Unassigned vehicles</div>
+            ${orphanVehicles.map(
+              (v) => html`<div class="opv2-row" style="align-items:center">
+                <div><strong>${unitName(v)}</strong> <span class="tag tag-cyan">Vehicle</span></div>
+                <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/carrier" class="inline" data-async title="Assign to a ship">
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <select name="carrierUnitId" onchange="this.form.requestSubmit()">
+                    <option value="" disabled selected hidden>Assign to ship…</option>
+                    ${carrierShipUnits.map((s) => html`<option value="${s.id}">${unitName(s)}</option>`)}
+                  </select>
+                </form>
+              </div>`,
+            )}
+          </div>`
+        : safe("")}
       ${user && (op.status === "open" || op.status === "draft")
         ? html`<details class="opv2-edit-block mt-1">
             <summary class="btn btn-sm">Register Unit</summary>
@@ -4562,7 +4630,9 @@ export function opJoinPage(opts: {
                 Claim
               </button>
             </form>`
-          : html`<span class="free">open</span>`
+          : isOpen
+            ? html`<a class="btn btn-sm" href="${bp}/login">Sign in</a>`
+            : html`<span class="free">open</span>`
         : s.mine
           ? html`<span class="roster-occ roster-you">You</span>
               <form method="post" action="${bp}/api/seats/${s.id}/unclaim" class="inline">

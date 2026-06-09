@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Async-Submits + Vehicle-Carrier-Zuordnung + UI-Politur
+
+- **Async (kein Full-Reload)**: generisches `form[data-async]`-Script (fetch urlencoded, preventDefault,
+  ✓/✕-Flash, DOMContentLoaded). Angewandt auf Squad-Rename, Size, Team-Reassign, Secondary-Seat,
+  CQB-Carrier, Vehicle-Carrier. Selects: `onchange="this.form.requestSubmit()"` (feuert submit-Event).
+  Hinweis: verschiebende Aktionen aktualisieren die Liste erst beim nächsten Reload (bewusst, „Reload
+  begrenzen").
+- **Vehicle-Carrier**: Route `POST /units/:unitId/carrier` (operator, leer=detach). Nested-Vehicle
+  bekommt Carrier-Select (move/detach); neue „Unassigned vehicles"-Sektion in Fleet Units zum Zuordnen
+  (fixt „MDC keinem Schiff zuordbar").
+- **Politur**: CQB-Member-Name display-clip 30 Zeichen + ellipsis + title; Secondary-Label „+ Secondary
+  seat…"; per-Team Size = Dropdown 2–8; Gast-Sitz „open" → „Sign in" (konsistent mit Teams);
+  Unit-Card-Action-Buttons (Add vehicle/Edit/Seat Setup) nebeneinander (flex).
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Lesbarkeit — `--dim` solide statt Alpha
 
 Graue Schrift auf (blauem/getöntem) Grund schlecht lesbar. `render.ts` `--dim`
