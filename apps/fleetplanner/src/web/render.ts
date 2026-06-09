@@ -1311,8 +1311,11 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   gap: 0.35rem;
   flex-wrap: wrap;
 }
-.comp-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+.comp-row { display: flex; flex-direction: column; gap: 0.3rem; padding: 0.4rem 0.6rem; border-bottom: 1px solid var(--border); border-left: 3px solid transparent; }
 .comp-row:last-child { border-bottom: none; }
+.comp-row-green { background: rgba(58,208,122,0.08);  border-left-color: var(--green, #3ad07a); }
+.comp-row-gold  { background: rgba(224,184,74,0.09);  border-left-color: var(--gold, #e0b84a); }
+.comp-row-red   { background: rgba(224,85,106,0.08);  border-left-color: var(--red, #e0556a); }
 .comp-chips { display: flex; gap: 0.25rem; flex-wrap: wrap; }
 .comp-chip { width: 0.85rem; height: 0.85rem; border-radius: 2px; border: 1px solid var(--border); display: inline-block; }
 .comp-chip.filled { background: var(--green, #0f8); border-color: rgba(0,255,136,0.5); }

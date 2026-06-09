@@ -1751,6 +1751,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   };
   const compTone = (r: CompRow) =>
     r.open === 0 ? "tag-green" : r.fulfilled === 0 ? "tag-dim" : "tag-gold";
+  // Row tint by fulfillment: fully met = green, partly = gold, none = red.
+  const rowTone = (filled: number, open: number) =>
+    open === 0 && filled > 0 ? "green" : filled === 0 ? "red" : "gold";
   // Three fleet-need axes (FR-P1 structured): hulls (ships, from requirements),
   // fighter squads and CQB teams (from materialized CompositionGroups — they
   // hold CqbSignups, not FleetUnits, so fulfilled comes from team membership).
@@ -1779,7 +1782,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <span>${title}</span><span>Soll</span><span>Ist</span><span>Offen</span>
           </div>
           ${axis.teams.map(
-            (t) => html`<div class="comp-row">
+            (t) => html`<div class="comp-row comp-row-${rowTone(t.members, t.open)}">
               <div class="comp-row-head">
                 <div class="fleet-req-name"><strong>${t.name}</strong></div>
                 <strong class="fleet-req-num">${t.cap}</strong>
@@ -1816,7 +1819,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         <span>Offen</span>
       </div>
       ${rows.map(
-        (r) => html`<div class="comp-row">
+        (r) => html`<div class="comp-row comp-row-${rowTone(r.fulfilled, r.open)}">
           <div class="comp-row-head">
             <div class="fleet-req-name">
               <strong>${r.label}</strong>
@@ -1876,6 +1879,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       <select name="requirementId">
         <option value="">— unslotted —</option>
         ${openSlots
+          // Only slots this unit can actually fill (a ship never fits a CQB
+          // soldier need), and that still have room (or the auto-match).
+          .filter((s) => matchesCategory(s.category, { unitType: unit.unitType, ship: unit.ship }))
           .filter((s) => s.open > 0 || s.id === suggested)
           .map(
             (s) => html`<option value="${s.id}" ${s.id === suggested ? safe("selected") : ""}>

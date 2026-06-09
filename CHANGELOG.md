@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleet Needs rows are colour-tinted; slot picker only offers matching needs (2026-06-09)
+
+- Each Fleet Needs row is now tinted by status — green (fully met), gold (partly), red (none yet) — with a matching left accent.
+- The "assign to slot" picker for an unassigned unit now only lists needs the unit can actually fill (a ship no longer sees CQB soldier needs like "Fireteams"). A need that's already full isn't offered — raise its count to add more.
+
 ### Added - "?" help tooltips across the Fleet Operator area (2026-06-09)
 
 - Each operator control/section now has a small **?** bubble with a plain-language ("for dummies") explanation of what it does and why — Fleet Needs (ships/fighters/CQB), CQB Personnel, Formations, Fleet Units, Need Assignment, Participants, and the per-team controls.

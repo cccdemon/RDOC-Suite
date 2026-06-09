@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Slot-Filter nach Kategorie + Fleet-Needs-Zeilen-Tints
+
+- Diagnose „Ironclad nicht zu Transport to Zone": Need ist 1/1 voll (andere Ironclad slottet) → kein
+  offener Slot. Bug nebenbei: `slotAcceptForm` bot CQB-„Fireteams" für ein Schiff an. Fix: openSlots
+  zusätzlich nach `matchesCategory(unit)` filtern → Schiff sieht nur Schiff/any-Slots.
+- Zeilen-Tints im Fleet-Needs-Board: `rowTone(filled,open)` (voll=green, teils=gold, leer=red) →
+  Klasse `comp-row-{green|gold|red}` an reqGroupTable- + teamAxisTable-Rows; CSS leichter bg + linker
+  Akzent-Border. Nur fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Operator-Hilfe — „?"-Tooltips pro Control (Dummies)
 
 `helpIcon(text)`-Helper (CSS-only Popover, `.help`/`.help-pop` in render.ts) + an die Operator-Manage-
