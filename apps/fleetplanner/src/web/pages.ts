@@ -7889,6 +7889,59 @@ export function whatIsPage(opts: {
   });
 }
 
+export function scToolsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  tools: Array<{ url: string; domain: string; name: string; desc: string; image: string | null }>;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const body = html`<div class="page-header">
+      <h1 class="page-title">STAR CITIZEN TOOLS</h1>
+      <p class="page-subtitle">made by the Community — nützliche externe Werkzeuge rund um Star Citizen.</p>
+    </div>
+    <style>
+      .sct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+      .sct-card { display: flex; flex-direction: column; border: 1px solid var(--border, #26303d); background: var(--bg2, #0d1117); text-decoration: none; color: inherit; overflow: hidden; transition: border-color .15s; }
+      .sct-card:hover { border-color: var(--cyan, #35d0e0); }
+      .sct-img { aspect-ratio: 1200/630; background: #05080f center/cover no-repeat; border-bottom: 1px solid var(--border, #26303d); }
+      .sct-noimg { aspect-ratio: 1200/630; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0b1320, #111c2b); color: var(--cyan, #35d0e0); font-family: var(--font-mono); font-weight: 700; letter-spacing: 1px; border-bottom: 1px solid var(--border, #26303d); }
+      .sct-body { padding: .7rem .85rem; display: flex; flex-direction: column; gap: .3rem; }
+      .sct-name { font-weight: 700; }
+      .sct-desc { font-size: .85rem; color: var(--text, #cdd9e1); line-height: 1.4; }
+      .sct-domain { font-size: .72rem; color: var(--dim, #7a8a96); font-family: var(--font-mono); margin-top: auto; }
+    </style>
+    <div class="section">
+      <div class="sct-grid">
+        ${opts.tools.map(
+          (t) => html`<a class="sct-card" href="${t.url}" target="_blank" rel="noopener noreferrer">
+            ${t.image
+              ? html`<div class="sct-img" style="background-image:url('${t.image}')"></div>`
+              : html`<div class="sct-noimg">${t.domain}</div>`}
+            <div class="sct-body">
+              <span class="sct-name">${t.name}</span>
+              <span class="sct-desc">${t.desc}</span>
+              <span class="sct-domain">${t.domain} ↗</span>
+            </div>
+          </a>`,
+        )}
+      </div>
+    </div>
+    <div class="section">
+      <p class="text-dim text-sm" style="max-width:54rem">
+        Diese Tools werden von der Community gepflegt und stehen in keiner Verbindung zu Raumdock.
+        Links öffnen extern.
+      </p>
+    </div>`;
+  return layout({
+    title: "Star Citizen Tools",
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
 export function howToPage(opts: {
   basePath: string;
   currentUser: LayoutOptions["currentUser"];

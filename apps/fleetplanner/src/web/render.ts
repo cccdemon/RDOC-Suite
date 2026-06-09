@@ -129,6 +129,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
     <a href="${bp}/how-to">How to</a>
     <a href="${bp}/why-unsigned">Unsigned Binary</a>
     <a href="${bp}/roadmap">Roadmap</a>
+    <a href="${bp}/sc-tools">SC Tools</a>
     <span class="nav-spacer"></span>
     ${opts.navSlot ?? ""}
     <span class="credit-mark">

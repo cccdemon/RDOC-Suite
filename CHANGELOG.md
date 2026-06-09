@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - "Star Citizen Tools" page (community links as OG cards) (2026-06-09)
+
+- New **SC Tools** page (nav link after Roadmap) listing useful community tools (SC Deutsch INI, SCMDB, Erkul, SPViewer, UEX, Cornerstone Finder, SC Cargo, SC Deutsch Launcher) as cards. Each card uses the site's OpenGraph image/title/description (fetched once, cached 24h), with a curated fallback when a site has no OG.
+
 ### Changed - Top navigation reordered; Bridge removed; Profile moved to the username (2026-06-09)
 
 - Nav order is now: Operations · Servers · Feedback · Admin (superadmin only) · Changelog · Was ist das? · How to · Unsigned Binary · Roadmap.

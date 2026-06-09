@@ -21,6 +21,7 @@ import {
   accountPage,
   howToPage,
   whatIsPage,
+  scToolsPage,
   changelogPage,
   impressumPage,
   datenschutzPage,
@@ -64,6 +65,7 @@ import { silhouettesFor } from "../services/fleetyards.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { createSeriesForOp } from "../services/recurrence.js";
 import { addShipNeeds, setFighterSquads, setCqbTeams, ensureTeamsMaterialized } from "../services/needs.js";
+import { getScToolCards } from "../services/scTools.js";
 import {
   deleteScheduledEvent,
   fetchGuildVoiceChannels,
@@ -1333,6 +1335,20 @@ export async function webRoutes(app: FastifyInstance) {
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,
         superadminContact: getEnv().SUPERADMIN_CONTACT,
+      }),
+    );
+  });
+
+  app.get("/sc-tools", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    const tools = await getScToolCards();
+    htmlReply(
+      reply,
+      scToolsPage({
+        basePath: basePath(),
+        currentUser: ctx?.user ?? null,
+        csrfToken: ctx?.csrfToken,
+        tools,
       }),
     );
   });

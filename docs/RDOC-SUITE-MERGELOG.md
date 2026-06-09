@@ -1,5 +1,13 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Neue Seite „Star Citizen Tools" (OG-Karten)
+
+`services/scTools.ts`: 8 Community-Tool-Links (SC Deutsch INI, SCMDB, Erkul, SPViewer, UEX, Cornerstone
+Finder, SC Cargo, SC Deutsch Launcher); fetcht je og:title/description/image (5s-Timeout, 24h In-Memory-
+Cache, Fallback auf kuratierte Namen/Domain). `pages.ts scToolsPage`: Karten-Grid (OG-Bild oder Domain-
+Platzhalter, Name, Desc, Domain↗, Link extern). Route GET `/sc-tools` (web.ts), Nav-Link „SC Tools" nach
+Roadmap. Nur fleetplanner, kein Schema. Erstaufruf macht externe Fetches (danach cached).
+
 ## Queued / Planned Step - 2026-06-09: Top-Nav umsortiert + Bridge raus + Profile zum Username
 
 `render.ts` Nav: Reihenfolge Operations · Servers · Feedback · Admin(superadmin) · Changelog · Was ist das? ·
