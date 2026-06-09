@@ -1,5 +1,28 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: i18n Phase 1 + Phase-2-Infra (FR-P3-language-switch) — Branch `i18n`
+
+Start der Sprachumschaltung gemäß [FR-P3-language-switch.md](FR-P3-language-switch.md), Build-Order
+Schritt 1 + Schritt-2-Infrastruktur. **Nur Fleetplanner.** Companion (Schritt 3) + MissionCover
+(Schritt 4) + Long-Tail-String-Extraktion + optionales `packages/i18n` (Schritt 5) = spätere Sessions.
+
+- **Schema**: `User.locale String @default("de")` (Postgres). Migration `20260609210000_user_locale`
+  (additiv, `ALTER TABLE … ADD COLUMN … DEFAULT 'de'`). Prod: `migrate deploy` beim Start.
+- **i18n-Modul** `src/i18n/`: `Locale` (`de|en|en-US|fr|es`), `localeSchema` (Zod-Enum),
+  `resolveLocale(user, acceptLanguage)` (user.locale → Accept-Language → `de`), `t(key, vars?)`
+  mit `{var}`-Interpolation. `en` ist Key-Basis; `en-US` ist dünner Override über `en`; `de` voll
+  übersetzt; `fr`/`es` starten als Stubs (fallen pro Key auf `en` zurück). **Dicts als TS-Module**
+  (`dicts/<locale>.ts`), NICHT JSON wie im Doc skizziert — vermeidet NodeNext-Import-Attribute-
+  Risiko; Schritt 5 kann für Cross-App-Sharing auf JSON wechseln.
+- **Locale ohne Signatur-Churn**: `AsyncLocalStorage` request-scoped. Globaler `onRequest`-Hook in
+  `app.ts` setzt Baseline aus `Accept-Language` via `enterWith`; `loadSession` hebt den Store auf
+  `user.locale` an sobald der User geladen ist. `t()` liest die aktive Locale aus dem ALS-Store →
+  kein Durchreichen durch die 39 `layout()`-Call-Sites + tausende verschachtelte Render-Helper.
+- **Proof-Surface**: `render.ts layout()` (Nav, Footer, Beta-Banner, `<html lang>`) + Profil-
+  Sprach-`<select>` übersetzt. POST `/profile/locale` (Zod-validiert) schreibt `User.locale`.
+  Restliche ~9899 Zeilen Strings in `pages.ts` = Long-Tail, phasenweise, fallen bis dahin auf `en`.
+Nur fleetplanner. Build/Deploy: fleetplanner (prisma generate + migrate deploy + tsc).
+
 ## Queued / Planned Step - 2026-06-09: Slot-Filter nach Kategorie + Fleet-Needs-Zeilen-Tints
 
 - Diagnose „Ironclad nicht zu Transport to Zone": Need ist 1/1 voll (andere Ironclad slottet) → kein

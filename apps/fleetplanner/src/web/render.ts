@@ -1,5 +1,6 @@
 // Tagged-template HTML renderer — no framework, no EJS, no Handlebars.
 // Use html`...${expr}...` for auto-escaping. Wrap already-safe HTML in safe().
+import { t, getLocale } from "../i18n/index.js";
 
 export function escape(value: unknown): string {
   if (value === null || value === undefined) return "";
@@ -120,16 +121,16 @@ export function layout(opts: LayoutOptions): SafeHtml {
 
   const nav = html` <nav class="nav">
     <span class="nav-brand">RDOC // FLEETPLANNER</span>
-    <a href="${bp}/">Operations</a>
-    ${u ? html`<a href="${bp}/guilds">Servers</a>` : ""}
-    <a href="${bp}/feedback">Feedback</a>
-    ${u && u.role === "superadmin" ? html`<a href="${bp}/admin">Admin</a>` : ""}
-    <a href="${bp}/changelog">Changelog</a>
-    <a href="${bp}/was-ist">Was ist das?</a>
-    <a href="${bp}/how-to">How to</a>
-    <a href="${bp}/why-unsigned">Unsigned Binary</a>
-    <a href="${bp}/roadmap">Roadmap</a>
-    <a href="${bp}/sc-tools">SC Tools</a>
+    <a href="${bp}/">${t("nav.operations")}</a>
+    ${u ? html`<a href="${bp}/guilds">${t("nav.servers")}</a>` : ""}
+    <a href="${bp}/feedback">${t("nav.feedback")}</a>
+    ${u && u.role === "superadmin" ? html`<a href="${bp}/admin">${t("nav.admin")}</a>` : ""}
+    <a href="${bp}/changelog">${t("nav.changelog")}</a>
+    <a href="${bp}/was-ist">${t("nav.whatIsThis")}</a>
+    <a href="${bp}/how-to">${t("nav.howTo")}</a>
+    <a href="${bp}/why-unsigned">${t("nav.unsignedBinary")}</a>
+    <a href="${bp}/roadmap">${t("nav.roadmap")}</a>
+    <a href="${bp}/sc-tools">${t("nav.scTools")}</a>
     <span class="nav-spacer"></span>
     ${opts.navSlot ?? ""}
     <span class="credit-mark">
@@ -142,13 +143,13 @@ export function layout(opts: LayoutOptions): SafeHtml {
     ${u
       ? html` <span class="nav-user">
             <span class="tag tag-role">${ROLE_LABEL[u.role] ?? u.role}</span>
-            <a href="${bp}/profile" class="nav-username" title="Profile">${u.username}</a>
+            <a href="${bp}/profile" class="nav-username" title="${t("nav.profileTitle")}">${u.username}</a>
           </span>
           <form method="post" action="${bp}/auth/logout" class="inline">
             <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-            <button type="submit" class="btn-link">Logout</button>
+            <button type="submit" class="btn-link">${t("nav.logout")}</button>
           </form>`
-      : html`<a href="${bp}/login" class="btn btn-sm">Login</a>`}
+      : html`<a href="${bp}/login" class="btn btn-sm">${t("nav.login")}</a>`}
   </nav>`;
 
   const flash = opts.flash
@@ -157,8 +158,11 @@ export function layout(opts: LayoutOptions): SafeHtml {
 
   const og = opts.ogMeta;
 
+  const betaBody = t("beta.body").split("{link}");
+  const feedbackLink = html`<a href="${bp}/feedback">${t("beta.linkText")}</a>`;
+
   return html`<!doctype html>
-    <html lang="en">
+    <html lang="${getLocale()}">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -182,15 +186,14 @@ export function layout(opts: LayoutOptions): SafeHtml {
       <body>
         ${nav}
         <div class="beta-banner">
-          Beta — RDOC Fleetplanner is still under active development. Spotted a bug or have an idea?
-          Let us know on the <a href="${bp}/feedback">feedback tab</a>.
+          ${betaBody[0]}${feedbackLink}${betaBody[1] ?? ""}
         </div>
         <main class="main">${flash} ${opts.body}</main>
         <footer class="footer">
           <a href="https://robertsspaceindustries.com/orgs/RDOC" target="_blank" rel="noopener"
             >RDOC</a
           >
-          // FLEETPLANNER // RAUMDOCK.ORG // Tested by:
+          // FLEETPLANNER // RAUMDOCK.ORG // ${t("footer.testedBy")}
           <a href="https://twitch.tv/smorxel" target="_blank" rel="noopener">smorxel</a>,
           <a href="https://robertsspaceindustries.com/en/orgs/INFHOR" target="_blank" rel="noopener"
             >Infinite Horizon</a
@@ -199,9 +202,9 @@ export function layout(opts: LayoutOptions): SafeHtml {
             >Voidforge Armaments</a
           >
           <div class="footer-legal">
-            <a href="${bp}/impressum">Impressum</a> ·
-            <a href="${bp}/privacy">Privacy</a> ·
-            <a href="${bp}/license">License</a>
+            <a href="${bp}/impressum">${t("footer.impressum")}</a> ·
+            <a href="${bp}/privacy">${t("footer.privacy")}</a> ·
+            <a href="${bp}/license">${t("footer.license")}</a>
           </div>
         </footer>
       </body>

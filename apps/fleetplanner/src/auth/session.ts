@@ -1,6 +1,7 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../db.js";
 import type { User } from "@prisma/client";
+import { parseLocale, setLocale } from "../i18n/index.js";
 
 const COOKIE = "fp_sid";
 const TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -23,6 +24,10 @@ export async function loadSession(request: FastifyRequest): Promise<{ user: User
   });
   if (!session || session.expiresAt < new Date()) return null;
   if (!session.user.active) return null;
+  // Upgrade the request locale from the Accept-Language baseline to the user's
+  // stored preference (single source of truth across all surfaces).
+  const userLocale = parseLocale(session.user.locale);
+  if (userLocale) setLocale(userLocale);
   return { user: session.user, sessionId: session.id, csrfToken: session.csrfToken };
 }
 

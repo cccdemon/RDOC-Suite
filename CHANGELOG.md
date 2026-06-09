@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Language preference (i18n) — Phase 1 + infrastructure (2026-06-09)
+
+- Each user can now pick their interface **language** (Deutsch, English, English (US), Français, Español) in their profile. The preference is stored on the account and is the single source of truth for all surfaces.
+- Logged-out visitors get the closest language from their browser's `Accept-Language`, defaulting to German.
+- This first phase translates the shared chrome (navigation, footer, beta banner, profile language section); the remaining pages follow in later phases and fall back to English until then. Companion app and mission covers will read the same preference in a future update.
+
 ### Changed - Fleet Needs rows are colour-tinted; slot picker only offers matching needs (2026-06-09)
 
 - Each Fleet Needs row is now tinted by status — green (fully met), gold (partly), red (none yet) — with a matching left accent.

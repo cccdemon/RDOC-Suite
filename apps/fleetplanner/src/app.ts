@@ -12,6 +12,7 @@ import { bridgeAdminRoutes } from "./routes/bridgeAdmin.js";
 import { coverRoutes } from "./routes/cover.js";
 import { discordInteractionRoutes } from "./routes/discordInteractions.js";
 import { registerMetrics } from "./services/metrics.js";
+import { enterLocale, localeFromAcceptLanguage } from "./i18n/index.js";
 
 export async function buildApp() {
   const env = getEnv();
@@ -33,6 +34,13 @@ export async function buildApp() {
       error: e.name,
       message: e.message,
     });
+  });
+
+  // i18n: set a request-scoped baseline locale from Accept-Language. enterWith
+  // makes it stick for the rest of the request's async context; loadSession()
+  // later upgrades it to the authenticated user's stored locale. t() reads it.
+  app.addHook("onRequest", async (request) => {
+    enterLocale(localeFromAcceptLanguage(request.headers["accept-language"]));
   });
 
   await app.register(cookie);

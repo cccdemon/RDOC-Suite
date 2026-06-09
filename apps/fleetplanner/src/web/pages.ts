@@ -9,6 +9,7 @@ import {
   DEFAULT_TIMEZONE,
 } from "../lib/timezone.js";
 import { getEnv } from "../config/env.js";
+import { t, LOCALES, LOCALE_NAMES } from "../i18n/index.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
 import { matchesCategory, suggestSlot, isCqbCategory, shipClass } from "../services/composition.js";
@@ -3463,6 +3464,7 @@ export function profilePage(opts: {
   searchResults: Ship[];
   query: string;
   unmatched?: string[];
+  currentLocale: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
@@ -3517,6 +3519,23 @@ export function profilePage(opts: {
   const body = html` <div class="page-header">
       <h1 class="page-title">PROFILE</h1>
       <p class="page-subtitle">${opts.currentUser.username} // ${opts.currentUser.role}</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">${t("profile.language.title")}</div>
+      <form method="post" action="${bp}/profile/locale" style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        <select name="locale" style="max-width:16rem">
+          ${LOCALES.map(
+            (loc) =>
+              html`<option value="${loc}" ${loc === opts.currentLocale ? safe("selected") : ""}>
+                ${LOCALE_NAMES[loc]}
+              </option>`,
+          )}
+        </select>
+        <button type="submit" class="btn btn-sm">${t("profile.language.save")}</button>
+      </form>
+      <p class="text-dim text-sm" style="margin-top:.4rem">${t("profile.language.help")}</p>
     </div>
 
     <div class="section">

@@ -13,6 +13,7 @@ model User {
   username   String
   avatarHash String?
   role       String   @default("crew") // superadmin | fleetoperator | crew
+  locale     String   @default("de") // UI language: de | en | en-US | fr | es (see src/i18n)
   active     Boolean  @default(true)
   joinedAt   DateTime @default(now())
   lastSeenAt DateTime @default(now())

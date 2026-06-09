@@ -47,6 +47,7 @@ import {
 } from "../services/guilds.js";
 import { basePath, getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
+import { localeSchema, setLocale, getLocale } from "../i18n/index.js";
 import {
   createOperation,
   logAudit,
@@ -998,10 +999,23 @@ export async function webRoutes(app: FastifyInstance) {
         searchResults,
         query: q,
         unmatched,
+        currentLocale: getLocale(),
       }),
     );
   },
   );
+
+  // Set the user's UI language (single source of truth: User.locale).
+  app.post<{ Body: Record<string, string> }>("/profile/locale", async (req, reply) => {
+    const ctx = await requireRole(req, reply, "crew");
+    if (!ctx) return;
+    if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+    const parsed = localeSchema.safeParse(req.body.locale);
+    if (!parsed.success) return reply.redirect(basePath("/profile?flash=error:Invalid+language"), 302);
+    await prisma.user.update({ where: { id: ctx.user.id }, data: { locale: parsed.data } });
+    setLocale(parsed.data); // apply immediately for the redirect target's render
+    return reply.redirect(basePath("/profile?flash=ok:Language+updated."), 302);
+  });
 
   app.post<{ Body: Record<string, string> }>("/profile/ships", async (req, reply) => {
     const ctx = await requireRole(req, reply, "crew");
