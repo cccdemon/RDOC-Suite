@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Wizard letzter Step „Mission in Discord-Channel teilen"
+
+- `discord.ts`: `fetchGuildTextChannels(guildId)` (type 0/5). 
+- `web.ts`: Wizard-Render lädt Text-Channels + reicht `guildTextChannels`; Create-Handler postet nach
+  Op-Anlage bei gesetztem `shareChannelId` eine Ankündigung (Titel + Discord-Timestamp `<t:..:F>` +
+  Location + Link) via `sendDiscordChannelMessage` (best-effort, catch).
+- `pages.ts opWizardPage`: neuer Step „Share" (data-step 5, Channel-Select, optional „— don't share —");
+  steps-Array + `renderReview()` jetzt in jedem `show()` (Review-Step ist nicht mehr last).
+Nur fleetplanner, kein Schema. Bot muss im Guild + Send-Rechte im Channel haben.
+
 ## Queued / Planned Step - 2026-06-09: Add-Vehicle auch bei angebotenen (pending) eigenen Schiffen
 
 Join-Seite: „Your offered ships"-Sektion (pending eigene Schiffe) hatte kein `addVehicleForm` — nur

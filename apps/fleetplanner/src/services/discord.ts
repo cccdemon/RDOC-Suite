@@ -146,6 +146,24 @@ export async function fetchGuildVoiceChannels(
     .map((c) => ({ id: c.id, name: c.name }));
 }
 
+/** Text + announcement channels of a guild (for posting an op announcement). */
+export async function fetchGuildTextChannels(
+  guildId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  const token = fleetplannerBotToken();
+  if (!token) return [];
+  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+    headers: { Authorization: `Bot ${token}` },
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return [];
+  const channels = (await res.json()) as Array<{ id: string; name: string; type: number }>;
+  return channels
+    .filter((c) => c.type === 0 || c.type === 5) // GUILD_TEXT | GUILD_ANNOUNCEMENT
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((c) => ({ id: c.id, name: c.name }));
+}
+
 export async function fetchBotIdentity(token: string): Promise<{ id: string; username: string } | null> {
   const clean = token.trim();
   if (!clean) return null;

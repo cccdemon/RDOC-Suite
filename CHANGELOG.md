@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Wizard final step: share the operation to a Discord channel (2026-06-09)
+
+- The create-operation wizard has a new last step **Share to Discord** with a channel picker. On finish, an announcement (title, time, location, link) is posted to the chosen channel. Optional ("— don't share —"); needs the bot in the server with send permission.
+
 ### Changed - Players can add a ground vehicle to their own ship while it's still pending (2026-06-09)
 
 - The "Your offered ships" section now has **Add ground vehicle** too (it was only on accepted ships), so a player can pack a vehicle into their own ship right when they offer it — not just after the operator accepts it.

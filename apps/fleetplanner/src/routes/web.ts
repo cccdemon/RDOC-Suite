@@ -69,6 +69,8 @@ import { getScToolCards } from "../services/scTools.js";
 import {
   deleteScheduledEvent,
   fetchGuildVoiceChannels,
+  fetchGuildTextChannels,
+  sendDiscordChannelMessage,
   sendDiscordChannelMessage,
   updateScheduledEvent,
   type DiscordAttachment,
@@ -290,9 +292,12 @@ export async function webRoutes(app: FastifyInstance) {
         : operatorGuilds.length === 1
           ? operatorGuilds[0].id
           : undefined;
-      const [guildVoiceChannels, wizGuildRow] = await Promise.all([
+      const [guildVoiceChannels, guildTextChannels, wizGuildRow] = await Promise.all([
         selectedOperatorGuildId
           ? fetchGuildVoiceChannels(selectedOperatorGuildId)
+          : Promise.resolve([]),
+        selectedOperatorGuildId
+          ? fetchGuildTextChannels(selectedOperatorGuildId)
           : Promise.resolve([]),
         selectedOperatorGuildId
           ? prisma.guild.findUnique({
@@ -311,6 +316,7 @@ export async function webRoutes(app: FastifyInstance) {
           operatorGuilds,
           selectedOperatorGuildId,
           guildVoiceChannels,
+          guildTextChannels,
           locations: await searchLocations(undefined, "", 0, true),
           guildTimezone:
             (wizGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
@@ -441,6 +447,25 @@ export async function webRoutes(app: FastifyInstance) {
           if (cqbTotal > 0) await setCqbTeams(op.id, cqbTotal, 4);
         } catch {
           /* ignore malformed composition */
+        }
+      }
+      // Optional wizard last step: post an announcement to a Discord channel.
+      const shareChannelId = (req.body.shareChannelId ?? "").trim();
+      if (shareChannelId) {
+        try {
+          const link = `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH ?? ""}/ops/${op.id}`;
+          const when = op.scheduledAt
+            ? `<t:${Math.floor(new Date(op.scheduledAt).getTime() / 1000)}:F>`
+            : "";
+          const lines = [
+            `📣 **New Operation: ${op.title}**`,
+            when ? `🕒 ${when}` : "",
+            op.meetingLocation ? `📍 ${op.meetingLocation}` : "",
+            `🔗 ${link}`,
+          ].filter(Boolean);
+          await sendDiscordChannelMessage(shareChannelId, lines.join("\n"));
+        } catch (err) {
+          app.log.warn(err, "wizard share-to-channel failed");
         }
       }
       // Optional wizard step: jump straight to the Mission Cover page when the

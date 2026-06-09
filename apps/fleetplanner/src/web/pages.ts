@@ -4008,6 +4008,7 @@ export function opWizardPage(opts: {
   operatorGuilds?: Array<{ id: string; name: string }>;
   selectedOperatorGuildId?: string;
   guildVoiceChannels?: Array<{ id: string; name: string }>;
+  guildTextChannels?: Array<{ id: string; name: string }>;
   locations: Pick<
     Location,
     "slug" | "name" | "system" | "systemSlug" | "parentName" | "classification"
@@ -4029,7 +4030,7 @@ export function opWizardPage(opts: {
       system: l.systemSlug,
       label: `${l.name} // ${l.system}${l.classification ? ` // ${l.classification}` : ""}`,
     }));
-  const steps = ["Basics", "Briefing", "Discord", "Fleet Requirements", "Review"];
+  const steps = ["Basics", "Briefing", "Discord", "Fleet Requirements", "Review", "Share"];
 
   const body = html` <style>
       .wiz-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 1rem; align-items: start; }
@@ -4273,6 +4274,26 @@ export function opWizardPage(opts: {
             <h3 class="wiz-sum-h">Review</h3>
             <dl class="wiz-sum" id="wiz-review"></dl>
           </section>
+
+          <section class="wiz-step card" data-step="5" hidden>
+            <h3 class="wiz-sum-h">Share to Discord</h3>
+            <p class="wiz-rail-hint" style="margin:0 0 12px">
+              Optional: post an announcement (title, time, link) to a Discord channel right after creating.
+            </p>
+            ${opts.guildTextChannels && opts.guildTextChannels.length > 0
+              ? html`<div class="form-group">
+                  <label>Channel</label>
+                  <select name="shareChannelId">
+                    <option value="">— don't share —</option>
+                    ${opts.guildTextChannels.map(
+                      (c) => html`<option value="${c.id}">#${c.name}</option>`,
+                    )}
+                  </select>
+                </div>`
+              : html`<p class="text-dim text-sm">
+                  No text channels available — the bot isn't in this server or lacks permission.
+                </p>`}
+          </section>
         </div>
 
         <aside class="wiz-aside card">
@@ -4415,7 +4436,7 @@ export function opWizardPage(opts: {
           next.hidden = i === sections.length - 1;
           submit.hidden = i !== sections.length - 1;
           errs.hidden = true;
-          if (i === sections.length - 1) renderReview();
+          renderReview();
           window.scrollTo({ top: 0, behavior: "smooth" });
         }
         function validate(i) {
