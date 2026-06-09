@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Join-Seite — 3 Bugfixes (Über-Materialisierung, Doppel-Claim, Sprache)
+
+- `needs.ts reconcileTeams`: zählt jetzt ALLE `kind`-Gruppen (nicht nur Präfix-Namen) → keine
+  Auto-Teams mehr ON TOP manueller (z.B. „chaos team 1"). Surplus-Removal nur leere, Präfix zuerst,
+  nie besetzte. Bestehende Über-Materialisierung self-heilt beim nächsten View (6→5).
+- `pages.ts`: „Claim a seat directly"-Card entfernt (dupliziert „Accepted Units"-Sitze).
+- `pages.ts`: „leer"/„belegt" → „empty"/„N filled" (UI ist Englisch).
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Join-Seite — Gast-Namen-Leak fix + Teams sichtbar/joinbar + Auto-Materialisierung
 
 User-Bug (öffentliche Op, ausgeloggt): (1) Klarnamen sichtbar trotz „names hidden", (2) FPS-Teams + freie

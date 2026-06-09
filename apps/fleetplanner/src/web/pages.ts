@@ -4591,8 +4591,8 @@ export function opJoinPage(opts: {
                   ${sq.memberNames.length
                     ? sq.memberNames.join(", ")
                     : sq.count
-                      ? `${sq.count} belegt`
-                      : "leer"}
+                      ? `${sq.count} filled`
+                      : "empty"}
                 </div>
                 <div class="direct-seat-btns">
                   ${sq.mine
@@ -5200,40 +5200,6 @@ export function opJoinPage(opts: {
                     })();
                   </script>
                 </details>`}
-
-        ${isOpen && myId && openSeats.length
-          ? html`<section class="card direct-claim" style="margin-top:1rem">
-              <h3 class="wiz-sum-h">Claim a seat directly</h3>
-              <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">
-                Don't want the assistant? Pick an open seat right here.
-              </p>
-              <div class="direct-seats">
-                ${seatShipUnits.map(
-                  (u) => html`<div class="direct-seat-unit">
-                    <div class="direct-seat-unit-name">
-                      ${u.name}${u.cls ? html` <span class="tag tag-dim">${u.cls}</span>` : safe("")}
-                    </div>
-                    <div class="direct-seat-btns">
-                      ${u.seats.map((s) =>
-                        s.open
-                          ? html`<form
-                              method="post"
-                              action="${bp}/api/seats/${s.id}/claim"
-                              class="inline"
-                            >
-                              <input type="hidden" name="_csrf" value="${csrf}" />
-                              <input type="hidden" name="ui" value="player" />
-                              <input type="hidden" name="tab" value="fleet" />
-                              <button type="submit" class="btn btn-sm btn-green">${s.label}</button>
-                            </form>`
-                          : safe(""),
-                      )}
-                    </div>
-                  </div>`,
-                )}
-              </div>
-            </section>`
-          : safe("")}
 
         ${squadJoinCard(
           "Join a CQB squad",

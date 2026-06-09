@@ -99,33 +99,38 @@ async function reconcileTeams(
   count: number,
   size: number,
 ): Promise<void> {
+  // Count ALL groups of this kind (including operator-named ones like "chaos
+  // team 1") so we never stack auto-teams on top of manual ones.
   const groups = await prisma.compositionGroup.findMany({
-    where: { operationId, kind, name: { startsWith: prefix } },
+    where: { operationId, kind },
     select: { id: true, name: true, _count: { select: { cqbSignups: true } } },
     orderBy: { order: "asc" },
   });
-  const last = await prisma.compositionGroup.aggregate({
-    where: { operationId },
-    _max: { order: true },
-  });
-  let order = (last._max.order ?? -1) + 1;
   if (groups.length < count) {
-    for (let i = groups.length; i < count; i++) {
+    const last = await prisma.compositionGroup.aggregate({
+      where: { operationId },
+      _max: { order: true },
+    });
+    let order = (last._max.order ?? -1) + 1;
+    const used = new Set(groups.map((g) => g.name));
+    let idx = 1;
+    for (let n = groups.length; n < count; n++) {
+      while (used.has(`${prefix} ${idx}`)) idx++;
+      const name = `${prefix} ${idx}`;
+      used.add(name);
       await prisma.compositionGroup.create({
-        data: {
-          operationId,
-          kind,
-          name: `${prefix} ${i + 1}`,
-          targetSize: size,
-          order: order++,
-        },
+        data: { operationId, kind, name, targetSize: size, order: order++ },
       });
     }
   } else if (groups.length > count) {
-    // Remove surplus, but only empty teams, highest-numbered first.
-    const surplus = groups.slice(count).filter((g) => g._count.cqbSignups === 0);
-    if (surplus.length) {
-      await prisma.compositionGroup.deleteMany({ where: { id: { in: surplus.map((g) => g.id) } } });
+    // Remove surplus, but only EMPTY teams; prefer auto-named (prefix) ones and
+    // never delete a team someone already joined.
+    const removable = groups
+      .filter((g) => g._count.cqbSignups === 0)
+      .sort((a, b) => Number(b.name.startsWith(prefix)) - Number(a.name.startsWith(prefix)))
+      .slice(0, groups.length - count);
+    if (removable.length) {
+      await prisma.compositionGroup.deleteMany({ where: { id: { in: removable.map((g) => g.id) } } });
     }
   }
 }
