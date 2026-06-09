@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Participants list groups all positions per member (2026-06-09)
+
+- The operator Participants list now shows **one row per member** with all their positions as tags side by side, instead of a duplicate row per seat/team.
+
 ### Added - Place "let the operator place me" crew into teams or seats (2026-06-09)
 
 - In the operator's Need Assignment list, each "let the operator place me" member now has **Place in team…** (CQB squad) and **Place in seat…** (open ship seat) pickers, so they can actually be assigned (their pending request clears once placed).

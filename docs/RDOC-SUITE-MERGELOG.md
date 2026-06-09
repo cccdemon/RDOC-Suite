@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Participants-Liste — pro Member eine Zeile (Tags gruppiert)
+
+`opDetailPageV2` Participants: war eine Zeile pro Zuweisung (Doppel-Namen bei Multi-Position). Jetzt
+nach `userId` gruppiert → eine Zeile pro Member, alle grünen/golden Positions-Tags nebeneinander
+(`participantMap` → `participants`). Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: „Let operator place me"-Crew zuweisbar machen
 
 Crew-Requests (place me) konnten nicht in Teams/Sitze platziert werden (nur Remove). Jetzt:

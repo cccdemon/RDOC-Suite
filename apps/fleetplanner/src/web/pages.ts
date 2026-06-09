@@ -1238,13 +1238,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   // Full participant roster: everyone with their position (multi-seat = multiple
   // rows). Operator-facing single-glance "who is where".
-  type PRow = { name: string; where: string; tone: "good" | "warn" };
-  const participantRows: PRow[] = [];
+  type PRow = { id: string; name: string; where: string; tone: "good" | "warn" };
+  const rawParticipants: PRow[] = [];
   for (const u of acceptedUnits) {
     const uname = u.squadName || u.ship?.name || "Unit";
     for (const s of u.seats) {
       if (s.active && s.userId) {
-        participantRows.push({
+        rawParticipants.push({
+          id: s.userId,
           name: nm((s as { user?: { username?: string } }).user?.username),
           where: `${uname} — ${s.label}`,
           tone: "good",
@@ -1256,22 +1257,30 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     if (sg.assignedGroupId) {
       const grp = op.groups.find((g) => g.id === sg.assignedGroupId);
       const label = grp?.kind === "fighter_squad" ? "Fighter wing" : "CQB team";
-      participantRows.push({ name: nm(sg.user.username), where: `${label} — ${grp?.name ?? "?"}`, tone: "good" });
+      rawParticipants.push({ id: sg.userId, name: nm(sg.user.username), where: `${label} — ${grp?.name ?? "?"}`, tone: "good" });
     } else {
-      participantRows.push({ name: nm(sg.user.username), where: "CQB pool — awaiting assignment", tone: "warn" });
+      rawParticipants.push({ id: sg.userId, name: nm(sg.user.username), where: "CQB pool — awaiting assignment", tone: "warn" });
     }
   }
   for (const r of op.crewRequests) {
-    participantRows.push({ name: nm(r.user.username), where: "Requested placement", tone: "warn" });
+    rawParticipants.push({ id: r.user.id, name: nm(r.user.username), where: "Requested placement", tone: "warn" });
   }
   for (const u of op.units.filter((x) => x.status === "pending")) {
-    participantRows.push({
+    rawParticipants.push({
+      id: u.captainId,
       name: nm(u.captain.username),
       where: `${u.ship?.name || u.squadName || "Ship"} — pending review`,
       tone: "warn",
     });
   }
-  participantRows.sort((a, b) => a.name.localeCompare(b.name));
+  // One row per member; all their positions listed together.
+  const participantMap = new Map<string, { name: string; positions: Array<{ where: string; tone: "good" | "warn" }> }>();
+  for (const p of rawParticipants) {
+    const e = participantMap.get(p.id) ?? { name: p.name, positions: [] };
+    e.positions.push({ where: p.where, tone: p.tone });
+    participantMap.set(p.id, e);
+  }
+  const participants = [...participantMap.values()].sort((a, b) => a.name.localeCompare(b.name));
   // For placing "let the operator place me" crew: CQB teams + open ship seats.
   const placeSquads = op.groups.filter((g) => g.kind === "squad");
   const placeOpenSeats = activeUnits.flatMap((u) =>
@@ -1281,17 +1290,23 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   );
   const crewPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Participants (${participantRows.length})</div>
-      ${participantRows.length
+      <div class="opv2-panel-title">Participants (${participants.length})</div>
+      ${participants.length
         ? html`<table class="user-table" style="width:100%">
             <thead>
-              <tr><th>Member</th><th>Position</th></tr>
+              <tr><th>Member</th><th>Position(s)</th></tr>
             </thead>
             <tbody>
-              ${participantRows.map(
-                (r) => html`<tr>
-                  <td><strong>${r.name}</strong></td>
-                  <td><span class="tag ${r.tone === "good" ? "tag-green" : "tag-gold"}">${r.where}</span></td>
+              ${participants.map(
+                (p) => html`<tr>
+                  <td><strong>${p.name}</strong></td>
+                  <td>
+                    <div style="display:flex;flex-wrap:wrap;gap:.35rem">
+                      ${p.positions.map(
+                        (pos) => html`<span class="tag ${pos.tone === "good" ? "tag-green" : "tag-gold"}">${pos.where}</span>`,
+                      )}
+                    </div>
+                  </td>
                 </tr>`,
               )}
             </tbody>
