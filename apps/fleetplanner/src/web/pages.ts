@@ -4564,7 +4564,10 @@ export function opJoinPage(opts: {
         count: members.length,
         mine: myCqbGroupId === g.id,
         open: cap == null ? true : members.length < cap,
-        memberNames: hideNames ? [] : members.map((m) => m.user.username),
+        members: members.map((m) => ({
+          isMe: !!myId && m.userId === myId,
+          name: hideNames ? null : m.user.username,
+        })),
       };
     });
   const cqbJoinSquads = joinableSquads.filter((s) => s.kind === "squad");
@@ -4574,47 +4577,54 @@ export function opJoinPage(opts: {
     sub: string,
     list: typeof joinableSquads,
     joinLabel: string,
+    slotWord: string,
   ): SafeHtml =>
     isOpen && list.length
       ? html`<section class="card" style="margin-top:1rem">
           <h3 class="wiz-sum-h">${title}</h3>
           <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">${sub}</p>
-          <div class="direct-seats">
-            ${list.map(
-              (sq) => html`<div class="direct-seat-unit">
-                <div class="direct-seat-unit-name">
-                  ${sq.name}
-                  <span class="tag ${sq.open ? "tag-green" : "tag-gold"}">${sq.count}${sq.cap ? ` / ${sq.cap}` : ""}</span>
-                  ${sq.mine ? html` <span class="tag tag-green">You're in</span>` : safe("")}
-                </div>
-                <div class="text-dim text-sm" style="margin-bottom:.35rem">
-                  ${sq.memberNames.length
-                    ? sq.memberNames.join(", ")
-                    : sq.count
-                      ? `${sq.count} filled`
-                      : "empty"}
-                </div>
-                <div class="direct-seat-btns">
-                  ${sq.mine
-                    ? safe("")
-                    : !sq.open
-                      ? html`<span class="tag tag-gold">Full</span>`
+          ${list.map((sq) => {
+            const cap = sq.cap ?? sq.count;
+            return html`<div class="roster-unit">
+              <div class="roster-unit-head">
+                <strong>${sq.name}</strong>
+                ${sq.mine ? html`<span class="tag tag-green">You're in</span>` : safe("")}
+                <span class="roster-unit-count">${sq.count}/${cap}</span>
+              </div>
+              <div class="roster-seats">
+                ${Array.from({ length: cap }).map((_, i) => {
+                  const m = sq.members[i];
+                  if (m) {
+                    return html`<div class="roster-seat${m.isMe ? " mine" : ""}">
+                      <span class="roster-seat-label">${slotWord} ${i + 1}</span>
+                      ${m.isMe
+                        ? html`<span class="roster-occ roster-you">You</span>
+                            <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups/withdraw" class="inline">
+                              <input type="hidden" name="_csrf" value="${csrf}" />
+                              <input type="hidden" name="ui" value="player" />
+                              <input type="hidden" name="tab" value="fleet" />
+                              <button type="submit" class="btn btn-sm btn-ghost">Leave</button>
+                            </form>`
+                        : html`<span class="roster-occ">${m.name ?? "Taken"}</span>`}
+                    </div>`;
+                  }
+                  return html`<div class="roster-seat open">
+                    <span class="roster-seat-label">${slotWord} ${i + 1}</span>
+                    ${sq.mine
+                      ? html`<span class="free">open</span>`
                       : myId
-                        ? html`<form
-                            method="post"
-                            action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join"
-                            class="inline"
-                          >
+                        ? html`<form method="post" action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join" class="inline">
                             <input type="hidden" name="_csrf" value="${csrf}" />
                             <input type="hidden" name="ui" value="player" />
                             <input type="hidden" name="tab" value="fleet" />
                             <button type="submit" class="btn btn-sm btn-green">${joinLabel}</button>
                           </form>`
-                        : html`<a class="btn btn-sm" href="${bp}/login">Sign in to join</a>`}
-                </div>
-              </div>`,
-            )}
-          </div>
+                        : html`<a class="btn btn-sm" href="${bp}/login">Sign in</a>`}
+                  </div>`;
+                })}
+              </div>
+            </div>`;
+          })}
         </section>`
       : safe("");
 
@@ -5205,13 +5215,15 @@ export function opJoinPage(opts: {
           "Join a CQB squad",
           "Pick a named fireteam and take a spot directly — no assistant needed.",
           cqbJoinSquads,
-          "Join squad",
+          "Claim",
+          "Soldier",
         )}
         ${squadJoinCard(
           "Join a fighter squad",
           "Wingman pairs — bring your own fighter and take a slot.",
           fighterJoinSquads,
-          "Join wing",
+          "Claim",
+          "Pilot",
         )}
 
         ${myPendingUnits.length

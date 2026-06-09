@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Join-Seite — CQB/Fighter-Teams im Schiff-Roster-Look
+
+User: Team-Join soll aussehen wie die Schiff-Sitze (Ironclad Assault) — Slot-Strip statt vertikaler Liste.
+`pages.ts squadJoinCard` neu: pro Team `.roster-unit` + `.roster-seats`-Grid mit `targetSize` Slots
+(`Soldier N`/`Pilot N`), je Slot belegt (You+Leave / Name / Taken) oder offen ([Claim] eingeloggt /
+[Sign in] Gast). `joinableSquads` liefert jetzt `members[{isMe,name}]` statt memberNames. Gleiche
+roster-CSS wie Schiffe → konsistent. Join unverändert (joinSquad), Leave = cqb-signups/withdraw.
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Join-Seite — 3 Bugfixes (Über-Materialisierung, Doppel-Claim, Sprache)
 
 - `needs.ts reconcileTeams`: zählt jetzt ALLE `kind`-Gruppen (nicht nur Präfix-Namen) → keine

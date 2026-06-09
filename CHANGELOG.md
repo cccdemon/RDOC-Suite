@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Players can now **join a fighter squad** on the op join page (wingman pairs of 2 — bring your own fighter), alongside CQB teams. Both are capacity-gated; full shows "Full", your own shows "You're in".
 - The operator **Fleet Needs** board is rebuilt on the structured model: three axes — **Hull-Need** (ships, from requirements), **Fighter-Need** and **CQB-Need** (from the materialized squads/teams, showing Soll/Ist/Offen per team).
 
+### Changed - CQB / fighter teams shown as a seat strip like a ship (2026-06-09)
+
+- Joining a CQB squad or fighter wing now looks like a ship's seat row: each team shows its slots (Soldier 1…N / Pilot 1…N) with per-slot **Claim** (or "Sign in"), your own slot shows **You / Leave**, taken slots show the member (or "Taken" for guests). Much easier to read than the old vertical list.
+
 ### Fixed - Op join page: guests no longer see names; FPS/fighter teams now visible to everyone (2026-06-09)
 
 - **Privacy:** a not-signed-in visitor on a public op no longer sees other members' names in the roster (seats show "Taken", teams show "N belegt") — matching the guest banner's promise. Signed-in members still see names.
