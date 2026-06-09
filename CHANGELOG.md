@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleet Needs board shows "✓ Requirement fulfilled" when complete (2026-06-09)
+
+- A fully-met requirement now shows a green **✓ Requirement fulfilled** tag instead of the row of green chip squares.
+
 ### Added - Wizard final step: share the operation to a Discord channel (2026-06-09)
 
 - The create-operation wizard has a new last step **Share to Discord** with a channel picker. On finish, an announcement (title, time, location, link) is posted to the chosen channel. Optional ("— don't share —"); needs the bot in the server with send permission.

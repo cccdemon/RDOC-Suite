@@ -1,5 +1,10 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Needs-Board — voll erfüllt = „✓ Requirement fulfilled"
+
+`reqGroupTable`: bei `r.open===0 && fulfilled>0 && mismatches===0` statt der grünen Chip-Quadrate ein
+grünes Tag „✓ Requirement fulfilled". Sonst weiter die Chips. Nur fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Wizard letzter Step „Mission in Discord-Channel teilen"
 
 - `discord.ts`: `fetchGuildTextChannels(guildId)` (type 0/5). 

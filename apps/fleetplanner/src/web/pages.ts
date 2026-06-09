@@ -1830,7 +1830,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               ${r.extra ? html`<span class="tag tag-cyan">+${r.extra} extra</span>` : safe("")}
             </span>
           </div>
-          <div class="comp-chips">${compChips(r)}</div>
+          <div class="comp-chips">
+            ${r.open === 0 && r.fulfilled > 0 && r.mismatches === 0
+              ? html`<span class="tag tag-green">✓ Requirement fulfilled</span>`
+              : compChips(r)}
+          </div>
         </div>`,
       )}
       <div class="fleet-req-row fleet-req-total">
