@@ -4563,7 +4563,8 @@ export function opJoinPage(opts: {
         open: !s.userId,
       }));
   const acceptedRoster = acceptedUnits
-    .filter((u) => u.unitType !== "vehicle")
+    // Top-level = real units that aren't carried by another (carried units nest).
+    .filter((u) => u.unitType !== "vehicle" && !u.carrierUnitId)
     .map((u) => ({
       id: u.id,
       name: u.squadName || u.ship?.name || "Unit",
@@ -4575,11 +4576,13 @@ export function opJoinPage(opts: {
       isMyUnit: !!myId && u.captainId === myId,
       seats: seatView(u),
       editSeats: u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
+      // Any unit attached to this one (vehicle OR carried ship/fighter) nests here.
       vehicles: acceptedUnits
-        .filter((v) => v.unitType === "vehicle" && v.carrierUnitId === u.id)
+        .filter((v) => v.carrierUnitId === u.id)
         .map((v) => ({
           id: v.id,
-          name: v.ship?.name || "Vehicle",
+          name: v.ship?.name || v.squadName || "Unit",
+          kind: v.unitType === "ship" ? "Ship" : "Vehicle",
           isMine: !!myId && v.captainId === myId,
           seats: seatView(v),
         })),
@@ -5511,7 +5514,7 @@ export function opJoinPage(opts: {
                     (v) => html`<div class="roster-vehicle">
                       <div class="roster-unit-head">
                         <span class="roster-veh-icon">⬓</span> <strong>${v.name}</strong>
-                        <span class="tag tag-dim">Vehicle</span>
+                        <span class="tag tag-dim">${v.kind}</span>
                       </div>
                       <div class="roster-seats">${v.seats.map((s) => seatRowHtml(s, false))}</div>
                       ${v.isMine ? withdrawShipForm(v.id) : safe("")}

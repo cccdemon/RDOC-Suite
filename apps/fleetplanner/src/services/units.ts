@@ -26,34 +26,35 @@ export async function registerUnit(
     throw new Error("squadName and squadSize required for squad units");
   }
 
-  // A vehicle must attach to a ship unit in the same op; it inherits the
-  // carrier's accept/reject status so the operator accepts "ship + vehicle".
+  // Resolve the catalog ship early: ground vehicles live in the same catalog
+  // (size = "vehicle"), so anything picked that is vehicle-class is ALWAYS
+  // created as a vehicle unit — never a ship — regardless of which form added it.
+  let ship: Ship | null = null;
+  if (isShipLike && input.shipId) {
+    ship = await prisma.ship.findUnique({ where: { id: input.shipId } });
+    if (!ship) throw new Error("Ship not found");
+  }
+  const unitType =
+    ship && (ship.size ?? "").toLowerCase() === "vehicle" ? "vehicle" : input.unitType;
+
+  // A vehicle MAY ride in a ship; if none is given it's an "orphan" the operator
+  // assigns later. It inherits the carrier's accept/reject status when carried.
   let vehicleStatus = "pending";
-  if (input.unitType === "vehicle") {
-    if (!input.carrierUnitId) throw new Error("A vehicle must be carried by a ship");
+  let carrierUnitId: string | null = null;
+  if (unitType === "vehicle" && input.carrierUnitId) {
     const carrier = await prisma.fleetUnit.findUnique({
       where: { id: input.carrierUnitId },
-      select: { operationId: true, status: true, unitType: true, ship: true },
+      select: { operationId: true, status: true, unitType: true },
     });
     if (!carrier || carrier.operationId !== operationId) {
       throw new Error("Carrier ship not found in this operation");
     }
     if (carrier.unitType !== "ship") throw new Error("Vehicles can only attach to a ship");
-    // Fit/cargo-grid restriction intentionally lifted — any ship may carry any
-    // vehicle (operator's call). A vehicle still must attach to a ship.
+    carrierUnitId = input.carrierUnitId;
     vehicleStatus = carrier.status;
   }
 
-  // Validate the ship and compute seat specs BEFORE writing anything, so a
-  // bad shipId can never leave an orphan unit row behind.
-  let specs;
-  if (isShipLike && input.shipId) {
-    const ship = await prisma.ship.findUnique({ where: { id: input.shipId } });
-    if (!ship) throw new Error("Ship not found");
-    specs = specForShip(ship);
-  } else {
-    specs = specForSquad(input.squadSize!);
-  }
+  const specs = isShipLike && ship ? specForShip(ship) : specForSquad(input.squadSize!);
 
   // Create the unit, its seats, and the captain auto-assignment atomically:
   // either the whole unit comes into existence with its seats, or nothing does.
@@ -62,14 +63,14 @@ export async function registerUnit(
       data: {
         operationId,
         captainId,
-        unitType: input.unitType,
+        unitType,
         shipId: input.shipId ?? null,
         squadName: input.squadName ?? null,
         squadSize: input.squadSize ?? null,
-        carrierUnitId: input.unitType === "vehicle" ? input.carrierUnitId : null,
+        carrierUnitId: unitType === "vehicle" ? carrierUnitId : null,
         requirementId: input.requirementId ?? null,
         captainNote: input.captainNote ?? null,
-        status: input.unitType === "vehicle" ? vehicleStatus : "pending",
+        status: unitType === "vehicle" ? vehicleStatus : "pending",
       },
     });
 

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Ground vehicles always register as vehicles; carried units show on the join page (2026-06-09)
+
+- Anything that is a **ground vehicle** in the catalog (e.g. MDC, MTC, Mule) is now always created as a *vehicle* unit, even via "Register Unit" — it no longer ends up as a "ship". Vehicles may also be registered without a ship and assigned later.
+- The **player signup page** now nests carried units (vehicles and carried ships/fighters) under their carrier, so e.g. an MDC added to the Perseus shows under it. Fighters can be carried by ships too.
+
 ### Added - Attach any existing ship/vehicle to a carrier ship (2026-06-09)
 
 - A ship card has an **"Attach existing unit…"** picker: any vehicle **or ship** already in the mission (e.g. an MDC registered as a ship) can be put inside a carrier ship like the Perseus — it then nests under that ship. Previously only catalog-new vehicles could be added and only "vehicle"-typed units were attachable. Also fixed the misaligned Add vehicle / Edit / Seat Setup buttons.

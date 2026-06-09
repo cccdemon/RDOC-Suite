@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Vehicle-Klasse erzwingt vehicle-Unit + Join-Nesting + MDC-Daten-Fix
+
+- `units.ts registerUnit`: Ship früh laden; wenn Katalog-`size="vehicle"` → Unit IMMER `unitType=vehicle`
+  (egal welches Formular). Vehicle-Carrier jetzt OPTIONAL (orphan erlaubt). MDC (size=vehicle) wird so
+  nie mehr ein Ship-Unit.
+- `pages.ts opJoinPage`: Nesting wie Manage — Top-Level versteckt carried Units (`!carrierUnitId`),
+  Nested zeigt jede Unit mit `carrierUnitId===ship` (Tag nach Typ). → Player sieht MDC unter Perseus.
+- Daten-Fix (prod, einmalig): `UPDATE FleetUnit SET unitType='vehicle' WHERE unitType='ship' AND shipId
+  ∈ Ships(size='vehicle')` — korrigiert den bereits falsch als Ship angelegten MDC.
+- Fighter (= ships) sind via „Attach existing unit" ohnehin schon zuordbar (non-squad).
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Carrier verallgemeinert — jedes Nicht-Squad-Unit in ein Schiff
 
 Problem: MDC war als `unitType="ship"` registriert → fehlte in der „Attach existing vehicle"-Liste
