@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Operator-Hilfe — „?"-Tooltips pro Control (Dummies)
+
+`helpIcon(text)`-Helper (CSS-only Popover, `.help`/`.help-pop` in render.ts) + an die Operator-Manage-
+Controls gesetzt: Fleet-Needs-Editor (Ships/Fighter/CQB + Panel), CQB Personnel, Formations, Fleet Units,
+Need Assignment (beide), Participants, Team-Controls-Cluster (Rename/Size/Assign/Carrier/Dissolve/
+Reassign/Secondary). Erklärt in einfacher Sprache was/warum. Nur fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Fleet-Needs-Board — voll erfüllt = „✓ Requirement fulfilled"
 
 `reqGroupTable`: bei `r.open===0 && fulfilled>0 && mismatches===0` statt der grünen Chip-Quadrate ein

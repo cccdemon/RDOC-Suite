@@ -1239,6 +1239,21 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   padding: 1rem;
   min-width: 0;
 }
+/* Inline "?" help bubble (CSS-only popover on hover/focus). */
+.help {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 50%; border: 1px solid var(--cyan-28, rgba(53,208,224,.4));
+  color: var(--cyan, #35d0e0); font-size: .7rem; font-weight: 700; line-height: 1; cursor: help;
+  margin-left: .35rem; vertical-align: middle; flex: none; font-family: var(--font-sans, inherit);
+}
+.help-pop {
+  display: none; position: absolute; z-index: 60; top: 130%; left: 0; width: 250px;
+  background: var(--bg2, #0d1117); border: 1px solid var(--cyan-28, rgba(53,208,224,.4));
+  padding: .55rem .65rem; font-size: .78rem; line-height: 1.45; color: var(--text, #cdd9e1);
+  font-weight: 400; text-transform: none; letter-spacing: 0; border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.55); white-space: normal;
+}
+.help:hover .help-pop, .help:focus .help-pop, .help:focus-within .help-pop { display: block; }
 .opv2-panel-title {
   font-family: var(--font-mono);
   font-size: 0.78rem;

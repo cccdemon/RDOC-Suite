@@ -79,6 +79,14 @@ const COMPOSITION_TEMPLATES = [
   },
 ] as const;
 
+// Inline "?" help bubble — plain-language ("for dummies") explanation of an
+// operator control. CSS-only popover (see .help in render.ts).
+function helpIcon(text: string): SafeHtml {
+  return html`<span class="help" tabindex="0" role="note" aria-label="${text}"
+    >?<span class="help-pop">${text}</span></span
+  >`;
+}
+
 function categoryLabel(category: string): string {
   return (
     {
@@ -1290,7 +1298,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   );
   const crewPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Participants (${participants.length})</div>
+      <div class="opv2-panel-title">Participants (${participants.length})${helpIcon("Komplette Teilnehmerliste: wer ist wo (Schiff + Sitz, CQB-/Fighter-Team). Reine Übersicht — eine Zeile pro Person, alle Positionen als Tags.")}</div>
       ${participants.length
         ? html`<table class="user-table" style="width:100%">
             <thead>
@@ -1314,7 +1322,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         : html`<p class="text-dim text-sm">No participants yet.</p>`}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Need Assignment</div>
+      <div class="opv2-panel-title">Need Assignment${helpIcon("Spieler, die 'Operator soll mich einteilen' gewählt haben. Weise sie hier einem CQB-Team (Place in team) oder einem freien Schiffssitz (Place in seat) zu — die offene Anfrage verschwindet danach.")}</div>
       ${op.crewRequests.length
         ? op.crewRequests.map(
             (request) =>
@@ -2106,7 +2114,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const cqbPanel =
     cqbSignups.length || cqbSquads.length || canManage
       ? html`<section class="opv2-panel">
-          <div class="opv2-panel-title">CQB Personnel</div>
+          <div class="opv2-panel-title">CQB Personnel${helpIcon("Boden-/FPS-Truppen. Hier siehst du alle Teams: umbenennen, Größe (2–8) setzen, Spieler zuweisen (Assign), ein Team in ein Schiff verladen, oder auflösen. Mitglieder lassen sich zwischen Teams verschieben.")}</div>
           <script>
             (function () {
               function flash(form, ok) {
@@ -2143,7 +2151,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             const carrierUnit = carrierId ? op.units.find((u) => u.id === carrierId) : null;
             return html`<div class="opv2-row mg-board-row cqb-squad-drop" data-cqb-group="${g.id}">
               <div>
-                <strong>${g.name}</strong>
+                <strong>${g.name}</strong>${helpIcon("Team-Steuerung: Rename = umbenennen · Size = Sollgröße 2–8 · Assign = Spieler ins Team setzen · Schiff-Auswahl = Team in ein Schiff verladen ('rides in') · Dissolve = auflösen. Mitglieder: 'Reassign to' verschiebt ins andere Team/Pool, '+ Secondary seat' gibt zusätzlich einen Schiffssitz.")}
                 <span class="tag tag-green">${members.length}${cap ? ` / ${cap}` : ""}</span>
                 ${cap && members.length >= cap ? html` <span class="tag tag-gold">full</span>` : safe("")}
                 ${canManage
@@ -2406,7 +2414,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   }));
   const formationsPanel = canManage || formations.length
     ? html`<section class="opv2-panel">
-        <div class="opv2-panel-title">Formations (Verbände)</div>
+        <div class="opv2-panel-title">Formations (Verbände)${helpIcon("Fasse mehrere akzeptierte Schiffe zu einem benannten Verband zusammen (z.B. 'Task Force Alpha'). Reine Organisation/Übersicht — ändert nichts an Sitzen oder Schiffen.")}</div>
         ${formations.length
           ? formations.map(
               (f) => html`<div class="opv2-row mg-board-row">
@@ -2458,7 +2466,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ${cqbPanel}
     ${formationsPanel}
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Fleet Units</div>
+      <div class="opv2-panel-title">Fleet Units${helpIcon("Alle angemeldeten Einheiten (Schiffe + Fahrzeuge). Hier akzeptierst/ablehnst du angebotene Schiffe, weist Sitze zu (Assign), hängst Fahrzeuge/Fighter an ein Trägerschiff und legst selbst Einheiten an (Register Unit).")}</div>
       <div class="opv2-stack" style="max-height:70vh;overflow-y:auto">${unitRows}</div>
       ${canManage && orphanVehicles.length
         ? html`<div class="opv2-edit-block mt-2">
@@ -2558,7 +2566,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         : safe("")}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Need Assignment</div>
+      <div class="opv2-panel-title">Need Assignment${helpIcon("Spieler, die 'Operator soll mich einteilen' gewählt haben. Weise sie hier einem CQB-Team (Place in team) oder einem freien Schiffssitz (Place in seat) zu — die offene Anfrage verschwindet danach.")}</div>
       ${op.crewRequests.length
         ? html`<div class="opv2-crew-drag-list">
             ${op.crewRequests.map(
@@ -2627,7 +2635,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ),
         )}
       </div>
-      <div class="opv2-panel-title mt-2">Fleet Needs</div>
+      <div class="opv2-panel-title mt-2">Fleet Needs${helpIcon("Hier legst du fest, WAS die Mission braucht: Schiffe, Jäger-Squads und CQB-Teams. Das steuert, wofür sich Spieler anmelden können. Ohne Bedarf weiß keiner, was gebraucht wird.")}</div>
       ${canManage
         ? html`<div class="need-editor mt-1">
             <style>
@@ -2645,7 +2653,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <form method="post" action="${bp}/api/ops/${op.id}/needs/ships" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <div class="need-h">Ships <span class="text-dim text-sm">— each pick = 1 hull</span></div>
+              <div class="need-h">Ships <span class="text-dim text-sm">— each pick = 1 hull</span>${helpIcon("Was die Mission an Schiffen braucht. Jeder angehakte Typ = genau 1 benötigtes Schiff. Spieler bieten passende Schiffe an, die du akzeptierst. Mehrere gleiche? Den Typ mehrfach hinzufügen.")}</div>
               <div class="need-chips">
                 ${SHIP_TYPES.map(
                   (t) => html`<label class="need-chip"
@@ -2679,7 +2687,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <form method="post" action="${bp}/api/ops/${op.id}/needs/fighters" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <div class="need-h">Fighter squads <span class="text-dim text-sm">— 2 pilots each, own fighter</span></div>
+              <div class="need-h">Fighter squads <span class="text-dim text-sm">— 2 pilots each, own fighter</span>${helpIcon("Wie viele Jäger-Rotten du brauchst. 1 Squad = 2 Piloten (Wingman-Paar), jeder bringt seinen eigenen Fighter. Spieler treten den Squads direkt bei.")}</div>
               <div class="need-row">
                 <input type="number" name="count" min="0" max="50" value="${String(fighterCount)}" style="width:72px" />
                 <span class="text-dim text-sm">squad(s)</span>
@@ -2690,7 +2698,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <form method="post" action="${bp}/api/ops/${op.id}/needs/cqb" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <div class="need-h">CQB teams <span class="text-dim text-sm">— soldiers, default 4 (max ${String(CQB_TEAM_MAX)})</span></div>
+              <div class="need-h">CQB teams <span class="text-dim text-sm">— soldiers, default 4 (max ${String(CQB_TEAM_MAX)})</span>${helpIcon("Wie viele Boden-/FPS-Teams du brauchst und wie groß (Soldaten pro Team, Standard 4, max 8). Spieler melden sich als Soldaten und füllen die Teams; du kannst sie auch selbst zuweisen.")}</div>
               <div class="need-row">
                 <input type="number" name="count" min="0" max="50" value="${String(cqbCount)}" style="width:72px" />
                 <span class="text-dim text-sm">team(s) ×</span>

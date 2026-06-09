@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - "?" help tooltips across the Fleet Operator area (2026-06-09)
+
+- Each operator control/section now has a small **?** bubble with a plain-language ("for dummies") explanation of what it does and why — Fleet Needs (ships/fighters/CQB), CQB Personnel, Formations, Fleet Units, Need Assignment, Participants, and the per-team controls.
+
 ### Changed - Fleet Needs board shows "✓ Requirement fulfilled" when complete (2026-06-09)
 
 - A fully-met requirement now shows a green **✓ Requirement fulfilled** tag instead of the row of green chip squares.
