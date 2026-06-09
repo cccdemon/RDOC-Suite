@@ -4564,14 +4564,67 @@ export function opJoinPage(opts: {
         count: members.length,
         mine: myCqbGroupId === g.id,
         open: cap == null ? true : members.length < cap,
+        carrierUnitId: (g as { carrierUnitId?: string | null }).carrierUnitId ?? null,
         members: members.map((m) => ({
           isMe: !!myId && m.userId === myId,
           name: hideNames ? null : m.user.username,
         })),
       };
     });
-  const cqbJoinSquads = joinableSquads.filter((s) => s.kind === "squad");
+  // Embedded CQB teams ride inside a ship → shown under that ship, not in the
+  // standalone "Join a CQB squad" list. Fighters are never embedded.
+  const cqbJoinSquads = joinableSquads.filter((s) => s.kind === "squad" && !s.carrierUnitId);
   const fighterJoinSquads = joinableSquads.filter((s) => s.kind === "fighter_squad");
+  const embeddedTeamsFor = (unitId: string) =>
+    joinableSquads.filter((s) => s.kind === "squad" && s.carrierUnitId === unitId);
+  // One team rendered as a ship-style roster unit (seat strip). Reused both in
+  // the standalone join section and nested under a carrier ship.
+  const teamSlotUnit = (
+    sq: (typeof joinableSquads)[number],
+    joinLabel: string,
+    slotWord: string,
+  ): SafeHtml => {
+    const cap = sq.cap ?? sq.count;
+    return html`<div class="roster-unit">
+      <div class="roster-unit-head">
+        <strong>${sq.name}</strong>
+        ${sq.mine ? html`<span class="tag tag-green">You're in</span>` : safe("")}
+        <span class="roster-unit-count">${sq.count}/${cap}</span>
+      </div>
+      <div class="roster-seats">
+        ${Array.from({ length: cap }).map((_, i) => {
+          const m = sq.members[i];
+          if (m) {
+            return html`<div class="roster-seat${m.isMe ? " mine" : ""}">
+              <span class="roster-seat-label">${slotWord} ${i + 1}</span>
+              ${m.isMe
+                ? html`<span class="roster-occ roster-you">You</span>
+                    <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups/withdraw" class="inline">
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      <input type="hidden" name="ui" value="player" />
+                      <input type="hidden" name="tab" value="fleet" />
+                      <button type="submit" class="btn btn-sm btn-ghost">Leave</button>
+                    </form>`
+                : html`<span class="roster-occ">${m.name ?? "Taken"}</span>`}
+            </div>`;
+          }
+          return html`<div class="roster-seat open">
+            <span class="roster-seat-label">${slotWord} ${i + 1}</span>
+            ${sq.mine
+              ? html`<span class="free">open</span>`
+              : myId
+                ? html`<form method="post" action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join" class="inline">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <input type="hidden" name="ui" value="player" />
+                    <input type="hidden" name="tab" value="fleet" />
+                    <button type="submit" class="btn btn-sm btn-green">${joinLabel}</button>
+                  </form>`
+                : html`<a class="btn btn-sm" href="${bp}/login">Sign in</a>`}
+          </div>`;
+        })}
+      </div>
+    </div>`;
+  };
   const squadJoinCard = (
     title: string,
     sub: string,
@@ -4583,48 +4636,7 @@ export function opJoinPage(opts: {
       ? html`<section class="card" style="margin-top:1rem">
           <h3 class="wiz-sum-h">${title}</h3>
           <p class="text-dim text-sm" style="margin:.2rem 0 .7rem">${sub}</p>
-          ${list.map((sq) => {
-            const cap = sq.cap ?? sq.count;
-            return html`<div class="roster-unit">
-              <div class="roster-unit-head">
-                <strong>${sq.name}</strong>
-                ${sq.mine ? html`<span class="tag tag-green">You're in</span>` : safe("")}
-                <span class="roster-unit-count">${sq.count}/${cap}</span>
-              </div>
-              <div class="roster-seats">
-                ${Array.from({ length: cap }).map((_, i) => {
-                  const m = sq.members[i];
-                  if (m) {
-                    return html`<div class="roster-seat${m.isMe ? " mine" : ""}">
-                      <span class="roster-seat-label">${slotWord} ${i + 1}</span>
-                      ${m.isMe
-                        ? html`<span class="roster-occ roster-you">You</span>
-                            <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups/withdraw" class="inline">
-                              <input type="hidden" name="_csrf" value="${csrf}" />
-                              <input type="hidden" name="ui" value="player" />
-                              <input type="hidden" name="tab" value="fleet" />
-                              <button type="submit" class="btn btn-sm btn-ghost">Leave</button>
-                            </form>`
-                        : html`<span class="roster-occ">${m.name ?? "Taken"}</span>`}
-                    </div>`;
-                  }
-                  return html`<div class="roster-seat open">
-                    <span class="roster-seat-label">${slotWord} ${i + 1}</span>
-                    ${sq.mine
-                      ? html`<span class="free">open</span>`
-                      : myId
-                        ? html`<form method="post" action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join" class="inline">
-                            <input type="hidden" name="_csrf" value="${csrf}" />
-                            <input type="hidden" name="ui" value="player" />
-                            <input type="hidden" name="tab" value="fleet" />
-                            <button type="submit" class="btn btn-sm btn-green">${joinLabel}</button>
-                          </form>`
-                        : html`<a class="btn btn-sm" href="${bp}/login">Sign in</a>`}
-                  </div>`;
-                })}
-              </div>
-            </div>`;
-          })}
+          ${list.map((sq) => teamSlotUnit(sq, joinLabel, slotWord))}
         </section>`
       : safe("");
 
@@ -4693,6 +4705,8 @@ export function opJoinPage(opts: {
       .ja-radio:checked + .ja-opt + .ja-panel { display: block; }
       .ja-radio:disabled + .ja-opt { opacity: .4; cursor: not-allowed; }
       .roster-vehicle { margin: .4rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--cyan-28, rgba(53,208,224,.28)); }
+      .roster-embarked { margin: .5rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--gold, #e0b84a); }
+      .roster-embarked-h { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--dim, #7a8a96); font-family: var(--font-mono); margin: .2rem 0 .35rem; }
       .roster-veh-icon { color: var(--cyan, #35d0e0); }
       .join-seat { display: flex; justify-content: space-between; gap: .75rem; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
       .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; white-space: nowrap; }
@@ -5270,6 +5284,12 @@ export function opJoinPage(opts: {
                       ${v.isMine ? withdrawShipForm(v.id) : safe("")}
                     </div>`,
                   )}
+                  ${embeddedTeamsFor(u.id).length
+                    ? html`<div class="roster-embarked">
+                        <div class="roster-embarked-h">Embarked CQB</div>
+                        ${embeddedTeamsFor(u.id).map((t) => teamSlotUnit(t, "Claim", "Soldier"))}
+                      </div>`
+                    : safe("")}
                   ${u.isMyUnit
                     ? html`${seatEditDetails(u.id, u.editSeats)}
                         ${u.isShip && u.canCarry ? addVehicleForm(u.id) : safe("")}

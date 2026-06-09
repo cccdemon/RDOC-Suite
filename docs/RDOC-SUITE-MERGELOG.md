@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Join-Seite — eingebettete CQB-Teams unter Trägerschiff (Player-View)
+
+User-Entscheidung: A (genested) + nur unter Schiff. Eingebettete CQB-Teams (`carrierUnitId` gesetzt)
+erscheinen jetzt als „Embarked CQB"-Block UNTER ihrem Schiff im „Accepted Units"-Roster, joinbar dort;
+NICHT mehr in „Join a CQB squad" (das zeigt nur freie Teams). `pages.ts`: `teamSlotUnit`-Helper aus
+squadJoinCard extrahiert (wiederverwendet); `joinableSquads` + `carrierUnitId`; `cqbJoinSquads` filtert
+`!carrierUnitId`; `embeddedTeamsFor(unitId)`; Roster-Ship-Render injiziert embedded Teams nach Vehicles
+(neue `.roster-embarked`-CSS, gold-Border wie Vehicle-Nesting). Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Join-Seite — CQB/Fighter-Teams im Schiff-Roster-Look
 
 User: Team-Join soll aussehen wie die Schiff-Sitze (Ironclad Assault) — Slot-Strip statt vertikaler Liste.

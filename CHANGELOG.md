@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Players can now **join a fighter squad** on the op join page (wingman pairs of 2 — bring your own fighter), alongside CQB teams. Both are capacity-gated; full shows "Full", your own shows "You're in".
 - The operator **Fleet Needs** board is rebuilt on the structured model: three axes — **Hull-Need** (ships, from requirements), **Fighter-Need** and **CQB-Need** (from the materialized squads/teams, showing Soll/Ist/Offen per team).
 
+### Added - Embarked CQB teams shown under their carrier ship (2026-06-09)
+
+- A CQB team embedded into a ship now appears as an **"Embarked CQB"** block nested under that ship in the player view (with its joinable seat strip), like ground vehicles. Embedded teams no longer show in the standalone "Join a CQB squad" list — that one keeps only the free teams.
+
 ### Changed - CQB / fighter teams shown as a seat strip like a ship (2026-06-09)
 
 - Joining a CQB squad or fighter wing now looks like a ship's seat row: each team shows its slots (Soldier 1…N / Pilot 1…N) with per-slot **Claim** (or "Sign in"), your own slot shows **You / Leave**, taken slots show the member (or "Taken" for guests). Much easier to read than the old vertical list.
