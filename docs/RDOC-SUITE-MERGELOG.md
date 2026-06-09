@@ -1,5 +1,10 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: CQB-Team Assign als collapsed Button (wie Sitz)
+
+Team-Assign vom offenen Select auf `<details><summary class="btn">Assign</summary>…select+Add</details>`
+umgestellt — identisch zum Sitz-Assign, kein dauer-offenes Dropdown mehr. Nur fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: CQB-Team „Assign"-Picker (wie Sitz-Assign)
 
 CQB-Teams kriegen denselben Operator-„Assign" wie Schiffssitze: Select aus `opts.assignableUsers`

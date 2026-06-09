@@ -2234,17 +2234,21 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       </select>
                       <button type="submit" class="btn btn-sm">Size</button>
                     </form>
-                    <form method="post" action="${bp}/api/ops/${op.id}/cqb/place" class="inline" data-async title="Assign a player to this team">
-                      <input type="hidden" name="_csrf" value="${csrf}" />
-                      ${returnFields("fleet")}
-                      <input type="hidden" name="groupId" value="${g.id}" />
-                      <select name="userId" onchange="this.form.requestSubmit()">
-                        <option value="" disabled selected hidden>Assign…</option>
-                        ${opts.assignableUsers.map(
-                          (au) => html`<option value="${au.id}">${au.username} (${au.role})</option>`,
-                        )}
-                      </select>
-                    </form>
+                    <details class="opv2-seat-assign">
+                      <summary class="btn btn-sm btn-ghost">Assign</summary>
+                      <form method="post" action="${bp}/api/ops/${op.id}/cqb/place" data-async title="Assign a player to this team">
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        ${returnFields("fleet")}
+                        <input type="hidden" name="groupId" value="${g.id}" />
+                        <select name="userId" required>
+                          <option value="">Select user…</option>
+                          ${opts.assignableUsers.map(
+                            (au) => html`<option value="${au.id}">${au.username} (${au.role})</option>`,
+                          )}
+                        </select>
+                        <button type="submit" class="btn btn-sm">Add</button>
+                      </form>
+                    </details>
                     <form
                       method="post"
                       action="${bp}/api/ops/${op.id}/cqb/unbundle/${g.id}"
