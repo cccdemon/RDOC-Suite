@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Schiff-Bilder in Accepted Units + Fahrzeug-Limit weg + CQB-Reassign
+
+Drei User-Wünsche:
+- **Schiff-Silhouetten in „Accepted Units"**: `acceptedRoster` bekommt `sil` (shipSilhouettes[normShipName]),
+  Thumbnail (`.roster-ship-sil`) im roster-unit-head.
+- **Fahrzeug-Beschränkung aufgehoben**: `units.ts` vehicle-Zweig — `shipCanCarryVehicle`- + `vehicleFitsInShip`-
+  Throws raus (jedes Fahrzeug in jedes Schiff; muss nur an ein Schiff). UI-Gates (`canCarry`, Add-Vehicle-Form)
+  auf „jedes Schiff". Ungenutzte scwiki-Imports entfernt.
+- **CQB-Member-Reassign (Operator)**: `cqb.ts reassignSignup(op,signupId,groupId|null)` (null=Pool);
+  `/cqb/assign`-Route nutzt es (leeres groupId=Pool); CQB-Panel zeigt pro Member ein „move to"-Select
+  (alle Teams + Pool, auto-submit) → nachträglich umverteilen.
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Bestätigt-Count + FPS-Metriken aufs CQB-Team-Modell
 
 Zwei Zähl-Bugs (beide: alte FleetUnit-squad-Logik, im CQB-Team-Modell leer/falsch):

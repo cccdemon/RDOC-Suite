@@ -14,7 +14,6 @@ import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
 import { matchesCategory, suggestSlot, isCqbCategory, shipClass } from "../services/composition.js";
 import { SHIP_TYPES, shipTypeLabel, CQB_TEAM_DEFAULT, CQB_TEAM_MAX } from "../services/needs.js";
 import { normShipName } from "../services/fleetyards.js";
-import { shipCanCarryVehicle } from "../services/scwiki.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
 
@@ -1106,7 +1105,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     : safe("")}
                 </div>`,
               )}
-            ${canManage && unit.unitType === "ship" && shipCanCarryVehicle(unit.ship)
+            ${canManage && unit.unitType === "ship"
               ? html`<details class="opv2-edit-block mt-1">
                   <summary class="btn btn-sm btn-ghost">Add ground vehicle</summary>
                   <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form mt-1" novalidate>
@@ -1972,9 +1971,30 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <strong>${g.name}</strong>
                 <span class="tag tag-green">${members.length}${cap ? ` / ${cap}` : ""}</span>
                 ${cap && members.length >= cap ? html` <span class="tag tag-gold">full</span>` : safe("")}
-                <div class="text-dim text-sm">
-                  ${members.map((m) => nm(m.user.username)).join(", ") || "empty"}
-                </div>
+                ${canManage
+                  ? members.length
+                    ? html`<div class="cqb-members" style="display:flex;flex-direction:column;gap:.25rem;margin-top:.35rem">
+                        ${members.map(
+                          (m) => html`<div class="cqb-member-row" style="display:flex;align-items:center;gap:.5rem;justify-content:space-between;max-width:22rem">
+                            <span class="cqb-member-name">${nm(m.user.username)}</span>
+                            <form method="post" action="${bp}/api/ops/${op.id}/cqb/assign" class="inline">
+                              <input type="hidden" name="_csrf" value="${csrf}" />
+                              ${returnFields("fleet")}
+                              <input type="hidden" name="signupId" value="${m.id}" />
+                              <select name="groupId" onchange="this.form.submit()" title="Reassign soldier">
+                                <option value="">— pool —</option>
+                                ${cqbSquads.map(
+                                  (t) => html`<option value="${t.id}" ${t.id === g.id ? safe("selected") : ""}>${t.name}</option>`,
+                                )}
+                              </select>
+                            </form>
+                          </div>`,
+                        )}
+                      </div>`
+                    : html`<div class="text-dim text-sm">empty</div>`
+                  : html`<div class="text-dim text-sm">
+                      ${members.map((m) => nm(m.user.username)).join(", ") || "empty"}
+                    </div>`}
                 ${carrierUnit
                   ? html`<div class="text-dim text-sm">rides in <strong>${unitName(carrierUnit)}</strong></div>`
                   : safe("")}
@@ -4373,7 +4393,9 @@ export function opJoinPage(opts: {
       name: u.squadName || u.ship?.name || "Unit",
       kind: u.unitType === "ship" ? "Ship" : "FPS Fireteam",
       isShip: u.unitType === "ship",
-      canCarry: u.unitType === "ship" && shipCanCarryVehicle(u.ship),
+      // Any ship can carry a vehicle now (restriction lifted) — operator's call.
+      canCarry: u.unitType === "ship",
+      sil: u.ship ? shipSilhouettes[normShipName(u.ship.name)] : undefined,
       isMyUnit: !!myId && u.captainId === myId,
       seats: seatView(u),
       editSeats: u.seats.map((s) => ({ id: s.id, label: s.label, order: s.order, active: s.active })),
@@ -4729,6 +4751,7 @@ export function opJoinPage(opts: {
       .ja-panel { display: none; padding: 14px 16px 6px; border: 1px solid rgba(53,208,224,.22); border-top: none; }
       .ja-radio:checked + .ja-opt + .ja-panel { display: block; }
       .ja-radio:disabled + .ja-opt { opacity: .4; cursor: not-allowed; }
+      .roster-ship-sil { height: 46px; width: 110px; object-fit: contain; opacity: .92; flex: 0 0 auto; }
       .roster-vehicle { margin: .4rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--cyan-28, rgba(53,208,224,.28)); }
       .roster-embarked { margin: .5rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--gold, #e0b84a); }
       .roster-embarked-h { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--dim, #7a8a96); font-family: var(--font-mono); margin: .2rem 0 .35rem; }
@@ -5293,6 +5316,9 @@ export function opJoinPage(opts: {
             ? acceptedRoster.map(
                 (u) => html`<div class="roster-unit">
                   <div class="roster-unit-head">
+                    ${u.sil
+                      ? html`<img class="roster-ship-sil" src="${u.sil}" alt="${u.name}" loading="lazy" />`
+                      : safe("")}
                     <strong>${u.name}</strong> <span class="tag tag-dim">${u.kind}</span>
                     <span class="roster-unit-count"
                       >${u.seats.filter((s) => !s.open).length}/${u.seats.length} crew</span

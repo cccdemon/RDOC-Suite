@@ -1,6 +1,5 @@
 import { prisma } from "../db.js";
 import { specForShip, specForSquad } from "./seats.js";
-import { shipCanCarryVehicle, vehicleFitsInShip } from "./scwiki.js";
 import type { Prisma, Ship } from "@prisma/client";
 
 export type RegisterUnitInput = {
@@ -40,15 +39,8 @@ export async function registerUnit(
       throw new Error("Carrier ship not found in this operation");
     }
     if (carrier.unitType !== "ship") throw new Error("Vehicles can only attach to a ship");
-    if (!shipCanCarryVehicle(carrier.ship)) {
-      throw new Error("This ship cannot carry a ground vehicle");
-    }
-    // Per-vehicle fit check: does this specific vehicle fit the ship's bay?
-    const vehShip = input.shipId
-      ? await prisma.ship.findUnique({ where: { id: input.shipId }, select: { rawJson: true } })
-      : null;
-    const fit = vehicleFitsInShip(vehShip, carrier.ship);
-    if (!fit.fits) throw new Error(fit.reason ?? "This vehicle does not fit in the ship");
+    // Fit/cargo-grid restriction intentionally lifted — any ship may carry any
+    // vehicle (operator's call). A vehicle still must attach to a ship.
     vehicleStatus = carrier.status;
   }
 

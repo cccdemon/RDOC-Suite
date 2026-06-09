@@ -19,7 +19,7 @@ import {
   bundleSquad as bundleCqbSquad,
   autoBundle as autoBundleCqb,
   unbundle as unbundleCqb,
-  assignToSquad as assignCqbToSquad,
+  reassignSignup as reassignCqbSignup,
   setSquadSize as setCqbSquadSize,
   joinSquad as joinCqbSquad,
   setSquadCarrier as setCqbSquadCarrier,
@@ -1509,10 +1509,10 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       const signupId = req.body.signupId;
-      const groupId = req.body.groupId;
-      if (signupId && groupId) await assignCqbToSquad(req.params.id, signupId, groupId);
+      const groupId = (req.body.groupId ?? "").trim() || null; // empty = back to pool
+      if (signupId) await reassignCqbSignup(req.params.id, signupId, groupId);
       return reply.redirect(
-        opReturnUrl(req.params.id, req.body, "ok:Soldier+assigned.", "fleet"),
+        opReturnUrl(req.params.id, req.body, "ok:Soldier+reassigned.", "fleet"),
         302,
       );
     },

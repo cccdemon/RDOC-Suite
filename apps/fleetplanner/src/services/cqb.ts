@@ -73,6 +73,33 @@ export async function assignToSquad(
   });
 }
 
+/**
+ * Operator: move an existing signup to another squad, or back to the pool
+ * (groupId = null). Used for after-the-fact reassignment.
+ */
+export async function reassignSignup(
+  operationId: string,
+  signupId: string,
+  groupId: string | null,
+): Promise<void> {
+  if (groupId) {
+    const group = await prisma.compositionGroup.findFirst({
+      where: { id: groupId, operationId, kind: "squad" },
+      select: { id: true },
+    });
+    if (!group) return;
+    await prisma.cqbSignup.updateMany({
+      where: { id: signupId, operationId },
+      data: { assignedGroupId: groupId, status: "accepted" },
+    });
+  } else {
+    await prisma.cqbSignup.updateMany({
+      where: { id: signupId, operationId },
+      data: { assignedGroupId: null, status: "pending" },
+    });
+  }
+}
+
 /** Operator: chunk all unassigned signups into squads of `size` (2–8). */
 export async function autoBundle(operationId: string, size: number): Promise<number> {
   const sz = Math.max(2, Math.min(8, Math.floor(size) || 4));

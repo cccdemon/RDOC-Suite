@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Ship thumbnails in Accepted Units, free vehicle carrying, CQB reassign (2026-06-09)
+
+- Accepted ships in the roster now show their **silhouette thumbnail** (same image as the wizard).
+- The **vehicle-fit restriction is lifted** — any ship can carry any ground vehicle now (a vehicle still attaches to a ship; no more cargo-bay/size check).
+- Operators can **reassign a CQB soldier** to another team or back to the pool from the CQB Personnel panel (a per-member "move to" dropdown).
+
 ### Fixed - Confirmed headcount + FPS/CQB metrics count team members (2026-06-09)
 
 - The **Gemeldet / Bestätigt** counter now treats a player who claimed a slot in a CQB/fighter **team** as confirmed (not only ship-seat holders). Players in the unassigned CQB pool stay "signed up" until the operator places them.
