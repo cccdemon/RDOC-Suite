@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [fleetplanner 0.3.5] - 2026-06-09
+
 ### Added - Formations (Verbände) + embed CQB teams into ships (2026-06-09)
 
 - Operators can group accepted ships into named **formations** in the Fleet tab: create a formation, assign ships to it, see its members, and dissolve it.
