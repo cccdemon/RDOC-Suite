@@ -71,7 +71,6 @@ import {
   fetchGuildVoiceChannels,
   fetchGuildTextChannels,
   sendDiscordChannelMessage,
-  sendDiscordChannelMessage,
   updateScheduledEvent,
   type DiscordAttachment,
 } from "../services/discord.js";
