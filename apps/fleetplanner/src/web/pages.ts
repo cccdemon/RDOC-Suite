@@ -2455,7 +2455,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ${formationsPanel}
     <section class="opv2-panel">
       <div class="opv2-panel-title">Fleet Units</div>
-      <div class="opv2-stack">${unitRows}</div>
+      <div class="opv2-stack" style="max-height:70vh;overflow-y:auto">${unitRows}</div>
       ${canManage && orphanVehicles.length
         ? html`<div class="opv2-edit-block mt-2">
             <div class="opv2-panel-title" style="font-size:.9rem">Unassigned vehicles</div>

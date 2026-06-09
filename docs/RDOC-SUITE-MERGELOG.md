@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Fleet-Units-Liste höhenbegrenzt (scroll)
+
+Bei vielen Units schob die lange Fleet-Units-Liste die rechten/folgenden Boxen weit nach unten.
+`opv2-stack` der Unit-Liste: `max-height:70vh; overflow-y:auto` → lange Liste scrollt in sich, Boxen
+bleiben oben. Nur fleetplanner CSS.
+
 ## Queued / Planned Step - 2026-06-09: CQB-Team Assign als collapsed Button (wie Sitz)
 
 Team-Assign vom offenen Select auf `<details><summary class="btn">Assign</summary>…select+Add</details>`
