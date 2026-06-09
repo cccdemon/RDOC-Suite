@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Carrier verallgemeinert — jedes Nicht-Squad-Unit in ein Schiff
+
+Problem: MDC war als `unitType="ship"` registriert → fehlte in der „Attach existing vehicle"-Liste
+(nur Fahrzeuge). Lösung: Carrier (carrierUnitId) gilt jetzt für **ship + vehicle** (nicht squad).
+- Route `/units/:unitId/carrier`: `unitType in (vehicle, ship)`; Selbst-Carry geblockt.
+- `pages.ts`: Top-Level-unitRows versteckt jede Unit mit `carrierUnitId` (carried → genested);
+  Nested-Render zeigt jede Unit mit `carrierUnitId===ship` (Tag nach Typ Ship/Vehicle); Attach-Select
+  listet alle Nicht-Squad-Units außer sich selbst/schon-hier (Label „… (ship/vehicle[, move here])").
+  Damit kann die Perseus den MDC (ship-typed) aufnehmen.
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Action-Buttons-Align + „Attach existing vehicle" am Schiff
 
 - Layout: `mt-1` von Edit-Unit-/Seat-Setup-`<details>` entfernt → keine vertikale Versatz in der

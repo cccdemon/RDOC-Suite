@@ -678,7 +678,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // vehicle that is currently not assigned to a ship (orphan).
   const carrierShipUnits = activeUnits.filter((u) => u.unitType === "ship");
   const orphanVehicles = activeUnits.filter((u) => u.unitType === "vehicle" && !u.carrierUnitId);
-  const opVehicles = activeUnits.filter((u) => u.unitType === "vehicle");
   const pendingUnits = op.units.filter((unit) => unit.status === "pending");
   const acceptedUnits = op.units.filter((unit) => unit.status === "accepted");
   const activeSeats = activeUnits.flatMap((unit) => unit.seats.filter((seat) => seat.active));
@@ -926,7 +925,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   const unitRows = activeUnits.length
     ? activeUnits
-        .filter((u) => u.unitType !== "vehicle")
+        // Vehicles are shown nested or in the orphan list; any unit attached to a
+        // carrier ship (carrierUnitId set) nests under it, so hide it top-level.
+        .filter((u) => u.unitType !== "vehicle" && !u.carrierUnitId)
         .map((unit) => {
         const seats = unit.seats.filter((seat) => seat.active);
         const assigned = seats.filter((seat) => seat.userId).length;
@@ -1097,11 +1098,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ${seatTurretMap(unit)}
             <div class="opv2-seat-list">${unit.seats.map((seat) => seatRow(unit, seat))}</div>
             ${activeUnits
-              .filter((v) => v.unitType === "vehicle" && v.carrierUnitId === unit.id)
+              .filter((v) => v.carrierUnitId === unit.id)
               .map(
                 (v) => html`<div class="opv2-unit-vehicle">
                   <div class="opv2-unit-main">
-                    <strong>${unitName(v)}</strong> <span class="tag tag-cyan">Vehicle</span>
+                    <strong>${unitName(v)}</strong> <span class="tag tag-cyan">${v.unitType === "ship" ? "Ship" : "Vehicle"}</span>
                   </div>
                   <div class="opv2-seat-list">${v.seats.map((seat) => seatRow(v, seat))}</div>
                   ${canManage
@@ -1142,23 +1143,26 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   </form>
                 </details>`
               : safe("")}
-            ${canManage && unit.unitType === "ship" && opVehicles.some((v) => v.carrierUnitId !== unit.id)
-              ? html`<form method="post" class="inline" data-async title="Attach a vehicle already in the mission">
-                  <input type="hidden" name="_csrf" value="${csrf}" />
-                  ${returnFields("fleet")}
-                  <select
-                    onchange="this.form.action='${bp}/api/ops/${op.id}/units/'+this.value+'/carrier'; this.form.requestSubmit()"
-                  >
-                    <option value="" disabled selected hidden>Attach existing vehicle…</option>
-                    ${opVehicles
-                      .filter((v) => v.carrierUnitId !== unit.id)
-                      .map(
-                        (v) => html`<option value="${v.id}">${unitName(v)}${v.carrierUnitId ? " (move here)" : ""}</option>`,
+            ${(() => {
+              const attachable = activeUnits.filter(
+                (v) => v.unitType !== "squad" && v.id !== unit.id && v.carrierUnitId !== unit.id,
+              );
+              return canManage && unit.unitType === "ship" && attachable.length
+                ? html`<form method="post" class="inline" data-async title="Attach a ship/vehicle already in the mission">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    ${returnFields("fleet")}
+                    <select
+                      onchange="this.form.action='${bp}/api/ops/${op.id}/units/'+this.value+'/carrier'; this.form.requestSubmit()"
+                    >
+                      <option value="" disabled selected hidden>Attach existing unit…</option>
+                      ${attachable.map(
+                        (v) => html`<option value="${v.id}">${unitName(v)} (${v.unitType === "ship" ? "ship" : "vehicle"}${v.carrierUnitId ? ", move here" : ""})</option>`,
                       )}
-                  </select>
-                  <input type="hidden" name="carrierUnitId" value="${unit.id}" />
-                </form>`
-              : safe("")}
+                    </select>
+                    <input type="hidden" name="carrierUnitId" value="${unit.id}" />
+                  </form>`
+                : safe("");
+            })()}
             ${editUnit} ${seatSetup(unit)}
             </div>
           </div>

@@ -1864,10 +1864,14 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!ctx) return;
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       const veh = await prisma.fleetUnit.findFirst({
-        where: { id: req.params.unitId, operationId: req.params.id, unitType: "vehicle" },
+        where: { id: req.params.unitId, operationId: req.params.id, unitType: { in: ["vehicle", "ship"] } },
         select: { id: true },
       });
-      if (!veh) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Vehicle+not+found", "fleet"), 302);
+      if (!veh) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Unit+not+found", "fleet"), 302);
+      // A unit cannot carry itself.
+      if (req.params.unitId === ((req.body.carrierUnitId ?? "").trim() || null)) {
+        return reply.redirect(opReturnUrl(req.params.id, req.body, "error:A+unit+can't+carry+itself", "fleet"), 302);
+      }
       const carrierId = (req.body.carrierUnitId ?? "").trim() || null;
       if (carrierId) {
         const ship = await prisma.fleetUnit.findFirst({

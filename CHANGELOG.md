@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added - Attach an existing vehicle to a ship (2026-06-09)
+### Added - Attach any existing ship/vehicle to a carrier ship (2026-06-09)
 
-- A ship card now has an **"Attach existing vehicle…"** picker listing vehicles already in the mission, so e.g. the Perseus can take a vehicle that's already there (not only a brand-new one from the catalog). Also fixed the misaligned Add vehicle / Edit / Seat Setup buttons.
+- A ship card has an **"Attach existing unit…"** picker: any vehicle **or ship** already in the mission (e.g. an MDC registered as a ship) can be put inside a carrier ship like the Perseus — it then nests under that ship. Previously only catalog-new vehicles could be added and only "vehicle"-typed units were attachable. Also fixed the misaligned Add vehicle / Edit / Seat Setup buttons.
 
 ### Changed - Async edits + vehicle carrier assignment + manage polish (2026-06-09)
 
