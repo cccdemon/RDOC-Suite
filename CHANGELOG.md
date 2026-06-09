@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Attach an existing vehicle to a ship (2026-06-09)
+
+- A ship card now has an **"Attach existing vehicle…"** picker listing vehicles already in the mission, so e.g. the Perseus can take a vehicle that's already there (not only a brand-new one from the catalog). Also fixed the misaligned Add vehicle / Edit / Seat Setup buttons.
+
 ### Changed - Async edits + vehicle carrier assignment + manage polish (2026-06-09)
 
 - Editing a squad's **name or size**, **reassigning** a soldier, embedding a team, or moving a vehicle no longer reloads the whole page — these now submit asynchronously with a small ✓/✕ confirmation. (Moves show in the list after the next refresh.)

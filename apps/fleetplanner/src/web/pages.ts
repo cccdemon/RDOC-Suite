@@ -678,6 +678,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // vehicle that is currently not assigned to a ship (orphan).
   const carrierShipUnits = activeUnits.filter((u) => u.unitType === "ship");
   const orphanVehicles = activeUnits.filter((u) => u.unitType === "vehicle" && !u.carrierUnitId);
+  const opVehicles = activeUnits.filter((u) => u.unitType === "vehicle");
   const pendingUnits = op.units.filter((unit) => unit.status === "pending");
   const acceptedUnits = op.units.filter((unit) => unit.status === "accepted");
   const activeSeats = activeUnits.flatMap((unit) => unit.seats.filter((seat) => seat.active));
@@ -825,7 +826,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     const canConfigureSeats = !!(user && unit.captainId === user.id) || canManage;
     if (!canConfigureSeats) return safe("");
 
-    return html`<details class="opv2-edit-block mt-1">
+    return html`<details class="opv2-edit-block">
       <summary class="btn btn-sm btn-ghost">Seat Setup</summary>
       <form
         method="post"
@@ -974,7 +975,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             : safe("")}
         `;
         const editUnit = canEditUnit
-          ? html`<details class="opv2-edit-block mt-1">
+          ? html`<details class="opv2-edit-block">
               <summary class="btn btn-sm btn-ghost">Edit Unit</summary>
               <form
                 method="post"
@@ -1140,6 +1141,23 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     <button type="submit" class="btn btn-sm mt-1">Add vehicle</button>
                   </form>
                 </details>`
+              : safe("")}
+            ${canManage && unit.unitType === "ship" && opVehicles.some((v) => v.carrierUnitId !== unit.id)
+              ? html`<form method="post" class="inline" data-async title="Attach a vehicle already in the mission">
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  ${returnFields("fleet")}
+                  <select
+                    onchange="this.form.action='${bp}/api/ops/${op.id}/units/'+this.value+'/carrier'; this.form.requestSubmit()"
+                  >
+                    <option value="" disabled selected hidden>Attach existing vehicle…</option>
+                    ${opVehicles
+                      .filter((v) => v.carrierUnitId !== unit.id)
+                      .map(
+                        (v) => html`<option value="${v.id}">${unitName(v)}${v.carrierUnitId ? " (move here)" : ""}</option>`,
+                      )}
+                  </select>
+                  <input type="hidden" name="carrierUnitId" value="${unit.id}" />
+                </form>`
               : safe("")}
             ${editUnit} ${seatSetup(unit)}
             </div>

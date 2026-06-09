@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Action-Buttons-Align + „Attach existing vehicle" am Schiff
+
+- Layout: `mt-1` von Edit-Unit-/Seat-Setup-`<details>` entfernt → keine vertikale Versatz in der
+  Action-Flex-Row (sah „seltsam" aus).
+- Schiff-Card: neuer „Attach existing vehicle…"-Select (alle Op-Fahrzeuge, die nicht schon auf diesem
+  Schiff sind; „(move here)" wenn woanders zugewiesen). onchange setzt action auf
+  `/units/<vehicleId>/carrier` + hidden carrierUnitId=Schiff, async. Damit kann Perseus ein bereits in
+  der Mission vorhandenes Fahrzeug bekommen (vorher nur „Add" = neu aus Katalog).
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Async-Submits + Vehicle-Carrier-Zuordnung + UI-Politur
 
 - **Async (kein Full-Reload)**: generisches `form[data-async]`-Script (fetch urlencoded, preventDefault,
