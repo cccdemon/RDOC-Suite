@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Top navigation reordered; Bridge removed; Profile moved to the username (2026-06-09)
+
+- Nav order is now: Operations · Servers · Feedback · Admin (superadmin only) · Changelog · Was ist das? · How to · Unsigned Binary · Roadmap.
+- The **Bridge** link is removed from the nav (the admin/bridge pages stay reachable by direct URL).
+- **Profile** is no longer a separate nav item — your **username** in the top-right is now the link to your profile (next to your role, before Logout).
+
 ## [fleetplanner 0.3.5] - 2026-06-09
 
 ### Added - Formations (Verbände) + embed CQB teams into ships (2026-06-09)

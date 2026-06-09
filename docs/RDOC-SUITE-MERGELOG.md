@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Top-Nav umsortiert + Bridge raus + Profile zum Username
+
+`render.ts` Nav: Reihenfolge Operations · Servers · Feedback · Admin(superadmin) · Changelog · Was ist das? ·
+How to · Unsigned Binary · Roadmap. „Bridge"-Link entfernt (Routes bleiben per Direkt-URL). „Profile" aus
+Hauptnav raus → Username ist jetzt Link auf /profile (neben Rolle, vor Logout). Ungenutzten
+`bridgeConfigured`-Import entfernt. Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Signup-Banner — Multi-Seat-Detail (Schiff + Position + CQB-Team)
 
 `pages.ts signupSummaryBanner`: generisches „seat claimed" → pro gehaltenem Sitz „seat: <Position> on

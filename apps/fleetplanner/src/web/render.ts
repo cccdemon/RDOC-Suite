@@ -1,8 +1,6 @@
 // Tagged-template HTML renderer — no framework, no EJS, no Handlebars.
 // Use html`...${expr}...` for auto-escaping. Wrap already-safe HTML in safe().
 
-import { bridgeConfigured } from "../services/bridge.js";
-
 export function escape(value: unknown): string {
   if (value === null || value === undefined) return "";
   return String(value)
@@ -124,17 +122,13 @@ export function layout(opts: LayoutOptions): SafeHtml {
     <span class="nav-brand">RDOC // FLEETPLANNER</span>
     <a href="${bp}/">Operations</a>
     ${u ? html`<a href="${bp}/guilds">Servers</a>` : ""}
+    <a href="${bp}/feedback">Feedback</a>
+    ${u && u.role === "superadmin" ? html`<a href="${bp}/admin">Admin</a>` : ""}
+    <a href="${bp}/changelog">Changelog</a>
     <a href="${bp}/was-ist">Was ist das?</a>
     <a href="${bp}/how-to">How to</a>
     <a href="${bp}/why-unsigned">Unsigned Binary</a>
     <a href="${bp}/roadmap">Roadmap</a>
-    <a href="${bp}/changelog">Changelog</a>
-    <a href="${bp}/feedback">Feedback</a>
-    ${u ? html`<a href="${bp}/profile">Profile</a>` : ""}
-    ${u && u.role === "superadmin" ? html`<a href="${bp}/admin">Admin</a>` : ""}
-    ${u && u.role === "superadmin" && bridgeConfigured()
-      ? html`<a href="${bp}/admin/bridge">Bridge</a>`
-      : ""}
     <span class="nav-spacer"></span>
     ${opts.navSlot ?? ""}
     <span class="credit-mark">
@@ -147,7 +141,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
     ${u
       ? html` <span class="nav-user">
             <span class="tag tag-role">${ROLE_LABEL[u.role] ?? u.role}</span>
-            <span class="nav-username">${u.username}</span>
+            <a href="${bp}/profile" class="nav-username" title="Profile">${u.username}</a>
           </span>
           <form method="post" action="${bp}/auth/logout" class="inline">
             <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
