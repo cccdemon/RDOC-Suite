@@ -1193,7 +1193,61 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       </div>`
     : safe("");
 
+  // Full participant roster: everyone with their position (multi-seat = multiple
+  // rows). Operator-facing single-glance "who is where".
+  type PRow = { name: string; where: string; tone: "good" | "warn" };
+  const participantRows: PRow[] = [];
+  for (const u of acceptedUnits) {
+    const uname = u.squadName || u.ship?.name || "Unit";
+    for (const s of u.seats) {
+      if (s.active && s.userId) {
+        participantRows.push({
+          name: nm((s as { user?: { username?: string } }).user?.username),
+          where: `${uname} — ${s.label}`,
+          tone: "good",
+        });
+      }
+    }
+  }
+  for (const sg of op.cqbSignups ?? []) {
+    if (sg.assignedGroupId) {
+      const grp = op.groups.find((g) => g.id === sg.assignedGroupId);
+      const label = grp?.kind === "fighter_squad" ? "Fighter wing" : "CQB team";
+      participantRows.push({ name: nm(sg.user.username), where: `${label} — ${grp?.name ?? "?"}`, tone: "good" });
+    } else {
+      participantRows.push({ name: nm(sg.user.username), where: "CQB pool — awaiting assignment", tone: "warn" });
+    }
+  }
+  for (const r of op.crewRequests) {
+    participantRows.push({ name: nm(r.user.username), where: "Requested placement", tone: "warn" });
+  }
+  for (const u of op.units.filter((x) => x.status === "pending")) {
+    participantRows.push({
+      name: nm(u.captain.username),
+      where: `${u.ship?.name || u.squadName || "Ship"} — pending review`,
+      tone: "warn",
+    });
+  }
+  participantRows.sort((a, b) => a.name.localeCompare(b.name));
   const crewPanel = html`<div class="opv2-grid">
+    <section class="opv2-panel">
+      <div class="opv2-panel-title">Participants (${participantRows.length})</div>
+      ${participantRows.length
+        ? html`<table class="user-table" style="width:100%">
+            <thead>
+              <tr><th>Member</th><th>Position</th></tr>
+            </thead>
+            <tbody>
+              ${participantRows.map(
+                (r) => html`<tr>
+                  <td><strong>${r.name}</strong></td>
+                  <td><span class="tag ${r.tone === "good" ? "tag-green" : "tag-gold"}">${r.where}</span></td>
+                </tr>`,
+              )}
+            </tbody>
+          </table>`
+        : html`<p class="text-dim text-sm">No participants yet.</p>`}
+    </section>
     <section class="opv2-panel">
       <div class="opv2-panel-title">Need Assignment</div>
       ${op.crewRequests.length
@@ -1982,9 +2036,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                               ${returnFields("fleet")}
                               <input type="hidden" name="signupId" value="${m.id}" />
                               <select name="groupId" onchange="this.form.submit()" title="Reassign soldier">
+                                <option value="" disabled selected hidden>Reassign to…</option>
                                 <option value="">— pool —</option>
                                 ${cqbSquads.map(
-                                  (t) => html`<option value="${t.id}" ${t.id === g.id ? safe("selected") : ""}>${t.name}</option>`,
+                                  (t) => html`<option value="${t.id}">${t.name}</option>`,
                                 )}
                               </select>
                             </form>
@@ -2707,7 +2762,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const tabDefs = [
     { id: "overview", label: "Overview" },
     { id: "fleet", label: "Fleet" },
-    { id: "crew", label: "Crew" },
+    { id: "crew", label: "Participants" },
     { id: "voice", label: "Voice" },
     // "Voice Access" (commanders) tab disabled while voice is reworked.
     ...(user ? [{ id: "admin", label: "Admin" }] : []),

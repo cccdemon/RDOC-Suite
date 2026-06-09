@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Operator „Participants"-Tab (volle Teilnehmerliste) + Reassign-to-Header
+
+- Crew-Tab → „Participants": `participantRows` (Name + Position) aus Sitzen (Schiff — Sitz), CQB/Fighter-
+  Team-Mitgliedern (Team-Name), CQB-Pool, crew-requests (Requested placement), pending Ship-Captains.
+  Multi-Seat = mehrere Zeilen, alphabetisch. Tabelle oben, bestehende Need-Assignment/Crew-Action drunter.
+  Tab-Label „Crew" → „Participants".
+- CQB-Reassign-Dropdown: Placeholder „Reassign to…" (disabled/hidden) statt vorausgewähltem aktuellen
+  Team → schlüssiger.
+- OFFEN/Frage: „Reassign secondary position" — Bedeutung unklar (CqbSignup hat nur eine assignedGroup),
+  vor Bau geklärt.
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Schiff-Bilder in Accepted Units + Fahrzeug-Limit weg + CQB-Reassign
 
 Drei User-Wünsche:

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Operator "Participants" tab lists everyone with their position (2026-06-09)
+
+- The operator **Crew** tab is now **Participants**: a single list of every participant with their position (ship + seat, CQB/fighter team, CQB pool, requested placement, or pending ship offer). Multi-seated members appear once per seat.
+- The CQB reassign dropdown now starts with a clear **"Reassign to…"** placeholder.
+
 ### Added - Ship thumbnails in Accepted Units, free vehicle carrying, CQB reassign (2026-06-09)
 
 - Accepted ships in the roster now show their **silhouette thumbnail** (same image as the wizard).
