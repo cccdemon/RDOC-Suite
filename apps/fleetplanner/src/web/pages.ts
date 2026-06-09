@@ -4583,6 +4583,12 @@ export function opJoinPage(opts: {
           id: v.id,
           name: v.ship?.name || v.squadName || "Unit",
           kind: v.unitType === "ship" ? "Ship" : "Vehicle",
+          group:
+            v.unitType === "vehicle"
+              ? "vehicle"
+              : shipClass(v.ship) === "Fighter"
+                ? "fighter"
+                : "ship",
           isMine: !!myId && v.captainId === myId,
           seats: seatView(v),
         })),
@@ -4939,7 +4945,9 @@ export function opJoinPage(opts: {
       .roster-ship-sil { height: 46px; width: 110px; object-fit: contain; opacity: .92; flex: 0 0 auto; }
       .roster-vehicle { margin: .4rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--cyan-28, rgba(53,208,224,.28)); }
       .roster-embarked { margin: .5rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--gold, #e0b84a); }
-      .roster-embarked-h { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--dim, #7a8a96); font-family: var(--font-mono); margin: .2rem 0 .35rem; }
+      .roster-embarked-h { font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--gold, #e0b84a); font-family: var(--font-mono); margin: .3rem 0 .45rem; }
+      .roster-nest { margin: .5rem 0 .2rem 1.1rem; padding-left: .7rem; border-left: 2px solid var(--cyan-28, rgba(53,208,224,.28)); }
+      .roster-nest-h { font-size: .85rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--cyan, #35d0e0); font-family: var(--font-mono); margin: .3rem 0 .45rem; }
       .roster-veh-icon { color: var(--cyan, #35d0e0); }
       .join-seat { display: flex; justify-content: space-between; gap: .75rem; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.88rem; }
       .join-seat .free { color: var(--green, #3ad07a); font-weight: 600; white-space: nowrap; }
@@ -5510,19 +5518,38 @@ export function opJoinPage(opts: {
                     >
                   </div>
                   <div class="roster-seats">${u.seats.map((s) => seatRowHtml(s, u.isMyUnit))}</div>
-                  ${u.vehicles.map(
-                    (v) => html`<div class="roster-vehicle">
+                  ${(() => {
+                    const nestUnit = (
+                      v: (typeof u.vehicles)[number],
+                      withTeams: boolean,
+                    ) => html`<div class="roster-vehicle">
                       <div class="roster-unit-head">
                         <span class="roster-veh-icon">⬓</span> <strong>${v.name}</strong>
                         <span class="tag tag-dim">${v.kind}</span>
                       </div>
                       <div class="roster-seats">${v.seats.map((s) => seatRowHtml(s, false))}</div>
+                      ${withTeams && embeddedTeamsFor(v.id).length
+                        ? html`<div class="roster-embarked">
+                            <div class="roster-embarked-h">Fireteams</div>
+                            ${embeddedTeamsFor(v.id).map((t) => teamSlotUnit(t, "Claim", "Soldier"))}
+                          </div>`
+                        : safe("")}
                       ${v.isMine ? withdrawShipForm(v.id) : safe("")}
-                    </div>`,
-                  )}
+                    </div>`;
+                    const sect = (label: string, grp: string, withTeams: boolean) => {
+                      const items = u.vehicles.filter((v) => v.group === grp);
+                      return items.length
+                        ? html`<div class="roster-nest">
+                            <div class="roster-nest-h">${label}</div>
+                            ${items.map((v) => nestUnit(v, withTeams))}
+                          </div>`
+                        : safe("");
+                    };
+                    return html`${sect("Attached Vehicles", "vehicle", true)}${sect("Attached Fighters", "fighter", false)}${sect("Attached Ships", "ship", false)}`;
+                  })()}
                   ${embeddedTeamsFor(u.id).length
                     ? html`<div class="roster-embarked">
-                        <div class="roster-embarked-h">Embarked CQB</div>
+                        <div class="roster-embarked-h">Fireteams</div>
                         ${embeddedTeamsFor(u.id).map((t) => teamSlotUnit(t, "Claim", "Soldier"))}
                       </div>`
                     : safe("")}

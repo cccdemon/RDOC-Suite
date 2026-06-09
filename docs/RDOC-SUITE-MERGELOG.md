@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Join-Roster — gruppierte gelabelte Verschachtelung + größere Labels
+
+`opJoinPage` Accepted-Units-Roster: carried Units nicht mehr flach, sondern gruppiert mit Sub-Headern
+„Attached Vehicles" / „Attached Fighters" / „Attached Ships" (Gruppierung via shipClass:
+vehicle/fighter/ship). Embarked-CQB-Sektion umbenannt zu „Fireteams" + größeres, fettes goldenes Label
+(`.roster-embarked-h` .68→.85rem). Fahrzeuge zeigen ihre eigenen „Fireteams" (embeddedTeamsFor(v.id))
+verschachtelt. Neue `.roster-nest`/`.roster-nest-h` (cyan). Macht klar sichtbar, dass MDC + Fireteams der
+Ironclad zugeordnet sind. Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Vehicle-Klasse erzwingt vehicle-Unit + Join-Nesting + MDC-Daten-Fix
 
 - `units.ts registerUnit`: Ship früh laden; wenn Katalog-`size="vehicle"` → Unit IMMER `unitType=vehicle`

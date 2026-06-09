@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Clearer nesting of attached units on the join page (2026-06-09)
+
+- Units carried by a ship are now grouped under labelled sub-sections — **Attached Vehicles**, **Attached Fighters**, **Attached Ships** — and a ship's (or vehicle's) CQB teams show under a bigger **Fireteams** heading, so it's obvious what belongs to which ship (e.g. the MDC and fireteams under the Ironclad).
+
 ### Fixed - Ground vehicles always register as vehicles; carried units show on the join page (2026-06-09)
 
 - Anything that is a **ground vehicle** in the catalog (e.g. MDC, MTC, Mule) is now always created as a *vehicle* unit, even via "Register Unit" — it no longer ends up as a "ship". Vehicles may also be registered without a ship and assigned later.
