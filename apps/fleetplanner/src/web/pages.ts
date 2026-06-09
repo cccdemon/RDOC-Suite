@@ -682,9 +682,20 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     return { total: seats.length, filled, open: seats.length - filled };
   };
   const shipUnits = acceptedUnits.filter((u) => u.unitType === "ship");
-  const fpsUnits = acceptedUnits.filter((u) => u.unitType !== "ship");
   const shipSeatStats = seatStats(shipUnits);
-  const fpsSeatStats = seatStats(fpsUnits);
+  // FPS strength now lives in CQB teams (CompositionGroup kind="squad") with
+  // CqbSignup members — NOT legacy FleetUnit squads (which the new model never
+  // creates, so the old seatStats was always 0/0).
+  const cqbTeamGroups = op.groups.filter((g) => g.kind === "squad");
+  const cqbTeamIds = new Set(cqbTeamGroups.map((g) => g.id));
+  const fpsTotal = cqbTeamGroups.reduce(
+    (a, g) => a + ((g as { targetSize?: number | null }).targetSize ?? 0),
+    0,
+  );
+  const fpsFilled = (op.cqbSignups ?? []).filter(
+    (s) => s.assignedGroupId && cqbTeamIds.has(s.assignedGroupId),
+  ).length;
+  const fpsSeatStats = { total: fpsTotal, filled: fpsFilled, open: Math.max(0, fpsTotal - fpsFilled) };
   const crewWaiting = op.crewRequests.length;
   const compositionTotal = op.groups.reduce(
     (sum, group) =>
@@ -2760,9 +2771,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           `${shipSeatStats.filled}/${shipSeatStats.total}`,
           shipSeatStats.open ? "warn" : "good",
         )}
-        ${metric("FPS Teams", fpsUnits.length)}
+        ${metric("CQB Teams", cqbTeamGroups.length)}
         ${metric(
-          "FPS Seats",
+          "CQB Slots",
           `${fpsSeatStats.filled}/${fpsSeatStats.total}`,
           fpsSeatStats.open ? "warn" : "good",
         )}
@@ -4541,13 +4552,17 @@ export function opJoinPage(opts: {
           ✓ You're signed up — ${signupParts.join(" · ")}.
         </div>`
       : safe("");
-  // Headcount for the top fact row. Bestätigt (confirmed) = people actually
-  // holding a seat; Gemeldet (signed up) = everyone who signed up in any form
-  // (seat, crew request, CQB, or an own ship offer awaiting review).
+  // Headcount for the top fact row. Confirmed = people who CLAIMED a spot:
+  // a ship/vehicle seat OR a slot in a CQB/fighter team (assignedGroupId set).
+  // Signed up = everyone who registered in any form, incl. the still-unassigned
+  // CQB pool, crew requests and own ship offers awaiting review.
   const seatedUserIds = acceptedUnits.flatMap((u) =>
     u.seats.filter((s) => s.active && s.userId).map((s) => s.userId as string),
   );
-  const confirmedCount = new Set(seatedUserIds).size;
+  const teamMemberUserIds = (op.cqbSignups ?? [])
+    .filter((s) => s.assignedGroupId)
+    .map((s) => s.userId);
+  const confirmedCount = new Set<string>([...seatedUserIds, ...teamMemberUserIds]).size;
   const signedUpCount = new Set<string>([
     ...seatedUserIds,
     ...op.crewRequests.map((r) => r.user.id),

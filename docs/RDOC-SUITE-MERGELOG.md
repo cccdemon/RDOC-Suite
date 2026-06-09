@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Bestätigt-Count + FPS-Metriken aufs CQB-Team-Modell
+
+Zwei Zähl-Bugs (beide: alte FleetUnit-squad-Logik, im CQB-Team-Modell leer/falsch):
+- `pages.ts opJoinPage` „Gemeldet/Bestätigt": Bestätigt zählte nur Schiffssitz-Inhaber. Jetzt auch
+  CQB/Fighter-Team-Mitglieder (`CqbSignup.assignedGroupId` gesetzt = Slot geclaimed = bestätigt).
+  Pool-CQB (kein Team) bleibt nur „Gemeldet" bis Operator zuteilt.
+- `pages.ts opDetailPageV2` Metriken: „FPS Teams" zählte non-ship FleetUnits (=0), „FPS Seats" deren Sitze
+  (0/0). Ersetzt durch „CQB Teams" = CompositionGroup(kind=squad).length und „CQB Slots" =
+  members/Σ targetSize. `fpsUnits` raus.
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Neue Seite „Star Citizen Tools" (OG-Karten)
 
 `services/scTools.ts`: 8 Community-Tool-Links (SC Deutsch INI, SCMDB, Erkul, SPViewer, UEX, Cornerstone

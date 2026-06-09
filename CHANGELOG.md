@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Confirmed headcount + FPS/CQB metrics count team members (2026-06-09)
+
+- The **Gemeldet / Bestätigt** counter now treats a player who claimed a slot in a CQB/fighter **team** as confirmed (not only ship-seat holders). Players in the unassigned CQB pool stay "signed up" until the operator places them.
+- The operator metrics **"FPS Teams" / "FPS Seats"** (which read legacy squad units and always showed 0 / 0) are replaced by **"CQB Teams"** (number of teams) and **"CQB Slots"** (filled / total slots across teams).
+
 ### Added - "Star Citizen Tools" page (community links as OG cards) (2026-06-09)
 
 - New **SC Tools** page (nav link after Roadmap) listing useful community tools (SC Deutsch INI, SCMDB, Erkul, SPViewer, UEX, Cornerstone Finder, SC Cargo, SC Deutsch Launcher) as cards. Each card uses the site's OpenGraph image/title/description (fetched once, cached 24h), with a curated fallback when a site has no OG.
