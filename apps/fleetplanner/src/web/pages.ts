@@ -4520,10 +4520,20 @@ export function opJoinPage(opts: {
   // to the bottom on mobile — so a signed-up user (especially CQB-only, which
   // the assistant card never hinted at) otherwise saw no confirmation up top.
   const signupParts: string[] = [];
-  if (hasSeat) signupParts.push("seat claimed");
+  // Each claimed seat with its ship/vehicle + position (a user can be multi-seated).
+  const mySeatList = acceptedUnits.flatMap((u) =>
+    u.seats
+      .filter((s) => s.active && s.userId === myId)
+      .map((s) => `${s.label} on ${u.squadName || u.ship?.name || "Unit"}`),
+  );
+  for (const seat of mySeatList) signupParts.push(`seat: ${seat}`);
   if (myPendingUnits.length)
     signupParts.push(myPendingUnits.length === 1 ? "1 ship pending review" : `${myPendingUnits.length} ships pending review`);
-  if (myCqb) signupParts.push("signed up as CQB soldier");
+  if (myCqb) {
+    const tgid = (op.cqbSignups ?? []).find((s) => s.userId === myId)?.assignedGroupId ?? null;
+    const tname = tgid ? (op.groups.find((g) => g.id === tgid)?.name ?? null) : null;
+    signupParts.push(tname ? `CQB soldier in ${tname}` : "signed up as CQB soldier");
+  }
   if (hasReq && !hasSeat) signupParts.push("awaiting operator placement");
   const signupSummaryBanner =
     signedUp && signupParts.length

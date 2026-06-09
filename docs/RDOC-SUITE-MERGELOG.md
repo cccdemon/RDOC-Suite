@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Signup-Banner — Multi-Seat-Detail (Schiff + Position + CQB-Team)
+
+`pages.ts signupSummaryBanner`: generisches „seat claimed" → pro gehaltenem Sitz „seat: <Position> on
+<Schiff/Fahrzeug>" (Multi-Seat: alle gelistet), CQB → „CQB soldier in <Team>". Aus `acceptedUnits`-Sitzen
+(userId==myId) + cqbSignup-assignedGroup. Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Join-Seite — eingebettete CQB-Teams unter Trägerschiff (Player-View)
 
 User-Entscheidung: A (genested) + nur unter Schiff. Eingebettete CQB-Teams (`carrierUnitId` gesetzt)
