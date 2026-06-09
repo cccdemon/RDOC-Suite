@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: CQB-Team „Assign"-Picker (wie Sitz-Assign)
+
+CQB-Teams kriegen denselben Operator-„Assign" wie Schiffssitze: Select aus `opts.assignableUsers`
+(alle zuweisbaren User), onchange → `POST /cqb/place` (placeInSquad, Operator-Override, async). Damit
+kann der Operator beliebige Spieler direkt einem (auch leeren) Team hinzufügen. Nur fleetplanner.
+
 ## Queued / Planned Step - 2026-06-09: Participants-Liste — pro Member eine Zeile (Tags gruppiert)
 
 `opDetailPageV2` Participants: war eine Zeile pro Zuweisung (Doppel-Namen bei Multi-Position). Jetzt

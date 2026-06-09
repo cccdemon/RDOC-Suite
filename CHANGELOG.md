@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Assign any player to a CQB team (2026-06-09)
+
+- CQB teams now have the same operator **Assign…** picker as ship seats — pick any assignable user to add them straight into a (even empty) team.
+
 ### Changed - Participants list groups all positions per member (2026-06-09)
 
 - The operator Participants list now shows **one row per member** with all their positions as tags side by side, instead of a duplicate row per seat/team.
