@@ -121,6 +121,29 @@ export async function autoBundle(operationId: string, size: number): Promise<num
   return created;
 }
 
+/**
+ * Operator: place a "let the operator place me" crew member into a CQB team.
+ * Creates/updates their CqbSignup and clears their pending crew request.
+ * Operator override — no capacity gate.
+ */
+export async function placeInSquad(
+  operationId: string,
+  userId: string,
+  groupId: string,
+): Promise<void> {
+  const group = await prisma.compositionGroup.findFirst({
+    where: { id: groupId, operationId, kind: "squad" },
+    select: { id: true },
+  });
+  if (!group) return;
+  await prisma.cqbSignup.upsert({
+    where: { operationId_userId: { operationId, userId } },
+    create: { operationId, userId, assignedGroupId: groupId, status: "accepted" },
+    update: { assignedGroupId: groupId, status: "accepted" },
+  });
+  await prisma.crewAssignmentRequest.deleteMany({ where: { operationId, userId } });
+}
+
 /** Operator: rename a squad ("CQB Team N" is only the default). */
 export async function renameSquad(
   operationId: string,

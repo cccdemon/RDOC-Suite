@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Place "let the operator place me" crew into teams or seats (2026-06-09)
+
+- In the operator's Need Assignment list, each "let the operator place me" member now has **Place in team…** (CQB squad) and **Place in seat…** (open ship seat) pickers, so they can actually be assigned (their pending request clears once placed).
+
 ### Changed - Clearer nesting of attached units on the join page (2026-06-09)
 
 - Units carried by a ship are now grouped under labelled sub-sections — **Attached Vehicles**, **Attached Fighters**, **Attached Ships** — and a ship's (or vehicle's) CQB teams show under a bigger **Fireteams** heading, so it's obvious what belongs to which ship (e.g. the MDC and fireteams under the Ironclad).

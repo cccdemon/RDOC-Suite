@@ -21,6 +21,7 @@ import {
   unbundle as unbundleCqb,
   reassignSignup as reassignCqbSignup,
   renameSquad as renameCqbSquad,
+  placeInSquad as placeCrewInSquad,
   setSquadSize as setCqbSquadSize,
   joinSquad as joinCqbSquad,
   setSquadCarrier as setCqbSquadCarrier,
@@ -1444,6 +1445,20 @@ export async function apiRoutes(app: FastifyInstance) {
     },
   );
 
+  // Operator: place a "let the operator place me" crew member into a CQB team.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/cqb/place",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const userId = (req.body.userId ?? "").trim();
+      const groupId = (req.body.groupId ?? "").trim();
+      if (userId && groupId) await placeCrewInSquad(req.params.id, userId, groupId);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Member+placed.", "fleet"), 302);
+    },
+  );
+
   // Operator: rename a CQB squad.
   app.post<{ Params: { id: string; groupId: string }; Body: Record<string, string> }>(
     "/api/ops/:id/cqb/squads/:groupId/rename",
@@ -1478,7 +1493,9 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!seat) return reply.redirect(opReturnUrl(req.params.id, req.body, "error:Seat+not+found", "fleet"), 302);
       try {
         await assignSeat(seatId, userId);
-        return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Secondary+seat+assigned.", "fleet"), 302);
+        // If this user was a "place me" crew request, they're now placed.
+        await prisma.crewAssignmentRequest.deleteMany({ where: { operationId: req.params.id, userId } });
+        return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Seat+assigned.", "fleet"), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed to assign seat";
         return reply.redirect(opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "fleet"), 302);

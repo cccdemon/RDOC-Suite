@@ -1272,6 +1272,13 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     });
   }
   participantRows.sort((a, b) => a.name.localeCompare(b.name));
+  // For placing "let the operator place me" crew: CQB teams + open ship seats.
+  const placeSquads = op.groups.filter((g) => g.kind === "squad");
+  const placeOpenSeats = activeUnits.flatMap((u) =>
+    u.seats
+      .filter((s) => s.active && !s.userId)
+      .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || "Unit"} — ${s.label}` })),
+  );
   const crewPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
       <div class="opv2-panel-title">Participants (${participantRows.length})</div>
@@ -1296,22 +1303,46 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       ${op.crewRequests.length
         ? op.crewRequests.map(
             (request) =>
-              html`<div class="opv2-row">
-                <div>
+              html`<div class="opv2-row" style="flex-wrap:wrap;gap:.4rem">
+                <div style="flex:1;min-width:9rem">
                   <strong>${nm(request.user.username)}</strong>
-                  <span>${request.note || "No note"}</span>
+                  <span class="text-dim text-sm">${request.note || "No note"}</span>
                 </div>
                 ${isLeader
-                  ? html`<form
-                      method="post"
-                      action="${bp}/api/ops/${op.id}/crew-requests/remove"
-                      class="inline"
-                    >
-                      <input type="hidden" name="_csrf" value="${csrf}" />
-                      <input type="hidden" name="userId" value="${request.user.id}" />
-                      ${returnFields("crew")}
-                      <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
-                    </form>`
+                  ? html`<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+                      ${placeSquads.length
+                        ? html`<form method="post" action="${bp}/api/ops/${op.id}/cqb/place" class="inline" data-async title="Place into a CQB team">
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            ${returnFields("crew")}
+                            <input type="hidden" name="userId" value="${request.user.id}" />
+                            <select name="groupId" onchange="this.form.requestSubmit()">
+                              <option value="" disabled selected hidden>Place in team…</option>
+                              ${placeSquads.map((t) => html`<option value="${t.id}">${t.name}</option>`)}
+                            </select>
+                          </form>`
+                        : safe("")}
+                      ${placeOpenSeats.length
+                        ? html`<form method="post" action="${bp}/api/ops/${op.id}/seats/assign" class="inline" data-async title="Place into a ship seat">
+                            <input type="hidden" name="_csrf" value="${csrf}" />
+                            ${returnFields("crew")}
+                            <input type="hidden" name="userId" value="${request.user.id}" />
+                            <select name="seatId" onchange="this.form.requestSubmit()">
+                              <option value="" disabled selected hidden>Place in seat…</option>
+                              ${placeOpenSeats.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
+                            </select>
+                          </form>`
+                        : safe("")}
+                      <form
+                        method="post"
+                        action="${bp}/api/ops/${op.id}/crew-requests/remove"
+                        class="inline"
+                      >
+                        <input type="hidden" name="_csrf" value="${csrf}" />
+                        <input type="hidden" name="userId" value="${request.user.id}" />
+                        ${returnFields("crew")}
+                        <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
+                      </form>
+                    </div>`
                   : safe("")}
               </div>`,
           )

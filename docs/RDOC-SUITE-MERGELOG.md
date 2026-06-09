@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: „Let operator place me"-Crew zuweisbar machen
+
+Crew-Requests (place me) konnten nicht in Teams/Sitze platziert werden (nur Remove). Jetzt:
+- `cqb.placeInSquad(op,user,group)`: upsert CqbSignup(accepted) + löscht crewRequest (Operator-Override,
+  keine Kapazitätssperre). Route `POST /cqb/place`.
+- `/seats/assign`: nach assignSeat löscht es den crewRequest des Users (platziert).
+- `pages.ts` Need-Assignment-Panel: pro Request zwei async-Selects „Place in team…" (CQB-Teams) +
+  „Place in seat…" (offene Sitze) neben Remove.
+Nur fleetplanner, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: Join-Roster — gruppierte gelabelte Verschachtelung + größere Labels
 
 `opJoinPage` Accepted-Units-Roster: carried Units nicht mehr flach, sondern gruppiert mit Sub-Headern
