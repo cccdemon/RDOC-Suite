@@ -222,7 +222,8 @@ const CSS = `
   --bg2:       #090f18;
   --bg3:       #0e1926;
   --text:      #ccdde8;
-  --dim:       rgba(200,220,232,0.45);
+  /* Solid (not alpha) so contrast stays readable over tinted/blue panels too. */
+  --dim:       #9fb1c2;
   --cyan:      #00d4ff;
   --cyan-08:   rgba(0,212,255,0.08);
   --cyan-18:   rgba(0,212,255,0.18);
@@ -500,7 +501,7 @@ a:hover { color: #fff; }
 /* Participant join CTA (FR-P1 Phase 2 — mobile/join focus). */
 .opv2-cta { margin: 0 0 1rem; padding: 0.95rem 1.05rem; border: 1px solid var(--cyan); border-radius: 10px; background: rgba(53, 208, 224, 0.06); }
 .opv2-cta.done { border-color: var(--green, #3ad07a); background: rgba(58, 208, 122, 0.07); color: var(--green, #3ad07a); font-weight: 600; }
-.opv2-cta.closed { border-color: rgba(255, 255, 255, 0.14); background: transparent; color: var(--text-dim, #7a8a96); }
+.opv2-cta.closed { border-color: rgba(255, 255, 255, 0.14); background: transparent; color: var(--dim); }
 .opv2-cta-h { font-weight: 700; letter-spacing: 0.5px; margin-bottom: 0.6rem; }
 .opv2-cta-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
 @media (max-width: 680px) {

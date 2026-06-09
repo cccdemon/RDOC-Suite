@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Better readability of secondary ("dim") text (2026-06-09)
+
+- The dim/secondary text colour is now a solid lighter blue-grey instead of a 45%-opacity overlay, so subtitles, meta and hints stay readable on tinted/blue panels (not just the plain dark background).
+
 ### Added - Secondary ship seat for CQB members, squad rename, prominent re-join CTA (2026-06-09)
 
 - Operators can give a CQB soldier a **secondary position**: a per-member "Reassign secondary position…" dropdown assigns them an open ship seat (in addition to their team).

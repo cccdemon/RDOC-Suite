@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-09: Lesbarkeit — `--dim` solide statt Alpha
+
+Graue Schrift auf (blauem/getöntem) Grund schlecht lesbar. `render.ts` `--dim`
+`rgba(200,220,232,0.45)` → solid `#9fb1c2` (Alpha blendet über getönten Flächen schlechter; solide
+Farbe = konstanter Kontrast, ~AA). Wirkt global über `.text-dim` + alle `var(--dim)`. `.opv2-cta.closed`
+`var(--text-dim,#7a8a96)` → `var(--dim)`. Nur fleetplanner CSS, kein Schema.
+
 ## Queued / Planned Step - 2026-06-09: CQB secondary-seat + Team-Rename + Gold-CTA Assistent
 
 - **Secondary position**: pro CQB-Member zweites Dropdown „Reassign secondary position…" (offene
