@@ -2310,11 +2310,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         name="size"
                         min="1"
                         max="24"
-                        placeholder="Size"
-                        title="Target squad size (optional — lets players join until full)"
+                        placeholder="${t("op.size")}"
+                        title="${t("op.sizeOptTitle")}"
                         style="width:72px"
                       />
-                      <button type="submit" class="btn btn-sm btn-green">Create squad from selected</button>
+                      <button type="submit" class="btn btn-sm btn-green">${t("op.createSquadSelected")}</button>
                     </div>
                   </form>
                   <form
@@ -2325,12 +2325,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   >
                     <input type="hidden" name="_csrf" value="${csrf}" />
                     ${returnFields("fleet")}
-                    <span class="text-dim text-sm">or auto-bundle into squads of</span>
+                    <span class="text-dim text-sm">${t("op.autoBundleInto")}</span>
                     <input type="number" name="size" min="2" max="8" value="4" style="width:64px" />
-                    <button type="submit" class="btn btn-sm">Auto-bundle</button>
+                    <button type="submit" class="btn btn-sm">${t("op.autoBundle")}</button>
                   </form>`
               : html`<p class="text-dim text-sm mt-1">
-                  ${String(cqbPool.length)} soldier(s) waiting to be assigned to a squad.
+                  ${t("op.soldiersWaiting", { n: String(cqbPool.length) })}
                 </p>`
             : safe("")}
           ${canManage && cqbSquads.length && cqbPool.length
@@ -2411,43 +2411,43 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   }));
   const formationsPanel = canManage || formations.length
     ? html`<section class="opv2-panel">
-        <div class="opv2-panel-title">Formations (Verbände)${helpIcon("Fasse mehrere akzeptierte Schiffe zu einem benannten Verband zusammen (z.B. 'Task Force Alpha'). Reine Organisation/Übersicht — ändert nichts an Sitzen oder Schiffen.")}</div>
+        <div class="opv2-panel-title">${t("op.formations")}${helpIcon(t("op.formationsHelp"))}</div>
         ${formations.length
           ? formations.map(
               (f) => html`<div class="opv2-row mg-board-row">
                 <div>
                   <strong>${f.name}</strong>
-                  <span class="tag tag-cyan">${f.ships.length} ship${f.ships.length === 1 ? "" : "s"}</span>
+                  <span class="tag tag-cyan">${t("op.shipsN", { n: f.ships.length })}</span>
                   <div class="text-dim text-sm">
-                    ${f.ships.map((s) => unitName(s)).join(", ") || "empty"}
+                    ${f.ships.map((s) => unitName(s)).join(", ") || t("op.empty")}
                   </div>
                 </div>
                 ${canManage
                   ? html`<form method="post" action="${bp}/api/ops/${op.id}/formations/${f.id}/delete" class="inline">
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       ${returnFields("fleet")}
-                      <button type="submit" class="btn btn-sm btn-ghost">Dissolve</button>
+                      <button type="submit" class="btn btn-sm btn-ghost">${t("op.dissolve")}</button>
                     </form>`
                   : safe("")}
               </div>`,
             )
-          : html`<p class="text-dim text-sm">No formations yet.</p>`}
+          : html`<p class="text-dim text-sm">${t("op.noFormations")}</p>`}
         ${canManage
           ? html`<form method="post" action="${bp}/api/ops/${op.id}/formations" class="opv2-inline-form mt-1">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 ${returnFields("fleet")}
-                <input type="text" name="name" maxlength="80" placeholder="Formation name (e.g. Task Force Alpha)" required />
-                <button type="submit" class="btn btn-sm">Add formation</button>
+                <input type="text" name="name" maxlength="80" placeholder="${t("op.formationNamePlaceholder")}" required />
+                <button type="submit" class="btn btn-sm">${t("op.addFormation")}</button>
               </form>
               ${acceptedShipsForFm.length && formationGroups.length
-                ? html`<div class="text-dim text-sm mt-2" style="margin-bottom:.3rem">Assign ships to a formation:</div>
+                ? html`<div class="text-dim text-sm mt-2" style="margin-bottom:.3rem">${t("op.assignShipsToFormation")}</div>
                     ${acceptedShipsForFm.map(
                       (s) => html`<form method="post" action="${bp}/api/ops/${op.id}/units/${s.id}/formation" class="opv2-inline-form" style="margin:.2rem 0">
                         <input type="hidden" name="_csrf" value="${csrf}" />
                         ${returnFields("fleet")}
                         <span style="flex:1;min-width:8rem">${unitName(s)}</span>
                         <select name="formationId" onchange="this.form.submit()">
-                          <option value="">— none —</option>
+                          <option value="">${t("op.noneDash")}</option>
                           ${formationGroups.map(
                             (f) => html`<option value="${f.id}" ${fmShipFormationId(s) === f.id ? safe("selected") : ""}>${f.name}</option>`,
                           )}
@@ -2463,19 +2463,19 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     ${cqbPanel}
     ${formationsPanel}
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Fleet Units${helpIcon("Alle angemeldeten Einheiten (Schiffe + Fahrzeuge). Hier akzeptierst/ablehnst du angebotene Schiffe, weist Sitze zu (Assign), hängst Fahrzeuge/Fighter an ein Trägerschiff und legst selbst Einheiten an (Register Unit).")}</div>
+      <div class="opv2-panel-title">${t("op.fleetUnits")}${helpIcon(t("op.fleetUnitsHelp"))}</div>
       <div class="opv2-stack" style="max-height:70vh;overflow-y:auto">${unitRows}</div>
       ${canManage && orphanVehicles.length
         ? html`<div class="opv2-edit-block mt-2">
-            <div class="opv2-panel-title" style="font-size:.9rem">Unassigned vehicles</div>
+            <div class="opv2-panel-title" style="font-size:.9rem">${t("op.unassignedVehicles")}</div>
             ${orphanVehicles.map(
               (v) => html`<div class="opv2-row" style="align-items:center">
-                <div><strong>${unitName(v)}</strong> <span class="tag tag-cyan">Vehicle</span></div>
-                <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/carrier" class="inline" data-async title="Assign to a ship">
+                <div><strong>${unitName(v)}</strong> <span class="tag tag-cyan">${t("op.vehicle")}</span></div>
+                <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/carrier" class="inline" data-async title="${t("op.assignToShipTitle")}">
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   ${returnFields("fleet")}
                   <select name="carrierUnitId" onchange="this.form.requestSubmit()">
-                    <option value="" disabled selected hidden>Assign to ship…</option>
+                    <option value="" disabled selected hidden>${t("op.assignToShipOpt")}</option>
                     ${carrierShipUnits.map((s) => html`<option value="${s.id}">${unitName(s)}</option>`)}
                   </select>
                 </form>
@@ -2485,7 +2485,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         : safe("")}
       ${user && (op.status === "open" || op.status === "draft")
         ? html`<details class="opv2-edit-block mt-1">
-            <summary class="btn btn-sm">Register Unit</summary>
+            <summary class="btn btn-sm">${t("op.registerUnit")}</summary>
             <form
               method="post"
               action="${bp}/api/ops/${op.id}/units"
@@ -2495,22 +2495,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
               <div class="form-errors opv2-unit-errors" hidden></div>
-              <label>Fleet need</label>
+              <label>${t("op.fleetNeed")}</label>
               <select name="requirementId">
-                <option value="">Unslotted</option>
+                <option value="">${t("op.unslotted")}</option>
                 ${availableSlots.map(
                   (slot) => html`<option value="${slot.id}">${slot.label}</option>`,
                 )}
               </select>
-              <label>Unit type</label>
+              <label>${t("op.unitType")}</label>
               <select name="unitType" class="opv2-unit-type">
-                <option value="ship">Ship</option>
-                <option value="squad">FPS Squad</option>
+                <option value="ship">${t("op.unitTypeShip")}</option>
+                <option value="squad">${t("cat.fps")}</option>
               </select>
               <div class="unit-ship-fields">
-                <label>Owned ship</label>
+                <label>${t("op.ownedShip")}</label>
                 <select name="ownedShipId" class="opv2-owned-ship-select mandatory">
-                  <option value="">Select owned ship for ship units...</option>
+                  <option value="">${t("op.selectOwnedShip")}</option>
                   ${opts.ownedShips.map(
                     (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
                   )}
@@ -2528,7 +2528,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               <div class="unit-squad-fields" hidden>
                 <div class="opv2-form-grid">
                   <div>
-                    <label>Squad name</label>
+                    <label>${t("op.squadName")}</label>
                     <input
                       type="text"
                       name="squadName"
@@ -2538,7 +2538,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     />
                   </div>
                   <div>
-                    <label>Squad size</label>
+                    <label>${t("op.squadSize")}</label>
                     <input
                       type="number"
                       name="squadSize"
@@ -2550,20 +2550,20 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   </div>
                 </div>
               </div>
-              <label>Captain note</label>
+              <label>${t("op.captainNote")}</label>
               <input
                 type="text"
                 name="captainNote"
                 maxlength="240"
-                placeholder="Role, loadout, crew preference..."
+                placeholder="${t("op.captainNotePlaceholder")}"
               />
-              <button type="submit" class="btn btn-sm mt-1">Register</button>
+              <button type="submit" class="btn btn-sm mt-1">${t("op.register")}</button>
             </form>
           </details>`
         : safe("")}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Need Assignment${helpIcon("Spieler, die 'Operator soll mich einteilen' gewählt haben. Weise sie hier einem CQB-Team (Place in team) oder einem freien Schiffssitz (Place in seat) zu — die offene Anfrage verschwindet danach.")}</div>
+      <div class="opv2-panel-title">${t("op.needAssignment")}${helpIcon(t("op.needAssignmentHelp"))}</div>
       ${op.crewRequests.length
         ? html`<div class="opv2-crew-drag-list">
             ${op.crewRequests.map(
@@ -2572,28 +2572,28 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   class="opv2-crew-chip"
                   draggable="${isLeader ? "true" : "false"}"
                   data-crew-user-id="${request.user.id}"
-                  title="${request.note || "No note"}"
+                  title="${request.note || t("op.noNote")}"
                 >
                   <strong>${nm(request.user.username)}</strong>
-                  <span>${request.note || "No note"}</span>
+                  <span>${request.note || t("op.noNote")}</span>
                 </div>`,
             )}
           </div>`
-        : html`<p class="text-dim text-sm">No unassigned crewmembers.</p>`}
+        : html`<p class="text-dim text-sm">${t("op.noUnassignedCrew")}</p>`}
       ${isLeader && op.crewRequests.length
         ? html`<p class="text-dim text-sm mt-1">
-            Drag a crewmember onto an open accepted seat to assign them.
+            ${t("op.dragCrewHint")}
           </p>`
         : safe("")}
       ${op.eventInterests.length
         ? html`<div style="margin-top:.85rem;border-top:1px solid var(--border);padding-top:.6rem">
             <div class="text-dim text-sm" style="margin-bottom:.4rem">
-              Interested via Discord${
+              ${t("op.interestedViaDiscord")}${
                 op.eventInterests.filter((i) => !i.userId).length
                   ? safe(
                       ` · <strong>${String(
                         op.eventInterests.filter((i) => !i.userId).length,
-                      )}</strong> dem System bisher unbekannt`,
+                      )}</strong> ${t("op.unknownToSystem")}`,
                     )
                   : safe("")
               }
@@ -2605,10 +2605,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     class="opv2-crew-chip"
                     draggable="${isLeader && i.userId ? "true" : "false"}"
                     data-crew-user-id="${i.userId ?? ""}"
-                    title="Clicked Interested on the Discord event"
+                    title="${t("op.clickedInterested")}"
                   >
                     <strong>${nm(i.displayName)}</strong>
-                    <span>${i.userId ? "Discord-interessiert" : "Discord — kein Konto"}</span>
+                    <span>${i.userId ? t("op.discordInterested") : t("op.discordNoAccount")}</span>
                   </div>`,
               )}
             </div>
@@ -2632,7 +2632,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             ),
         )}
       </div>
-      <div class="opv2-panel-title mt-2">Fleet Needs${helpIcon("Hier legst du fest, WAS die Mission braucht: Schiffe, Jäger-Squads und CQB-Teams. Das steuert, wofür sich Spieler anmelden können. Ohne Bedarf weiß keiner, was gebraucht wird.")}</div>
+      <div class="opv2-panel-title mt-2">${t("board.fleetNeeds")}${helpIcon(t("op.fleetNeedsEditorHelp"))}</div>
       ${canManage
         ? html`<div class="need-editor mt-1">
             <style>
