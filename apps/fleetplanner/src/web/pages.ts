@@ -2399,6 +2399,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     needType?: string | null;
     shipType?: string | null;
     squadSize?: number | null;
+    label?: string | null;
   };
   const allNeedReqs = op.groups.flatMap((g) => g.requirements) as unknown as NeedReq[];
   const shipNeeds = allNeedReqs.filter((r) => r.needType === "ship");
@@ -2657,6 +2658,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               .need-list { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .55rem; }
               .need-tag { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--cyan-28, rgba(53,208,224,.28)); padding: .15rem .5rem; font-size: .82rem; }
               .need-x { background: none; border: none; color: var(--red, #e0556a); cursor: pointer; font-size: 1rem; line-height: 1; padding: 0; }
+              .need-rename { background: none; border: none; color: var(--cyan, #35d0e0); cursor: pointer; font-size: .85rem; line-height: 1; padding: 0; }
             </style>
             <form method="post" action="${bp}/api/ops/${op.id}/needs/ships" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
@@ -2670,27 +2672,45 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 )}
               </div>
               <div class="need-row">
+                <input type="text" name="name" maxlength="80" placeholder="${t("need.namePlaceholder")}" />
                 <input type="text" name="details" maxlength="160" placeholder="${t("need.detailsOptional")}" />
                 <button type="submit" class="btn btn-sm btn-green">${t("need.addShipNeeds")}</button>
               </div>
-              ${shipNeeds.length
-                ? html`<div class="need-list">
-                    ${shipNeeds.map(
-                      (n) => html`<span class="need-tag"
-                        >${shipTypeLabel(n.shipType ?? "any")}
-                        <button
-                          type="submit"
-                          formaction="${bp}/api/ops/${op.id}/needs/${n.id}/delete"
-                          class="need-x"
-                          title="${t("common.remove")}"
-                        >
-                          ×
-                        </button></span
-                      >`,
-                    )}
-                  </div>`
-                : safe("")}
             </form>
+            ${shipNeeds.length
+              ? html`<div class="need-list">
+                  ${shipNeeds.map(
+                    (n) => html`<form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/needs/${n.id}/rename"
+                      class="need-tag"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("fleet")}
+                      <span class="text-dim" style="font-size:.66rem;text-transform:uppercase;letter-spacing:.04em"
+                        >${shipTypeLabel(n.shipType ?? "any")}</span
+                      >
+                      <input
+                        type="text"
+                        name="name"
+                        value="${n.label ?? ""}"
+                        maxlength="80"
+                        title="${t("need.renameTitle")}"
+                        style="width:8.5rem;font-size:.8rem;padding:.1rem .35rem"
+                      />
+                      <button type="submit" class="need-rename" title="${t("need.rename")}">✎</button>
+                      <button
+                        type="submit"
+                        formaction="${bp}/api/ops/${op.id}/needs/${n.id}/delete"
+                        class="need-x"
+                        title="${t("common.remove")}"
+                      >
+                        ×
+                      </button>
+                    </form>`,
+                  )}
+                </div>`
+              : safe("")}
 
             <form method="post" action="${bp}/api/ops/${op.id}/needs/fighters" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />

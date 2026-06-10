@@ -31,6 +31,7 @@ import {
   setFighterSquads,
   setCqbTeams,
   removeShipNeed,
+  renameShipNeed,
 } from "../services/needs.js";
 import {
   createFormation,
@@ -1785,7 +1786,8 @@ export async function apiRoutes(app: FastifyInstance) {
       const raw = req.body.shipType;
       const types = Array.isArray(raw) ? raw : raw ? [raw] : [];
       const details = typeof req.body.details === "string" ? req.body.details : null;
-      const added = await addShipNeeds(req.params.id, types, details);
+      const name = typeof req.body.name === "string" ? req.body.name : null;
+      const added = await addShipNeeds(req.params.id, types, details, name);
       const body = req.body as Record<string, string>;
       const flash = added ? `ok:Added+${added}+ship+need(s).` : "error:Pick+at+least+one+ship+type.";
       return reply.redirect(opReturnUrl(req.params.id, body, flash, "fleet"), 302);
@@ -1913,6 +1915,18 @@ export async function apiRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
       await removeShipNeed(req.params.id, req.params.reqId);
       return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Ship+need+removed.", "fleet"), 302);
+    },
+  );
+
+  // Rename a single ship need (give it a custom name).
+  app.post<{ Params: { id: string; reqId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/needs/:reqId/rename",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await renameShipNeed(req.params.id, req.params.reqId, req.body.name ?? "");
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Need+renamed.", "fleet"), 302);
     },
   );
 
