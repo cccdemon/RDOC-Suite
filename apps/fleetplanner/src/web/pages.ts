@@ -6443,42 +6443,41 @@ export function bridgeAdminOverviewPage(opts: {
 
   const globalSettingsCard = gs
     ? html` <div class="section">
-        <div class="section-title">Raumdock Global Gates</div>
+        <div class="section-title">${t("badm.globalGates")}</div>
         <p class="text-dim text-sm" style="margin-bottom:0.75rem">
-          Server-weite Discord-Rollen-Gates (NICHT pro Tenant). Geprüft gegen die unten gesetzte
-          Raumdock-Guild. Leer lassen = Gate aus.
+          ${t("badm.globalGatesNote")}
         </p>
         <form method="post" action="${bp}/admin/bridge/global-settings" class="opv2-form">
           <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-          <label>Raumdock Guild ID</label>
+          <label>${t("badm.raumdockGuildId")}</label>
           <input
             type="text"
             name="raumdockGuildId"
             value="${gs.raumdockGuildId ?? ""}"
-            placeholder="z.B. 1500000000000000000"
+            placeholder="${t("badm.egGuildId")}"
             pattern="[0-9]{17,20}"
           />
-          <label>Bridge-Rolle (Squad Link Zugang)</label>
+          <label>${t("badm.bridgeRole")}</label>
           <input
             type="text"
             name="bridgeRequiredRoleId"
             value="${gs.bridgeRequiredRoleId ?? ""}"
-            placeholder="Discord Role-ID"
+            placeholder="${t("badm.discordRoleId")}"
             pattern="[0-9]{17,20}"
           />
-          <label>Relay-Rolle (Voice-to-All Publisher)</label>
+          <label>${t("badm.relayRole")}</label>
           <input
             type="text"
             name="relayRequiredRoleId"
             value="${gs.relayRequiredRoleId ?? ""}"
-            placeholder="Discord Role-ID"
+            placeholder="${t("badm.discordRoleId")}"
             pattern="[0-9]{17,20}"
           />
           <div style="margin-top:0.75rem">
-            <button type="submit" class="btn btn-cyan">Speichern</button>
+            <button type="submit" class="btn btn-cyan">${t("badm.saveBtn")}</button>
             ${gs.updatedAt
               ? html`<span class="text-dim text-sm" style="margin-left:0.75rem"
-                  >Zuletzt geändert: ${gs.updatedAt}</span
+                  >${t("badm.lastChanged")}: ${gs.updatedAt}</span
                 >`
               : safe("")}
           </div>
@@ -6489,10 +6488,10 @@ export function bridgeAdminOverviewPage(opts: {
   const rows = opts.guilds.map((g) => {
     const status =
       g.enabled === null
-        ? html`<span class="tag tag-red">UNREACHABLE</span>`
+        ? html`<span class="tag tag-red">${t("badm.unreachable")}</span>`
         : g.enabled
-          ? html`<span class="tag tag-green">ENABLED</span>`
-          : html`<span class="tag tag-dim">DISABLED</span>`;
+          ? html`<span class="tag tag-green">${t("badm.enabled")}</span>`
+          : html`<span class="tag tag-dim">${t("badm.disabledUpper")}</span>`;
     return html` <tr>
       <td class="text-mono" style="font-size:0.72rem;color:var(--dim)">${g.guildId}</td>
       <td>${g.name}</td>
@@ -6500,32 +6499,31 @@ export function bridgeAdminOverviewPage(opts: {
         ${status}${g.error ? html`<br /><span class="text-dim text-sm">${g.error}</span>` : ""}
       </td>
       <td class="text-right">
-        <a class="btn btn-sm" href="${bp}/admin/bridge/${g.guildId}">Manage</a>
+        <a class="btn btn-sm" href="${bp}/admin/bridge/${g.guildId}">${t("badm.manage")}</a>
       </td>
     </tr>`;
   });
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">VOICE BRIDGE</h1>
+      <h1 class="page-title">${t("badm.voiceBridge")}</h1>
       <p class="page-subtitle">
-        Manage the voice-bridge guild config (enable, commander roles, allowed channels) and bridge
-        admins — without opening the bridge admin UI.
+        ${t("badm.voiceBridgeSub")}
       </p>
     </div>
     ${globalSettingsCard}
     <div class="section">
-      <div class="section-title">Guilds (${opts.guilds.length})</div>
+      <div class="section-title">${t("badm.guilds", { n: opts.guilds.length })}</div>
       ${opts.guilds.length === 0
         ? html`<p class="text-dim">
-            No fleetplanner guilds yet. Install the bot on a Discord server first.
+            ${t("badm.noGuilds")}
           </p>`
         : html`<div style="overflow-x:auto">
             <table class="user-table">
               <thead>
                 <tr>
-                  <th>Guild ID</th>
-                  <th>Name</th>
-                  <th>Bridge status</th>
+                  <th>${t("badm.colGuildId")}</th>
+                  <th>${t("badm.colName")}</th>
+                  <th>${t("badm.colBridgeStatus")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -6537,7 +6535,7 @@ export function bridgeAdminOverviewPage(opts: {
     </div>`;
 
   return layout({
-    title: "Voice Bridge",
+    title: t("badm.voiceBridgeTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -6582,7 +6580,7 @@ export function bridgeGuildConfigPage(opts: {
   const cfg = opts.config;
 
   const configPanel = html` <div class="section">
-    <div class="section-title">Guild Config</div>
+    <div class="section-title">${t("badm.guildConfig")}</div>
     <div class="card" style="padding:1.5rem">
       <form method="post" action="${bp}/admin/bridge/${opts.guildId}/config">
         <input type="hidden" name="_csrf" value="${csrf}" />
@@ -6595,27 +6593,27 @@ export function bridgeGuildConfigPage(opts: {
               ${cfg.enabled ? safe("checked") : safe("")}
               style="width:auto"
             />
-            Guild enabled (commanders may connect the companion)
+            ${t("badm.guildEnabled")}
           </label>
         </div>
         <div class="form-group">
-          <label>Commander role IDs (one per line, or comma-separated)</label>
+          <label>${t("badm.commanderRoleIds")}</label>
           <textarea name="commanderRoleIds" rows="3" placeholder="123456789012345678">
 ${cfg.commanderRoleIds.join("\n")}</textarea
           >
         </div>
         <div class="form-group">
-          <label>Allowed voice channel IDs (one per line, or comma-separated)</label>
+          <label>${t("badm.allowedChannelIds")}</label>
           <textarea name="allowedVoiceChannelIds" rows="3" placeholder="123456789012345678">
 ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
           >
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn btn-cyan">Save config</button>
+          <button type="submit" class="btn btn-cyan">${t("badm.saveConfig")}</button>
         </div>
       </form>
       <p class="text-dim text-sm" style="margin:.75rem 0 0">
-        Bridge mode: <span class="text-mono">${cfg.bridgeMode}</span>
+        ${t("badm.bridgeMode")}: <span class="text-mono">${cfg.bridgeMode}</span>
       </p>
     </div>
   </div>`;
@@ -6629,7 +6627,7 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
             ? html`<span class="tag ${a.role === "admiral" ? "tag-gold" : "tag-dim"}"
                   >${a.role}</span
                 >
-                <span class="tag tag-cyan">protected</span>`
+                <span class="tag tag-cyan">${t("badm.protected")}</span>`
             : html`<form
                 method="post"
                 action="${bp}/admin/bridge/${opts.guildId}/admins/${a.userId}/role"
@@ -6649,14 +6647,14 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
         <td class="text-dim text-sm">${a.addedBy ?? safe("—")}</td>
         <td class="text-right">
           ${a.protected
-            ? html`<span class="text-dim text-sm">locked</span>`
+            ? html`<span class="text-dim text-sm">${t("badm.locked")}</span>`
             : html`<form
                 method="post"
                 action="${bp}/admin/bridge/${opts.guildId}/admins/${a.userId}/delete"
                 class="inline"
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
-                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                <button type="submit" class="btn btn-sm btn-danger">${t("common.remove")}</button>
               </form>`}
         </td>
       </tr>`,
@@ -6672,8 +6670,8 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
         <td class="text-dim text-sm">${inv.expiresAt}</td>
         <td>
           ${inv.usedAt
-            ? html`<span class="tag tag-dim">used</span>`
-            : html`<span class="tag tag-green">unused</span>`}
+            ? html`<span class="tag tag-dim">${t("badm.used")}</span>`
+            : html`<span class="tag tag-green">${t("badm.unused")}</span>`}
         </td>
         <td class="text-right">
           ${inv.usedAt
@@ -6684,17 +6682,17 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
                 class="inline"
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
-                <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+                <button type="submit" class="btn btn-sm btn-danger">${t("badm.revoke")}</button>
               </form>`}
         </td>
       </tr>`,
   );
 
   const invitePanel = html` <div class="section">
-    <div class="section-title">Admin invite links (${opts.invites.length})</div>
+    <div class="section-title">${t("badm.inviteLinks", { n: opts.invites.length })}</div>
     ${opts.freshInvite
       ? html` <div class="flash flash-ok">
-          New ${opts.freshInvite.role} invite (shown once):
+          ${t("badm.newInvite", { role: opts.freshInvite.role })}
           <span class="text-mono">${opts.freshInvite.url}</span>
         </div>`
       : ""}
@@ -6703,10 +6701,10 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
           <table class="user-table">
             <thead>
               <tr>
-                <th>Label</th>
-                <th>Role</th>
-                <th>Expires</th>
-                <th>Status</th>
+                <th>${t("badm.colLabel")}</th>
+                <th>${t("admin.role")}</th>
+                <th>${t("badm.colExpires")}</th>
+                <th>${t("admin.statusLabel")}</th>
                 <th></th>
               </tr>
             </thead>
@@ -6715,7 +6713,7 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
             </tbody>
           </table>
         </div>`
-      : html`<p class="text-dim">No invite links.</p>`}
+      : html`<p class="text-dim">${t("badm.noInvites")}</p>`}
     <div class="card" style="padding:1.25rem;margin-top:1rem">
       <form
         method="post"
@@ -6724,17 +6722,17 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
       >
         <input type="hidden" name="_csrf" value="${csrf}" />
         <label class="text-sm text-dim" style="flex:1 1 14rem"
-          >Label
+          >${t("badm.colLabel")}
           <input
             type="text"
             name="label"
-            placeholder="New admiral onboarding"
+            placeholder="${t("badm.labelPlaceholder")}"
             maxlength="120"
             required
           />
         </label>
         <label class="text-sm text-dim"
-          >Role
+          >${t("admin.role")}
           <select name="role" style="width:auto">
             <option value="vice_admiral">vice_admiral</option>
             <option value="admiral">admiral</option>
@@ -7349,7 +7347,7 @@ export function bridgeSessionDetailPage(opts: {
                               class="inline"
                             >
                               <input type="hidden" name="_csrf" value="${csrf}" />
-                              <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+                              <button type="submit" class="btn btn-sm btn-danger">${t("badm.revoke")}</button>
                             </form>`}
                       </td>
                     </tr>`,
@@ -7738,7 +7736,7 @@ export function bridgeDownloadsPage(opts: {
                 class="inline"
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
-                <button type="submit" class="btn btn-sm btn-danger">Revoke</button>
+                <button type="submit" class="btn btn-sm btn-danger">${t("badm.revoke")}</button>
               </form>`}
         </td>
       </tr>`,
