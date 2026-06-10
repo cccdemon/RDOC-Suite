@@ -4937,7 +4937,7 @@ export function opJoinPage(opts: {
     return html`<div class="roster-unit">
       <div class="roster-unit-head">
         <strong>${sq.name}</strong>
-        ${sq.mine ? html`<span class="tag tag-green">You're in</span>` : safe("")}
+        ${sq.mine ? html`<span class="tag tag-green">${t("join.youreIn")}</span>` : safe("")}
         <span class="roster-unit-count">${sq.count}/${cap}</span>
       </div>
       <div class="roster-seats">
@@ -4947,20 +4947,20 @@ export function opJoinPage(opts: {
             return html`<div class="roster-seat${m.isMe ? " mine" : ""}">
               <span class="roster-seat-label">${slotWord} ${i + 1}</span>
               ${m.isMe
-                ? html`<span class="roster-occ roster-you">You</span>
+                ? html`<span class="roster-occ roster-you">${t("join.you")}</span>
                     <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups/withdraw" class="inline">
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="ui" value="player" />
                       <input type="hidden" name="tab" value="fleet" />
-                      <button type="submit" class="btn btn-sm btn-ghost">Leave</button>
+                      <button type="submit" class="btn btn-sm btn-ghost">${t("join.leave")}</button>
                     </form>`
-                : html`<span class="roster-occ">${m.name ?? "Taken"}</span>`}
+                : html`<span class="roster-occ">${m.name ?? t("join.taken")}</span>`}
             </div>`;
           }
           return html`<div class="roster-seat open">
             <span class="roster-seat-label">${slotWord} ${i + 1}</span>
             ${sq.mine
-              ? html`<span class="free">open</span>`
+              ? html`<span class="free">${t("common.open")}</span>`
               : myId
                 ? html`<form method="post" action="${bp}/api/ops/${op.id}/cqb/squads/${sq.id}/join" class="inline">
                     <input type="hidden" name="_csrf" value="${csrf}" />
@@ -4968,7 +4968,7 @@ export function opJoinPage(opts: {
                     <input type="hidden" name="tab" value="fleet" />
                     <button type="submit" class="btn btn-sm btn-green">${joinLabel}</button>
                   </form>`
-                : html`<a class="btn btn-sm" href="${bp}/login">Sign in</a>`}
+                : html`<a class="btn btn-sm" href="${bp}/login">${t("op.signIn")}</a>`}
           </div>`;
         })}
       </div>
@@ -5123,33 +5123,33 @@ export function opJoinPage(opts: {
           </div>
           ${canManage
             ? html`<div class="event-manage">
-                <a class="btn btn-sm btn-cyan" href="${bp}/ops/${op.id}/manage">Manage Event</a>
+                <a class="btn btn-sm btn-cyan" href="${bp}/ops/${op.id}/manage">${t("join.manageEvent")}</a>
               </div>`
             : safe("")}
         </div>
         <div>
           <h1>${op.title}</h1>
-          <p>${op.meetingLocation || "Rendezvous not set"} · ${systemLabel(op.meetingSystem)}</p>
+          <p>${op.meetingLocation || t("join.rendezvousNotSet")} · ${systemLabel(op.meetingSystem)}</p>
         </div>
       </div>
       <aside class="event-hero-brief">
-        <div class="event-hero-brief-h">Briefing</div>
+        <div class="event-hero-brief-h">${t("op.briefing")}</div>
         ${op.description
           ? renderMarkdown(op.description)
-          : html`<p class="text-dim text-sm">No briefing yet.</p>`}
+          : html`<p class="text-dim text-sm">${t("join.noBriefingYet")}</p>`}
       </aside>
     </section>
     <div class="event-facts">
-      <div class="event-fact"><span>Time</span><strong>${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</strong></div>
-      <div class="event-fact"><span>Rendezvous</span><strong>${op.meetingLocation || "Not set"}</strong></div>
-      <div class="event-fact"><span>System</span><strong>${systemLabel(op.meetingSystem)}</strong></div>
-      <div class="event-fact"><span>Voice</span><strong>${opts.voiceChannelName || "Not set"}</strong></div>
+      <div class="event-fact"><span>${t("join.factTime")}</span><strong>${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</strong></div>
+      <div class="event-fact"><span>${t("op.fldRendezvous")}</span><strong>${op.meetingLocation || t("op.notSet")}</strong></div>
+      <div class="event-fact"><span>${t("op.fldSystem")}</span><strong>${systemLabel(op.meetingSystem)}</strong></div>
+      <div class="event-fact"><span>${t("tab.voice")}</span><strong>${opts.voiceChannelName || t("op.notSet")}</strong></div>
       <div class="event-fact">
-        <span>Participants</span>
-        <strong>${minP > 0 ? `Min ${minP}` : "No minimum"}${maxP ? ` / Max ${maxP}` : ""}</strong>
+        <span>${t("op.participants")}</span>
+        <strong>${minP > 0 ? t("join.minN", { n: minP }) : t("join.noMinimum")}${maxP ? ` / ${t("join.maxN", { n: maxP })}` : ""}</strong>
       </div>
       <div class="event-fact">
-        <span>Gemeldet / Bestätigt</span>
+        <span>${t("join.signedConfirmed")}</span>
         <strong>${signedUpCount} / ${confirmedCount}</strong>
       </div>
       ${opts.discordInvite
@@ -5157,7 +5157,7 @@ export function opJoinPage(opts: {
             <span>Discord</span>
             <strong
               ><a href="${opts.discordInvite}" target="_blank" rel="noopener noreferrer"
-                >Server beitreten ↗</a
+                >${t("join.joinServerArrow")}</a
               ></strong
             >
           </div>`
@@ -5178,9 +5178,9 @@ export function opJoinPage(opts: {
               data-share-image="${img}"
               style="display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin:0 0 1rem"
             >
-              <span class="text-dim text-sm" style="margin-right:.25rem">Teilen</span>
+              <span class="text-dim text-sm" style="margin-right:.25rem">${t("join.share")}</span>
               <button type="button" class="btn btn-sm btn-cyan" data-share-native hidden>
-                📤 Teilen…
+                📤 ${t("join.shareDots")}
               </button>
               <a class="btn btn-sm" target="_blank" rel="noopener"
                 href="https://twitter.com/intent/tweet?text=${e(shareText)}&url=${e(shareUrl)}">X</a>
@@ -5192,7 +5192,7 @@ export function opJoinPage(opts: {
                 href="https://wa.me/?text=${e(textUrl)}">WhatsApp</a>
               <a class="btn btn-sm" target="_blank" rel="noopener"
                 href="https://t.me/share/url?url=${e(shareUrl)}&text=${e(shareText)}">Telegram</a>
-              <button type="button" class="btn btn-sm" data-share-copy>Link kopieren</button>
+              <button type="button" class="btn btn-sm" data-share-copy>${t("join.copyLink")}</button>
             </div>
             <script>
               (function () {
@@ -5221,8 +5221,8 @@ export function opJoinPage(opts: {
                   copyBtn.addEventListener("click", function () {
                     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
                       .then(function () {
-                        copyBtn.textContent = "Kopiert ✓";
-                        setTimeout(function () { copyBtn.textContent = "Link kopieren"; }, 1500);
+                        copyBtn.textContent = "${safe(t("join.copiedCheck"))}";
+                        setTimeout(function () { copyBtn.textContent = "${safe(t("join.copyLink"))}"; }, 1500);
                       }).catch(function () {});
                   });
                 }
@@ -5236,16 +5236,16 @@ export function opJoinPage(opts: {
         ${signupSummaryBanner}
         ${!myId
           ? html`<section class="card">
-              <h3 class="wiz-sum-h">I want to join</h3>
+              <h3 class="wiz-sum-h">${t("op.iWantToJoin")}</h3>
               <p class="text-dim text-sm">
-                Sign in to claim a seat, offer a ship, or let the operator place you.
+                ${t("join.signInToJoin")}
               </p>
-              <a class="btn btn-green" href="${bp}/login">Sign in</a>
+              <a class="btn btn-green" href="${bp}/login">${t("op.signIn")}</a>
             </section>`
           : !isOpen
             ? html`<section class="card">
-                <h3 class="wiz-sum-h">I want to join</h3>
-                <div class="opv2-cta closed">Sign-up is closed.</div>
+                <h3 class="wiz-sum-h">${t("op.iWantToJoin")}</h3>
+                <div class="opv2-cta closed">${t("join.signupIsClosed")}</div>
               </section>`
             : html`<details class="card join-asst"${signedUp ? safe("") : safe(" open")}>
                   <summary class="ja-card-summary${signedUp ? " ja-more-cta" : ""}">
