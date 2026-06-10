@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Bugfix — Operator kann Spieler keinen Fighter-Wings zuweisen — Branch `fix/assign-fighters`
+
+Bug (User): im Manage-Backend lassen sich Fightern keine Spieler zuweisen. Ursache: Operator-Pfade
+nur für `kind="squad"` (CQB), Fighter-Wings (`kind="fighter_squad"`) ausgeschlossen — obwohl Spieler
+sich auf der Join-Seite selbst eintragen können (`joinSquad` erlaubt beide).
+- `services/cqb.ts`: `placeInSquad` + `reassignSignup` akzeptieren jetzt `kind in [squad,
+  fighter_squad]` (Operator-Place + Member-Reassign in Fighter-Wings). CQB-only bleiben rename/
+  size/carrier/unbundle (Fighter werden über den Fighter-Need-Count verwaltet).
+- `web/pages.ts` Manage: neue `personnelTeams = squad + fighter_squad`. CQB-Personal-Panel rendert
+  jetzt auch Fighter-Wing-Karten (Mitglieder + „Assign"-Picker + Reassign + Sekundärsitz); CQB-only
+  Controls (Rename/Size/Carrier/Dissolve) pro Karte auf `!isFighter` gegated. Reassign-Dropdown +
+  „Need Assignment → Place in team" (`placeSquads`) listen beide. Panel-Titel → „CQB & Fighter
+  Personnel" (de „CQB- & Jäger-Personal"). Kind-Tag pro Karte (Fighter/CQB).
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner (tsc).
+
 ## Queued / Planned Step - 2026-06-10: Roster-Layout-Toggle (Horizontal ↔ Spalten) auf Join-Seite — Branch `feat/op-ics`
 
 User (mit ASCII-Vorschau bestätigt): Toggle im Spieler-Anmeldung-Screen. Ansicht 1 = aktuell

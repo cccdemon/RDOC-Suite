@@ -1286,7 +1286,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   }
   const participants = [...participantMap.values()].sort((a, b) => a.name.localeCompare(b.name));
   // For placing "let the operator place me" crew: CQB teams + open ship seats.
-  const placeSquads = op.groups.filter((g) => g.kind === "squad");
+  const placeSquads = op.groups.filter((g) => g.kind === "squad" || g.kind === "fighter_squad");
   const placeOpenSeats = activeUnits.flatMap((u) =>
     u.seats
       .filter((s) => s.active && !s.userId)
@@ -2098,6 +2098,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const cqbSignups = op.cqbSignups ?? [];
   const cqbPool = cqbSignups.filter((s) => !s.assignedGroupId);
   const cqbSquads = op.groups.filter((g) => g.kind === "squad");
+  const fighterSquads = op.groups.filter((g) => g.kind === "fighter_squad");
+  // Personnel teams = CQB squads + fighter wings. Both can have players assigned
+  // by the operator; CQB-only controls (rename/size/carrier/dissolve) are gated
+  // per card. CQB first, then fighters.
+  const personnelTeams = [...cqbSquads, ...fighterSquads];
   // Phase 4b: non-fighter accepted ships a CQB team can be embedded in.
   const carrierShips = op.units.filter(
     (u) => u.unitType === "ship" && u.status === "accepted" && shipClass(u.ship) !== "Fighter",
@@ -2109,7 +2114,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || t("op.unit")} — ${s.label}` })),
   );
   const cqbPanel =
-    cqbSignups.length || cqbSquads.length || canManage
+    cqbSignups.length || personnelTeams.length || canManage
       ? html`<section class="opv2-panel">
           <div class="opv2-panel-title">${t("op.cqbPersonnel")}${helpIcon(t("op.cqbPersonnelHelp"))}</div>
           <script>
@@ -2134,21 +2139,23 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
             })();
           </script>
-          ${cqbSignups.length === 0 && cqbSquads.length === 0
+          ${cqbSignups.length === 0 && personnelTeams.length === 0
             ? html`<p class="text-dim text-sm">
                 ${t("op.noCqbSignups")}${canManage
                   ? ` ${t("op.noCqbSignupsManage")}`
                   : ""}
               </p>`
             : safe("")}
-          ${cqbSquads.map((g) => {
+          ${personnelTeams.map((g) => {
+            const isFighter = g.kind === "fighter_squad";
             const members = cqbSignups.filter((s) => s.assignedGroupId === g.id);
             const cap = (g as { targetSize?: number | null }).targetSize ?? null;
             const carrierId = (g as { carrierUnitId?: string | null }).carrierUnitId ?? null;
             const carrierUnit = carrierId ? op.units.find((u) => u.id === carrierId) : null;
             return html`<div class="opv2-row mg-board-row cqb-squad-drop" data-cqb-group="${g.id}">
               <div>
-                <strong>${g.name}</strong>${helpIcon(t("op.cqbTeamHelp"))}
+                <strong>${g.name}</strong>
+                <span class="tag ${isFighter ? "tag-cyan" : "tag-dim"}">${isFighter ? t("op.fighterWing") : t("op.cqbTeam")}</span>${helpIcon(t("op.cqbTeamHelp"))}
                 <span class="tag tag-green">${members.length}${cap ? ` / ${cap}` : ""}</span>
                 ${cap && members.length >= cap ? html` <span class="tag tag-gold">${t("op.full")}</span>` : safe("")}
                 ${canManage
@@ -2164,7 +2171,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                               <select name="groupId" onchange="this.form.requestSubmit()" title="${t("op.reassignSoldier")}">
                                 <option value="" disabled selected hidden>${t("op.reassignTo")}</option>
                                 <option value="">${t("op.pool")}</option>
-                                ${cqbSquads.map(
+                                ${personnelTeams.map(
                                   (sq) => html`<option value="${sq.id}">${sq.name}</option>`,
                                 )}
                               </select>
@@ -2195,7 +2202,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               </div>
               ${canManage
                 ? html`<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-                    <form
+                    ${!isFighter
+                      ? html`<form
                       method="post"
                       action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/rename"
                       class="inline"
@@ -2242,7 +2250,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         )}
                       </select>
                       <button type="submit" class="btn btn-sm">${t("op.size")}</button>
-                    </form>
+                    </form>`
+                      : safe("")}
                     <details class="opv2-seat-assign">
                       <summary class="btn btn-sm btn-ghost">${t("common.assign")}</summary>
                       <form method="post" action="${bp}/api/ops/${op.id}/cqb/place" data-async title="${t("op.assignPlayerTeam")}">
@@ -2258,7 +2267,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         <button type="submit" class="btn btn-sm">${t("common.add")}</button>
                       </form>
                     </details>
-                    <form
+                    ${!isFighter
+                      ? html`<form
                       method="post"
                       action="${bp}/api/ops/${op.id}/cqb/unbundle/${g.id}"
                       class="inline"
@@ -2266,7 +2276,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       ${returnFields("fleet")}
                       <button type="submit" class="btn btn-sm btn-ghost">${t("op.dissolve")}</button>
-                    </form>
+                    </form>`
+                      : safe("")}
                   </div>`
                 : safe("")}
             </div>`;

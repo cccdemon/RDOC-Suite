@@ -84,7 +84,8 @@ export async function reassignSignup(
 ): Promise<void> {
   if (groupId) {
     const group = await prisma.compositionGroup.findFirst({
-      where: { id: groupId, operationId, kind: "squad" },
+      // Members can be reassigned into CQB squads OR fighter wings.
+      where: { id: groupId, operationId, kind: { in: ["squad", "fighter_squad"] } },
       select: { id: true },
     });
     if (!group) return;
@@ -132,7 +133,8 @@ export async function placeInSquad(
   groupId: string,
 ): Promise<void> {
   const group = await prisma.compositionGroup.findFirst({
-    where: { id: groupId, operationId, kind: "squad" },
+    // Operator can place a player into a CQB squad OR a fighter wing.
+    where: { id: groupId, operationId, kind: { in: ["squad", "fighter_squad"] } },
     select: { id: true },
   });
   if (!group) return;

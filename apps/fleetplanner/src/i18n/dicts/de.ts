@@ -255,7 +255,7 @@ export const de: Record<string, string> = {
   "op.leaders": "Anführer",
   "op.eventVoice": "Event-Voice",
   "op.joinServer": "Server beitreten",
-  "op.cqbPersonnel": "CQB-Personal",
+  "op.cqbPersonnel": "CQB- & Jäger-Personal",
   "op.cqbPersonnelHelp": "Boden-/FPS-Truppen. Hier siehst du alle Teams: umbenennen, Größe (2–8) setzen, Spieler zuweisen, ein Team in ein Schiff verladen oder auflösen. Mitglieder lassen sich zwischen Teams verschieben.",
   "op.noCqbSignups": "Noch keine CQB-Anmeldungen.",
   "op.noCqbSignupsManage": "Spieler melden sich auf der Join-Seite als CQB an; bündle sie hier zu Trupps.",

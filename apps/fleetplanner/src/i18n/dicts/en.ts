@@ -271,7 +271,7 @@ export const en: Record<string, string> = {
   "op.leaders": "Leaders",
   "op.eventVoice": "Event Voice",
   "op.joinServer": "Join server",
-  "op.cqbPersonnel": "CQB Personnel",
+  "op.cqbPersonnel": "CQB & Fighter Personnel",
   "op.cqbPersonnelHelp": "Ground/FPS troops. See all teams here: rename, set size (2–8), assign players, embed a team in a ship, or dissolve. Members can be moved between teams.",
   "op.noCqbSignups": "No CQB signups yet.",
   "op.noCqbSignupsManage": "Players sign up as CQB on the join page; bundle them into squads here.",
