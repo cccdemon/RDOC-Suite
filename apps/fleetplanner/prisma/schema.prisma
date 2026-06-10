@@ -14,6 +14,7 @@ model User {
   avatarHash String?
   role       String   @default("crew") // superadmin | fleetoperator | crew
   locale     String   @default("de") // UI language: de | en | en-US | fr | es (see src/i18n)
+  opDetailStyle String @default("classic") // op-detail layout: classic | board1 | board2
   active     Boolean  @default(true)
   joinedAt   DateTime @default(now())
   lastSeenAt DateTime @default(now())

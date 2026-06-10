@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: Konzept-Docs — Mission Resource Links + Template Marketplace (docs only)
+
+Reine Design-Docs, KEIN Code. Zwei neue FR aus Operator-Wunsch (Tutorial-Links an komplexen Missionen
++ Template-Marktplatz):
+- `docs/FR-P3-mission-resource-links.md` — Operator hängt kuratierte Links (YouTube/RSI-Hub/GDoc) an eine
+  Op; neues `OperationResourceLink`-Modell; leicht; Datenfundament fürs Marktplatz-Feature.
+- `docs/FR-P4-template-marketplace.md` — Event als teilbares Template anbieten + Marktplatz-Suche beim
+  Anlegen; neues `OperationTemplate`-Modell; wiederverwendet `OperationRecurrence.templateJson`-Serializer
+  (Namenskollision „template" notiert); guild→partners→public Sichtbarkeit; groß/phasig.
+- ROADMAP.md: beide Zeilen eingetragen (P3 / P4).
+Implementierung erst auf explizite Anweisung, dann eigener mergelog-first Eintrag.
+
 ## Queued / Planned Step - 2026-06-10: Mission-Board echtes Design-Port (claude.ai/design Bundle) — Branch `feat/mission-board`
 
 User lieferte Design-Bundle (claude.ai/design, `Operationsdetail.dc.html`). Erster additiver Versuch
@@ -12,6 +24,10 @@ sah „nicht mal ähnlich" aus → jetzt echter Port des Designs.
   Design. Datengetrieben aus echtem Op (accepted ships + offene ship-Requirements + fighter_squad +
   cqb squads), verdrahtet an claim/units/cqb-join/crew-requests/hangar-share.
 - Route GET /ops/:id zeigt opMissionBoardPage (alte opJoinPage bleibt bis verifiziert).
+- Optik-Umschalter (User-Wunsch): neues `User.opDetailStyle` (classic|board1|board2, default classic)
+  + Migration; Profil-Selector (wie Sprachauswahl) + POST /profile/opstyle; GET /ops/:id wählt
+  Renderer (classic=opJoinPage, board1/board2=opMissionBoardPage). board2 fällt auf board1 zurück bis
+  Design-2-Bundle vorliegt (Link war 404/abgelaufen).
 Nur fleetplanner, Voice unangetastet. Build: tsc + Preview-Harness-Verify.
 
 ## Queued / Planned Step - 2026-06-10: Op-Detail „Mission Board" Redesign + Hangar-Freigabe — Branch `feat/mission-board`

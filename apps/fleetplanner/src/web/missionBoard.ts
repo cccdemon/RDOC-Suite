@@ -109,6 +109,7 @@ const SPRITE = `<svg width="0" height="0" style="position:absolute" aria-hidden=
 <symbol id="i-board" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></symbol>
 <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.7"/></symbol>
 <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-vehicle" viewBox="0 0 24 24"><path d="M4 13l2.3-4.5h8.4L18 13"/><path d="M3 13h18v3.4H3z"/><circle cx="7.5" cy="17.4" r="2.1"/><circle cx="16.5" cy="17.4" r="2.1"/></symbol>
 </defs></svg>`;
 
 export function opMissionBoardPage(opts: {
@@ -122,9 +123,12 @@ export function opMissionBoardPage(opts: {
   ownedShips?: Ship[];
   canManage?: boolean;
   discordInvite?: string | null;
+  /** board1 = stacked category sections; board2 = full-width 4-column board. */
+  variant?: "board1" | "board2";
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
+  const isBoard2 = (opts.variant ?? "board1") === "board2";
   const csrf = opts.csrfToken ?? "";
   const myId = opts.currentUser?.id;
   const tz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
@@ -299,11 +303,34 @@ export function opMissionBoardPage(opts: {
   };
   const fighterUnits = op.groups.filter((g) => g.kind === "fighter_squad").map((g) => squadCard(g, "160,100,255", "fighter", "typ", t("join.slotPilot"), true));
   const groundUnits = op.groups.filter((g) => g.kind === "squad").map((g) => squadCard(g, "240,165,0", "fps", "fest", t("join.slotSoldier"), false));
+  const vehicleUnits: Unit[] = acceptedUnits
+    .filter((u) => u.unitType === "vehicle")
+    .map((u) => {
+      const seats = u.seats.filter((s) => s.active);
+      return {
+        icon: "vehicle",
+        name: u.ship?.name || u.squadName || t("op.vehicle"),
+        sub: t("op.vehicle"),
+        accentRgb: "255,122,69",
+        status: seats.length > 0 && seats.every((s) => s.userId) ? { text: t("op.full").toUpperCase(), icon: "check", kind: "voll" } : undefined,
+        hint: u.captainNote || t("mb.groundHint"),
+        filled: seats.filter((s) => s.userId).length,
+        total: seats.length,
+        seats: seats.map((s, i): Seat => ({
+          icon: i === 0 ? "pilot" : "gunner",
+          role: s.label,
+          kind: "fest",
+          user: s.userId ? ((s as { user?: { username?: string } }).user?.username ?? null) : null,
+          take: s.userId ? undefined : { action: `${bp}/api/seats/${s.id}/claim`, fields: {}, needShip: false },
+        })),
+      };
+    });
 
   const cats = [
     { label: t("cat.shipsAndCrew"), icon: "ship", accent: "#00d4ff", accentLine: "rgba(0,212,255,0.4)", units: shipUnits },
     { label: t("cat.fighterWing"), icon: "fighter", accent: "#a064ff", accentLine: "rgba(160,100,255,0.4)", units: fighterUnits },
     { label: t("cat.groundTroops"), icon: "fps", accent: "#f0a500", accentLine: "rgba(240,165,0,0.4)", units: groundUnits },
+    { label: t("cat.vehicles"), icon: "vehicle", accent: "#ff7a45", accentLine: "rgba(255,122,69,0.4)", units: vehicleUnits },
   ].filter((c) => c.units.length > 0);
   const catCount = (units: Unit[]) => `${units.reduce((a, u) => a + u.filled, 0)}/${units.reduce((a, u) => a + u.total, 0)}`;
 
@@ -334,8 +361,30 @@ export function opMissionBoardPage(opts: {
     { acc: "240,165,0", col: "#f0a500", icon: "swap", ttl: t("join.mmFlex"), sub: t("join.mmFlexSub"), cta: t("mb.flexSignup"), mm: "flex" },
   ];
 
+  const catHeader = (cat: { label: string; icon: string; accent: string; accentLine: string; units: Unit[] }) =>
+    html`<div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem">
+      <span style="display:inline-flex;align-items:center;gap:.55rem;font-family:${safe(MONO)};font-size:.78rem;letter-spacing:.12em;color:${cat.accent};white-space:nowrap">${ic(cat.icon, 16, "currentColor", 1.7)}${cat.label}</span>
+      <span style="flex:1;height:1px;background:linear-gradient(90deg,${safe(cat.accentLine)},transparent)"></span>
+      <span style="font-family:${safe(MONO)};font-size:.78rem;color:#9fb1c2;white-space:nowrap">${catCount(cat.units)}</span>
+    </div>`;
+  const fleetBlock = isBoard2
+    ? html`<div style="display:flex;flex-wrap:wrap;gap:1.3rem;align-items:flex-start">
+        ${cats.map(
+          (cat) => html`<section style="flex:1 1 290px;min-width:0">
+            ${catHeader(cat)}
+            <div style="display:flex;flex-direction:column;gap:1.1rem">${cat.units.map((u) => unitCard(u))}</div>
+          </section>`,
+        )}
+      </div>`
+    : html`${cats.map(
+        (cat) => html`<section style="margin-bottom:2.2rem">
+          ${catHeader(cat)}
+          <div style="display:flex;flex-wrap:wrap;gap:1.1rem;align-items:flex-start">${cat.units.map((u) => unitCard(u))}</div>
+        </section>`,
+      )}`;
+
   const body = html`${safe(SPRITE)}
-    <main style="max-width:1340px;margin:0 auto;padding:1.4rem 1.2rem 5rem;font-family:'Rajdhani','Inter',system-ui,sans-serif;color:#ccdde8">
+    <main style="max-width:${isBoard2 ? "1700px" : "1340px"};margin:0 auto;padding:1.4rem 1.2rem 5rem;font-family:'Rajdhani','Inter',system-ui,sans-serif;color:#ccdde8">
       <section style="position:relative;border:1px solid rgba(0,212,255,.18);border-radius:14px;overflow:hidden;background:linear-gradient(135deg,rgba(0,212,255,.06),transparent 46%),#0a121c;padding:1.7rem 1.8rem;margin-bottom:1.1rem">
         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin-bottom:.95rem">
           <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(0,255,136,.4);color:#00ff88;background:rgba(0,255,136,.08);font-family:${safe(MONO)};font-size:.66rem;letter-spacing:.08em;padding:.2rem .55rem;border-radius:4px"><span style="width:7px;height:7px;border-radius:50%;background:#00ff88;box-shadow:0 0 8px #00ff88"></span>${safe(t(`status.${op.status}`).toUpperCase())}</span>
@@ -395,14 +444,7 @@ export function opMissionBoardPage(opts: {
       </div>
 
       <div id="mb-fleet">
-        ${cats.map((cat) => html`<section style="margin-bottom:2.2rem">
-          <div style="display:flex;align-items:center;gap:.7rem;margin-bottom:1rem">
-            <span style="display:inline-flex;align-items:center;gap:.55rem;font-family:${safe(MONO)};font-size:.78rem;letter-spacing:.12em;color:${cat.accent};white-space:nowrap">${ic(cat.icon, 16, "currentColor", 1.7)}${cat.label}</span>
-            <span style="flex:1;height:1px;background:linear-gradient(90deg,${safe(cat.accentLine)},transparent)"></span>
-            <span style="font-family:${safe(MONO)};font-size:.78rem;color:#9fb1c2;white-space:nowrap">${catCount(cat.units)}</span>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:1.1rem;align-items:flex-start">${cat.units.map((u) => unitCard(u))}</div>
-        </section>`)}
+        ${fleetBlock}
         ${cats.length === 0 ? html`<p style="color:#7e92a4">${t("op.noFleetNeeds")}</p>` : safe("")}
       </div>
 

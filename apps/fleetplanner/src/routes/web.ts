@@ -4,6 +4,7 @@ import { stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rawHtml } from "../web/pages.js";
+import { opMissionBoardPage } from "../web/missionBoard.js";
 import {
   homePage,
   opDetailPageV2,
@@ -614,6 +615,29 @@ export async function webRoutes(app: FastifyInstance) {
       .filter((n): n is string => Boolean(n));
     const shipSilhouettes = Object.fromEntries(await silhouettesFor(joinShipNames));
     reply.header("Cache-Control", "no-store");
+    const guildTimezone = (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+    const discordInvite = (guildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null;
+    // Per-user op-detail layout choice (Profile → Optik). board1/board2 use the
+    // mission-board renderer; anything else falls back to the classic page.
+    const opStyle = (ctx?.user as { opDetailStyle?: string } | undefined)?.opDetailStyle ?? "classic";
+    if (opStyle === "board1" || opStyle === "board2") {
+      return htmlReply(
+        reply,
+        opMissionBoardPage({
+          basePath: basePath(),
+          currentUser: ctx?.user ?? null,
+          csrfToken: ctx?.csrfToken,
+          flash: req.query.flash,
+          op,
+          guildTimezone,
+          voiceChannelName,
+          ownedShips,
+          canManage,
+          discordInvite,
+          variant: opStyle,
+        }),
+      );
+    }
     return htmlReply(
       reply,
       opJoinPage({
@@ -622,14 +646,13 @@ export async function webRoutes(app: FastifyInstance) {
         csrfToken: ctx?.csrfToken,
         flash: req.query.flash,
         op,
-        guildTimezone: (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
+        guildTimezone,
         voiceChannelName,
         ownedShips,
         shipSilhouettes,
         canManage,
         publicUrl: `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH ?? ""}`,
-        discordInvite:
-          (guildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null,
+        discordInvite,
       }),
     );
   });
@@ -1030,10 +1053,22 @@ export async function webRoutes(app: FastifyInstance) {
         query: q,
         unmatched,
         currentLocale: getLocale(),
+        currentOpStyle: (ctx.user as { opDetailStyle?: string }).opDetailStyle ?? "classic",
       }),
     );
   },
   );
+
+  // Set the user's op-detail layout preference (classic | board1 | board2).
+  app.post<{ Body: Record<string, string> }>("/profile/opstyle", async (req, reply) => {
+    const ctx = await requireRole(req, reply, "crew");
+    if (!ctx) return;
+    if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+    const v = req.body.opStyle;
+    const opStyle = v === "board1" || v === "board2" ? v : "classic";
+    await prisma.user.update({ where: { id: ctx.user.id }, data: { opDetailStyle: opStyle } });
+    return reply.redirect(basePath("/profile?flash=ok:Layout+updated."), 302);
+  });
 
   // Set the user's UI language (single source of truth: User.locale).
   app.post<{ Body: Record<string, string> }>("/profile/locale", async (req, reply) => {

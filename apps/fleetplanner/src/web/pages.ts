@@ -3538,6 +3538,7 @@ export function profilePage(opts: {
   query: string;
   unmatched?: string[];
   currentLocale: string;
+  currentOpStyle?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const csrf = opts.csrfToken ?? "";
@@ -3609,6 +3610,25 @@ export function profilePage(opts: {
         <button type="submit" class="btn btn-sm">${t("profile.language.save")}</button>
       </form>
       <p class="text-dim text-sm" style="margin-top:.4rem">${t("profile.language.help")}</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">${t("profile.opstyle.title")}</div>
+      <form method="post" action="${bp}/profile/opstyle" style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <input type="hidden" name="_csrf" value="${csrf}" />
+        <select name="opStyle" style="max-width:18rem">
+          ${[
+            { v: "classic", l: t("profile.opstyle.classic") },
+            { v: "board1", l: t("profile.opstyle.board1") },
+            { v: "board2", l: t("profile.opstyle.board2") },
+          ].map(
+            (o) =>
+              html`<option value="${o.v}" ${o.v === (opts.currentOpStyle ?? "classic") ? safe("selected") : ""}>${o.l}</option>`,
+          )}
+        </select>
+        <button type="submit" class="btn btn-sm">${t("profile.opstyle.save")}</button>
+      </form>
+      <p class="text-dim text-sm" style="margin-top:.4rem">${t("profile.opstyle.help")}</p>
     </div>
 
     <div class="section">

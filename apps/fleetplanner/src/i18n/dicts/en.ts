@@ -31,6 +31,12 @@ export const en: Record<string, string> = {
   // Profile — language switch
   "profile.language.title": "Language",
   "profile.language.help": "Your interface language across Fleetplanner, the Companion app and mission covers.",
+  "profile.opstyle.title": "Operation detail layout",
+  "profile.opstyle.help": "How operation detail pages look for you. Mission Board variants show a tactical slot board.",
+  "profile.opstyle.save": "Save layout",
+  "profile.opstyle.classic": "Classic (list)",
+  "profile.opstyle.board1": "Mission Board (sections)",
+  "profile.opstyle.board2": "Mission Board (4 columns)",
   "profile.language.save": "Save language",
   "profile.language.saved": "Language updated.",
 
@@ -714,6 +720,7 @@ export const en: Record<string, string> = {
   "cat.shipsAndCrew": "Ships & Crew",
   "cat.fighterWing": "Fighter Wing",
   "cat.groundTroops": "Ground Troops",
+  "cat.vehicles": "Vehicles",
   "op.hangarSharesTitle": "Hangar shares",
   "op.hangarSharesHelp": "Players who let you see their hangar. Visible to operators only — never to players.",
   "op.hangarEmpty": "no ships in hangar",

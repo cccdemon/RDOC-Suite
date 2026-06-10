@@ -24,6 +24,12 @@ export const de: Record<string, string> = {
 
   "profile.language.title": "Sprache",
   "profile.language.help": "Deine Oberflächensprache in Fleetplanner, der Companion-App und auf Mission-Covers.",
+  "profile.opstyle.title": "Operationsdetail-Optik",
+  "profile.opstyle.help": "Wie Operationsdetail-Seiten für dich aussehen. Mission-Board-Varianten zeigen ein taktisches Slot-Board.",
+  "profile.opstyle.save": "Optik speichern",
+  "profile.opstyle.classic": "Klassisch (Liste)",
+  "profile.opstyle.board1": "Mission Board (Sektionen)",
+  "profile.opstyle.board2": "Mission Board (4 Spalten)",
   "profile.language.save": "Sprache speichern",
   "profile.language.saved": "Sprache aktualisiert.",
 
@@ -690,6 +696,7 @@ export const de: Record<string, string> = {
   "cat.shipsAndCrew": "Schiffe & Crew",
   "cat.fighterWing": "Jäger-Staffel",
   "cat.groundTroops": "Bodentruppen",
+  "cat.vehicles": "Fahrzeuge",
   "op.hangarSharesTitle": "Hangar-Freigaben",
   "op.hangarSharesHelp": "Spieler, die dir ihren Hangar zeigen. Nur für Operatoren sichtbar — nie für Spieler.",
   "op.hangarEmpty": "keine Schiffe im Hangar",
