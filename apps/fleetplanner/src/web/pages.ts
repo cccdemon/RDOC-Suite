@@ -8870,21 +8870,19 @@ export function noGuildPage(opts: {
 }): SafeHtml {
   const bp = opts.basePath;
   const body = html` <div style="max-width:32rem;margin:4rem auto;text-align:center">
-    <h1 class="page-title" style="font-size:1.6rem;margin-bottom:1rem">No Discord server yet</h1>
+    <h1 class="page-title" style="font-size:1.6rem;margin-bottom:1rem">${t("guilds.noServerYet")}</h1>
     <p class="text-dim" style="margin-bottom:1.5rem">
-      Fleetplanner is organised per Discord server. To start planning, add the bot to a Discord you
-      manage — or log in with a Discord account that is a member of a server where the bot is
-      already installed.
+      ${t("guilds.noServerBody")}
     </p>
     <a href="${bp}/guilds/add" class="btn btn-cyan" style="font-size:1rem;padding:.75rem 2rem">
-      + Add Fleetplanner bot to my Discord
+      + ${t("guilds.addBotMy")}
     </a>
     <p class="text-dim text-sm" style="margin-top:1.5rem">
-      Already a member somewhere? <a href="${bp}/account">Link your Discord account →</a>
+      ${safe(t("guilds.alreadyMember", { link: `<a href="${bp}/account">${t("guilds.linkDiscord")}</a>` }))}
     </p>
   </div>`;
   return layout({
-    title: "Get started",
+    title: t("guilds.getStarted"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -8918,17 +8916,17 @@ export function guildsListPage(opts: {
     >
       <strong style="flex:1"
         >${g.guildName}
-        ${isActive ? safe('<span class="tag tag-green">active</span>') : safe("")}</strong
+        ${isActive ? html`<span class="tag tag-green">${t("badm.activeLower")}</span>` : safe("")}</strong
       >
       <span class="tag tag-role">${roleLabel[g.role] ?? g.role}</span>
       ${canManage
         ? isActive
-          ? html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">Settings</a>`
+          ? html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">${t("guilds.settings")}</a>`
           : html` <form method="post" action="${bp}/guilds/switch" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
               <input type="hidden" name="guildId" value="${g.guildId}" />
               <input type="hidden" name="next" value="/guilds/settings" />
-              <button type="submit" class="btn btn-ghost btn-sm">Settings</button>
+              <button type="submit" class="btn btn-ghost btn-sm">${t("guilds.settings")}</button>
             </form>`
         : safe("")}
       ${isActive
@@ -8936,23 +8934,23 @@ export function guildsListPage(opts: {
         : html` <form method="post" action="${bp}/guilds/switch" class="inline">
             <input type="hidden" name="_csrf" value="${csrf}" />
             <input type="hidden" name="guildId" value="${g.guildId}" />
-            <button type="submit" class="btn btn-cyan btn-sm">Switch to this server</button>
+            <button type="submit" class="btn btn-cyan btn-sm">${t("guilds.switchTo")}</button>
           </form>`}
     </div>`;
   });
 
-  const body = html` <div class="page-header"><h1 class="page-title">SERVERS</h1></div>
+  const body = html` <div class="page-header"><h1 class="page-title">${t("nav.servers").toUpperCase()}</h1></div>
     <div class="section">
       ${opts.guilds.length
         ? html`<div>${rows}</div>`
-        : html`<p class="text-dim">You're not a member of any server yet.</p>`}
+        : html`<p class="text-dim">${t("guilds.notMember")}</p>`}
       <a href="${bp}/guilds/add" class="btn btn-cyan" style="margin-top:1rem"
-        >+ Add Fleetplanner bot to a Discord</a
+        >+ ${t("guilds.addBot")}</a
       >
     </div>`;
 
   return layout({
-    title: "Servers",
+    title: t("nav.servers"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

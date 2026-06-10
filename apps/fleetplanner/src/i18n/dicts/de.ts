@@ -921,4 +921,15 @@ export const de: Record<string, string> = {
   "wu.o6b": "Artifact Signing ist aktuell für <strong>Organisationen</strong> in den USA, Kanada, der Europäischen Union &amp; dem Vereinigten Königreich verfügbar. Die Einzelentwickler-Validierung ist auf die <strong>USA &amp; Kanada</strong> beschränkt — eine Privatperson in der EU kann die günstigste Route also nicht als Person nutzen, nur als verifizierbare Organisation.",
   "wu.standTitle": "Wo wir stehen",
   "wu.standBody": "Wir verfolgen <strong>Azure Trusted Signing</strong> als verifizierte Organisation. Bis diese Validierung abgeschlossen ist, wird der Installer unsigniert ausgeliefert. Zur sicheren Installation in der Zwischenzeit: im SmartScreen-Dialog <strong>„Weitere Informationen“ → „Trotzdem ausführen“</strong> wählen. Der Build ist Open Source — du kannst ihn selbst prüfen unter <a href=\"https://github.com/cccdemon/RDOC-Suite\" target=\"_blank\" rel=\"noopener\">github.com/cccdemon/RDOC-Suite</a>.",
+
+  "guilds.settings": "Einstellungen",
+  "guilds.switchTo": "Zu diesem Server wechseln",
+  "guilds.notMember": "Du bist noch in keinem Server Mitglied.",
+  "guilds.addBot": "Fleetplanner-Bot zu einem Discord hinzufügen",
+  "guilds.noServerYet": "Noch kein Discord-Server",
+  "guilds.noServerBody": "Fleetplanner ist pro Discord-Server organisiert. Um zu planen, füge den Bot zu einem von dir verwalteten Discord hinzu — oder melde dich mit einem Discord-Konto an, das Mitglied eines Servers ist, auf dem der Bot bereits installiert ist.",
+  "guilds.addBotMy": "Fleetplanner-Bot zu meinem Discord hinzufügen",
+  "guilds.alreadyMember": "Schon irgendwo Mitglied? {link}",
+  "guilds.linkDiscord": "Discord-Konto verknüpfen →",
+  "guilds.getStarted": "Loslegen",
 };
