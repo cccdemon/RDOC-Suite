@@ -49,6 +49,7 @@ import { basePath, getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import { localeSchema, setLocale, getLocale } from "../i18n/index.js";
 import { isMaintenanceOn, isMaintenanceForcedByEnv, setMaintenance } from "../services/maintenance.js";
+import { buildOpIcs } from "../lib/calendar.js";
 import {
   createOperation,
   logAudit,
@@ -630,6 +631,28 @@ export async function webRoutes(app: FastifyInstance) {
           (guildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null,
       }),
     );
+  });
+
+  // ── Calendar download (.ics) — add the op to your calendar after signing up.
+  app.get<{ Params: { id: string } }>("/ops/:id/calendar.ics", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    const op = await getOperation(req.params.id);
+    if (!op) return reply.code(404).send("Operation not found");
+    const opVisibility = (op as Record<string, unknown>).visibility as string | undefined;
+    // Same access gate as the join page: public is open; otherwise the viewer
+    // must be logged in and have a role in the op's guild.
+    if (opVisibility !== "public") {
+      if (!ctx) return reply.code(401).send("Login required");
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+      if (!role) return reply.code(404).send("Operation not found");
+    }
+    const publicUrl = `${getEnv().WEB_PUBLIC_URL}${getEnv().PUBLIC_BASE_PATH ?? ""}`;
+    const ics = buildOpIcs(op, publicUrl);
+    return reply
+      .header("Content-Type", "text/calendar; charset=utf-8")
+      .header("Content-Disposition", `attachment; filename="op-${op.id}.ics"`)
+      .header("Cache-Control", "no-store")
+      .send(ics);
   });
 
   // ── Operation detail ─────────────────────────────────────────────────

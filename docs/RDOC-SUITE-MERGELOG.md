@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Kalendertermin-Download (.ics) nach Anmeldung — Branch `feat/op-ics`
+
+User: nach der Anmeldung soll man den Kalendertermin herunterladen können. Nur fleetplanner.
+- `lib/calendar.ts`: `buildOpIcs(op, url)` baut ein VCALENDAR/VEVENT (UID `op-<id>@…`, DTSTART aus
+  `scheduledAt` UTC, DTEND +2h Default da Op kein Endfeld hat, SUMMARY/LOCATION/DESCRIPTION/URL),
+  CRLF + Text-Escaping (`\ , ; \n`).
+- Route `GET /ops/:id/calendar.ics`: gleiches Visibility-Gate wie die Join-Seite (public offen,
+  sonst ctx + `effectiveOpRole`); liefert `text/calendar` als Attachment `op-<id>.ics`.
+- `opJoinPage`: „📅 In Kalender eintragen"-Download-Button im `signupSummaryBanner` (sichtbar wenn
+  angemeldet) — i18n `join.addToCalendar` (de+en).
+Nur fleetplanner. Build/Deploy: fleetplanner (tsc).
+
 ## Queued / Planned Step - 2026-06-10: Wartungsmodus + Caveman-Screen (Fleetplanner) — Branch `i18n`
 
 User: Maintenance-Switch + Screen für Updates/Änderungen, Caveman-Flavor ("Ugg Maintenance. Caveman

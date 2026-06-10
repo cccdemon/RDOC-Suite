@@ -4873,7 +4873,10 @@ export function opJoinPage(opts: {
   const signupSummaryBanner =
     signedUp && signupParts.length
       ? html`<div class="opv2-cta done" style="margin-bottom:1rem">
-          ✓ ${t("join.youreSignedUp")} — ${signupParts.join(" · ")}.
+          <div>✓ ${t("join.youreSignedUp")} — ${signupParts.join(" · ")}.</div>
+          <div class="opv2-cta-actions" style="margin-top:.6rem">
+            <a class="btn btn-sm" href="${bp}/ops/${op.id}/calendar.ics" download>📅 ${t("join.addToCalendar")}</a>
+          </div>
         </div>`
       : safe("");
   // Headcount for the top fact row. Confirmed = people who CLAIMED a spot:

@@ -681,6 +681,7 @@ export const en: Record<string, string> = {
   "join.jsAFireteam": "a fireteam name",
   "join.jsPleaseProvide": "Please provide:",
   "join.tabPrefix": "Join",
+  "join.addToCalendar": "Add to calendar",
 
   // Ship database
   "ships.title": "SHIP DATABASE",
