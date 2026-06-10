@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Mission-Board echtes Design-Port (claude.ai/design Bundle) — Branch `feat/mission-board`
+
+User lieferte Design-Bundle (claude.ai/design, `Operationsdetail.dc.html`). Erster additiver Versuch
+sah „nicht mal ähnlich" aus → jetzt echter Port des Designs.
+- Neues `web/missionBoard.ts` (`opMissionBoardPage`): rendert das Design 1:1 (SVG-Icon-Sprite,
+  Hero-Karte, Mission-Objective + Anmeldungen-Karte mit Progress, Spieler/Operator-Segment-Toggle,
+  „Mitmachen"-3-Karten, Tag-Legende, Kategorie-Sektionen Schiffe&Crew/Jäger-Staffel/Bodentruppen mit
+  einklappbaren Unit-Karten + Slot-Reihen FEST/TYP/ROLLE OFFEN/FREI + Mehrsitzer-Subblock,
+  „Platz übernehmen"-Modal mit Hangar-Pick/Katalog/Notiz/Hangar-Freigabe-Toggle). Inline-Styles wie im
+  Design. Datengetrieben aus echtem Op (accepted ships + offene ship-Requirements + fighter_squad +
+  cqb squads), verdrahtet an claim/units/cqb-join/crew-requests/hangar-share.
+- Route GET /ops/:id zeigt opMissionBoardPage (alte opJoinPage bleibt bis verifiziert).
+Nur fleetplanner, Voice unangetastet. Build: tsc + Preview-Harness-Verify.
+
 ## Queued / Planned Step - 2026-06-10: Op-Detail „Mission Board" Redesign + Hangar-Freigabe — Branch `feat/mission-board`
 
 UI/UX-Overhaul der Op-Detailseite (Spieler-Ansicht) zum taktischen Mission Board + neues Feature
