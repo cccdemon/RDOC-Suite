@@ -6739,26 +6739,26 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
           </select>
         </label>
         <label class="text-sm text-dim"
-          >TTL (days)
+          >${t("badm.ttlDays")}
           <input type="number" name="ttlDays" min="1" max="90" value="7" style="width:5rem" />
         </label>
-        <button type="submit" class="btn btn-cyan btn-sm">Mint invite</button>
+        <button type="submit" class="btn btn-cyan btn-sm">${t("badm.mintInvite")}</button>
       </form>
       <p class="text-dim text-sm" style="margin:.5rem 0 0">
-        The invite link is consumed on the bridge (Discord OAuth). Single-use, time-limited.
+        ${t("badm.inviteNote")}
       </p>
     </div>
   </div>`;
 
   const adminPanel = html` <div class="section">
-    <div class="section-title">Bridge Admins (${opts.admins.length})</div>
+    <div class="section-title">${t("badm.bridgeAdmins", { n: opts.admins.length })}</div>
     <div style="overflow-x:auto">
       <table class="user-table">
         <thead>
           <tr>
-            <th>Discord ID</th>
-            <th>Role</th>
-            <th>Added by</th>
+            <th>${t("badm.discordId")}</th>
+            <th>${t("admin.role")}</th>
+            <th>${t("badm.addedBy")}</th>
             <th></th>
           </tr>
         </thead>
@@ -6775,17 +6775,17 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
       >
         <input type="hidden" name="_csrf" value="${csrf}" />
         <label class="text-sm text-dim" style="flex:1 1 16rem"
-          >Discord user ID
+          >${t("badm.discordUserId")}
           <input type="text" name="userId" placeholder="123456789012345678" required />
         </label>
         <label class="text-sm text-dim"
-          >Role
+          >${t("admin.role")}
           <select name="role" style="width:auto">
             <option value="vice_admiral">vice_admiral</option>
             <option value="admiral">admiral</option>
           </select>
         </label>
-        <button type="submit" class="btn btn-ghost btn-sm">Add admin</button>
+        <button type="submit" class="btn btn-ghost btn-sm">${t("badm.addAdmin")}</button>
       </form>
     </div>
   </div>`;
@@ -6794,20 +6794,20 @@ ${cfg.allowedVoiceChannelIds.join("\n")}</textarea
       <h1 class="page-title">${opts.guildName}</h1>
       <p class="page-subtitle text-mono">${opts.guildId}</p>
       <p style="margin-top:.5rem">
-        <a href="${bp}/admin/bridge">← All guilds</a>
+        <a href="${bp}/admin/bridge">← ${t("badm.allGuilds")}</a>
         &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/dashboard">Dashboard</a> &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/sessions">Sessions</a> &nbsp;·&nbsp;
+        <a href="${bp}/admin/bridge/${opts.guildId}/dashboard">${t("badm.navDashboard")}</a> &nbsp;·&nbsp;
+        <a href="${bp}/admin/bridge/${opts.guildId}/sessions">${t("badm.navSessions")}</a> &nbsp;·&nbsp;
         <!-- Discord Voice + Relay Bots tabs disabled while voice is reworked (routes stay live). -->
-        <a href="${bp}/admin/bridge/${opts.guildId}/downloads">Downloads</a> &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/monitoring">Monitoring</a> &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/audit">Audit log</a>
+        <a href="${bp}/admin/bridge/${opts.guildId}/downloads">${t("badm.navDownloads")}</a> &nbsp;·&nbsp;
+        <a href="${bp}/admin/bridge/${opts.guildId}/monitoring">${t("badm.navMonitoring")}</a> &nbsp;·&nbsp;
+        <a href="${bp}/admin/bridge/${opts.guildId}/audit">${t("badm.navAudit")}</a>
       </p>
     </div>
     ${configPanel} ${adminPanel} ${invitePanel}`;
 
   return layout({
-    title: "Bridge Guild",
+    title: t("badm.bridgeGuildTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -6841,37 +6841,37 @@ export function bridgeMonitoringPage(opts: {
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(0)} MB`;
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">MONITORING</h1>
+      <h1 class="page-title">${t("badm.monitoring")}</h1>
       <p class="page-subtitle text-mono">${opts.guildName}</p>
       <p style="margin-top:.5rem">
-        <a href="${bp}/admin/bridge/${opts.guildId}">← Back to guild</a>
+        <a href="${bp}/admin/bridge/${opts.guildId}">← ${t("badm.backToGuild")}</a>
       </p>
     </div>
     ${!s
       ? html`<div class="flash flash-error">
-          Bridge unreachable${opts.error ? html`: ${opts.error}` : ""}
+          ${t("badm.bridgeUnreachable")}${opts.error ? html`: ${opts.error}` : ""}
         </div>`
       : html` <div class="section">
-          <div class="section-title">Live</div>
+          <div class="section-title">${t("badm.live")}</div>
           <div class="card" style="padding:1.25rem">
             <div style="display:flex;flex-wrap:wrap;gap:1.5rem">
               <div>
-                <span class="text-dim text-sm">Active rooms</span><br /><strong class="text-mono"
+                <span class="text-dim text-sm">${t("badm.activeRooms")}</span><br /><strong class="text-mono"
                   >${String(s.activeRooms)}</strong
                 >
               </div>
               <div>
-                <span class="text-dim text-sm">Commanders</span><br /><strong class="text-mono"
+                <span class="text-dim text-sm">${t("badm.commanders")}</span><br /><strong class="text-mono"
                   >${String(s.activeCommanders)}</strong
                 >
               </div>
               <div>
-                <span class="text-dim text-sm">Speaking</span><br /><strong class="text-mono"
+                <span class="text-dim text-sm">${t("badm.speaking")}</span><br /><strong class="text-mono"
                   >${String(s.speakingCommanders)}</strong
                 >
               </div>
               <div>
-                <span class="text-dim text-sm">Uptime</span><br /><strong class="text-mono"
+                <span class="text-dim text-sm">${t("badm.uptime")}</span><br /><strong class="text-mono"
                   >${String(Math.round(s.uptimeSeconds / 60))} min</strong
                 >
               </div>
@@ -6881,22 +6881,22 @@ export function bridgeMonitoringPage(opts: {
                 >
               </div>
               <div>
-                <span class="text-dim text-sm">Memory (sys)</span><br /><strong class="text-mono"
+                <span class="text-dim text-sm">${t("badm.memorySys")}</span><br /><strong class="text-mono"
                   >${mb(s.system.memory.systemUsedBytes)} /
                   ${mb(s.system.memory.systemTotalBytes)}</strong
                 >
               </div>
             </div>
             <p class="text-dim text-sm" style="margin:1rem 0 0">
-              Bandwidth (${s.bandwidth.source}): in ${s.bandwidth.bitrateIn ?? safe("—")} / out
+              ${t("badm.bandwidth")} (${s.bandwidth.source}): in ${s.bandwidth.bitrateIn ?? safe("—")} / out
               ${s.bandwidth.bitrateOut ?? safe("—")} bps
             </p>
-            <p class="text-dim text-sm" style="margin:.35rem 0 0">Snapshot ${s.generatedAt}</p>
+            <p class="text-dim text-sm" style="margin:.35rem 0 0">${t("badm.snapshot")} ${s.generatedAt}</p>
           </div>
         </div>`}`;
 
   return layout({
-    title: "Bridge Monitoring",
+    title: t("badm.monitoringTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -6941,24 +6941,24 @@ export function bridgeAuditPage(opts: {
   const hasNext = nextOffset < opts.total;
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">AUDIT LOG</h1>
+      <h1 class="page-title">${t("admin.auditLog")}</h1>
       <p class="page-subtitle text-mono">${opts.guildName}</p>
       <p style="margin-top:.5rem">
-        <a href="${bp}/admin/bridge/${opts.guildId}">← Back to guild</a>
+        <a href="${bp}/admin/bridge/${opts.guildId}">← ${t("badm.backToGuild")}</a>
       </p>
     </div>
     ${opts.error
-      ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>`
+      ? html`<div class="flash flash-error">${t("badm.bridgeUnreachable")}: ${opts.error}</div>`
       : html` <div class="section">
-          <div class="section-title">Entries (${String(opts.total)})</div>
+          <div class="section-title">${t("badm.entries", { n: String(opts.total) })}</div>
           <div style="overflow-x:auto">
             <table class="user-table">
               <thead>
                 <tr>
-                  <th>Time</th>
-                  <th>Actor</th>
-                  <th>Action</th>
-                  <th>Target</th>
+                  <th>${t("badm.colTime")}</th>
+                  <th>${t("badm.colActor")}</th>
+                  <th>${t("badm.colAction")}</th>
+                  <th>${t("badm.colTarget")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -6973,7 +6973,7 @@ export function bridgeAuditPage(opts: {
                   href="${bp}/admin/bridge/${opts.guildId}/audit?limit=${String(
                     opts.limit,
                   )}&offset=${String(prevOffset)}"
-                  >← Newer</a
+                  >← ${t("badm.newer")}</a
                 >`
               : ""}
             ${hasNext
@@ -6982,14 +6982,14 @@ export function bridgeAuditPage(opts: {
                   href="${bp}/admin/bridge/${opts.guildId}/audit?limit=${String(
                     opts.limit,
                   )}&offset=${String(nextOffset)}"
-                  >Older →</a
+                  >${t("badm.older")} →</a
                 >`
               : ""}
           </div>
         </div>`}`;
 
   return layout({
-    title: "Bridge Audit",
+    title: t("badm.auditTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -7006,7 +7006,7 @@ function bridgeBackLink(bp: string, guildId: string, label: string): SafeHtml {
 }
 
 function healthDot(ok: boolean): SafeHtml {
-  return html`<span class="tag ${ok ? "tag-green" : "tag-red"}">${ok ? "OK" : "DOWN"}</span>`;
+  return html`<span class="tag ${ok ? "tag-green" : "tag-red"}">${ok ? t("badm.healthOk") : t("badm.healthDown")}</span>`;
 }
 
 export function bridgeDashboardPage(opts: {
