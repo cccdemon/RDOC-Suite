@@ -5578,31 +5578,31 @@ export function opJoinPage(opts: {
                 </details>`}
 
         ${squadJoinCard(
-          "Join a CQB squad",
-          "Pick a named fireteam and take a spot directly — no assistant needed.",
+          t("join.joinCqbSquad"),
+          t("join.joinCqbSquadSub"),
           cqbJoinSquads,
-          "Claim",
-          "Soldier",
+          t("common.claim"),
+          t("join.slotSoldier"),
         )}
         ${squadJoinCard(
-          "Join a fighter squad",
-          "Wingman pairs — bring your own fighter and take a slot.",
+          t("join.joinFighterSquad"),
+          t("join.joinFighterSquadSub"),
           fighterJoinSquads,
-          "Claim",
-          "Pilot",
+          t("common.claim"),
+          t("join.slotPilot"),
         )}
 
         ${myPendingUnits.length
           ? html`<section class="card" style="margin-top:1rem">
-              <h3 class="wiz-sum-h">Your offered ${myPendingUnits.length === 1 ? "ship" : "ships"}</h3>
+              <h3 class="wiz-sum-h">${myPendingUnits.length === 1 ? t("join.yourOfferedShip") : t("join.yourOfferedShips")}</h3>
               ${myPendingUnits.map(
                 (u) => html`<div class="roster-unit">
                   <div class="roster-unit-head">
                     <strong>${u.squadName || u.ship?.name || t("op.unit")}</strong>
-                    <span class="tag tag-gold">pending review</span>
+                    <span class="tag tag-gold">${t("op.pendingReview")}</span>
                   </div>
                   <p class="text-dim text-sm">
-                    Awaiting the Fleet Operator. Configure the seats now or withdraw the ship.
+                    ${t("join.awaitingOperator")}
                   </p>
                   ${seatEditDetails(
                     u.id,
@@ -5616,7 +5616,7 @@ export function opJoinPage(opts: {
           : safe("")}
 
         <section class="card" style="margin-top:1rem">
-          <h3 class="wiz-sum-h">Accepted Units</h3>
+          <h3 class="wiz-sum-h">${t("join.acceptedUnits")}</h3>
           ${acceptedRoster.length
             ? acceptedRoster.map(
                 (u) => html`<div class="roster-unit">
@@ -5626,7 +5626,7 @@ export function opJoinPage(opts: {
                       : safe("")}
                     <strong>${u.name}</strong> <span class="tag tag-dim">${u.kind}</span>
                     <span class="roster-unit-count"
-                      >${u.seats.filter((s) => !s.open).length}/${u.seats.length} crew</span
+                      >${t("join.crewCount", { filled: u.seats.filter((s) => !s.open).length, total: u.seats.length })}</span
                     >
                   </div>
                   <div class="roster-seats">${u.seats.map((s) => seatRowHtml(s, u.isMyUnit))}</div>
@@ -5642,8 +5642,8 @@ export function opJoinPage(opts: {
                       <div class="roster-seats">${v.seats.map((s) => seatRowHtml(s, false))}</div>
                       ${withTeams && embeddedTeamsFor(v.id).length
                         ? html`<div class="roster-embarked">
-                            <div class="roster-embarked-h">Fireteams</div>
-                            ${embeddedTeamsFor(v.id).map((t) => teamSlotUnit(t, "Claim", "Soldier"))}
+                            <div class="roster-embarked-h">${t("join.fireteams")}</div>
+                            ${embeddedTeamsFor(v.id).map((tm) => teamSlotUnit(tm, t("common.claim"), t("join.slotSoldier")))}
                           </div>`
                         : safe("")}
                       ${v.isMine ? withdrawShipForm(v.id) : safe("")}
@@ -5657,12 +5657,12 @@ export function opJoinPage(opts: {
                           </div>`
                         : safe("");
                     };
-                    return html`${sect("Attached Vehicles", "vehicle", true)}${sect("Attached Fighters", "fighter", false)}${sect("Attached Ships", "ship", false)}`;
+                    return html`${sect(t("join.attachedVehicles"), "vehicle", true)}${sect(t("join.attachedFighters"), "fighter", false)}${sect(t("join.attachedShips"), "ship", false)}`;
                   })()}
                   ${embeddedTeamsFor(u.id).length
                     ? html`<div class="roster-embarked">
-                        <div class="roster-embarked-h">Fireteams</div>
-                        ${embeddedTeamsFor(u.id).map((t) => teamSlotUnit(t, "Claim", "Soldier"))}
+                        <div class="roster-embarked-h">${t("join.fireteams")}</div>
+                        ${embeddedTeamsFor(u.id).map((tm) => teamSlotUnit(tm, t("common.claim"), t("join.slotSoldier")))}
                       </div>`
                     : safe("")}
                   ${u.isMyUnit
@@ -5672,46 +5672,46 @@ export function opJoinPage(opts: {
                     : safe("")}
                 </div>`,
               )
-            : html`<p class="text-dim text-sm">No ships or fireteams accepted yet.</p>`}
+            : html`<p class="text-dim text-sm">${t("join.noAcceptedUnits")}</p>`}
         </section>
 
         <section class="card" style="margin-top:1rem">
-          <h3 class="wiz-sum-h">Fleet Requirements</h3>
+          <h3 class="wiz-sum-h">${t("board.fleetNeeds")}</h3>
           ${requirementRows.length
             ? html`<div class="req-table">
                 <div class="req-row req-head">
-                  <span>Requirement</span>
-                  <span>Requested</span>
-                  <span>Fulfilled</span>
-                  <span>Open Slots</span>
+                  <span>${t("join.reqRequirement")}</span>
+                  <span>${t("join.reqRequested")}</span>
+                  <span>${t("join.reqFulfilled")}</span>
+                  <span>${t("join.reqOpenSlots")}</span>
                 </div>
                 ${requirementRows.map(
                   (r) => html`<div class="req-row">
                     <span class="req-name"><strong>${r.label}</strong><span>${r.category}</span></span>
                     <span class="req-num">${r.requested}</span>
-                    <span class="req-num">${r.fulfilled}${r.pending ? html` <span class="tag tag-gold">${r.pending} pending</span>` : safe("")}</span>
+                    <span class="req-num">${r.fulfilled}${r.pending ? html` <span class="tag tag-gold">${t("board.pending", { n: r.pending })}</span>` : safe("")}</span>
                     <span class="req-num">${r.open}</span>
                   </div>`,
                 )}
                 <div class="req-row">
-                  <span class="req-name"><strong>Total</strong><span>Accepted units count as fulfilled</span></span>
+                  <span class="req-name"><strong>${t("board.total")}</strong><span>${t("join.acceptedCountFulfilled")}</span></span>
                   <span class="req-num">${requestedTotal}</span>
                   <span class="req-num">${fulfilledTotal}</span>
                   <span class="req-num">${openTotal}</span>
                 </div>
               </div>`
-            : html`<p class="text-dim text-sm">No requirements defined.</p>`}
+            : html`<p class="text-dim text-sm">${t("join.noRequirementsDefined")}</p>`}
         </section>
 
         ${myQuestions.length
           ? html`<section class="card" style="margin-top:1rem">
-              <h3 class="wiz-sum-h">My Questions</h3>
+              <h3 class="wiz-sum-h">${t("join.myQuestions")}</h3>
               ${myQuestions.map(
                 (q) => html`<div class="join-q">
                   <div><b>${q.asker}:</b> ${q.body}</div>
                   ${q.answer
-                    ? html`<div class="join-a">Reply from <b>${q.answeredBy}:</b> ${q.answer}</div>`
-                    : html`<div class="join-a text-dim">Not answered yet</div>`}
+                    ? html`<div class="join-a">${t("admin.replyFrom")} <b>${q.answeredBy}:</b> ${q.answer}</div>`
+                    : html`<div class="join-a text-dim">${t("admin.notAnswered")}</div>`}
                 </div>`,
               )}
             </section>`
@@ -5719,13 +5719,13 @@ export function opJoinPage(opts: {
       </div>
 
       <aside class="card join-aside" id="signup">
-        <h3 class="wiz-sum-h">My Signup</h3>
+        <h3 class="wiz-sum-h">${t("join.mySignup")}</h3>
         ${stateBanner}
         ${!myId
-          ? html`<p class="text-dim text-sm">Sign in to claim seats, offer ships, or ask the Fleet Operator a question.</p>
-              <a class="btn btn-green join-cta-btn" href="${bp}/login">Sign in</a>`
+          ? html`<p class="text-dim text-sm">${t("join.signInAside")}</p>
+              <a class="btn btn-green join-cta-btn" href="${bp}/login">${t("op.signIn")}</a>`
           : !hasSeat && !hasReq && !myCqb
-            ? html`<p class="text-dim text-sm">Use “I want to join” on the left to sign up.</p>`
+            ? html`<p class="text-dim text-sm">${t("join.useIWantToJoin")}</p>`
             : safe("")}
         ${myId && hasReq && !hasSeat
           ? html`<form
@@ -5737,19 +5737,19 @@ export function opJoinPage(opts: {
               <input type="hidden" name="ui" value="player" />
               <input type="hidden" name="tab" value="crew" />
               <button type="submit" class="btn btn-sm btn-ghost join-cta-btn">
-                Withdraw request
+                ${t("join.withdrawRequest")}
               </button>
             </form>`
           : safe("")}
         ${myId && myCqb
           ? html`<div style="margin-top:10px">
-              <p class="text-dim text-sm" style="margin:0 0 .35rem">Signed up as CQB soldier.</p>
+              <p class="text-dim text-sm" style="margin:0 0 .35rem">${t("join.signedUpCqb")}</p>
               <form method="post" action="${bp}/api/ops/${op.id}/cqb-signups/withdraw">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <input type="hidden" name="ui" value="player" />
                 <input type="hidden" name="tab" value="crew" />
                 <button type="submit" class="btn btn-sm btn-ghost join-cta-btn">
-                  Withdraw CQB signup
+                  ${t("join.withdrawCqb")}
                 </button>
               </form>
             </div>`
@@ -5757,23 +5757,23 @@ export function opJoinPage(opts: {
         ${myId
           ? html`<form method="post" action="${bp}/ops/${op.id}/questions" style="margin-top:12px">
               <input type="hidden" name="_csrf" value="${csrf}" />
-              <label>Ask a question</label>
-              <textarea name="body" maxlength="1000" placeholder="e.g. which loadouts? exact time?"></textarea>
-              <button type="submit" class="btn btn-ghost join-cta-btn">Ask a question</button>
+              <label>${t("join.askQuestion")}</label>
+              <textarea name="body" maxlength="1000" placeholder="${t("join.askPlaceholder")}"></textarea>
+              <button type="submit" class="btn btn-ghost join-cta-btn">${t("join.askQuestion")}</button>
             </form>`
           : safe("")}
         ${seatSummary.length
           ? html`<div style="margin-top:14px">
-              <div class="wiz-sum-h" style="font-size:.9rem">Available Seats</div>
+              <div class="wiz-sum-h" style="font-size:.9rem">${t("join.availableSeats")}</div>
               ${seatSummary.map(
                 (s) => html`<div class="join-seat">
-                  <span>${s.name}</span><span class="free">${s.open}/${s.total} open</span>
+                  <span>${s.name}</span><span class="free">${t("join.openCount", { open: s.open, total: s.total })}</span>
                 </div>`,
               )}
             </div>`
           : safe("")}
         <p class="text-dim text-sm" style="margin-top:10px">
-          Your signup is visible to the operator once you join.
+          ${t("join.signupVisible")}
         </p>
       </aside>
     </div>
@@ -5861,15 +5861,15 @@ export function opJoinPage(opts: {
           const isShip = !unitType || unitType.value === "ship";
           if (isShip) {
             if (!(owned && owned.value) && !(shipId && shipId.value))
-              missing.push("a ship (hangar or catalog search)");
+              missing.push("${safe(t("join.jsAShip"))}");
           } else {
             const sn = form.querySelector('[name="squadName"]');
-            if (!sn || !sn.value.trim()) missing.push("a fireteam name");
+            if (!sn || !sn.value.trim()) missing.push("${safe(t("join.jsAFireteam"))}");
           }
           if (missing.length) {
             e.preventDefault();
             if (errBox) {
-              errBox.textContent = "Please provide: " + missing.join(", ") + ".";
+              errBox.textContent = "${safe(t("join.jsPleaseProvide"))} " + missing.join(", ") + ".";
               errBox.hidden = false;
             }
           } else if (errBox) {
