@@ -3623,7 +3623,7 @@ export function profilePage(opts: {
                   hidden.value = el.dataset.id || "";
                   search.value = el.dataset.name || "";
                   btn.disabled = false;
-                  btn.textContent = "Assign " + (el.dataset.name || "");
+                  btn.textContent = "${safe(t("common.assign"))} " + (el.dataset.name || "");
                 });
               });
             })();
@@ -3632,7 +3632,7 @@ export function profilePage(opts: {
       : safe("")}
 
     <div class="section">
-      <div class="section-title">Owned Ships (${opts.ownedShips.length})</div>
+      <div class="section-title">${t("profile.ownedShips", { n: opts.ownedShips.length })}</div>
       ${opts.ownedShips.length
         ? html` <style>
               #owned-table th[data-col] { cursor: pointer; user-select: none; white-space: nowrap; }
@@ -3643,13 +3643,13 @@ export function profilePage(opts: {
             <table id="owned-table">
               <thead>
                 <tr>
-                  <th data-col="0" data-type="text">Ship</th>
-                  <th data-col="1" data-type="text">Nickname</th>
-                  <th data-col="2" data-type="text">Manufacturer</th>
-                  <th data-col="3" data-type="size">Size</th>
-                  <th data-col="4" data-type="text">Career</th>
-                  <th data-col="5" data-type="text">Role</th>
-                  <th class="text-right" data-col="6" data-type="num">Crew</th>
+                  <th data-col="0" data-type="text">${t("profile.colShip")}</th>
+                  <th data-col="1" data-type="text">${t("profile.colNickname")}</th>
+                  <th data-col="2" data-type="text">${t("profile.colManufacturer")}</th>
+                  <th data-col="3" data-type="size">${t("profile.colSize")}</th>
+                  <th data-col="4" data-type="text">${t("profile.colCareer")}</th>
+                  <th data-col="5" data-type="text">${t("profile.colRole")}</th>
+                  <th class="text-right" data-col="6" data-type="num">${t("profile.colCrew")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -3686,22 +3686,22 @@ export function profilePage(opts: {
               })();
             </script>`
         : html`<p class="text-dim text-sm">
-            No ships added yet. Search the ship database below and add the ships you own.
+            ${t("profile.noShipsYet")}
           </p>`}
     </div>
 
     <div class="section">
-      <div class="section-title">Add Ship</div>
+      <div class="section-title">${t("profile.addShip")}</div>
       <form method="get" action="${bp}/profile" class="flex gap-1 mb-2" style="flex-wrap:wrap">
         <input
           type="search"
           name="q"
           value="${opts.query}"
-          placeholder="Search ship name..."
+          placeholder="${t("profile.searchShipName")}"
           style="max-width:24rem"
         />
-        <button type="submit" class="btn btn-sm">Search</button>
-        ${opts.query ? html`<a href="${bp}/profile" class="btn btn-sm btn-ghost">Clear</a>` : ""}
+        <button type="submit" class="btn btn-sm">${t("profile.search")}</button>
+        ${opts.query ? html`<a href="${bp}/profile" class="btn btn-sm btn-ghost">${t("profile.clear")}</a>` : ""}
       </form>
       ${opts.query
         ? opts.searchResults.length
@@ -3709,12 +3709,12 @@ export function profilePage(opts: {
               <table>
                 <thead>
                   <tr>
-                    <th>Ship</th>
-                    <th>Manufacturer</th>
-                    <th>Size</th>
-                    <th>Career</th>
-                    <th>Role</th>
-                    <th class="text-right">Crew</th>
+                    <th>${t("profile.colShip")}</th>
+                    <th>${t("profile.colManufacturer")}</th>
+                    <th>${t("profile.colSize")}</th>
+                    <th>${t("profile.colCareer")}</th>
+                    <th>${t("profile.colRole")}</th>
+                    <th class="text-right">${t("profile.colCrew")}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -3723,12 +3723,12 @@ export function profilePage(opts: {
                 </tbody>
               </table>
             </div>`
-          : html`<p class="text-dim text-sm">No ships found.</p>`
-        : html`<p class="text-dim text-sm">Search for a ship to add it to your profile.</p>`}
+          : html`<p class="text-dim text-sm">${t("profile.noShipsFound")}</p>`
+        : html`<p class="text-dim text-sm">${t("profile.searchToAdd")}</p>`}
     </div>`;
 
   return layout({
-    title: "Profile",
+    title: t("profile.title"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -3789,7 +3789,7 @@ export function opFormPage(opts: {
   const meetingSystem = selectedLocation?.system ?? op?.meetingSystem ?? "stanton";
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">${op ? "EDIT OPERATION" : "NEW OPERATION"}</h1>
+      <h1 class="page-title">${op ? t("opf.editTitle") : t("opf.newTitle")}</h1>
     </div>
     <div class="card">
       <form method="post" action="${action}" id="op-form" novalidate>
@@ -3797,7 +3797,7 @@ export function opFormPage(opts: {
         <div class="form-errors" id="op-form-errors" hidden></div>
         ${!op && opts.operatorGuilds && opts.operatorGuilds.length > 0
           ? html` <div class="form-group">
-              <label>Server <span class="req" title="Pflichtfeld">*</span></label>
+              <label>${t("opf.server")} <span class="req" title="${t("common.required")}">*</span></label>
               ${selectedOperatorGuild
                 ? html` <input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
                     <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
@@ -3809,7 +3809,7 @@ export function opFormPage(opts: {
                       />
                       <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
                   : html` <select name="guildId" required class="guild-picker-select-form">
-                      <option value="">— Select server —</option>
+                      <option value="">${t("opf.selectServer")}</option>
                       ${opts.operatorGuilds.map(
                         (g) => html`<option value="${g.id}">${g.name}</option>`,
                       )}
@@ -3817,7 +3817,7 @@ export function opFormPage(opts: {
             </div>`
           : safe("")}
         <div class="form-group">
-          <label>Operation Title <span class="req" title="Pflichtfeld">*</span></label>
+          <label>${t("opf.opTitle")} <span class="req" title="${t("common.required")}">*</span></label>
           <input
             type="text"
             name="title"
@@ -3828,7 +3828,7 @@ export function opFormPage(opts: {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Scheduled Date/Time (${gtz}) <span class="req" title="Pflichtfeld">*</span></label>
+            <label>${t("opf.scheduledAt", { tz: gtz })} <span class="req" title="${t("common.required")}">*</span></label>
             <input
               type="datetime-local"
               name="scheduledAt"
@@ -3837,28 +3837,28 @@ export function opFormPage(opts: {
             />
           </div>
           <div class="form-group">
-            <label>Operation Type</label>
+            <label>${t("opf.opType")}</label>
             <select name="opType">
               ${opTypes.map(
-                (t) =>
-                  html`<option value="${t}" ${op?.opType === t ? safe(" selected") : ""}>
-                    ${t}
+                (ot) =>
+                  html`<option value="${ot}" ${op?.opType === ot ? safe(" selected") : ""}>
+                    ${opTypeText(ot)}
                   </option>`,
               )}
             </select>
           </div>
           ${!op
             ? html`<div class="form-group">
-                <label>Visibility</label>
+                <label>${t("vis.aria")}</label>
                 <select name="visibility">
-                  <option value="private" selected>🔒 Private (this Discord only)</option>
-                  <option value="partners">🤝 Partners (this Discord + linked ones)</option>
-                  <option value="public">🌐 Public (any logged-in user)</option>
+                  <option value="private" selected>🔒 ${t("vis.private.long")}</option>
+                  <option value="partners">🤝 ${t("vis.partners.long")}</option>
+                  <option value="public">🌐 ${t("vis.public.long")}</option>
                 </select>
               </div>`
             : safe("")}
           <div class="form-group">
-            <label>Meeting System</label>
+            <label>${t("opf.meetingSystem")}</label>
             <select name="meetingSystem" id="meeting-system-select">
               ${SYSTEMS.map(
                 (s) =>
@@ -3869,9 +3869,9 @@ export function opFormPage(opts: {
             </select>
           </div>
           <div class="form-group">
-            <label>Meeting Location</label>
+            <label>${t("opf.meetingLocation")}</label>
             <select name="meetingLocationSlug" id="meeting-location-select">
-              <option value="" data-system="">-- Select location --</option>
+              <option value="" data-system="">${t("opf.selectLocation")}</option>
               ${locationOptions.map(
                 (location) =>
                   html` <option
@@ -3893,21 +3893,21 @@ export function opFormPage(opts: {
           </div>
         </div>
         <div class="form-group">
-          <label>Description</label>
-          <textarea name="description" placeholder="Briefing, objectives, notes…">
+          <label>${t("op.fldDescription")}</label>
+          <textarea name="description" placeholder="${t("opf.descPlaceholder")}">
 ${op?.description ?? ""}</textarea
           >
         </div>
         ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
           ? html` <div class="form-group">
               <label
-                >Discord Event Voice Channel
+                >${t("op.eventVoiceChannel")}
                 <span style="font-weight:normal;opacity:.65"
-                  >(optional — Discord scheduled event location)</span
+                  >${t("op.eventVoiceChannelHint")}</span
                 ></label
               >
               <select name="eventVoiceChannelId">
-                <option value="">— No voice channel —</option>
+                <option value="">${t("opf.noVoiceChannelDash")}</option>
                 ${opts.guildVoiceChannels.map(
                   (ch) =>
                     html`<option
@@ -3921,8 +3921,8 @@ ${op?.description ?? ""}</textarea
             </div>`
           : safe("")}
         <div class="form-actions">
-          <button type="submit" class="btn">${op ? "Save Changes" : "Create Operation"}</button>
-          <a href="${op ? `${bp}/ops/${op.id}` : `${bp}/`}" class="btn btn-ghost">Cancel</a>
+          <button type="submit" class="btn">${op ? t("opf.saveChanges") : t("opf.createOp")}</button>
+          <a href="${op ? `${bp}/ops/${op.id}` : `${bp}/`}" class="btn btn-ghost">${t("common.cancel")}</a>
         </div>
       </form>
     </div>
@@ -3941,9 +3941,9 @@ ${op?.description ?? ""}</textarea
         const placeholder = meetingLocationSelect.options[0];
         if (placeholder)
           placeholder.textContent =
-            "-- Select " +
+            "${safe(t("opf.selectLocPre"))}" +
             meetingSystemSelect.options[meetingSystemSelect.selectedIndex].text +
-            " location --";
+            "${safe(t("opf.selectLocPost"))}";
         let selectedAllowed = false;
         for (const opt of Array.from(meetingLocationSelect.options)) {
           if (!opt.value) {
