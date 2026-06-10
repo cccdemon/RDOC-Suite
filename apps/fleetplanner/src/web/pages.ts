@@ -6081,30 +6081,30 @@ export function adminPage(opts: {
   const ls = opts.locationSync;
 
   const syncPanel = html` <div class="section">
-    <div class="section-title">Ship Catalog</div>
+    <div class="section-title">${t("admin.shipCatalog")}</div>
     <div class="ship-sync card" style="padding:1rem">
       <div
         class="ship-sync-stats"
         style="display:flex;flex-wrap:wrap;gap:1.25rem;margin-bottom:.75rem"
       >
         <div>
-          <span class="text-dim text-sm">Ships cached</span><br /><strong class="text-mono"
+          <span class="text-dim text-sm">${t("admin.shipsCached")}</span><br /><strong class="text-mono"
             >${String(s.shipCount)}</strong
           >
         </div>
         <div>
-          <span class="text-dim text-sm">Auto-refresh</span><br /><strong
-            >${s.enabled ? safe(`every ${s.intervalDays} day(s)`) : safe("disabled")}</strong
+          <span class="text-dim text-sm">${t("admin.autoRefresh")}</span><br /><strong
+            >${s.enabled ? safe(t("admin.everyNDays", { n: s.intervalDays })) : safe(t("admin.disabled"))}</strong
           >
         </div>
         <div>
-          <span class="text-dim text-sm">Last run</span><br /><strong
-            >${s.lastRunAt ? fmtDate(s.lastRunAt) : safe("never")}</strong
+          <span class="text-dim text-sm">${t("admin.lastRun")}</span><br /><strong
+            >${s.lastRunAt ? fmtDate(s.lastRunAt) : safe(t("admin.never"))}</strong
           >
         </div>
         <div>
-          <span class="text-dim text-sm">Status</span><br /><strong
-            >${s.running ? safe("⟳ running…") : safe("idle")}</strong
+          <span class="text-dim text-sm">${t("admin.statusLabel")}</span><br /><strong
+            >${s.running ? safe(`⟳ ${t("admin.running")}`) : safe(t("admin.idle"))}</strong
           >
         </div>
       </div>
@@ -6121,7 +6121,7 @@ export function adminPage(opts: {
                   class="btn btn-cyan"
                   ${s.running ? safe("disabled") : safe("")}
                 >
-                  ${s.running ? safe("Syncing…") : safe("Sync now")}
+                  ${s.running ? safe(t("admin.syncing")) : safe(t("admin.syncNow"))}
                 </button>
               </form>
               <form
@@ -6132,7 +6132,7 @@ export function adminPage(opts: {
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <label class="text-sm text-dim"
-                  >Interval (days)
+                  >${t("admin.intervalDays")}
                   <input
                     type="number"
                     name="intervalDays"
@@ -6149,14 +6149,13 @@ export function adminPage(opts: {
                     value="1"
                     ${s.enabled ? safe("checked") : safe("")}
                   />
-                  auto-refresh
+                  ${t("admin.autoRefreshLower")}
                 </label>
-                <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+                <button type="submit" class="btn btn-ghost btn-sm">${t("common.save")}</button>
               </form>
             </div>
             <p class="text-dim text-sm" style="margin:.5rem 0 0">
-              A full sync pulls every ship from the Star&nbsp;Citizen wiki — it can take a couple of
-              minutes.
+              ${t("admin.shipSyncNote")}
             </p>
           `
         : safe("")}
@@ -6164,7 +6163,7 @@ export function adminPage(opts: {
   </div>`;
 
   const feedbackPanel = html` <div class="section">
-    <div class="section-title">Feedback</div>
+    <div class="section-title">${t("feedback.tabTitle")}</div>
     <div class="card" style="padding:1rem">
       <form
         method="post"
@@ -6174,7 +6173,7 @@ export function adminPage(opts: {
       >
         <input type="hidden" name="_csrf" value="${csrf}" />
         <label class="text-sm text-dim"
-          >Discord Channel ID
+          >${t("admin.discordChannelId")}
           <input
             type="text"
             name="channelId"
@@ -6183,39 +6182,39 @@ export function adminPage(opts: {
             style="min-width:18rem"
           />
         </label>
-        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+        <button type="submit" class="btn btn-ghost btn-sm">${t("common.save")}</button>
       </form>
       <p class="text-dim text-sm" style="margin:.5rem 0 0">
-        Feedback tickets are posted to this Discord channel by the configured bot.
+        ${t("admin.feedbackNote")}
       </p>
     </div>
   </div>`;
 
   const locationSyncPanel = html` <div class="section">
-    <div class="section-title">Location Catalog</div>
+    <div class="section-title">${t("admin.locationCatalog")}</div>
     <div class="ship-sync card" style="padding:1rem">
       <div
         class="ship-sync-stats"
         style="display:flex;flex-wrap:wrap;gap:1.25rem;margin-bottom:.75rem"
       >
         <div>
-          <span class="text-dim text-sm">Locations cached</span><br /><strong class="text-mono"
+          <span class="text-dim text-sm">${t("admin.locationsCached")}</span><br /><strong class="text-mono"
             >${String(ls.locationCount)}</strong
           >
         </div>
         <div>
-          <span class="text-dim text-sm">Auto-refresh</span><br /><strong
-            >${ls.enabled ? safe(`every ${ls.intervalDays} day(s)`) : safe("disabled")}</strong
+          <span class="text-dim text-sm">${t("admin.autoRefresh")}</span><br /><strong
+            >${ls.enabled ? safe(t("admin.everyNDays", { n: ls.intervalDays })) : safe(t("admin.disabled"))}</strong
           >
         </div>
         <div>
-          <span class="text-dim text-sm">Last run</span><br /><strong
-            >${ls.lastRunAt ? fmtDate(ls.lastRunAt) : safe("never")}</strong
+          <span class="text-dim text-sm">${t("admin.lastRun")}</span><br /><strong
+            >${ls.lastRunAt ? fmtDate(ls.lastRunAt) : safe(t("admin.never"))}</strong
           >
         </div>
         <div>
-          <span class="text-dim text-sm">Status</span><br /><strong
-            >${ls.running ? safe("running...") : safe("idle")}</strong
+          <span class="text-dim text-sm">${t("admin.statusLabel")}</span><br /><strong
+            >${ls.running ? safe(t("admin.running")) : safe(t("admin.idle"))}</strong
           >
         </div>
       </div>
@@ -6232,7 +6231,7 @@ export function adminPage(opts: {
                   class="btn btn-cyan"
                   ${ls.running ? safe("disabled") : safe("")}
                 >
-                  ${ls.running ? safe("Syncing...") : safe("Sync now")}
+                  ${ls.running ? safe(t("admin.syncing")) : safe(t("admin.syncNow"))}
                 </button>
               </form>
               <form
@@ -6243,7 +6242,7 @@ export function adminPage(opts: {
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <label class="text-sm text-dim"
-                  >Interval (days)
+                  >${t("admin.intervalDays")}
                   <input
                     type="number"
                     name="intervalDays"
@@ -6260,13 +6259,13 @@ export function adminPage(opts: {
                     value="1"
                     ${ls.enabled ? safe("checked") : safe("")}
                   />
-                  auto-refresh
+                  ${t("admin.autoRefreshLower")}
                 </label>
-                <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+                <button type="submit" class="btn btn-ghost btn-sm">${t("common.save")}</button>
               </form>
             </div>
             <p class="text-dim text-sm" style="margin:.5rem 0 0">
-              A full sync pulls locations from the Star Citizen wiki location API.
+              ${t("admin.locationSyncNote")}
             </p>
           `
         : safe("")}
@@ -6279,7 +6278,7 @@ export function adminPage(opts: {
       const linkedProviders =
         u.identities && u.identities.length > 0
           ? u.identities.map((identity) => identity.provider).join(", ")
-          : "none";
+          : t("admin.none");
       const guilds = u.guildMemberships ?? [];
       return html` <tr>
         <td class="text-mono" style="font-size:0.72rem;color:var(--dim)">${u.id}</td>
@@ -6290,7 +6289,7 @@ export function adminPage(opts: {
                 ${discordIdentity.username
                   ? html`<br /><span class="text-dim">${discordIdentity.username}</span>`
                   : safe("")}`
-            : html`<span class="tag tag-red">not linked</span>`}
+            : html`<span class="tag tag-red">${t("admin.notLinked")}</span>`}
         </td>
         <td class="text-sm">
           ${guilds.length
@@ -6302,7 +6301,7 @@ export function adminPage(opts: {
                     <span class="text-mono text-dim">${membership.guildId}</span>
                   </div>`,
               )
-            : html`<span class="text-dim">none</span>`}
+            : html`<span class="text-dim">${t("admin.none")}</span>`}
         </td>
         <td class="text-sm">${linkedProviders}</td>
         <td>
@@ -6325,7 +6324,7 @@ export function adminPage(opts: {
             ? html` <form method="post" action="${bp}/admin/users/${u.id}/active" class="inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <button type="submit" class="btn btn-sm ${u.active ? "btn-ghost" : "btn-gold"}">
-                  ${u.active ? "Active" : "Disabled"}
+                  ${u.active ? t("admin.userActive") : t("admin.userDisabled")}
                 </button>
               </form>`
             : html`<span class="${u.active ? "tag-green" : "tag-red"} tag"
@@ -6340,19 +6339,19 @@ export function adminPage(opts: {
   const guildsPanel =
     isSuperAdmin && opts.guilds
       ? html`<div class="section">
-          <div class="section-title">Discord Servers (${opts.guilds.length})</div>
+          <div class="section-title">${t("admin.discordServers", { n: opts.guilds.length })}</div>
           <div class="card" style="padding:0">
             <table>
               <thead>
-                <tr><th>Server</th><th>ID</th><th>Members</th><th>Status</th><th></th></tr>
+                <tr><th>${t("admin.colServer")}</th><th>${t("admin.colId")}</th><th>${t("admin.colMembers")}</th><th>${t("admin.statusLabel")}</th><th></th></tr>
               </thead>
               <tbody>
                 ${opts.guilds.map((srv) => {
                   const statusTagHtml = srv.bannedAt
-                    ? html`<span class="tag tag-red">BANNED</span>`
+                    ? html`<span class="tag tag-red">${t("admin.banned")}</span>`
                     : srv.active
-                      ? html`<span class="tag tag-green">active</span>`
-                      : html`<span class="tag tag-dim">inactive</span>`;
+                      ? html`<span class="tag tag-green">${t("admin.activeLower")}</span>`
+                      : html`<span class="tag tag-dim">${t("admin.inactiveLower")}</span>`;
                   return html`<tr>
                     <td><strong>${srv.name}</strong></td>
                     <td class="text-mono text-sm text-dim">${srv.id}</td>
@@ -6362,12 +6361,12 @@ export function adminPage(opts: {
                       ${srv.bannedAt
                         ? html`<form method="post" action="${bp}/admin/guilds/${srv.id}/unban" class="inline">
                             <input type="hidden" name="_csrf" value="${csrf}" />
-                            <button type="submit" class="btn btn-ghost btn-sm">Unban</button>
+                            <button type="submit" class="btn btn-ghost btn-sm">${t("admin.unban")}</button>
                           </form>`
                         : html`<form method="post" action="${bp}/admin/guilds/${srv.id}/ban" class="inline"
-                            onsubmit="return confirm('Ban ${srv.name}? It is forced inactive and cannot be re-added until unbanned.');">
+                            onsubmit="return confirm('${t("admin.confirmBan", { name: srv.name })}');">
                             <input type="hidden" name="_csrf" value="${csrf}" />
-                            <button type="submit" class="btn btn-danger btn-sm">Ban</button>
+                            <button type="submit" class="btn btn-danger btn-sm">${t("admin.ban")}</button>
                           </form>`}
                     </td>
                   </tr>`;
@@ -6379,23 +6378,23 @@ export function adminPage(opts: {
       : safe("");
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">ADMIN PANEL</h1>
+      <h1 class="page-title">${t("admin.panelTitle")}</h1>
     </div>
     ${syncPanel} ${locationSyncPanel} ${isFleetOp ? feedbackPanel : ""} ${guildsPanel}
     <div class="section">
-      <div class="section-title">Users (${opts.users.length})</div>
+      <div class="section-title">${t("admin.users", { n: opts.users.length })}</div>
       <div style="overflow-x:auto">
         <table class="user-table">
           <thead>
             <tr>
-              <th>Internal ID</th>
-              <th>Username</th>
+              <th>${t("admin.colInternalId")}</th>
+              <th>${t("admin.colUsername")}</th>
               <th>Discord</th>
-              <th>Guilds</th>
-              <th>Providers</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Last Seen</th>
+              <th>${t("admin.colGuilds")}</th>
+              <th>${t("admin.colProviders")}</th>
+              <th>${t("admin.role")}</th>
+              <th>${t("admin.statusLabel")}</th>
+              <th>${t("admin.colLastSeen")}</th>
             </tr>
           </thead>
           <tbody>
@@ -6406,7 +6405,7 @@ export function adminPage(opts: {
     </div>`;
 
   return layout({
-    title: "Admin",
+    title: t("nav.admin"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -9086,7 +9085,7 @@ export function guildSettingsPage(opts: {
                 ${discordIdentity.username
                   ? html`<br /><span class="text-dim">${discordIdentity.username}</span>`
                   : safe("")}`
-            : html`<span class="tag tag-red">not linked</span>`}
+            : html`<span class="tag tag-red">${t("admin.notLinked")}</span>`}
         </td>
         <td>
           <form method="post" action="${bp}/guilds/members/${m.userId}/role" class="inline">
