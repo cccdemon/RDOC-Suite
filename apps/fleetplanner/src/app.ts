@@ -13,6 +13,9 @@ import { coverRoutes } from "./routes/cover.js";
 import { discordInteractionRoutes } from "./routes/discordInteractions.js";
 import { registerMetrics } from "./services/metrics.js";
 import { enterLocale, localeFromAcceptLanguage } from "./i18n/index.js";
+import { isMaintenanceOn, loadMaintenance } from "./services/maintenance.js";
+import { loadSession } from "./auth/session.js";
+import { maintenancePage, rawHtml } from "./web/render.js";
 
 export async function buildApp() {
   const env = getEnv();
@@ -55,6 +58,31 @@ export async function buildApp() {
   // the onResponse hook covers all subsequent routes.
   registerMetrics(app);
 
+  // Maintenance gate. Registered AFTER cookie so loadSession can read the
+  // session. When maintenance is on, everyone gets the maintenance screen
+  // EXCEPT superadmins (who must stay able to manage and turn it off) and a
+  // small infra/login allowlist (health, metrics, OAuth login, Discord
+  // interactions). The screen renders in the visitor's resolved locale.
+  app.addHook("onRequest", async (request, reply) => {
+    if (!isMaintenanceOn()) return;
+    const path = request.url.split("?")[0] || "/";
+    if (
+      path === "/health" ||
+      path === "/metrics" ||
+      path.startsWith("/auth/") ||
+      path === "/discord/interactions"
+    ) {
+      return;
+    }
+    const ctx = await loadSession(request).catch(() => null);
+    if (ctx?.user.role === "superadmin") return; // admins bypass to manage
+    reply
+      .code(503)
+      .header("Retry-After", "3600")
+      .type("text/html; charset=utf-8")
+      .send(rawHtml(maintenancePage()));
+  });
+
   // Routes register without the PUBLIC_BASE_PATH prefix because Caddy's
   // handle_path strips it before forwarding. basePath() is only used for
   // generating URLs in responses/redirects that go through Caddy.
@@ -66,6 +94,9 @@ export async function buildApp() {
   await app.register(coverRoutes);
   await app.register(discordInteractionRoutes);
   await app.register(apiRoutes);
+
+  // Load the persisted maintenance flag into memory (best-effort; defaults off).
+  await loadMaintenance().catch((err) => app.log.error(err, "loadMaintenance failed"));
 
   return app;
 }

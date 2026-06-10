@@ -1101,4 +1101,18 @@ export const en: Record<string, string> = {
   "cover.create": "Create cover",
   "cover.quickGenDesc": "Quick generation from the operation data, or {link} for fine-tuning.",
   "cover.backToMission": "Back to mission",
+
+  // Maintenance mode + screen (caveman flavour)
+  "maint.heading": "MAINTENANCE",
+  "maint.caveTitle": "Ugg. Maintenance.",
+  "maint.line1": "Caveman paint walls. Fix cave. Make shiny.",
+  "maint.line2": "You must wait. Go hunt. Bring food!",
+  "maint.line3": "Come back soon. Fire still warm.",
+  "maint.adminTitle": "Maintenance Mode",
+  "maint.stateOn": "ON",
+  "maint.stateOff": "OFF",
+  "maint.adminDesc": "When on, everyone except superadmins sees a maintenance screen. Use it while updating or changing things.",
+  "maint.envForced": "Forced on by the MAINTENANCE_MODE env var — the toggle can't turn it off until the env var is unset.",
+  "maint.turnOn": "Turn maintenance ON",
+  "maint.turnOff": "Turn maintenance OFF",
 };

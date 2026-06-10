@@ -48,6 +48,7 @@ import {
 import { basePath, getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import { localeSchema, setLocale, getLocale } from "../i18n/index.js";
+import { isMaintenanceOn, isMaintenanceForcedByEnv, setMaintenance } from "../services/maintenance.js";
 import {
   createOperation,
   logAudit,
@@ -1540,8 +1541,20 @@ export async function webRoutes(app: FastifyInstance) {
         locationSync,
         feedbackChannelId,
         guilds,
+        maintenanceOn: isMaintenanceOn(),
+        maintenanceForcedByEnv: isMaintenanceForcedByEnv(),
       }),
     );
+  });
+
+  // ── SuperAdmin: toggle maintenance mode ────────────────────────────
+  app.post<{ Body: Record<string, string> }>("/admin/maintenance", async (req, reply) => {
+    const ctx = await requireRole(req, reply, "superadmin");
+    if (!ctx) return;
+    if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+    await setMaintenance(req.body.enabled === "1");
+    const msg = req.body.enabled === "1" ? "Maintenance+mode+ON." : "Maintenance+mode+OFF.";
+    return reply.redirect(basePath(`/admin?flash=ok:${msg}`), 302);
   });
 
   // ── SuperAdmin: ban / unban a Discord server ───────────────────────

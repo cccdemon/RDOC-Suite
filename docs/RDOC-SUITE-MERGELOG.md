@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Wartungsmodus + Caveman-Screen (Fleetplanner) — Branch `i18n`
+
+User: Maintenance-Switch + Screen für Updates/Änderungen, Caveman-Flavor ("Ugg Maintenance. Caveman
+paint walls. You must wait, go hunt, bring food!"). Entscheidung: **Fleetplanner-Web** + **Superadmin-
+Toggle im Admin-Panel** (+ Env-Override). Auf `i18n`-Branch, weil der Screen die neue `t()`-i18n nutzt
+(zweisprachig de/en).
+- **Persistenz**: `AppSetting`-KV (`getSetting`/`setSetting`, Key `maintenance.enabled`). In-Memory-
+  Cache (`services/maintenance.ts`), bei Boot geladen, beim Toggle sofort aktualisiert → kein DB-Hit
+  pro Request. Env-Override `MAINTENANCE_MODE=1` erzwingt an (für harte Fälle/Deploys).
+- **Gate**: globaler `onRequest`-Hook in `app.ts` (nach dem Locale-Hook). Wenn an → Allowlist
+  (`/health`, `/metrics`, `/auth/*`, `/discord/interactions`) und **Superadmin-Bypass** (loadSession)
+  dürfen durch; alle anderen bekommen 503 + Caveman-Maintenance-HTML in ihrer Locale.
+- **Screen**: `maintenancePage()` in `render.ts` (eigenständiges Dokup, Caveman-Copy via `maint.*`-Keys,
+  de+en).
+- **Toggle**: Sektion im `adminPage` (Status + An/Aus-Form) → POST `/admin/maintenance` (superadmin,
+  CSRF). `GET /admin` reicht `maintenanceOn` durch.
+Nur fleetplanner. Build/Deploy: fleetplanner (prisma generate nicht nötig — AppSetting existiert; tsc).
+
 ## In Progress - 2026-06-10: i18n — Fleetplanner web KOMPLETT (de+en), Companion+MissionCover offen — Branch `i18n`
 
 Fortschritt zum „i18n VOLLSTÄNDIG"-Step unten. **Fleetplanner-Web ist durch**: `web/pages.ts`

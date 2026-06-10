@@ -6063,6 +6063,9 @@ export function adminPage(opts: {
   sync: ShipSyncView;
   locationSync: LocationSyncView;
   feedbackChannelId: string;
+  maintenanceOn?: boolean;
+  /** When forced by the MAINTENANCE_MODE env var, the toggle can't clear it. */
+  maintenanceForcedByEnv?: boolean;
   guilds?: Array<{
     id: string;
     name: string;
@@ -6079,6 +6082,32 @@ export function adminPage(opts: {
     opts.currentUser?.role === "superadmin" || opts.currentUser?.role === "fleetoperator";
   const s = opts.sync;
   const ls = opts.locationSync;
+
+  const maintOn = opts.maintenanceOn === true;
+  const maintForced = opts.maintenanceForcedByEnv === true;
+  const maintenancePanel = isSuperAdmin
+    ? html` <div class="section">
+        <div class="section-title">
+          ${t("maint.adminTitle")}
+          <span class="tag ${maintOn ? safe("tag-gold") : safe("tag-green")}"
+            >${maintOn ? t("maint.stateOn") : t("maint.stateOff")}</span
+          >
+        </div>
+        <div class="card" style="padding:1rem">
+          <p class="text-dim text-sm" style="margin:0 0 .75rem">${t("maint.adminDesc")}</p>
+          ${maintForced
+            ? html`<p class="text-sm" style="color:var(--gold);margin:0 0 .75rem">${t("maint.envForced")}</p>`
+            : safe("")}
+          <form method="post" action="${bp}/admin/maintenance" class="inline">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            <input type="hidden" name="enabled" value="${maintOn ? "0" : "1"}" />
+            <button type="submit" class="btn btn-sm ${maintOn ? "btn-green" : "btn-gold"}">
+              ${maintOn ? t("maint.turnOff") : t("maint.turnOn")}
+            </button>
+          </form>
+        </div>
+      </div>`
+    : safe("");
 
   const syncPanel = html` <div class="section">
     <div class="section-title">${t("admin.shipCatalog")}</div>
@@ -6380,7 +6409,7 @@ export function adminPage(opts: {
   const body = html` <div class="page-header">
       <h1 class="page-title">${t("admin.panelTitle")}</h1>
     </div>
-    ${syncPanel} ${locationSyncPanel} ${isFleetOp ? feedbackPanel : ""} ${guildsPanel}
+    ${maintenancePanel} ${syncPanel} ${locationSyncPanel} ${isFleetOp ? feedbackPanel : ""} ${guildsPanel}
     <div class="section">
       <div class="section-title">${t("admin.users", { n: opts.users.length })}</div>
       <div style="overflow-x:auto">

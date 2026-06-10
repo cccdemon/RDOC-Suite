@@ -211,6 +211,62 @@ export function layout(opts: LayoutOptions): SafeHtml {
     </html>`;
 }
 
+// ── Maintenance screen ───────────────────────────────────────────────
+// Shown to everyone (except superadmins) while maintenance mode is on.
+// Self-contained doc — no nav, no login — caveman-flavoured, bilingual.
+export function maintenancePage(): SafeHtml {
+  return html`<!doctype html>
+    <html lang="${getLocale()}">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="robots" content="noindex" />
+        <title>${t("maint.heading")} — RDOC Fleetplanner</title>
+        <link rel="icon" href="${safe(RAUMDOCK_FAVICON)}" />
+        <style>
+          ${safe(CSS)}
+          .maint-wrap {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 2rem; text-align: center;
+          }
+          .maint-card {
+            max-width: 34rem; border: 1px solid var(--gold-38); background: var(--bg2);
+            padding: 2.5rem 2rem; position: relative;
+          }
+          .maint-card::before {
+            content: ""; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+            background: var(--gold);
+          }
+          .maint-emoji { font-size: 3.5rem; line-height: 1; margin-bottom: 1rem; }
+          .maint-tag {
+            display: inline-block; font-family: var(--font-mono); font-size: 0.72rem;
+            letter-spacing: 0.18em; color: var(--gold); border: 1px solid var(--gold-38);
+            background: var(--gold-08); padding: 0.3rem 0.8rem; margin-bottom: 1.25rem;
+          }
+          .maint-h { font-family: var(--font-mono); color: var(--cyan); font-size: 1.5rem;
+            letter-spacing: 0.06em; margin-bottom: 1rem; }
+          .maint-cave { font-size: 1.15rem; font-weight: 700; color: var(--text); margin-bottom: 0.75rem; }
+          .maint-line { color: var(--dim); font-size: 0.95rem; line-height: 1.7; }
+          .maint-foot { margin-top: 1.5rem; font-family: var(--font-mono); font-size: 0.7rem;
+            letter-spacing: 0.1em; color: var(--dim); }
+        </style>
+      </head>
+      <body>
+        <div class="maint-wrap">
+          <div class="maint-card">
+            <div class="maint-emoji">🪨🔥</div>
+            <span class="maint-tag">${t("maint.heading")}</span>
+            <div class="maint-h">${t("maint.caveTitle")}</div>
+            <p class="maint-cave">${t("maint.line1")}</p>
+            <p class="maint-line">${t("maint.line2")}</p>
+            <p class="maint-line">${t("maint.line3")}</p>
+            <div class="maint-foot">RDOC // FLEETPLANNER // RAUMDOCK.ORG</div>
+          </div>
+        </div>
+      </body>
+    </html>`;
+}
+
 // ── DCCC Design System CSS ───────────────────────────────────────────
 
 // No external font import: pulling from fonts.googleapis.com leaks every

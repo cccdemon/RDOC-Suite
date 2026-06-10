@@ -1064,4 +1064,17 @@ export const de: Record<string, string> = {
   "cover.create": "Cover erzeugen",
   "cover.quickGenDesc": "Schnellgenerierung aus den Operationsdaten, oder {link} für Feintuning.",
   "cover.backToMission": "Zurück zur Mission",
+
+  "maint.heading": "WARTUNGSARBEITEN",
+  "maint.caveTitle": "Ugg. Wartung.",
+  "maint.line1": "Höhlenmensch malt Wände. Repariert Höhle. Macht glänzend.",
+  "maint.line2": "Du musst warten. Geh jagen. Bring Essen!",
+  "maint.line3": "Komm bald wieder. Feuer noch warm.",
+  "maint.adminTitle": "Wartungsmodus",
+  "maint.stateOn": "AN",
+  "maint.stateOff": "AUS",
+  "maint.adminDesc": "Wenn an, sehen alle außer Superadmins einen Wartungs-Screen. Nutze es beim Aktualisieren oder Ändern.",
+  "maint.envForced": "Per MAINTENANCE_MODE-Env-Var erzwungen — der Toggle schaltet es nicht aus, bis die Env-Var entfernt ist.",
+  "maint.turnOn": "Wartung EINschalten",
+  "maint.turnOff": "Wartung AUSschalten",
 };

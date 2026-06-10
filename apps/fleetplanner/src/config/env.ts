@@ -10,6 +10,9 @@ const schema = z.object({
   // If unset, falls back to SESSION_SECRET (which causes re-entry on every rotate).
   VOICEBOT_ENCRYPTION_KEY: z.string().min(32).optional(),
   PUBLIC_BASE_PATH: z.string().default(""),
+  // Force maintenance mode on regardless of the superadmin toggle (1/true/on).
+  // Useful during deploys; leave unset for normal operation.
+  MAINTENANCE_MODE: z.string().optional(),
   WEB_PUBLIC_URL: z.string().default("http://localhost:3200"),
   // At least one OAuth provider must be configured. Discord is the
   // original provider; GitHub and Google are alternatives.
