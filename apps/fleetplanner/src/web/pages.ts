@@ -2976,15 +2976,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // we just render this notice instead. See RDOC-SUITE-MERGELOG 2026-06-08.
   const voiceReworkPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Voice</div>
+      <div class="opv2-panel-title">${t("tab.voice")}</div>
       <div
         class="flash flash-warn"
         style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap"
       >
         <span
-          ><strong>Command Net / Global Radio Net is being reworked.</strong>
-          Voice is temporarily unavailable while we overhaul it. The relay and
-          signaling services keep running — no action needed.</span
+          ><strong>${t("op.voiceReworkTitle")}</strong>
+          ${t("op.voiceReworkBody")}</span
         >
       </div>
     </section>
@@ -3005,7 +3004,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </div>
           <h1>${op.title}</h1>
           <p>
-            ${fmtDate(op.scheduledAt, gtz)} at
+            ${fmtDate(op.scheduledAt, gtz)} ${t("op.at")}
             ${op.meetingLocation || systemLabel(op.meetingSystem ?? "stanton")}
           </p>
           ${opts.canEditVisibility
@@ -3022,34 +3021,34 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         <div class="opv2-switch">
           ${canRealManage
             ? html`<div class="opv2-view-switch">
-                <span class="text-dim text-sm">View</span>
-                <a class="active" href="${bp}/ops/${op.id}/manage?tab=${activeTab}">Operator</a>
-                <a href="${bp}/ops/${op.id}">Player Signup</a>
+                <span class="text-dim text-sm">${t("op.view")}</span>
+                <a class="active" href="${bp}/ops/${op.id}/manage?tab=${activeTab}">${t("op.operator")}</a>
+                <a href="${bp}/ops/${op.id}">${t("op.playerSignup")}</a>
               </div>`
             : ""}
         </div>
       </header>
 
       <div class="opv2-metrics">
-        ${metric("Ships", shipUnits.length)}
+        ${metric(t("op.mShips"), shipUnits.length)}
         ${metric(
-          "Ship Seats",
+          t("op.mShipSeats"),
           `${shipSeatStats.filled}/${shipSeatStats.total}`,
           shipSeatStats.open ? "warn" : "good",
         )}
-        ${metric("CQB Teams", cqbTeamGroups.length)}
+        ${metric(t("op.mCqbTeams"), cqbTeamGroups.length)}
         ${metric(
-          "CQB Slots",
+          t("op.mCqbSlots"),
           `${fpsSeatStats.filled}/${fpsSeatStats.total}`,
           fpsSeatStats.open ? "warn" : "good",
         )}
-        ${metric("Pending Review", pendingUnits.length, pendingUnits.length ? "warn" : "")}
-        ${metric("Fleet Requirements", `${compositionFilled}/${compositionTotal}`)}
-        ${metric("Need Assignment", crewWaiting, crewWaiting ? "warn" : "")}
+        ${metric(t("op.mPendingReview"), pendingUnits.length, pendingUnits.length ? "warn" : "")}
+        ${metric(t("op.mFleetReq"), `${compositionFilled}/${compositionTotal}`)}
+        ${metric(t("op.needAssignment"), crewWaiting, crewWaiting ? "warn" : "")}
         ${
           op.eventInterests.length
             ? metric(
-                "Discord interessiert",
+                t("op.mDiscordInterested"),
                 `${op.eventInterests.filter((i) => i.userId).length}+${op.eventInterests.filter((i) => !i.userId).length}?`,
               )
             : safe("")
@@ -3062,7 +3061,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         <aside class="mg-rail">
           ${canManage && nextStep
             ? html`<div class="mg-card mg-next">
-                <h4>Next step</h4>
+                <h4>${t("mg.nextStepTitle")}</h4>
                 <form method="post" action="${bp}/api/ops/${op.id}/status">
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   <input type="hidden" name="status" value="${nextStep.to}" />
@@ -3072,16 +3071,16 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               </div>`
             : safe("")}
           <div class="mg-card mg-needs">
-            <h4>Open tasks</h4>
+            <h4>${t("mg.openTasks")}</h4>
             ${needs.length
               ? needs.map(
                   (n) =>
                     html`<a href="#" data-jump="${n.tab}"><span>${n.icon}</span><span>${n.label}</span></a>`,
                 )
-              : html`<p class="text-dim text-sm">All clear ✓ — nothing needs you.</p>`}
+              : html`<p class="text-dim text-sm">${t("mg.allClear")}</p>`}
           </div>
           <div class="mg-card mg-ready">
-            <h4>Readiness</h4>
+            <h4>${t("mg.readiness")}</h4>
             ${ready.map(
               (r) => html`<div>
                 <span style="color:${r.ok ? "var(--green,#3ad07a)" : "var(--gold,#e0b835)"}"
@@ -3092,24 +3091,23 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </div>
           ${canManage
             ? html`<div class="mg-card">
-                <h4>Mission Cover</h4>
-                <a class="btn btn-sm" href="${bp}/ops/${op.id}/cover">Cover erstellen / bearbeiten</a>
+                <h4>${t("mg.missionCover")}</h4>
+                <a class="btn btn-sm" href="${bp}/ops/${op.id}/cover">${t("mg.coverCreateEdit")}</a>
               </div>`
             : safe("")}
           ${canManage && op.recurrence
             ? html`<div class="mg-card">
-                <h4>Recurring series</h4>
+                <h4>${t("mg.recurringSeries")}</h4>
                 <p class="text-dim text-sm">
                   ${op.recurrence.freq === "weekly"
-                    ? "Repeats weekly"
+                    ? t("mg.repeatsWeekly")
                     : op.recurrence.freq === "biweekly"
-                      ? "Repeats every 2 weeks"
+                      ? t("mg.repeatsBiweekly")
                       : op.recurrence.freq === "monthly_nth"
-                        ? "Repeats monthly (same weekday)"
+                        ? t("mg.repeatsMonthly")
                         : op.recurrence.freq === "yearly"
-                          ? "Repeats yearly"
-                          : "Recurring"}${op.recurrence.active ? "" : " — stopped"}. Each occurrence
-                  is its own operation.
+                          ? t("mg.repeatsYearly")
+                          : t("mg.recurring")}${op.recurrence.active ? "" : ` ${t("mg.stopped")}`}. ${t("mg.eachOccurrence")}
                 </p>
                 ${op.recurrence.active
                   ? html`<form method="post" action="${bp}/ops/${op.id}/recurrence/stop">
@@ -3117,9 +3115,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       <button
                         type="submit"
                         class="btn btn-sm"
-                        onclick="return confirm('Stop this recurring series? Already-created occurrences stay; no new ones spawn.')"
+                        onclick="return confirm('${t("mg.confirmStopSeries")}')"
                       >
-                        Stop series
+                        ${t("mg.stopSeries")}
                       </button>
                     </form>`
                   : safe("")}
@@ -3127,15 +3125,15 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             : safe("")}
           ${canManage
             ? html`<details class="mg-card">
-                <summary style="cursor:pointer;color:var(--dim);font-size:.85rem">Delete operation</summary>
+                <summary style="cursor:pointer;color:var(--dim);font-size:.85rem">${t("admin.confirmDeleteOpTitle")}</summary>
                 <form method="post" action="${bp}/ops/${op.id}/delete" style="margin-top:.6rem">
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   <button
                     type="submit"
                     class="btn btn-sm btn-danger"
-                    onclick="return confirm('Delete this operation?')"
+                    onclick="return confirm('${t("admin.confirmDeleteOp")}')"
                   >
-                    Delete
+                    ${t("common.delete")}
                   </button>
                 </form>
               </details>`
@@ -3235,24 +3233,24 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 (ownedShipSelect && ownedShipSelect.value) ||
                 (shipIdField && shipIdField.value);
               if (!hasShip) {
-                missing.push("Schiff (Owned ship oder Ship search)");
+                missing.push("${safe(t("op.valShip"))}");
                 markBad(ownedShipSelect, true);
                 markBad(shipSearch, true);
               }
             } else {
               if (!squadName || !squadName.value.trim()) {
-                missing.push("Squad name");
+                missing.push("${safe(t("op.squadName"))}");
                 markBad(squadName, true);
               }
               if (!squadSize || !squadSize.value) {
-                missing.push("Squad size");
+                missing.push("${safe(t("op.squadSize"))}");
                 markBad(squadSize, true);
               }
             }
             if (missing.length > 0) {
               e.preventDefault();
               if (errBox) {
-                errBox.textContent = "Bitte ausfüllen: " + missing.join(", ") + ".";
+                errBox.textContent = "${safe(t("op.pleaseFill"))} " + missing.join(", ") + ".";
                 errBox.hidden = false;
                 errBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
               }
