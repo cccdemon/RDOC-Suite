@@ -925,4 +925,32 @@ export const en: Record<string, string> = {
   "sct.tabTitle": "Star Citizen Tools",
   "sct.subtitle": "made by the Community — useful external tools around Star Citizen.",
   "sct.footer": "These tools are maintained by the community and are not affiliated with Raumdock. Links open externally.",
+
+  // Changelog / roadmap / license misc
+  "misc.changelogSub": "What's new in RDOC Fleetplanner.",
+  "misc.rmPlanned": "Planned",
+  "misc.rmBlocked": "Blocked",
+  "misc.rmRejected": "Rejected",
+  "misc.rmDone": "Done",
+  "misc.roadmapSub": "What is planned and what has already been built.",
+  "misc.roadmapFeedback": "Idea or wish? Use the {link} tab.",
+  "misc.source": "Source",
+
+  // Why unsigned page
+  "wu.title": "WHY OUR BINARY IS NOT SIGNED",
+  "wu.intro": "When you install <strong>RDOC Squad Link</strong>, Windows SmartScreen may warn that the publisher is unknown. That is because the installer is not (yet) code-signed. Code signing for a small, non-commercial squad tool is surprisingly expensive and bureaucratic. Here is an honest rundown of every option we evaluated and where we currently stand.",
+  "wu.o1t": "Azure Trusted Signing — best value (~$10/month)",
+  "wu.o1b": "Microsoft's own cloud signing service. Gives <strong>instant SmartScreen reputation</strong> (no warmup), no hardware token. Integrates with <code>signtool</code> and ships a GitHub Action → straight into our <code>companion-build.yml</code>.<br /><span class=\"text-dim\">Catch:</span> the organization must be verifiable (ideally 3+ years old; otherwise extra validation), or an individual account. Currently the cheapest legitimate route.",
+  "wu.o2t": "EV Code Signing Certificate (~$300–600/year)",
+  "wu.o2b": "Also <strong>instant reputation</strong>, no warmup. Requires a hardware token (USB HSM) or cloud HSM → makes CI signing more cumbersome. Providers: DigiCert, Sectigo, SSL.com.",
+  "wu.o3t": "OV Certificate (~$100–250/year, e.g. Certum)",
+  "wu.o3b": "Cheaper, but reputation has to <strong>build up first</strong> (a number of downloads/installs) — SmartScreen still warns at the beginning. Since 2023 only with a token/cloud HSM as well (no more simple .pfx files). Certum has cheap open-source options.",
+  "wu.o4t": "Microsoft Store / MSIX",
+  "wu.o4b": "Store apps bypass SmartScreen completely. But: MSIX packaging + store submission effort, store policies. For an internal/squad tool usually overkill.",
+  "wu.o5t": "Don't sign at all — user bypass ($0)",
+  "wu.o5b": "SmartScreen dialog → <strong>\"More info\" → \"Run anyway\"</strong>. Works, but off-putting and resets with every new build hash. This is the route we currently document in the commander guide.",
+  "wu.o6t": "For private individuals on Azure",
+  "wu.o6b": "Artifact Signing is currently available to <strong>organizations</strong> in the USA, Canada, European Union &amp; United Kingdom. Individual-developer validation is limited to the <strong>USA &amp; Canada</strong> — so a private individual in the EU cannot use the cheapest route as a person, only as a verifiable organization.",
+  "wu.standTitle": "Where we stand",
+  "wu.standBody": "We are pursuing <strong>Azure Trusted Signing</strong> as a verified organization. Until that validation completes, the installer ships unsigned. To install safely in the meantime: on the SmartScreen prompt choose <strong>\"More info\" → \"Run anyway\"</strong>. The build is open source — you can verify it yourself at <a href=\"https://github.com/cccdemon/RDOC-Suite\" target=\"_blank\" rel=\"noopener\">github.com/cccdemon/RDOC-Suite</a>.",
 };

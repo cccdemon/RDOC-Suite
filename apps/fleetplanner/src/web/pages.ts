@@ -8695,13 +8695,13 @@ export function changelogPage(opts: {
   );
 
   const body = html`<div class="page-header">
-      <h1 class="page-title">CHANGELOG</h1>
-      <div class="page-subtitle">What's new in RDOC Fleetplanner.</div>
+      <h1 class="page-title">${t("nav.changelog").toUpperCase()}</h1>
+      <div class="page-subtitle">${t("misc.changelogSub")}</div>
     </div>
     <div class="section">${entries}</div>`;
 
   return layout({
-    title: "Changelog",
+    title: t("nav.changelog"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -8716,10 +8716,10 @@ export function roadmapPage(opts: {
 }): SafeHtml {
   const bp = opts.basePath;
   const groups: Array<{ key: RoadmapStatus; label: string; tag: string }> = [
-    { key: "planned", label: "Geplant", tag: "tag-gold" },
-    { key: "blocked", label: "Blockiert", tag: "tag-dim" },
-    { key: "rejected", label: "Abgelehnt", tag: "tag-red" },
-    { key: "done", label: "Erledigt", tag: "tag-green" },
+    { key: "planned", label: t("misc.rmPlanned"), tag: "tag-gold" },
+    { key: "blocked", label: t("misc.rmBlocked"), tag: "tag-dim" },
+    { key: "rejected", label: t("misc.rmRejected"), tag: "tag-red" },
+    { key: "done", label: t("misc.rmDone"), tag: "tag-green" },
   ];
   const sections = groups.map((g) => {
     const items = ROADMAP.filter((r) => r.status === g.key);
@@ -8749,20 +8749,20 @@ export function roadmapPage(opts: {
   });
 
   const body = html`<div class="page-header">
-      <h1 class="page-title">ROADMAP</h1>
-      <div class="page-subtitle">Was geplant ist und was schon umgesetzt wurde.</div>
+      <h1 class="page-title">${t("nav.roadmap").toUpperCase()}</h1>
+      <div class="page-subtitle">${t("misc.roadmapSub")}</div>
     </div>
     ${sections}
     <div class="section">
       <div class="card" style="padding:1rem;max-width:52rem">
         <p class="text-dim text-sm">
-          Idee oder Wunsch? Nutze den <a href="${bp}/feedback">Feedback</a>-Tab.
+          ${safe(t("misc.roadmapFeedback", { link: `<a href="${bp}/feedback">${t("nav.feedback")}</a>` }))}
         </p>
       </div>
     </div>`;
 
   return layout({
-    title: "Roadmap",
+    title: t("nav.roadmap"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -8776,7 +8776,7 @@ export function licensePage(opts: {
   csrfToken?: string;
 }): SafeHtml {
   const bp = opts.basePath;
-  const body = html` <div class="page-header"><h1 class="page-title">LICENSE</h1></div>
+  const body = html` <div class="page-header"><h1 class="page-title">${t("footer.license").toUpperCase()}</h1></div>
     <div class="section">
       <div class="card" style="padding:1.25rem;max-width:48rem">
         <pre
@@ -8795,7 +8795,7 @@ Required Notice: RDOC-Suite is licensed for noncommercial use under the PolyForm
 Required Notice: The RDOC-Suite credit banner, stamp, logo, and visible attribution notices must not be removed, hidden, or materially altered in public deployments or redistributed versions without prior written permission from the authors.</pre
         >
         <p class="text-dim text-sm" style="margin-top:1rem">
-          Source:
+          ${t("misc.source")}:
           <a href="https://github.com/cccdemon/RDOC-Suite" target="_blank" rel="noopener"
             >github.com/cccdemon/RDOC-Suite</a
           >
@@ -8804,7 +8804,7 @@ Required Notice: The RDOC-Suite credit banner, stamp, logo, and visible attribut
     </div>`;
 
   return layout({
-    title: "License",
+    title: t("footer.license"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -8829,85 +8829,30 @@ export function whyUnsignedPage(opts: {
   `;
 
   const body = html`
-    <div class="page-header"><h1 class="page-title">WHY OUR BINARY IS NOT SIGNED</h1></div>
+    <div class="page-header"><h1 class="page-title">${t("wu.title")}</h1></div>
     <div class="section" style="max-width:52rem">
       <p class="text-sm" style="color:var(--text);line-height:1.6;margin:0 0 1.25rem">
-        When you install <strong>RDOC Squad Link</strong>, Windows SmartScreen may warn that the
-        publisher is unknown. That is because the installer is not (yet) code-signed. Code signing
-        for a small, non-commercial squad tool is surprisingly expensive and bureaucratic. Here is
-        an honest rundown of every option we evaluated and where we currently stand.
+        ${safe(t("wu.intro"))}
       </p>
 
-      ${option(
-        "1",
-        "Azure Trusted Signing — best value (~$10/month)",
-        html`Microsoft's own cloud signing service. Gives <strong>instant SmartScreen
-          reputation</strong> (no warmup), no hardware token. Integrates with
-          <code>signtool</code> and ships a GitHub Action → straight into our
-          <code>companion-build.yml</code>.<br />
-          <span class="text-dim">Catch:</span> the organization must be verifiable (ideally 3+
-          years old; otherwise extra validation), or an individual account. Currently the cheapest
-          legitimate route.`,
-      )}
-
-      ${option(
-        "2",
-        "EV Code Signing Certificate (~$300–600/year)",
-        html`Also <strong>instant reputation</strong>, no warmup. Requires a hardware token (USB
-          HSM) or cloud HSM → makes CI signing more cumbersome. Providers: DigiCert, Sectigo,
-          SSL.com.`,
-      )}
-
-      ${option(
-        "3",
-        "OV Certificate (~$100–250/year, e.g. Certum)",
-        html`Cheaper, but reputation has to <strong>build up first</strong> (a number of
-          downloads/installs) — SmartScreen still warns at the beginning. Since 2023 only with a
-          token/cloud HSM as well (no more simple .pfx files). Certum has cheap open-source
-          options.`,
-      )}
-
-      ${option(
-        "4",
-        "Microsoft Store / MSIX",
-        html`Store apps bypass SmartScreen completely. But: MSIX packaging + store submission
-          effort, store policies. For an internal/squad tool usually overkill.`,
-      )}
-
-      ${option(
-        "5",
-        "Don't sign at all — user bypass ($0)",
-        html`SmartScreen dialog → <strong>"More info" → "Run anyway"</strong>. Works, but
-          off-putting and resets with every new build hash. This is the route we currently
-          document in the commander guide.`,
-      )}
-
-      ${option(
-        "6",
-        "For private individuals on Azure",
-        html`Artifact Signing is currently available to <strong>organizations</strong> in the USA,
-          Canada, European Union &amp; United Kingdom. Individual-developer validation is limited
-          to the <strong>USA &amp; Canada</strong> — so a private individual in the EU cannot use
-          the cheapest route as a person, only as a verifiable organization.`,
-      )}
+      ${option("1", t("wu.o1t"), safe(t("wu.o1b")))}
+      ${option("2", t("wu.o2t"), safe(t("wu.o2b")))}
+      ${option("3", t("wu.o3t"), safe(t("wu.o3b")))}
+      ${option("4", t("wu.o4t"), safe(t("wu.o4b")))}
+      ${option("5", t("wu.o5t"), safe(t("wu.o5b")))}
+      ${option("6", t("wu.o6t"), safe(t("wu.o6b")))}
 
       <div class="card" style="padding:1.1rem;margin-top:.4rem;border-color:var(--gold-38)">
-        <h2 style="margin:0 0 .5rem;font-size:1rem;color:var(--gold)">Where we stand</h2>
+        <h2 style="margin:0 0 .5rem;font-size:1rem;color:var(--gold)">${t("wu.standTitle")}</h2>
         <p class="text-sm" style="color:var(--text);line-height:1.55;margin:0">
-          We are pursuing <strong>Azure Trusted Signing</strong> as a verified organization. Until
-          that validation completes, the installer ships unsigned. To install safely in the
-          meantime: on the SmartScreen prompt choose <strong>"More info" → "Run anyway"</strong>.
-          The build is open source — you can verify it yourself at
-          <a href="https://github.com/cccdemon/RDOC-Suite" target="_blank" rel="noopener"
-            >github.com/cccdemon/RDOC-Suite</a
-          >.
+          ${safe(t("wu.standBody"))}
         </p>
       </div>
     </div>
   `;
 
   return layout({
-    title: "Why Unsigned",
+    title: t("nav.unsignedBinary"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
