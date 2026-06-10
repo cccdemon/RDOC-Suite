@@ -1,5 +1,26 @@
 # RDOC Suite Merge Log
 
+## In Progress - 2026-06-10: i18n — Fleetplanner web KOMPLETT (de+en), Companion+MissionCover offen — Branch `i18n`
+
+Fortschritt zum „i18n VOLLSTÄNDIG"-Step unten. **Fleetplanner-Web ist durch**: `web/pages.ts`
+(~9900 Zeilen) + `web/coverPage.ts` komplett auf `t()` extrahiert, `en` (Basis) + `de` voll gefüllt
+(~700 Keys über die Namespaces nav/common/op/board/need/admin/mg/tab/wiz/join/ships/feedback/badm/
+login/account/err/loginReq/sct/misc/wu/guilds/gs/diag/ptn/cover). `fr`/`es`/`en-US` bleiben Stub
+(fallen auf `en`). Eigennames/SC-Terms (Schiffsnamen, „Command Net", „Global Radio Net", admiral/
+vice_admiral) NICHT übersetzt.
+- **Bewusst in Ausgangssprache gelassen** (Referenz/Recht): `howToPage` (langer EN-Guide),
+  `impressumPage`/`datenschutzPage` (DE-Recht). `whatIsPage` ist bereits über eigenen `lang`-Toggle
+  zweisprachig.
+- **Locale-Plumbing-Falle dokumentiert**: in `pages.ts` schatten viele `.map((t) => …)`-Loops die
+  importierte `t()`-Funktion → in solchen Maps NICHT `t()` aufrufen (Loop-Var umbenennen). Mehrere
+  Maps wurden auf `tm`/`ot`/`tok`/`sq` umbenannt.
+- **OFFEN**: Companion (React/Tauri, ~3600 Zeilen — braucht Locale-Fetch via `/suite/capabilities`
+  o.ä. + leichten `t()`-Hook + Komponenten-Strings) und MissionCover-Engine (en/de, Locale aus
+  Render-Payload). Danach Branch fertig.
+- **Verify vor Deploy**: lokaler tsc nicht möglich (Docker/Server baut) → User sollte einen
+  fleetplanner-Build server-seitig laufen lassen, um die Massen-Extraktion zu typchecken.
+Build/Deploy: fleetplanner (prisma generate + migrate deploy + tsc).
+
 ## Queued / Planned Step - 2026-06-09: i18n Phase 1 + Phase-2-Infra (FR-P3-language-switch) — Branch `i18n`
 
 Start der Sprachumschaltung gemäß [FR-P3-language-switch.md](FR-P3-language-switch.md), Build-Order

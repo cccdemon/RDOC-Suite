@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added - Language preference (i18n) — Phase 1 + infrastructure (2026-06-09)
+### Added - Language preference (i18n) — full Fleetplanner web (de + en) (2026-06-10)
 
 - Each user can now pick their interface **language** (Deutsch, English, English (US), Français, Español) in their profile. The preference is stored on the account and is the single source of truth for all surfaces.
 - Logged-out visitors get the closest language from their browser's `Accept-Language`, defaulting to German.
-- This first phase translates the shared chrome (navigation, footer, beta banner, profile language section); the remaining pages follow in later phases and fall back to English until then. Companion app and mission covers will read the same preference in a future update.
+- The **entire Fleetplanner web UI** is now translated — operations calendar, op detail/manage (fleet, crew, voice, admin), the player join page + sign-up assistant, the create-event wizard, profile, ship database, feedback, admin panel, the bridge admin pages, server settings, install tests, partnerships, login/account/error and the SC Tools / changelog / roadmap / license / why-unsigned pages.
+- **de + en are complete**; `en-US` is a thin override over `en`, and `fr`/`es` are stubs that fall back to English until a native pass. Star Citizen proper nouns and RDOC voice terms ("Command Net", "Global Radio Net", ship names) are kept in English everywhere.
+- Long-form reference/legal pages (the detailed How-To guide, Impressum, Datenschutz) stay in their authored language; the "What is this?" explainer is already bilingual via its own toggle. The Companion app and mission covers read the same preference in a follow-up.
 
 ### Changed - Fleet Needs rows are colour-tinted; slot picker only offers matching needs (2026-06-09)
 
