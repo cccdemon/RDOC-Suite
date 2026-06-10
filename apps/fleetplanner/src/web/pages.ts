@@ -9464,16 +9464,14 @@ export function partnershipsPage(opts: {
   const incomingSection = incoming.length
     ? html`<div class="section">
         <div class="section-title">
-          Shared with us <span class="tag tag-gold">${String(incoming.length)}</span>
+          ${t("ptn.sharedWithUs")} <span class="tag tag-gold">${String(incoming.length)}</span>
         </div>
         <p class="text-dim text-sm" style="margin:-.25rem 0 .75rem">
-          Partner Discords want to post these operations into <em>${opts.activeGuildName}</em>.
-          Any fleetoperator can decide. Approving creates the event in your Discord; declining is
-          per-event only and never blocks future invites.
+          ${safe(t("ptn.sharedWithUsDesc", { guild: `<em>${opts.activeGuildName}</em>` }))}
         </p>
         <div class="card" style="padding:0">
           <table>
-            <thead><tr><th>Operation</th><th>From</th><th>When</th><th></th></tr></thead>
+            <thead><tr><th>${t("ptn.colOperation")}</th><th>${t("ptn.colFrom")}</th><th>${t("op.fldWhen")}</th><th></th></tr></thead>
             <tbody>
               ${incoming.map(
                 (d) => html`<tr>
@@ -9485,11 +9483,11 @@ export function partnershipsPage(opts: {
                   <td class="text-right" style="white-space:nowrap">
                     <form method="post" action="${bp}/guilds/partnerships/event/${d.id}/approve" class="inline">
                       <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-                      <button type="submit" class="btn btn-green btn-sm">Teilen</button>
+                      <button type="submit" class="btn btn-green btn-sm">${t("ptn.share")}</button>
                     </form>
                     <form method="post" action="${bp}/guilds/partnerships/event/${d.id}/decline" class="inline">
                       <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-                      <button type="submit" class="btn btn-ghost btn-sm">Ablehnen</button>
+                      <button type="submit" class="btn btn-ghost btn-sm">${t("ptn.decline")}</button>
                     </form>
                   </td>
                 </tr>`,
@@ -9512,29 +9510,29 @@ export function partnershipsPage(opts: {
                   <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
                   <input type="hidden" name="autoShare" value="${p.autoShare ? "0" : "1"}" />
                   <button type="submit" class="btn btn-sm ${p.autoShare ? "btn-green" : "btn-ghost"}"
-                    title="When on, this partner's operations auto-post into our Discord with no per-event approval.">
-                    ${p.autoShare ? "Auto-share: ON" : "Auto-share: off"}
+                    title="${t("ptn.autoShareTitle")}">
+                    ${p.autoShare ? t("ptn.autoShareOn") : t("ptn.autoShareOff")}
                   </button>
                 </form>`
               : safe("—")}
           </td>
           <td class="text-right">
             <form method="post" action="${bp}/guilds/partnerships/${p.id}/revoke" class="inline"
-              onsubmit="return confirm('Really end the partnership with ${p.partnerGuildName ?? "this Discord"}? This is permanent.');">
+              onsubmit="return confirm('${t("ptn.confirmRevoke", { name: p.partnerGuildName ?? t("ptn.thisDiscord") })}');">
               <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-              <button type="submit" class="btn btn-danger btn-sm">Revoke</button>
+              <button type="submit" class="btn btn-danger btn-sm">${t("badm.revoke")}</button>
             </form>
           </td>
         </tr>`,
       )
-    : [html`<tr><td colspan="5"><span class="text-dim text-sm">No active partnerships.</span></td></tr>`];
+    : [html`<tr><td colspan="5"><span class="text-dim text-sm">${t("ptn.noActive")}</span></td></tr>`];
 
   const pendingRows = pending.map(
     (p) => html`<tr>
       <td><strong>${p.label}</strong></td>
       <td>
         <span class="tag ${p.isInitiator ? "tag-gold" : "tag-dim"}">
-          ${p.isInitiator ? "issued by us" : "incoming"}
+          ${p.isInitiator ? t("ptn.issuedByUs") : t("ptn.incoming")}
         </span>
       </td>
       <td><span class="text-mono text-sm">${fmtDate(p.createdAt)}</span></td>
@@ -9542,7 +9540,7 @@ export function partnershipsPage(opts: {
         ${p.isInitiator
           ? html`<form method="post" action="${bp}/guilds/partnerships/${p.id}/revoke" class="inline">
               <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-              <button type="submit" class="btn btn-ghost btn-sm">Withdraw</button>
+              <button type="submit" class="btn btn-ghost btn-sm">${t("ptn.withdraw")}</button>
             </form>`
           : safe("")}
       </td>
@@ -9551,9 +9549,9 @@ export function partnershipsPage(opts: {
 
   const fresh = opts.freshInviteUrl
     ? html`<div class="card" style="border-color:var(--gold-38);margin-bottom:1.25rem">
-        <div class="card-title" style="color:var(--gold)">NEW PARTNER LINK — shown only once</div>
+        <div class="card-title" style="color:var(--gold)">${t("ptn.newLinkTitle")}</div>
         <p class="text-dim text-sm mt-1">
-          Send this link to the fleetoperator of the other Discord. It can be redeemed once.
+          ${t("ptn.newLinkDesc")}
         </p>
         <div class="text-mono" style="background:var(--bg3);border:1px solid var(--border);padding:.75rem;margin-top:.75rem;word-break:break-all;font-size:.8rem">
           ${opts.freshInviteUrl}
@@ -9562,11 +9560,9 @@ export function partnershipsPage(opts: {
     : safe("");
 
   const body = html`<div class="page-header">
-      <h1 class="page-title">PARTNERSHIPS<span class="sep"> // </span><em>${opts.activeGuildName}</em></h1>
+      <h1 class="page-title">${t("ptn.title")}<span class="sep"> // </span><em>${opts.activeGuildName}</em></h1>
       <div class="page-subtitle">
-        Link this Discord with others so both sides can see operations with
-        <span class="tag tag-gold">🤝 PARTNERS</span> visibility. Public operations are visible to
-        every logged-in user without a partnership.
+        ${safe(t("ptn.subtitle", { tag: `<span class="tag tag-gold">🤝 ${t("vis.partners").toUpperCase()}</span>` }))}
       </div>
     </div>
 
@@ -9575,10 +9571,10 @@ export function partnershipsPage(opts: {
     ${incomingSection}
 
     <div class="section">
-      <div class="section-title">Active partners</div>
+      <div class="section-title">${t("ptn.activePartners")}</div>
       <div class="card" style="padding:0">
         <table>
-          <thead><tr><th>Discord</th><th>Label</th><th>Since</th><th>Their events</th><th></th></tr></thead>
+          <thead><tr><th>Discord</th><th>${t("badm.colLabel")}</th><th>${t("ptn.since")}</th><th>${t("ptn.theirEvents")}</th><th></th></tr></thead>
           <tbody>${activeRows}</tbody>
         </table>
       </div>
@@ -9586,10 +9582,10 @@ export function partnershipsPage(opts: {
 
     ${pending.length
       ? html`<div class="section">
-          <div class="section-title">Pending invites</div>
+          <div class="section-title">${t("ptn.pendingInvites")}</div>
           <div class="card" style="padding:0">
             <table>
-              <thead><tr><th>Label</th><th>Direction</th><th>Created</th><th></th></tr></thead>
+              <thead><tr><th>${t("badm.colLabel")}</th><th>${t("ptn.direction")}</th><th>${t("badm.colCreated")}</th><th></th></tr></thead>
               <tbody>${pendingRows}</tbody>
             </table>
           </div>
@@ -9597,39 +9593,39 @@ export function partnershipsPage(opts: {
       : safe("")}
 
     <div class="section">
-      <div class="section-title">Invite a partner</div>
+      <div class="section-title">${t("ptn.invitePartner")}</div>
       <div class="card">
         <form method="post" action="${bp}/guilds/partnerships/invite" class="opv2-form" style="max-width:32rem">
           <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
           <div class="form-group">
-            <label for="label">Label (e.g. alliance name)</label>
+            <label for="label">${t("ptn.labelField")}</label>
             <input type="text" id="label" name="label" maxlength="80" required placeholder="Raumdock Alliance" />
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-gold">Create invite token</button>
+            <button type="submit" class="btn btn-gold">${t("ptn.createToken")}</button>
           </div>
         </form>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title">Accept an invite</div>
+      <div class="section-title">${t("ptn.acceptInvite")}</div>
       <div class="card">
         <form method="post" action="${bp}/guilds/partnerships/accept" class="opv2-form" style="max-width:32rem">
           <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
           <div class="form-group">
-            <label for="token">Partner token</label>
-            <input type="text" id="token" name="token" required value="${opts.prefillToken ?? ""}" placeholder="Paste the token from the other Discord" />
+            <label for="token">${t("ptn.partnerToken")}</label>
+            <input type="text" id="token" name="token" required value="${opts.prefillToken ?? ""}" placeholder="${t("ptn.tokenPlaceholder")}" />
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-green">Accept</button>
+            <button type="submit" class="btn btn-green">${t("ptn.accept")}</button>
           </div>
         </form>
       </div>
     </div>`;
 
   return layout({
-    title: `Partnerships - ${opts.activeGuildName}`,
+    title: `${t("ptn.tabTitle")} - ${opts.activeGuildName}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
