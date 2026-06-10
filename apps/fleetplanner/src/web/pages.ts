@@ -7037,21 +7037,21 @@ export function bridgeDashboardPage(opts: {
       <h1 class="page-title">DASHBOARD</h1>
       <p class="page-subtitle text-mono">${opts.guildName}</p>
       <p style="margin-top:.5rem">
-        <a href="${bp}/admin/bridge/${opts.guildId}">← Back to guild</a> &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/dashboard">↻ Refresh</a>
+        <a href="${bp}/admin/bridge/${opts.guildId}">← ${t("badm.backToGuild")}</a> &nbsp;·&nbsp;
+        <a href="${bp}/admin/bridge/${opts.guildId}/dashboard">↻ ${t("badm.refresh")}</a>
       </p>
     </div>
     ${!d
       ? html`<div class="flash flash-error">
-          Bridge unreachable${opts.error ? html`: ${opts.error}` : ""}
+          ${t("badm.bridgeUnreachable")}${opts.error ? html`: ${opts.error}` : ""}
         </div>`
       : html` <div class="section">
-            <div class="section-title">Health</div>
+            <div class="section-title">${t("badm.health")}</div>
             <div class="card" style="padding:1.25rem;display:flex;gap:2rem;flex-wrap:wrap">
               <div>
-                <span class="text-dim text-sm">Guild</span><br />${d.enabled
-                  ? html`<span class="tag tag-green">ENABLED</span>`
-                  : html`<span class="tag tag-dim">DISABLED</span>`}
+                <span class="text-dim text-sm">${t("badm.guildLabel")}</span><br />${d.enabled
+                  ? html`<span class="tag tag-green">${t("badm.enabled")}</span>`
+                  : html`<span class="tag tag-dim">${t("badm.disabledUpper")}</span>`}
               </div>
               <div>
                 <span class="text-dim text-sm">Bridge</span><br />${healthDot(d.health.bridgeOk)}
@@ -7064,17 +7064,17 @@ export function bridgeDashboardPage(opts: {
           </div>
           <div class="section">
             <div class="section-title">
-              Active commanders (${String(d.activeCommanders.length)})
+              ${t("badm.activeCommanders", { n: String(d.activeCommanders.length) })}
             </div>
             ${d.activeCommanders.length === 0
-              ? html`<p class="text-dim">None connected.</p>`
+              ? html`<p class="text-dim">${t("badm.noneConnected")}</p>`
               : html`<div style="overflow-x:auto">
                   <table class="user-table">
                     <thead>
                       <tr>
-                        <th>User</th>
-                        <th>Discord ID</th>
-                        <th>Status</th>
+                        <th>${t("badm.colUser")}</th>
+                        <th>${t("badm.discordId")}</th>
+                        <th>${t("admin.statusLabel")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -7085,8 +7085,8 @@ export function bridgeDashboardPage(opts: {
                             <td class="text-mono text-sm text-dim">${c.userId}</td>
                             <td>
                               ${c.speaking
-                                ? html`<span class="tag tag-cyan">SPEAKING</span>`
-                                : html`<span class="tag tag-dim">idle</span>`}
+                                ? html`<span class="tag tag-cyan">${t("badm.speakingTag")}</span>`
+                                : html`<span class="tag tag-dim">${t("badm.idleTag")}</span>`}
                             </td>
                           </tr>`,
                       )}
@@ -7096,19 +7096,19 @@ export function bridgeDashboardPage(opts: {
           </div>
           <div class="section">
             <div class="section-title">
-              Commander roster (${String(d.commanderRoleMembers.length)})
+              ${t("badm.commanderRoster", { n: String(d.commanderRoleMembers.length) })}
             </div>
             ${d.commanderRoleMembers.length === 0
               ? html`<p class="text-dim">
-                  No members with a configured commander role (or bot can't read members).
+                  ${t("badm.noCommanderMembers")}
                 </p>`
               : html`<div style="overflow-x:auto">
                   <table class="user-table">
                     <thead>
                       <tr>
-                        <th>User</th>
-                        <th>Discord ID</th>
-                        <th>Voice</th>
+                        <th>${t("badm.colUser")}</th>
+                        <th>${t("badm.discordId")}</th>
+                        <th>${t("tab.voice")}</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -7120,21 +7120,21 @@ export function bridgeDashboardPage(opts: {
                             <td class="text-mono text-sm text-dim">${m.userId}</td>
                             <td>
                               ${m.inAllowedChannel
-                                ? html`<span class="tag tag-green">in allowed ch</span>`
+                                ? html`<span class="tag tag-green">${t("badm.inAllowedCh")}</span>`
                                 : m.inVoice
-                                  ? html`<span class="tag tag-gold">in voice</span>`
-                                  : html`<span class="tag tag-dim">offline</span>`}
+                                  ? html`<span class="tag tag-gold">${t("badm.inVoice")}</span>`
+                                  : html`<span class="tag tag-dim">${t("badm.offline")}</span>`}
                             </td>
                             <td class="text-right">
                               <form
                                 method="post"
                                 action="${bp}/admin/bridge/${opts.guildId}/commander-roles/${m.userId}/strip"
                                 class="inline"
-                                onsubmit="return confirm('Strip all commander roles from ${m.displayName}?')"
+                                onsubmit="return confirm('${t("badm.confirmStripRoles", { name: m.displayName })}')"
                               >
                                 <input type="hidden" name="_csrf" value="${csrf}" />
                                 <button type="submit" class="btn btn-sm btn-danger">
-                                  Strip roles
+                                  ${t("badm.stripRoles")}
                                 </button>
                               </form>
                             </td>
@@ -7146,7 +7146,7 @@ export function bridgeDashboardPage(opts: {
           </div>`}`;
 
   return layout({
-    title: "Bridge Dashboard",
+    title: t("badm.dashboardTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -7175,14 +7175,14 @@ export function bridgeSessionsPage(opts: {
   const csrf = opts.csrfToken ?? "";
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">SESSIONS</h1>
+      <h1 class="page-title">${t("badm.sessions")}</h1>
       <p class="page-subtitle text-mono">${opts.guildName}</p>
-      ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
+      ${bridgeBackLink(bp, opts.guildId, t("badm.backToGuild"))}
     </div>
     ${opts.error
-      ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>`
+      ? html`<div class="flash flash-error">${t("badm.bridgeUnreachable")}: ${opts.error}</div>`
       : html` <div class="section">
-            <div class="section-title">New session</div>
+            <div class="section-title">${t("badm.newSession")}</div>
             <div class="card" style="padding:1.25rem">
               <form
                 method="post"
@@ -7191,7 +7191,7 @@ export function bridgeSessionsPage(opts: {
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <label class="text-sm text-dim" style="flex:1 1 16rem"
-                  >Label
+                  >${t("badm.colLabel")}
                   <input
                     type="text"
                     name="label"
@@ -7200,21 +7200,21 @@ export function bridgeSessionsPage(opts: {
                     required
                   />
                 </label>
-                <button type="submit" class="btn btn-cyan">Create session</button>
+                <button type="submit" class="btn btn-cyan">${t("badm.createSession")}</button>
               </form>
             </div>
           </div>
           <div class="section">
-            <div class="section-title">Active sessions (${String(opts.sessions.length)})</div>
+            <div class="section-title">${t("badm.activeSessions", { n: String(opts.sessions.length) })}</div>
             ${opts.sessions.length === 0
-              ? html`<p class="text-dim">No active sessions.</p>`
+              ? html`<p class="text-dim">${t("badm.noActiveSessions")}</p>`
               : html`<div style="overflow-x:auto">
                   <table class="user-table">
                     <thead>
                       <tr>
-                        <th>Label</th>
-                        <th>Created</th>
-                        <th>Invites</th>
+                        <th>${t("badm.colLabel")}</th>
+                        <th>${t("badm.colCreated")}</th>
+                        <th>${t("badm.colInvites")}</th>
                         <th></th>
                       </tr>
                     </thead>
@@ -7234,10 +7234,10 @@ export function bridgeSessionsPage(opts: {
                                 method="post"
                                 action="${bp}/admin/bridge/${opts.guildId}/sessions/${s.id}/end"
                                 class="inline"
-                                onsubmit="return confirm('End session ${s.label}?')"
+                                onsubmit="return confirm('${t("badm.confirmEndSession")} ${s.label}?')"
                               >
                                 <input type="hidden" name="_csrf" value="${csrf}" />
-                                <button type="submit" class="btn btn-sm btn-danger">End</button>
+                                <button type="submit" class="btn btn-sm btn-danger">${t("badm.end")}</button>
                               </form>
                             </td>
                           </tr>`,
@@ -7248,7 +7248,7 @@ export function bridgeSessionsPage(opts: {
           </div>`}`;
 
   return layout({
-    title: "Bridge Sessions",
+    title: t("badm.sessionsTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -7281,19 +7281,19 @@ export function bridgeSessionDetailPage(opts: {
 
   const body = html` <div class="page-header">
       <h1 class="page-title">${s.label}</h1>
-      <p class="page-subtitle text-mono">${s.status.toUpperCase()} · room ${s.livekitRoom}</p>
+      <p class="page-subtitle text-mono">${s.status.toUpperCase()} · ${t("badm.roomWord")} ${s.livekitRoom}</p>
       <p style="margin-top:.5rem">
-        <a href="${bp}/admin/bridge/${opts.guildId}/sessions">← All sessions</a>
+        <a href="${bp}/admin/bridge/${opts.guildId}/sessions">← ${t("badm.allSessions")}</a>
       </p>
     </div>
     ${opts.freshInvite
       ? html` <div class="flash flash-ok">
-          New invite "${opts.freshInvite.label}" — token (shown once):
+          ${t("badm.newInviteToken", { label: opts.freshInvite.label })}
           <span class="text-mono">${opts.freshInvite.plaintext}</span>
         </div>`
       : ""}
     <div class="section">
-      <div class="section-title">Mint invite</div>
+      <div class="section-title">${t("badm.mintInvite")}</div>
       <div class="card" style="padding:1.25rem">
         <form
           method="post"
@@ -7302,28 +7302,28 @@ export function bridgeSessionDetailPage(opts: {
         >
           <input type="hidden" name="_csrf" value="${csrf}" />
           <label class="text-sm text-dim" style="flex:1 1 12rem"
-            >Label
+            >${t("badm.colLabel")}
             <input type="text" name="label" placeholder="Commander A" maxlength="80" required />
           </label>
           <label class="text-sm text-dim"
-            >TTL (hours)
+            >${t("badm.ttlHours")}
             <input type="number" name="ttlHours" min="1" max="168" value="24" style="width:6rem" />
           </label>
-          <button type="submit" class="btn btn-cyan">Mint</button>
+          <button type="submit" class="btn btn-cyan">${t("badm.mint")}</button>
         </form>
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Invites (${String(opts.invites.length)})</div>
+      <div class="section-title">${t("badm.invites", { n: String(opts.invites.length) })}</div>
       ${opts.invites.length === 0
-        ? html`<p class="text-dim">No invites yet.</p>`
+        ? html`<p class="text-dim">${t("badm.noInvitesYet")}</p>`
         : html`<div style="overflow-x:auto">
             <table class="user-table">
               <thead>
                 <tr>
-                  <th>Label</th>
-                  <th>Expires</th>
-                  <th>Status</th>
+                  <th>${t("badm.colLabel")}</th>
+                  <th>${t("badm.colExpires")}</th>
+                  <th>${t("admin.statusLabel")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -7335,8 +7335,8 @@ export function bridgeSessionDetailPage(opts: {
                       <td class="text-dim text-sm">${inv.expiresAt}</td>
                       <td>
                         ${inv.usedAt
-                          ? html`<span class="tag tag-dim">used</span>`
-                          : html`<span class="tag tag-green">unused</span>`}
+                          ? html`<span class="tag tag-dim">${t("badm.used")}</span>`
+                          : html`<span class="tag tag-green">${t("badm.unused")}</span>`}
                       </td>
                       <td class="text-right">
                         ${inv.usedAt
@@ -7358,7 +7358,7 @@ export function bridgeSessionDetailPage(opts: {
     </div>`;
 
   return layout({
-    title: "Bridge Session",
+    title: t("badm.sessionTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -7402,16 +7402,16 @@ export function bridgeRelayBotsPage(opts: {
   const metricsJson = opts.metrics ? JSON.stringify(opts.metrics, null, 2) : "";
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">RELAY BOTS</h1>
-      <p class="page-subtitle text-mono">${opts.guildName} · singleton config</p>
-      ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
+      <h1 class="page-title">${t("badm.relayBots")}</h1>
+      <p class="page-subtitle text-mono">${opts.guildName} · ${t("badm.singletonConfig")}</p>
+      ${bridgeBackLink(bp, opts.guildId, t("badm.backToGuild"))}
     </div>
     ${!c
       ? html`<div class="flash flash-error">
-          Bridge unreachable${opts.error ? html`: ${opts.error}` : ""}
+          ${t("badm.bridgeUnreachable")}${opts.error ? html`: ${opts.error}` : ""}
         </div>`
       : html` <div class="section">
-            <div class="section-title">LiveKit + bots</div>
+            <div class="section-title">${t("badm.livekitBots")}</div>
             <div class="card" style="padding:1.5rem">
               <form method="post" action="${bp}/admin/bridge/${opts.guildId}/relay-bots/config">
                 <input type="hidden" name="_csrf" value="${csrf}" />
@@ -7426,22 +7426,22 @@ export function bridgeRelayBotsPage(opts: {
                     />
                   </div>
                   <div class="form-group">
-                    <label>Room name</label
+                    <label>${t("badm.roomName")}</label
                     ><input type="text" name="roomName" value="${c.roomName}" />
                   </div>
                 </div>
                 <div class="form-row">
                   <div class="form-group">
-                    <label>LiveKit API key</label
+                    <label>${t("badm.livekitApiKey")}</label
                     ><input type="text" name="livekitApiKey" value="${c.livekitApiKey}" />
                   </div>
                   <div class="form-group">
-                    <label>LiveKit API secret</label
+                    <label>${t("badm.livekitApiSecret")}</label
                     ><input type="text" name="livekitApiSecret" value="${c.livekitApiSecret}" />
                   </div>
                 </div>
                 <div class="form-group">
-                  <label>Relay guild ID</label
+                  <label>${t("badm.relayGuildId")}</label
                   ><input
                     type="text"
                     name="guildId"
@@ -7450,17 +7450,17 @@ export function bridgeRelayBotsPage(opts: {
                   />
                 </div>
                 <div class="form-group">
-                  <label>Bots (JSON array of {name, token, channelId})</label>
+                  <label>${t("badm.botsJsonLabel")}</label>
                   <textarea name="botsJson" rows="8" class="text-mono">${botsJson}</textarea>
                 </div>
                 <div class="form-actions">
-                  <button type="submit" class="btn btn-cyan">Save + reload</button>
+                  <button type="submit" class="btn btn-cyan">${t("badm.saveReload")}</button>
                 </div>
               </form>
             </div>
           </div>
           <div class="section">
-            <div class="section-title">Service</div>
+            <div class="section-title">${t("badm.service")}</div>
             <div
               class="card"
               style="padding:1.25rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap"
@@ -7472,20 +7472,20 @@ export function bridgeRelayBotsPage(opts: {
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <button type="submit" class="btn btn-gold btn-sm">
-                  Restart relay-bots service
+                  ${t("badm.restartRelay")}
                 </button>
               </form>
               <a class="btn btn-ghost btn-sm" href="${bp}/admin/bridge/${opts.guildId}/relay-bots"
-                >↻ Refresh metrics</a
+                >↻ ${t("badm.refreshMetrics")}</a
               >
             </div>
           </div>
           <div class="section">
-            <div class="section-title">Metrics</div>
+            <div class="section-title">${t("badm.metrics")}</div>
             <div class="card" style="padding:1.25rem">
               ${metricsOffline
                 ? html`<p class="text-dim">
-                    Relay-bots service offline or no metrics. (Reload to retry.)
+                    ${t("badm.metricsOffline")}
                   </p>`
                 : html`<pre class="text-mono text-sm" style="overflow-x:auto;margin:0">
 ${metricsJson}</pre
@@ -7494,7 +7494,7 @@ ${metricsJson}</pre
           </div>`}`;
 
   return layout({
-    title: "Bridge Relay Bots",
+    title: t("badm.relayBotsTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
