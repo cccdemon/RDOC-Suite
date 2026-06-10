@@ -1260,20 +1260,20 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   for (const sg of op.cqbSignups ?? []) {
     if (sg.assignedGroupId) {
       const grp = op.groups.find((g) => g.id === sg.assignedGroupId);
-      const label = grp?.kind === "fighter_squad" ? "Fighter wing" : "CQB team";
+      const label = grp?.kind === "fighter_squad" ? t("op.fighterWing") : t("op.cqbTeam");
       rawParticipants.push({ id: sg.userId, name: nm(sg.user.username), where: `${label} — ${grp?.name ?? "?"}`, tone: "good" });
     } else {
-      rawParticipants.push({ id: sg.userId, name: nm(sg.user.username), where: "CQB pool — awaiting assignment", tone: "warn" });
+      rawParticipants.push({ id: sg.userId, name: nm(sg.user.username), where: t("op.cqbPoolAwaiting"), tone: "warn" });
     }
   }
   for (const r of op.crewRequests) {
-    rawParticipants.push({ id: r.user.id, name: nm(r.user.username), where: "Requested placement", tone: "warn" });
+    rawParticipants.push({ id: r.user.id, name: nm(r.user.username), where: t("op.requestedPlacement"), tone: "warn" });
   }
   for (const u of op.units.filter((x) => x.status === "pending")) {
     rawParticipants.push({
       id: u.captainId,
       name: nm(u.captain.username),
-      where: `${u.ship?.name || u.squadName || "Ship"} — pending review`,
+      where: `${u.ship?.name || u.squadName || t("op.ship")} — ${t("op.pendingReview")}`,
       tone: "warn",
     });
   }
@@ -1290,15 +1290,15 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const placeOpenSeats = activeUnits.flatMap((u) =>
     u.seats
       .filter((s) => s.active && !s.userId)
-      .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || "Unit"} — ${s.label}` })),
+      .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || t("op.unit")} — ${s.label}` })),
   );
   const crewPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Participants (${participants.length})${helpIcon("Komplette Teilnehmerliste: wer ist wo (Schiff + Sitz, CQB-/Fighter-Team). Reine Übersicht — eine Zeile pro Person, alle Positionen als Tags.")}</div>
+      <div class="opv2-panel-title">${t("op.participants")} (${participants.length})${helpIcon(t("op.participantsHelp"))}</div>
       ${participants.length
         ? html`<table class="user-table" style="width:100%">
             <thead>
-              <tr><th>Member</th><th>Position(s)</th></tr>
+              <tr><th>${t("common.member")}</th><th>${t("op.positions")}</th></tr>
             </thead>
             <tbody>
               ${participants.map(
@@ -1315,17 +1315,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               )}
             </tbody>
           </table>`
-        : html`<p class="text-dim text-sm">No participants yet.</p>`}
+        : html`<p class="text-dim text-sm">${t("op.noParticipants")}</p>`}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Need Assignment${helpIcon("Spieler, die 'Operator soll mich einteilen' gewählt haben. Weise sie hier einem CQB-Team (Place in team) oder einem freien Schiffssitz (Place in seat) zu — die offene Anfrage verschwindet danach.")}</div>
+      <div class="opv2-panel-title">${t("op.needAssignment")}${helpIcon(t("op.needAssignmentHelp"))}</div>
       ${op.crewRequests.length
         ? op.crewRequests.map(
             (request) =>
               html`<div class="opv2-row" style="flex-wrap:wrap;gap:.4rem">
                 <div style="flex:1;min-width:9rem">
                   <strong>${nm(request.user.username)}</strong>
-                  <span class="text-dim text-sm">${request.note || "No note"}</span>
+                  <span class="text-dim text-sm">${request.note || t("op.noNote")}</span>
                 </div>
                 ${isLeader
                   ? html`<div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
@@ -1335,8 +1335,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                             ${returnFields("crew")}
                             <input type="hidden" name="userId" value="${request.user.id}" />
                             <select name="groupId" onchange="this.form.requestSubmit()">
-                              <option value="" disabled selected hidden>Place in team…</option>
-                              ${placeSquads.map((t) => html`<option value="${t.id}">${t.name}</option>`)}
+                              <option value="" disabled selected hidden>${t("op.placeInTeam")}</option>
+                              ${placeSquads.map((sq) => html`<option value="${sq.id}">${sq.name}</option>`)}
                             </select>
                           </form>`
                         : safe("")}
@@ -1346,7 +1346,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                             ${returnFields("crew")}
                             <input type="hidden" name="userId" value="${request.user.id}" />
                             <select name="seatId" onchange="this.form.requestSubmit()">
-                              <option value="" disabled selected hidden>Place in seat…</option>
+                              <option value="" disabled selected hidden>${t("op.placeInSeat")}</option>
                               ${placeOpenSeats.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
                             </select>
                           </form>`
@@ -1359,31 +1359,31 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         <input type="hidden" name="_csrf" value="${csrf}" />
                         <input type="hidden" name="userId" value="${request.user.id}" />
                         ${returnFields("crew")}
-                        <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
+                        <button type="submit" class="btn btn-sm btn-ghost">${t("common.remove")}</button>
                       </form>
                     </div>`
                   : safe("")}
               </div>`,
           )
-        : html`<p class="text-dim text-sm">No unassigned crewmembers.</p>`}
+        : html`<p class="text-dim text-sm">${t("op.noUnassignedCrew")}</p>`}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Crew Action</div>
+      <div class="opv2-panel-title">${t("op.crewAction")}</div>
       ${user && (op.status === "open" || op.status === "draft")
         ? html`<form method="post" action="${bp}/api/ops/${op.id}/crew-requests">
             <input type="hidden" name="_csrf" value="${csrf}" />
             ${returnFields("crew")}
-            <label>Assignment note</label>
+            <label>${t("op.assignmentNote")}</label>
             <input
               type="text"
               name="note"
               maxlength="240"
-              placeholder="Any seat, prefer medic, gunner, FPS..."
+              placeholder="${t("op.assignmentNotePlaceholder")}"
             />
-            <button type="submit" class="btn btn-sm mt-1">Request Assignment</button>
+            <button type="submit" class="btn btn-sm mt-1">${t("op.requestAssignment")}</button>
           </form>`
         : html`<p class="text-dim text-sm">
-            Crew requests are available while the op is draft or open.
+            ${t("op.crewRequestsAvail")}
           </p>`}
     </section>
   </div>`;
@@ -1398,10 +1398,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const primaryPanel =
     visiblePrimary.length > 0
       ? html`<section class="opv2-panel">
-          <div class="opv2-panel-title">Primary Voice Channel</div>
+          <div class="opv2-panel-title">${t("op.primaryVoice")}</div>
           <p class="text-dim text-sm">
-            Members in two or more units get only one Discord voice channel. Pick the main one
-            (default: the FPS squad).
+            ${t("op.primaryVoiceDesc")}
           </p>
           <div class="opv2-stack">
             ${visiblePrimary.map((a) => {
@@ -1412,7 +1411,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 return html`<div class="opv2-row">
                   <div>
                     <strong>${a.username}</strong>
-                    <span>${effectiveName}${a.chosenUnitId ? "" : " (auto)"}</span>
+                    <span>${effectiveName}${a.chosenUnitId ? "" : ` ${t("op.autoParen")}`}</span>
                   </div>
                 </div>`;
               }
@@ -1429,7 +1428,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   <label>${a.username}</label>
                   <select name="unitId">
                     <option value="" ${a.chosenUnitId ? "" : safe("selected")}>
-                      Auto (FPS squad / first unit)
+                      ${t("op.autoFirstUnit")}
                     </option>
                     ${a.units.map(
                       (u) =>
@@ -1437,14 +1436,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           value="${u.unitId}"
                           ${a.chosenUnitId === u.unitId ? safe("selected") : ""}
                         >
-                          ${u.name} (${u.unitType === "ship" ? "Ship" : "FPS"})${u.hasChannel
+                          ${u.name} (${u.unitType === "ship" ? t("op.ship") : "FPS"})${u.hasChannel
                             ? ""
-                            : " — no channel"}
+                            : ` ${t("op.noChannel")}`}
                         </option>`,
                     )}
                   </select>
                 </div>
-                <button type="submit" class="btn btn-sm">Save</button>
+                <button type="submit" class="btn btn-sm">${t("common.save")}</button>
               </form>`;
             })}
           </div>
@@ -1454,7 +1453,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const voicePanel = html`<div class="opv2-grid">
     ${primaryPanel}
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Mission Voice</div>
+      <div class="opv2-panel-title">${t("op.missionVoice")}</div>
       ${opts.voiceEnabled
         ? opts.missionVoice?.globalVoiceRoom
           ? html`<div class="opv2-stack">
@@ -1464,30 +1463,30 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               </div>
               <div class="detail-row">
                 <span>Command Net</span>
-                <strong>${opts.missionVoice.commanderVoiceRoom ?? "None"}</strong>
+                <strong>${opts.missionVoice.commanderVoiceRoom ?? t("op.none")}</strong>
               </div>
             </div>`
           : html`<p class="text-dim text-sm">
-              No active mission voice room. It starts when the operation is opened.
+              ${t("op.noActiveVoiceRoom")}
             </p>`
-        : html`<p class="text-dim text-sm">Voice integration is not enabled for this server.</p>`}
+        : html`<p class="text-dim text-sm">${t("op.voiceNotEnabled")}</p>`}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Unit Channels</div>
+      <div class="opv2-panel-title">${t("op.unitChannels")}</div>
       ${op.voiceChannels.length
         ? op.voiceChannels.map((channel) => {
             const name =
               channel.channelName ||
               (channel.unit.unitType === "ship"
-                ? (channel.unit.ship?.name ?? "Unknown Ship")
-                : (channel.unit.squadName ?? "Squad"));
+                ? (channel.unit.ship?.name ?? t("common.unknownShip"))
+                : (channel.unit.squadName ?? t("common.squad")));
             return html`<div class="opv2-row">
               <div>
                 <strong>${name}</strong>
                 <span>${unitLeadTitle(channel.unit.ship)}: ${channel.unit.captain.username}</span>
               </div>
               <div class="opv2-row-meta">
-                <span class="tag tag-cyan">${channel.voiceBot?.label ?? "Discord"}</span>
+                <span class="tag tag-cyan">${channel.voiceBot?.label ?? t("op.discord")}</span>
                 ${canManage
                   ? html`<form
                         method="post"
@@ -1497,7 +1496,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         <input type="hidden" name="_csrf" value="${csrf}" />
                         ${returnFields("voice")}
                         <input type="text" name="name" value="${name}" maxlength="100" required />
-                        <button type="submit" class="btn btn-sm btn-ghost">Rename</button>
+                        <button type="submit" class="btn btn-sm btn-ghost">${t("op.rename")}</button>
                       </form>
                       <form
                         method="post"
@@ -1509,16 +1508,16 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         <button
                           type="submit"
                           class="btn btn-sm btn-danger"
-                          onclick="return confirm('Delete this Discord voice channel?')"
+                          onclick="return confirm('${t("op.confirmDeleteVoiceChannel")}')"
                         >
-                          Delete
+                          ${t("common.delete")}
                         </button>
                       </form>`
                   : safe("")}
               </div>
             </div>`;
           })
-        : html`<p class="text-dim text-sm">No generated unit voice channels.</p>`}
+        : html`<p class="text-dim text-sm">${t("op.noUnitChannels")}</p>`}
       ${canManage && opts.availableVoiceBotCount > 0
         ? html`<form
             method="post"
@@ -1527,23 +1526,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           >
             <input type="hidden" name="_csrf" value="${csrf}" />
             ${returnFields("voice")}
-            <button type="submit" class="btn btn-sm btn-cyan">Launch Voice Channels</button>
+            <button type="submit" class="btn btn-sm btn-cyan">${t("op.launchVoiceChannels")}</button>
           </form>`
         : safe("")}
     </section>
     ${canManage && opts.voiceEnabled && opts.voiceControl && opts.voiceControl.length
       ? html`<section class="opv2-panel">
-          <div class="opv2-panel-title">Voice Control</div>
+          <div class="opv2-panel-title">${t("op.voiceControl")}</div>
           <p class="text-dim text-sm" style="margin-bottom:.75rem">
-            Pull assigned crew into their unit's Discord voice channel. Members must already be in
-            a Discord voice channel.
+            ${t("op.voiceControlDesc")}
           </p>
           <div class="opv2-stack">
             ${opts.voiceControl.map(
               (unit) => html`<div class="opv2-row" style="flex-wrap:wrap;gap:.5rem">
                 <div>
                   <strong>${unit.channelName}</strong>
-                  <span>${unit.crew.length} crew</span>
+                  <span>${t("op.crewCount", { n: unit.crew.length })}</span>
                 </div>
                 <div class="opv2-row-meta" style="gap:.4rem;flex-wrap:wrap">
                   <form
@@ -1552,7 +1550,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     class="inline"
                   >
                     <input type="hidden" name="_csrf" value="${csrf}" />
-                    <button type="submit" class="btn btn-sm btn-cyan">Pull all crew here</button>
+                    <button type="submit" class="btn btn-sm btn-cyan">${t("op.pullAllCrew")}</button>
                   </form>
                   ${unit.crew.map(
                     (member) =>
@@ -1564,7 +1562,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           >
                             <input type="hidden" name="_csrf" value="${csrf}" />
                             <button type="submit" class="btn btn-sm btn-ghost">
-                              Move ${member.username}
+                              ${t("op.move")} ${member.username}
                             </button>
                           </form>`
                         : safe(""),
@@ -1578,7 +1576,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   </div>`;
 
   const commanderKindLabel = (k: "squadleader" | "leader" | "participant") =>
-    k === "squadleader" ? "Squadleader" : k === "leader" ? "Leader" : "Added";
+    k === "squadleader" ? t("op.kindSquadleader") : k === "leader" ? t("op.kindLeader") : t("op.kindAdded");
   const commanderKindTone = (k: "squadleader" | "leader" | "participant") =>
     k === "participant" ? "tag-gold" : k === "leader" ? "tag-green" : "tag-cyan";
   const rosterIds = new Set((opts.commanderRoster?.entries ?? []).map((e) => e.userId));
@@ -1589,15 +1587,13 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const globalNetCount = voiceEntries.filter((e) => e.globalVoice).length;
   const commandersPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Voice Access</div>
+      <div class="opv2-panel-title">${t("op.voiceAccess")}</div>
       ${!opts.voiceEnabled
-        ? html`<p class="text-dim text-sm">Voice integration is not enabled for this server.</p>`
+        ? html`<p class="text-dim text-sm">${t("op.voiceNotEnabled")}</p>`
         : html`
             <p class="text-dim text-sm" style="margin-bottom:.5rem">
-              <strong style="color:var(--cyan,#35d0e0)">Command Net</strong> (PTT-1, commander
-              room) = mission leaders + accepted unit captains + anyone added here.
-              <strong style="color:var(--gold,#e0b835)">Global Radio Net</strong> (PTT-2, relay
-              bots → Discord) is narrower — grant only to those allowed to broadcast.
+              <strong style="color:var(--cyan,#35d0e0)">Command Net</strong> ${t("op.commandNetDesc")}
+              <strong style="color:var(--gold,#e0b835)">Global Radio Net</strong> ${t("op.globalNetDesc")}
             </p>
             <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
               <span class="tag tag-cyan">Command Net · ${String(commandNetCount)}</span>
@@ -1605,8 +1601,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             </div>
             ${opts.commanderRoster && !opts.commanderRoster.voiceActive
               ? html`<div class="banner banner-dim text-sm" style="margin-bottom:.75rem">
-                  No active voice session — Companion links appear once the operation is set to
-                  <strong>open</strong> or <strong>in progress</strong>.
+                  ${t("op.noVoiceSession")}
                 </div>`
               : safe("")}
             <div class="opv2-stack">
@@ -1623,7 +1618,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                         class="opv2-row-meta"
                         style="flex:1;justify-content:flex-end;gap:.4rem;min-width:18rem;align-items:center"
                       >
-                        <span class="tag tag-cyan" title="On the mission Command Net">Command Net</span>
+                        <span class="tag tag-cyan" title="${t("op.onCommandNet")}">Command Net</span>
                         ${e.link
                           ? html`<input
                                 type="text"
@@ -1636,9 +1631,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                               <button
                                 type="button"
                                 class="btn btn-sm btn-cyan"
-                                onclick="const i=this.previousElementSibling;i.select();navigator.clipboard.writeText(i.value).then(()=>{const b=this,t=b.textContent;b.textContent='Kopiert';b.disabled=true;setTimeout(()=>{b.textContent=t;b.disabled=false;},1200);}).catch(()=>{document.execCommand('copy');});"
+                                onclick="const i=this.previousElementSibling;i.select();navigator.clipboard.writeText(i.value).then(()=>{const b=this,o=b.textContent;b.textContent='${t("op.copied")}';b.disabled=true;setTimeout(()=>{b.textContent=o;b.disabled=false;},1200);}).catch(()=>{document.execCommand('copy');});"
                               >
-                                Kopieren
+                                ${t("op.copy")}
                               </button>`
                           : safe("")}
                         <form
