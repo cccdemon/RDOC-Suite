@@ -902,4 +902,21 @@ export const en: Record<string, string> = {
   "badm.downloadLinksNote": "Links are single-use, 7-day TTL. The raw URL is shown once on mint (re-mint if lost).",
   "badm.tokens": "Tokens ({n})",
   "badm.noTokens": "No download tokens.",
+
+  // Login / account / error pages
+  "login.withDiscord": "Login with Discord",
+  "login.withGithub": "Login with GitHub",
+  "login.withGoogle": "Login with Google",
+  "login.subtitle": "Star Citizen fleet operations — calendar, unit registration, seat assignment.",
+  "login.publicVisible": "Public operations are visible without login.",
+  "login.browseOps": "Browse operations →",
+  "account.since": "since",
+  "account.linkDiscord": "Link Discord account",
+  "account.title": "MY ACCOUNT",
+  "account.tabTitle": "My Account",
+  "account.linkedAccounts": "Linked accounts",
+  "err.backToOps": "Back to Operations",
+  "err.title": "Error {status}",
+  "loginReq.title": "Login required",
+  "loginReq.body": "This operation link is private. Please log in — if you have access (you're a member of the hosting or a partner Discord, or it was shared with you), the operation will open after sign-in. This is not a broken link.",
 };
