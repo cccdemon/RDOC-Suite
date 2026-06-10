@@ -1972,39 +1972,39 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     <span class="text-dim text-sm">${p.units.join(", ")}</span>
                   </div>`,
               )
-            : html`<p class="text-dim text-sm">No participants were assigned to this operation.</p>`}
+            : html`<p class="text-dim text-sm">${t("op.noAssignedParticipants")}</p>`}
         </section>`
       : safe("");
 
   const overviewPanel = html`<div class="opv2-grid">
     ${participantsPanel} ${compositionBoard}
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Briefing</div>
+      <div class="opv2-panel-title">${t("op.briefing")}</div>
       ${op.description
         ? renderMarkdown(op.description)
-        : html`<p class="text-dim text-sm">No briefing text has been added.</p>`}
+        : html`<p class="text-dim text-sm">${t("op.noBriefing")}</p>`}
       ${canManage
         ? html`<details style="margin-top:.85rem">
-            <summary class="mg-edit-toggle">✎ Edit event details</summary>
+            <summary class="mg-edit-toggle">✎ ${t("op.editEventDetails")}</summary>
             <form method="post" action="${bp}/ops/${op.id}/edit" class="opv2-form mt-1">
             <input type="hidden" name="_csrf" value="${csrf}" />
             ${returnFields("overview")}
-            <label>Title</label>
+            <label>${t("op.fldTitle")}</label>
             <input type="text" name="title" value="${op.title}" maxlength="120" required />
             <div class="opv2-form-grid">
               <div>
-                <label>Type</label>
+                <label>${t("op.fldType")}</label>
                 <select name="opType">
                   ${OP_TYPES.map(
                     (type) =>
                       html`<option value="${type}" ${op.opType === type ? safe("selected") : ""}>
-                        ${type}
+                        ${opTypeText(type)}
                       </option>`,
                   )}
                 </select>
               </div>
               <div>
-                <label>When</label>
+                <label>${t("op.fldWhen")}</label>
                 <input
                   type="datetime-local"
                   name="scheduledAt"
@@ -2015,7 +2015,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             </div>
             <div class="opv2-form-grid">
               <div>
-                <label>System</label>
+                <label>${t("op.fldSystem")}</label>
                 <select name="meetingSystem">
                   ${SYSTEMS.map(
                     (system) =>
@@ -2029,7 +2029,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 </select>
               </div>
               <div>
-                <label>Rendezvous</label>
+                <label>${t("op.fldRendezvous")}</label>
                 <input
                   type="text"
                   name="meetingLocation"
@@ -2038,17 +2038,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 />
               </div>
             </div>
-            <label>Description</label>
+            <label>${t("op.fldDescription")}</label>
             <textarea name="description" rows="5">${op.description ?? ""}</textarea>
             ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
               ? html`<label
-                    >Discord Event Voice Channel
+                    >${t("op.eventVoiceChannel")}
                     <span style="font-weight:normal;opacity:.65">
-                      (optional - Discord scheduled event location)
+                      ${t("op.eventVoiceChannelHint")}
                     </span></label
                   >
                   <select name="eventVoiceChannelId">
-                    <option value="">No voice channel</option>
+                    <option value="">${t("op.noVoiceChannel")}</option>
                     ${opts.guildVoiceChannels.map(
                       (channel) =>
                         html`<option
@@ -2060,7 +2060,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     )}
                   </select>`
               : safe("")}
-            <button type="submit" class="btn btn-sm mt-1">Save Overview</button>
+            <button type="submit" class="btn btn-sm mt-1">${t("op.saveOverview")}</button>
             </form>
           </details>`
         : safe("")}
@@ -2072,22 +2072,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // Styled as metric cards (label over value) to match the metrics row above.
   const eventVoiceName =
     opts.guildVoiceChannels?.find((channel) => channel.id === op.eventVoiceChannelId)?.name ??
-    "Not set";
+    t("op.notSet");
   const actionDetailsPanel = html`<div class="opv2-action-details">
     <div class="opv2-metrics opv2-action-metrics">
-      ${metric("When", fmtDate(op.scheduledAt, gtz))}
-      ${metric("System", systemLabel(op.meetingSystem ?? "stanton"))}
-      ${metric("Rendezvous", op.meetingLocation || "Not set")}
-      ${metric("Leaders", op.leaders.length || "None")}
-      ${metric("Event Voice", eventVoiceName)}
+      ${metric(t("op.fldWhen"), fmtDate(op.scheduledAt, gtz))}
+      ${metric(t("op.fldSystem"), systemLabel(op.meetingSystem ?? "stanton"))}
+      ${metric(t("op.fldRendezvous"), op.meetingLocation || t("op.notSet"))}
+      ${metric(t("op.leaders"), op.leaders.length || t("op.none"))}
+      ${metric(t("op.eventVoice"), eventVoiceName)}
       <div class="opv2-metric">
         <span>Discord</span>
         <strong>
           ${opts.guildDiscordInviteUrl
             ? html`<a href="${opts.guildDiscordInviteUrl}" target="_blank" rel="noopener noreferrer"
-                >Join server</a
+                >${t("op.joinServer")}</a
               >`
-            : "Not set"}
+            : t("op.notSet")}
         </strong>
       </div>
     </div>
@@ -2106,12 +2106,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const openSeatOptions = acceptedUnits.flatMap((u) =>
     u.seats
       .filter((s) => s.active && !s.userId)
-      .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || "Unit"} — ${s.label}` })),
+      .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || t("op.unit")} — ${s.label}` })),
   );
   const cqbPanel =
     cqbSignups.length || cqbSquads.length || canManage
       ? html`<section class="opv2-panel">
-          <div class="opv2-panel-title">CQB Personnel${helpIcon("Boden-/FPS-Truppen. Hier siehst du alle Teams: umbenennen, Größe (2–8) setzen, Spieler zuweisen (Assign), ein Team in ein Schiff verladen, oder auflösen. Mitglieder lassen sich zwischen Teams verschieben.")}</div>
+          <div class="opv2-panel-title">${t("op.cqbPersonnel")}${helpIcon(t("op.cqbPersonnelHelp"))}</div>
           <script>
             (function () {
               function flash(form, ok) {
@@ -2136,8 +2136,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </script>
           ${cqbSignups.length === 0 && cqbSquads.length === 0
             ? html`<p class="text-dim text-sm">
-                No CQB signups yet.${canManage
-                  ? " Players sign up as CQB on the join page; bundle them into squads here."
+                ${t("op.noCqbSignups")}${canManage
+                  ? ` ${t("op.noCqbSignupsManage")}`
                   : ""}
               </p>`
             : safe("")}
@@ -2148,9 +2148,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             const carrierUnit = carrierId ? op.units.find((u) => u.id === carrierId) : null;
             return html`<div class="opv2-row mg-board-row cqb-squad-drop" data-cqb-group="${g.id}">
               <div>
-                <strong>${g.name}</strong>${helpIcon("Team-Steuerung: Rename = umbenennen · Size = Sollgröße 2–8 · Assign = Spieler ins Team setzen · Schiff-Auswahl = Team in ein Schiff verladen ('rides in') · Dissolve = auflösen. Mitglieder: 'Reassign to' verschiebt ins andere Team/Pool, '+ Secondary seat' gibt zusätzlich einen Schiffssitz.")}
+                <strong>${g.name}</strong>${helpIcon(t("op.cqbTeamHelp"))}
                 <span class="tag tag-green">${members.length}${cap ? ` / ${cap}` : ""}</span>
-                ${cap && members.length >= cap ? html` <span class="tag tag-gold">full</span>` : safe("")}
+                ${cap && members.length >= cap ? html` <span class="tag tag-gold">${t("op.full")}</span>` : safe("")}
                 ${canManage
                   ? members.length
                     ? html`<div class="cqb-members" style="display:flex;flex-direction:column;gap:.25rem;margin-top:.35rem">
@@ -2161,11 +2161,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                               <input type="hidden" name="_csrf" value="${csrf}" />
                               ${returnFields("fleet")}
                               <input type="hidden" name="signupId" value="${m.id}" />
-                              <select name="groupId" onchange="this.form.requestSubmit()" title="Reassign soldier">
-                                <option value="" disabled selected hidden>Reassign to…</option>
-                                <option value="">— pool —</option>
+                              <select name="groupId" onchange="this.form.requestSubmit()" title="${t("op.reassignSoldier")}">
+                                <option value="" disabled selected hidden>${t("op.reassignTo")}</option>
+                                <option value="">${t("op.pool")}</option>
                                 ${cqbSquads.map(
-                                  (t) => html`<option value="${t.id}">${t.name}</option>`,
+                                  (sq) => html`<option value="${sq.id}">${sq.name}</option>`,
                                 )}
                               </select>
                             </form>
@@ -2174,8 +2174,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                                   <input type="hidden" name="_csrf" value="${csrf}" />
                                   ${returnFields("fleet")}
                                   <input type="hidden" name="userId" value="${m.userId}" />
-                                  <select name="seatId" onchange="this.form.requestSubmit()" title="Assign a secondary ship seat">
-                                    <option value="" disabled selected hidden>+ Secondary seat…</option>
+                                  <select name="seatId" onchange="this.form.requestSubmit()" title="${t("op.assignSecondarySeat")}">
+                                    <option value="" disabled selected hidden>${t("op.secondarySeat")}</option>
                                     ${openSeatOptions.map(
                                       (s) => html`<option value="${s.id}">${s.label}</option>`,
                                     )}
@@ -2185,12 +2185,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           </div>`,
                         )}
                       </div>`
-                    : html`<div class="text-dim text-sm">empty</div>`
+                    : html`<div class="text-dim text-sm">${t("op.empty")}</div>`
                   : html`<div class="text-dim text-sm">
-                      ${members.map((m) => nm(m.user.username)).join(", ") || "empty"}
+                      ${members.map((m) => nm(m.user.username)).join(", ") || t("op.empty")}
                     </div>`}
                 ${carrierUnit
-                  ? html`<div class="text-dim text-sm">rides in <strong>${unitName(carrierUnit)}</strong></div>`
+                  ? html`<div class="text-dim text-sm">${t("op.ridesIn")} <strong>${unitName(carrierUnit)}</strong></div>`
                   : safe("")}
               </div>
               ${canManage
@@ -2201,12 +2201,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       class="inline"
                       data-async
                       style="display:flex;gap:.3rem;align-items:center"
-                      title="Rename squad"
+                      title="${t("op.renameSquad")}"
                     >
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       ${returnFields("fleet")}
                       <input type="text" name="name" value="${g.name}" maxlength="80" style="width:9rem" />
-                      <button type="submit" class="btn btn-sm">Rename</button>
+                      <button type="submit" class="btn btn-sm">${t("op.rename")}</button>
                     </form>
                     ${carrierShips.length
                       ? html`<form
@@ -2214,12 +2214,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           action="${bp}/api/ops/${op.id}/cqb/squads/${g.id}/carrier"
                           class="inline"
                           data-async
-                          title="Embed this team in a ship (non-fighter)"
+                          title="${t("op.embedTeamShip")}"
                         >
                           <input type="hidden" name="_csrf" value="${csrf}" />
                           ${returnFields("fleet")}
                           <select name="carrierUnitId" onchange="this.form.requestSubmit()">
-                            <option value="">— no ship —</option>
+                            <option value="">${t("op.noShip")}</option>
                             ${carrierShips.map(
                               (s) => html`<option value="${s.id}" ${carrierId === s.id ? safe("selected") : ""}>${unitName(s)}</option>`,
                             )}
@@ -2232,30 +2232,30 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       class="inline"
                       data-async
                       style="display:flex;gap:.3rem;align-items:center"
-                      title="Target squad size (2–8)"
+                      title="${t("op.targetSquadSize")}"
                     >
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       ${returnFields("fleet")}
-                      <select name="size" title="Squad size (2–8)">
+                      <select name="size" title="${t("op.squadSizeRange")}">
                         ${[2, 3, 4, 5, 6, 7, 8].map(
                           (n) => html`<option value="${n}" ${cap === n ? safe("selected") : ""}>${n}</option>`,
                         )}
                       </select>
-                      <button type="submit" class="btn btn-sm">Size</button>
+                      <button type="submit" class="btn btn-sm">${t("op.size")}</button>
                     </form>
                     <details class="opv2-seat-assign">
-                      <summary class="btn btn-sm btn-ghost">Assign</summary>
-                      <form method="post" action="${bp}/api/ops/${op.id}/cqb/place" data-async title="Assign a player to this team">
+                      <summary class="btn btn-sm btn-ghost">${t("common.assign")}</summary>
+                      <form method="post" action="${bp}/api/ops/${op.id}/cqb/place" data-async title="${t("op.assignPlayerTeam")}">
                         <input type="hidden" name="_csrf" value="${csrf}" />
                         ${returnFields("fleet")}
                         <input type="hidden" name="groupId" value="${g.id}" />
                         <select name="userId" required>
-                          <option value="">Select user…</option>
+                          <option value="">${t("op.selectUserDots")}</option>
                           ${opts.assignableUsers.map(
                             (au) => html`<option value="${au.id}">${au.username} (${au.role})</option>`,
                           )}
                         </select>
-                        <button type="submit" class="btn btn-sm">Add</button>
+                        <button type="submit" class="btn btn-sm">${t("common.add")}</button>
                       </form>
                     </details>
                     <form
@@ -2265,7 +2265,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     >
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       ${returnFields("fleet")}
-                      <button type="submit" class="btn btn-sm btn-ghost">Dissolve</button>
+                      <button type="submit" class="btn btn-sm btn-ghost">${t("op.dissolve")}</button>
                     </form>
                   </div>`
                 : safe("")}
@@ -2277,14 +2277,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     <input type="hidden" name="_csrf" value="${csrf}" />
                     ${returnFields("fleet")}
                     <div class="text-dim text-sm" style="margin-bottom:.3rem">
-                      Unassigned soldiers (${String(cqbPool.length)}) — pick some to form a squad:
+                      ${t("op.unassignedSoldiers", { n: String(cqbPool.length) })}
                     </div>
                     ${cqbPool.map(
                       (s) => html`<label
                         class="cqb-pool-item"
                         draggable="true"
                         data-cqb-signup="${s.id}"
-                        title="Drag onto a squad above, or tick + create squad"
+                        title="${t("op.dragOntoSquad")}"
                         style="display:flex;justify-content:space-between;gap:.5rem;padding:.25rem 0;cursor:grab"
                       >
                         <span
