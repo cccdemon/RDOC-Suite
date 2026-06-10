@@ -5074,6 +5074,15 @@ export function opJoinPage(opts: {
       .roster-unit-count { margin-left: auto; color: var(--dim); font-size: .76rem; font-family: var(--font-mono); }
       .roster-seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .35rem; }
       .roster-seat { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .35rem .55rem; border: 1px solid rgba(255,255,255,.06); font-size: .85rem; }
+      /* Column view (toggle): seats flow top→bottom into multiple columns. */
+      .roster-cols .roster-seats { display: block; columns: 220px; column-gap: .5rem; }
+      .roster-cols .roster-seat { break-inside: avoid; margin-bottom: .35rem; }
+      /* View toggle control */
+      .roster-view-toggle { display: flex; align-items: center; gap: .4rem; margin: 0 0 1rem; justify-content: flex-end; font-family: var(--font-mono); font-size: .78rem; }
+      .roster-view-toggle .rv-label { color: var(--dim); margin-right: .15rem; }
+      .roster-view-toggle button { background: var(--bg2); border: 1px solid var(--cyan-28); color: var(--dim); padding: .35rem .7rem; cursor: pointer; font-family: inherit; font-size: inherit; }
+      .roster-view-toggle button:first-of-type { border-right: none; }
+      .roster-view-toggle button.active { background: var(--cyan); color: var(--bg); font-weight: 700; }
       .roster-seat.open { border-color: rgba(53,208,224,.25); }
       .roster-seat.mine { border-color: var(--green, #3ad07a); background: rgba(58,208,122,.08); }
       .roster-seat-label { color: var(--dim); }
@@ -5236,6 +5245,22 @@ export function opJoinPage(opts: {
 
     <div class="join-layout">
       <div class="join-main">
+        <div class="roster-view-toggle">
+          <span class="rv-label">${t("join.viewLabel")}</span>
+          <button type="button" data-rv="row" class="active">${t("join.viewHorizontal")}</button>
+          <button type="button" data-rv="col">${t("join.viewColumns")}</button>
+        </div>
+        <script>
+          (function () {
+            var btns = document.querySelectorAll(".roster-view-toggle [data-rv]");
+            btns.forEach(function (b) {
+              b.addEventListener("click", function () {
+                document.body.classList.toggle("roster-cols", b.dataset.rv === "col");
+                btns.forEach(function (x) { x.classList.toggle("active", x === b); });
+              });
+            });
+          })();
+        </script>
         ${signupSummaryBanner}
         ${!myId
           ? html`<section class="card">

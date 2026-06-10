@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Roster-Layout-Toggle (Horizontal ↔ Spalten) auf Join-Seite — Branch `feat/op-ics`
+
+User (mit ASCII-Vorschau bestätigt): Toggle im Spieler-Anmeldung-Screen. Ansicht 1 = aktuell
+(horizontal, `.roster-seats` Grid auto-fill). Ansicht 2 = **vertikale Spalten** (Sitze füllen
+oben→unten in mehreren Spalten). **Nur diese Seite** (kein localStorage, Standard = horizontal).
+- `opJoinPage`: Toggle-Bar oben in `.join-main` (zwei Buttons), kleines Inline-JS toggelt
+  `document.body.classList` `roster-cols`. CSS: `.roster-cols .roster-seats { columns: 220px }` +
+  `break-inside: avoid` → CSS-Multicolumn füllt vertikal. Wirkt auf alle `.roster-seats` (Schiffe +
+  Fighter/CQB-Teams) konsistent. i18n `join.viewLabel/viewHorizontal/viewColumns` (de+en).
+Nur fleetplanner, kein Backend/Schema. Build/Deploy: fleetplanner (tsc).
+
 ## Queued / Planned Step - 2026-06-10: Kalendertermin-Download (.ics) nach Anmeldung — Branch `feat/op-ics`
 
 User: nach der Anmeldung soll man den Kalendertermin herunterladen können. Nur fleetplanner.

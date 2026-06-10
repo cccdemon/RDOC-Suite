@@ -682,6 +682,9 @@ export const en: Record<string, string> = {
   "join.jsPleaseProvide": "Please provide:",
   "join.tabPrefix": "Join",
   "join.addToCalendar": "Add to calendar",
+  "join.viewLabel": "View",
+  "join.viewHorizontal": "Horizontal",
+  "join.viewColumns": "Columns",
 
   // Ship database
   "ships.title": "SHIP DATABASE",
