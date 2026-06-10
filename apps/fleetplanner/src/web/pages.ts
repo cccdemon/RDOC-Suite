@@ -5250,38 +5250,36 @@ export function opJoinPage(opts: {
             : html`<details class="card join-asst"${signedUp ? safe("") : safe(" open")}>
                   <summary class="ja-card-summary${signedUp ? " ja-more-cta" : ""}">
                     <span class="wiz-sum-h" style="margin:0">${signedUp
-                      ? "➕ Want to contribute something else, or claim another seat?"
-                      : "I want to join"}</span>
+                      ? t("join.contributeMore")
+                      : t("op.iWantToJoin")}</span>
                   </summary>
                   <div style="display:flex;justify-content:flex-end;align-items:center;gap:.75rem;flex-wrap:wrap;margin-top:.6rem">
                     <button type="button" id="jw-open" class="btn btn-sm btn-cyan">
-                      ${signedUp ? "Restart sign-up assistant" : "Sign-up assistant"}
+                      ${signedUp ? t("join.restartAssistant") : t("join.assistant")}
                     </button>
                   </div>
                   <p class="text-dim text-sm" style="margin:.5rem 0 .7rem">
-                    Pick how you'll contribute — steps are optional and you can do several:
-                    <strong>CQB, a seat and a ship are NOT mutually exclusive</strong>. In a hurry?
-                    Use <em>"Let the operator place me"</em> at the bottom.
+                    ${safe(t("join.contributeHint"))}
                   </p>
                   ${hasSeat
                     ? html`<p class="text-dim text-sm" style="margin:0 0 .6rem">
-                        You already hold a seat — you can still add more below.
+                        ${t("join.alreadyHaveSeat")}
                       </p>`
                     : safe("")}
                   ${myPendingUnits.length
                     ? html`<p class="text-dim text-sm" style="margin:0 0 .6rem">
-                        You have a ship pending review — you can still contribute more below.
+                        ${t("join.shipPendingMore")}
                       </p>`
                     : safe("")}
 
                   ${openSeats.length
                     ? html`<input type="radio" name="join-mode" id="jm-seat" class="ja-radio" checked />
                         <label for="jm-seat" class="ja-opt">
-                          <span class="ico">Seat</span>
+                          <span class="ico">${t("join.icoSeat")}</span>
                           <span class="ja-txt"
-                            ><span class="ttl">Take an open seat</span
+                            ><span class="ttl">${t("join.takeOpenSeat")}</span
                             ><span class="sub"
-                              >${openSeats.length} open seat${openSeats.length === 1 ? "" : "s"} in accepted units.</span
+                              >${t("join.openSeatsInUnits", { n: openSeats.length })}</span
                             ></span
                           >
                           <span class="ja-chk"></span>
@@ -5308,7 +5306,7 @@ export function opJoinPage(opts: {
                                       : safe("")}
                                   </div>
                                   <div class="text-dim text-sm" style="margin:.15rem 0 .5rem">
-                                    ${u.seats.filter((s) => s.open).length} open seat${u.seats.filter((s) => s.open).length === 1 ? "" : "s"}
+                                    ${t("join.openSeatsN", { n: u.seats.filter((s) => s.open).length })}
                                   </div>
                                   <div style="display:flex;flex-wrap:wrap;gap:6px">
                                     ${u.seats.map((s) =>
@@ -5328,7 +5326,7 @@ export function opJoinPage(opts: {
                                         : html`<span
                                             class="tag tag-dim"
                                             style="opacity:.55"
-                                            title="taken"
+                                            title="${t("join.takenLower")}"
                                             >${s.label}</span
                                           >`,
                                     )}
@@ -5342,10 +5340,10 @@ export function opJoinPage(opts: {
 
                   <input type="radio" name="join-mode" id="jm-ship" class="ja-radio" ${openSeats.length ? safe("") : safe("checked")} />
                   <label for="jm-ship" class="ja-opt">
-                    <span class="ico">Ship</span>
+                    <span class="ico">${t("op.ship")}</span>
                     <span class="ja-txt"
-                      ><span class="ttl">Offer a ship</span
-                      ><span class="sub">Bring one of your ships; crew fill its seats.</span></span
+                      ><span class="ttl">${t("join.offerShip")}</span
+                      ><span class="sub">${t("join.offerShipSub")}</span></span
                     >
                     <span class="ja-chk"></span>
                   </label>
@@ -5361,44 +5359,43 @@ export function opJoinPage(opts: {
                       <input type="hidden" name="tab" value="fleet" />
                       <input type="hidden" name="unitType" class="join-unit-type" value="ship" />
                       <div class="form-errors join-unit-errors" hidden></div>
-                      <label>Fleet need <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                      <label>${t("op.fleetNeed")} <span style="font-weight:normal;opacity:.65">${t("wiz.optional")}</span></label>
                       <select name="requirementId">
-                        <option value="">Unslotted — let the operator place it</option>
+                        <option value="">${t("join.unslottedLetOp")}</option>
                         ${availableSlots.map((s) => html`<option value="${s.id}">${s.label}</option>`)}
                       </select>
                       <div class="unit-ship-fields">
-                        <label>From your hangar</label>
+                        <label>${t("join.fromHangar")}</label>
                         <select name="ownedShipId" class="join-owned-ship-select">
-                          <option value="">Select an owned ship…</option>
+                          <option value="">${t("join.selectOwnedShip")}</option>
                           ${ownedShips.map(
                             (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
                           )}
                         </select>
-                        <label>…or search the ship catalog</label>
+                        <label>${t("join.orSearchCatalog")}</label>
                         <input
                           type="search"
                           class="join-ship-search"
-                          placeholder="Search ship catalog…"
+                          placeholder="${t("join.searchShipCatalog")}"
                           autocomplete="off"
                         />
                         <input type="hidden" name="shipId" class="join-ship-id-field" />
                         <label style="font-weight:normal">
-                          <input type="checkbox" name="storeOwnedShip" value="1" /> Save this ship to
-                          my hangar
+                          <input type="checkbox" name="storeOwnedShip" value="1" /> ${t("join.saveToHangar")}
                         </label>
                         <div class="ship-results join-ship-results"></div>
                       </div>
                       <label
-                        >Note to the Fleet Operator
-                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                        >${t("join.noteToOperator")}
+                        <span style="font-weight:normal;opacity:.65">${t("wiz.optional")}</span></label
                       >
                       <input
                         type="text"
                         name="captainNote"
                         maxlength="240"
-                        placeholder="Role, loadout, crew preference…"
+                        placeholder="${t("op.captainNotePlaceholder")}"
                       />
-                      <button type="submit" class="btn btn-green mt-1">Offer ship</button>
+                      <button type="submit" class="btn btn-green mt-1">${t("join.offerShipBtn")}</button>
                     </form>
                   </div>
 
@@ -5406,8 +5403,8 @@ export function opJoinPage(opts: {
                   <label for="jm-cqb" class="ja-opt">
                     <span class="ico">CQB</span>
                     <span class="ja-txt"
-                      ><span class="ttl">Join as a CQB soldier</span
-                      ><span class="sub">Sign up as infantry; the operator forms the squad.</span></span
+                      ><span class="ttl">${t("join.joinAsCqb")}</span
+                      ><span class="sub">${t("join.joinAsCqbSub")}</span></span
                     >
                     <span class="ja-chk"></span>
                   </label>
@@ -5417,29 +5414,28 @@ export function opJoinPage(opts: {
                       <input type="hidden" name="ui" value="player" />
                       <input type="hidden" name="tab" value="fleet" />
                       <p class="text-dim text-sm" style="margin:0 0 .5rem">
-                        You sign up as a single soldier. The Fleet Operator bundles everyone who
-                        signs up into squads — you don't form the team yourself.
+                        ${t("join.cqbExplain")}
                       </p>
                       <label
-                        >Note to the Fleet Operator
-                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                        >${t("join.noteToOperator")}
+                        <span style="font-weight:normal;opacity:.65">${t("wiz.optional")}</span></label
                       >
                       <input
                         type="text"
                         name="note"
                         maxlength="240"
-                        placeholder="Loadout, experience, preferred squad…"
+                        placeholder="${t("join.cqbNotePlaceholder")}"
                       />
-                      <button type="submit" class="btn btn-green mt-1">Sign up as CQB</button>
+                      <button type="submit" class="btn btn-green mt-1">${t("join.signUpCqb")}</button>
                     </form>
                   </div>
 
                   <input type="radio" name="join-mode" id="jm-assign" class="ja-radio" />
                   <label for="jm-assign" class="ja-opt">
-                    <span class="ico">Place</span>
+                    <span class="ico">${t("join.icoPlace")}</span>
                     <span class="ja-txt"
-                      ><span class="ttl">Let the operator place me</span
-                      ><span class="sub">I'm flexible or need help finding a role.</span></span
+                      ><span class="ttl">${t("join.letOperatorPlace")}</span
+                      ><span class="sub">${t("join.flexibleSub")}</span></span
                     >
                     <span class="ja-chk"></span>
                   </label>
@@ -5449,72 +5445,72 @@ export function opJoinPage(opts: {
                       <input type="hidden" name="ui" value="player" />
                       <input type="hidden" name="tab" value="crew" />
                       <label
-                        >Note to the Fleet Operator
-                        <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                        >${t("join.noteToOperator")}
+                        <span style="font-weight:normal;opacity:.65">${t("wiz.optional")}</span></label
                       >
                       <textarea
                         name="note"
                         maxlength="240"
-                        placeholder="e.g. experience, preferred role, ships you can bring…"
+                        placeholder="${t("join.placeNotePlaceholder")}"
                       ></textarea>
-                      <button type="submit" class="btn btn-green mt-1">Request a spot</button>
+                      <button type="submit" class="btn btn-green mt-1">${t("join.requestSpot")}</button>
                     </form>
                   </div>
 
                   <div id="jw-ov" class="jw-ov" hidden role="dialog" aria-modal="true">
                     <div class="jw-ov-card">
                       <div class="jw-ov-head">
-                        <strong>Sign-up assistant</strong>
-                        <button type="button" class="jw-ov-x" data-jw-cancel aria-label="Close">×</button>
+                        <strong>${t("join.assistant")}</strong>
+                        <button type="button" class="jw-ov-x" data-jw-cancel aria-label="${t("join.close")}">×</button>
                       </div>
                       ${openSeats.length
                         ? html`<div class="jw-step" data-target="jm-seat">
-                            <div class="jw-q">Take an open seat?</div>
+                            <div class="jw-q">${t("join.qTakeSeat")}</div>
                             <div class="jw-sub">
-                              ${openSeats.length} open seat${openSeats.length === 1 ? "" : "s"} in accepted ships.
+                              ${t("join.openSeatsInShips", { n: openSeats.length })}
                             </div>
                             <div class="jw-yn">
-                              <button type="button" class="btn btn-green" data-yes>Yes</button>
-                              <button type="button" class="btn" data-no>No</button>
+                              <button type="button" class="btn btn-green" data-yes>${t("common.yes")}</button>
+                              <button type="button" class="btn" data-no>${t("common.no")}</button>
                             </div>
                           </div>`
                         : safe("")}
                       <div class="jw-step" data-target="jm-ship">
-                        <div class="jw-q">Bring one of your ships?</div>
-                        <div class="jw-sub">Offer a ship; crew fill its seats.</div>
+                        <div class="jw-q">${t("join.qBringShip")}</div>
+                        <div class="jw-sub">${t("join.qBringShipSub")}</div>
                         <div class="jw-yn">
-                          <button type="button" class="btn btn-green" data-yes>Yes</button>
-                          <button type="button" class="btn" data-no>No</button>
+                          <button type="button" class="btn btn-green" data-yes>${t("common.yes")}</button>
+                          <button type="button" class="btn" data-no>${t("common.no")}</button>
                         </div>
                       </div>
                       <div class="jw-step" data-target="jm-cqb">
-                        <div class="jw-q">Join as a CQB soldier?</div>
-                        <div class="jw-sub">Sign up as infantry; the operator forms the squad.</div>
+                        <div class="jw-q">${t("join.qJoinCqb")}</div>
+                        <div class="jw-sub">${t("join.joinAsCqbSub")}</div>
                         <div class="jw-yn">
-                          <button type="button" class="btn btn-green" data-yes>Yes</button>
-                          <button type="button" class="btn" data-no>No</button>
+                          <button type="button" class="btn btn-green" data-yes>${t("common.yes")}</button>
+                          <button type="button" class="btn" data-no>${t("common.no")}</button>
                         </div>
                       </div>
                       <div class="jw-step" data-target="jm-assign">
-                        <div class="jw-q">Let the operator place you?</div>
-                        <div class="jw-sub">Flexible, or need help finding a role.</div>
+                        <div class="jw-q">${t("join.qLetOperator")}</div>
+                        <div class="jw-sub">${t("join.qLetOperatorSub")}</div>
                         <div class="jw-yn">
-                          <button type="button" class="btn btn-green" data-yes>Yes</button>
-                          <button type="button" class="btn" data-no>No</button>
+                          <button type="button" class="btn btn-green" data-yes>${t("common.yes")}</button>
+                          <button type="button" class="btn" data-no>${t("common.no")}</button>
                         </div>
                       </div>
                       <div class="jw-done" hidden>
                         <p class="text-dim text-sm" style="margin:.2rem 0 1rem">
-                          No problem — use the options on the page whenever you like.
+                          ${t("join.noProblem")}
                         </p>
-                        <button type="button" class="btn btn-sm" data-jw-cancel>Close</button>
+                        <button type="button" class="btn btn-sm" data-jw-cancel>${t("join.close")}</button>
                       </div>
                       <div class="jw-ov-foot">
                         <button type="button" class="btn btn-sm btn-ghost" data-jw-skip>
-                          Skip — just let the operator place me
+                          ${t("join.skipLetOperator")}
                         </button>
                         <button type="button" class="btn btn-sm" data-jw-cancel>
-                          Disable assistant (Cancel)
+                          ${t("join.disableAssistant")}
                         </button>
                       </div>
                     </div>
