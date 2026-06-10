@@ -9302,9 +9302,9 @@ export function guildSettingsPage(opts: {
 }
 
 function diagnosticBadge(check: BotDiagnostic): SafeHtml {
-  if (check.severity === "ok") return html`<span class="tag tag-green">OK</span>`;
-  if (check.severity === "warn") return html`<span class="tag tag-gold">ACTION</span>`;
-  return html`<span class="tag tag-red">MISSING</span>`;
+  if (check.severity === "ok") return html`<span class="tag tag-green">${t("diag.ok")}</span>`;
+  if (check.severity === "warn") return html`<span class="tag tag-gold">${t("diag.action")}</span>`;
+  return html`<span class="tag tag-red">${t("diag.missing")}</span>`;
 }
 
 export function guildDiagnosticsPage(opts: {
@@ -9321,20 +9321,20 @@ export function guildDiagnosticsPage(opts: {
   const rows = d.bots.map((check) => {
     const missing = check.missingPermissions.length
       ? html` <div class="text-sm text-dim" style="margin-top:.5rem">
-          Missing:
+          ${t("diag.missingLabel")}
           ${check.missingPermissions.map(
             (perm) => html`<span class="tag tag-red">${perm.key}</span>`,
           )}
         </div>`
       : html`<div class="text-sm text-dim" style="margin-top:.5rem">
-          All required permissions are present.
+          ${t("diag.allPresent")}
         </div>`;
     const action = check.inviteUrl
       ? html`<a href="${check.inviteUrl}" class="btn btn-cyan btn-sm" target="_blank" rel="noopener"
-          >${check.installed ? "Reinvite / Fix Permissions" : "Invite / Fix Permissions"}</a
+          >${check.installed ? t("diag.reinvite") : t("diag.invite")}</a
         >`
       : html`<a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm"
-          >Configure in Server Settings</a
+          >${t("diag.configureInSettings")}</a
         >`;
 
     return html` <div class="card" style="padding:1rem;margin-bottom:.75rem">
@@ -9344,17 +9344,17 @@ export function guildDiagnosticsPage(opts: {
             <strong style="color:var(--cyan)">${check.name}</strong>
             ${diagnosticBadge(check)}
             ${check.installed
-              ? html`<span class="tag tag-green">installed</span>`
-              : html`<span class="tag tag-red">not installed</span>`}
+              ? html`<span class="tag tag-green">${t("diag.installed")}</span>`
+              : html`<span class="tag tag-red">${t("diag.notInstalled")}</span>`}
           </div>
           <div class="text-sm text-dim" style="margin-top:.35rem">${check.note}</div>
           <div class="text-sm text-dim" style="margin-top:.35rem">
-            App ID: <span class="text-mono">${check.appId ?? "not configured"}</span>
-            ${check.username ? html` · User: <span class="text-mono">${check.username}</span>` : ""}
+            ${t("diag.appId")}: <span class="text-mono">${check.appId ?? t("diag.notConfigured")}</span>
+            ${check.username ? html` · ${t("diag.user")}: <span class="text-mono">${check.username}</span>` : ""}
           </div>
           ${missing}
           <div class="text-sm text-dim" style="margin-top:.5rem">
-            Required:
+            ${t("diag.requiredLabel")}
             ${check.requiredPermissions.map((perm) => html`<span class="tag">${perm.key}</span>`)}
           </div>
         </div>
@@ -9364,10 +9364,10 @@ export function guildDiagnosticsPage(opts: {
   });
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">INSTALL TESTS<span class="sep"> // </span><em>${d.guild.name}</em></h1>
+      <h1 class="page-title">${t("diag.title")}<span class="sep"> // </span><em>${d.guild.name}</em></h1>
       <div class="page-actions">
-        <a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">Server Settings</a>
-        <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">Retest</a>
+        <a href="${bp}/guilds/settings" class="btn btn-ghost btn-sm">${t("diag.serverSettings")}</a>
+        <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">${t("diag.retest")}</a>
       </div>
     </div>
 
@@ -9376,11 +9376,11 @@ export function guildDiagnosticsPage(opts: {
         class="card"
         style="padding:1rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap"
       >
-        <span class="tag tag-green">${d.summary.ok} OK</span>
-        <span class="tag tag-gold">${d.summary.warn} ACTION</span>
-        <span class="tag tag-red">${d.summary.error} MISSING</span>
+        <span class="tag tag-green">${d.summary.ok} ${t("diag.ok")}</span>
+        <span class="tag tag-gold">${d.summary.warn} ${t("diag.action")}</span>
+        <span class="tag tag-red">${d.summary.error} ${t("diag.missing")}</span>
         <span class="text-sm text-dim">
-          Selected Discord server: <span class="text-mono">${opts.activeGuildName}</span> (<span
+          ${t("diag.selectedServer")}: <span class="text-mono">${opts.activeGuildName}</span> (<span
             class="text-mono"
             >${opts.activeGuildId}</span
           >)
@@ -9388,33 +9388,30 @@ export function guildDiagnosticsPage(opts: {
       </div>
       ${!d.canInspectPermissions
         ? html` <div class="card" style="padding:1rem;margin-top:.75rem;border-color:var(--red)">
-            <strong class="tag tag-red">Inspector limited</strong>
+            <strong class="tag tag-red">${t("diag.inspectorLimited")}</strong>
             <p class="text-dim text-sm" style="margin:.75rem 0 0">
-              Fleetplanner could not read the server role list. Install/fix the RDOC-Fleetplanner
-              bot first, then run this test again for exact permission results.
+              ${t("diag.inspectorLimitedDesc")}
             </p>
           </div>`
         : safe("")}
     </div>
 
     <div class="section">
-      <div class="section-title">Bots</div>
+      <div class="section-title">${t("diag.bots")}</div>
       ${rows}
     </div>
 
     <div class="section">
-      <div class="section-title">Companion App</div>
+      <div class="section-title">${t("diag.companionApp")}</div>
       <div class="card" style="padding:1rem">
         <p class="text-dim text-sm" style="margin:0">
-          The Companion App uses this Fleetplanner page as the source of truth for Discord setup.
-          Open Fleetplanner Server Settings, select the Discord server, and run these install tests
-          whenever voice permissions or bot invites are changed.
+          ${t("diag.companionDesc")}
         </p>
       </div>
     </div>`;
 
   return layout({
-    title: `Install Tests - ${d.guild.name}`,
+    title: `${t("diag.tabTitle")} - ${d.guild.name}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
