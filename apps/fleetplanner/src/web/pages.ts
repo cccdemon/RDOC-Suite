@@ -89,21 +89,9 @@ function helpIcon(text: string): SafeHtml {
 }
 
 function categoryLabel(category: string): string {
-  return (
-    {
-      fps: "FPS Squad",
-      capital: "Capital Ship",
-      subcapital: "Large / Subcapital Ship",
-      fighter: "Fighter",
-      support: "Support Ship",
-      ground: "Ground / Vehicle",
-      transport: "Transport Ship",
-      mining: "Mining Ship",
-      salvage: "Salvage Ship",
-      exploration: "Exploration Ship",
-      any: "Any Unit",
-    }[category] ?? category
-  );
+  return REQUIREMENT_CATEGORIES.includes(category as (typeof REQUIREMENT_CATEGORIES)[number])
+    ? t(`cat.${category}`)
+    : category;
 }
 
 function fmtDate(d: Date, tz = DEFAULT_TIMEZONE): string {
@@ -127,22 +115,28 @@ function statusTag(status: string): SafeHtml {
     rejected: "tag-red",
   };
   const cls = map[status] ?? "tag";
-  return html`<span class="tag ${cls}">${status.replace("_", " ").toUpperCase()}</span>`;
+  const label = map[status] ? t(`status.${status}`) : status.replace("_", " ");
+  return html`<span class="tag ${cls}">${label.toUpperCase()}</span>`;
+}
+
+function opTypeText(opType: string): string {
+  return (OP_TYPES as readonly string[]).includes(opType) ? t(`optype.${opType}`) : opType;
 }
 
 function opTypeTag(opType: string): SafeHtml {
-  return html`<span class="tag">${opType.toUpperCase()}</span>`;
+  return html`<span class="tag">${opTypeText(opType).toUpperCase()}</span>`;
 }
 
-const VISIBILITY_META: Record<string, { cls: string; icon: string; label: string }> = {
-  private: { cls: "tag-dim", icon: "🔒", label: "PRIVATE" },
-  partners: { cls: "tag-gold", icon: "🤝", label: "PARTNERS" },
-  public: { cls: "tag-green", icon: "🌐", label: "PUBLIC" },
+const VISIBILITY_META: Record<string, { cls: string; icon: string }> = {
+  private: { cls: "tag-dim", icon: "🔒" },
+  partners: { cls: "tag-gold", icon: "🤝" },
+  public: { cls: "tag-green", icon: "🌐" },
 };
 
 function visibilityTag(visibility: string): SafeHtml {
-  const m = VISIBILITY_META[visibility] ?? VISIBILITY_META.private;
-  return html`<span class="tag ${m.cls}">${m.icon} ${m.label}</span>`;
+  const key = VISIBILITY_META[visibility] ? visibility : "private";
+  const m = VISIBILITY_META[key];
+  return html`<span class="tag ${m.cls}">${m.icon} ${t(`vis.${key}`).toUpperCase()}</span>`;
 }
 
 /**
@@ -162,12 +156,12 @@ function visibilityControl(opts: {
     </option>`;
   return html`<form method="post" action="${opts.action}" class="opv2-inline-form">
     <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-    <select name="visibility" aria-label="Visibility">
-      ${option("private", "🔒 Private (this Discord only)")}
-      ${option("partners", "🤝 Partners (this Discord + linked ones)")}
-      ${option("public", "🌐 Public (any logged-in user)")}
+    <select name="visibility" aria-label="${t("vis.aria")}">
+      ${option("private", `🔒 ${t("vis.private.long")}`)}
+      ${option("partners", `🤝 ${t("vis.partners.long")}`)}
+      ${option("public", `🌐 ${t("vis.public.long")}`)}
     </select>
-    <button type="submit" class="btn btn-sm">Set visibility</button>
+    <button type="submit" class="btn btn-sm">${t("vis.set")}</button>
   </form>`;
 }
 
@@ -199,6 +193,7 @@ const OP_TYPES = [
 const MISSION_IMAGE_TYPES = new Set<string>(OP_TYPES);
 
 function systemLabel(system: string): string {
+  // Star system names are proper nouns — not translated, only cased.
   return system ? system[0].toUpperCase() + system.slice(1) : "Stanton";
 }
 
@@ -245,9 +240,9 @@ export function opPublicPreviewPage(opts: {
         </p>`
       : ""}
     <p style="color:var(--dim);font-size:.82rem;margin-bottom:2rem">
-      Login um diese Operation zu sehen.
+      ${t("oppreview.loginToView")}
     </p>
-    <a href="${bp}/login" class="btn">Login</a>
+    <a href="${bp}/login" class="btn">${t("nav.login")}</a>
   </div>`;
   return layout({
     title: op.title,
@@ -417,21 +412,21 @@ export function homePage(opts: {
                   <div class="op-card-top">
                     <span class="op-card-time">${fmtTime(op)}</span>
                     ${sign === "joined"
-                      ? html`<span class="op-sign joined">✓ Joined</span>`
+                      ? html`<span class="op-sign joined">✓ ${t("home.joined")}</span>`
                       : sign === "waitlist"
-                        ? html`<span class="op-sign wait">Waitlisted</span>`
-                        : html`<span class="op-type-pill">${op.opType.toUpperCase()}</span>`}
+                        ? html`<span class="op-sign wait">${t("home.waitlisted")}</span>`
+                        : html`<span class="op-type-pill">${opTypeText(op.opType).toUpperCase()}</span>`}
                   </div>
                   <div class="op-card-title">${op.title}</div>
                   <div class="op-card-meta">
                     <span class="op-guild-badge ${guildClass(op.guild.id)}">${op.guild.name}</span>
                     ${statusTag(op.status)}
                   </div>
-                  <div class="op-fill" title="${accepted}/${total} units accepted">
+                  <div class="op-fill" title="${t("home.unitsAccepted", { accepted, total })}">
                     <div class="op-fill-bar" style="width:${pct}%"></div>
                   </div>
                   <div class="op-card-footer">
-                    <span>${accepted}/${total} units</span>
+                    <span>${t("home.unitsCount", { accepted, total })}</span>
                     <span>${leaders || op.createdBy.username}</span>
                   </div>
                 </a>`;
@@ -441,7 +436,7 @@ export function homePage(opts: {
         })}
       </div>`
     : html`<p class="text-dim text-sm">
-        No operations scheduled. ${canCreate ? html`<a href="${bp}/ops/new">Create one?</a>` : ""}
+        ${t("home.noOps")} ${canCreate ? html`<a href="${bp}/ops/new">${t("home.createOne")}</a>` : ""}
       </p>`;
 
   // Quick new-op picker: inline guild selector when user has multiple servers
@@ -449,16 +444,16 @@ export function homePage(opts: {
     ? (() => {
         const guilds = opts.operatorGuilds!;
         if (guilds.length === 1) {
-          return html`<a href="${bp}/ops/new" class="btn btn-sm">+ New Operation</a>`;
+          return html`<a href="${bp}/ops/new" class="btn btn-sm">+ ${t("home.newOp")}</a>`;
         }
         return html` <form method="get" action="${bp}/ops/new" class="inline new-op-picker">
           <select
             name="_guild"
             class="guild-picker-select"
             onchange="this.form.submit()"
-            title="Select server for new operation"
+            title="${t("home.selectServerForOp")}"
           >
-            <option value="">+ New Operation on…</option>
+            <option value="">+ ${t("home.newOpOn")}</option>
             ${guilds.map((g) => html`<option value="${g.id}">${g.name}</option>`)}
           </select>
         </form>`;
@@ -479,29 +474,29 @@ export function homePage(opts: {
       .op-day-group[hidden] { display: none; }
     </style>
     <div class="page-header">
-      <h1 class="page-title">FLEET OPERATIONS</h1>
-      <p class="page-subtitle">Star Citizen – RDOC operation calendar</p>
+      <h1 class="page-title">${t("home.title")}</h1>
+      <p class="page-subtitle">${t("home.subtitle")}</p>
     </div>
     <div class="flex gap-2 mb-1">
       ${newOpControl}
       ${opts.includePast
-        ? html`<a href="${bp}/" class="btn btn-sm btn-ghost">Hide Past</a>`
-        : html`<a href="${bp}/?past=1" class="btn btn-sm btn-ghost">Show Past</a>`}
+        ? html`<a href="${bp}/" class="btn btn-sm btn-ghost">${t("home.hidePast")}</a>`
+        : html`<a href="${bp}/?past=1" class="btn btn-sm btn-ghost">${t("home.showPast")}</a>`}
     </div>
     <div class="ov-filter">
-      <input type="search" id="ov-search" placeholder="Search operations…" autocomplete="off" />
+      <input type="search" id="ov-search" placeholder="${t("home.searchOps")}" autocomplete="off" />
       <select id="ov-status">
-        <option value="">Any status</option>
+        <option value="">${t("home.anyStatus")}</option>
         ${["open", "locked", "starting", "in_progress", "draft", "completed", "cancelled"].map(
-          (s) => html`<option value="${s}">${s.replace("_", " ")}</option>`,
+          (s) => html`<option value="${s}">${t(`status.${s}`)}</option>`,
         )}
       </select>
       <select id="ov-type">
-        <option value="">Any type</option>
-        ${OP_TYPES.map((t) => html`<option value="${t}">${t}</option>`)}
+        <option value="">${t("home.anyType")}</option>
+        ${OP_TYPES.map((ot) => html`<option value="${ot}">${opTypeText(ot)}</option>`)}
       </select>
       ${showMine
-        ? html`<label class="ov-mine"><input type="checkbox" id="ov-mine" /> My signups</label>`
+        ? html`<label class="ov-mine"><input type="checkbox" id="ov-mine" /> ${t("home.mySignups")}</label>`
         : safe("")}
     </div>
     <div class="mt-2">${rows}</div>
@@ -540,7 +535,7 @@ export function homePage(opts: {
     </script>`;
 
   return layout({
-    title: "Operations",
+    title: t("home.tabTitle"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

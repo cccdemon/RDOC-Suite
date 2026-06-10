@@ -20,8 +20,23 @@ Schritt 1 + Schritt-2-Infrastruktur. **Nur Fleetplanner.** Companion (Schritt 3)
   kein Durchreichen durch die 39 `layout()`-Call-Sites + tausende verschachtelte Render-Helper.
 - **Proof-Surface**: `render.ts layout()` (Nav, Footer, Beta-Banner, `<html lang>`) + Profil-
   Sprach-`<select>` übersetzt. POST `/profile/locale` (Zod-validiert) schreibt `User.locale`.
-  Restliche ~9899 Zeilen Strings in `pages.ts` = Long-Tail, phasenweise, fallen bis dahin auf `en`.
 Nur fleetplanner. Build/Deploy: fleetplanner (prisma generate + migrate deploy + tsc).
+
+## Queued / Planned Step - 2026-06-10: i18n VOLLSTÄNDIG — alle 3 Apps, de+en komplett (Branch `i18n`)
+
+User-Entscheidung 2026-06-10: i18n-Branch fertigstellen, KEINE „spätere Phasen". Scope = **alle 3
+Apps**. Sprachtiefe: **de + en voll**, `fr`/`es`/`en-US` bleiben Stubs (fallen auf `en` zurück) bis
+Native-Speaker-Review.
+- **Fleetplanner Web**: komplette String-Extraktion aus `web/pages.ts` (~9899 Zeilen) + `web/coverPage.ts`
+  → `t(key, vars?)`-Keys, en (Basis) + de (voll) gefüllt. Eigennames/SC-Terms (Schiffsnamen,
+  „Command Net", „Global Radio Net", „Impressum", „RDOC") NICHT übersetzt (Glossar §2 des FR-Docs).
+- **Companion** (Tauri/React): leichtes i18n (kleiner `t()`-Hook oder react-i18next) + en/de-Dict;
+  Locale aus `/api/companion/*`/`/suite/capabilities` beim Login, im Settings-Store gecacht, Re-Fetch
+  bei Reconnect. Kein eigener Sprachschalter (eine Quelle = Profil).
+- **MissionCover** (Engine, React): i18n auf en/de; Service injiziert Op-Creator-Locale in die
+  Render-Payload (FR-Doc Entscheidung 1).
+Build/Deploy: fleetplanner (tsc) + companion (lokaler Windows-Tauri-Build) + mission-cover (Docker
+engine-stage). Kein Schema-Change zusätzlich (User.locale existiert bereits).
 
 ## Queued / Planned Step - 2026-06-09: Slot-Filter nach Kategorie + Fleet-Needs-Zeilen-Tints
 
