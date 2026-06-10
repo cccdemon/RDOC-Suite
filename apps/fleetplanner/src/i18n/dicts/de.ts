@@ -412,4 +412,17 @@ export const de: Record<string, string> = {
   "mg.stopSeries": "Serie stoppen",
 
   "admin.confirmDeleteOpTitle": "Operation löschen",
+
+  "profile.title": "PROFIL",
+  "profile.confirmRemoveShip": "Dieses Schiff aus deinem Profil entfernen?",
+  "profile.owned": "Im Besitz",
+  "profile.importFleet": "Flotte importieren (JSON)",
+  "profile.importSummary": "Füge einen CCU-Game-JSON-Export ein, um viele Schiffe auf einmal hinzuzufügen",
+  "profile.importFormat": "Erwartetes Format — ein Array aus <code>{ \"name\": \"&lt;Modell&gt;\", \"shipname\": \"&lt;Spitzname&gt;\" }</code>:",
+  "profile.importNote": "Modelle werden mit dem Schiffskatalog abgeglichen (Groß-/Kleinschreibung egal). Nicht zugeordnete Namen werden gemeldet. Doppelte Modelle werden zu einem Eintrag zusammengefasst.",
+  "profile.importShips": "Schiffe importieren",
+  "profile.unmatchedTitle": "Nicht zugeordnete Schiffe — manuell zuweisen oder überspringen ({n})",
+  "profile.unmatchedHelp": "Diese Importnamen passten nicht zum Katalog. Durchsuche die Schiffsdatenbank, um das richtige Schiff zuzuweisen, oder überspringe es.",
+  "profile.searchShipDb": "Schiffsdatenbank durchsuchen…",
+  "profile.skip": "Überspringen",
 };

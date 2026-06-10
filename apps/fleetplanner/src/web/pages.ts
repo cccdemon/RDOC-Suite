@@ -3408,14 +3408,14 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // / Org / Discord) as one multiline block — mirrors the Action Details panel.
   const ogLeaders = op.leaders.length
     ? op.leaders.map((l) => l.user.username).join(", ")
-    : "None";
+    : t("op.none");
   const ogOrg = opts.orgName?.trim() || opts.guildName;
   const ogLines = [
-    `🕗 When: ${fmtDate(op.scheduledAt, gtz)}`,
-    `🌌 System: ${systemLabel(op.meetingSystem ?? "stanton")}`,
-    `📍 Rendezvous: ${op.meetingLocation || "Not set"}`,
-    `👥 Leaders: ${ogLeaders}`,
-    `🔊 Event Voice: ${eventVoiceName}`,
+    `🕗 ${t("op.fldWhen")}: ${fmtDate(op.scheduledAt, gtz)}`,
+    `🌌 ${t("op.fldSystem")}: ${systemLabel(op.meetingSystem ?? "stanton")}`,
+    `📍 ${t("op.fldRendezvous")}: ${op.meetingLocation || t("op.notSet")}`,
+    `👥 ${t("op.leaders")}: ${ogLeaders}`,
+    `🔊 ${t("op.eventVoice")}: ${eventVoiceName}`,
   ];
   if (ogOrg) ogLines.push(`🛰 Org: ${ogOrg}`);
   if (opts.guildDiscordInviteUrl) ogLines.push(`💬 Discord: ${opts.guildDiscordInviteUrl}`);
@@ -3474,9 +3474,9 @@ export function profilePage(opts: {
             <button
               type="submit"
               class="btn btn-sm btn-danger"
-              onclick="return confirm('Remove this ship from your profile?')"
+              onclick="return confirm('${t("profile.confirmRemoveShip")}')"
             >
-              Remove
+              ${t("common.remove")}
             </button>
           </form>
         </td>
@@ -3494,18 +3494,18 @@ export function profilePage(opts: {
       <td class="text-mono text-right">${ship.minCrew}-${ship.maxCrew}</td>
       <td class="text-right">
         ${alreadyOwned
-          ? html`<span class="tag tag-green">Owned</span>`
+          ? html`<span class="tag tag-green">${t("profile.owned")}</span>`
           : html` <form method="post" action="${bp}/profile/ships" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
               <input type="hidden" name="shipId" value="${ship.id}" />
-              <button type="submit" class="btn btn-sm">Add</button>
+              <button type="submit" class="btn btn-sm">${t("common.add")}</button>
             </form>`}
       </td>
     </tr>`;
   });
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">PROFILE</h1>
+      <h1 class="page-title">${t("profile.title")}</h1>
       <p class="page-subtitle">${opts.currentUser.username} // ${opts.currentUser.role}</p>
     </div>
 
@@ -3527,15 +3527,15 @@ export function profilePage(opts: {
     </div>
 
     <div class="section">
-      <div class="section-title">Import fleet (JSON)</div>
+      <div class="section-title">${t("profile.importFleet")}</div>
       <details>
         <summary style="cursor:pointer;color:var(--cyan,#35d0e0)">
-          Paste a CCU-Game JSON export to add many ships at once
+          ${t("profile.importSummary")}
         </summary>
         <form method="post" action="${bp}/profile/fleet-import" style="margin-top:.6rem">
           <input type="hidden" name="_csrf" value="${csrf}" />
           <p class="text-dim text-sm">
-            Expected format — an array of <code>{ "name": "&lt;model&gt;", "shipname": "&lt;nickname&gt;" }</code>:
+            ${safe(t("profile.importFormat"))}
           </p>
           <textarea
             name="fleetJson"
@@ -3544,20 +3544,18 @@ export function profilePage(opts: {
             placeholder='[{"name":"600i Explorer","shipname":"Libertalia","type":"ship"},{"name":"Carrack Expedition","shipname":"Heureka","type":"ship"}]'
           ></textarea>
           <p class="text-dim text-sm">
-            Models are matched to the ship catalog (case-insensitive). Unmatched names are reported.
-            Duplicate models collapse to one owned entry.
+            ${t("profile.importNote")}
           </p>
-          <button type="submit" class="btn btn-sm btn-green">Import ships</button>
+          <button type="submit" class="btn btn-sm btn-green">${t("profile.importShips")}</button>
         </form>
       </details>
     </div>
 
     ${unmatched.length
       ? html`<div class="section" id="resolve-section">
-          <div class="section-title">Unmatched ships — assign manually or skip (${unmatched.length})</div>
+          <div class="section-title">${t("profile.unmatchedTitle", { n: unmatched.length })}</div>
           <p class="text-dim text-sm">
-            These import names didn't match the catalog. Search the ship database to assign the right
-            ship, or skip it.
+            ${t("profile.unmatchedHelp")}
           </p>
           <style>
             .resolve-row { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; padding: .45rem 0; border-bottom: 1px solid rgba(255,255,255,.06); }
@@ -3571,16 +3569,16 @@ export function profilePage(opts: {
               <input
                 type="search"
                 class="resolve-search"
-                placeholder="Search ship database…"
+                placeholder="${t("profile.searchShipDb")}"
                 autocomplete="off"
               />
               <div class="ship-results resolve-results"></div>
               <form method="post" action="${bp}/profile/ships" class="resolve-assign inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <input type="hidden" name="shipId" class="resolve-shipid" />
-                <button type="submit" class="btn btn-sm btn-green" disabled>Assign</button>
+                <button type="submit" class="btn btn-sm btn-green" disabled>${t("common.assign")}</button>
               </form>
-              <button type="button" class="btn btn-sm btn-ghost resolve-skip">Skip</button>
+              <button type="button" class="btn btn-sm btn-ghost resolve-skip">${t("profile.skip")}</button>
             </div>`,
           )}
           <script>
@@ -3600,7 +3598,7 @@ export function profilePage(opts: {
                   clearTimeout(timer);
                   hidden.value = "";
                   btn.disabled = true;
-                  btn.textContent = "Assign";
+                  btn.textContent = "${safe(t("common.assign"))}";
                   const q = search.value.trim();
                   if (q.length < 2) { results.innerHTML = ""; return; }
                   timer = setTimeout(async () => {
