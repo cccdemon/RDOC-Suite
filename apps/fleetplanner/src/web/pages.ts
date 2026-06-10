@@ -4289,55 +4289,55 @@ export function opWizardPage(opts: {
             <input type="hidden" name="compositionJson" id="wiz-comp-json" value="[]" />
             <div class="form-row" style="margin-top:16px">
               <div class="form-group">
-                <label>Minimum Participants</label>
+                <label>${t("wiz.minParticipants")}</label>
                 <input type="number" name="minParticipants" min="0" value="0" />
               </div>
               <div class="form-group">
-                <label>Maximum Participants <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                <label>${t("wiz.maxParticipants")} <span style="font-weight:normal;opacity:.65">${t("wiz.optional")}</span></label>
                 <input type="number" name="maxParticipants" min="0" placeholder="—" />
               </div>
             </div>
           </section>
 
           <section class="wiz-step card" data-step="4" hidden>
-            <h3 class="wiz-sum-h">Review</h3>
+            <h3 class="wiz-sum-h">${t("wiz.stepReview")}</h3>
             <dl class="wiz-sum" id="wiz-review"></dl>
           </section>
 
           <section class="wiz-step card" data-step="5" hidden>
-            <h3 class="wiz-sum-h">Share to Discord</h3>
+            <h3 class="wiz-sum-h">${t("wiz.shareToDiscord")}</h3>
             <p class="wiz-rail-hint" style="margin:0 0 12px">
-              Optional: post an announcement (title, time, link) to a Discord channel right after creating.
+              ${t("wiz.shareHint")}
             </p>
             ${opts.guildTextChannels && opts.guildTextChannels.length > 0
               ? html`<div class="form-group">
-                  <label>Channel</label>
+                  <label>${t("wiz.channel")}</label>
                   <select name="shareChannelId">
-                    <option value="">— don't share —</option>
+                    <option value="">${t("wiz.dontShare")}</option>
                     ${opts.guildTextChannels.map(
                       (c) => html`<option value="${c.id}">#${c.name}</option>`,
                     )}
                   </select>
                 </div>`
               : html`<p class="text-dim text-sm">
-                  No text channels available — the bot isn't in this server or lacks permission.
+                  ${t("wiz.noTextChannels")}
                 </p>`}
           </section>
         </div>
 
         <aside class="wiz-aside card">
-          <div class="wiz-aside-h">✓ Ready to Open</div>
+          <div class="wiz-aside-h">✓ ${t("wiz.readyToOpen")}</div>
           <ul class="wiz-ready" id="wiz-ready"></ul>
-          <div class="wiz-sum-h">Summary</div>
+          <div class="wiz-sum-h">${t("wiz.summary")}</div>
           <dl class="wiz-sum" id="wiz-summary"></dl>
           <label class="wiz-opt" id="wiz-cover-opt" style="display:flex;gap:.5rem;align-items:center;margin:.4rem 0;font-size:.85rem;color:var(--dim)">
             <input type="checkbox" name="openCover" value="1" />
-            Mission-Cover nach dem Erstellen öffnen (optional)
+            ${t("wiz.openCover")}
           </label>
           <div class="wiz-aside-actions">
-            <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ Back</button>
-            <button type="button" class="btn btn-green" id="wiz-next">Continue ›</button>
-            <button type="submit" class="btn btn-green" id="wiz-submit" hidden>Create Event</button>
+            <button type="button" class="btn btn-ghost" id="wiz-back" hidden>‹ ${t("wiz.back")}</button>
+            <button type="button" class="btn btn-green" id="wiz-next">${t("wiz.continue")} ›</button>
+            <button type="submit" class="btn btn-green" id="wiz-submit" hidden>${t("wiz.createEventBtn")}</button>
           </div>
         </aside>
       </div>
@@ -4391,10 +4391,10 @@ export function opWizardPage(opts: {
           const server =
             document.querySelector(".guild-selected-badge")?.textContent?.trim() || val("guildId") || "—";
           return [
-            ["Name", val("title") || "—"], ["Start", val("scheduledAt") || "—"],
-            ["Mission Type", val("opType")], ["Rendezvous", document.getElementById("meeting-location-label")?.value || "—"],
-            ["Visibility", val("visibility")], ["Voice", val("eventVoiceChannelId") || "—"],
-            ["Server", server],
+            ["${safe(t("wiz.jsName"))}", val("title") || "—"], ["${safe(t("wiz.jsStart"))}", val("scheduledAt") || "—"],
+            ["${safe(t("wiz.missionType"))}", val("opType")], ["${safe(t("op.fldRendezvous"))}", document.getElementById("meeting-location-label")?.value || "—"],
+            ["${safe(t("vis.aria"))}", val("visibility")], ["${safe(t("tab.voice"))}", val("eventVoiceChannelId") || "—"],
+            ["${safe(t("opf.server"))}", server],
           ];
         }
         function dl(node) {
@@ -4406,14 +4406,14 @@ export function opWizardPage(opts: {
           const minP = parseInt(val("minParticipants") || "0", 10) || 0;
           const maxEl = document.querySelector('[name="maxParticipants"]');
           const maxP = maxEl && maxEl.value ? parseInt(maxEl.value, 10) : 0;
-          const part = minP > 0 ? "min " + minP : "no minimum";
-          const partStr = part + (maxP > 0 ? " / max " + maxP : "");
+          const part = minP > 0 ? "${safe(t("wiz.jsMin"))} " + minP : "${safe(t("wiz.jsNoMinimum"))}";
+          const partStr = part + (maxP > 0 ? " / ${safe(t("wiz.jsMax"))} " + maxP : "");
           let comp = [];
           try { comp = JSON.parse((compJsonEl && compJsonEl.value) || "[]"); } catch (_) {}
           const mdVal = (document.getElementById("wiz-md") || {}).value || "";
           const facts = rows()
             .map((r) => "<dt>" + r[0] + "</dt><dd>" + esc(r[1]) + "</dd>")
-            .join("") + "<dt>Participants</dt><dd>" + esc(partStr) + "</dd>";
+            .join("") + "<dt>${safe(t("op.participants"))}</dt><dd>" + esc(partStr) + "</dd>";
           const reqHtml = comp.length
             ? '<ul class="wiz-rev-list">' +
               comp
@@ -4424,14 +4424,14 @@ export function opWizardPage(opts: {
                 )
                 .join("") +
               "</ul>"
-            : '<p class="wiz-rev-empty">No fleet requirements added.</p>';
+            : '<p class="wiz-rev-empty">${safe(t("wiz.jsNoFleetReq"))}</p>';
           const briefHtml = mdVal.trim()
             ? '<div class="wiz-rev-md">' + renderMd(mdVal) + "</div>"
-            : '<p class="wiz-rev-empty">No briefing written.</p>';
+            : '<p class="wiz-rev-empty">${safe(t("wiz.jsNoBriefing"))}</p>';
           review.innerHTML =
             '<dl class="wiz-sum">' + facts + "</dl>" +
-            '<div class="wiz-rev-block"><div class="wiz-rev-h">Fleet Requirements</div>' + reqHtml + "</div>" +
-            '<div class="wiz-rev-block"><div class="wiz-rev-h">Briefing</div>' + briefHtml + "</div>";
+            '<div class="wiz-rev-block"><div class="wiz-rev-h">${safe(t("wiz.stepFleetReq"))}</div>' + reqHtml + "</div>" +
+            '<div class="wiz-rev-block"><div class="wiz-rev-h">${safe(t("op.briefing"))}</div>' + briefHtml + "</div>";
         }
         function updateAside() {
           dl(summary);
@@ -4444,15 +4444,15 @@ export function opWizardPage(opts: {
           const minP = parseInt(val("minParticipants") || "0", 10) || 0;
           const items = [];
           const voiceOk = !!val("eventVoiceChannelId");
-          items.push(["Event Voice Channel", voiceOk ? "ok" : "info", voiceOk ? "OK" : "OPTIONAL"]);
-          items.push(["Announcement Channel", "info", "SETTINGS"]);
-          items.push(["Fleet Requirements", compN ? "ok" : "warn", compN ? compN + " roles" : "EMPTY"]);
+          items.push(["${safe(t("wiz.eventVoiceChannel"))}", voiceOk ? "ok" : "info", voiceOk ? "${safe(t("wiz.tagOk"))}" : "${safe(t("wiz.tagOptional"))}"]);
+          items.push(["${safe(t("wiz.announcementChannel"))}", "info", "${safe(t("wiz.tagSettings"))}"]);
+          items.push(["${safe(t("wiz.stepFleetReq"))}", compN ? "ok" : "warn", compN ? compN + " ${safe(t("wiz.jsRoles"))}" : "${safe(t("wiz.tagEmpty"))}"]);
           items.push(
             minP > 0
-              ? ["Minimum Participants", compTotal >= minP ? "ok" : "warn", compTotal + " / " + minP]
-              : ["Minimum Participants", "info", "—"],
+              ? ["${safe(t("wiz.minParticipants"))}", compTotal >= minP ? "ok" : "warn", compTotal + " / " + minP]
+              : ["${safe(t("wiz.minParticipants"))}", "info", "—"],
           );
-          items.push(["Commander Net", "info", "SETTINGS"]);
+          items.push(["Commander Net", "info", "${safe(t("wiz.tagSettings"))}"]);
           ready.innerHTML = items
             .map((it) => '<li><span>' + it[0] + '</span><span class="wiz-tag ' + it[1] + '">' + it[2] + "</span></li>")
             .join("");
@@ -4474,7 +4474,7 @@ export function opWizardPage(opts: {
             el.classList.remove("field-error");
             if (!el.value || !el.value.trim()) { miss.push(el); el.classList.add("field-error"); }
           });
-          if (miss.length) { errs.textContent = "Bitte Pflichtfelder ausfüllen."; errs.hidden = false; miss[0].focus(); }
+          if (miss.length) { errs.textContent = "${safe(t("wiz.jsFillRequired"))}"; errs.hidden = false; miss[0].focus(); }
           return miss.length === 0;
         }
 
@@ -4495,9 +4495,9 @@ export function opWizardPage(opts: {
         mdToggle?.addEventListener("click", () => {
           if (mdPrev.hidden) {
             mdPrev.innerHTML = renderMd(md.value);
-            mdPrev.hidden = false; md.hidden = true; mdToggle.textContent = "Bearbeiten";
+            mdPrev.hidden = false; md.hidden = true; mdToggle.textContent = "${safe(t("wiz.jsEdit"))}";
           } else {
-            mdPrev.hidden = true; md.hidden = false; mdToggle.textContent = "Vorschau";
+            mdPrev.hidden = true; md.hidden = false; mdToggle.textContent = "${safe(t("wiz.preview"))}";
           }
         });
 
@@ -4547,7 +4547,7 @@ export function opWizardPage(opts: {
           const lbl = ((row && row.label) || "").replace(/"/g, "&quot;");
           div.innerHTML =
             '<select class="comp-cat">' + opts + "</select>" +
-            '<input class="comp-label" type="text" placeholder="e.g. Fireteam Alpha" value="' + lbl + '">' +
+            '<input class="comp-label" type="text" placeholder="${safe(t("wiz.jsCompPlaceholder"))}" value="' + lbl + '">' +
             '<input class="comp-count" type="number" min="1" max="99" value="' + ((row && row.count) || 1) + '">' +
             '<button type="button" class="btn btn-sm btn-ghost comp-del">✕</button>';
           compRows.appendChild(div);
@@ -4571,7 +4571,7 @@ export function opWizardPage(opts: {
     </script>`;
 
   return layout({
-    title: "Neue Operation — Assistent",
+    title: t("wiz.tabTitle"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
