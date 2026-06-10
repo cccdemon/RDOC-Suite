@@ -15,6 +15,8 @@ import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
 import { matchesCategory, suggestSlot, isCqbCategory, shipClass } from "../services/composition.js";
 import { SHIP_TYPES, shipTypeLabel, CQB_TEAM_DEFAULT, CQB_TEAM_MAX } from "../services/needs.js";
 import { normShipName } from "../services/fleetyards.js";
+import { slotKindTagKey } from "../services/slotKind.js";
+import type { SharedHangar } from "../services/hangarShare.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
 
@@ -554,6 +556,8 @@ type OpDetailPageOptions = {
   op: NonNullable<OpFull>;
   ownedShips: Ship[];
   assignableUsers: Pick<User, "id" | "username" | "role">[];
+  /** Mission board: players who shared their hangar — only passed to operators/leaders. */
+  sharedHangars?: SharedHangar[];
   guildVoiceChannels?: Array<{ id: string; name: string }>;
   availableVoiceBotCount: number;
   voiceEnabled: boolean;
@@ -1292,7 +1296,33 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       .filter((s) => s.active && !s.userId)
       .map((s) => ({ id: s.id, label: `${u.squadName || u.ship?.name || t("op.unit")} — ${s.label}` })),
   );
+  // Mission board: players who opted to let operators see their hangar. Operator-
+  // only (data is already gated server-side: opts.sharedHangars is passed only
+  // for operator/leader views).
+  const hangarSharePanel =
+    canManage && opts.sharedHangars && opts.sharedHangars.length
+      ? html`<section class="opv2-panel">
+          <div class="opv2-panel-title">${t("op.hangarSharesTitle")}${helpIcon(t("op.hangarSharesHelp"))}</div>
+          ${opts.sharedHangars.map(
+            (h) => html`<div class="opv2-row">
+              <div>
+                <strong>${h.username}</strong>
+                ${h.note ? html`<span class="text-dim text-sm">${h.note}</span>` : safe("")}
+              </div>
+              <div class="text-dim text-sm" style="text-align:right;max-width:62%">
+                ${h.ships.length
+                  ? h.ships.map(
+                      (s) => html`<span class="tag tag-dim" style="margin:0 .2rem .25rem 0">${s.nickname || s.name}</span>`,
+                    )
+                  : t("op.hangarEmpty")}
+              </div>
+            </div>`,
+          )}
+        </section>`
+      : safe("");
+
   const crewPanel = html`<div class="opv2-grid">
+    ${hangarSharePanel}
     <section class="opv2-panel">
       <div class="opv2-panel-title">${t("op.participants")} (${participants.length})${helpIcon(t("op.participantsHelp"))}</div>
       ${participants.length
@@ -4679,6 +4709,12 @@ export function opJoinPage(opts: {
   // auto-open on first visit (not yet signed up), manual re-open afterwards.
   const myCqb = !!myId && (op.cqbSignups ?? []).some((s) => s.userId === myId);
   const signedUp = hasSeat || hasReq || myPendingUnits.length > 0 || myCqb;
+  // Mission board: has the viewer shared their hangar with this op's operators?
+  const myHangarShared =
+    !!myId &&
+    ((op as { hangarShares?: Array<{ userId: string }> }).hangarShares ?? []).some(
+      (h) => h.userId === myId,
+    );
   const openSeats = acceptedUnits
     .flatMap((u) =>
       u.seats
@@ -4808,7 +4844,12 @@ export function opJoinPage(opts: {
   type RosterSeat = { id: string; label: string; user: string | null; mine: boolean; open: boolean };
   const seatRowHtml = (s: RosterSeat, captainConfirm: boolean) =>
     html`<div class="roster-seat${s.open ? " open" : s.mine ? " mine" : ""}">
-      <span class="roster-seat-label">${s.label}</span>
+      <span class="roster-seat-label"
+        >${s.label}
+        <span class="tag tag-slot slot-${s.open ? "rolle_offen" : "fest"}"
+          >${t(slotKindTagKey(s.open ? "rolle_offen" : "fest"))}</span
+        ></span
+      >
       ${s.open
         ? isOpen && myId
           ? html`<form method="post" action="${bp}/api/seats/${s.id}/claim" class="inline">
@@ -5300,6 +5341,54 @@ export function opJoinPage(opts: {
 
     <div class="join-layout">
       <div class="join-main">
+        <div class="op-viewtabs">
+          <span class="op-viewtab active">${t("join.playerView")}</span>
+          ${opts.canManage
+            ? html`<a class="op-viewtab" href="${bp}/ops/${op.id}/manage">${t("join.operatorView")}</a>`
+            : safe("")}
+        </div>
+        ${myId && isOpen
+          ? html`<section class="card mitmachen">
+              <h3 class="wiz-sum-h">${t("join.contribute")}</h3>
+              <p class="text-dim text-sm" style="margin:.2rem 0 .8rem">${t("join.contributeIntro")}</p>
+              <div class="mitmachen-cards">
+                <button type="button" class="mm-card" data-mm="seat">
+                  <span class="mm-ico">🎯</span>
+                  <span class="mm-ttl">${t("join.mmSeat")}</span>
+                  <span class="mm-sub">${t("join.mmSeatSub")}</span>
+                </button>
+                <button type="button" class="mm-card" data-mm="jm-ship">
+                  <span class="mm-ico">🚀</span>
+                  <span class="mm-ttl">${t("join.mmShip")}</span>
+                  <span class="mm-sub">${t("join.mmShipSub")}</span>
+                </button>
+                <button type="button" class="mm-card" data-mm="jm-assign">
+                  <span class="mm-ico">↔</span>
+                  <span class="mm-ttl">${t("join.mmFlex")}</span>
+                  <span class="mm-sub">${t("join.mmFlexSub")}</span>
+                </button>
+              </div>
+              <script>
+                (function () {
+                  document.querySelectorAll(".mitmachen .mm-card").forEach(function (c) {
+                    c.addEventListener("click", function () {
+                      var mode = c.getAttribute("data-mm");
+                      if (mode === "seat") {
+                        var sec = document.getElementById("accepted-units");
+                        if (sec) sec.scrollIntoView({ behavior: "smooth", block: "start" });
+                        return;
+                      }
+                      var asst = document.querySelector(".join-asst");
+                      if (asst) asst.open = true;
+                      var radio = document.getElementById(mode);
+                      if (radio) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
+                      if (asst) asst.scrollIntoView({ behavior: "smooth", block: "start" });
+                    });
+                  });
+                })();
+              </script>
+            </section>`
+          : safe("")}
         <div class="roster-view-toggle">
           <span class="rv-label">${t("join.viewLabel")}</span>
           <button type="button" data-rv="row" class="active">${t("join.viewHorizontal")}</button>
@@ -5660,19 +5749,21 @@ export function opJoinPage(opts: {
                   </script>
                 </details>`}
 
-        ${squadJoinCard(
-          t("join.joinCqbSquad"),
-          t("join.joinCqbSquadSub"),
-          cqbJoinSquads,
-          t("common.claim"),
-          t("join.slotSoldier"),
-        )}
+        ${fighterJoinSquads.length ? html`<div class="board-cat">${t("cat.fighterWing")}</div>` : safe("")}
         ${squadJoinCard(
           t("join.joinFighterSquad"),
           t("join.joinFighterSquadSub"),
           fighterJoinSquads,
           t("common.claim"),
           t("join.slotPilot"),
+        )}
+        ${cqbJoinSquads.length ? html`<div class="board-cat">${t("cat.groundTroops")}</div>` : safe("")}
+        ${squadJoinCard(
+          t("join.joinCqbSquad"),
+          t("join.joinCqbSquadSub"),
+          cqbJoinSquads,
+          t("common.claim"),
+          t("join.slotSoldier"),
         )}
 
         ${myPendingUnits.length
@@ -5698,7 +5789,8 @@ export function opJoinPage(opts: {
             </section>`
           : safe("")}
 
-        <section class="card" style="margin-top:1rem">
+        <div class="board-cat" id="accepted-units">${t("cat.shipsAndCrew")}</div>
+        <section class="card" style="margin-top:.4rem">
           <h3 class="wiz-sum-h">${t("join.acceptedUnits")}</h3>
           ${acceptedRoster.length
             ? acceptedRoster.map(
@@ -5844,6 +5936,21 @@ export function opJoinPage(opts: {
               <textarea name="body" maxlength="1000" placeholder="${t("join.askPlaceholder")}"></textarea>
               <button type="submit" class="btn btn-ghost join-cta-btn">${t("join.askQuestion")}</button>
             </form>`
+          : safe("")}
+        ${myId
+          ? html`<div class="hangar-share" style="margin-top:14px">
+              <div class="wiz-sum-h" style="font-size:.9rem">${t("join.hangarShareTitle")}</div>
+              <p class="text-dim text-sm" style="margin:.2rem 0 .5rem">${t("join.hangarShareHelp")}</p>
+              <form method="post" action="${bp}/api/ops/${op.id}/hangar-share">
+                <input type="hidden" name="_csrf" value="${csrf}" />
+                <input type="hidden" name="ui" value="player" />
+                <input type="hidden" name="tab" value="crew" />
+                <input type="hidden" name="allow" value="${myHangarShared ? "0" : "1"}" />
+                <button type="submit" class="btn btn-sm ${myHangarShared ? "btn-ghost" : "btn-cyan"} join-cta-btn">
+                  ${myHangarShared ? t("join.hangarShareOff") : t("join.hangarShareOn")}
+                </button>
+              </form>
+            </div>`
           : safe("")}
         ${seatSummary.length
           ? html`<div style="margin-top:14px">

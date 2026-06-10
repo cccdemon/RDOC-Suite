@@ -33,6 +33,7 @@ model User {
   opPrimaryUnits   OpPrimaryUnit[]
   eventInterests   EventInterest[]
   cqbSignups       CqbSignup[]
+  hangarShares     OperationHangarShare[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -376,8 +377,29 @@ model Operation {
   distributions            EventDistribution[]
   eventInterests           EventInterest[]
   cqbSignups               CqbSignup[]
+  hangarShares             OperationHangarShare[]
 
   @@index([recurrenceId])
+}
+
+// A player can optionally let the operators of a specific operation see their
+// hangar (UserShip list) — e.g. so the operator can pick a suitable ship for a
+// type-bound slot. Operation-scoped, opt-in, never public. See services/hangarShare.ts.
+model OperationHangarShare {
+  id                     String   @id @default(cuid())
+  operationId            String
+  userId                 String
+  allowOperatorHangarView Boolean @default(false)
+  note                   String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, userId])
+  @@index([operationId])
+  @@index([userId])
 }
 
 // FR-P2: a pilot who clicked "Interested" on the op's Discord scheduled event.

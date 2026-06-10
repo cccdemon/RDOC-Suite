@@ -1385,6 +1385,24 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .need-rename-d > summary { display: inline; list-style: none; cursor: pointer; color: var(--cyan); font-size: 0.8rem; margin-left: 0.35rem; }
 .need-rename-d > summary::-webkit-details-marker { display: none; }
 .need-rename-form { display: flex; gap: 0.3rem; margin-top: 0.35rem; }
+/* Mission board (op detail) */
+.op-viewtabs { display: flex; gap: .4rem; margin: 0 0 1rem; font-family: var(--font-mono); font-size: .78rem; }
+.op-viewtab { padding: .35rem .9rem; border: 1px solid var(--cyan-28, rgba(53,208,224,.28)); color: var(--dim, #7a8a96); text-decoration: none; }
+.op-viewtab.active { background: var(--cyan, #35d0e0); color: var(--bg, #050b12); font-weight: 700; }
+.mitmachen { margin-bottom: 1rem; }
+.mitmachen-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.mm-card { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; text-align: left; padding: .7rem .8rem; background: var(--bg2, #0d1117); border: 1px solid var(--cyan-28, rgba(53,208,224,.28)); cursor: pointer; color: inherit; }
+.mm-card:hover { border-color: var(--cyan, #35d0e0); }
+.mm-card .mm-ico { font-size: 1.2rem; }
+.mm-card .mm-ttl { font-weight: 700; font-size: .9rem; }
+.mm-card .mm-sub { color: var(--dim, #7a8a96); font-size: .76rem; }
+.board-cat { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan, #35d0e0); border-bottom: 1px solid var(--cyan-28, rgba(53,208,224,.22)); padding: .3rem 0; margin: 1.1rem 0 .2rem; }
+.tag-slot { font-size: .58rem; letter-spacing: .05em; margin-left: .35rem; vertical-align: middle; }
+.slot-fest { border-color: rgba(255,255,255,.18); color: var(--dim, #9fb1c2); }
+.slot-typ { border-color: rgba(240,165,0,.5); color: var(--gold, #f0a500); }
+.slot-rolle_offen { border-color: rgba(53,208,224,.45); color: var(--cyan, #35d0e0); }
+.slot-frei { border-color: rgba(255,255,255,.14); color: var(--dim, #7a8a96); }
+@media (max-width: 620px) { .mitmachen-cards { grid-template-columns: 1fr; } }
 @media (max-width: 760px) {
   .fleet-req-row,
   .comp-row-head {

@@ -128,6 +128,12 @@ export async function getOperation(id: string) {
         include: { user: true },
         orderBy: { createdAt: "asc" },
       },
+      // Mission board: players who opted to let operators see their hangar.
+      hangarShares: {
+        where: { allowOperatorHangarView: true },
+        include: { user: true },
+        orderBy: { updatedAt: "desc" },
+      },
     },
   });
 }

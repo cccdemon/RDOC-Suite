@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Op-Detail „Mission Board" Redesign + Hangar-Freigabe — Branch `feat/mission-board`
+
+UI/UX-Overhaul der Op-Detailseite (Spieler-Ansicht) zum taktischen Mission Board + neues Feature
+Hangar-Freigabe an Operatoren. Ein PR (inkl. Schema+Migration). Plan:
+`~/.claude/plans/fluffy-napping-fairy.md` (vom User genehmigt). Nur fleetplanner. Voice/LiveKit/Relay
+UNANGETASTET.
+- Schema: neues `OperationHangarShare` (operationId,userId,allowOperatorHangarView,note,ts; @@unique
+  [operationId,userId]) + additive Migration.
+- `services/slotKind.ts`: reine Slot-Typ-Logik FEST/TYP/ROLLE OFFEN/FREI + needType→Kategorie-Bucket
+  (ships/fighter/ground) — treibt Rendering + Tests.
+- `services/hangarShare.ts`: set/get/listSharedHangars/canViewHangars (UserShip-basiert, nur
+  Operator/Leader). `getOperation` um `hangarShares` erweitert.
+- `opJoinPage`: Pill-Toggle (Spieler/Operator → 2 bestehende Routen), „Mitmachen"-3-Karten,
+  Kategorie-Trenner, Unit-/Slot-Karten mit Tags, „Platz übernehmen"-`<dialog>`-Modal (nutzt vorhandene
+  claim/units/crew-requests/cqb-join + Hangar aus `ownedShips`; Toggle „Operator darf Hangar sehen").
+- `opDetailPageV2` Teilnehmer-Tab: Sektion „Hangar-Freigaben" (nur berechtigte Operatoren).
+- Route `POST /api/ops/:id/hangar-share`. i18n de+en, CSS in render.ts. Tests: slotKind + hangarShare
+  (+ route injection). Build/Deploy: fleetplanner (tsc, Migration beim Start). Restpunkt: operator-
+  definierbare Kategorien als Folge-FR (hier needType-Buckets).
+
 ## Queued / Planned Step - 2026-06-10: Schiffsbedarf direkt im Übersicht-Board umbenennen — Branch `feat/rename-need-board`
 
 User will Schiffsbedarfe direkt auf dem Flottenbedarf-Board (Manage → Übersicht-Tab, `reqGroupTable`)

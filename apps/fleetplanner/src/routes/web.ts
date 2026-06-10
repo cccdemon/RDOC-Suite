@@ -86,6 +86,7 @@ import { closeMissionVoiceSession, hasVoicePermission } from "../services/voiceS
 import { listMissionCommanders } from "../services/missionCommanders.js";
 import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
 import { getMultiPositionAssignments } from "../services/primaryUnits.js";
+import { canViewHangars, listSharedHangars } from "../services/hangarShare.js";
 import { getActivePartnerGuildIds } from "../services/partnerships.js";
 import { bridgeConfigured } from "../services/bridge.js";
 import { cleanupOperationVoiceChannels } from "../services/voiceBots.js";
@@ -852,10 +853,15 @@ export async function webRoutes(app: FastifyInstance) {
     const participants = op.status === "completed" ? await getMissionParticipants(op.id) : null;
     // Multi-position users (2+ units) + their primary-channel choice.
     const primaryAssignments = await getMultiPositionAssignments(op.id);
+    // Mission board: hangar shares — operator/leader only.
+    const isOpLeader = !!ctx && op.leaders.some((l) => l.user.id === ctx.user.id);
+    const sharedHangars =
+      ctx && canViewHangars(opRole, isOpLeader) ? await listSharedHangars(op.id) : undefined;
     reply.header("Cache-Control", "no-store");
     htmlReply(
       reply,
       opDetailPageV2({
+        sharedHangars,
         basePath: basePath(),
         currentUser: ctx?.user ?? null,
         csrfToken: ctx?.csrfToken,

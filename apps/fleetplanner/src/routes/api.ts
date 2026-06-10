@@ -13,6 +13,7 @@ import {
 } from "../services/units.js";
 import { setStatus, addLeader, removeLeader, getOperation, logAudit } from "../services/operations.js";
 import { setPrimaryUnit, clearPrimaryUnit } from "../services/primaryUnits.js";
+import { setHangarShare } from "../services/hangarShare.js";
 import {
   createSignup as createCqbSignup,
   withdrawSignup as withdrawCqbSignup,
@@ -1368,6 +1369,26 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Crew+request+removed.", "crew"),
+        302,
+      );
+    },
+  );
+
+  // ── Hangar sharing (mission board) ───────────────────────────────────
+  // Player opts in/out of letting this op's operators see their hangar.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/hangar-share",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      // Players may only set their OWN share.
+      await setHangarShare(req.params.id, ctx.user.id, {
+        allow: req.body.allow === "1",
+        note: req.body.note ?? null,
+      });
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Hangar+sharing+updated.", "crew"),
         302,
       );
     },
