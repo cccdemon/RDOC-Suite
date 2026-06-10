@@ -9044,8 +9044,8 @@ export function guildSettingsPage(opts: {
           <td class="text-mono text-sm text-dim">${bot.botUserId}</td>
           <td>
             ${bot.assignedChannelId
-              ? html`<span class="tag tag-gold">assigned</span>`
-              : html`<span class="tag tag-green">available</span>`}
+              ? html`<span class="tag tag-gold">${t("gs.assigned")}</span>`
+              : html`<span class="tag tag-green">${t("gs.available")}</span>`}
           </td>
           <td class="text-dim text-sm">${fmtDate(bot.updatedAt)}</td>
           <td>
@@ -9054,19 +9054,19 @@ export function guildSettingsPage(opts: {
               class="btn btn-sm btn-ghost"
               target="_blank"
               rel="noopener"
-              >Invite</a
+              >${t("gs.invite")}</a
             >
             <button type="button" class="btn btn-sm btn-ghost" onclick="toggleBotEdit('${bot.id}')">
-              Edit
+              ${t("common.edit")}
             </button>
             <form method="post" action="${bp}/guilds/voice-bots/${bot.id}/delete" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
               <button
                 type="submit"
                 class="btn btn-sm btn-danger"
-                onclick="return confirm('Remove this encrypted voice bot token?')"
+                onclick="return confirm('${t("gs.confirmRemoveBot")}')"
               >
-                Delete
+                ${t("common.delete")}
               </button>
             </form>
           </td>
@@ -9080,14 +9080,14 @@ export function guildSettingsPage(opts: {
             >
               <input type="hidden" name="_csrf" value="${csrf}" />
               <label class="text-sm text-dim"
-                >New label
+                >${t("gs.newLabel")}
                 <input type="text" name="label" value="${bot.label}" placeholder="Funkrelais 1" />
               </label>
               <label class="text-sm text-dim"
-                >New token <span style="opacity:.6">(leave empty to keep current)</span>
-                <input type="text" name="botToken" placeholder="Bot token…" autocomplete="off" />
+                >${t("gs.newToken")} <span style="opacity:.6">${t("gs.leaveEmptyKeep")}</span>
+                <input type="text" name="botToken" placeholder="${t("gs.botTokenPlaceholder")}" autocomplete="off" />
               </label>
-              <button type="submit" class="btn btn-sm btn-cyan">Save</button>
+              <button type="submit" class="btn btn-sm btn-cyan">${t("common.save")}</button>
             </form>
           </td>
         </tr>`,
@@ -9095,32 +9095,32 @@ export function guildSettingsPage(opts: {
 
   const body = html`
     <div class="page-header">
-      <h1 class="page-title">SERVER SETTINGS<span class="sep"> // </span><em>${g.name}</em></h1>
+      <h1 class="page-title">${t("gs.title")}<span class="sep"> // </span><em>${g.name}</em></h1>
       <div class="page-actions">
-        <a href="${bp}/guilds/partnerships" class="btn btn-gold btn-sm">Partnerships${
+        <a href="${bp}/guilds/partnerships" class="btn btn-gold btn-sm">${t("gs.partnerships")}${
           opts.incomingShared ? safe(` <span class="tag tag-gold">${String(opts.incomingShared)}</span>`) : safe("")
         }</a>
-        <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">Run Install Tests</a>
+        <a href="${bp}/guilds/diagnostics" class="btn btn-cyan btn-sm">${t("gs.runInstallTests")}</a>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title">Discord integration</div>
+      <div class="section-title">${t("gs.discordIntegration")}</div>
       <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
         <input type="hidden" name="_csrf" value="${csrf}" />
-        <label class="text-sm text-dim">Operation voice category ID
+        <label class="text-sm text-dim">${t("gs.voiceCategoryId")}
           <input type="text" name="voiceChannelCategoryId" value="${g.voiceChannelCategoryId ?? ""}" placeholder="1507879660724162770" />
         </label>
-        <label class="text-sm text-dim">Admiral role ID (Discord role → fleetoperator)
-          <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="optional" />
+        <label class="text-sm text-dim">${t("gs.admiralRoleId")}
+          <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="${t("gs.optional")}" />
         </label>
-        <label class="text-sm text-dim">Org name <span style="opacity:.65">(Star Citizen org shown in shared op embeds — defaults to the Discord server name if empty)</span>
+        <label class="text-sm text-dim">${t("gs.orgName")} <span style="opacity:.65">${t("gs.orgNameHint")}</span>
           <input type="text" name="orgName" value="${g.orgName ?? ""}" maxlength="80" placeholder="e.g. RDOC" />
         </label>
-        <label class="text-sm text-dim">Discord invite link <span style="opacity:.65">(permanent invite shown to guests who aren't in this Discord, e.g. https://discord.gg/raumdock)</span>
+        <label class="text-sm text-dim">${t("gs.inviteLink")} <span style="opacity:.65">${t("gs.inviteLinkHint")}</span>
           <input type="text" name="discordInviteUrl" value="${g.discordInviteUrl ?? ""}" placeholder="https://discord.gg/yourserver" />
         </label>
-        <label class="text-sm text-dim">Timezone <span style="opacity:.65">(used for scheduling dates — shown to all members)</span>
+        <label class="text-sm text-dim">${t("gs.timezone")} <span style="opacity:.65">${t("gs.timezoneHint")}</span>
           <select name="timezone">
             ${TIMEZONE_OPTIONS.map(
               (opt) =>
@@ -9133,11 +9133,10 @@ export function guildSettingsPage(opts: {
             )}
           </select>
         </label>
-        <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>
+        <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">${t("common.save")}</button>
       </form>
       <p class="text-dim text-sm" style="margin-top:.5rem">
-        Scheduled events for this server's operations are posted to this Discord.
-        Role IDs are optional — set them to auto-map Discord roles to fleet roles on login.
+        ${t("gs.discordNote")}
       </p>
     </div>
 
@@ -9145,14 +9144,13 @@ export function guildSettingsPage(opts: {
       opts.currentUser?.role === "superadmin"
         ? html` <div class="section">
             <div class="section-title">
-              RDOC Voice Permission
+              ${t("gs.voicePermission")}
               <span class="tag ${g.voiceEnabled ? safe("tag-green") : safe("tag-dim")}"
-                >${g.voiceEnabled ? safe("GRANTED") : safe("NOT GRANTED")}</span
+                >${g.voiceEnabled ? t("gs.granted") : t("gs.notGranted")}</span
               >
             </div>
             <p class="text-dim text-sm">
-              Controls whether this server can use the LiveKit voice server (Mission Voice Sessions,
-              relay bots, voice channels).
+              ${t("gs.voicePermDesc")}
             </p>
             <form
               method="post"
@@ -9166,13 +9164,13 @@ export function guildSettingsPage(opts: {
                       type="submit"
                       class="btn btn-sm btn-danger"
                     >
-                      Revoke Voice Permission
+                      ${t("gs.revokeVoice")}
                     </button>`
                 : html`<input type="hidden" name="voiceEnabled" value="1" /><button
                       type="submit"
                       class="btn btn-sm btn-cyan"
                     >
-                      Grant Voice Permission
+                      ${t("gs.grantVoice")}
                     </button>`}
             </form>
           </div>`
@@ -9182,50 +9180,49 @@ export function guildSettingsPage(opts: {
     ${
       g.voiceEnabled
         ? html` <div class="section">
-            <div class="section-title">Mission Voice — Companion &amp; Relay</div>
+            <div class="section-title">${t("gs.missionVoiceTitle")}</div>
             <p class="text-dim text-sm" style="margin-bottom:.75rem">
-              Discord roles assigned automatically when a Mission Voice session opens and revoked when it closes.
-              Leave empty to skip role assignment.
+              ${t("gs.missionVoiceDesc")}
             </p>
             <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
               <input type="hidden" name="_csrf" value="${csrf}" />
-              <label class="text-sm text-dim">Command Net role ID
-                <span style="opacity:.65">(granted to mission Command Net users; enables Companion PTT into the commander room)</span>
-                <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="optional" />
+              <label class="text-sm text-dim">${t("gs.commandNetRole")}
+                <span style="opacity:.65">${t("gs.commandNetRoleHint")}</span>
+                <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="${t("gs.optional")}" />
               </label>
-              <label class="text-sm text-dim">Global Radio Net role ID
-                <span style="opacity:.65">(granted only to commanders with Global Radio Net enabled; gates Discord relay bot access)</span>
-                <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="optional" />
+              <label class="text-sm text-dim">${t("gs.globalNetRole")}
+                <span style="opacity:.65">${t("gs.globalNetRoleHint")}</span>
+                <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="${t("gs.optional")}" />
               </label>
-              <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">Save</button>
+              <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">${t("common.save")}</button>
             </form>
           </div>
           <div class="section">
-            <div class="section-title">Voice relay bots (${opts.voiceBots.length}/6)</div>
+            <div class="section-title">${t("gs.relayBotsTitle", { n: opts.voiceBots.length })}</div>
             <form method="post" action="${bp}/guilds/voice-bots" class="card" style="padding:1rem;display:grid;grid-template-columns:1fr 1.2fr 1.8fr auto;gap:.75rem;align-items:flex-end">
               <input type="hidden" name="_csrf" value="${csrf}" />
-              <label class="text-sm text-dim">Label
+              <label class="text-sm text-dim">${t("badm.colLabel")}
                 <input type="text" name="label" maxlength="60" placeholder="Funkrelais 1" required />
               </label>
-              <label class="text-sm text-dim">Bot user ID
+              <label class="text-sm text-dim">${t("gs.botUserId")}
                 <input type="text" name="botUserId" placeholder="1509191397264064689" required />
               </label>
-              <label class="text-sm text-dim">Bot token
-                <input type="password" name="botToken" autocomplete="new-password" placeholder="Stored encrypted with per-token salt" required />
+              <label class="text-sm text-dim">${t("gs.botToken")}
+                <input type="password" name="botToken" autocomplete="new-password" placeholder="${t("gs.botTokenStored")}" required />
               </label>
-              <button type="submit" class="btn btn-cyan btn-sm">Save Bot</button>
+              <button type="submit" class="btn btn-cyan btn-sm">${t("gs.saveBot")}</button>
             </form>
             <p class="text-dim text-sm" style="margin-top:.5rem">
-              Tokens are encrypted before storage and never rendered back to the browser. Use six entries for the six Funkrelais bots.
+              ${t("gs.tokensNote")}
             </p>
             <div style="overflow-x:auto;margin-top:1rem">
               <table class="user-table">
-                <thead><tr><th>Label</th><th>Bot ID</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>
+                <thead><tr><th>${t("badm.colLabel")}</th><th>${t("gs.colBotId")}</th><th>${t("admin.statusLabel")}</th><th>${t("gs.colUpdated")}</th><th>${t("gs.colActions")}</th></tr></thead>
                 <tbody>${
                   voiceBotRows.length
                     ? voiceBotRows
                     : html`<tr>
-                        <td colspan="5" class="text-dim">No relay bots configured.</td>
+                        <td colspan="5" class="text-dim">${t("gs.noRelayBots")}</td>
                       </tr>`
                 }</tbody>
               </table>
@@ -9233,23 +9230,20 @@ export function guildSettingsPage(opts: {
           </div>`
         : html` <div class="section">
             <div class="section-title">
-              Voice relay bots <span class="tag tag-dim">RDOC Voice Permission required</span>
+              ${t("gs.relayBotsShort")} <span class="tag tag-dim">${t("gs.permRequired")}</span>
             </div>
             <div class="card">
               <p class="text-dim text-sm">
-                Voice features (relay bots, the RTC voice bridge and Mission Voice Sessions) are
-                <strong>disabled</strong> for this server. A SuperAdmin must grant
-                <strong>RDOC Voice Permission</strong> before the voice bot configuration becomes
-                available.
+                ${safe(t("gs.voiceDisabledDesc"))}
               </p>
               ${
                 opts.superadminContact
                   ? html`<p class="text-sm" style="margin-top:.5rem">
-                      Request access from the SuperAdmin:
+                      ${t("gs.requestAccess")}
                       <strong class="text-mono">${opts.superadminContact}</strong>
                     </p>`
                   : html`<p class="text-sm" style="margin-top:.5rem">
-                      Contact the instance SuperAdmin to request access.
+                      ${t("gs.contactSuperadmin")}
                     </p>`
               }
             </div>
@@ -9257,16 +9251,16 @@ export function guildSettingsPage(opts: {
     }
 
     <div class="section">
-      <div class="section-title">Members (${opts.memberships.length})</div>
+      <div class="section-title">${t("gs.members", { n: opts.memberships.length })}</div>
       <div style="overflow-x:auto">
         <table class="user-table">
           <thead>
             <tr>
-              <th>User</th>
-              <th>Internal ID</th>
+              <th>${t("badm.colUser")}</th>
+              <th>${t("admin.colInternalId")}</th>
               <th>Discord</th>
-              <th>Role (this server)</th>
-              <th>Joined</th>
+              <th>${t("gs.roleThisServer")}</th>
+              <th>${t("gs.joined")}</th>
             </tr>
           </thead>
           <tbody>${memberRows}</tbody>
@@ -9281,26 +9275,24 @@ export function guildSettingsPage(opts: {
     </script>
     ${opts.canRemove
       ? html`<div class="section">
-          <div class="section-title">Danger zone</div>
+          <div class="section-title">${t("gs.dangerZone")}</div>
           <div class="card" style="border-color:rgba(255,68,68,0.38)">
-            <div class="card-title" style="color:var(--red)">Remove this server from Fleetplanner</div>
+            <div class="card-title" style="color:var(--red)">${t("gs.removeServerTitle")}</div>
             <p class="text-dim text-sm mt-1">
-              The server is hidden from Fleetplanner and stops appearing in all lists. Operations,
-              members and partnerships are kept in the database — adding the bot again reactivates
-              everything. Nothing is deleted.
+              ${t("gs.removeServerDesc")}
             </p>
             <form method="post" action="${bp}/guilds/remove" class="mt-2"
-              onsubmit="return confirm('Remove ${g.name} from Fleetplanner? It disappears from all lists until the bot is added again.');">
+              onsubmit="return confirm('${t("gs.confirmRemoveServer", { name: g.name })}');">
               <input type="hidden" name="_csrf" value="${csrf}" />
               <input type="hidden" name="guildId" value="${g.id}" />
-              <button type="submit" class="btn btn-danger">Remove server</button>
+              <button type="submit" class="btn btn-danger">${t("gs.removeServer")}</button>
             </form>
           </div>
         </div>`
       : safe("")}`;
 
   return layout({
-    title: `Settings — ${g.name}`,
+    title: `${t("guilds.settings")} — ${g.name}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
