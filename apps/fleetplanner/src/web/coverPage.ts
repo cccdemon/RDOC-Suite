@@ -1,4 +1,5 @@
-import { html, layout, type SafeHtml } from "./render.js";
+import { html, safe, layout, type SafeHtml } from "./render.js";
+import { t } from "../i18n/index.js";
 
 export type CoverPageOptions = {
   basePath: string;
@@ -42,15 +43,15 @@ export function coverPage(opts: CoverPageOptions): SafeHtml {
   const generateForm = html`<form method="post" action="${bp}/api/ops/${opts.op.id}/cover" class="cover-form">
     <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
     <label
-      >Format
+      >${t("cover.format")}
       ${selector(
         "format",
         opts.format,
         FORMATS.map((f) => ({ id: f, label: f })),
       )}</label
     >
-    <label>Stil ${selector("preset", opts.preset, PRESETS)}</label>
-    <button type="submit" class="btn">Cover generieren</button>
+    <label>${t("cover.style")} ${selector("preset", opts.preset, PRESETS)}</label>
+    <button type="submit" class="btn">${t("cover.generate")}</button>
   </form>`;
 
   const editorUrl = `${bp}/ops/${opts.op.id}/cover/edit?format=${encodeURIComponent(
@@ -59,18 +60,16 @@ export function coverPage(opts: CoverPageOptions): SafeHtml {
 
   const body = !opts.serviceConfigured
     ? html`<section class="panel">
-        <h1>Mission Cover</h1>
+        <h1>${t("cover.title")}</h1>
         <p>
-          Der Mission-Cover-Service ist nicht konfiguriert
-          (<code>MISSIONCOVER_SERVICE_SECRET</code> fehlt). Sobald gesetzt, kann hier ein Cover
-          gerendert werden.
+          ${safe(t("cover.notConfigured"))}
         </p>
       </section>`
     : html`<section class="panel">
         <div class="cover-head">
-          <h1>Mission Cover</h1>
+          <h1>${t("cover.title")}</h1>
         </div>
-        <p class="muted">Operation: <strong>${opts.op.title}</strong></p>
+        <p class="muted">${t("cover.operation")}: <strong>${opts.op.title}</strong></p>
 
         ${opts.cover
           ? html`<div class="cover-current">
@@ -83,36 +82,35 @@ export function coverPage(opts: CoverPageOptions): SafeHtml {
                 ${opts.cover.format} · ${opts.cover.preset} · ${opts.cover.width}×${opts.cover.height}px
               </p>
               <div class="cover-actions">
-                <a href="${editorUrl}" class="btn">Im Editor öffnen</a>
+                <a href="${editorUrl}" class="btn">${t("cover.openEditor")}</a>
                 <form
                   method="post"
                   action="${bp}/api/ops/${opts.op.id}/cover/delete"
                   class="inline"
-                  onsubmit="return confirm('Cover entfernen?')"
+                  onsubmit="return confirm('${t("cover.confirmRemove")}')"
                 >
                   <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-                  <button type="submit" class="btn btn-danger">Entfernen</button>
+                  <button type="submit" class="btn btn-danger">${t("cover.remove")}</button>
                 </form>
               </div>
             </div>`
-          : html`<p class="muted">Noch kein Cover für diese Operation.</p>`}
+          : html`<p class="muted">${t("cover.noCover")}</p>`}
 
         <hr class="divider" />
-        <h2>${opts.cover ? "Neu generieren" : "Cover erzeugen"}</h2>
+        <h2>${opts.cover ? t("cover.regenerate") : t("cover.create")}</h2>
         <p class="muted">
-          Schnellgenerierung aus den Operationsdaten, oder
-          <a href="${editorUrl}">im Editor öffnen</a> für Feintuning.
+          ${safe(t("cover.quickGenDesc", { link: `<a href="${editorUrl}">${t("cover.openEditorLower")}</a>` }))}
         </p>
         ${generateForm}
       </section>`;
 
   // Always-visible way back to the operation being managed.
   const backBar = html`<div style="margin-bottom:14px">
-    <a href="${manageUrl}" class="btn btn-cyan">← Zurück zur Mission</a>
+    <a href="${manageUrl}" class="btn btn-cyan">← ${t("cover.backToMission")}</a>
   </div>`;
 
   return layout({
-    title: "Mission Cover",
+    title: t("cover.title"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

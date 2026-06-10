@@ -1084,4 +1084,21 @@ export const en: Record<string, string> = {
   "ptn.partnerToken": "Partner token",
   "ptn.tokenPlaceholder": "Paste the token from the other Discord",
   "ptn.accept": "Accept",
+
+  // Mission cover page
+  "cover.title": "Mission Cover",
+  "cover.format": "Format",
+  "cover.style": "Style",
+  "cover.generate": "Generate cover",
+  "cover.notConfigured": "The mission cover service is not configured (<code>MISSIONCOVER_SERVICE_SECRET</code> missing). Once set, a cover can be rendered here.",
+  "cover.operation": "Operation",
+  "cover.openEditor": "Open in editor",
+  "cover.openEditorLower": "open in editor",
+  "cover.confirmRemove": "Remove cover?",
+  "cover.remove": "Remove",
+  "cover.noCover": "No cover for this operation yet.",
+  "cover.regenerate": "Regenerate",
+  "cover.create": "Create cover",
+  "cover.quickGenDesc": "Quick generation from the operation data, or {link} for fine-tuning.",
+  "cover.backToMission": "Back to mission",
 };
