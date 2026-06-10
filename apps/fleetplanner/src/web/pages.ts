@@ -5880,7 +5880,7 @@ export function opJoinPage(opts: {
     </script>`;
 
   return layout({
-    title: `Join: ${op.title}`,
+    title: `${t("join.tabPrefix")}: ${op.title}`,
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -5926,33 +5926,33 @@ export function shipsPage(opts: {
   );
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">SHIP DATABASE</h1>
-      <p class="page-subtitle">Sourced from star-citizen.wiki</p>
+      <h1 class="page-title">${t("ships.title")}</h1>
+      <p class="page-subtitle">${t("ships.sourcedFrom")}</p>
     </div>
     <form method="get" action="${bp}/ships" class="flex gap-1 mb-2">
       <input
         type="search"
         name="q"
         value="${opts.query}"
-        placeholder="Search ship name…"
+        placeholder="${t("ships.searchName")}"
         style="max-width:24rem"
       />
-      <button type="submit" class="btn btn-sm">Search</button>
-      ${opts.query ? html`<a href="${bp}/ships" class="btn btn-sm btn-ghost">Clear</a>` : ""}
+      <button type="submit" class="btn btn-sm">${t("profile.search")}</button>
+      ${opts.query ? html`<a href="${bp}/ships" class="btn btn-sm btn-ghost">${t("profile.clear")}</a>` : ""}
     </form>
     ${opts.ships.length
       ? html` <div style="overflow-x:auto">
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Manufacturer</th>
-                <th>Size</th>
-                <th>Career</th>
-                <th>Role</th>
-                <th class="text-right">Crew</th>
-                <th class="text-right">Gunners</th>
-                <th class="text-right">Engineers</th>
+                <th>${t("ships.colName")}</th>
+                <th>${t("profile.colManufacturer")}</th>
+                <th>${t("profile.colSize")}</th>
+                <th>${t("profile.colCareer")}</th>
+                <th>${t("profile.colRole")}</th>
+                <th class="text-right">${t("profile.colCrew")}</th>
+                <th class="text-right">${t("ships.colGunners")}</th>
+                <th class="text-right">${t("ships.colEngineers")}</th>
               </tr>
             </thead>
             <tbody>
@@ -5961,11 +5961,11 @@ export function shipsPage(opts: {
           </table>
         </div>`
       : html`<p class="text-dim text-sm">
-          ${opts.query ? "No ships found." : "Search for a ship above."}
+          ${opts.query ? t("profile.noShipsFound") : t("ships.searchAbove")}
         </p>`}`;
 
   return layout({
-    title: "Ship Database",
+    title: t("ships.tabTitle"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -5984,8 +5984,8 @@ export function feedbackPage(opts: {
 }): SafeHtml {
   const bp = opts.basePath;
   const body = html` <div class="page-header">
-      <h1 class="page-title">FEEDBACK</h1>
-      <p class="page-subtitle">Send a bug report, idea, or issue to the fleetplanner team.</p>
+      <h1 class="page-title">${t("feedback.title")}</h1>
+      <p class="page-subtitle">${t("feedback.subtitle")}</p>
     </div>
     <div class="section">
       <form
@@ -5996,33 +5996,33 @@ export function feedbackPage(opts: {
       >
         <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
         <div class="form-group">
-          <label>Subject</label>
+          <label>${t("feedback.subject")}</label>
           <input type="text" name="subject" maxlength="120" required />
         </div>
         <div class="form-group">
-          <label>Message</label>
+          <label>${t("feedback.message")}</label>
           <textarea
             name="message"
             maxlength="1800"
             required
-            placeholder="What happened? What should happen instead?"
+            placeholder="${t("feedback.messagePlaceholder")}"
           ></textarea>
         </div>
         <div class="form-group">
-          <label>Screenshots <span style="opacity:.6">(optional)</span></label>
+          <label>${t("feedback.screenshots")} <span style="opacity:.6">${t("wiz.optional")}</span></label>
           <input type="file" name="screenshots" accept="image/*" multiple />
           <p class="form-hint" style="opacity:.6;font-size:.85rem;margin-top:.35rem">
-            Up to 4 images, max 8&nbsp;MB each (PNG, JPG, GIF, WebP).
+            ${safe(t("feedback.screenshotsHint"))}
           </p>
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn">Send Feedback</button>
+          <button type="submit" class="btn">${t("feedback.send")}</button>
         </div>
       </form>
     </div>`;
 
   return layout({
-    title: "Feedback",
+    title: t("feedback.tabTitle"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

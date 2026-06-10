@@ -680,4 +680,26 @@ export const en: Record<string, string> = {
   "join.jsAShip": "a ship (hangar or catalog search)",
   "join.jsAFireteam": "a fireteam name",
   "join.jsPleaseProvide": "Please provide:",
+  "join.tabPrefix": "Join",
+
+  // Ship database
+  "ships.title": "SHIP DATABASE",
+  "ships.tabTitle": "Ship Database",
+  "ships.sourcedFrom": "Sourced from star-citizen.wiki",
+  "ships.searchName": "Search ship name…",
+  "ships.colName": "Name",
+  "ships.colGunners": "Gunners",
+  "ships.colEngineers": "Engineers",
+  "ships.searchAbove": "Search for a ship above.",
+
+  // Feedback page
+  "feedback.title": "FEEDBACK",
+  "feedback.tabTitle": "Feedback",
+  "feedback.subtitle": "Send a bug report, idea, or issue to the fleetplanner team.",
+  "feedback.subject": "Subject",
+  "feedback.message": "Message",
+  "feedback.messagePlaceholder": "What happened? What should happen instead?",
+  "feedback.screenshots": "Screenshots",
+  "feedback.screenshotsHint": "Up to 4 images, max 8&nbsp;MB each (PNG, JPG, GIF, WebP).",
+  "feedback.send": "Send Feedback",
 };
