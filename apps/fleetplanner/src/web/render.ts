@@ -1380,6 +1380,11 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .comp-chip.filled { background: var(--green, #0f8); border-color: rgba(0,255,136,0.5); }
 .comp-chip.mismatch { background: var(--gold, #fb0); border-color: var(--gold-38, rgba(255,187,0,0.4)); }
 .comp-chip.open { background: transparent; border-style: dashed; opacity: 0.6; }
+/* Inline ✎ rename on the Fleet Needs board (operator) */
+.need-rename-d { display: inline; }
+.need-rename-d > summary { display: inline; list-style: none; cursor: pointer; color: var(--cyan); font-size: 0.8rem; margin-left: 0.35rem; }
+.need-rename-d > summary::-webkit-details-marker { display: none; }
+.need-rename-form { display: flex; gap: 0.3rem; margin-top: 0.35rem; }
 @media (max-width: 760px) {
   .fleet-req-row,
   .comp-row-head {

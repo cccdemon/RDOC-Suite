@@ -1696,6 +1696,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   // ── Fleet Requirements Board (read-only requested/fulfilled/open overview) ──
   type CompRow = {
+    id: string;
     group: string;
     label: string;
     category: string;
@@ -1718,6 +1719,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         (u) => !matchesCategory(r.category, { unitType: u.unitType, ship: u.ship }),
       ).length;
       return {
+        id: r.id,
         group: g.name,
         label: r.label,
         category: r.category,
@@ -1816,6 +1818,28 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               <strong>${r.label}</strong>
               <span class="tag tag-dim">${categoryLabel(r.category)}</span>
               ${r.group ? html`<span class="text-dim text-sm">${r.group}</span>` : safe("")}
+              ${canManage && r.needType === "ship"
+                ? html`<details class="need-rename-d">
+                    <summary title="${t("need.rename")}">✎</summary>
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/needs/${r.id}/rename"
+                      class="need-rename-form"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("overview")}
+                      <input
+                        type="text"
+                        name="name"
+                        value="${r.label}"
+                        maxlength="80"
+                        title="${t("need.renameTitle")}"
+                        style="width:12rem;font-size:.82rem;padding:.15rem .4rem"
+                      />
+                      <button type="submit" class="btn btn-sm">${t("common.save")}</button>
+                    </form>
+                  </details>`
+                : safe("")}
             </div>
             <strong class="fleet-req-num">${r.count}</strong>
             <span class="fleet-req-num">

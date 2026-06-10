@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Schiffsbedarf direkt im Übersicht-Board umbenennen — Branch `feat/rename-need-board`
+
+User will Schiffsbedarfe direkt auf dem Flottenbedarf-Board (Manage → Übersicht-Tab, `reqGroupTable`)
+umbenennen — nicht nur im Fleet-Tab-Editor. Nutzt die bereits vorhandene `renameShipNeed` + Route
+`POST /needs/:reqId/rename`.
+- `web/pages.ts`: `CompRow` + `compRows` bekommen `id`. In `reqGroupTable` pro Schiffs-Zeile
+  (`needType==="ship"`, nur `canManage`) ein inline ✎-`<details>` mit Rename-Form (Name-Input + Save),
+  `returnFields("overview")` → bleibt im Übersicht-Tab (AJAX-Swap re-aktiviert currentTab).
+- `render.ts`: kleine globale CSS für `.need-rename-d`/`-form` (Summary ohne Marker).
+Nur fleetplanner, kein Schema. Build/Deploy: fleetplanner (tsc).
+
 ## Queued / Planned Step - 2026-06-10: Bugfix — Operator kann Spieler keinen Fighter-Wings zuweisen — Branch `fix/assign-fighters`
 
 Bug (User): im Manage-Backend lassen sich Fightern keine Spieler zuweisen. Ursache: Operator-Pfade
