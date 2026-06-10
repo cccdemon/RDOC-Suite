@@ -2650,7 +2650,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <form method="post" action="${bp}/api/ops/${op.id}/needs/ships" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <div class="need-h">Ships <span class="text-dim text-sm">— each pick = 1 hull</span>${helpIcon("Was die Mission an Schiffen braucht. Jeder angehakte Typ = genau 1 benötigtes Schiff. Spieler bieten passende Schiffe an, die du akzeptierst. Mehrere gleiche? Den Typ mehrfach hinzufügen.")}</div>
+              <div class="need-h">${t("need.ships")} <span class="text-dim text-sm">${t("need.shipsHint")}</span>${helpIcon(t("need.shipsHelp"))}</div>
               <div class="need-chips">
                 ${SHIP_TYPES.map(
                   (t) => html`<label class="need-chip"
@@ -2659,8 +2659,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 )}
               </div>
               <div class="need-row">
-                <input type="text" name="details" maxlength="160" placeholder="Details (optional)" />
-                <button type="submit" class="btn btn-sm btn-green">Add ship need(s)</button>
+                <input type="text" name="details" maxlength="160" placeholder="${t("need.detailsOptional")}" />
+                <button type="submit" class="btn btn-sm btn-green">${t("need.addShipNeeds")}</button>
               </div>
               ${shipNeeds.length
                 ? html`<div class="need-list">
@@ -2671,7 +2671,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           type="submit"
                           formaction="${bp}/api/ops/${op.id}/needs/${n.id}/delete"
                           class="need-x"
-                          title="Remove"
+                          title="${t("common.remove")}"
                         >
                           ×
                         </button></span
@@ -2684,24 +2684,24 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <form method="post" action="${bp}/api/ops/${op.id}/needs/fighters" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <div class="need-h">Fighter squads <span class="text-dim text-sm">— 2 pilots each, own fighter</span>${helpIcon("Wie viele Jäger-Rotten du brauchst. 1 Squad = 2 Piloten (Wingman-Paar), jeder bringt seinen eigenen Fighter. Spieler treten den Squads direkt bei.")}</div>
+              <div class="need-h">${t("need.fighterSquads")} <span class="text-dim text-sm">${t("need.fighterHint")}</span>${helpIcon(t("need.fighterHelp"))}</div>
               <div class="need-row">
                 <input type="number" name="count" min="0" max="50" value="${String(fighterCount)}" style="width:72px" />
-                <span class="text-dim text-sm">squad(s)</span>
-                <button type="submit" class="btn btn-sm">Save</button>
+                <span class="text-dim text-sm">${t("need.squads")}</span>
+                <button type="submit" class="btn btn-sm">${t("common.save")}</button>
               </div>
             </form>
 
             <form method="post" action="${bp}/api/ops/${op.id}/needs/cqb" class="need-block">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <div class="need-h">CQB teams <span class="text-dim text-sm">— soldiers, default 4 (max ${String(CQB_TEAM_MAX)})</span>${helpIcon("Wie viele Boden-/FPS-Teams du brauchst und wie groß (Soldaten pro Team, Standard 4, max 8). Spieler melden sich als Soldaten und füllen die Teams; du kannst sie auch selbst zuweisen.")}</div>
+              <div class="need-h">${t("need.cqbTeams")} <span class="text-dim text-sm">${t("need.cqbHint", { max: String(CQB_TEAM_MAX) })}</span>${helpIcon(t("need.cqbHelp"))}</div>
               <div class="need-row">
                 <input type="number" name="count" min="0" max="50" value="${String(cqbCount)}" style="width:72px" />
-                <span class="text-dim text-sm">team(s) ×</span>
+                <span class="text-dim text-sm">${t("need.teamsX")}</span>
                 <input type="number" name="size" min="1" max="${String(CQB_TEAM_MAX)}" value="${String(cqbSize)}" style="width:64px" />
-                <span class="text-dim text-sm">soldiers</span>
-                <button type="submit" class="btn btn-sm">Save</button>
+                <span class="text-dim text-sm">${t("need.soldiers")}</span>
+                <button type="submit" class="btn btn-sm">${t("common.save")}</button>
               </div>
             </form>
           </div>`
@@ -2712,10 +2712,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   const adminPanel = html`<div class="opv2-grid">
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Operation Control</div>
+      <div class="opv2-panel-title">${t("admin.opControl")}</div>
       <div class="opv2-actions">
         ${canManage
-          ? html`<a href="${tabUrl("overview")}" class="btn btn-sm">Edit Overview</a>`
+          ? html`<a href="${tabUrl("overview")}" class="btn btn-sm">${t("admin.editOverview")}</a>`
           : ""}
         ${canManage
           ? html`<form method="post" action="${bp}/ops/${op.id}/delete" class="inline">
@@ -2723,17 +2723,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               <button
                 type="submit"
                 class="btn btn-sm btn-danger"
-                onclick="return confirm('Delete this operation?')"
+                onclick="return confirm('${t("admin.confirmDeleteOp")}')"
               >
-                Delete
+                ${t("common.delete")}
               </button>
             </form>`
           : safe("")}
       </div>
-      <p class="text-dim text-sm mt-1">Status controls are in the Action Details bar above.</p>
+      <p class="text-dim text-sm mt-1">${t("admin.statusBarHint")}</p>
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Leaders</div>
+      <div class="opv2-panel-title">${t("op.leaders")}</div>
       ${op.leaders.length
         ? op.leaders.map(
             (leader) =>
@@ -2751,21 +2751,21 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       <input type="hidden" name="_csrf" value="${csrf}" />
                       <input type="hidden" name="userId" value="${leader.user.id}" />
                       ${returnFields("admin")}
-                      <button type="submit" class="btn btn-sm btn-ghost">Remove</button>
+                      <button type="submit" class="btn btn-sm btn-ghost">${t("common.remove")}</button>
                     </form>`
                   : safe("")}
               </div>`,
           )
-        : html`<p class="text-dim text-sm">No leaders assigned.</p>`}
+        : html`<p class="text-dim text-sm">${t("admin.noLeaders")}</p>`}
       ${canManage
         ? html`<form method="post" action="${bp}/api/ops/${op.id}/leaders" class="opv2-form mt-1">
             <input type="hidden" name="_csrf" value="${csrf}" />
             ${returnFields("admin")}
             <div class="opv2-form-grid">
               <div>
-                <label>Add leader</label>
+                <label>${t("admin.addLeader")}</label>
                 <select name="userId" required>
-                  <option value="">Select user...</option>
+                  <option value="">${t("common.selectUser")}</option>
                   ${opts.assignableUsers.map(
                     (assignableUser) =>
                       html`<option value="${assignableUser.id}">
@@ -2775,28 +2775,28 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 </select>
               </div>
               <div>
-                <label>Role</label>
+                <label>${t("admin.role")}</label>
                 <select name="leaderRole">
-                  <option value="event_leader">Event Leader</option>
-                  <option value="fleet_commander">Fleet Commander</option>
-                  <option value="raid_leader">Raid Leader</option>
-                  <option value="wing_commander">Wing Commander</option>
+                  <option value="event_leader">${t("admin.roleEventLeader")}</option>
+                  <option value="fleet_commander">${t("admin.roleFleetCommander")}</option>
+                  <option value="raid_leader">${t("admin.roleRaidLeader")}</option>
+                  <option value="wing_commander">${t("admin.roleWingCommander")}</option>
                 </select>
               </div>
             </div>
-            <button type="submit" class="btn btn-sm mt-1">Add Leader</button>
+            <button type="submit" class="btn btn-sm mt-1">${t("admin.addLeaderBtn")}</button>
           </form>`
         : safe("")}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Ask the Fleet Operator</div>
+      <div class="opv2-panel-title">${t("admin.askOperator")}</div>
       ${op.questions.length
         ? op.questions.map(
             (q) => html`<div class="opv2-row" style="display:block">
               <div><strong>${nm(q.asker)}:</strong> ${q.body}</div>
               ${q.answer
                 ? html`<div class="text-sm" style="color:var(--green,#3ad07a);margin-top:4px">
-                    Reply from <strong>${q.answeredBy}:</strong> ${q.answer}
+                    ${t("admin.replyFrom")} <strong>${q.answeredBy}:</strong> ${q.answer}
                   </div>`
                 : canManage
                   ? html`<form
@@ -2805,16 +2805,16 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       class="opv2-form mt-1"
                     >
                       <input type="hidden" name="_csrf" value="${csrf}" />
-                      <input name="answer" maxlength="1000" placeholder="Answer..." />
-                      <button type="submit" class="btn btn-sm btn-green mt-1">Answer</button>
+                      <input name="answer" maxlength="1000" placeholder="${t("admin.answerPlaceholder")}" />
+                      <button type="submit" class="btn btn-sm btn-green mt-1">${t("admin.answer")}</button>
                     </form>`
-                  : html`<div class="text-dim text-sm" style="margin-top:4px">Not answered yet</div>`}
+                  : html`<div class="text-dim text-sm" style="margin-top:4px">${t("admin.notAnswered")}</div>`}
             </div>`,
           )
-        : html`<p class="text-dim text-sm">No questions yet.</p>`}
+        : html`<p class="text-dim text-sm">${t("admin.noQuestions")}</p>`}
     </section>
     <section class="opv2-panel">
-      <div class="opv2-panel-title">Audit Log</div>
+      <div class="opv2-panel-title">${t("admin.auditLog")}</div>
       ${op.auditLogs.length
         ? html`<div class="text-sm" style="line-height:1.7">
             ${op.auditLogs.slice(0, 30).map(
@@ -2826,7 +2826,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               </div>`,
             )}
           </div>`
-        : html`<p class="text-dim text-sm">No audit entries yet.</p>`}
+        : html`<p class="text-dim text-sm">${t("admin.noAudit")}</p>`}
     </section>
   </div>`;
 
@@ -2839,8 +2839,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         class="flash flash-warn"
         style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap"
       >
-        <span>Public operation - member names are hidden. Sign in to claim seats or join as crew.</span>
-        <a class="btn btn-sm btn-gold" href="${bp}/login">Sign in</a>
+        <span>${t("op.guestBanner")}</span>
+        <a class="btn btn-sm btn-gold" href="${bp}/login">${t("op.signIn")}</a>
       </div>`
     : safe("");
 
@@ -2854,22 +2854,22 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     !user || isLeader
       ? safe("")
       : hasSeat
-        ? html`<div class="opv2-cta done">Seat claimed.</div>`
+        ? html`<div class="opv2-cta done">${t("op.seatClaimed")}</div>`
         : hasCrewReq
           ? html`<div class="opv2-cta done">
-              Signup received - waiting for Fleet Operator assignment.
+              ${t("op.signupReceived")}
             </div>`
           : op.status === "open"
             ? html`<div class="opv2-cta">
-                <div class="opv2-cta-h">I want to join</div>
+                <div class="opv2-cta-h">${t("op.iWantToJoin")}</div>
                 <div class="opv2-cta-actions">
-                  <a class="btn btn-green" href="${bp}/ops/${op.id}">Join</a>
-                  <a class="btn" href="${bp}/ops/${op.id}#open-seats">Choose an open seat</a>
+                  <a class="btn btn-green" href="${bp}/ops/${op.id}">${t("op.join")}</a>
+                  <a class="btn" href="${bp}/ops/${op.id}#open-seats">${t("op.chooseSeat")}</a>
                 </div>
               </div>`
             : op.status === "locked"
               ? html`<div class="opv2-cta closed">
-                  Signup closed - contact the Fleet Operator.
+                  ${t("op.signupClosed")}
                 </div>`
               : safe("");
 
@@ -2879,25 +2879,25 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const unslottedAccepted = acceptedUnits.filter((u) => !u.requirementId).length;
   const unanswered = op.questions.filter((q) => !q.answer).length;
   const NEXT_STEP: Record<string, { to: string; label: string } | undefined> = {
-    draft: { to: "open", label: "Open sign-ups" },
-    open: { to: "locked", label: "Lock sign-ups" },
-    locked: { to: "starting", label: "Start pre-brief" },
-    starting: { to: "in_progress", label: "Mark live" },
-    in_progress: { to: "completed", label: "Complete operation" },
+    draft: { to: "open", label: t("mg.openSignups") },
+    open: { to: "locked", label: t("mg.lockSignups") },
+    locked: { to: "starting", label: t("mg.startPrebrief") },
+    starting: { to: "in_progress", label: t("mg.markLive") },
+    in_progress: { to: "completed", label: t("mg.completeOp") },
   };
   const nextStep = NEXT_STEP[op.status];
   const SPINE = [
-    { key: "draft", label: "Draft" },
-    { key: "open", label: "Open" },
-    { key: "locked", label: "Locked" },
-    { key: "starting", label: "Starting" },
-    { key: "in_progress", label: "Live" },
-    { key: "completed", label: "Done" },
+    { key: "draft", label: t("mg.spineDraft") },
+    { key: "open", label: t("mg.spineOpen") },
+    { key: "locked", label: t("mg.spineLocked") },
+    { key: "starting", label: t("mg.spineStarting") },
+    { key: "in_progress", label: t("mg.spineLive") },
+    { key: "completed", label: t("mg.spineDone") },
   ];
   const curIdx = SPINE.findIndex((s) => s.key === op.status);
   const statusSpine = html`<div class="mg-spine">
     ${op.status === "cancelled"
-      ? html`<span class="mg-step active"><span class="dot"></span>Cancelled</span>`
+      ? html`<span class="mg-step active"><span class="dot"></span>${t("mg.cancelled")}</span>`
       : SPINE.map((s, i) => {
           const cls = i < curIdx ? "done" : i === curIdx ? "active" : "";
           return html`${i ? html`<span class="sep">›</span>` : safe("")}<span class="mg-step ${cls}"
@@ -2911,34 +2911,34 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   if (canManage && pendingUnits.length)
     needs.push({
       icon: "⚠",
-      label: `Accept / decline ${pendingUnits.length} pending ${pendingUnits.length === 1 ? "unit" : "units"}`,
+      label: t("mg.needAcceptDecline", { n: pendingUnits.length }),
       tab: "overview",
     });
   if (canManage && unslottedAccepted)
     needs.push({
       icon: "⚠",
-      label: `Assign ${unslottedAccepted} accepted ${unslottedAccepted === 1 ? "unit" : "units"} to a slot`,
+      label: t("mg.needAssignSlot", { n: unslottedAccepted }),
       tab: "overview",
     });
   if (openSeatsTotal)
     needs.push({
       icon: "⚠",
-      label: `Fill ${openSeatsTotal} open ${openSeatsTotal === 1 ? "seat" : "seats"}`,
+      label: t("mg.needFillSeats", { n: openSeatsTotal }),
       tab: "crew",
     });
   if (canManage && unanswered)
     needs.push({
       icon: "✉",
-      label: `Answer ${unanswered} ${unanswered === 1 ? "question" : "questions"}`,
+      label: t("mg.needAnswer", { n: unanswered }),
       tab: "admin",
     });
   const ready: Array<{ ok: boolean; label: string }> = [
-    { ok: !!op.eventVoiceChannelId, label: "Event voice channel" },
-    { ok: op.leaders.length > 0, label: `Leaders (${op.leaders.length})` },
-    { ok: opts.voiceEnabled === true, label: "Voice integration enabled" },
+    { ok: !!op.eventVoiceChannelId, label: t("mg.readyVoiceChannel") },
+    { ok: op.leaders.length > 0, label: t("mg.readyLeaders", { n: op.leaders.length }) },
+    { ok: opts.voiceEnabled === true, label: t("mg.readyVoiceEnabled") },
   ];
   if (minP > 0)
-    ready.push({ ok: assignedSeats.length >= minP, label: `Min players (${assignedSeats.length}/${minP})` });
+    ready.push({ ok: assignedSeats.length >= minP, label: t("mg.readyMinPlayers", { have: assignedSeats.length, min: minP }) });
   // Tabbed work area (attention-driven): which tab has open tasks → gold outline;
   // active tab is yellow. Default to the first attention tab so the operator
   // lands where action is needed.
@@ -2951,12 +2951,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     admin: !!user && unanswered > 0,
   };
   const tabDefs = [
-    { id: "overview", label: "Overview" },
-    { id: "fleet", label: "Fleet" },
-    { id: "crew", label: "Participants" },
-    { id: "voice", label: "Voice" },
+    { id: "overview", label: t("tab.overview") },
+    { id: "fleet", label: t("tab.fleet") },
+    { id: "crew", label: t("op.participants") },
+    { id: "voice", label: t("tab.voice") },
     // "Voice Access" (commanders) tab disabled while voice is reworked.
-    ...(user ? [{ id: "admin", label: "Admin" }] : []),
+    ...(user ? [{ id: "admin", label: t("tab.admin") }] : []),
   ];
   const firstAttn = tabDefs.find((t) => tabAttn[t.id]);
   const mgActiveTab = tabDefs.some((t) => t.id === opts.tab)
