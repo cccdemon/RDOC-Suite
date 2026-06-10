@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-10: Schiffs-Fleetneeds benennbar machen — Branch `feat/name-fleetneed`
+
+User: im Flottenbedarf-Board kann man Schiffsbedarfe nicht benennen (zeigt nur Typ-Label „Capital"/
+„Any ship"). CQB-/Fighter-Teams sind benennbar, Schiffe nicht. Fix: Operator kann jedem Schiffsbedarf
+einen eigenen Namen geben (gespeichert in `CompositionRequirement.label`; Boards rendern bereits
+`r.label`).
+- `services/needs.ts`: `addShipNeeds(…, name?)` setzt `label = name || shipTypeLabel(slug)`;
+  neue `renameShipNeed(op, reqId, name)` (leer = Reset auf Typ-Label).
+- `routes/api.ts`: `/needs/ships` liest `name`; neue Route `POST /needs/:reqId/rename`.
+- `web/pages.ts` Fleet-Tab Need-Editor: „Name (optional)"-Feld im Add-Form; Schiffsbedarf-Liste aus
+  dem Add-Form herausgelöst → pro Bedarf eine kleine Rename-Form (Typ-Sub-Tag + Name-Input + ✎ +
+  ×-Delete). Board (Join + Manage) zeigt den Namen automatisch über `r.label`.
+- i18n `need.namePlaceholder/rename/renameTitle` (de+en).
+Nur fleetplanner, kein Schema (label existiert). Build/Deploy: fleetplanner (tsc).
+
 ## Queued / Planned Step - 2026-06-10: Roster-Layout-Toggle (Horizontal ↔ Spalten) auf Join-Seite — Branch `feat/op-ics`
 
 User (mit ASCII-Vorschau bestätigt): Toggle im Spieler-Anmeldung-Screen. Ansicht 1 = aktuell

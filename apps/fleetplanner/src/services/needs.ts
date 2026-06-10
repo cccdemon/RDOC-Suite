@@ -61,9 +61,11 @@ export async function addShipNeeds(
   operationId: string,
   shipTypes: string[],
   details: string | null,
+  name?: string | null,
 ): Promise<number> {
   const valid = shipTypes.filter((s) => SHIP_TYPE_SLUGS.includes(s as (typeof SHIP_TYPE_SLUGS)[number]));
   if (valid.length === 0) return 0;
+  const customName = name?.trim().slice(0, 80) || null;
   const groupId = await fleetReqGroupId(operationId);
   const last = await prisma.compositionRequirement.aggregate({
     where: { groupId },
@@ -80,13 +82,29 @@ export async function addShipNeeds(
         count: 1,
         // legacy mirror (kept until Phase 5)
         category: slug,
-        label: shipTypeLabel(slug),
+        // Operator-given name, else the ship-type label as a sensible default.
+        label: customName ?? shipTypeLabel(slug),
         note: details?.trim() || null,
         order: order++,
       },
     });
   }
   return valid.length;
+}
+
+/** Operator: rename a single ship need (empty name resets to the type label). */
+export async function renameShipNeed(
+  operationId: string,
+  reqId: string,
+  name: string,
+): Promise<void> {
+  const req = await prisma.compositionRequirement.findFirst({
+    where: { id: reqId, needType: "ship", group: { operationId } },
+    select: { id: true, shipType: true },
+  });
+  if (!req) return;
+  const label = name.trim().slice(0, 80) || shipTypeLabel(req.shipType ?? "any");
+  await prisma.compositionRequirement.update({ where: { id: req.id }, data: { label } });
 }
 
 /** Ensure exactly `count` eager team groups of a kind exist (by name prefix),
