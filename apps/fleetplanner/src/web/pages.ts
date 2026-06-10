@@ -3998,7 +3998,7 @@ ${op?.description ?? ""}</textarea
           if (missing.length > 0) {
             e.preventDefault();
             errorBox.innerHTML =
-              "Bitte fülle die Pflichtfelder aus: " +
+              "${safe(t("opf.fillRequired"))} " +
               missing.map(labelFor).join(", ") + ".";
             errorBox.hidden = false;
             missing[0].focus();
@@ -4011,7 +4011,7 @@ ${op?.description ?? ""}</textarea
     </script>`;
 
   return layout({
-    title: op ? `Edit: ${op.title}` : "New Operation",
+    title: op ? `${t("common.edit")}: ${op.title}` : t("opf.newTitleTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -4053,7 +4053,14 @@ export function opWizardPage(opts: {
       system: l.systemSlug,
       label: `${l.name} // ${l.system}${l.classification ? ` // ${l.classification}` : ""}`,
     }));
-  const steps = ["Basics", "Briefing", "Discord", "Fleet Requirements", "Review", "Share"];
+  const steps = [
+    t("wiz.stepBasics"),
+    t("wiz.stepBriefing"),
+    t("wiz.stepDiscord"),
+    t("wiz.stepFleetReq"),
+    t("wiz.stepReview"),
+    t("wiz.stepShare"),
+  ];
 
   const body = html` <style>
       .wiz-layout { display: grid; grid-template-columns: 210px minmax(0, 1fr) 300px; gap: 1rem; align-items: start; }
@@ -4098,7 +4105,7 @@ export function opWizardPage(opts: {
         .wiz-rail-hint { display: none; }
       }
     </style>
-    <div class="page-header"><h1 class="page-title">CREATE EVENT</h1></div>
+    <div class="page-header"><h1 class="page-title">${t("wiz.createEvent")}</h1></div>
     <form method="post" action="${bp}/ops/new" id="wiz-form" novalidate>
       <input type="hidden" name="_csrf" value="${csrf}" />
       <div class="wiz-layout">
@@ -4112,7 +4119,7 @@ export function opWizardPage(opts: {
             )}
           </ol>
           <p class="wiz-rail-hint">
-            Create an event in a few steps. You can save as draft at any time.
+            ${t("wiz.railHint")}
           </p>
         </aside>
 
@@ -4120,10 +4127,10 @@ export function opWizardPage(opts: {
           <div class="form-errors" id="wiz-errors" hidden></div>
 
           <section class="wiz-step card" data-step="0">
-            <h3 class="wiz-sum-h">Basics</h3>
+            <h3 class="wiz-sum-h">${t("wiz.stepBasics")}</h3>
             ${opts.operatorGuilds && opts.operatorGuilds.length > 0
               ? html` <div class="form-group">
-                  <label>Server <span class="req" title="required">*</span></label>
+                  <label>${t("opf.server")} <span class="req" title="${t("common.required")}">*</span></label>
                   ${selectedOperatorGuild
                     ? html`<input type="hidden" name="guildId" value="${selectedOperatorGuild.id}" />
                         <div class="guild-selected-badge">${selectedOperatorGuild.name}</div>`
@@ -4131,7 +4138,7 @@ export function opWizardPage(opts: {
                       ? html`<input type="hidden" name="guildId" value="${opts.operatorGuilds[0].id}" />
                           <div class="guild-selected-badge">${opts.operatorGuilds[0].name}</div>`
                       : html`<select name="guildId" required class="guild-picker-select-form">
-                          <option value="">— select server —</option>
+                          <option value="">${t("opf.selectServer")}</option>
                           ${opts.operatorGuilds.map(
                             (g) => html`<option value="${g.id}">${g.name}</option>`,
                           )}
@@ -4139,56 +4146,55 @@ export function opWizardPage(opts: {
                 </div>`
               : safe("")}
             <div class="form-group">
-              <label>Event Name <span class="req" title="required">*</span></label>
+              <label>${t("wiz.eventName")} <span class="req" title="${t("common.required")}">*</span></label>
               <input type="text" name="title" required placeholder="Operation Darkstar" />
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Start Time (${gtz}) <span class="req" title="required">*</span></label>
+                <label>${t("wiz.startTime", { tz: gtz })} <span class="req" title="${t("common.required")}">*</span></label>
                 <input type="datetime-local" name="scheduledAt" required />
               </div>
               <div class="form-group">
-                <label>Mission Type</label>
+                <label>${t("wiz.missionType")}</label>
                 <select name="opType">
-                  ${opTypes.map((t) => html`<option value="${t}">${t}</option>`)}
+                  ${opTypes.map((ot) => html`<option value="${ot}">${opTypeText(ot)}</option>`)}
                 </select>
               </div>
             </div>
             <div class="form-row">
               <div class="form-group">
-                <label>Repeat</label>
+                <label>${t("wiz.repeat")}</label>
                 <select name="recurFreq">
-                  <option value="">Does not repeat</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="biweekly">Every 2 weeks</option>
-                  <option value="monthly_nth">Monthly (same weekday)</option>
-                  <option value="yearly">Yearly</option>
+                  <option value="">${t("wiz.repeatNever")}</option>
+                  <option value="weekly">${t("wiz.repeatWeekly")}</option>
+                  <option value="biweekly">${t("wiz.repeatBiweekly")}</option>
+                  <option value="monthly_nth">${t("wiz.repeatMonthly")}</option>
+                  <option value="yearly">${t("wiz.repeatYearly")}</option>
                 </select>
               </div>
               <div class="form-group">
-                <label>Ends after <span style="font-weight:normal;opacity:.65">(optional)</span></label>
-                <input type="number" name="recurCount" min="1" max="365" placeholder="N occurrences" />
+                <label>${t("wiz.endsAfter")} <span style="font-weight:normal;opacity:.65">${t("wiz.optional")}</span></label>
+                <input type="number" name="recurCount" min="1" max="365" placeholder="${t("wiz.nOccurrences")}" />
               </div>
               <div class="form-group">
-                <label>…or until <span style="font-weight:normal;opacity:.65">(optional)</span></label>
+                <label>${t("wiz.orUntil")} <span style="font-weight:normal;opacity:.65">${t("wiz.optional")}</span></label>
                 <input type="date" name="recurUntil" />
               </div>
             </div>
             <p class="text-dim text-sm" style="margin:-4px 0 4px">
-              Recurring events: each occurrence becomes its own operation with its own roster, and
-              Discord shows the native recurring badge. The pattern follows the Start Time you pick.
+              ${t("wiz.recurNote")}
             </p>
             <div class="form-row">
               <div class="form-group">
-                <label>System</label>
+                <label>${t("opf.meetingSystem")}</label>
                 <select name="meetingSystem" id="meeting-system-select">
                   ${SYSTEMS.map((s) => html`<option value="${s}">${systemLabel(s)}</option>`)}
                 </select>
               </div>
               <div class="form-group">
-                <label>Rendezvous</label>
+                <label>${t("op.fldRendezvous")}</label>
                 <select name="meetingLocationSlug" id="meeting-location-select">
-                  <option value="" data-system="">-- select location --</option>
+                  <option value="" data-system="">${t("opf.selectLocation")}</option>
                   ${locationOptions.map(
                     (l) =>
                       html`<option value="${l.slug}" data-system="${l.system}" data-label="${l.value}">
@@ -4200,11 +4206,11 @@ export function opWizardPage(opts: {
               </div>
             </div>
             <div class="form-group">
-              <label>Visibility</label>
+              <label>${t("vis.aria")}</label>
               <select name="visibility">
-                <option value="private" selected>🔒 Private (this Discord only)</option>
-                <option value="partners">🤝 Partners (this + linked)</option>
-                <option value="public">🌐 Public (any logged-in user)</option>
+                <option value="private" selected>🔒 ${t("vis.private.long")}</option>
+                <option value="partners">🤝 ${t("vis.partners.long")}</option>
+                <option value="public">🌐 ${t("vis.public.long")}</option>
               </select>
             </div>
           </section>
@@ -4215,9 +4221,9 @@ export function opWizardPage(opts: {
               style="display:flex;align-items:center;justify-content:space-between;gap:8px"
             >
               <label style="margin:0"
-                >Briefing <span style="font-weight:normal;opacity:.65">(Markdown)</span></label
+                >${t("op.briefing")} <span style="font-weight:normal;opacity:.65">(Markdown)</span></label
               >
-              <button type="button" class="btn btn-sm btn-ghost" id="wiz-md-toggle">Preview</button>
+              <button type="button" class="btn btn-sm btn-ghost" id="wiz-md-toggle">${t("wiz.preview")}</button>
             </div>
             <textarea
               name="description"
@@ -4227,38 +4233,38 @@ export function opWizardPage(opts: {
             ></textarea>
             <div class="wiz-md-prev" id="wiz-md-prev" hidden></div>
             <details class="wiz-md-help">
-              <summary>Markdown help</summary>
+              <summary>${t("wiz.mdHelp")}</summary>
               <table class="wiz-md-cheat">
-                <tr><td><code>## Heading</code></td><td>section title</td></tr>
-                <tr><td><code>### Subheading</code></td><td>smaller title</td></tr>
-                <tr><td><code>**bold**</code></td><td><b>bold</b> text</td></tr>
-                <tr><td><code>*italic*</code></td><td><i>italic</i> text</td></tr>
-                <tr><td><code>&#96;code&#96;</code></td><td>monospace</td></tr>
-                <tr><td><code>- item</code></td><td>bullet list</td></tr>
-                <tr><td><code>[label](https://…)</code></td><td>link</td></tr>
-                <tr><td>empty line</td><td>new paragraph</td></tr>
+                <tr><td><code>## Heading</code></td><td>${t("wiz.mdSectionTitle")}</td></tr>
+                <tr><td><code>### Subheading</code></td><td>${t("wiz.mdSmallerTitle")}</td></tr>
+                <tr><td><code>**bold**</code></td><td><b>${t("wiz.mdBold")}</b></td></tr>
+                <tr><td><code>*italic*</code></td><td><i>${t("wiz.mdItalic")}</i></td></tr>
+                <tr><td><code>&#96;code&#96;</code></td><td>${t("wiz.mdMonospace")}</td></tr>
+                <tr><td><code>- item</code></td><td>${t("wiz.mdBulletList")}</td></tr>
+                <tr><td><code>[label](https://…)</code></td><td>${t("wiz.mdLink")}</td></tr>
+                <tr><td>${t("wiz.mdEmptyLine")}</td><td>${t("wiz.mdNewParagraph")}</td></tr>
               </table>
             </details>
           </section>
 
           <section class="wiz-step card" data-step="2" hidden>
-            <h3 class="wiz-sum-h">Discord</h3>
+            <h3 class="wiz-sum-h">${t("wiz.stepDiscord")}</h3>
             ${opts.guildVoiceChannels && opts.guildVoiceChannels.length > 0
               ? html` <div class="form-group">
                   <label
-                    >Event Voice Channel
-                    <span style="font-weight:normal;opacity:.65">(optional)</span></label
+                    >${t("wiz.eventVoiceChannel")}
+                    <span style="font-weight:normal;opacity:.65">${t("wiz.optionalShort")}</span></label
                   >
                   <select name="eventVoiceChannelId">
-                    <option value="">— none —</option>
+                    <option value="">${t("op.noneDash")}</option>
                     ${opts.guildVoiceChannels.map(
                       (ch) => html`<option value="${ch.id}">${ch.name}</option>`,
                     )}
                   </select>
                 </div>`
-              : html`<p class="text-dim text-sm">No Discord voice channels available for this server.</p>`}
+              : html`<p class="text-dim text-sm">${t("wiz.noVoiceChannels")}</p>`}
             <p class="wiz-rail-hint" style="margin-top:10px">
-              Announcement channel + Commander Net are configured in Server Settings.
+              ${t("wiz.announceHint")}
             </p>
           </section>
 
@@ -4267,18 +4273,18 @@ export function opWizardPage(opts: {
               class="form-group"
               style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px"
             >
-              <h3 class="wiz-sum-h" style="margin:0">Fleet Requirements</h3>
+              <h3 class="wiz-sum-h" style="margin:0">${t("wiz.stepFleetReq")}</h3>
               <select id="wiz-tpl" class="guild-picker-select-form" style="max-width:230px">
-                <option value="">📁 Load template…</option>
-                ${COMPOSITION_TEMPLATES.map((t, i) => html`<option value="${i}">${t.name}</option>`)}
+                <option value="">${t("wiz.loadTemplate")}</option>
+                ${COMPOSITION_TEMPLATES.map((tpl, i) => html`<option value="${i}">${tpl.name}</option>`)}
               </select>
             </div>
             <p class="wiz-rail-hint" style="margin:0 0 12px">
-              What does the mission need? Requested counts per role — crew claims the seats later.
+              ${t("wiz.fleetReqHint")}
             </p>
             <div id="wiz-comp-rows"></div>
             <button type="button" class="btn btn-sm btn-ghost" id="wiz-comp-add" style="margin-top:8px">
-              + Add requirement
+              + ${t("wiz.addRequirement")}
             </button>
             <input type="hidden" name="compositionJson" id="wiz-comp-json" value="[]" />
             <div class="form-row" style="margin-top:16px">
