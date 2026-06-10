@@ -622,9 +622,9 @@ function joinInviteBanner(url: string | null | undefined): SafeHtml | string {
     class="flash flash-warn"
     style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap"
   >
-    <span>You're not in this operation's Discord server — join it to take part in the voice channels:</span>
+    <span>${t("op.joinInviteBanner")}</span>
     <a class="btn btn-sm btn-gold" href="${url}" target="_blank" rel="noopener noreferrer"
-      >Join Event Discord</a
+      >${t("op.joinEventDiscord")}</a
     >
   </div>`;
 }
@@ -648,9 +648,9 @@ function multiPosTag(userId: string | null | undefined, multiPos: Set<string>): 
   if (!userId || !multiPos.has(userId)) return "";
   return html`<span
     class="tag tag-gold"
-    title="In mehreren Units — bekommt nur EINEN Voice-Channel (primäre/erste Unit). Kann sich im Discord frei zwischen seinen Missionskanälen bewegen."
+    title="${t("op.multiPosTitle")}"
     style="margin-left:.35rem;font-size:.6rem"
-    >⚑ mehrfach</span
+    >⚑ ${t("op.multiPos")}</span
   >`;
 }
 
@@ -671,7 +671,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   // Guest view of a public op (not logged in): hide member usernames for privacy.
   // Manage/claim controls are already gated on `user` (null here), so they vanish.
   const redactNames = opts.redactNames === true;
-  const nm = (name?: string | null) => (redactNames ? "Mitglied" : (name ?? "?"));
+  const nm = (name?: string | null) => (redactNames ? t("common.member") : (name ?? "?"));
   // Display-only clip (does not change stored names) — keeps long handles tidy.
   const clip = (s?: string | null, n = 30) => {
     const t = s ?? "";
@@ -754,12 +754,12 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     </div>`;
 
   const unitName = (unit: UnitFull) =>
-    unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+    unit.unitType === "ship" ? (unit.ship?.name ?? t("common.unknownShip")) : (unit.squadName ?? t("common.squad"));
 
   const unitTypeLabel = (unit: UnitFull) => (unit.unitType === "ship" ? "SHIP" : "FPS");
 
   const unitTypeDetail = (unit: UnitFull) =>
-    unit.unitType === "ship" ? (unit.ship?.name ?? "Unknown Ship") : (unit.squadName ?? "Squad");
+    unit.unitType === "ship" ? (unit.ship?.name ?? t("common.unknownShip")) : (unit.squadName ?? t("common.squad"));
 
   const seatRow = (unit: UnitFull, seat: UnitFull["seats"][number]) => {
     const claimed = !!seat.userId;
@@ -784,25 +784,25 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         <span>${seat.seatType}</span>
       </div>
       <div class="opv2-seat-user ${claimed ? "" : "empty"}">
-        ${claimed ? nm(seat.user?.username) : "open"}${claimed && !redactNames ? multiPosTag(seat.userId, multiPos) : ""}
+        ${claimed ? nm(seat.user?.username) : t("common.open")}${claimed && !redactNames ? multiPosTag(seat.userId, multiPos) : ""}
       </div>
       <div class="opv2-seat-actions">
-        ${!seat.active ? html`<span class="tag tag-dim">disabled</span>` : safe("")}
+        ${!seat.active ? html`<span class="tag tag-dim">${t("common.disabled")}</span>` : safe("")}
         ${canClaim
           ? html`<form method="post" action="${bp}/api/seats/${seat.id}/claim" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <button type="submit" class="btn btn-sm btn-green">Claim</button>
+              <button type="submit" class="btn btn-sm btn-green">${t("common.claim")}</button>
             </form>`
           : safe("")}
         ${canAssign
           ? html`<details class="opv2-seat-assign">
-              <summary class="btn btn-sm btn-ghost">Assign</summary>
+              <summary class="btn btn-sm btn-ghost">${t("common.assign")}</summary>
               <form method="post" action="${bp}/api/seats/${seat.id}/assign">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 ${returnFields("fleet")}
                 <select name="userId" required>
-                  <option value="">Select user...</option>
+                  <option value="">${t("common.selectUser")}</option>
                   ${opts.assignableUsers.map(
                     (assignableUser) =>
                       html`<option value="${assignableUser.id}">
@@ -810,7 +810,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       </option>`,
                   )}
                 </select>
-                <button type="submit" class="btn btn-sm">Add</button>
+                <button type="submit" class="btn btn-sm">${t("common.add")}</button>
               </form>
             </details>`
           : safe("")}
@@ -818,7 +818,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           ? html`<form method="post" action="${bp}/api/seats/${seat.id}/unclaim" class="inline">
               <input type="hidden" name="_csrf" value="${csrf}" />
               ${returnFields("fleet")}
-              <button type="submit" class="btn btn-sm btn-ghost">Release</button>
+              <button type="submit" class="btn btn-sm btn-ghost">${t("common.release")}</button>
             </form>`
           : safe("")}
       </div>
@@ -830,7 +830,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     if (!canConfigureSeats) return safe("");
 
     return html`<details class="opv2-edit-block">
-      <summary class="btn btn-sm btn-ghost">Seat Setup</summary>
+      <summary class="btn btn-sm btn-ghost">${t("op.seatSetup")}</summary>
       <form
         method="post"
         action="${bp}/api/ops/${op.id}/units/${unit.id}/seats"
@@ -841,8 +841,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         ${unit.seats.map((seat) => {
           const placeholder =
             seat.seatType === "fps"
-              ? "Boomtuber, Railgunner, Medic, Soldier, Sniper"
-              : "Turret top, Turret bottom, Engineer, Scanner";
+              ? t("op.seatPlaceholderFps")
+              : t("op.seatPlaceholderShip");
           return html`<div class="opv2-seat-setup-row">
             <input
               type="text"
@@ -860,11 +860,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 ${seat.active ? safe("checked") : ""}
                 ${seat.order === 0 ? safe("checked disabled") : ""}
               />
-              Active
+              ${t("common.active")}
             </label>
           </div>`;
         })}
-        <button type="submit" class="btn btn-sm">Save Seats</button>
+        <button type="submit" class="btn btn-sm">${t("op.saveSeats")}</button>
       </form>
     </details>`;
   };
@@ -911,8 +911,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         const who = seat.user
           ? ` · ${nm(seat.user.username)}`
           : state === "open"
-            ? " · open"
-            : " · off";
+            ? ` · ${t("common.open")}`
+            : ` · ${t("common.off")}`;
         return html`<span
           title="${seat.label}${who}"
           style="display:inline-flex;align-items:center;gap:4px;font-size:10px;line-height:1;padding:3px 6px;border-radius:3px;border:1px solid ${color};color:${color};opacity:${state === "disabled" ? "0.5" : "1"}"
@@ -948,7 +948,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 >
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   ${returnFields("fleet")}
-                  <button type="submit" class="btn btn-sm btn-green">Accept</button>
+                  <button type="submit" class="btn btn-sm btn-green">${t("common.accept")}</button>
                 </form>
                 <form
                   method="post"
@@ -957,7 +957,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 >
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   ${returnFields("fleet")}
-                  <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                  <button type="submit" class="btn btn-sm btn-danger">${t("common.reject")}</button>
                 </form>
               </div>`
             : safe("")}
@@ -972,16 +972,16 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 <button
                   type="submit"
                   class="btn btn-sm btn-ghost"
-                  onclick="return confirm('Delete this unit?')"
+                  onclick="return confirm('${t("op.confirmDeleteUnit")}')"
                 >
-                  Delete
+                  ${t("common.delete")}
                 </button>
               </form>`
             : safe("")}
         `;
         const editUnit = canEditUnit
           ? html`<details class="opv2-edit-block">
-              <summary class="btn btn-sm btn-ghost">Edit Unit</summary>
+              <summary class="btn btn-sm btn-ghost">${t("op.editUnit")}</summary>
               <form
                 method="post"
                 action="${bp}/api/ops/${op.id}/units/${unit.id}/edit"
@@ -989,9 +989,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 ${returnFields("fleet")}
-                <label>Fleet need</label>
+                <label>${t("op.fleetNeed")}</label>
                 <select name="requirementId">
-                  <option value="">Unslotted</option>
+                  <option value="">${t("op.unslotted")}</option>
                   ${unitSlots.map(
                     (slot) =>
                       html`<option
@@ -1002,18 +1002,18 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                       </option>`,
                   )}
                 </select>
-                <label>Unit type</label>
+                <label>${t("op.unitType")}</label>
                 <select name="unitType">
                   <option value="ship" ${unit.unitType === "ship" ? safe("selected") : ""}>
-                    Ship
+                    ${t("op.unitTypeShip")}
                   </option>
                   <option value="squad" ${unit.unitType === "squad" ? safe("selected") : ""}>
-                    FPS Squad
+                    ${t("cat.fps")}
                   </option>
                 </select>
-                <label>Owned ship</label>
+                <label>${t("op.ownedShip")}</label>
                 <select name="ownedShipId" class="opv2-owned-ship-select mandatory">
-                  <option value="">Keep current ship</option>
+                  <option value="">${t("op.keepCurrentShip")}</option>
                   ${opts.ownedShips.map(
                     (ship) =>
                       html`<option
@@ -1030,17 +1030,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   class="opv2-ship-id-field"
                   value="${unit.shipId ?? ""}"
                 />
-                <label>Ship search</label>
+                <label>${t("op.shipSearch")}</label>
                 <input
                   type="search"
                   class="opv2-ship-search mandatory"
-                  placeholder="Search ship catalog..."
+                  placeholder="${t("op.searchShipCatalog")}"
                   autocomplete="off"
                 />
                 <div class="ship-results opv2-ship-results"></div>
                 <div class="opv2-form-grid">
                   <div>
-                    <label>Squad name</label>
+                    <label>${t("op.squadName")}</label>
                     <input
                       type="text"
                       name="squadName"
@@ -1050,7 +1050,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     />
                   </div>
                   <div>
-                    <label>Squad size</label>
+                    <label>${t("op.squadSize")}</label>
                     <input
                       type="number"
                       name="squadSize"
@@ -1060,20 +1060,20 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     />
                   </div>
                 </div>
-                <label>Captain note</label>
+                <label>${t("op.captainNote")}</label>
                 <input
                   type="text"
                   name="captainNote"
                   maxlength="240"
                   value="${unit.captainNote ?? ""}"
-                  placeholder="Role, loadout, crew preference..."
+                  placeholder="${t("op.captainNotePlaceholder")}"
                 />
                 ${unit.status === "accepted"
                   ? html`<p class="text-dim text-sm">
-                      Saving changes moves this accepted unit back to pending review.
+                      ${t("op.saveMovesToPending")}
                     </p>`
                   : safe("")}
-                <button type="submit" class="btn btn-sm">Save Unit</button>
+                <button type="submit" class="btn btn-sm">${t("op.saveUnit")}</button>
               </form>
             </details>`
           : safe("");
@@ -1090,10 +1090,10 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               >
               <span class="opv2-unit-detail">${unitTypeDetail(unit)}</span>
               ${unit.ship
-                ? html`<span class="tag tag-dim" title="Derived ship class">${shipClass(unit.ship)}</span>`
+                ? html`<span class="tag tag-dim" title="${t("op.derivedShipClass")}">${shipClass(unit.ship)}</span>`
                 : safe("")}
-              <span class="tag ${free > 0 ? "tag-green" : "tag-dim"}">${free} free</span>
-              <span class="text-mono">${assigned}/${seats.length} seats</span>
+              <span class="tag ${free > 0 ? "tag-green" : "tag-dim"}">${t("op.free", { n: free })}</span>
+              <span class="text-mono">${t("op.seats", { filled: assigned, total: seats.length })}</span>
               ${statusTag(unit.status)}
             </div>
           </summary>
@@ -1106,24 +1106,24 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
               .map(
                 (v) => html`<div class="opv2-unit-vehicle">
                   <div class="opv2-unit-main">
-                    <strong>${unitName(v)}</strong> <span class="tag tag-cyan">${v.unitType === "ship" ? "Ship" : "Vehicle"}</span>
+                    <strong>${unitName(v)}</strong> <span class="tag tag-cyan">${v.unitType === "ship" ? t("op.ship") : t("op.vehicle")}</span>
                   </div>
                   <div class="opv2-seat-list">${v.seats.map((seat) => seatRow(v, seat))}</div>
                   ${canManage
                     ? html`<div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.35rem">
-                      <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/carrier" class="inline" data-async title="Move to / detach from a ship">
+                      <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/carrier" class="inline" data-async title="${t("op.moveDetachShip")}">
                         <input type="hidden" name="_csrf" value="${csrf}" />
                         ${returnFields("fleet")}
                         <select name="carrierUnitId" onchange="this.form.requestSubmit()">
-                          <option value="">— detach —</option>
+                          <option value="">${t("op.detach")}</option>
                           ${carrierShipUnits.map((s) => html`<option value="${s.id}" ${s.id === unit.id ? safe("selected") : ""}>${unitName(s)}</option>`)}
                         </select>
                       </form>
                       <form method="post" action="${bp}/api/ops/${op.id}/units/${v.id}/delete" class="inline">
                         <input type="hidden" name="_csrf" value="${csrf}" />
                         ${returnFields("fleet")}
-                        <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('Remove this vehicle?')">
-                          Remove vehicle
+                        <button type="submit" class="btn btn-sm btn-ghost" onclick="return confirm('${t("op.confirmRemoveVehicle")}')">
+                          ${t("op.removeVehicle")}
                         </button>
                       </form>
                     </div>`
@@ -1133,17 +1133,17 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <div class="opv2-unit-actions" style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-start;margin-top:.5rem">
             ${canManage && unit.unitType === "ship"
               ? html`<details class="opv2-edit-block">
-                  <summary class="btn btn-sm btn-ghost">Add ground vehicle</summary>
+                  <summary class="btn btn-sm btn-ghost">${t("op.addGroundVehicle")}</summary>
                   <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form mt-1" novalidate>
                     <input type="hidden" name="_csrf" value="${csrf}" />
                     ${returnFields("fleet")}
                     <input type="hidden" name="unitType" value="vehicle" />
                     <input type="hidden" name="carrierUnitId" value="${unit.id}" />
-                    <label>Vehicle (catalog)</label>
+                    <label>${t("op.vehicleCatalog")}</label>
                     <input type="search" class="opv2-ship-search" placeholder="Cyclone, Nova, ATLS…" autocomplete="off" />
                     <input type="hidden" name="shipId" class="opv2-ship-id-field" />
                     <div class="ship-results opv2-ship-results"></div>
-                    <button type="submit" class="btn btn-sm mt-1">Add vehicle</button>
+                    <button type="submit" class="btn btn-sm mt-1">${t("op.addVehicle")}</button>
                   </form>
                 </details>`
               : safe("")}
@@ -1158,9 +1158,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     <select
                       onchange="this.form.action='${bp}/api/ops/${op.id}/units/'+this.value+'/carrier'; this.form.requestSubmit()"
                     >
-                      <option value="" disabled selected hidden>Attach existing unit…</option>
+                      <option value="" disabled selected hidden>${t("op.attachExisting")}</option>
                       ${attachable.map(
-                        (v) => html`<option value="${v.id}">${unitName(v)} (${v.unitType === "ship" ? "ship" : "vehicle"}${v.carrierUnitId ? ", move here" : ""})</option>`,
+                        (v) => html`<option value="${v.id}">${unitName(v)} (${v.unitType === "ship" ? t("op.ship").toLowerCase() : t("op.vehicle").toLowerCase()}${v.carrierUnitId ? `, ${t("op.moveHere")}` : ""})</option>`,
                       )}
                     </select>
                     <input type="hidden" name="carrierUnitId" value="${unit.id}" />
@@ -1172,7 +1172,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </div>
         </details>`;
       })
-    : [html`<p class="text-dim text-sm">No registered units yet.</p>`];
+    : [html`<p class="text-dim text-sm">${t("op.noUnits")}</p>`];
 
   const needGroups = op.groups.filter((g) => g.requirements.length > 0);
   const compositionRows = needGroups.length
@@ -1205,18 +1205,18 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           <button
                             type="submit"
                             class="btn btn-sm btn-ghost"
-                            onclick="return confirm('Delete this need?')"
+                            onclick="return confirm('${t("op.confirmDeleteNeed")}')"
                           >
-                            Delete
+                            ${t("common.delete")}
                           </button>
                         </form>`
                       : safe("")}
                   </div>`;
                 })
-              : html`<p class="text-dim text-sm">No requirements.</p>`}
+              : html`<p class="text-dim text-sm">${t("op.noRequirements")}</p>`}
           </div>`,
       )
-    : [html`<p class="text-dim text-sm">No fleet needs have been defined yet.</p>`];
+    : [html`<p class="text-dim text-sm">${t("op.noFleetNeeds")}</p>`];
   const statusControls = canManage
     ? html`<div class="opv2-actions opv2-status-controls">
         ${["draft", "open", "locked", "starting", "in_progress", "completed", "cancelled"].map((status) =>
@@ -1226,15 +1226,15 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 class="btn btn-green opv2-status-current"
                 disabled
                 aria-current="true"
-                title="Current status"
+                title="${t("op.currentStatus")}"
               >
-                ${status.replace("_", " ")}
+                ${t(`status.${status}`)}
               </button>`
             : html`<form method="post" action="${bp}/api/ops/${op.id}/status" class="inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <input type="hidden" name="status" value="${status}" />
                 ${returnFields(activeTab)}
-                <button type="submit" class="btn">${status.replace("_", " ")}</button>
+                <button type="submit" class="btn">${t(`status.${status}`)}</button>
               </form>`,
         )}
       </div>`
@@ -2520,11 +2520,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     (ship) => html`<option value="${ship.id}">${ship.name}</option>`,
                   )}
                 </select>
-                <label>Ship search</label>
+                <label>${t("op.shipSearch")}</label>
                 <input
                   type="search"
                   class="opv2-ship-search mandatory"
-                  placeholder="Search ship catalog..."
+                  placeholder="${t("op.searchShipCatalog")}"
                   autocomplete="off"
                 />
                 <input type="hidden" name="shipId" class="opv2-ship-id-field" />
