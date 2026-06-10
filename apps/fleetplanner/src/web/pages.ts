@@ -7525,7 +7525,7 @@ export function bridgeDiscordVoicePage(opts: {
   const orderCsv = allowedChannels.map((c) => c.id).join(",");
 
   const channelOptions = (selected: string | null): SafeHtml =>
-    html` <option value="" ${selected === null ? safe("selected") : ""}>— disconnect —</option>
+    html` <option value="" ${selected === null ? safe("selected") : ""}>${t("badm.disconnect")}</option>
       ${opts.channels.map(
         (c) =>
           html`<option value="${c.id}" ${selected === c.id ? safe("selected") : ""}>
@@ -7550,7 +7550,7 @@ export function bridgeDiscordVoicePage(opts: {
             <select name="channelId" style="width:auto">
               ${channelOptions(m.channelId)}
             </select>
-            <button type="submit" class="btn btn-sm btn-ghost">Move</button>
+            <button type="submit" class="btn btn-sm btn-ghost">${t("op.move")}</button>
           </form>
         </td>
         <td>
@@ -7564,10 +7564,10 @@ export function bridgeDiscordVoicePage(opts: {
               ${opts.roles.map((r) => html`<option value="${r.id}">${r.name}</option>`)}
             </select>
             <button type="submit" name="action" value="add" class="btn btn-sm btn-green">
-              Add
+              ${t("common.add")}
             </button>
             <button type="submit" name="action" value="remove" class="btn btn-sm btn-danger">
-              Remove
+              ${t("common.remove")}
             </button>
           </form>
         </td>
@@ -7575,33 +7575,33 @@ export function bridgeDiscordVoicePage(opts: {
   );
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">DISCORD VOICE</h1>
+      <h1 class="page-title">${t("badm.discordVoice")}</h1>
       <p class="page-subtitle text-mono">${opts.guildName}</p>
       <p style="margin-top:.5rem">
-        <a href="${bp}/admin/bridge/${opts.guildId}">← Back to guild</a> &nbsp;·&nbsp;
-        <a href="${bp}/admin/bridge/${opts.guildId}/discord-voice">↻ Refresh</a>
+        <a href="${bp}/admin/bridge/${opts.guildId}">← ${t("badm.backToGuild")}</a> &nbsp;·&nbsp;
+        <a href="${bp}/admin/bridge/${opts.guildId}/discord-voice">↻ ${t("badm.refresh")}</a>
       </p>
     </div>
     ${opts.error
-      ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>`
+      ? html`<div class="flash flash-error">${t("badm.bridgeUnreachable")}: ${opts.error}</div>`
       : ""}
     ${opts.offline
       ? html`<div class="flash flash-warn">
-          Discord not configured on the bridge — live data unavailable.
+          ${t("badm.discordNotConfigured")}
         </div>`
       : ""}
     <div class="section">
-      <div class="section-title">Members in voice (${String(opts.members.length)})</div>
+      <div class="section-title">${t("badm.membersInVoice", { n: String(opts.members.length) })}</div>
       ${opts.members.length === 0
-        ? html`<p class="text-dim">No members currently in tracked voice channels.</p>`
+        ? html`<p class="text-dim">${t("badm.noMembersVoice")}</p>`
         : html`<div style="overflow-x:auto">
             <table class="user-table">
               <thead>
                 <tr>
-                  <th>User</th>
-                  <th>Channel</th>
-                  <th>Move</th>
-                  <th>Role</th>
+                  <th>${t("badm.colUser")}</th>
+                  <th>${t("badm.colChannel")}</th>
+                  <th>${t("op.move")}</th>
+                  <th>${t("admin.role")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -7610,15 +7610,14 @@ export function bridgeDiscordVoicePage(opts: {
             </table>
           </div>`}
       <p class="text-dim text-sm" style="margin-top:1rem">
-        Server-rendered snapshot — reload the page to refresh.
+        ${t("badm.serverSnapshot")}
       </p>
     </div>
     <div class="section">
-      <div class="section-title">Channel order (${String(allowedChannels.length)})</div>
+      <div class="section-title">${t("badm.channelOrder", { n: String(allowedChannels.length) })}</div>
       ${allowedChannels.length < 2
         ? html`<p class="text-dim">
-            Need at least two allowed voice channels to reorder. Configure them under
-            <a href="${bp}/admin/bridge/${opts.guildId}/config">guild config</a>.
+            ${safe(t("badm.needTwoChannels", { link: `<a href="${bp}/admin/bridge/${opts.guildId}/config">${t("badm.guildConfigLink")}</a>` }))}
           </p>`
         : html`<table class="user-table">
             <tbody>
@@ -7641,14 +7640,12 @@ export function bridgeDiscordVoicePage(opts: {
           </table>`}
     </div>
     <div class="section">
-      <div class="section-title">Strategy channel</div>
+      <div class="section-title">${t("badm.strategyChannel")}</div>
       <p class="text-dim text-sm">
-        Create a temporary voice channel and pull the selected members in. It is auto-deleted after
-        15 minutes idle. Only members currently in a voice channel can be pulled (Discord rejects
-        moving users who aren't in voice).
+        ${t("badm.strategyDesc")}
       </p>
       ${opts.members.length === 0
-        ? html`<p class="text-dim">No members in voice to pull.</p>`
+        ? html`<p class="text-dim">${t("badm.noMembersToPull")}</p>`
         : html`<form
             method="post"
             action="${bp}/admin/bridge/${opts.guildId}/discord-voice/strategy"
@@ -7658,7 +7655,7 @@ export function bridgeDiscordVoicePage(opts: {
             <input
               type="text"
               name="name"
-              placeholder="Strategy channel name"
+              placeholder="${t("badm.strategyNamePlaceholder")}"
               maxlength="100"
               required
               style="width:100%"
@@ -7675,13 +7672,13 @@ export function bridgeDiscordVoicePage(opts: {
               )}
             </div>
             <button type="submit" class="btn btn-sm btn-green" style="align-self:flex-start">
-              Create &amp; pull in
+              ${t("badm.createPullIn")}
             </button>
           </form>`}
     </div>`;
 
   return layout({
-    title: "Bridge Discord Voice",
+    title: t("badm.discordVoiceTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
@@ -7718,21 +7715,21 @@ export function bridgeDownloadsPage(opts: {
   const csrf = opts.csrfToken ?? "";
 
   const tokenRows = opts.tokens.map(
-    (t) =>
+    (tok) =>
       html` <tr>
-        <td>${t.label}</td>
-        <td class="text-dim text-sm">${t.expiresAt}</td>
+        <td>${tok.label}</td>
+        <td class="text-dim text-sm">${tok.expiresAt}</td>
         <td>
-          ${t.usedAt
-            ? html`<span class="tag tag-dim">used</span>`
-            : html`<span class="tag tag-green">unused</span>`}
+          ${tok.usedAt
+            ? html`<span class="tag tag-dim">${t("badm.used")}</span>`
+            : html`<span class="tag tag-green">${t("badm.unused")}</span>`}
         </td>
         <td class="text-right">
-          ${t.usedAt
+          ${tok.usedAt
             ? ""
             : html`<form
                 method="post"
-                action="${bp}/admin/bridge/${opts.guildId}/downloads/${t.id}/revoke"
+                action="${bp}/admin/bridge/${opts.guildId}/downloads/${tok.id}/revoke"
                 class="inline"
               >
                 <input type="hidden" name="_csrf" value="${csrf}" />
@@ -7743,26 +7740,25 @@ export function bridgeDownloadsPage(opts: {
   );
 
   const body = html` <div class="page-header">
-      <h1 class="page-title">COMPANION DOWNLOADS</h1>
+      <h1 class="page-title">${t("badm.companionDownloads")}</h1>
       <p class="page-subtitle text-mono">${opts.guildName}</p>
-      ${bridgeBackLink(bp, opts.guildId, "Back to guild")}
+      ${bridgeBackLink(bp, opts.guildId, t("badm.backToGuild"))}
     </div>
     ${opts.error
-      ? html`<div class="flash flash-error">Bridge unreachable: ${opts.error}</div>`
+      ? html`<div class="flash flash-error">${t("badm.bridgeUnreachable")}: ${opts.error}</div>`
       : ""}
     ${opts.freshUrl
       ? html`<div class="flash flash-ok">
-          New download link (shown once): <span class="text-mono">${opts.freshUrl}</span>
+          ${t("badm.newDownloadLink")} <span class="text-mono">${opts.freshUrl}</span>
         </div>`
       : ""}
     ${!opts.configured
       ? html`<div class="flash flash-warn">
-          GITHUB_REPO not set on the bridge — the companion EXE cannot be served. Download links
-          won't work until it is configured.
+          ${t("badm.githubRepoUnset")}
         </div>`
       : ""}
     <div class="section">
-      <div class="section-title">Latest release</div>
+      <div class="section-title">${t("badm.latestRelease")}</div>
       <div class="card" style="padding:1.25rem">
         ${opts.release
           ? html`<div class="text-mono">
@@ -7770,16 +7766,16 @@ export function bridgeDownloadsPage(opts: {
               </div>
               <p class="text-dim text-sm" style="margin:.35rem 0 0">
                 ${opts.release.asset
-                  ? `Asset: ${opts.release.asset.name} (${Math.round(opts.release.asset.size / 1024 / 1024)} MB)`
-                  : safe("No matching .exe asset found")}
+                  ? t("badm.assetInfo", { name: opts.release.asset.name, mb: Math.round(opts.release.asset.size / 1024 / 1024) })
+                  : safe(t("badm.noExeAsset"))}
               </p>`
           : html`<p class="text-dim">
-              No release info (GITHUB_REPO unset or GitHub unreachable).
+              ${t("badm.noReleaseInfo")}
             </p>`}
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Create download link</div>
+      <div class="section-title">${t("badm.createDownloadLink")}</div>
       <div class="card" style="padding:1.25rem">
         <form
           method="post"
@@ -7788,10 +7784,10 @@ export function bridgeDownloadsPage(opts: {
         >
           <input type="hidden" name="_csrf" value="${csrf}" />
           <label class="text-sm text-dim" style="flex:1 1 14rem"
-            >Label
+            >${t("badm.colLabel")}
             <input type="text" name="label" placeholder="for Alice" maxlength="120" required />
           </label>
-          <button type="submit" class="btn btn-cyan btn-sm">Mint link</button>
+          <button type="submit" class="btn btn-cyan btn-sm">${t("badm.mintLink")}</button>
         </form>
         <form
           method="post"
@@ -7800,27 +7796,27 @@ export function bridgeDownloadsPage(opts: {
         >
           <input type="hidden" name="_csrf" value="${csrf}" />
           <label class="text-sm text-dim" style="flex:1 1 14rem"
-            >DM to Discord user ID
+            >${t("badm.dmToUserId")}
             <input type="text" name="userId" placeholder="123456789012345678" required />
           </label>
-          <button type="submit" class="btn btn-ghost btn-sm">Mint + DM link</button>
+          <button type="submit" class="btn btn-ghost btn-sm">${t("badm.mintDmLink")}</button>
         </form>
         <p class="text-dim text-sm" style="margin:.5rem 0 0">
-          Links are single-use, 7-day TTL. The raw URL is shown once on mint (re-mint if lost).
+          ${t("badm.downloadLinksNote")}
         </p>
       </div>
     </div>
     <div class="section">
-      <div class="section-title">Tokens (${String(opts.tokens.length)})</div>
+      <div class="section-title">${t("badm.tokens", { n: String(opts.tokens.length) })}</div>
       ${opts.tokens.length === 0
-        ? html`<p class="text-dim">No download tokens.</p>`
+        ? html`<p class="text-dim">${t("badm.noTokens")}</p>`
         : html`<div style="overflow-x:auto">
             <table class="user-table">
               <thead>
                 <tr>
-                  <th>Label</th>
-                  <th>Expires</th>
-                  <th>Status</th>
+                  <th>${t("badm.colLabel")}</th>
+                  <th>${t("badm.colExpires")}</th>
+                  <th>${t("admin.statusLabel")}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -7832,7 +7828,7 @@ export function bridgeDownloadsPage(opts: {
     </div>`;
 
   return layout({
-    title: "Bridge Downloads",
+    title: t("badm.downloadsTab"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
