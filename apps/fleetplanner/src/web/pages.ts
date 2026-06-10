@@ -1245,7 +1245,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   type PRow = { id: string; name: string; where: string; tone: "good" | "warn" };
   const rawParticipants: PRow[] = [];
   for (const u of acceptedUnits) {
-    const uname = u.squadName || u.ship?.name || "Unit";
+    const uname = u.squadName || u.ship?.name || t("op.unit");
     for (const s of u.seats) {
       if (s.active && s.userId) {
         rawParticipants.push({
@@ -4629,7 +4629,7 @@ export function opJoinPage(opts: {
       u.seats
         .filter((s) => s.active && !s.userId)
         .map((s) => ({
-          unit: u.squadName || u.ship?.name || "Unit",
+          unit: u.squadName || u.ship?.name || t("op.unit"),
           seatId: s.id,
           label: s.label,
         })),
@@ -4639,7 +4639,7 @@ export function opJoinPage(opts: {
     .map((u) => {
       const seats = u.seats.filter((s) => s.active);
       return {
-        name: u.squadName || u.ship?.name || "Unit",
+        name: u.squadName || u.ship?.name || t("op.unit"),
         open: seats.filter((s) => !s.userId).length,
         total: seats.length,
       };
@@ -4651,7 +4651,7 @@ export function opJoinPage(opts: {
   const seatShipUnits = acceptedUnits
     .filter((u) => u.unitType !== "vehicle")
     .map((u) => ({
-      name: u.squadName || u.ship?.name || "Unit",
+      name: u.squadName || u.ship?.name || t("op.unit"),
       isShip: u.unitType === "ship",
       cls: u.ship ? shipClass(u.ship) : "",
       sil: u.ship ? shipSilhouettes[normShipName(u.ship.name)] : undefined,
@@ -4678,8 +4678,8 @@ export function opJoinPage(opts: {
     .filter((u) => u.unitType !== "vehicle" && !u.carrierUnitId)
     .map((u) => ({
       id: u.id,
-      name: u.squadName || u.ship?.name || "Unit",
-      kind: u.unitType === "ship" ? "Ship" : "FPS Fireteam",
+      name: u.squadName || u.ship?.name || t("op.unit"),
+      kind: u.unitType === "ship" ? t("op.ship") : t("join.fpsFireteam"),
       isShip: u.unitType === "ship",
       // Any ship can carry a vehicle now (restriction lifted) — operator's call.
       canCarry: u.unitType === "ship",
@@ -4692,8 +4692,8 @@ export function opJoinPage(opts: {
         .filter((v) => v.carrierUnitId === u.id)
         .map((v) => ({
           id: v.id,
-          name: v.ship?.name || v.squadName || "Unit",
-          kind: v.unitType === "ship" ? "Ship" : "Vehicle",
+          name: v.ship?.name || v.squadName || t("op.unit"),
+          kind: v.unitType === "ship" ? t("op.ship") : t("op.vehicle"),
           group:
             v.unitType === "vehicle"
               ? "vehicle"
@@ -4710,7 +4710,7 @@ export function opJoinPage(opts: {
     unitId: string,
     editSeats: Array<{ id: string; label: string; order: number; active: boolean }>,
   ) => html`<details class="roster-edit">
-    <summary>Edit seats — rename or enable / disable</summary>
+    <summary>${t("join.editSeats")}</summary>
     <form method="post" action="${bp}/api/ops/${op.id}/units/${unitId}/seats">
       <input type="hidden" name="_csrf" value="${csrf}" />
       <input type="hidden" name="ui" value="player" />
@@ -4719,14 +4719,14 @@ export function opJoinPage(opts: {
         (s) => html`<div class="roster-edit-row">
           <input type="text" name="label_${s.id}" value="${s.label}" maxlength="40" />
           ${s.order === 0
-            ? html`<span class="tag tag-dim">pilot</span>`
+            ? html`<span class="tag tag-dim">${t("join.pilot")}</span>`
             : html`<label class="seat-toggle"
                 ><input type="checkbox" name="active_${s.id}" value="1" ${s.active ? safe("checked") : ""} />
-                available</label
+                ${t("join.available")}</label
               >`}
         </div>`,
       )}
-      <button type="submit" class="btn btn-sm mt-1">Save seats</button>
+      <button type="submit" class="btn btn-sm mt-1">${t("join.saveSeats")}</button>
     </form>
   </details>`;
   // Withdraw (delete) an own ship from the operation. captain-gated server-side.
@@ -4743,9 +4743,9 @@ export function opJoinPage(opts: {
       <button
         type="submit"
         class="btn btn-sm btn-danger"
-        onclick="return confirm('Withdraw this ship from the operation? It is removed and its crew freed.')"
+        onclick="return confirm('${t("join.confirmWithdrawShip")}')"
       >
-        Withdraw ship
+        ${t("join.withdrawShip")}
       </button>
     </form>`;
   // One seat row — reused for carrier-ship seats and nested vehicle seats.
@@ -4765,30 +4765,30 @@ export function opJoinPage(opts: {
                 class="btn btn-sm btn-green"
                 ${captainConfirm
                   ? safe(
-                      ` onclick="return confirm('You are the captain of this ship. Taking another seat empties the pilot seat — make sure someone else captains it, or you may lose Command Net voice. Continue?')"`,
+                      ` onclick="return confirm('${t("join.captainSeatWarn")}')"`,
                     )
                   : safe("")}
               >
-                Claim
+                ${t("common.claim")}
               </button>
             </form>`
           : isOpen
-            ? html`<a class="btn btn-sm" href="${bp}/login">Sign in</a>`
-            : html`<span class="free">open</span>`
+            ? html`<a class="btn btn-sm" href="${bp}/login">${t("op.signIn")}</a>`
+            : html`<span class="free">${t("common.open")}</span>`
         : s.mine
-          ? html`<span class="roster-occ roster-you">You</span>
+          ? html`<span class="roster-occ roster-you">${t("join.you")}</span>
               <form method="post" action="${bp}/api/seats/${s.id}/unclaim" class="inline">
                 <input type="hidden" name="_csrf" value="${csrf}" />
                 <input type="hidden" name="ui" value="player" />
                 <input type="hidden" name="tab" value="fleet" />
-                <button type="submit" class="btn btn-sm btn-ghost">Release</button>
+                <button type="submit" class="btn btn-sm btn-ghost">${t("common.release")}</button>
               </form>`
-          : html`<span class="roster-occ">${s.user ?? "Taken"}</span>`}
+          : html`<span class="roster-occ">${s.user ?? t("join.taken")}</span>`}
     </div>`;
   // Captain attaches a ground vehicle (catalog pick) to their ship.
   const addVehicleForm = (carrierUnitId: string) =>
     html`<details class="roster-edit">
-      <summary>Add a ground vehicle</summary>
+      <summary>${t("join.addGroundVehicle")}</summary>
       <form method="post" action="${bp}/api/ops/${op.id}/units" class="opv2-form join-unit-form" novalidate>
         <input type="hidden" name="_csrf" value="${csrf}" />
         <input type="hidden" name="ui" value="player" />
@@ -4796,16 +4796,16 @@ export function opJoinPage(opts: {
         <input type="hidden" name="unitType" value="vehicle" />
         <input type="hidden" name="carrierUnitId" value="${carrierUnitId}" />
         <div class="form-errors join-unit-errors" hidden></div>
-        <label>Vehicle (from catalog)</label>
+        <label>${t("join.vehicleFromCatalog")}</label>
         <input
           type="search"
           class="join-ship-search"
-          placeholder="Search e.g. Cyclone, Nova, ATLS…"
+          placeholder="${t("join.searchVehicle")}"
           autocomplete="off"
         />
         <input type="hidden" name="shipId" class="join-ship-id-field" />
         <div class="ship-results join-ship-results"></div>
-        <button type="submit" class="btn btn-sm btn-green mt-1">Add vehicle</button>
+        <button type="submit" class="btn btn-sm btn-green mt-1">${t("op.addVehicle")}</button>
       </form>
     </details>`;
   const requirements = op.groups.flatMap((g) => g.requirements);
@@ -4840,11 +4840,11 @@ export function opJoinPage(opts: {
   const visUpper = ((op as { visibility?: string }).visibility ?? "private").toUpperCase();
 
   const stateBanner = hasSeat
-    ? html`<div class="opv2-cta done">Seat claimed.</div>`
+    ? html`<div class="opv2-cta done">${t("op.seatClaimed")}</div>`
     : hasReq
-      ? html`<div class="opv2-cta done">Waiting for Fleet Operator assignment.</div>`
+      ? html`<div class="opv2-cta done">${t("join.waitingAssignment")}</div>`
       : !isOpen
-        ? html`<div class="opv2-cta closed">Sign-up closed.</div>`
+        ? html`<div class="opv2-cta closed">${t("join.signupClosed")}</div>`
         : safe("");
   // Always-visible "you're signed up" confirmation at the very top of the join
   // column. The detailed "My Signup" aside lives in the right rail, which drops
@@ -4855,21 +4855,25 @@ export function opJoinPage(opts: {
   const mySeatList = acceptedUnits.flatMap((u) =>
     u.seats
       .filter((s) => s.active && s.userId === myId)
-      .map((s) => `${s.label} on ${u.squadName || u.ship?.name || "Unit"}`),
+      .map((s) => `${s.label} ${t("join.onShip")} ${u.squadName || u.ship?.name || t("op.unit")}`),
   );
-  for (const seat of mySeatList) signupParts.push(`seat: ${seat}`);
+  for (const seat of mySeatList) signupParts.push(`${t("join.partSeat")} ${seat}`);
   if (myPendingUnits.length)
-    signupParts.push(myPendingUnits.length === 1 ? "1 ship pending review" : `${myPendingUnits.length} ships pending review`);
+    signupParts.push(
+      myPendingUnits.length === 1
+        ? t("join.shipPendingOne")
+        : t("join.shipPendingMany", { n: myPendingUnits.length }),
+    );
   if (myCqb) {
     const tgid = (op.cqbSignups ?? []).find((s) => s.userId === myId)?.assignedGroupId ?? null;
     const tname = tgid ? (op.groups.find((g) => g.id === tgid)?.name ?? null) : null;
-    signupParts.push(tname ? `CQB soldier in ${tname}` : "signed up as CQB soldier");
+    signupParts.push(tname ? t("join.cqbSoldierIn", { team: tname }) : t("join.cqbSoldier"));
   }
-  if (hasReq && !hasSeat) signupParts.push("awaiting operator placement");
+  if (hasReq && !hasSeat) signupParts.push(t("join.awaitingPlacement"));
   const signupSummaryBanner =
     signedUp && signupParts.length
       ? html`<div class="opv2-cta done" style="margin-bottom:1rem">
-          ✓ You're signed up — ${signupParts.join(" · ")}.
+          ✓ ${t("join.youreSignedUp")} — ${signupParts.join(" · ")}.
         </div>`
       : safe("");
   // Headcount for the top fact row. Confirmed = people who CLAIMED a spot:
@@ -5598,7 +5602,7 @@ export function opJoinPage(opts: {
               ${myPendingUnits.map(
                 (u) => html`<div class="roster-unit">
                   <div class="roster-unit-head">
-                    <strong>${u.squadName || u.ship?.name || "Unit"}</strong>
+                    <strong>${u.squadName || u.ship?.name || t("op.unit")}</strong>
                     <span class="tag tag-gold">pending review</span>
                   </div>
                   <p class="text-dim text-sm">
