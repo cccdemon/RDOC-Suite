@@ -890,4 +890,9 @@ export const de: Record<string, string> = {
   "err.title": "Fehler {status}",
   "loginReq.title": "Anmeldung erforderlich",
   "loginReq.body": "Dieser Operations-Link ist privat. Bitte melde dich an — wenn du Zugang hast (Mitglied des veranstaltenden oder eines Partner-Discords, oder er wurde mit dir geteilt), öffnet sich die Operation nach der Anmeldung. Das ist kein defekter Link.",
+
+  "sct.title": "STAR CITIZEN TOOLS",
+  "sct.tabTitle": "Star Citizen Tools",
+  "sct.subtitle": "von der Community — nützliche externe Werkzeuge rund um Star Citizen.",
+  "sct.footer": "Diese Tools werden von der Community gepflegt und stehen in keiner Verbindung zu Raumdock. Links öffnen extern.",
 };

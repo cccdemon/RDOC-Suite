@@ -8253,8 +8253,8 @@ export function scToolsPage(opts: {
 }): SafeHtml {
   const bp = opts.basePath;
   const body = html`<div class="page-header">
-      <h1 class="page-title">STAR CITIZEN TOOLS</h1>
-      <p class="page-subtitle">made by the Community — nützliche externe Werkzeuge rund um Star Citizen.</p>
+      <h1 class="page-title">${t("sct.title")}</h1>
+      <p class="page-subtitle">${t("sct.subtitle")}</p>
     </div>
     <style>
       .sct-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
@@ -8285,12 +8285,11 @@ export function scToolsPage(opts: {
     </div>
     <div class="section">
       <p class="text-dim text-sm" style="max-width:54rem">
-        Diese Tools werden von der Community gepflegt und stehen in keiner Verbindung zu Raumdock.
-        Links öffnen extern.
+        ${t("sct.footer")}
       </p>
     </div>`;
   return layout({
-    title: "Star Citizen Tools",
+    title: t("sct.tabTitle"),
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,

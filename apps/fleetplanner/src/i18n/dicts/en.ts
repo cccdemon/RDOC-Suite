@@ -919,4 +919,10 @@ export const en: Record<string, string> = {
   "err.title": "Error {status}",
   "loginReq.title": "Login required",
   "loginReq.body": "This operation link is private. Please log in — if you have access (you're a member of the hosting or a partner Discord, or it was shared with you), the operation will open after sign-in. This is not a broken link.",
+
+  // SC Tools page
+  "sct.title": "STAR CITIZEN TOOLS",
+  "sct.tabTitle": "Star Citizen Tools",
+  "sct.subtitle": "made by the Community — useful external tools around Star Citizen.",
+  "sct.footer": "These tools are maintained by the community and are not affiliated with Raumdock. Links open externally.",
 };
