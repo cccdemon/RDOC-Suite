@@ -1647,9 +1647,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                           <button
                             type="submit"
                             class="btn btn-sm ${e.globalVoice ? "btn-gold" : "btn-ghost"}"
-                            title="Toggle Global Radio Net (relay-bot broadcast)"
+                            title="${t("op.toggleGlobalRadio")}"
                           >
-                            Global Radio ${e.globalVoice ? "On" : "Off"}
+                            Global Radio ${e.globalVoice ? t("common.on") : t("common.off2")}
                           </button>
                         </form>
                         ${e.kind === "participant"
@@ -1660,13 +1660,13 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                             >
                               <input type="hidden" name="_csrf" value="${csrf}" />
                               ${returnFields("commanders")}
-                              <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                              <button type="submit" class="btn btn-sm btn-danger">${t("common.remove")}</button>
                             </form>`
                           : safe("")}
                       </div>
                     </div>`,
                   )
-                : html`<p class="text-dim text-sm">No one on the Command Net yet.</p>`}
+                : html`<p class="text-dim text-sm">${t("op.noOneCommandNet")}</p>`}
             </div>
             ${addableUsers.length
               ? html`<form
@@ -1678,7 +1678,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   ${returnFields("commanders")}
                   <select name="userId" required style="flex:1">
-                    <option value="">Add to Command Net…</option>
+                    <option value="">${t("op.addToCommandNet")}</option>
                     ${addableUsers.map(
                       (u) => html`<option value="${u.id}">${u.username} (${u.role})</option>`,
                     )}
@@ -1687,7 +1687,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                     <input type="checkbox" name="globalVoice" value="1" />
                     + Global Radio Net
                   </label>
-                  <button type="submit" class="btn btn-sm btn-green">Add</button>
+                  <button type="submit" class="btn btn-sm btn-green">${t("common.add")}</button>
                 </form>`
               : safe("")}
           `}
@@ -1736,7 +1736,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     const chips: SafeHtml[] = [];
     for (let i = 0; i < filledOk; i++) chips.push(html`<span class="comp-chip filled"></span>`);
     for (let i = 0; i < r.mismatches; i++)
-      chips.push(html`<span class="comp-chip mismatch" title="Unit does not match category"></span>`);
+      chips.push(html`<span class="comp-chip mismatch" title="${t("board.chipMismatch")}"></span>`);
     for (let i = 0; i < r.open; i++) chips.push(html`<span class="comp-chip open"></span>`);
     return chips;
   };
@@ -1770,7 +1770,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     axis.teams.length
       ? html`<div class="fleet-req-board" style="margin-bottom:1rem">
           <div class="fleet-req-row fleet-req-head">
-            <span>${title}</span><span>Soll</span><span>Ist</span><span>Offen</span>
+            <span>${title}</span><span>${t("board.target")}</span><span>${t("board.actual")}</span><span>${t("board.open")}</span>
           </div>
           ${axis.teams.map(
             (t) => html`<div class="comp-row comp-row-${rowTone(t.members, t.open)}">
@@ -1789,7 +1789,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             </div>`,
           )}
           <div class="fleet-req-row fleet-req-total">
-            <span>Summe ${sumWord}</span>
+            <span>${t("board.sum")} ${sumWord}</span>
             <strong>${axis.slots}</strong>
             <strong>${axis.filled}</strong>
             <strong>${axis.open}</strong>
@@ -1805,9 +1805,9 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     return html`<div class="fleet-req-board" style="margin-bottom:1rem">
       <div class="fleet-req-row fleet-req-head">
         <span>${title}</span>
-        <span>Soll</span>
-        <span>Ist</span>
-        <span>Offen</span>
+        <span>${t("board.target")}</span>
+        <span>${t("board.actual")}</span>
+        <span>${t("board.open")}</span>
       </div>
       ${rows.map(
         (r) => html`<div class="comp-row comp-row-${rowTone(r.fulfilled, r.open)}">
@@ -1820,27 +1820,27 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
             <strong class="fleet-req-num">${r.count}</strong>
             <span class="fleet-req-num">
               <span class="tag ${compTone(r)}">${r.fulfilled}</span>
-              ${r.pending ? html`<span class="tag tag-gold">${r.pending} pending</span>` : safe("")}
+              ${r.pending ? html`<span class="tag tag-gold">${t("board.pending", { n: r.pending })}</span>` : safe("")}
               ${r.mismatches
-                ? html`<span class="tag tag-gold" title="Accepted units not matching the category"
-                    >${r.mismatches} mismatch</span
+                ? html`<span class="tag tag-gold" title="${t("board.mismatchTitle")}"
+                    >${t("board.mismatch", { n: r.mismatches })}</span
                   >`
                 : safe("")}
             </span>
             <span class="fleet-req-num">
               <span class="tag ${r.open ? "tag-red" : "tag-green"}">${r.open}</span>
-              ${r.extra ? html`<span class="tag tag-cyan">+${r.extra} extra</span>` : safe("")}
+              ${r.extra ? html`<span class="tag tag-cyan">${t("board.extra", { n: r.extra })}</span>` : safe("")}
             </span>
           </div>
           <div class="comp-chips">
             ${r.open === 0 && r.fulfilled > 0 && r.mismatches === 0
-              ? html`<span class="tag tag-green">✓ Requirement fulfilled</span>`
+              ? html`<span class="tag tag-green">✓ ${t("board.fulfilled")}</span>`
               : compChips(r)}
           </div>
         </div>`,
       )}
       <div class="fleet-req-row fleet-req-total">
-        <span>Summe ${sumWord}</span>
+        <span>${t("board.sum")} ${sumWord}</span>
         <strong>${req}</strong>
         <strong>${ful}</strong>
         <strong>${opn}</strong>
@@ -1868,7 +1868,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       <input type="hidden" name="_csrf" value="${csrf}" />
       ${returnFields("overview")}
       <select name="requirementId">
-        <option value="">— unslotted —</option>
+        <option value="">${t("op.unslottedDash")}</option>
         ${openSlots
           // Only slots this unit can actually fill (a ship never fits a CQB
           // soldier need), and that still have room (or the auto-match).
@@ -1892,26 +1892,26 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const boardOpen = hullRows.reduce((a, r) => a + r.open, 0) + fighterAxis.open + cqbAxis.open;
   const boardHasNeeds = hullRows.length || fighterAxis.teams.length || cqbAxis.teams.length;
   const compositionBoard = html`<section class="opv2-panel">
-    <div class="opv2-panel-title">Fleet Needs</div>
+    <div class="opv2-panel-title">${t("board.fleetNeeds")}</div>
     ${boardHasNeeds
-      ? html`${reqGroupTable("Hull-Need (Schiffe)", "Schiffe", hullRows)}
-          ${teamAxisTable("Fighter-Need (Squads)", "Pilots", fighterAxis)}
-          ${teamAxisTable("CQB-Need (Soldaten)", "Soldiers", cqbAxis)}
+      ? html`${reqGroupTable(t("board.hullNeed"), t("board.ships"), hullRows)}
+          ${teamAxisTable(t("board.fighterNeed"), t("board.pilots"), fighterAxis)}
+          ${teamAxisTable(t("board.cqbNeed"), t("board.soldiers"), cqbAxis)}
           <div class="fleet-req-row fleet-req-total">
-            <span>Gesamt</span>
+            <span>${t("board.total")}</span>
             <strong>${boardRequested}</strong>
             <strong>${boardFulfilled}</strong>
             <strong>${boardOpen}</strong>
           </div>
           <p class="text-dim text-sm" style="margin:.6rem 0 0">
-            Ist = akzeptierte Schiffe + besetzte Squad-/Team-Plätze. Offen = noch frei.
+            ${t("board.legend")}
           </p>`
       : html`<p class="text-dim text-sm">
-          Noch keine Fleet Needs definiert.${canManage ? " Lege im Fleet-Tab Schiffe, Fighter-Squads und CQB-Teams an." : ""}
+          ${t("board.noNeeds")}${canManage ? ` ${t("board.noNeedsManage")}` : ""}
         </p>`}
     ${canManage && pendingUnits.length
       ? html`<details class="mg-board-sub" open>
-          <summary>Pending review (${String(pendingUnits.length)})</summary>
+          <summary>${t("board.pendingReview", { n: String(pendingUnits.length) })}</summary>
           ${pendingUnits.map(
             (u) => html`<div class="opv2-row mg-board-row">
               <div>
@@ -1920,7 +1920,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                   : safe("")}
               </div>
               <div class="mg-board-act">
-                ${slotAcceptForm(u, "Accept")}
+                ${slotAcceptForm(u, t("common.accept"))}
                 <form
                   method="post"
                   action="${bp}/api/ops/${op.id}/units/${u.id}/reject"
@@ -1928,7 +1928,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
                 >
                   <input type="hidden" name="_csrf" value="${csrf}" />
                   ${returnFields("overview")}
-                  <button type="submit" class="btn btn-sm btn-ghost">Reject</button>
+                  <button type="submit" class="btn btn-sm btn-ghost">${t("common.reject")}</button>
                 </form>
               </div>
             </div>`,
@@ -1943,11 +1943,11 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
       if (unslotted.length === 0) return safe("");
       // Open only when there are pending units to deal with (the urgent case).
       return html`<details class="mg-board-sub" ${pendingUnits.length ? safe("open") : safe("")}>
-        <summary>Unassigned accepted (${String(unslotted.length)})</summary>
+        <summary>${t("board.unassignedAccepted", { n: String(unslotted.length) })}</summary>
         ${unslotted.map(
           (u) => html`<div class="opv2-row mg-board-row">
             <div><strong>${unitName(u)}</strong></div>
-            <div class="mg-board-act">${slotAcceptForm(u, "Assign")}</div>
+            <div class="mg-board-act">${slotAcceptForm(u, t("common.assign"))}</div>
           </div>`,
         )}
       </details>`;
@@ -1958,8 +1958,8 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
     op.status === "completed" && opts.participants
       ? html`<section class="opv2-panel">
           <div class="opv2-panel-title" style="display:flex;justify-content:space-between;align-items:center;gap:.5rem">
-            <span>Participants (${opts.participants.length})</span>
-            <a class="btn btn-sm btn-ghost" href="${bp}/ops/${op.id}/participants.csv">Download CSV</a>
+            <span>${t("op.participants")} (${opts.participants.length})</span>
+            <a class="btn btn-sm btn-ghost" href="${bp}/ops/${op.id}/participants.csv">${t("op.downloadCsv")}</a>
           </div>
           ${opts.participants.length
             ? opts.participants.map(
