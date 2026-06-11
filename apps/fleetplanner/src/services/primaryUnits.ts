@@ -27,7 +27,6 @@ export async function userUnitsByUser(operationId: string): Promise<Map<string, 
       createdAt: true,
       captainId: true,
       ship: { select: { name: true } },
-      voiceChannel: { select: { channelId: true } },
       seats: { where: { active: true, userId: { not: null } }, select: { userId: true } },
     },
   });
@@ -40,7 +39,7 @@ export async function userUnitsByUser(operationId: string): Promise<Map<string, 
       unitType: u.unitType,
       name,
       createdAt: u.createdAt,
-      hasChannel: !!u.voiceChannel,
+      hasChannel: false,
     };
     const list = byUser.get(userId);
     if (list) {

@@ -6,7 +6,6 @@ import {
   fetchGuildMemberByBot,
   fetchGuildRolesByBot,
 } from "./discord.js";
-import { decryptSecret } from "./secrets.js";
 
 const ADMINISTRATOR = 1n << 3n;
 const MANAGE_CHANNELS = 1n << 4n;
@@ -61,14 +60,6 @@ const FLEETPLANNER_PERMS: RequiredPermission[] = [
   { key: "ADD_EVENTS", label: "Add Events", bit: ADD_EVENTS },
 ];
 
-const VOICEBOT_PERMS: RequiredPermission[] = [
-  { key: "MANAGE_CHANNELS", label: "Manage Channels", bit: MANAGE_CHANNELS },
-  { key: "VIEW_CHANNEL", label: "View Channels", bit: VIEW_CHANNEL },
-  { key: "CONNECT", label: "Connect", bit: CONNECT },
-  { key: "SPEAK", label: "Speak", bit: SPEAK },
-  { key: "MOVE_MEMBERS", label: "Move Members", bit: MOVE_MEMBERS },
-];
-
 function permissionBits(perms: RequiredPermission[]): string {
   return perms.reduce((acc, perm) => acc | perm.bit, 0n).toString();
 }
@@ -93,20 +84,6 @@ function computePermissions(guildId: string, roleIds: string[], roles: Array<{ i
 function missingPermissions(actual: bigint | null, required: RequiredPermission[]): RequiredPermission[] {
   if (actual === null) return required;
   return required.filter((perm) => (actual & perm.bit) !== perm.bit);
-}
-
-function decryptVoiceBotToken(bot: {
-  tokenCiphertext: string;
-  tokenIv: string;
-  tokenSalt: string;
-  tokenTag: string;
-}): string {
-  return decryptSecret({
-    ciphertext: bot.tokenCiphertext,
-    iv: bot.tokenIv,
-    salt: bot.tokenSalt,
-    tag: bot.tokenTag,
-  });
 }
 
 async function checkBot(input: {
@@ -212,10 +189,6 @@ export async function runDiscordInstallDiagnostics(guildId: string): Promise<Dis
   if (!guild) throw new Error("Guild not found");
 
   const roles = await fetchGuildRolesByBot(guildId).catch(() => null);
-  const voiceBots = await prisma.guildVoiceBot.findMany({
-    where: { guildId },
-    orderBy: { createdAt: "asc" },
-  });
 
   const checks: BotDiagnostic[] = [];
   checks.push(await checkBot({
@@ -241,38 +214,6 @@ export async function runDiscordInstallDiagnostics(guildId: string): Promise<Dis
     applicationsCommands: true,
     note: "Required for Fleetplanner events, DMs, feedback tickets, and event roles.",
   }));
-
-  for (const bot of voiceBots) {
-    const token = decryptVoiceBotToken(bot);
-    checks.push(await checkBot({
-      guildId,
-      key: `voicebot-${bot.id}`,
-      name: `VoiceBot: ${bot.label}`,
-      appId: bot.botUserId,
-      token,
-      required: VOICEBOT_PERMS,
-      roles,
-      applicationsCommands: false,
-      note: "Required for operation voice channels, crew moves, and Discord audio relay.",
-    }));
-  }
-
-  if (voiceBots.length === 0) {
-    checks.push({
-      key: "voicebots-none",
-      name: "VoiceBots / Funkrelais",
-      appId: null,
-      configured: false,
-      installed: false,
-      ok: false,
-      severity: "warn",
-      username: null,
-      requiredPermissions: serializePerms(VOICEBOT_PERMS),
-      missingPermissions: serializePerms(VOICEBOT_PERMS),
-      inviteUrl: null,
-      note: "No VoiceBots are configured in Fleetplanner. Add up to six VoiceBot tokens in Server Settings first.",
-    });
-  }
 
   return {
     guild,
