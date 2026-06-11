@@ -3,7 +3,6 @@ import { getEnv } from "./config/env.js";
 import { startShipSyncScheduler } from "./services/shipSync.js";
 import { startLocationSyncScheduler } from "./services/locations.js";
 import { startReminderScheduler } from "./services/reminderScheduler.js";
-import { startVoiceSessionScheduler } from "./services/voiceSession.js";
 import { startCoverCleanupScheduler } from "./services/coverCleanup.js";
 import { startRecurrenceScheduler } from "./services/recurrence.js";
 import { startEventInterestScheduler } from "./services/eventInterest.js";
@@ -25,10 +24,6 @@ try {
     error: (e, msg) => app.log.error(e, msg),
   });
   startReminderScheduler({
-    info: (msg) => app.log.info(msg),
-    error: (e, msg) => app.log.error(e, msg),
-  });
-  startVoiceSessionScheduler({
     info: (msg) => app.log.info(msg),
     error: (e, msg) => app.log.error(e, msg),
   });

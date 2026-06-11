@@ -89,19 +89,10 @@ import {
   updateDistributedEvents,
   deleteDistributedEvents,
 } from "../services/eventDistribution.js";
-import { closeMissionVoiceSession, hasVoicePermission } from "../services/voiceSession.js";
-import { listMissionCommanders } from "../services/missionCommanders.js";
 import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
 import { getMultiPositionAssignments } from "../services/primaryUnits.js";
 import { canViewHangars, listSharedHangars } from "../services/hangarShare.js";
 import { getActivePartnerGuildIds } from "../services/partnerships.js";
-import { bridgeConfigured } from "../services/bridge.js";
-import { cleanupOperationVoiceChannels } from "../services/voiceBots.js";
-import {
-  buildOpVoiceControl,
-  moveUnitCrewToChannel,
-  moveOpMemberToUnit,
-} from "../services/opVoice.js";
 import { parseDateLocalTz, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
 import {
@@ -668,7 +659,7 @@ export async function webRoutes(app: FastifyInstance) {
   // ── Player-facing operation page ────────────────────────────────────
   app.get<{
     Params: { id: string };
-    Querystring: { flash?: string };
+    Querystring: { flash?: string; view?: string; lay?: string };
   }>("/ops/:id", async (req, reply) => {
     const ctx = await optionalAuth(req);
     // Option B: lazily open the fighter/CQB teams a need asks for, so players
@@ -754,6 +745,8 @@ export async function webRoutes(app: FastifyInstance) {
           canManage,
           discordInvite,
           variant: opStyle,
+          view: req.query.view,
+          lay: req.query.lay,
         }),
       );
     }
@@ -897,13 +890,8 @@ export async function webRoutes(app: FastifyInstance) {
             .values(),
         )
       : [];
-    const [availableVoiceBotCount, voiceEnabled, opGuildRow, guildVoiceChannels] =
-      await Promise.all([
-        prisma.guildVoiceBot.count({ where: { guildId: op.guildId, assignedChannelId: null } }),
-        hasVoicePermission(op.guildId),
-        (prisma.guild.findUnique as any)({ where: { id: op.guildId }, select: { name: true, orgName: true, timezone: true, discordInviteUrl: true } }),
-        fetchGuildVoiceChannels(op.guildId).catch(() => []),
-      ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const opGuildRow = await (prisma.guild.findUnique as any)({ where: { id: op.guildId }, select: { name: true, orgName: true, timezone: true, discordInviteUrl: true } });
     const opGuildTz = (opGuildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
     const opGuildName = (opGuildRow as { name?: string } | null)?.name;
     const opGuildOrgName = (opGuildRow as { orgName?: string | null } | null)?.orgName ?? null;
@@ -919,78 +907,8 @@ export async function webRoutes(app: FastifyInstance) {
       (opGuildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null;
     const joinInviteUrl = !isHostMember ? opGuildInvite : null;
     const opRole = ctx ? await effectiveOpRole(ctx.user.id, ctx.user.role, op.id) : null;
-    const globalVoiceRoom =
-      ((op as Record<string, unknown>).globalVoiceRoom as string | null) ?? null;
-    // Generate mission commander links when voice session is active.
-    let fleetVoiceLinks: Array<{ userId: string; username: string; link: string }> | null = null;
-    if (opRole === "fleetoperator" && voiceEnabled && globalVoiceRoom && ctx) {
-      try {
-        const env = getEnv();
-        const commanders = await listMissionCommanders(op.id);
-        const { createMissionVoiceSession } = await import("../auth/companionSession.js");
-        fleetVoiceLinks = await Promise.all(
-          commanders.map(async (commander) => {
-            const token = await createMissionVoiceSession(commander.userId, op.id);
-            const params = new URLSearchParams({ token });
-            return {
-              userId: commander.userId,
-              username: commander.username,
-              link: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/mission?${params.toString()}`,
-            };
-          }),
-        );
-      } catch {
-        /* non-fatal */
-      }
-    }
-    // Commander roster for the Commanders tab: accepted-unit captains and
-    // manually-added participants only. Guild fleetoperators are not
-    // auto-listed and do not get mission voice by admin role alone. A
-    // fleetoperator who should join the Command Net is added explicitly.
-    // Mission deep-links are generated per person when a voice session is
-    // live (globalVoiceRoom set).
-    type CommanderEntry = {
-      userId: string;
-      username: string;
-      kind: "squadleader" | "leader" | "participant";
-      globalVoice: boolean;
-      link: string | null;
-    };
-    let commanderRoster: { entries: CommanderEntry[]; voiceActive: boolean } | null = null;
-    if (opRole === "fleetoperator" && voiceEnabled && ctx) {
-      try {
-        const env = getEnv();
-        const entries: CommanderEntry[] = (await listMissionCommanders(op.id)).map((commander) => ({
-          ...commander,
-          link: null,
-        }));
-        const voiceActive = Boolean(globalVoiceRoom) && Boolean(env.LIVEKIT_URL);
-        if (voiceActive) {
-          const { createMissionVoiceSession } = await import("../auth/companionSession.js");
-          for (const e of entries) {
-            const token = await createMissionVoiceSession(e.userId, op.id);
-            const params = new URLSearchParams({ token });
-            e.link = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/mission?${params.toString()}`;
-          }
-        }
-        commanderRoster = { entries, voiceActive };
-      } catch {
-        /* non-fatal */
-      }
-    }
-    // Option B: live Discord voice control, per unit. Gated to
-    // fleetoperator + voice-enabled + bridge configured + op live +
-    // units actually have Discord voice channels.
-    let voiceControl: Awaited<ReturnType<typeof buildOpVoiceControl>> | null = null;
-    if (
-      opRole === "fleetoperator" &&
-      voiceEnabled &&
-      bridgeConfigured() &&
-      (op.status === "open" || op.status === "in_progress") &&
-      op.voiceChannels.length > 0
-    ) {
-      voiceControl = await buildOpVoiceControl(op).catch(() => null);
-    }
+    // Discord voice channels for the scheduled-event location selector.
+    const guildVoiceChannels = await fetchGuildVoiceChannels(op.guildId).catch(() => []);
     // Participant roster — only surfaced once the op is completed.
     const participants = op.status === "completed" ? await getMissionParticipants(op.id) : null;
     // Multi-position users (2+ units) + their primary-channel choice.
@@ -1012,19 +930,9 @@ export async function webRoutes(app: FastifyInstance) {
         ownedShips,
         assignableUsers,
         guildVoiceChannels,
-        availableVoiceBotCount,
-        voiceEnabled,
         guildTimezone: opGuildTz,
         guildName: opGuildName,
         orgName: opGuildOrgName,
-        missionVoice: {
-          globalVoiceRoom,
-          commanderVoiceRoom:
-            ((op as Record<string, unknown>).commanderVoiceRoom as string | null) ?? null,
-        },
-        fleetVoiceLinks,
-        commanderRoster,
-        voiceControl,
         tab: req.query.tab,
         visibility: opVisibility ?? "private",
         canEditVisibility,
@@ -1084,61 +992,6 @@ export async function webRoutes(app: FastifyInstance) {
       return reply.redirect(basePath(`/ops/${op.id}?flash=ok:Visibility+updated.`), 302);
     },
   );
-
-  // ── Option B: live Discord voice control (move op crew into channels) ──
-  app.post<{ Params: { id: string; unitId: string }; Body: Record<string, string> }>(
-    "/ops/:id/voice/move-unit/:unitId",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      if (!bridgeConfigured())
-        return reply.redirect(
-          basePath(`/ops/${req.params.id}/manage?tab=voice&flash=error:Bridge+not+configured.`),
-          302,
-        );
-      const op = await getOperation(req.params.id);
-      if (!op) return reply.redirect(basePath("/?flash=error:Operation+not+found."), 302);
-      try {
-        const r = await moveUnitCrewToChannel(op, req.params.unitId);
-        return reply.redirect(
-          basePath(
-            `/ops/${op.id}/manage?tab=voice&flash=ok:Moved+${r.moved}+(skipped+${r.skipped}%2C+failed+${r.failed}).`,
-          ),
-          302,
-        );
-      } catch (err) {
-        app.log.error(err, "move unit crew failed");
-        return reply.redirect(
-          basePath(`/ops/${op.id}/manage?tab=voice&flash=error:Move+failed+(bridge+unreachable%3F).`),
-          302,
-        );
-      }
-    },
-  );
-
-  app.post<{
-    Params: { id: string; unitId: string; userId: string };
-    Body: Record<string, string>;
-  }>("/ops/:id/voice/move-member/:unitId/:userId", async (req, reply) => {
-    const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-    if (!ctx) return;
-    if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-    if (!bridgeConfigured())
-      return reply.redirect(
-        basePath(`/ops/${req.params.id}/manage?tab=voice&flash=error:Bridge+not+configured.`),
-        302,
-      );
-    const op = await getOperation(req.params.id);
-    if (!op) return reply.redirect(basePath("/?flash=error:Operation+not+found."), 302);
-    try {
-      await moveOpMemberToUnit(op, req.params.unitId, req.params.userId);
-      return reply.redirect(basePath(`/ops/${op.id}/manage?tab=voice&flash=ok:Member+moved.`), 302);
-    } catch (err) {
-      app.log.error(err, "move op member failed");
-      return reply.redirect(basePath(`/ops/${op.id}/manage?tab=voice&flash=error:Move+failed.`), 302);
-    }
-  });
 
   // ── User profile / owned ships ───────────────────────────────────────
   app.get<{ Querystring: { q?: string; flash?: string; unmatched?: string } }>(
@@ -1456,12 +1309,6 @@ export async function webRoutes(app: FastifyInstance) {
       if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
       try {
         const op = await prisma.operation.findUnique({ where: { id: req.params.id } });
-        await closeMissionVoiceSession(req.params.id).catch((err) =>
-          app.log.warn(err, "Mission voice session close failed before operation delete"),
-        );
-        await cleanupOperationVoiceChannels(req.params.id).catch((err) =>
-          app.log.warn(err, "Voice channel cleanup failed before operation delete"),
-        );
         // FR-P1: tear down distributed partner events BEFORE deleteOperation —
         // the EventDistribution rows cascade-delete with the op, which would
         // otherwise orphan the partner-guild Discord events.

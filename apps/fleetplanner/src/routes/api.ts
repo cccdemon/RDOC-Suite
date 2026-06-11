@@ -57,33 +57,9 @@ import {
   sendDiscordDm,
   sendSeatAssignmentDm,
 } from "../services/discord.js";
-import { bridgeConfigured, getBridgeVoiceStates } from "../services/bridge.js";
-import {
-  cleanupOperationVoiceChannels,
-  deleteOperationVoiceChannel,
-  launchOperationVoiceChannels,
-  moveOperationCrewToVoiceChannels,
-  renameOperationVoiceChannel,
-} from "../services/voiceBots.js";
-import {
-  closeMissionVoiceSession,
-  hasVoicePermission,
-  openMissionVoiceSession,
-  setMissionCommanderVoiceRole,
-  setMissionGlobalVoiceRole,
-} from "../services/voiceSession.js";
-import {
-  issueUnitLivekitToken,
-  issueMissionVoiceToken,
-} from "../services/livekit.js";
-import {
-  createMissionVoiceSession,
-  loadMissionVoiceSession,
-} from "../auth/companionSession.js";
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 import { specForShip, specForSquad } from "../services/seats.js";
-import { hasMissionRelayVoice, isMissionCommander, listMissionCommanders } from "../services/missionCommanders.js";
 
 const MISSION_VOICE_LEADER_ROLES = new Set(["event_leader", "raid_leader", "wing_commander"]);
 
@@ -109,7 +85,10 @@ function opReturnUrl(
   if (body.ui === "new") {
     return basePath(`/ops/${opId}/manage?tab=${encodeURIComponent(tab)}&flash=${flash}`);
   }
-  return basePath(`/ops/${opId}?flash=${flash}`);
+  // Operator-console actions round-trip back to the in-page operator view/layout.
+  const extra =
+    (body.view === "operator" ? "&view=operator" : "") + (body.lay === "b" ? "&lay=b" : "");
+  return basePath(`/ops/${opId}?flash=${flash}${extra}`);
 }
 
 const UNIT_TYPES = ["ship", "squad", "vehicle"] as const;
@@ -209,115 +188,6 @@ async function assertUniqueSquadName(
 }
 
 
-function missionDeepLink(token: string): string {
-  const env = getEnv();
-  const fleetplannerUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
-  const params = new URLSearchParams({ token, url: fleetplannerUrl });
-  return `rdoc://mission?${params.toString()}`;
-}
-
-function missionWrapperLink(token: string): string {
-  const env = getEnv();
-  const params = new URLSearchParams({ token });
-  return `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/mission?${params.toString()}`;
-}
-
-function companionDownloadLink(): string {
-  const env = getEnv();
-  return `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/companion/download`;
-}
-
-type MissionStartRecipient = {
-  userId: string;
-  username: string;
-};
-
-async function listMissionStartRecipients(operationId: string): Promise<{
-  operationTitle: string;
-  leaderNames: string[];
-  recipients: MissionStartRecipient[];
-}> {
-  const op = await prisma.operation.findUnique({
-    where: { id: operationId },
-    select: {
-      title: true,
-      leaders: {
-        select: {
-          userId: true,
-          user: { select: { username: true } },
-        },
-        orderBy: { userId: "asc" },
-      },
-      units: {
-        where: { status: "accepted" },
-        select: {
-          captainId: true,
-          captain: { select: { username: true } },
-        },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-  });
-  if (!op) return { operationTitle: "", leaderNames: [], recipients: [] };
-
-  const recipients = new Map<string, MissionStartRecipient>();
-  for (const unit of op.units) {
-    recipients.set(unit.captainId, {
-      userId: unit.captainId,
-      username: unit.captain.username,
-    });
-  }
-  for (const commander of await listMissionCommanders(operationId)) {
-    recipients.set(commander.userId, {
-      userId: commander.userId,
-      username: commander.username,
-    });
-  }
-
-  return {
-    operationTitle: op.title,
-    leaderNames: op.leaders.map((leader) => leader.user.username),
-    recipients: [...recipients.values()],
-  };
-}
-
-async function sendMissionCommanderStartDms(operationId: string): Promise<{
-  sent: number;
-  failed: number;
-}> {
-  const env = getEnv();
-  const { operationTitle, leaderNames, recipients } = await listMissionStartRecipients(operationId);
-  if (!operationTitle) return { sent: 0, failed: 0 };
-  const leadBy = leaderNames.length > 0 ? leaderNames.join(", ") : "Mission Command";
-  let sent = 0;
-  let failed = 0;
-  for (const recipient of recipients) {
-    const token = await createMissionVoiceSession(recipient.userId, operationId);
-    const wrapperLink = missionWrapperLink(token);
-    const rawLink = missionDeepLink(token);
-    const lines = [
-      `The Operation ${operationTitle} - Lead by ${leadBy} has started.`,
-      "",
-    ];
-    lines.push(
-      `- Please use this Voice Client to participate in the Command Net ${companionDownloadLink()}`,
-    );
-    lines.push(
-      `- If you've already installed SquadLink, here is your configuration Link: ${wrapperLink}`,
-    );
-    lines.push("");
-    lines.push(`Raw configuration link, if needed: ${rawLink}`);
-    lines.push("");
-    lines.push("Good Hunt");
-    try {
-      await sendDiscordDm(recipient.userId, lines.join("\n"));
-      sent++;
-    } catch {
-      failed++;
-    }
-  }
-  return { sent, failed };
-}
 
 async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
   const opRole = await effectiveOpRole(userId, instanceRole, operationId);
@@ -330,175 +200,6 @@ async function canApproveUnits(userId: string, instanceRole: string, operationId
   return !!leader;
 }
 
-type MissionDiscordVoiceState = {
-  required: boolean;
-  ok: boolean;
-  status:
-    | "ok"
-    | "no_expected_channel"
-    | "not_linked"
-    | "bridge_unavailable"
-    | "not_in_voice"
-    | "wrong_channel";
-  expectedChannel: { id: string; name: string } | null;
-  currentChannel: { id: string; name: string } | null;
-};
-
-async function activeMissionOperationForToken(
-  userId: string,
-  operationId: string,
-  activeStatuses: readonly string[],
-): Promise<{
-  id: string;
-  title: string;
-  guildId: string;
-  eventVoiceChannelId: string | null;
-  globalVoiceRoom: string | null;
-  commanderVoiceRoom: string | null;
-} | null> {
-  const op = await prisma.operation.findFirst({
-    where: {
-      id: operationId,
-      status: { in: [...activeStatuses] },
-    },
-    select: {
-      id: true,
-      title: true,
-      guildId: true,
-      eventVoiceChannelId: true,
-      globalVoiceRoom: true,
-      commanderVoiceRoom: true,
-    },
-  });
-  if (!op) return null;
-
-  const unit = await prisma.fleetUnit.findFirst({
-    where: { operationId, captainId: userId, status: "accepted" },
-    select: { id: true },
-  });
-  if (unit) return op;
-
-  const leader = await prisma.operationLeader.findFirst({
-    where: { operationId, userId, leaderRole: { in: ["event_leader", "raid_leader", "wing_commander"] } },
-    select: { id: true },
-  });
-  if (leader) return op;
-
-  const participant = (await (prisma as any).missionVoiceParticipant.findFirst({
-    where: { operationId, userId },
-    select: { id: true },
-  })) as { id: string } | null;
-  return participant ? op : null;
-}
-
-// Every relaybot voice channel created for this op (all units), regardless of
-// which user is assigned where. The Commander Net gate accepts ANY of these
-// plus the event channel — a commander just has to be "in the mission", not in
-// their own specific unit channel.
-async function opRelayBotChannels(operationId: string): Promise<Array<{ id: string; name: string }>> {
-  const chans = await prisma.fleetVoiceChannel.findMany({
-    where: { operationId },
-    select: { channelId: true, channelName: true },
-  });
-  return chans.map((c) => ({ id: c.channelId, name: c.channelName || "Unit Voice" }));
-}
-
-async function missionDiscordVoiceState(
-  operation: { id: string; guildId: string; eventVoiceChannelId: string | null },
-  userId: string,
-): Promise<MissionDiscordVoiceState> {
-  // Commander Net presence rule: be in the event channel OR in ANY of the op's
-  // relaybot unit channels (not restricted to the user's own unit).
-  const relayBotChannels = await opRelayBotChannels(operation.id);
-  // Guidance/expected channel: prefer the event channel, else the first unit
-  // channel. The gate accepts all of them (allowedChannelIds below).
-  const expected = (operation.eventVoiceChannelId
-    ? { id: operation.eventVoiceChannelId, name: "Event Voice" }
-    : (relayBotChannels[0] ?? null));
-  if (!expected) {
-    return {
-      required: false,
-      ok: true,
-      status: "no_expected_channel",
-      expectedChannel: null,
-      currentChannel: null,
-    };
-  }
-
-  const discordId = await discordUserIdForFleetplannerUser(userId).catch(() => null);
-  if (!discordId) {
-    return {
-      required: true,
-      ok: false,
-      status: "not_linked",
-      expectedChannel: expected,
-      currentChannel: null,
-    };
-  }
-
-  if (!bridgeConfigured()) {
-    return {
-      required: true,
-      ok: false,
-      status: "bridge_unavailable",
-      expectedChannel: expected,
-      currentChannel: null,
-    };
-  }
-
-  try {
-    const voice = await getBridgeVoiceStates(operation.guildId);
-    if (voice.offline) {
-      return {
-        required: true,
-        ok: false,
-        status: "bridge_unavailable",
-        expectedChannel: expected,
-        currentChannel: null,
-      };
-    }
-    const channelNames = new Map(voice.channels.map((channel) => [channel.id, channel.name]));
-    const currentId = voice.voiceStates.find((state) => state.userId === discordId)?.channelId ?? null;
-    const current = currentId ? { id: currentId, name: channelNames.get(currentId) ?? currentId } : null;
-    // Accept the event channel + ANY relaybot unit channel of the op, so a
-    // commander can sit in any mission channel (not only their own unit).
-    const allowedChannelIds = new Set(relayBotChannels.map((c) => c.id));
-    if (operation.eventVoiceChannelId) allowedChannelIds.add(operation.eventVoiceChannelId);
-    if (!currentId) {
-      return {
-        required: true,
-        ok: false,
-        status: "not_in_voice",
-        expectedChannel: expected,
-        currentChannel: null,
-      };
-    }
-    if (!allowedChannelIds.has(currentId)) {
-      return {
-        required: true,
-        ok: false,
-        status: "wrong_channel",
-        expectedChannel: expected,
-        currentChannel: current,
-      };
-    }
-    return {
-      required: true,
-      ok: true,
-      status: "ok",
-      expectedChannel: expected,
-      currentChannel: current,
-    };
-  } catch {
-    return {
-      required: true,
-      ok: false,
-      status: "bridge_unavailable",
-      expectedChannel: expected,
-      currentChannel: null,
-    };
-  }
-}
 
 export async function apiRoutes(app: FastifyInstance) {
   // ── Ship search ──────────────────────────────────────────────────────
@@ -743,14 +444,6 @@ export async function apiRoutes(app: FastifyInstance) {
           }
         });
 
-        if (unit.status === "accepted" && nextStatus === "pending") {
-          if (!(await isMissionCommander(req.params.id, unit.captainId))) {
-            await setMissionCommanderVoiceRole(req.params.id, unit.captainId, false).catch((err) =>
-              req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
-            );
-          }
-        }
-
         const flash =
           unit.status === "accepted" && nextStatus === "pending"
             ? "warn:Unit+updated+and+needs+acceptance+again."
@@ -838,20 +531,6 @@ export async function apiRoutes(app: FastifyInstance) {
           /* slot full / mismatch — accept unslotted */
         }
       }
-      await setMissionCommanderVoiceRole(req.params.id, unit.captainId, true).catch((err) =>
-        req.log.warn(err, "Command Net role sync failed (non-fatal)"),
-      );
-      const env = getEnv();
-      const unitName =
-        unit.unitType === "ship"
-          ? (unit.ship?.name ?? "Unknown Ship")
-          : (unit.squadName ?? "Squad");
-      const operationUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${unit.operation.id}`;
-      sendAcceptedCaptainVoiceDm(unit.captainId, {
-        operationTitle: unit.operation.title,
-        unitName,
-        operationUrl,
-      }).catch((err) => app.log.warn(err, "Accepted captain DM failed"));
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Unit+accepted.", "fleet"),
         302,
@@ -877,11 +556,6 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       if (!unit) return reply.code(404).send({ error: "Unit not found" });
       await setUnitStatus(req.params.unitId, "rejected", req.body.note);
-      if (!(await isMissionCommander(req.params.id, unit.captainId))) {
-        await setMissionCommanderVoiceRole(req.params.id, unit.captainId, false).catch((err) =>
-          req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
-        );
-      }
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "warn:Unit+rejected.", "fleet"),
         302,
@@ -960,29 +634,6 @@ export async function apiRoutes(app: FastifyInstance) {
         previous?.status ? `von ${previous.status}` : "",
       );
 
-      // Mission voice session: open/in_progress → create rooms + grant roles
-      if (newStatus === "open" || newStatus === "in_progress") {
-        if (await hasVoicePermission(updated.guildId)) {
-          if (newStatus === "in_progress") {
-            try {
-              await openMissionVoiceSession(req.params.id);
-            } catch (err) {
-              app.log.warn(err, "Mission voice session open failed (non-fatal)");
-            }
-          } else {
-            openMissionVoiceSession(req.params.id).catch((err) =>
-              app.log.warn(err, "Mission voice session open failed (non-fatal)"),
-            );
-          }
-        }
-      }
-      // Mission voice session: completed/cancelled → close rooms + revoke roles
-      if (newStatus === "completed" || newStatus === "cancelled") {
-        closeMissionVoiceSession(req.params.id).catch((err) =>
-          app.log.warn(err, "Mission voice session close failed (non-fatal)"),
-        );
-      }
-
       // Create Discord scheduled event when op is opened
       let discordEventCreationFlash: string | null = null;
       if (newStatus === "open" && !updated.discordEventId) {
@@ -1033,164 +684,11 @@ export async function apiRoutes(app: FastifyInstance) {
           app.log.warn(err, "Partner event distribution teardown failed (non-fatal)"),
         );
       }
-      if (newStatus === "in_progress") {
-        try {
-          const moved = await moveOperationCrewToVoiceChannels(req.params.id);
-          const commanderDms =
-            previous?.status !== "in_progress"
-              ? await sendMissionCommanderStartDms(req.params.id)
-              : { sent: 0, failed: 0 };
-          const skipped = moved.skippedDiscordUsers
-            ? `+${moved.skippedDiscordUsers}+users+had+no+Discord+identity.`
-            : "";
-          const notConnected = moved.notConnected
-            ? `+${moved.notConnected}+users+were+not+connected+to+voice.`
-            : "";
-          const dmFlash =
-            previous?.status !== "in_progress"
-              ? `+Commander+DMs:+${commanderDms.sent}+sent,+${commanderDms.failed}+failed.`
-              : "";
-          return reply.redirect(
-            opReturnUrl(
-              req.params.id,
-              req.body,
-              `ok:Status+updated.+Moved+${moved.moved}+crew+into+${moved.channels}+voice+channels.${notConnected}${skipped}${dmFlash}`,
-              "overview",
-            ),
-            302,
-          );
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : "Voice move failed";
-          return reply.redirect(
-            opReturnUrl(
-              req.params.id,
-              req.body,
-              `error:Status+updated,+voice+move+failed:+${encodeURIComponent(msg)}`,
-              "overview",
-            ),
-            302,
-          );
-        }
-      }
-      if (newStatus === "completed" || newStatus === "cancelled") {
-        try {
-          const cleanup = await cleanupOperationVoiceChannels(req.params.id);
-          const skipped = cleanup.skippedDiscordUsers
-            ? `+${cleanup.skippedDiscordUsers}+users+had+no+Discord+identity.`
-            : "";
-          const occupied = cleanup.skippedOccupied
-            ? `+${cleanup.skippedOccupied}+voice+channels+were+left+because+members+are+still+connected.`
-            : "";
-          const unknown = cleanup.skippedUnknown
-            ? `+${cleanup.skippedUnknown}+voice+channels+were+left+because+voice+occupancy+could+not+be+verified.`
-            : "";
-          return reply.redirect(
-            opReturnUrl(
-              req.params.id,
-              req.body,
-              `ok:Status+updated.+Deleted+${cleanup.deleted}+empty+voice+channels.${occupied}${unknown}${skipped}`,
-              "overview",
-            ),
-            302,
-          );
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : "Voice cleanup failed";
-          return reply.redirect(
-            opReturnUrl(
-              req.params.id,
-              req.body,
-              `error:Status+updated,+voice+cleanup+failed:+${encodeURIComponent(msg)}`,
-              "overview",
-            ),
-            302,
-          );
-        }
-      }
       const finalFlash = discordEventCreationFlash ?? "ok:Status+updated.";
       return reply.redirect(opReturnUrl(req.params.id, req.body, finalFlash, "overview"), 302);
     },
   );
 
-  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
-    "/api/ops/:id/voice-channels/launch",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      try {
-        const result = await launchOperationVoiceChannels(req.params.id);
-        const skipped = result.skippedDiscordUsers
-          ? `+${result.skippedDiscordUsers}+users+had+no+Discord+identity.`
-          : "";
-        return reply.redirect(
-          opReturnUrl(
-            req.params.id,
-            req.body,
-            `ok:Created+${result.created}+voice+channels,+assigned+${result.botsAssigned}+bots.${skipped}`,
-            "voice",
-          ),
-          302,
-        );
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to launch voice channels";
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "voice"),
-          302,
-        );
-      }
-    },
-  );
-
-  app.post<{ Params: { id: string; voiceChannelId: string }; Body: Record<string, string> }>(
-    "/api/ops/:id/voice-channels/:voiceChannelId/rename",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      try {
-        await renameOperationVoiceChannel({
-          operationId: req.params.id,
-          voiceChannelId: req.params.voiceChannelId,
-          name: req.body.name ?? "",
-        });
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "ok:Voice+channel+renamed.", "voice"),
-          302,
-        );
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to rename voice channel";
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "voice"),
-          302,
-        );
-      }
-    },
-  );
-
-  app.post<{ Params: { id: string; voiceChannelId: string }; Body: Record<string, string> }>(
-    "/api/ops/:id/voice-channels/:voiceChannelId/delete",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      try {
-        await deleteOperationVoiceChannel({
-          operationId: req.params.id,
-          voiceChannelId: req.params.voiceChannelId,
-        });
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "ok:Voice+channel+deleted.", "voice"),
-          302,
-        );
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to delete voice channel";
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, `error:${encodeURIComponent(msg)}`, "voice"),
-          302,
-        );
-      }
-    },
-  );
 
   // ── Claim / unclaim seat ─────────────────────────────────────────────
   app.post<{ Params: { seatId: string }; Body: Record<string, string> }>(
@@ -1325,6 +823,55 @@ export async function apiRoutes(app: FastifyInstance) {
           302,
         );
       }
+    },
+  );
+
+  // Operator: free an occupied seat (the ✕ in the operator console). Op-scoped auth
+  // via effectiveOpRole/leaders — does NOT require the global fleetoperator role.
+  app.post<{ Params: { seatId: string }; Body: Record<string, string> }>(
+    "/api/seats/:seatId/unassign",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+
+      const seat = await prisma.seatAssignment.findUnique({
+        where: { id: req.params.seatId },
+        include: {
+          fleetUnit: {
+            select: {
+              operationId: true,
+              squadName: true,
+              ship: { select: { name: true } },
+              operation: { select: { leaders: { select: { userId: true } } } },
+            },
+          },
+        },
+      });
+      const opId = seat?.fleetUnit.operationId;
+      if (!opId) return reply.code(404).send({ error: "Seat not found" });
+
+      const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, opId);
+      const canManage =
+        opRole === "fleetoperator" ||
+        seat.fleetUnit.operation.leaders.some((leader) => leader.userId === ctx.user.id);
+      if (!canManage) {
+        return reply.redirect(opReturnUrl(opId, req.body, "error:Forbidden", "fleet"), 302);
+      }
+      // The captain seat (order 0) can't be vacated — that would orphan the unit.
+      if (seat.order === 0) {
+        return reply.redirect(
+          opReturnUrl(opId, req.body, "error:Cannot+free+the+captain+seat", "fleet"),
+          302,
+        );
+      }
+      await prisma.seatAssignment.update({
+        where: { id: req.params.seatId },
+        data: { userId: null },
+      });
+      const unitName = seat.fleetUnit.ship?.name ?? seat.fleetUnit.squadName ?? "Unit";
+      await logAudit(opId, ctx.user.id, ctx.user.username, "seat:unassign", `${seat.label} · ${unitName}`);
+      return reply.redirect(opReturnUrl(opId, req.body, "ok:Seat+freed.", "fleet"), 302);
     },
   );
 
@@ -1740,25 +1287,6 @@ export async function apiRoutes(app: FastifyInstance) {
       const validRoles = ["event_leader", "fleet_commander", "raid_leader", "wing_commander"];
       const nextLeaderRole = validRoles.includes(leaderRole) ? leaderRole : "event_leader";
       await addLeader(req.params.id, userId, nextLeaderRole);
-      if (MISSION_VOICE_LEADER_ROLES.has(nextLeaderRole)) {
-        await setMissionCommanderVoiceRole(req.params.id, userId, true).catch((err) =>
-          req.log.warn(err, "Command Net role sync failed (non-fatal)"),
-        );
-        await setMissionGlobalVoiceRole(req.params.id, userId, true).catch((err) =>
-          req.log.warn(err, "Global Radio Net role sync failed (non-fatal)"),
-        );
-      } else {
-        if (!(await isMissionCommander(req.params.id, userId))) {
-          await setMissionCommanderVoiceRole(req.params.id, userId, false).catch((err) =>
-            req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
-          );
-        }
-        if (!(await hasMissionRelayVoice(req.params.id, userId))) {
-          await setMissionGlobalVoiceRole(req.params.id, userId, false).catch((err) =>
-            req.log.warn(err, "Global Radio Net role revoke failed (non-fatal)"),
-          );
-        }
-      }
       return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Leader+added.", "admin"), 302);
     },
   );
@@ -1772,16 +1300,6 @@ export async function apiRoutes(app: FastifyInstance) {
       const { userId } = req.body;
       if (!userId) return reply.code(400).send({ error: "userId required" });
       await removeLeader(req.params.id, userId);
-      if (!(await isMissionCommander(req.params.id, userId))) {
-        await setMissionCommanderVoiceRole(req.params.id, userId, false).catch((err) =>
-          req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
-        );
-      }
-      if (!(await hasMissionRelayVoice(req.params.id, userId))) {
-        await setMissionGlobalVoiceRole(req.params.id, userId, false).catch((err) =>
-          req.log.warn(err, "Global Radio Net role revoke failed (non-fatal)"),
-        );
-      }
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Leader+removed.", "admin"),
         302,
@@ -2047,322 +1565,4 @@ export async function apiRoutes(app: FastifyInstance) {
     },
   );
 
-  // ── Fleet voice token ────────────────────────────────────────────────
-  // Returns a LiveKit token for the caller's accepted unit in this operation.
-  // captains: auto-resolved; crew: auto-resolved from seat; fleetoperators:
-  // may pass ?unitId= to get a token for any accepted unit.
-  app.get<{ Params: { id: string }; Querystring: { unitId?: string } }>(
-    "/api/ops/:id/voice-token",
-    async (req, reply) => {
-      const ctx = await requireAuth(req, reply);
-      if (!ctx) return;
-
-      const op = await prisma.operation.findUnique({
-        where: { id: req.params.id },
-        select: { id: true, title: true, guildId: true, status: true },
-      });
-      if (!op) return reply.code(404).send({ error: "Operation not found" });
-
-      const userId = ctx.user.id;
-      let unitId = req.query.unitId;
-
-      if (!unitId) {
-        const asCaptain = await prisma.fleetUnit.findFirst({
-          where: { operationId: op.id, captainId: userId, status: "accepted" },
-          select: { id: true },
-        });
-        if (asCaptain) {
-          unitId = asCaptain.id;
-        } else {
-          const asCrew = await prisma.seatAssignment.findFirst({
-            where: { userId, active: true, fleetUnit: { operationId: op.id, status: "accepted" } },
-            select: { unitId: true },
-          });
-          if (asCrew) unitId = asCrew.unitId;
-        }
-      }
-
-      if (!unitId)
-        return reply
-          .code(403)
-          .send({ error: "No accepted unit found for this user in this operation" });
-
-      const unit = await prisma.fleetUnit.findFirst({
-        where: { id: unitId, operationId: op.id, status: "accepted" },
-        select: { id: true },
-      });
-      if (!unit) return reply.code(404).send({ error: "Unit not found or not accepted" });
-
-      const result = await issueUnitLivekitToken(userId, op.id, unit.id);
-      if (!result)
-        return reply.code(503).send({ error: "LiveKit is not configured on this server" });
-
-      return reply.send({ ...result, opTitle: op.title });
-    },
-  );
-
-  // ── Companion auto-voice endpoint — RETIRED ──────────────────────────
-  // The old companion polled GET /api/companion/voice (20s loop) for a
-  // fleet unit room + global voice token via a separate Fleetplanner OAuth
-  // token. The mission-first companion removed that flow: LOCAL voice comes
-  // from /api/companion/mission-voice (commander room) and GLOBAL voice is
-  // the Discord relay. The endpoint is gone; old apps fail silently and
-  // retry on their next tick. See docs/companion-app-opus.md.
-
-  // ── Mission Voice Session — companion polling endpoint ──────────────
-  // Returns the two mission voice rooms (global + optional commander)
-  // for the user's currently active operation.
-  app.options("/api/companion/mission-voice", async (req, reply) => {
-    setCompanionCors(reply, req);
-    return reply.code(204).send();
-  });
-
-  app.get("/api/companion/mission-voice", async (req, reply) => {
-    setCompanionCors(reply, req);
-    const authHeader = (req.headers as Record<string, string | undefined>).authorization;
-    if (!authHeader?.startsWith("Bearer ")) return reply.code(401).send({ error: "unauthorized" });
-    const session = await loadMissionVoiceSession(authHeader.slice(7));
-    if (!session) return reply.code(401).send({ error: "unauthorized" });
-    const { userId, operationId } = session;
-
-    const ACTIVE_STATUSES = ["open", "locked", "in_progress"] as const;
-
-    const activeOp = await activeMissionOperationForToken(userId, operationId, ACTIVE_STATUSES);
-
-    // `ended: true` = the mission is definitively over (no active op for this
-    // token / guild voice disabled). The Companion clears its persisted mission
-    // token and falls back to Bridge Mode. `ended: false` = transient/pending
-    // (op active but voice not opened yet) → Companion keeps the token + waits.
-    if (!activeOp) return reply.send({ op: null, ended: true });
-
-    // Voice permission check
-    if (
-      !(await (async () => {
-        const env = getEnv();
-        if (env.RAUMDOCK_GUILD_ID && activeOp!.guildId === env.RAUMDOCK_GUILD_ID) return true;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const g = (await (prisma.guild.findUnique as any)({
-          where: { id: activeOp!.guildId },
-          select: { voiceEnabled: true },
-        })) as { voiceEnabled: boolean } | null;
-        return g?.voiceEnabled ?? false;
-      })())
-    )
-      return reply.send({ op: null, ended: true });
-
-    const relayRoom = activeOp.globalVoiceRoom;
-    const commanderRoom = activeOp.commanderVoiceRoom;
-    // Op is active but its voice session hasn't been opened yet (no relay room).
-    // Pending, not ended — Companion keeps the token and keeps polling.
-    if (!relayRoom) return reply.send({ op: null, ended: false });
-
-    const env = getEnv();
-    if (!env.LIVEKIT_URL) return reply.send({ op: null, ended: false });
-
-    // Commander Net gate: must be in the event channel or any relaybot channel.
-    const discordVoice = await missionDiscordVoiceState(activeOp, userId);
-    const isCommander = await isMissionCommander(activeOp.id, userId);
-    const canRelay = await hasMissionRelayVoice(activeOp.id, userId);
-
-    // Global Radio (relay) gate is looser: a relay participant only needs to be
-    // on the same Discord (a linked Discord account → guild member, since the op
-    // is guild-scoped). No specific voice channel required — the relaybot speaks
-    // for them. relayDiscordId doubles as the LiveKit identity for the relay room.
-    const relayDiscordId =
-      canRelay && relayRoom
-        ? await discordUserIdForFleetplannerUser(userId).catch(() => null)
-        : null;
-    const relayOk = Boolean(canRelay && relayRoom && relayDiscordId);
-
-    const commanderToken =
-      discordVoice.ok && isCommander && commanderRoom
-        ? await issueMissionVoiceToken(userId, commanderRoom)
-        : null;
-    const relayToken = relayOk
-      ? await issueMissionVoiceToken(relayDiscordId!, relayRoom!)
-      : null;
-
-    // The mission token carries no display name; the companion shows the user's
-    // own name in mission mode from this (Bridge roster isn't present there).
-    const selfUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { username: true },
-    });
-
-    // Commander roster (userId → username) so the companion can label the
-    // LiveKit commander-room participants by name, matching the Bridge roster.
-    // The commander-room LiveKit identity name is the fleetplanner userId, which
-    // is exactly the key listMissionCommanders returns.
-    const commanders = isCommander
-      ? (await listMissionCommanders(activeOp.id)).map((c) => ({
-          userId: c.userId,
-          username: c.username,
-        }))
-      : [];
-
-    return reply.send({
-      op: {
-        opId: activeOp.id,
-        opTitle: activeOp.title,
-        livekitUrl: env.LIVEKIT_URL,
-        selfUsername: selfUser?.username ?? null,
-        discordVoice,
-        commanders,
-        // Global Radio is usable as long as the user is on the same Discord —
-        // independent of the Commander Net channel gate (discordVoice).
-        relayOk,
-        commanderRoom:
-          commanderToken && commanderRoom ? { room: commanderRoom, token: commanderToken } : null,
-        relayRoom:
-          relayToken && relayRoom ? { room: relayRoom, token: relayToken } : null,
-      },
-    });
-  });
-
-  // ── Generate fleet voice links (fleetoperator → distribute to crew) ─
-  app.post<{ Params: { opId: string } }>("/api/ops/:opId/voice-links", async (req, reply) => {
-    const ctx = await requireOpRole(req, reply, req.params.opId, "fleetoperator");
-    if (!ctx) return;
-
-    const op = await getOperation(req.params.opId);
-    if (!op) return reply.code(404).send({ error: "Not found" });
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const globalRoom = (op as any).globalVoiceRoom as string | null;
-    if (!globalRoom)
-      return reply.code(400).send({ error: "No active voice session for this operation" });
-
-    const env = getEnv();
-    if (!env.LIVEKIT_URL) return reply.code(400).send({ error: "LiveKit not configured" });
-
-    const commanders = await listMissionCommanders(op.id);
-
-    // Create mission-scoped companion sessions + build clickable wrapper links.
-    const links: Array<{ userId: string; username: string; link: string }> = [];
-    for (const commander of commanders) {
-      const token = await createMissionVoiceSession(commander.userId, op.id);
-      links.push({
-        userId: commander.userId,
-        username: commander.username,
-        link: missionWrapperLink(token),
-      });
-    }
-
-    return reply.send({ links });
-  });
-
-  // ── Mission voice participants (add/remove manual commanders) ────────
-  // Grants the commander room to someone who isn't a captain. Persisted so
-  // the mission-voice endpoint's isCommander check recognises them.
-  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
-    "/api/ops/:id/voice-participants/add",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      const userId = req.body.userId?.trim();
-      if (!userId)
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "error:User+required", "commanders"),
-          302,
-        );
-      const op = await prisma.operation.findUnique({
-        where: { id: req.params.id },
-        select: { guildId: true },
-      });
-      if (!op) return reply.code(404).send({ error: "Not found" });
-      const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
-      if (!user)
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "error:Unknown+user", "commanders"),
-          302,
-        );
-      const globalVoice = req.body.globalVoice === "1";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (prisma as any).missionVoiceParticipant.upsert({
-        where: { operationId_userId: { operationId: req.params.id, userId } },
-        update: { globalVoice },
-        create: { operationId: req.params.id, userId, addedById: ctx.user.id, globalVoice },
-      });
-      await setMissionCommanderVoiceRole(req.params.id, userId, true).catch((err) =>
-        req.log.warn(err, "Command Net role sync failed (non-fatal)"),
-      );
-      if (globalVoice) {
-        await setMissionGlobalVoiceRole(req.params.id, userId, true).catch((err) =>
-          req.log.warn(err, "Global Radio Net role sync failed (non-fatal)"),
-        );
-      }
-      return reply.redirect(
-        opReturnUrl(req.params.id, req.body, "ok:Commander+added.", "commanders"),
-        302,
-      );
-    },
-  );
-
-  app.post<{ Params: { id: string; userId: string }; Body: Record<string, string> }>(
-    "/api/ops/:id/voice-participants/:userId/global-voice",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      const user = await prisma.user.findUnique({
-        where: { id: req.params.userId },
-        select: { id: true },
-      });
-      if (!user) return reply.code(404).send({ error: "User not found" });
-      const isCommander = await isMissionCommander(req.params.id, req.params.userId);
-      if (!isCommander) {
-        return reply.redirect(
-          opReturnUrl(req.params.id, req.body, "error:User+is+not+a+commander", "commanders"),
-          302,
-        );
-      }
-      const globalVoice = req.body.globalVoice === "1";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (prisma as any).missionVoiceParticipant.upsert({
-        where: { operationId_userId: { operationId: req.params.id, userId: req.params.userId } },
-        update: { globalVoice },
-        create: {
-          operationId: req.params.id,
-          userId: req.params.userId,
-          addedById: ctx.user.id,
-          globalVoice,
-        },
-      });
-      await setMissionGlobalVoiceRole(req.params.id, req.params.userId, globalVoice).catch((err) =>
-        req.log.warn(err, "Global Radio Net role sync failed (non-fatal)"),
-      );
-      return reply.redirect(
-        opReturnUrl(req.params.id, req.body, "ok:Global+Radio+Net+updated.", "commanders"),
-        302,
-      );
-    },
-  );
-
-  app.post<{ Params: { id: string; userId: string }; Body: Record<string, string> }>(
-    "/api/ops/:id/voice-participants/:userId/remove",
-    async (req, reply) => {
-      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
-      if (!ctx) return;
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (prisma as any).missionVoiceParticipant.deleteMany({
-        where: { operationId: req.params.id, userId: req.params.userId },
-      });
-      if (!(await hasMissionRelayVoice(req.params.id, req.params.userId))) {
-        await setMissionGlobalVoiceRole(req.params.id, req.params.userId, false).catch((err) =>
-          req.log.warn(err, "Global Radio Net role revoke failed (non-fatal)"),
-        );
-      }
-      if (!(await isMissionCommander(req.params.id, req.params.userId))) {
-        await setMissionCommanderVoiceRole(req.params.id, req.params.userId, false).catch((err) =>
-          req.log.warn(err, "Command Net role revoke failed (non-fatal)"),
-        );
-      }
-      return reply.redirect(
-        opReturnUrl(req.params.id, req.body, "ok:Commander+removed.", "commanders"),
-        302,
-      );
-    },
-  );
 }

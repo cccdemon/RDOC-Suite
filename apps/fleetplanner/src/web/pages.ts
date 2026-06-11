@@ -559,40 +559,8 @@ type OpDetailPageOptions = {
   /** Mission board: players who shared their hangar — only passed to operators/leaders. */
   sharedHangars?: SharedHangar[];
   guildVoiceChannels?: Array<{ id: string; name: string }>;
-  availableVoiceBotCount: number;
-  voiceEnabled: boolean;
-  missionVoice?: { globalVoiceRoom: string | null; commanderVoiceRoom: string | null } | null;
   /** IANA timezone of the guild — used to display/parse scheduledAt. */
   guildTimezone?: string;
-  /** Fleet voice links per eligible user — only passed for fleetoperator+ views */
-  fleetVoiceLinks?: Array<{ userId: string; username: string; link: string }> | null;
-  /** Commander roster for the Commanders tab: accepted captains, voice-bearing
-   *  leaders, and manually-added participants. Links are present only when a
-   *  voice session is live. */
-  commanderRoster?: {
-    entries: Array<{
-      userId: string;
-      username: string;
-      kind: "squadleader" | "leader" | "participant";
-      globalVoice: boolean;
-      link: string | null;
-    }>;
-    voiceActive: boolean;
-  } | null;
-  /** Per-unit live Discord voice control (Option B). Only passed when the
-   *  bridge is configured, voice is enabled, the op is open/in_progress, the
-   *  viewer is fleetoperator+, and units have Discord voice channels. */
-  voiceControl?: Array<{
-    unitId: string;
-    channelId: string;
-    channelName: string;
-    crew: Array<{
-      userId: string;
-      username: string;
-      discordId: string | null;
-      location: "here" | "elsewhere" | "offline";
-    }>;
-  }> | null;
   /** Op visibility: private | partners | public. */
   visibility?: string;
   /** Whether the current viewer may change the op's visibility. */
@@ -1521,251 +1489,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
         </section>`
       : safe("");
 
-  const voicePanel = html`<div class="opv2-grid">
-    ${primaryPanel}
-    <section class="opv2-panel">
-      <div class="opv2-panel-title">${t("op.missionVoice")}</div>
-      ${opts.voiceEnabled
-        ? opts.missionVoice?.globalVoiceRoom
-          ? html`<div class="opv2-stack">
-              <div class="detail-row">
-                <span>Global Radio Net</span>
-                <strong>${opts.missionVoice.globalVoiceRoom}</strong>
-              </div>
-              <div class="detail-row">
-                <span>Command Net</span>
-                <strong>${opts.missionVoice.commanderVoiceRoom ?? t("op.none")}</strong>
-              </div>
-            </div>`
-          : html`<p class="text-dim text-sm">
-              ${t("op.noActiveVoiceRoom")}
-            </p>`
-        : html`<p class="text-dim text-sm">${t("op.voiceNotEnabled")}</p>`}
-    </section>
-    <section class="opv2-panel">
-      <div class="opv2-panel-title">${t("op.unitChannels")}</div>
-      ${op.voiceChannels.length
-        ? op.voiceChannels.map((channel) => {
-            const name =
-              channel.channelName ||
-              (channel.unit.unitType === "ship"
-                ? (channel.unit.ship?.name ?? t("common.unknownShip"))
-                : (channel.unit.squadName ?? t("common.squad")));
-            return html`<div class="opv2-row">
-              <div>
-                <strong>${name}</strong>
-                <span>${unitLeadTitle(channel.unit.ship)}: ${channel.unit.captain.username}</span>
-              </div>
-              <div class="opv2-row-meta">
-                <span class="tag tag-cyan">${channel.voiceBot?.label ?? t("op.discord")}</span>
-                ${canManage
-                  ? html`<form
-                        method="post"
-                        action="${bp}/api/ops/${op.id}/voice-channels/${channel.id}/rename"
-                        class="opv2-inline-form"
-                      >
-                        <input type="hidden" name="_csrf" value="${csrf}" />
-                        ${returnFields("voice")}
-                        <input type="text" name="name" value="${name}" maxlength="100" required />
-                        <button type="submit" class="btn btn-sm btn-ghost">${t("op.rename")}</button>
-                      </form>
-                      <form
-                        method="post"
-                        action="${bp}/api/ops/${op.id}/voice-channels/${channel.id}/delete"
-                        class="inline"
-                      >
-                        <input type="hidden" name="_csrf" value="${csrf}" />
-                        ${returnFields("voice")}
-                        <button
-                          type="submit"
-                          class="btn btn-sm btn-danger"
-                          onclick="return confirm('${t("op.confirmDeleteVoiceChannel")}')"
-                        >
-                          ${t("common.delete")}
-                        </button>
-                      </form>`
-                  : safe("")}
-              </div>
-            </div>`;
-          })
-        : html`<p class="text-dim text-sm">${t("op.noUnitChannels")}</p>`}
-      ${canManage && opts.availableVoiceBotCount > 0
-        ? html`<form
-            method="post"
-            action="${bp}/api/ops/${op.id}/voice-channels/launch"
-            class="mt-1"
-          >
-            <input type="hidden" name="_csrf" value="${csrf}" />
-            ${returnFields("voice")}
-            <button type="submit" class="btn btn-sm btn-cyan">${t("op.launchVoiceChannels")}</button>
-          </form>`
-        : safe("")}
-    </section>
-    ${canManage && opts.voiceEnabled && opts.voiceControl && opts.voiceControl.length
-      ? html`<section class="opv2-panel">
-          <div class="opv2-panel-title">${t("op.voiceControl")}</div>
-          <p class="text-dim text-sm" style="margin-bottom:.75rem">
-            ${t("op.voiceControlDesc")}
-          </p>
-          <div class="opv2-stack">
-            ${opts.voiceControl.map(
-              (unit) => html`<div class="opv2-row" style="flex-wrap:wrap;gap:.5rem">
-                <div>
-                  <strong>${unit.channelName}</strong>
-                  <span>${t("op.crewCount", { n: unit.crew.length })}</span>
-                </div>
-                <div class="opv2-row-meta" style="gap:.4rem;flex-wrap:wrap">
-                  <form
-                    method="post"
-                    action="${bp}/ops/${op.id}/voice/move-unit/${unit.unitId}"
-                    class="inline"
-                  >
-                    <input type="hidden" name="_csrf" value="${csrf}" />
-                    <button type="submit" class="btn btn-sm btn-cyan">${t("op.pullAllCrew")}</button>
-                  </form>
-                  ${unit.crew.map(
-                    (member) =>
-                      member.discordId && member.location === "elsewhere"
-                        ? html`<form
-                            method="post"
-                            action="${bp}/ops/${op.id}/voice/move-member/${unit.unitId}/${member.userId}"
-                            class="inline"
-                          >
-                            <input type="hidden" name="_csrf" value="${csrf}" />
-                            <button type="submit" class="btn btn-sm btn-ghost">
-                              ${t("op.move")} ${member.username}
-                            </button>
-                          </form>`
-                        : safe(""),
-                  )}
-                </div>
-              </div>`,
-            )}
-          </div>
-        </section>`
-      : safe("")}
-  </div>`;
-
-  const commanderKindLabel = (k: "squadleader" | "leader" | "participant") =>
-    k === "squadleader" ? t("op.kindSquadleader") : k === "leader" ? t("op.kindLeader") : t("op.kindAdded");
-  const commanderKindTone = (k: "squadleader" | "leader" | "participant") =>
-    k === "participant" ? "tag-gold" : k === "leader" ? "tag-green" : "tag-cyan";
-  const rosterIds = new Set((opts.commanderRoster?.entries ?? []).map((e) => e.userId));
-  const addableUsers = opts.assignableUsers.filter((u) => !rosterIds.has(u.id));
-
-  const voiceEntries = opts.commanderRoster?.entries ?? [];
-  const commandNetCount = voiceEntries.length;
-  const globalNetCount = voiceEntries.filter((e) => e.globalVoice).length;
-  const commandersPanel = html`<div class="opv2-grid">
-    <section class="opv2-panel">
-      <div class="opv2-panel-title">${t("op.voiceAccess")}</div>
-      ${!opts.voiceEnabled
-        ? html`<p class="text-dim text-sm">${t("op.voiceNotEnabled")}</p>`
-        : html`
-            <p class="text-dim text-sm" style="margin-bottom:.5rem">
-              <strong style="color:var(--cyan,#35d0e0)">Command Net</strong> ${t("op.commandNetDesc")}
-              <strong style="color:var(--gold,#e0b835)">Global Radio Net</strong> ${t("op.globalNetDesc")}
-            </p>
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
-              <span class="tag tag-cyan">Command Net · ${String(commandNetCount)}</span>
-              <span class="tag tag-gold">Global Radio Net · ${String(globalNetCount)}</span>
-            </div>
-            ${opts.commanderRoster && !opts.commanderRoster.voiceActive
-              ? html`<div class="banner banner-dim text-sm" style="margin-bottom:.75rem">
-                  ${t("op.noVoiceSession")}
-                </div>`
-              : safe("")}
-            <div class="opv2-stack">
-              ${voiceEntries.length
-                ? voiceEntries.map(
-                    (e) => html`<div class="opv2-row" style="flex-wrap:wrap;gap:.5rem">
-                      <div>
-                        <strong>${e.username}</strong>
-                        <span class="tag ${commanderKindTone(e.kind)}"
-                          >${commanderKindLabel(e.kind)}</span
-                        >
-                      </div>
-                      <div
-                        class="opv2-row-meta"
-                        style="flex:1;justify-content:flex-end;gap:.4rem;min-width:18rem;align-items:center"
-                      >
-                        <span class="tag tag-cyan" title="${t("op.onCommandNet")}">Command Net</span>
-                        ${e.link
-                          ? html`<input
-                                type="text"
-                                readonly
-                                value="${e.link}"
-                                class="text-mono text-sm"
-                                style="flex:1;min-width:8rem;padding:.2rem .4rem;font-size:.7rem"
-                                onclick="this.select()"
-                              />
-                              <button
-                                type="button"
-                                class="btn btn-sm btn-cyan"
-                                onclick="const i=this.previousElementSibling;i.select();navigator.clipboard.writeText(i.value).then(()=>{const b=this,o=b.textContent;b.textContent='${t("op.copied")}';b.disabled=true;setTimeout(()=>{b.textContent=o;b.disabled=false;},1200);}).catch(()=>{document.execCommand('copy');});"
-                              >
-                                ${t("op.copy")}
-                              </button>`
-                          : safe("")}
-                        <form
-                          method="post"
-                          action="${bp}/api/ops/${op.id}/voice-participants/${e.userId}/global-voice"
-                          class="inline"
-                        >
-                          <input type="hidden" name="_csrf" value="${csrf}" />
-                          ${returnFields("commanders")}
-                          <input type="hidden" name="globalVoice" value="${e.globalVoice ? "0" : "1"}" />
-                          <button
-                            type="submit"
-                            class="btn btn-sm ${e.globalVoice ? "btn-gold" : "btn-ghost"}"
-                            title="${t("op.toggleGlobalRadio")}"
-                          >
-                            Global Radio ${e.globalVoice ? t("common.on") : t("common.off2")}
-                          </button>
-                        </form>
-                        ${e.kind === "participant"
-                          ? html`<form
-                              method="post"
-                              action="${bp}/api/ops/${op.id}/voice-participants/${e.userId}/remove"
-                              class="inline"
-                            >
-                              <input type="hidden" name="_csrf" value="${csrf}" />
-                              ${returnFields("commanders")}
-                              <button type="submit" class="btn btn-sm btn-danger">${t("common.remove")}</button>
-                            </form>`
-                          : safe("")}
-                      </div>
-                    </div>`,
-                  )
-                : html`<p class="text-dim text-sm">${t("op.noOneCommandNet")}</p>`}
-            </div>
-            ${addableUsers.length
-              ? html`<form
-                  method="post"
-                  action="${bp}/api/ops/${op.id}/voice-participants/add"
-                  class="mt-1 flex gap-1"
-                  style="align-items:center"
-                >
-                  <input type="hidden" name="_csrf" value="${csrf}" />
-                  ${returnFields("commanders")}
-                  <select name="userId" required style="flex:1">
-                    <option value="">${t("op.addToCommandNet")}</option>
-                    ${addableUsers.map(
-                      (u) => html`<option value="${u.id}">${u.username} (${u.role})</option>`,
-                    )}
-                  </select>
-                  <label class="seat-toggle text-sm">
-                    <input type="checkbox" name="globalVoice" value="1" />
-                    + Global Radio Net
-                  </label>
-                  <button type="submit" class="btn btn-sm btn-green">${t("common.add")}</button>
-                </form>`
-              : safe("")}
-          `}
-    </section>
-  </div>`;
-
-  // ── Fleet Requirements Board (read-only requested/fulfilled/open overview) ──
   type CompRow = {
     id: string;
     group: string;
@@ -3123,7 +2846,6 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
   const ready: Array<{ ok: boolean; label: string }> = [
     { ok: !!op.eventVoiceChannelId, label: t("mg.readyVoiceChannel") },
     { ok: op.leaders.length > 0, label: t("mg.readyLeaders", { n: op.leaders.length }) },
-    { ok: opts.voiceEnabled === true, label: t("mg.readyVoiceEnabled") },
   ];
   if (minP > 0)
     ready.push({ ok: assignedSeats.length >= minP, label: t("mg.readyMinPlayers", { have: assignedSeats.length, min: minP }) });
@@ -9432,23 +9154,11 @@ export function guildSettingsPage(opts: {
     name: string;
     orgName?: string | null;
     ownerUserId?: string | null;
-    voiceChannelCategoryId: string | null;
     admiralRoleId: string | null;
-    globalVoiceRoleId: string | null;
-    commanderVoiceRoleId: string | null;
     discordInviteUrl: string | null;
-    voiceEnabled: boolean;
     timezone: string;
   };
   incomingShared?: number;
-  voiceBots: Array<{
-    id: string;
-    label: string;
-    botUserId: string;
-    assignedChannelId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }>;
   memberships: Array<{
     userId: string;
     role: string;
@@ -9500,62 +9210,6 @@ export function guildSettingsPage(opts: {
     },
   );
 
-  const voiceBotRows = opts.voiceBots.map(
-    (bot) =>
-      html` <tr>
-          <td>${bot.label}</td>
-          <td class="text-mono text-sm text-dim">${bot.botUserId}</td>
-          <td>
-            ${bot.assignedChannelId
-              ? html`<span class="tag tag-gold">${t("gs.assigned")}</span>`
-              : html`<span class="tag tag-green">${t("gs.available")}</span>`}
-          </td>
-          <td class="text-dim text-sm">${fmtDate(bot.updatedAt)}</td>
-          <td>
-            <a
-              href="${discordBotInviteUrl(bot.botUserId, relayBotInvitePermissions)}"
-              class="btn btn-sm btn-ghost"
-              target="_blank"
-              rel="noopener"
-              >${t("gs.invite")}</a
-            >
-            <button type="button" class="btn btn-sm btn-ghost" onclick="toggleBotEdit('${bot.id}')">
-              ${t("common.edit")}
-            </button>
-            <form method="post" action="${bp}/guilds/voice-bots/${bot.id}/delete" class="inline">
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              <button
-                type="submit"
-                class="btn btn-sm btn-danger"
-                onclick="return confirm('${t("gs.confirmRemoveBot")}')"
-              >
-                ${t("common.delete")}
-              </button>
-            </form>
-          </td>
-        </tr>
-        <tr id="bot-edit-${bot.id}" style="display:none">
-          <td colspan="5" style="padding:.75rem 0">
-            <form
-              method="post"
-              action="${bp}/guilds/voice-bots/${bot.id}/edit"
-              style="display:grid;grid-template-columns:1fr 1.8fr auto;gap:.5rem;align-items:flex-end"
-            >
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              <label class="text-sm text-dim"
-                >${t("gs.newLabel")}
-                <input type="text" name="label" value="${bot.label}" placeholder="Funkrelais 1" />
-              </label>
-              <label class="text-sm text-dim"
-                >${t("gs.newToken")} <span style="opacity:.6">${t("gs.leaveEmptyKeep")}</span>
-                <input type="text" name="botToken" placeholder="${t("gs.botTokenPlaceholder")}" autocomplete="off" />
-              </label>
-              <button type="submit" class="btn btn-sm btn-cyan">${t("common.save")}</button>
-            </form>
-          </td>
-        </tr>`,
-  );
-
   const body = html`
     <div class="page-header">
       <h1 class="page-title">${t("gs.title")}<span class="sep"> // </span><em>${g.name}</em></h1>
@@ -9571,9 +9225,6 @@ export function guildSettingsPage(opts: {
       <div class="section-title">${t("gs.discordIntegration")}</div>
       <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
         <input type="hidden" name="_csrf" value="${csrf}" />
-        <label class="text-sm text-dim">${t("gs.voiceCategoryId")}
-          <input type="text" name="voiceChannelCategoryId" value="${g.voiceChannelCategoryId ?? ""}" placeholder="1507879660724162770" />
-        </label>
         <label class="text-sm text-dim">${t("gs.admiralRoleId")}
           <input type="text" name="admiralRoleId" value="${g.admiralRoleId ?? ""}" placeholder="${t("gs.optional")}" />
         </label>
@@ -9603,115 +9254,6 @@ export function guildSettingsPage(opts: {
       </p>
     </div>
 
-    ${
-      opts.currentUser?.role === "superadmin"
-        ? html` <div class="section">
-            <div class="section-title">
-              ${t("gs.voicePermission")}
-              <span class="tag ${g.voiceEnabled ? safe("tag-green") : safe("tag-dim")}"
-                >${g.voiceEnabled ? t("gs.granted") : t("gs.notGranted")}</span
-              >
-            </div>
-            <p class="text-dim text-sm">
-              ${t("gs.voicePermDesc")}
-            </p>
-            <form
-              method="post"
-              action="${bp}/guilds/settings/voice-permission"
-              style="display:flex;gap:.5rem;align-items:center;margin-top:.5rem"
-            >
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              <input type="hidden" name="guildId" value="${g.id}" />
-              ${g.voiceEnabled
-                ? html`<input type="hidden" name="voiceEnabled" value="0" /><button
-                      type="submit"
-                      class="btn btn-sm btn-danger"
-                    >
-                      ${t("gs.revokeVoice")}
-                    </button>`
-                : html`<input type="hidden" name="voiceEnabled" value="1" /><button
-                      type="submit"
-                      class="btn btn-sm btn-cyan"
-                    >
-                      ${t("gs.grantVoice")}
-                    </button>`}
-            </form>
-          </div>`
-        : safe("")
-    }
-
-    ${
-      g.voiceEnabled
-        ? html` <div class="section">
-            <div class="section-title">${t("gs.missionVoiceTitle")}</div>
-            <p class="text-dim text-sm" style="margin-bottom:.75rem">
-              ${t("gs.missionVoiceDesc")}
-            </p>
-            <form method="post" action="${bp}/guilds/settings" class="card" style="padding:1rem;display:flex;flex-direction:column;gap:.75rem;max-width:30rem">
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              <label class="text-sm text-dim">${t("gs.commandNetRole")}
-                <span style="opacity:.65">${t("gs.commandNetRoleHint")}</span>
-                <input type="text" name="commanderVoiceRoleId" value="${g.commanderVoiceRoleId ?? ""}" placeholder="${t("gs.optional")}" />
-              </label>
-              <label class="text-sm text-dim">${t("gs.globalNetRole")}
-                <span style="opacity:.65">${t("gs.globalNetRoleHint")}</span>
-                <input type="text" name="globalVoiceRoleId" value="${g.globalVoiceRoleId ?? ""}" placeholder="${t("gs.optional")}" />
-              </label>
-              <button type="submit" class="btn btn-cyan btn-sm" style="align-self:flex-start">${t("common.save")}</button>
-            </form>
-          </div>
-          <div class="section">
-            <div class="section-title">${t("gs.relayBotsTitle", { n: opts.voiceBots.length })}</div>
-            <form method="post" action="${bp}/guilds/voice-bots" class="card" style="padding:1rem;display:grid;grid-template-columns:1fr 1.2fr 1.8fr auto;gap:.75rem;align-items:flex-end">
-              <input type="hidden" name="_csrf" value="${csrf}" />
-              <label class="text-sm text-dim">${t("badm.colLabel")}
-                <input type="text" name="label" maxlength="60" placeholder="Funkrelais 1" required />
-              </label>
-              <label class="text-sm text-dim">${t("gs.botUserId")}
-                <input type="text" name="botUserId" placeholder="1509191397264064689" required />
-              </label>
-              <label class="text-sm text-dim">${t("gs.botToken")}
-                <input type="password" name="botToken" autocomplete="new-password" placeholder="${t("gs.botTokenStored")}" required />
-              </label>
-              <button type="submit" class="btn btn-cyan btn-sm">${t("gs.saveBot")}</button>
-            </form>
-            <p class="text-dim text-sm" style="margin-top:.5rem">
-              ${t("gs.tokensNote")}
-            </p>
-            <div style="overflow-x:auto;margin-top:1rem">
-              <table class="user-table">
-                <thead><tr><th>${t("badm.colLabel")}</th><th>${t("gs.colBotId")}</th><th>${t("admin.statusLabel")}</th><th>${t("gs.colUpdated")}</th><th>${t("gs.colActions")}</th></tr></thead>
-                <tbody>${
-                  voiceBotRows.length
-                    ? voiceBotRows
-                    : html`<tr>
-                        <td colspan="5" class="text-dim">${t("gs.noRelayBots")}</td>
-                      </tr>`
-                }</tbody>
-              </table>
-            </div>
-          </div>`
-        : html` <div class="section">
-            <div class="section-title">
-              ${t("gs.relayBotsShort")} <span class="tag tag-dim">${t("gs.permRequired")}</span>
-            </div>
-            <div class="card">
-              <p class="text-dim text-sm">
-                ${safe(t("gs.voiceDisabledDesc"))}
-              </p>
-              ${
-                opts.superadminContact
-                  ? html`<p class="text-sm" style="margin-top:.5rem">
-                      ${t("gs.requestAccess")}
-                      <strong class="text-mono">${opts.superadminContact}</strong>
-                    </p>`
-                  : html`<p class="text-sm" style="margin-top:.5rem">
-                      ${t("gs.contactSuperadmin")}
-                    </p>`
-              }
-            </div>
-          </div>`
-    }
 
     <div class="section">
       <div class="section-title">${t("gs.members", { n: opts.memberships.length })}</div>

@@ -45,3 +45,18 @@ describe("csrf gate", () => {
     expect(res.statusCode).toBeGreaterThanOrEqual(300);
   });
 });
+
+describe("operator seat-unassign route", () => {
+  it("is registered and rejects unauthenticated POST (never a 2xx success)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/seats/some-seat-id/unassign",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      payload: "_csrf=x",
+    });
+    // requireAuth runs first → 302 to /login for an anonymous caller. A 404 would
+    // mean the route was never registered.
+    expect(res.statusCode).not.toBe(404);
+    expect(res.statusCode).toBeGreaterThanOrEqual(300);
+  });
+});

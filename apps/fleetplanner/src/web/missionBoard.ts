@@ -87,6 +87,10 @@ interface Seat {
   hintIcon?: string;
   user?: string | null;
   take?: { action: string; fields: Record<string, string>; needShip: boolean; shipType?: string };
+  /** Real SeatAssignment id — only present for ship/vehicle seats the operator can (un)assign. */
+  id?: string;
+  /** Seat order in its unit; 0 = captain seat (never freeable). */
+  order?: number;
 }
 interface Unit {
   icon: string;
@@ -142,6 +146,10 @@ export function opMissionBoardPage(opts: {
   discordInvite?: string | null;
   /** board1 = stacked category sections; board2 = full-width 4-column board. */
   variant?: "board1" | "board2";
+  /** "operator" → render the in-page operator console (only when canManage). */
+  view?: string;
+  /** operator console layout: "a" Befehlsstand (default) | "b" Triage. */
+  lay?: string;
 }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -151,6 +159,9 @@ export function opMissionBoardPage(opts: {
   const tz = opts.guildTimezone ?? DEFAULT_TIMEZONE;
   const isOpen = op.status === "open";
   const ownedShips = opts.ownedShips ?? [];
+  const canManage = !!opts.canManage;
+  const isOperatorView = canManage && opts.view === "operator";
+  const layB = opts.lay === "b"; // operator console layout: a=Befehlsstand (default), b=Triage
 
   const acceptedUnits = op.units.filter((u) => u.status === "accepted");
   const cqbSignups = op.cqbSignups ?? [];
@@ -258,6 +269,8 @@ export function opMissionBoardPage(opts: {
         icon: i === 0 ? "pilot" : "gunner",
         role: s.label,
         kind: "fest",
+        id: s.id,
+        order: s.order,
         user: s.userId ? ((s as { user?: { username?: string } }).user?.username ?? null) : null,
         take: s.userId ? undefined : { action: `${bp}/api/seats/${s.id}/claim`, fields: {}, needShip: false },
       })),
@@ -337,6 +350,8 @@ export function opMissionBoardPage(opts: {
           icon: i === 0 ? "pilot" : "gunner",
           role: s.label,
           kind: "fest",
+          id: s.id,
+          order: s.order,
           user: s.userId ? ((s as { user?: { username?: string } }).user?.username ?? null) : null,
           take: s.userId ? undefined : { action: `${bp}/api/seats/${s.id}/claim`, fields: {}, needShip: false },
         })),
@@ -412,6 +427,288 @@ export function opMissionBoardPage(opts: {
         </section>`,
       )}`;
 
+  // ══════════════════ OPERATOR BACKEND CONSOLE ══════════════════
+  // In-page operator work surface (faithful port of Operationsdetail.dc.html chat2).
+  // Two switchable layouts (Befehlsstand / Triage); clickable place-mode assignment,
+  // inline seat-picker, drag & drop, Q&A answering, activity + hangar-freigaben.
+  const opFilled = cats.reduce((a, c) => a + c.units.reduce((x, u) => x + u.filled, 0), 0);
+  const opTotal = cats.reduce((a, c) => a + c.units.reduce((x, u) => x + u.total, 0), 0);
+  const opOpen = Math.max(0, opTotal - opFilled);
+  const fillPct = opTotal > 0 ? Math.round((opFilled / opTotal) * 100) : 0;
+  const flexList = op.crewRequests;
+  const flexWaiting = flexList.length;
+  const questions = op.questions ?? [];
+  const openQ = questions.filter((q) => !q.answer).length;
+  const auditLogs = (op as { auditLogs?: Array<{ createdAt: Date; actor: string; action: string; detail: string }> }).auditLogs ?? [];
+  const hangarShares = (op as { hangarShares?: Array<{ user?: { username?: string } | null; note?: string | null }> }).hangarShares ?? [];
+  const leaders = op.leaders;
+  const flexUrl = `${bp}/api/ops/${op.id}/crew-requests/remove`;
+
+  const opBars = cats.map((c) => {
+    const f = c.units.reduce((a, u) => a + u.filled, 0);
+    const tt = c.units.reduce((a, u) => a + u.total, 0);
+    return { label: c.label, accent: c.accent, text: `${f}/${tt}`, pct: tt > 0 ? Math.round((f / tt) * 100) : 0 };
+  });
+  const opNeeds: Array<{ unitName: string; catLabel: string; openCount: number; kind: Kind; accent: string }> = [];
+  for (const c of cats)
+    for (const u of c.units) {
+      const open = u.total - u.filled;
+      if (open <= 0) continue;
+      const firstOpen = u.seats.find((s) => !s.user) ?? u.vehicle?.seats.find((s) => !s.user);
+      opNeeds.push({ unitName: u.name, catLabel: c.label, openCount: open, kind: firstOpen?.kind ?? "frei", accent: c.accent });
+    }
+
+  // Shared flex-people picker rows (same for every open seat).
+  const pickerPeople = (seatId: string): SafeHtml =>
+    flexList.length
+      ? html`${flexList.map(
+          (p) => html`<button type="button" data-op-assign data-seatid="${seatId}" data-userid="${p.user.id}" style="display:flex;align-items:center;gap:.5rem;width:100%;text-align:left;padding:.4rem .5rem;border:1px solid rgba(240,165,0,.28);background:rgba(240,165,0,.05);border-radius:7px;cursor:pointer;color:inherit;font-family:inherit">
+            ${avatarSpan(p.user.username)}<span style="flex:1;font-size:.84rem;color:#eaf4fb">${p.user.username}</span><span style="font-family:${safe(MONO)};font-size:.6rem;color:#f0a500">FLEX</span>
+          </button>`,
+        )}`
+      : html`<div style="color:#5b6b7a;font-size:.78rem;padding:.2rem 0">${t("mb.opNoFlex")}</div>`;
+
+  // Operator seat row — open real seats are clickable (place-mode target / picker);
+  // claimed seats show a ✕ to free them (except the captain seat, order 0).
+  const opSeatRow = (s: Seat): SafeHtml => {
+    const claimed = !!s.user;
+    const realOpen = !claimed && !!s.id;
+    const canFree = claimed && !!s.id && s.order !== 0;
+    const rowBase = "display:flex;align-items:center;gap:.7rem;padding:.55rem .65rem;border:1px solid rgba(0,212,255,.08);border-radius:9px;background:rgba(255,255,255,.013);min-width:0";
+    const main = html`<div ${realOpen ? safe(`data-op-seat data-seatid="${escape(s.id ?? "")}" data-role="${escape(s.role)}"`) : safe("")} style="${safe(rowBase)};${realOpen ? "cursor:pointer" : ""}">
+      <span style="width:28px;height:28px;border-radius:7px;background:#0e1926;border:1px solid rgba(255,255,255,.06);color:#9fb1c2;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${ic(s.icon, 15, "currentColor", 1.6)}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"><strong style="font-family:'Rajdhani',system-ui,sans-serif;font-weight:600;font-size:.9rem;color:#dce8f0">${s.role}</strong><span style="${safe(tagStyle(s.kind))}">${TAGTEXT[s.kind]}</span></div>
+        ${s.hint ? html`<div style="color:#7e92a4;font-size:.72rem;margin-top:1px">${s.hint}</div>` : safe("")}
+      </div>
+      ${claimed
+        ? html`<div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">${avatarSpan(s.user as string)}<span style="font-size:.8rem;color:#ccdde8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:6.5rem">${s.user}</span>${canFree ? html`<button type="button" data-op-unassign data-seatid="${s.id}" title="${t("mb.opFreeSeat")}" style="flex-shrink:0;width:21px;height:21px;border-radius:6px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#7e92a4;display:inline-flex;align-items:center;justify-content:center;cursor:pointer">${ic("x", 11, "currentColor", 2)}</button>` : safe("")}</div>`
+        : realOpen
+          ? html`<span class="op-open-hint" style="display:inline-flex;align-items:center;gap:4px;flex-shrink:0;color:#00d4ff;font-family:${safe(MONO)};font-size:.66rem;letter-spacing:.03em">${ic("plus", 13, "currentColor", 1.9)}${t("mb.opAssign")}</span><span class="op-target-hint" hidden style="display:inline-flex;align-items:center;gap:4px;flex-shrink:0;color:#00ff88;font-family:${safe(MONO)};font-size:.66rem;letter-spacing:.05em">${t("mb.opHere")}${ic("arrow", 13, "currentColor", 1.9)}</span>`
+          : html`<span style="flex-shrink:0;color:#5b6b7a;font-family:${safe(MONO)};font-size:.7rem">${t("mb.opOpenLabel")}</span>`}
+    </div>`;
+    return html`<div class="op-seat-wrap" style="border:1px solid rgba(0,212,255,.06);border-radius:9px;overflow:hidden">
+      ${main}
+      ${realOpen
+        ? html`<div class="op-picker" hidden style="border-top:1px solid rgba(0,212,255,.12);padding:.6rem;display:flex;flex-direction:column;gap:.35rem;background:#0a121c">
+            <div style="font-family:${safe(MONO)};font-size:.58rem;letter-spacing:.1em;color:#9fb1c2">${t("mb.opWhoHere")}</div>
+            ${pickerPeople(s.id ?? "")}
+            <div style="display:flex;gap:.4rem;margin-top:.15rem"><button type="button" data-op-closepicker style="flex:1;padding:.4rem;border:1px solid rgba(255,255,255,.12);background:transparent;color:#9fb1c2;font-family:${safe(MONO)};font-size:.64rem;border-radius:7px;cursor:pointer">${t("mb.opClose")}</button></div>
+          </div>`
+        : safe("")}
+    </div>`;
+  };
+
+  const opUnitCard = (u: Unit): SafeHtml => {
+    const statusSpan = u.status
+      ? html`<span style="display:inline-flex;align-items:center;gap:4px;font-family:${safe(MONO)};font-size:.6rem;letter-spacing:.06em;color:${u.status.kind === "voll" ? "#00ff88" : "#f0a500"};border:1px solid ${u.status.kind === "voll" ? "rgba(0,255,136,.4)" : "rgba(240,165,0,.42)"};background:${u.status.kind === "voll" ? "rgba(0,255,136,.08)" : "rgba(240,165,0,.09)"};padding:.12rem .4rem;border-radius:3px;white-space:nowrap">${ic(u.status.icon, 11, "currentColor", 2)}${u.status.text}</span>`
+      : safe("");
+    const veh = u.vehicle;
+    return html`<div style="border:1px solid rgba(${safe(u.accentRgb)},.16);border-radius:13px;background:#0b1019;padding:1rem 1.1rem">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.7rem">
+        <span style="width:36px;height:36px;border-radius:9px;background:rgba(${safe(u.accentRgb)},.1);border:1px solid rgba(${safe(u.accentRgb)},.26);color:rgb(${safe(u.accentRgb)});display:inline-flex;align-items:center;justify-content:center;flex-shrink:0">${ic(u.icon, 18, "currentColor", 1.6)}</span>
+        <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap"><strong style="font-family:'Rajdhani',system-ui,sans-serif;font-weight:700;font-size:1.02rem;color:#eaf4fb;line-height:1.15">${u.name}</strong>${statusSpan}</div><div style="color:#7e92a4;font-size:.78rem;margin-top:1px">${u.sub}</div></div>
+        <div style="text-align:right;flex-shrink:0"><span style="font-family:${safe(MONO)};font-size:.95rem;color:#eaf4fb">${u.filled}</span><span style="font-family:${safe(MONO)};font-size:.8rem;color:#5b6b7a">/${u.total}</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.4rem">
+        ${u.seats.map((s) => opSeatRow(s))}
+        ${veh
+          ? html`<div style="margin-top:.2rem;padding:.6rem .65rem;border:1px dashed rgba(160,100,255,.3);border-radius:9px;background:rgba(160,100,255,.04)">
+              <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem;font-family:${safe(MONO)};font-size:.58rem;letter-spacing:.08em;color:#a064ff">${ic("ship", 12, "currentColor", 1.6)}${veh.name} · ${t("mb.multiSeat")}</div>
+              <div style="display:flex;flex-direction:column;gap:.4rem">${veh.seats.map((s) => opSeatRow(s))}</div>
+            </div>`
+          : safe("")}
+      </div>
+    </div>`;
+  };
+
+  const opBoard = html`<div style="font-family:${safe(MONO)};font-size:.72rem;letter-spacing:.14em;color:#9fb1c2;margin-bottom:1rem">${t("mb.opFleetBoard")} <span style="color:#5b6b7a">· ${t("mb.opClickToFill")}</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:1.3rem;align-items:flex-start">
+      ${cats.map(
+        (cat) => html`<div style="flex:1 1 290px;min-width:0">
+          <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.8rem;padding-bottom:.5rem;border-bottom:1px solid ${cat.accentLine}"><span style="color:${cat.accent};display:inline-flex">${ic(cat.icon, 15, "currentColor", 1.7)}</span><span style="flex:1;min-width:0;font-family:${safe(MONO)};font-size:.68rem;letter-spacing:.06em;color:${cat.accent};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cat.label}</span><span style="font-family:${safe(MONO)};font-size:.72rem;color:#9fb1c2;flex-shrink:0">${catCount(cat.units)}</span></div>
+          <div style="display:flex;flex-direction:column;gap:.8rem">${cat.units.map((u) => opUnitCard(u))}</div>
+        </div>`,
+      )}
+    </div>`;
+
+  const railCardBorder = "border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1.1rem 1.2rem";
+  const labelMono = (txt: string, color = "#9fb1c2") => html`<div style="font-family:${safe(MONO)};font-size:.66rem;letter-spacing:.12em;color:${color};margin-bottom:.7rem">${txt}</div>`;
+
+  // Flexibel panel (people waiting to be assigned). Each row → place-mode.
+  const flexPanel = html`<section style="${safe("border:1px solid rgba(240,165,0,.22);border-radius:14px;background:#090f18;padding:1.1rem 1.2rem")}">
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">${ic("swap", 15, "#f0a500", 1.7)}<span style="font-family:${safe(MONO)};font-size:.7rem;letter-spacing:.1em;color:#f0a500">${t("mb.opFlex")}</span><span style="margin-left:auto;font-family:${safe(MONO)};font-size:.66rem;color:#5b6b7a">${t("mb.opWaiting", { n: flexWaiting })}</span></div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      ${flexList.length
+        ? flexList.map(
+            (p) => html`<div draggable="true" data-op-flex data-userid="${p.user.id}" data-name="${escape(p.user.username)}" style="display:flex;align-items:center;gap:.6rem;padding:.55rem .6rem;border:1px solid rgba(240,165,0,.18);border-radius:9px;background:rgba(240,165,0,.03);cursor:grab">
+              ${avatarSpan(p.user.username)}
+              <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:.4rem"><strong style="font-size:.9rem;color:#eaf4fb">${p.user.username}</strong></div>${p.note ? html`<div style="color:#7e92a4;font-size:.76rem;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.note}</div>` : safe("")}</div>
+              <button type="button" data-op-place data-userid="${p.user.id}" data-name="${escape(p.user.username)}" style="flex-shrink:0;padding:.4rem .65rem;border:1px solid rgba(0,212,255,.32);background:rgba(0,212,255,.05);color:#00d4ff;font-family:${safe(MONO)};font-size:.66rem;border-radius:7px;cursor:pointer">${t("mb.opPlace")}</button>
+            </div>`,
+          )
+        : html`<div style="padding:.7rem;text-align:center;color:#5b6b7a;font-size:.8rem;font-family:${safe(MONO)}">${t("mb.opAllPlaced")}</div>`}
+    </div>
+  </section>`;
+
+  const needsPanel = html`<section style="${safe(railCardBorder)}">
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">${ic("alert", 15, "#00d4ff", 1.7)}<span style="font-family:${safe(MONO)};font-size:.7rem;letter-spacing:.1em;color:#9fb1c2">${t("mb.opNeeds")}</span><span style="margin-left:auto;font-family:${safe(MONO)};font-size:.66rem;color:#5b6b7a">${opOpen}</span></div>
+    <div style="display:flex;flex-direction:column;gap:.42rem">
+      ${opNeeds.length
+        ? opNeeds.map(
+            (n) => html`<div style="display:flex;align-items:center;gap:.55rem;padding:.45rem .55rem;border:1px solid rgba(255,255,255,.05);border-radius:8px">
+              <span style="width:8px;height:8px;border-radius:2px;background:${n.accent};flex-shrink:0"></span>
+              <div style="flex:1;min-width:0"><div style="font-size:.85rem;color:#dce8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.unitName}</div><div style="font-family:${safe(MONO)};font-size:.58rem;letter-spacing:.04em;color:#5b6b7a;margin-top:1px">${n.catLabel}</div></div>
+              <div style="display:flex;align-items:center;gap:.3rem;flex-shrink:0"><span style="${safe(tagStyle(n.kind))}">${TAGTEXT[n.kind]}</span><span style="font-family:${safe(MONO)};font-size:.9rem;color:#f0a500;margin-left:.15rem">${n.openCount}</span></div>
+            </div>`,
+          )
+        : html`<div style="padding:.5rem;color:#5b6b7a;font-size:.8rem;font-family:${safe(MONO)}">${t("mb.opNoNeeds")}</div>`}
+    </div>
+  </section>`;
+
+  const qaPanel = html`<section style="${safe(railCardBorder)}">
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">${ic("chat", 15, "#00d4ff", 1.7)}<span style="font-family:${safe(MONO)};font-size:.7rem;letter-spacing:.1em;color:#9fb1c2">${t("mb.opQuestions")}</span>${openQ > 0 ? html`<span style="margin-left:auto;font-family:${safe(MONO)};font-size:.58rem;color:#f0a500;border:1px solid rgba(240,165,0,.4);background:rgba(240,165,0,.08);padding:.08rem .4rem;border-radius:10px">${t("mb.opOpenCount", { n: openQ })}</span>` : safe("")}</div>
+    <div style="display:flex;flex-direction:column;gap:.6rem">
+      ${questions.length
+        ? questions.map(
+            (q) => html`<div style="border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:.6rem .65rem">
+              <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">${avatarSpan(q.asker)}<strong style="font-size:.82rem;color:#eaf4fb">${q.asker}</strong></div>
+              <div style="color:#c2d2de;font-size:.84rem;line-height:1.42;margin-bottom:.5rem">${q.body}</div>
+              ${q.answer
+                ? html`<div style="display:flex;align-items:flex-start;gap:.45rem;padding:.45rem .55rem;border:1px solid rgba(0,255,136,.28);background:rgba(0,255,136,.05);border-radius:8px">${ic("check", 13, "#00ff88", 2)}<div style="min-width:0"><span style="font-family:${safe(MONO)};font-size:.6rem;color:#00ff88">${q.answeredBy ?? ""}</span><div style="color:#c2d2de;font-size:.82rem;line-height:1.4">${q.answer}</div></div></div>`
+                : html`<form method="post" action="${bp}/ops/${op.id}/questions/${q.id}/answer" style="display:flex;gap:.4rem;align-items:flex-end">
+                    <input type="hidden" name="_csrf" value="${csrf}" />
+                    <textarea name="answer" required placeholder="${t("mb.opAnswerPh")}" style="flex:1;min-width:0;min-height:36px;background:#0e1926;border:1px solid rgba(0,212,255,.14);color:#ccdde8;font-family:'Rajdhani',system-ui,sans-serif;font-size:.84rem;padding:.42rem .55rem;border-radius:8px;outline:none;resize:vertical"></textarea>
+                    <button type="submit" style="flex-shrink:0;padding:.5rem .65rem;border:1px solid rgba(0,255,136,.45);background:rgba(0,255,136,.12);color:#00ff88;font-family:${safe(MONO)};font-size:.68rem;border-radius:8px;cursor:pointer">${t("mb.opSend")}</button>
+                  </form>`}
+            </div>`,
+          )
+        : html`<div style="padding:.5rem;color:#5b6b7a;font-size:.8rem;font-family:${safe(MONO)}">${t("mb.opNoQuestions")}</div>`}
+    </div>
+  </section>`;
+
+  const opActionsPanel = html`<section style="${safe(railCardBorder)}">
+    ${labelMono(t("mb.opActions"))}
+    <div style="display:flex;flex-direction:column;gap:.4rem">
+      <a href="${bp}/ops/${op.id}/manage?tab=fleet" style="display:inline-flex;align-items:center;gap:.5rem;padding:.5rem .7rem;border:1px solid rgba(0,212,255,.22);background:rgba(0,212,255,.03);color:#9fb1c2;font-family:${safe(MONO)};font-size:.72rem;border-radius:8px;text-decoration:none">${ic("board", 14, "currentColor", 1.7)}${t("mb.opManageFleet")}</a>
+      <a href="${bp}/ops/${op.id}/manage?tab=needs" style="display:inline-flex;align-items:center;gap:.5rem;padding:.5rem .7rem;border:1px solid rgba(0,212,255,.22);background:rgba(0,212,255,.03);color:#9fb1c2;font-family:${safe(MONO)};font-size:.72rem;border-radius:8px;text-decoration:none">${ic("alert", 14, "currentColor", 1.7)}${t("mb.opManageNeeds")}</a>
+      <a href="${bp}/ops/${op.id}/manage?tab=admin" style="display:inline-flex;align-items:center;gap:.5rem;padding:.5rem .7rem;border:1px solid rgba(0,212,255,.22);background:rgba(0,212,255,.03);color:#9fb1c2;font-family:${safe(MONO)};font-size:.72rem;border-radius:8px;text-decoration:none">${ic("bolt", 14, "currentColor", 1.7)}${t("mb.opAdmin")}</a>
+    </div>
+  </section>`;
+
+  const leadersPanel = html`<section style="${safe(railCardBorder)}">
+    ${labelMono(t("mb.opLeadership"))}
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      ${leaders.length
+        ? leaders.map(
+            (l) => html`<div style="display:flex;align-items:center;gap:.5rem">${avatarSpan(l.user.username)}<div style="flex:1;min-width:0"><div style="font-size:.85rem;color:#eaf4fb">${l.user.username}</div><div style="font-family:${safe(MONO)};font-size:.58rem;letter-spacing:.04em;color:#5b6b7a">${t("mb.opLeadRole")}</div></div></div>`,
+          )
+        : html`<div style="color:#5b6b7a;font-size:.8rem">—</div>`}
+    </div>
+  </section>`;
+
+  const fillRing = html`<div style="position:relative;width:62px;height:62px;border-radius:50%;background:conic-gradient(#00ff88 ${fillPct * 3.6}deg,#0e1926 0);flex-shrink:0"><div style="position:absolute;inset:7px;border-radius:50%;background:#090f18;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-family:${safe(MONO)};font-size:1.1rem;color:#eaf4fb;line-height:1">${fillPct}%</span><span style="font-family:${safe(MONO)};font-size:.48rem;letter-spacing:.1em;color:#5b6b7a">${t("mb.opFull")}</span></div></div>`;
+
+  const barsBlock = html`<div style="display:flex;flex-direction:column;gap:.6rem">
+    ${opBars.map(
+      (b) => html`<div><div style="display:flex;justify-content:space-between;margin-bottom:.28rem"><span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.78rem;color:#c2d2de"><span style="width:8px;height:8px;border-radius:2px;background:${b.accent}"></span>${b.label}</span><span style="font-family:${safe(MONO)};font-size:.74rem;color:#9fb1c2">${b.text}</span></div><div style="height:5px;border-radius:4px;background:#0e1926;overflow:hidden"><div style="height:100%;width:${b.pct}%;background:${b.accent};border-radius:4px"></div></div></div>`,
+    )}
+  </div>`;
+
+  const kpi = (val: number | string, label: string, color: string, bdr: string) =>
+    html`<div style="display:inline-flex;align-items:center;gap:.5rem;padding:.42rem .7rem;border:1px solid ${bdr};background:rgba(255,255,255,.01);border-radius:8px"><span style="font-family:${safe(MONO)};font-size:1.02rem;color:${color};line-height:1">${val}</span><span style="font-family:${safe(MONO)};font-size:.56rem;letter-spacing:.08em;color:#5b6b7a">${label}</span></div>`;
+
+  const opSegA = layB ? optSeg : optSegOn;
+  const opSegB = layB ? optSegOn : optSeg;
+  const kpiStrip = html`<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.9rem 1.4rem;margin-bottom:1.4rem">
+    <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap">
+      <span style="font-family:${safe(MONO)};font-size:.66rem;letter-spacing:.14em;color:#5b6b7a">${t("mb.opLayout")}</span>
+      <div style="display:inline-flex;border:1px solid rgba(0,212,255,.16);border-radius:9px;padding:3px;background:#090f18;gap:3px">
+        <a href="${bp}/ops/${op.id}?view=operator" style="${safe(opSegA)};display:inline-flex;align-items:center;gap:5px;text-decoration:none">${ic("board", 14, "currentColor", 1.7)}${t("mb.opLayoutA")}</a>
+        <a href="${bp}/ops/${op.id}?view=operator&lay=b" style="${safe(opSegB)};display:inline-flex;align-items:center;gap:5px;text-decoration:none">${ic("bolt", 14, "currentColor", 1.7)}${t("mb.opLayoutB")}</a>
+      </div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      ${kpi(opFilled, t("mb.opKpiFilled"), "#00ff88", "rgba(0,255,136,.25)")}
+      ${kpi(opOpen, t("mb.opKpiOpen"), "#f0a500", "rgba(240,165,0,.28)")}
+      ${kpi(flexWaiting, t("mb.opKpiFlex"), "#f0a500", "rgba(240,165,0,.28)")}
+      ${kpi(openQ, t("mb.opKpiQ"), "#00d4ff", "rgba(0,212,255,.2)")}
+    </div>
+  </div>`;
+
+  const toolsBlock = html`<details style="margin-top:.4rem">
+    <summary style="display:inline-flex;align-items:center;gap:.5rem;padding:.5rem .85rem;border:1px solid rgba(0,212,255,.16);background:rgba(0,212,255,.03);color:#9fb1c2;font-family:${safe(MONO)};font-size:.72rem;letter-spacing:.03em;border-radius:8px;cursor:pointer;list-style:none;width:fit-content">${ic("chevron", 14, "currentColor", 1.7)}${t("mb.opTools")}</summary>
+    <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-top:.9rem">
+      <section style="flex:1 1 300px;min-width:0;${safe(railCardBorder)}">
+        ${labelMono(t("mb.opActivity"))}
+        <div style="display:flex;flex-direction:column">
+          ${auditLogs.length
+            ? auditLogs.slice(0, 12).map(
+                (a) => html`<div style="display:flex;gap:.6rem;padding:.32rem 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.82rem"><span style="font-family:${safe(MONO)};font-size:.7rem;color:#5b6b7a;flex-shrink:0">${fmt(new Date(a.createdAt), { hour: "2-digit", minute: "2-digit" })}</span><span style="color:#c2d2de"><strong style="color:#eaf4fb">${a.actor}</strong> ${a.action}${a.detail ? html`<span style="color:#7e92a4"> · ${a.detail}</span>` : safe("")}</span></div>`,
+              )
+            : html`<div style="color:#5b6b7a;font-size:.8rem">—</div>`}
+        </div>
+      </section>
+      <section style="flex:1 1 300px;min-width:0;${safe(railCardBorder)}">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">${ic("eye", 15, "#00d4ff", 1.7)}<span style="font-family:${safe(MONO)};font-size:.7rem;letter-spacing:.12em;color:#9fb1c2">${t("mb.opHangarShares")}</span></div>
+        <p style="margin:0 0 .9rem;color:#7e92a4;font-size:.78rem">${t("mb.opHangarSharesSub")}</p>
+        <div style="display:flex;flex-direction:column;gap:.7rem">
+          ${hangarShares.length
+            ? hangarShares.map(
+                (sh) => html`<div style="border:1px solid rgba(0,212,255,.1);border-radius:10px;padding:.7rem .8rem"><div style="display:flex;align-items:center;gap:.55rem">${avatarSpan(sh.user?.username ?? "?")}<strong style="font-size:.9rem;color:#eaf4fb">${sh.user?.username ?? "?"}</strong></div>${sh.note ? html`<div style="color:#7e92a4;font-size:.78rem;margin-top:.4rem">${sh.note}</div>` : safe("")}</div>`,
+              )
+            : html`<div style="color:#5b6b7a;font-size:.8rem">${t("mb.opNoShares")}</div>`}
+        </div>
+      </section>
+    </div>
+  </details>`;
+
+  const layoutA = html`<div style="display:flex;flex-wrap:wrap;gap:1.4rem;align-items:flex-start">
+    <aside style="flex:1 1 320px;max-width:380px;min-width:0;display:flex;flex-direction:column;gap:1rem">
+      <section style="${safe(railCardBorder)}">
+        <div style="display:flex;align-items:center;gap:.9rem;margin-bottom:1rem">${fillRing}<div style="flex:1;min-width:0"><div style="font-family:'Rajdhani',system-ui,sans-serif;font-weight:700;font-size:1rem;color:#eaf4fb;line-height:1.1">${t("mb.opSlotsOf", { f: opFilled, t: opTotal })}</div><div style="color:#7e92a4;font-size:.76rem;margin-top:1px">${t("mb.opOpenFlex", { open: opOpen, flex: flexWaiting })}</div></div></div>
+        ${barsBlock}
+      </section>
+      ${opActionsPanel}
+      ${leadersPanel}
+    </aside>
+    <div style="flex:3 1 560px;min-width:0">
+      <div style="display:flex;flex-wrap:wrap;gap:1rem;margin-bottom:1.6rem">
+        <div style="flex:1 1 270px;min-width:0">${flexPanel}</div>
+        <div style="flex:1 1 270px;min-width:0">${needsPanel}</div>
+        <div style="flex:1 1 270px;min-width:0">${qaPanel}</div>
+      </div>
+      ${opBoard}
+      ${toolsBlock}
+    </div>
+  </div>`;
+
+  const layoutBView = html`<div style="display:flex;flex-wrap:wrap;gap:1.4rem;align-items:flex-start">
+    <div style="flex:3 1 560px;min-width:0">
+      <section style="border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1rem 1.2rem;margin-bottom:1.3rem">
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.7rem 1.4rem">
+          <div style="display:flex;align-items:center;gap:.5rem"><span style="font-family:${safe(MONO)};font-size:1.5rem;color:#eaf4fb;line-height:1">${fillPct}%</span><span style="font-family:${safe(MONO)};font-size:.56rem;letter-spacing:.1em;color:#5b6b7a">${t("mb.opKpiFilled")}</span></div>
+          <div style="flex:1;min-width:200px">${barsBlock}</div>
+        </div>
+      </section>
+      ${opBoard}
+      ${toolsBlock}
+    </div>
+    <aside style="flex:1 1 320px;max-width:380px;min-width:0;display:flex;flex-direction:column;gap:1rem">
+      ${flexPanel}
+      ${needsPanel}
+      ${qaPanel}
+      ${opActionsPanel}
+    </aside>
+  </div>`;
+
+  const operatorConsole = html`<div id="op-console">
+    ${kpiStrip}
+    ${layB ? layoutBView : layoutA}
+    <form id="op-assign-form" method="post" style="display:none"><input type="hidden" name="_csrf" value="${csrf}" /><input type="hidden" name="ui" value="operator" /><input type="hidden" name="view" value="operator" />${layB ? html`<input type="hidden" name="lay" value="b" />` : safe("")}<input type="hidden" name="userId" id="op-assign-user" /></form>
+    <form id="op-unassign-form" method="post" style="display:none"><input type="hidden" name="_csrf" value="${csrf}" /><input type="hidden" name="ui" value="operator" /><input type="hidden" name="view" value="operator" />${layB ? html`<input type="hidden" name="lay" value="b" />` : safe("")}</form>
+  </div>`;
+
   const body = html`${safe(SPRITE)}
     <main style="max-width:${isBoard2 ? "1700px" : "1340px"};margin:0 auto;padding:1.4rem 1.2rem 5rem;font-family:'Rajdhani','Inter',system-ui,sans-serif;color:#ccdde8">
       <section style="position:relative;border:1px solid rgba(0,212,255,.18);border-radius:14px;overflow:hidden;background:linear-gradient(135deg,rgba(0,212,255,.06),transparent 46%),#0a121c;padding:1.7rem 1.8rem;margin-bottom:1.1rem">
@@ -461,8 +758,8 @@ export function opMissionBoardPage(opts: {
 
       <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.8rem;margin-bottom:1.8rem">
         <div style="display:inline-flex;border:1px solid rgba(0,212,255,.16);border-radius:9px;padding:3px;background:#090f18;gap:3px">
-          <span style="${safe(tabActive)}">${ic("fps", 15, "currentColor", 1.7)}${t("join.playerView")}</span>
-          ${opts.canManage ? html`<a href="${bp}/ops/${op.id}/manage" style="${safe(tabIdle)}">${ic("board", 15, "currentColor", 1.7)}${t("join.operatorView")}</a>` : safe("")}
+          <a href="${bp}/ops/${op.id}" style="${safe(isOperatorView ? tabIdle : tabActive)}">${ic("fps", 15, "currentColor", 1.7)}${t("join.playerView")}</a>
+          ${canManage ? html`<a href="${bp}/ops/${op.id}?view=operator" style="${safe(isOperatorView ? tabActive : tabIdle)}">${ic("board", 15, "currentColor", 1.7)}${t("join.operatorView")}</a>` : safe("")}
         </div>
         <div style="display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap">
           ${optikSwitch}
@@ -470,33 +767,35 @@ export function opMissionBoardPage(opts: {
         </div>
       </div>
 
-      ${myId && isOpen
-        ? html`<section style="border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1.6rem 1.7rem;margin-bottom:1.6rem">
-            <div style="display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;margin-bottom:.4rem"><h2 style="font-family:'Rajdhani',system-ui,sans-serif;font-weight:700;font-size:1.45rem;color:#eaf4fb;margin:0">${t("join.contribute")}</h2><span style="color:#9fb1c2;font-size:.95rem">${t("mb.howContribute")}</span></div>
-            <p style="margin:0 0 1.3rem;color:#9fb1c2;font-size:.95rem;max-width:62ch">${safe(t("mb.contributeBody"))}</p>
-            <div style="display:flex;flex-wrap:wrap;gap:.9rem">
-              ${mmCards.map((c) => html`<button type="button" data-mm="${c.mm}" style="flex:1 1 240px;text-align:left;border:1px solid rgba(${safe(c.acc)},.22);border-radius:11px;background:rgba(${safe(c.acc)},.04);padding:1.2rem 1.25rem;cursor:pointer;color:inherit;font-family:inherit"><span style="width:38px;height:38px;border-radius:9px;background:rgba(${safe(c.acc)},.13);border:1px solid rgba(${safe(c.acc)},.28);color:${c.col};display:inline-flex;align-items:center;justify-content:center;margin-bottom:.9rem">${ic(c.icon, 19, "currentColor", 1.6)}</span><div style="font-family:'Rajdhani',system-ui,sans-serif;font-weight:700;font-size:1.1rem;color:#eaf4fb;margin-bottom:.3rem">${c.ttl}</div><div style="color:#9fb1c2;font-size:.88rem;margin-bottom:.9rem;line-height:1.5">${c.sub}</div><span style="display:inline-flex;align-items:center;gap:5px;color:${c.col};font-family:${safe(MONO)};font-size:.74rem;letter-spacing:.04em">${c.cta} ${ic("arrow", 14, "currentColor", 1.8)}</span></button>`)}
-            </div>
-          </section>`
-        : safe("")}
+      ${isOperatorView
+        ? operatorConsole
+        : html`${myId && isOpen
+            ? html`<section style="border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1.6rem 1.7rem;margin-bottom:1.6rem">
+                <div style="display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;margin-bottom:.4rem"><h2 style="font-family:'Rajdhani',system-ui,sans-serif;font-weight:700;font-size:1.45rem;color:#eaf4fb;margin:0">${t("join.contribute")}</h2><span style="color:#9fb1c2;font-size:.95rem">${t("mb.howContribute")}</span></div>
+                <p style="margin:0 0 1.3rem;color:#9fb1c2;font-size:.95rem;max-width:62ch">${safe(t("mb.contributeBody"))}</p>
+                <div style="display:flex;flex-wrap:wrap;gap:.9rem">
+                  ${mmCards.map((c) => html`<button type="button" data-mm="${c.mm}" style="flex:1 1 240px;text-align:left;border:1px solid rgba(${safe(c.acc)},.22);border-radius:11px;background:rgba(${safe(c.acc)},.04);padding:1.2rem 1.25rem;cursor:pointer;color:inherit;font-family:inherit"><span style="width:38px;height:38px;border-radius:9px;background:rgba(${safe(c.acc)},.13);border:1px solid rgba(${safe(c.acc)},.28);color:${c.col};display:inline-flex;align-items:center;justify-content:center;margin-bottom:.9rem">${ic(c.icon, 19, "currentColor", 1.6)}</span><div style="font-family:'Rajdhani',system-ui,sans-serif;font-weight:700;font-size:1.1rem;color:#eaf4fb;margin-bottom:.3rem">${c.ttl}</div><div style="color:#9fb1c2;font-size:.88rem;margin-bottom:.9rem;line-height:1.5">${c.sub}</div><span style="display:inline-flex;align-items:center;gap:5px;color:${c.col};font-family:${safe(MONO)};font-size:.74rem;letter-spacing:.04em">${c.cta} ${ic("arrow", 14, "currentColor", 1.8)}</span></button>`)}
+                </div>
+              </section>`
+            : safe("")}
 
-      <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.1rem;padding:.7rem .2rem;margin-bottom:1.2rem;border-top:1px solid rgba(0,212,255,.1);border-bottom:1px solid rgba(0,212,255,.1)">
-        <span style="font-family:${safe(MONO)};font-size:.62rem;letter-spacing:.1em;color:#5b6b7a">${t("mb.howFixed")}</span>
-        ${legendSpan("fest", t("mb.legendFest"))}${legendSpan("typ", t("mb.legendTyp"))}${legendSpan("rolle_offen", t("mb.legendRolle"))}${legendSpan("frei", t("mb.legendFrei"))}
-      </div>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.1rem;padding:.7rem .2rem;margin-bottom:1.2rem;border-top:1px solid rgba(0,212,255,.1);border-bottom:1px solid rgba(0,212,255,.1)">
+            <span style="font-family:${safe(MONO)};font-size:.62rem;letter-spacing:.1em;color:#5b6b7a">${t("mb.howFixed")}</span>
+            ${legendSpan("fest", t("mb.legendFest"))}${legendSpan("typ", t("mb.legendTyp"))}${legendSpan("rolle_offen", t("mb.legendRolle"))}${legendSpan("frei", t("mb.legendFrei"))}
+          </div>
 
-      <div id="mb-fleet">
-        ${fleetBlock}
-        ${cats.length === 0 ? html`<p style="color:#7e92a4">${t("op.noFleetNeeds")}</p>` : safe("")}
-      </div>
+          <div id="mb-fleet">
+            ${fleetBlock}
+            ${cats.length === 0 ? html`<p style="color:#7e92a4">${t("op.noFleetNeeds")}</p>` : safe("")}
+          </div>
 
-      <form id="mb-flex-form" method="post" action="${bp}/api/ops/${op.id}/crew-requests" style="display:none">
-        <input type="hidden" name="_csrf" value="${csrf}" /><input type="hidden" name="ui" value="player" /><input type="hidden" name="tab" value="crew" />
-      </form>
+          <form id="mb-flex-form" method="post" action="${bp}/api/ops/${op.id}/crew-requests" style="display:none">
+            <input type="hidden" name="_csrf" value="${csrf}" /><input type="hidden" name="ui" value="player" /><input type="hidden" name="tab" value="crew" />
+          </form>`}
     </main>
 
-    ${mbModal({ bp, opId: op.id, csrf, hangarRows, myHangarShared })}
-    ${mbScript(bp, op.id)}`;
+    ${isOperatorView ? opScript(bp, op.id) : mbModal({ bp, opId: op.id, csrf, hangarRows, myHangarShared })}
+    ${isOperatorView ? safe("") : mbScript(bp, op.id)}`;
 
   return layout({ title: op.title, basePath: bp, currentUser: opts.currentUser, csrfToken: opts.csrfToken, flash: flashFromQuery(opts.flash), body });
 }
@@ -609,6 +908,60 @@ function mbScript(bp: string, opId: string): SafeHtml {
     });
   });
 })();`;
+  return html`<script>
+    ${safe(js)}
+  </script>`;
+}
+
+// Operator-console client JS: place-mode assign, inline seat-picker, drag & drop,
+// and seat unassign. Commits go through hidden forms (server redirect + re-render),
+// matching the rest of the app — no JSON endpoints needed.
+function opScript(bp: string, opId: string): SafeHtml {
+  const assignBase = `${bp}/api/seats/`;
+  const js = `(function(){
+  var root=document.getElementById("op-console"); if(!root) return;
+  var assignForm=document.getElementById("op-assign-form"),
+      unassignForm=document.getElementById("op-unassign-form"),
+      userInput=document.getElementById("op-assign-user");
+  var placing=null;
+  var ASSIGN=${JSON.stringify(assignBase)};
+  function doAssign(seatId,userId){ if(!seatId||!userId)return; assignForm.setAttribute("action",ASSIGN+encodeURIComponent(seatId)+"/assign"); userInput.value=userId; assignForm.submit(); }
+  function doUnassign(seatId){ if(!seatId)return; unassignForm.setAttribute("action",ASSIGN+encodeURIComponent(seatId)+"/unassign"); unassignForm.submit(); }
+  function setTargets(on){ root.querySelectorAll("[data-op-seat]").forEach(function(s){ s.style.boxShadow=on?"0 0 0 1px rgba(0,255,136,.5)":""; var oh=s.querySelector(".op-open-hint"),th=s.querySelector(".op-target-hint"); if(oh)oh.hidden=!!on; if(th)th.hidden=!on; }); }
+  function clearPlace(){ placing=null; var b=document.getElementById("op-place-banner"); if(b)b.remove(); setTargets(false); }
+  function startPlace(userId,name){ placing={userId:userId,name:name};
+    var old=document.getElementById("op-place-banner"); if(old)old.remove();
+    var banner=document.createElement("div"); banner.id="op-place-banner";
+    banner.setAttribute("style","position:sticky;top:8px;z-index:60;display:flex;align-items:center;gap:.7rem;padding:.7rem 1rem;margin-bottom:1.1rem;border:1px solid rgba(240,165,0,.55);background:linear-gradient(90deg,rgba(240,165,0,.16),rgba(240,165,0,.04));border-radius:10px");
+    var info=document.createElement("div"); info.setAttribute("style","flex:1;min-width:0;color:#eaf4fb;font-size:.92rem");
+    info.innerHTML='<span style="font-family:\\'Share Tech Mono\\',monospace;font-size:.62rem;letter-spacing:.12em;color:#f0a500">EINTEILEN-MODUS</span><div style="margin-top:1px"><strong></strong> — wähle unten einen offenen Platz <span style="color:#f0c97a">(grün)</span></div>';
+    info.querySelector("strong").textContent=name; banner.appendChild(info);
+    var cancel=document.createElement("button"); cancel.type="button"; cancel.textContent="Abbrechen";
+    cancel.setAttribute("style","flex-shrink:0;padding:.42rem .8rem;border:1px solid rgba(255,255,255,.18);background:transparent;color:#9fb1c2;font-family:\\'Share Tech Mono\\',monospace;font-size:.72rem;border-radius:7px;cursor:pointer");
+    cancel.addEventListener("click",clearPlace); banner.appendChild(cancel);
+    root.insertBefore(banner,root.firstChild); setTargets(true);
+  }
+  root.querySelectorAll("[data-op-place]").forEach(function(b){ b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation();
+    var u=b.getAttribute("data-userid"),n=b.getAttribute("data-name")||""; if(placing&&placing.userId===u){clearPlace();return;} startPlace(u,n); }); });
+  root.querySelectorAll("[data-op-seat]").forEach(function(seat){ seat.addEventListener("click",function(){
+    var seatId=seat.getAttribute("data-seatid");
+    if(placing){ doAssign(seatId,placing.userId); return; }
+    var wrap=seat.closest(".op-seat-wrap"); if(!wrap)return; var pk=wrap.querySelector(".op-picker"); if(pk)pk.hidden=!pk.hidden;
+  }); });
+  root.querySelectorAll("[data-op-assign]").forEach(function(b){ b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation();
+    doAssign(b.getAttribute("data-seatid"),b.getAttribute("data-userid")); }); });
+  root.querySelectorAll("[data-op-closepicker]").forEach(function(b){ b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation();
+    var wrap=b.closest(".op-seat-wrap"); if(!wrap)return; var pk=wrap.querySelector(".op-picker"); if(pk)pk.hidden=true; }); });
+  root.querySelectorAll("[data-op-unassign]").forEach(function(b){ b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation();
+    doUnassign(b.getAttribute("data-seatid")); }); });
+  root.querySelectorAll("[data-op-flex]").forEach(function(f){ f.addEventListener("dragstart",function(e){ e.dataTransfer.setData("text/plain",f.getAttribute("data-userid")||""); e.dataTransfer.effectAllowed="move"; }); });
+  root.querySelectorAll("[data-op-seat]").forEach(function(seat){
+    seat.addEventListener("dragover",function(e){ e.preventDefault(); e.dataTransfer.dropEffect="move"; seat.style.boxShadow="0 0 0 2px rgba(0,255,136,.7)"; });
+    seat.addEventListener("dragleave",function(){ seat.style.boxShadow=placing?"0 0 0 1px rgba(0,255,136,.5)":""; });
+    seat.addEventListener("drop",function(e){ e.preventDefault(); var u=e.dataTransfer.getData("text/plain"); if(u)doAssign(seat.getAttribute("data-seatid"),u); });
+  });
+})();`;
+  void opId;
   return html`<script>
     ${safe(js)}
   </script>`;

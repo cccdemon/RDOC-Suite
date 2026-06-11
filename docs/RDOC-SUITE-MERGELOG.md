@@ -1,5 +1,48 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: Operator-Backend-Konsole auf Op-Detail (Mission-Board) — Branch `feat/mission-board`
+
+Umsetzung des Claude-Design-Handoffs `Operationsdetail.dc.html` (chat2 = Operator-Backend).
+Player-Hälfte (board2 4-Spalten, Claim-Modal, Hangar-Share) ist bereits live; net-new = die
+**in-page Operator-Konsole**. Nur fleetplanner-UI; Voice/LiveKit/Relay UNANGETASTET. `/ops/:id/manage`
+bleibt unverändert.
+- **Scope (User bestätigt):** in-page Operator-Ansicht in `web/missionBoard.ts`; **beide** Layouts
+  (Befehlsstand + Triage) hinter Toggle; **voll-interaktiv** (Einteilen-Modus, inline Seat-Picker,
+  Drag&Drop).
+- **Frontend:** Spieler⇄Operator-Switch (ersetzt den `/manage`-Link, `?view=operator`), `operatorConsole()`
+  Builder (KPI-Strip, Layout-Toggle `?lay=a|b`, Fill-Ring, Kategorie-Bars, Flex/Bedarfe/Fragen-Panels,
+  4-Spalten FLOTTEN-BOARD geteilt zwischen Layouts, Operator-Seat-Row mit Picker/✕, AKTIVITÄT aus
+  auditLogs, HANGAR-FREIGABEN operator-only). Client-JS (vanilla, CSRF) für place-mode/picker/dnd/answer.
+  i18n `mb.*` de+en.
+- **Backend (einzige neue Server-Routen):** `POST /api/ops/:id/questions/:qid/answer` (OpQuestion.answer/
+  answeredBy/answeredAt + auditLog) und `POST /api/seats/:seatId/unassign` (Seat freigeben + auditLog),
+  beide operator-gated via `effectiveOpRole`. Kein Schema-Change/keine Migration (Modelle existieren).
+  Bestehende Endpoints `/api/seats/:id/assign` + `/api/ops/:id/seats/assign` für Besetzen wiederverwendet.
+- **Daten:** `OpFull`-Loader liefert bereits questions/auditLogs/crewRequests/hangarShares — keine Loader-Änderung.
+- Gate: `tsc --noEmit` + vitest (neue Tests answer/unassign + Auth-Gate). User committet/deployed selbst.
+- **DONE 2026-06-11:** Umgesetzt in `web/missionBoard.ts` (operatorConsole + view/lay-Toggles + opScript),
+  `routes/api.ts` (nur `POST /api/seats/:seatId/unassign` neu; Frage-Antwort nutzt bestehende
+  `web.ts /ops/:id/questions/:qid/answer`), `routes/web.ts` (`?view`/`?lay` durchgereicht), `opReturnUrl`
+  trägt jetzt `view`/`lay` mit. i18n `mb.op*` + `mb.multiSeat` (de/en). Test: `app.inject.test.ts` prüft
+  unassign-Route registriert + auth-gated (8/8 grün). `tsc --noEmit`: **0 Fehler in geänderten Dateien**;
+  übrige tsc-Fehler (discordDiagnostics/primaryUnits/relayBots) sind PRE-EXISTING aus dem laufenden
+  Voice-Removal (Schema geändert, Services gelöscht) → vor Build `prisma generate` nötig, nicht Teil dieser
+  Änderung. NICHT committet. Restpunkt: Frage-Antwort redirectet (bestehende Route) auf `/manage?tab=admin`
+  statt zurück in die In-Page-Operator-Ansicht — funktional, kleiner UX-Sprung.
+
+## Queued / Planned Step - 2026-06-11: API-Security-Ergaenzung Microservice-Split
+
+Ergaenzung zu `docs/FR-P2-microservice-api-split-opus-plan.md`: explizites API-Security-Kapitel
+fuer AuthN/AuthZ, CSRF/CORS, Rate-Limits, Input-Validation, sichere Fehler, OpenAPI ohne Secrets,
+Audit-Logging, Security-Headers, Prod-E2E-Sicherheitschecks. Reine Doku, kein Code.
+
+## Queued / Planned Step - 2026-06-11: Opus-Plan Microservice API/Frontend-Split
+
+User-Wunsch: RDOC-Suite/Fleetplanner als Microservice-Architektur planen. GUI vom Backend trennen:
+Backend nur API, Frontend konsumiert nur API, API sauber dokumentiert. Neue Planungs-Doc
+`docs/FR-P2-microservice-api-split-opus-plan.md` mit Claude-Code-Opus-Implementierungsplan,
+Testcases, Mocking-Strategie und Production-E2E-Runbook. Reine Doku, kein Code.
+
 ## Queued / Planned Step - 2026-06-11: Dead-Code-Cleanup Fleetplanner (Batch 1) — Branch master
 
 Defensiver Dead-Code-Pass (ts-prune + grep-Verifikation). Batch 1, hohe Sicherheit, kein Voice:

@@ -2,7 +2,6 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { basePath, getEnv } from "../config/env.js";
 import { requireAuth, requireGuildRole } from "../auth/middleware.js";
 import { installGuild, getMembership, listUserGuilds, deactivateGuild } from "../services/guilds.js";
-import { addGuildVoiceBot, deleteGuildVoiceBot, updateGuildVoiceBot } from "../services/voiceBots.js";
 import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
 import { countIncomingDistributions } from "../services/eventDistribution.js";
 import { prisma } from "../db.js";
@@ -142,13 +141,12 @@ export async function guildRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const gctx = await requireGuildRole(req, reply, "fleetoperator");
       if (!gctx) return;
-      const [guild, memberships, voiceBots, incomingShared] = await Promise.all([
+      const [guild, memberships, incomingShared] = await Promise.all([
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (prisma.guild.findUnique as any)({ where: { id: gctx.guildId }, select: {
-          id: true, name: true, orgName: true, ownerUserId: true, voiceChannelCategoryId: true,
-          admiralRoleId: true, globalVoiceRoleId: true,
-          commanderVoiceRoleId: true, discordInviteUrl: true, voiceEnabled: true, timezone: true,
-        } }) as Promise<{ id: string; name: string; orgName: string | null; ownerUserId: string | null; voiceChannelCategoryId: string | null; admiralRoleId: string | null; globalVoiceRoleId: string | null; commanderVoiceRoleId: string | null; discordInviteUrl: string | null; voiceEnabled: boolean; timezone: string } | null>,
+          id: true, name: true, orgName: true, ownerUserId: true,
+          admiralRoleId: true, discordInviteUrl: true, timezone: true,
+        } }) as Promise<{ id: string; name: string; orgName: string | null; ownerUserId: string | null; admiralRoleId: string | null; discordInviteUrl: string | null; timezone: string } | null>,
         prisma.guildMembership.findMany({
           where: { guildId: gctx.guildId },
           include: {
@@ -164,18 +162,6 @@ export async function guildRoutes(app: FastifyInstance) {
           },
           orderBy: { createdAt: "asc" },
         }),
-        prisma.guildVoiceBot.findMany({
-          where: { guildId: gctx.guildId },
-          select: {
-            id: true,
-            label: true,
-            botUserId: true,
-            assignedChannelId: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-          orderBy: { createdAt: "asc" },
-        }),
         countIncomingDistributions(gctx.guildId),
       ]);
       if (!guild) return reply.redirect(basePath("/guilds/none"), 302);
@@ -188,7 +174,6 @@ export async function guildRoutes(app: FastifyInstance) {
         guild,
         incomingShared,
         memberships,
-        voiceBots,
         activeGuildId: gctx.guildId,
         activeGuildName: gctx.guildName,
         canRemove,
@@ -238,85 +223,13 @@ export async function guildRoutes(app: FastifyInstance) {
       await (prisma.guild.update as any)({
         where: { id: gctx.guildId },
         data: {
-          voiceChannelCategoryId: snowflake(req.body.voiceChannelCategoryId),
           admiralRoleId: snowflake(req.body.admiralRoleId),
-          globalVoiceRoleId: snowflake(req.body.globalVoiceRoleId),
-          commanderVoiceRoleId: snowflake(req.body.commanderVoiceRoleId),
           discordInviteUrl: inviteUrl(req.body.discordInviteUrl),
           orgName: ((v) => (v ? v.slice(0, 80) : null))((req.body.orgName ?? "").trim()),
           timezone: validatedTz,
         },
       });
       return reply.redirect(basePath("/guilds/settings?flash=ok:Server+settings+saved."), 302);
-    }
-  );
-
-  // SuperAdmin-only: grant or revoke RDOC Voice Permission for the active guild
-  app.post<{ Body: Record<string, string> }>(
-    "/guilds/settings/voice-permission",
-    async (req, reply) => {
-      const ctx = await requireAuth(req, reply);
-      if (!ctx) return;
-      if (ctx.user.role !== "superadmin") return reply.code(403).send({ error: "superadmin only" });
-      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      const guildId = req.body.guildId?.trim();
-      if (!guildId) return reply.redirect(basePath("/guilds/settings?flash=error:Missing+guild+id"), 302);
-      const enabled = req.body.voiceEnabled === "1";
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (prisma.guild.update as any)({ where: { id: guildId }, data: { voiceEnabled: enabled } });
-      const msg = enabled ? "RDOC+Voice+Permission+granted." : "RDOC+Voice+Permission+revoked.";
-      return reply.redirect(basePath(`/guilds/settings?flash=ok:${msg}`), 302);
-    }
-  );
-
-  app.post<{ Body: Record<string, string> }>(
-    "/guilds/voice-bots",
-    async (req, reply) => {
-      const gctx = await requireGuildRole(req, reply, "fleetoperator");
-      if (!gctx) return;
-      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      try {
-        await addGuildVoiceBot({
-          guildId: gctx.guildId,
-          label: req.body.label ?? "",
-          botUserId: req.body.botUserId ?? "",
-          token: req.body.botToken ?? "",
-        });
-        return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+saved."), 302);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to save voice bot";
-        return reply.redirect(basePath(`/guilds/settings?flash=error:${encodeURIComponent(msg)}`), 302);
-      }
-    }
-  );
-
-  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
-    "/guilds/voice-bots/:id/edit",
-    async (req, reply) => {
-      const gctx = await requireGuildRole(req, reply, "fleetoperator");
-      if (!gctx) return;
-      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      try {
-        await updateGuildVoiceBot(gctx.guildId, req.params.id, {
-          label: req.body.label,
-          token: req.body.botToken,
-        });
-        return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+updated."), 302);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to update voice bot";
-        return reply.redirect(basePath(`/guilds/settings?flash=error:${encodeURIComponent(msg)}`), 302);
-      }
-    }
-  );
-
-  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
-    "/guilds/voice-bots/:id/delete",
-    async (req, reply) => {
-      const gctx = await requireGuildRole(req, reply, "fleetoperator");
-      if (!gctx) return;
-      if (!csrfOk(req.body, gctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
-      await deleteGuildVoiceBot(gctx.guildId, req.params.id);
-      return reply.redirect(basePath("/guilds/settings?flash=ok:Voice+bot+removed."), 302);
     }
   );
 

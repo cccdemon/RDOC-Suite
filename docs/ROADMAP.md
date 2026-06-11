@@ -14,6 +14,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P1 | Fleet-Needs-Redesign + geführter Anmelde-Wizard (Hull vs Role-Need, Person→Squad, Wizard B, Sitz-/Turm-Karte) | [FR-P1-fleet-needs-and-guided-join.md](FR-P1-fleet-needs-and-guided-join.md) | Composition/FleetUnit/Seat + ship catalog; evolves FR-P1-eventcreation join view | Plan (User 2026-06-08, Wizard-Reihenfolge B) |
 | P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | ✓ Done |
 | P2 | Discord-event "Interested" → auto needs-assignment | [FR-P2-discord-event-interest.md](FR-P2-discord-event-interest.md) | per-op Discord event (live); bot REST poll, no privileged intent | ✓ Done (2026-06-07) |
+| P2 | Microservice API/Frontend Split (Backend API-only, FE API-only) | [FR-P2-microservice-api-split-opus-plan.md](FR-P2-microservice-api-split-opus-plan.md) | Fleetplanner services + Prisma; expands FR-P3 frontend split | Plan |
 | ~~P3~~ | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | — | ✗ **Abgelehnt** (Begründung folgt) |
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | ✓ Done (2026-06-06; series-distribution deferred → FR-P1) |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |

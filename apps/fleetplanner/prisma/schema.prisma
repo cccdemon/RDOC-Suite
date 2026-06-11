@@ -30,7 +30,6 @@ model User {
   seatAssignments  SeatAssignment[]
   guildMemberships GuildMembership[]
   ownedGuilds      Guild[]                 @relation("GuildOwner")
-  missionVoiceParticipations MissionVoiceParticipant[]
   opPrimaryUnits   OpPrimaryUnit[]
   eventInterests   EventInterest[]
   cqbSignups       CqbSignup[]
@@ -46,14 +45,10 @@ model Guild {
   orgName                String?   // SC org name shown in op embeds, distinct from the Discord server name
   iconHash               String?
   ownerUserId            String? // fleetplanner user who installed the bot
-  voiceChannelCategoryId String? // Discord category for operation voice channels
   admiralRoleId          String? // Discord role id → fleetoperator (optional mapping)
   reminderOffsetMin      Int       @default(15) // minutes before scheduledAt to send reminder DMs
   timezone               String    @default("Europe/Berlin") // IANA tz for scheduling UI (e.g. "America/New_York")
-  globalVoiceRoleId      String?   // Discord role id for Global Radio Net users when mission voice is live
-  commanderVoiceRoleId   String?   // Discord role id for Command Net users when mission voice is live
   discordInviteUrl       String?   // permanent Discord invite (e.g. https://discord.gg/raumdock) shown to non-member guests
-  voiceEnabled           Boolean   @default(false) // SuperAdmin-gated feature flag for LiveKit voice sessions
   botInstalledAt         DateTime?
   active                 Boolean   @default(true)
   bannedAt               DateTime? // SuperAdmin ban: blocks (re)install + hides everywhere. null = not banned.
@@ -64,8 +59,6 @@ model Guild {
   memberships   GuildMembership[]
   operations    Operation[]
   recurrences   OperationRecurrence[]
-  voiceBots     GuildVoiceBot[]
-  voiceChannels FleetVoiceChannel[]
   partnershipsSent     GuildPartnership[] @relation("PartnershipA")
   partnershipsReceived GuildPartnership[] @relation("PartnershipB")
   operationTemplates   OperationTemplate[]
@@ -133,27 +126,6 @@ model PartnerSharePolicy {
 
   @@id([ownerGuildId, partnerGuildId])
   @@index([partnerGuildId])
-}
-
-model GuildVoiceBot {
-  id                String   @id @default(cuid())
-  guildId           String
-  label             String
-  botUserId         String
-  tokenCiphertext   String
-  tokenIv           String
-  tokenSalt         String
-  tokenTag          String
-  assignedChannelId String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  guild         Guild               @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  voiceChannels FleetVoiceChannel[]
-
-  @@unique([guildId, botUserId])
-  @@index([guildId])
-  @@index([assignedChannelId])
 }
 
 model GuildMembership {
@@ -357,8 +329,6 @@ model Operation {
   createdById     String
   discordEventId        String?   // id of the Discord scheduled event created when opened
   eventVoiceChannelId   String?   // Discord voice channel id to use as event location (overrides Guild.eventChannelId)
-  globalVoiceRoom       String?   // LiveKit room name for Global Radio Net publish room
-  commanderVoiceRoom    String?   // LiveKit room name for Command Net room
   reminderSentAt        DateTime? // set once reminder DMs have been dispatched; null = not yet sent
   recurrenceId          String?   // FR-P3: set on instances spawned from an OperationRecurrence series
   occurrenceAt          DateTime? // the series occurrence datetime this instance materialises
@@ -372,8 +342,6 @@ model Operation {
   groups                   CompositionGroup[]
   units                    FleetUnit[]
   crewRequests             CrewAssignmentRequest[]
-  voiceChannels            FleetVoiceChannel[]
-  missionVoiceParticipants MissionVoiceParticipant[]
   primaryUnits             OpPrimaryUnit[]
   auditLogs                AuditLog[]
   questions                OpQuestion[]
@@ -514,25 +482,6 @@ model OpQuestion {
   @@index([operationId])
 }
 
-// Manually-added Command Net participants. Captains of accepted units and
-// Event/Raid/Wing leaders are resolved from their mission records; fleet-level
-// admin roles do not grant mission voice by themselves.
-model MissionVoiceParticipant {
-  id          String   @id @default(cuid())
-  operationId String
-  userId      String
-  addedById   String // fleetplanner user who added them
-  globalVoice Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([operationId, userId])
-  @@index([operationId])
-  @@index([userId])
-}
-
 model CrewAssignmentRequest {
   id          String   @id @default(cuid())
   operationId String
@@ -653,7 +602,6 @@ model FleetUnit {
   formation    CompositionGroup?       @relation("Formation", fields: [formationId], references: [id], onDelete: SetNull)
   carriedSquads CompositionGroup[]     @relation("SquadCarrier")
   seats        SeatAssignment[]
-  voiceChannel FleetVoiceChannel?
   primaryForUsers OpPrimaryUnit[]
 }
 
@@ -678,27 +626,6 @@ model OpPrimaryUnit {
   @@unique([operationId, userId])
   @@index([operationId])
   @@index([unitId])
-}
-
-model FleetVoiceChannel {
-  id          String   @id @default(cuid())
-  operationId String
-  unitId      String   @unique
-  guildId     String
-  channelId   String
-  channelName String   @default("")
-  voiceBotId  String?
-  createdAt   DateTime @default(now())
-
-  operation Operation      @relation(fields: [operationId], references: [id], onDelete: Cascade)
-  unit      FleetUnit      @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  guild     Guild          @relation(fields: [guildId], references: [id], onDelete: Cascade)
-  voiceBot  GuildVoiceBot? @relation(fields: [voiceBotId], references: [id], onDelete: SetNull)
-
-  @@unique([operationId, unitId])
-  @@index([guildId])
-  @@index([channelId])
-  @@index([voiceBotId])
 }
 
 // ── Seat assignments ───────────────────────────────────────────────

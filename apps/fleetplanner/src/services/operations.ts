@@ -80,13 +80,6 @@ export async function getOperation(id: string) {
       createdBy: true,
       leaders: { include: { user: true } },
       crewRequests: { include: { user: true }, orderBy: { createdAt: "asc" } },
-      voiceChannels: {
-        include: {
-          unit: { include: { ship: true, captain: true } },
-          voiceBot: { select: { id: true, label: true, botUserId: true, assignedChannelId: true } },
-        },
-        orderBy: { createdAt: "asc" },
-      },
       groups: {
         orderBy: { order: "asc" },
         include: {

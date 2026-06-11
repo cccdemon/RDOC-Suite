@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Operator backend console on the op-detail mission board (2026-06-11)
+
+- Added an in-page **Operator-Ansicht** to the op-detail mission board (`web/missionBoard.ts`),
+  replacing the former link to `/ops/:id/manage` with a Spieler ⇄ Operator toggle (`?view=operator`).
+  Implements the Claude-Design `Operationsdetail.dc.html` operator backend.
+- Two switchable console layouts (`?lay=a|b`): **Befehlsstand** (left control rail — fill ring,
+  per-category bars, operator actions, leadership — over the Flexibel/Bedarfe/Fragen panels and the
+  4-column Flotten-Board) and **Triage** (board-first with a right-hand action queue).
+- Fully interactive seat assignment: place-mode (Einteilen a flexible signup → click an open seat),
+  inline seat-picker, and drag & drop of waiting players onto open seats; claimed seats can be freed
+  with ✕. Commits go through hidden forms (server redirect + re-render), so they round-trip back to
+  the operator view/layout via `opReturnUrl`.
+- Operator can answer player questions inline (reuses `POST /ops/:id/questions/:qid/answer`), and the
+  Tools drawer surfaces the audit-log activity feed and operator-only hangar-freigaben.
+- New endpoint `POST /api/seats/:seatId/unassign` to free an occupied seat (op-scoped auth via
+  `effectiveOpRole`/leaders; the captain seat, order 0, is protected). No Prisma schema change.
+- i18n: added `mb.op*` strings (de + en). Player view, claim modal, hangar-share and `/ops/:id/manage`
+  are unchanged; voice/LiveKit/relay code untouched.
+
+### Added - Microservice API/Frontend split Opus plan (2026-06-11)
+
+- Added `FR-P2-microservice-api-split-opus-plan.md`: a Claude Code Opus implementation plan for splitting Fleetplanner into an API-only Fastify backend and separate API-only frontend, including OpenAPI documentation requirements, test cases, mocks, and guarded production E2E checks.
+- Added an explicit API-security gate to the split plan: cookie/session handling, object-level authorization, CSRF/CORS policy, validation, rate limits, safe errors/logging, audit requirements, security headers, OpenAPI hygiene, and production security smoke tests.
+
 ### Added - Mission resource links + Template marketplace (2026-06-11)
 
 - **Mission resource links (FR-P3):** operators can attach curated tutorial/guide links to an operation — a YouTube guide, an RSI Community-Hub one-pager, a Google-Doc, an image. The link `kind` (and its icon) is derived from the URL; only `http(s)` URLs are accepted. Links appear in a "Briefing & Tutorials" card on the player view (join page + both mission-board styles) and in the operator overview, with add/remove in the operator Admin tab. Helps crews prep for complex missions (TSG, Vanduul Tech Smugglers, Xenothreat, Siege of Orison).
