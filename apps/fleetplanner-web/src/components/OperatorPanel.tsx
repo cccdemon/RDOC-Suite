@@ -55,9 +55,29 @@ export function OperatorPanel({
     );
 
   const openQuestions = view.questions.filter((q) => !q.answer);
+  const filled = op.units.filter((u) => u.status === "accepted").reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
+  const openCount = openSeats.length;
 
   return (
     <div data-testid="operator-panel" style={{ display: "flex", flexDirection: "column", gap: "1rem", margin: "1.2rem 0" }}>
+      <div className="fpw-kpis">
+        <span className="fpw-kpi" style={{ borderColor: "rgba(0,255,136,.25)" }}>
+          <span className="val" style={{ color: "var(--green)" }}>{filled}</span>
+          <span className="lab">BESETZT</span>
+        </span>
+        <span className="fpw-kpi" style={{ borderColor: "rgba(240,165,0,.28)" }}>
+          <span className="val" style={{ color: "var(--gold)" }}>{openCount}</span>
+          <span className="lab">OFFEN</span>
+        </span>
+        <span className="fpw-kpi" style={{ borderColor: "rgba(240,165,0,.28)" }}>
+          <span className="val" style={{ color: "var(--gold)" }}>{view.crewRequests.length}</span>
+          <span className="lab">FLEX</span>
+        </span>
+        <span className="fpw-kpi" style={{ borderColor: "rgba(0,212,255,.2)" }}>
+          <span className="val" style={{ color: "var(--cyan)" }}>{openQuestions.length}</span>
+          <span className="lab">FRAGEN</span>
+        </span>
+      </div>
       {pendingUnits.length > 0 && (
         <section className="fpw-card">
           <div className="fpw-mono-label" style={{ marginBottom: "0.7rem" }}>ANSTEHENDE EINHEITEN ({pendingUnits.length})</div>

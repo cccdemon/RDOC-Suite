@@ -1,5 +1,29 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — SPA-Redesign nach Operationsdetail.dc.html (Design-Bundle v2) — Branch master
+
+User-Auftrag: neues Design (claude.ai/design-Bundle, weiterentwickelt: 4-Lane-Board, responsive
+4→2→1, DnD, Voice-Setup raus) für fleetplanner-web umsetzen. FE-only, testids bleiben stabil:
+- `index.html`: Google Fonts (Share Tech Mono, Rajdhani) — nginx-CSP erlaubt beide bereits.
+- `styles.css`: Design-Klassen (Hero mit Tag-Zeile, Mono-Labels, Progress-Bar, Unit-Cards mit
+  Accent-Border + Icon-Chip, Seat-Rows mit Rollen-Icon + Kind-Tag, Mitmachen-Einstiegskarten,
+  Tag-Legende, 4/2/1-Spalten-Board via CSS-Grid-Breakpoints statt JS).
+- `components/Icons.tsx`: Inline-SVG-Sprite (identisch zum SSR-Sprite) + `<Ic name/>`.
+- `OpDetailPage`: Neustrukturierung im Design-Look — Hero (Status/Vis/Datum-Tags, Titel,
+  Meta-Icons), Missionsziel+Anmeldungen-Karte (Progress, Meta-Rows, Discord-Link),
+  Mitmachen-Karten, Legende, kategorisiertes Board (ship/squad/vehicle-Lanes), Seat-Rows.
+- `OverviewPage`: Karten im gleichen Look (Status-Dot, Mono-Tags).
+- `OperatorPanel`: KPI-Strip (BESETZT/OFFEN/FLEX/FRAGEN) im Konsolen-Look.
+- Gate: FE-Tests (testids unverändert) + Build, Deploy fleetplanner-web, E2E.
+- **DONE 2026-06-11:** Umgesetzt — Fonts in index.html (CSP deckte beides schon),
+  styles.css komplett auf Design-Tokens/Klassen (Hero, Lanes 4→2→1 via CSS-Grid-Media-Queries
+  statt JS-Breakpoints des Prototyps, Unit-/Seat-/Tag-/KPI-Klassen), Icons.tsx Sprite+Ic,
+  OpDetailPage neu strukturiert (Hero+Tags+Meta-Icons, Missionsziel+Anmeldungen mit Progress,
+  Mitmachen mit Icons, Legende, Lanes ship/squad/vehicle mit Accent-Borders + Icon-Chips +
+  Rollen-Icons + FEST/OFFEN-Tags), Overview-Karten (Dot, Einheiten-Zeile), OperatorPanel
+  KPI-Strip. Ein Test präzisiert (OFFEN jetzt in Legende+Seat ⇒ getAllByText). FE 20/20 +
+  Build (199 kB). Voice-Setup existierte im SPA nie ⇒ kein Entfernen nötig.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — Mutating Prod-E2E (geguarded) — Branch master
 
 Letzter offener Pflichtpunkt aus FR-P2 §Mutating Production Tests / Definition of Done.

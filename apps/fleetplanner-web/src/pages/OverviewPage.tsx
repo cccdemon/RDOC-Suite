@@ -50,7 +50,10 @@ export function OverviewPage({ session }: { session: SessionResponse | null }) {
           {ops.map((op) => (
             <Link key={op.id} to={`/ops/${op.id}`} className="fpw-card fpw-cardlink" data-testid="op-card">
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
-                <span className="fpw-tag green">{op.status}</span>
+                <span className="fpw-tag green">
+                  <span className="fpw-dot" />
+                  {op.status}
+                </span>
                 <span className="fpw-tag cyan">{op.visibility}</span>
                 {op.signupState === "joined" && <span className="fpw-tag green">DABEI</span>}
                 {op.signupState === "waitlist" && <span className="fpw-tag gold">WARTELISTE</span>}
@@ -58,6 +61,9 @@ export function OverviewPage({ session }: { session: SessionResponse | null }) {
               <div className="fpw-h2">{op.title}</div>
               <div className="fpw-meta">
                 {fmtDate(op.scheduledAt)} · {op.meetingSystem} · {op.guild.name}
+              </div>
+              <div className="fpw-mono-label" style={{ marginTop: "0.6rem", fontSize: "0.62rem" }}>
+                {op.acceptedUnitCount} EINHEITEN · {op.opType.toUpperCase()}
               </div>
             </Link>
           ))}

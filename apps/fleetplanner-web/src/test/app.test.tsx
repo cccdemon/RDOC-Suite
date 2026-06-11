@@ -57,7 +57,8 @@ describe("Op detail", () => {
     expect(screen.getByTestId("unit-card")).toBeInTheDocument();
     expect(screen.getByText("Pilot")).toBeInTheDocument();
     expect(screen.getByText("Lead")).toBeInTheDocument();
-    expect(screen.getByText("OFFEN")).toBeInTheDocument();
+    // "OFFEN" appears in the legend AND as the open-seat tag
+    expect(screen.getAllByText("OFFEN").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText(/Briefing/)).toBeInTheDocument();
     // read-only: no claim controls in the skeleton
     expect(screen.queryByText(/Platz nehmen/)).not.toBeInTheDocument();

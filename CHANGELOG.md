@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - FR-P2: SPA redesigned to the Operationsdetail design bundle (2026-06-11)
+
+- fleetplanner-web now matches the claude.ai/design "Operationsdetail" look: hero section
+  with status/visibility/date tags and icon meta row, mission objective + signups card with
+  progress bar, join card with icons, seat-kind legend, and the fleet board as category
+  lanes (ships/ground/vehicles) with accent borders, icon chips, role icons and FEST/OFFEN
+  tags. Lanes collapse 4(3)->2->1 via CSS grid media queries (replacing the prototype's JS
+  width detection). Share Tech Mono + Rajdhani loaded via Google Fonts (CSP already allowed).
+- Operator panel gains the console KPI strip (BESETZT/OFFEN/FLEX/FRAGEN). Overview cards
+  get the status dot + units/op-type line. FE 20/20, bundle 199 kB.
+
 ### Added - FR-P2: guarded mutating production E2E (2026-06-11)
 
 - `scripts/prod-e2e-mutating.sh` — refuses to run without `E2E_ALLOW_PROD_MUTATIONS=1`,
