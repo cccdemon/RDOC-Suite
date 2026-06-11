@@ -7,6 +7,7 @@ import {
   safe,
   layout,
   escape,
+  renderMarkdown,
   type SafeHtml,
   type LayoutOptions,
 } from "./render.js";
@@ -402,7 +403,7 @@ export function opMissionBoardPage(opts: {
       <div style="display:flex;flex-wrap:wrap;gap:1.1rem;margin-bottom:1.6rem">
         <section style="flex:1.7 1 380px;min-width:0;border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1.5rem 1.6rem">
           <div style="font-family:${safe(MONO)};font-size:.72rem;letter-spacing:.14em;color:#9fb1c2;margin-bottom:.85rem">${t("mb.missionObjective")}</div>
-          <p style="margin:0;color:#c2d2de;font-size:1.02rem;line-height:1.62">${op.description || t("mb.noObjective")}</p>
+          <div class="mb-md" style="color:#c2d2de;font-size:1.02rem;line-height:1.62">${op.description ? renderMarkdown(op.description) : html`<p style="margin:0">${t("mb.noObjective")}</p>`}</div>
         </section>
         <section style="flex:1 1 290px;min-width:0;border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1.5rem 1.6rem">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.85rem">

@@ -1402,6 +1402,14 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .slot-typ { border-color: rgba(240,165,0,.5); color: var(--gold, #f0a500); }
 .slot-rolle_offen { border-color: rgba(53,208,224,.45); color: var(--cyan, #35d0e0); }
 .slot-frei { border-color: rgba(255,255,255,.14); color: var(--dim, #7a8a96); }
+/* Markdown inside the mission-board objective card — keep it body-sized */
+.mb-md > :first-child { margin-top: 0; }
+.mb-md h1, .mb-md h2, .mb-md h3, .mb-md h4 { font-family: 'Rajdhani', system-ui, sans-serif; font-weight: 700; color: #eaf4fb; margin: .7rem 0 .3rem; font-size: 1.04rem; letter-spacing: .02em; }
+.mb-md p { margin: .2rem 0 .6rem; }
+.mb-md ul, .mb-md ol { margin: .2rem 0 .6rem; padding-left: 1.2rem; }
+.mb-md li { margin: .1rem 0; }
+.mb-md a { color: #00d4ff; }
+.mb-md code { font-family: 'Share Tech Mono', ui-monospace, monospace; font-size: .92em; }
 @media (max-width: 620px) { .mitmachen-cards { grid-template-columns: 1fr; } }
 @media (max-width: 760px) {
   .fleet-req-row,
