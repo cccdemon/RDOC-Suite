@@ -23,6 +23,18 @@ User-Auftrag: neues Design (claude.ai/design-Bundle, weiterentwickelt: 4-Lane-Bo
   Rollen-Icons + FEST/OFFEN-Tags), Overview-Karten (Dot, Einheiten-Zeile), OperatorPanel
   KPI-Strip. Ein Test präzisiert (OFFEN jetzt in Legende+Seat ⇒ getAllByText). FE 20/20 +
   Build (199 kB). Voice-Setup existierte im SPA nie ⇒ kein Entfernen nötig.
+- **NACHBESSERUNG 2026-06-11 (User: „sieht noch nicht aus wie designed" + harte Regel
+  „immer erst Anweisungen lesen"):** DC v2 jetzt Zeile für Zeile als Vorlage (statt aus
+  Erinnerung). Nachgezogen: sticky Nav-Bar (RDOC // FLEETPLANNER, Tabs, RAUMDOCK.ORG,
+  User-Chip mit Rollen-Badge + Avatar-Quadrat), Beta-Banner, Scanline-Overlay, Hero
+  zweispaltig MIT operation-hero.png (Asset → public/assets, favicon.svg), View-Switch als
+  Segment-Tabs Spieler/Operator + „Du bist Teilnehmer."-Häkchen, Mitmachen als DREI
+  Einstiegskarten (cyan/grün/gold, Karte 2 öffnet OfferShip controlled, Karte 3 = CQB-Toggle),
+  Legende mit echten FEST/TYP/ROLLE OFFEN/FREI-Tags (tagInfo 1:1), Unit-Cards mit 2px-Accent-
+  Top-Border + 42px-Icon + BESETZT-Label + VOLL-Pill + Chevron-Collapse + kursivem bolt-Hint,
+  Seat-Rows mit 22px-Avatar-Quadraten (Farb-Hash) + „Platz nehmen →", main full-width.
+  OfferShip auf controlled umgestellt (Karte als Trigger, testid offer-ship-open wandert).
+  Memory-Regel feedback_read_instructions_first angelegt. FE 20/20 + Build (210 kB).
 
 ## Queued / Planned Step - 2026-06-11: FR-P2 — Mutating Prod-E2E (geguarded) — Branch master
 

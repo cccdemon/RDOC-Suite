@@ -11,6 +11,7 @@ export function OfferShip({
   csrf,
   carrierOptions,
   onDone,
+  onCancel,
   onError,
 }: {
   opId: string;
@@ -18,9 +19,10 @@ export function OfferShip({
   /** Accepted ship units of the op (vehicle carriers). */
   carrierOptions: Array<{ id: string; name: string }>;
   onDone: () => void;
+  onCancel: () => void;
   onError: (msg: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const open = true; // controlled by the parent (the Mitmachen entry card)
   const [mode, setMode] = useState<Mode>("ship");
   const [hangar, setHangar] = useState<ShipSummary[] | null>(null);
   const [results, setResults] = useState<ShipSummary[]>([]);
@@ -111,7 +113,6 @@ export function OfferShip({
           ...(note.trim() ? { captainNote: note.trim() } : {}),
         });
       }
-      setOpen(false);
       reset();
       onDone();
     } catch (e) {
@@ -121,13 +122,7 @@ export function OfferShip({
     }
   }
 
-  if (!open) {
-    return (
-      <button type="button" className="fpw-btn" data-testid="offer-ship-open" onClick={() => setOpen(true)}>
-        Schiff / Squad / Fahrzeug anbieten
-      </button>
-    );
-  }
+  void open;
 
   const seg = (m: Mode, label: string) => (
     <button
@@ -292,7 +287,7 @@ export function OfferShip({
           type="button"
           className="fpw-btn"
           style={{ borderColor: "rgba(255,255,255,.18)", background: "transparent", color: "var(--dim)" }}
-          onClick={() => setOpen(false)}
+          onClick={onCancel}
         >
           Abbrechen
         </button>

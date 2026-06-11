@@ -27,7 +27,8 @@ body {
 }
 a { color: var(--cyan); }
 
-.fpw-main { max-width: 1700px; margin: 0 auto; padding: 1.4rem 1.2rem 5rem; }
+/* design v2: full-width main, responsive padding */
+.fpw-main { max-width: none; margin: 0; padding: 1.4rem clamp(0.9rem, 2.5vw, 2rem) 5rem; }
 .fpw-topbar {
   display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   padding: 0.8rem 0; margin-bottom: 1.4rem;

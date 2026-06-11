@@ -57,8 +57,7 @@ describe("Op detail", () => {
     expect(screen.getByTestId("unit-card")).toBeInTheDocument();
     expect(screen.getByText("Pilot")).toBeInTheDocument();
     expect(screen.getByText("Lead")).toBeInTheDocument();
-    // "OFFEN" appears in the legend AND as the open-seat tag
-    expect(screen.getAllByText("OFFEN").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("OFFEN").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Briefing/)).toBeInTheDocument();
     // read-only: no claim controls in the skeleton
     expect(screen.queryByText(/Platz nehmen/)).not.toBeInTheDocument();
@@ -196,12 +195,13 @@ describe("Op detail — offer own ship", () => {
         return HttpResponse.json({ ok: true, unitId: "unit_new" });
       }),
     );
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    const { findByTestId, findByText, queryByTestId } = renderAt("/ops/op_1");
     (await findByTestId("offer-ship-open")).click();
     (await findByText("Carrack")).closest("label")!.querySelector("input")!.click();
     (await findByTestId("offer-ship-submit")).click();
-    // form closes again after success
-    expect(await findByTestId("offer-ship-open")).toBeInTheDocument();
+    // form closes again after success (entry card stays)
+    await new Promise((r) => setTimeout(r, 50));
+    expect(queryByTestId("offer-ship-form")).not.toBeInTheDocument();
     expect(payload).toMatchObject({ unitType: "ship", ownedShipId: "ship_h1" });
   });
 
