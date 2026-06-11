@@ -126,7 +126,7 @@ function shipSizeLabel(ship: Pick<Ship, "size" | "rawJson">): string {
   return "";
 }
 
-async function assertRequirementFitsUnit(
+export async function assertRequirementFitsUnit(
   operationId: string,
   requirementId: string | undefined,
   unitType: string,
@@ -166,7 +166,7 @@ async function assertRequirementFitsUnit(
   // match) and the FleetOperator decides — we do NOT block on it.
 }
 
-async function assertUniqueSquadName(
+export async function assertUniqueSquadName(
   operationId: string,
   squadName: string | undefined,
   currentUnitId?: string,

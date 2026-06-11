@@ -235,3 +235,50 @@ export const CqbSignupRequestSchema = z
 export const HangarShareRequestSchema = z
   .object({ allow: z.boolean(), note: z.string().max(280).optional() })
   .meta({ id: "HangarShareRequest" });
+
+const cuid = z.string().regex(/^[a-z0-9]{20,32}$/i);
+
+export const RegisterUnitRequestSchema = z
+  .object({
+    unitType: z.enum(["ship", "squad", "vehicle"]),
+    /** Catalog ship id (ship/vehicle units). */
+    shipId: cuid.optional(),
+    /** Alternative: pick from the user's hangar. */
+    ownedShipId: cuid.optional(),
+    /** Persist the picked catalog ship into the user's hangar. */
+    storeOwnedShip: z.boolean().optional(),
+    squadName: z.string().min(1).max(80).optional(),
+    squadSize: z.number().int().min(2).max(8).optional(),
+    requirementId: cuid.optional(),
+    captainNote: z.string().max(280).optional(),
+    carrierUnitId: cuid.optional(),
+  })
+  .meta({ id: "RegisterUnitRequest" });
+
+export const RegisterUnitResponseSchema = z
+  .object({ ok: z.literal(true), unitId: z.string() })
+  .meta({ id: "RegisterUnitResponse" });
+
+/** PATCH subset — full ship-swap/seat-rebuild editing stays on the SSR flow
+ *  until the FE reaches parity (documented in fleetplanner-v1.md). */
+export const PatchUnitRequestSchema = z
+  .object({
+    captainNote: z.string().max(280).nullable().optional(),
+    squadName: z.string().min(1).max(80).optional(),
+  })
+  .meta({ id: "PatchUnitRequest" });
+
+export const ResourceLinkRequestSchema = z
+  .object({
+    url: z.string().max(500),
+    title: z.string().max(120).optional(),
+    kind: z.string().max(20).optional(),
+  })
+  .meta({ id: "ResourceLinkRequest" });
+
+export const ResourceLinkResponseSchema = z
+  .object({ ok: z.literal(true), link: ResourceLinkSchema })
+  .meta({ id: "ResourceLinkResponse" });
+
+export const UnitParamSchema = z.object({ id: cuid, unitId: cuid });
+export const LinkParamSchema = z.object({ id: cuid, linkId: cuid });

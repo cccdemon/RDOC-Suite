@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2 Phase 5 (slice 2): JSON mutations units + resource-links (2026-06-11)
+
+- `POST /api/v1/operations/:id/units` — offer a ship/squad/vehicle with the full SSR
+  validation chain (catalog/hangar ship required for ship-likes, carrier required for
+  vehicles, unique squad name, size 2–8, requirement-fit check, optional hangar persist).
+  Returns `{ok, unitId}`.
+- `PATCH /api/v1/operations/:id/units/:unitId` — subset edit (captain note, squad rename);
+  full ship-swap/seat-rebuild editing intentionally stays on the SSR flow until FE parity.
+  `DELETE` withdraws a unit (captain or fleetoperator).
+- `POST /api/v1/operations/:id/resource-links` + `DELETE .../:linkId` — operator-gated
+  (effectiveOpRole fleetoperator), URL normalization/limit via the existing service; invalid
+  URL or limit → 409.
+- Shared the previously-private `assertUniqueSquadName`/`assertRequirementFitsUnit` helpers
+  from routes/api.ts instead of duplicating them. Same session+CSRF gates and audit entries
+  as slice 1. Tests: +7 inject (401 per route, schema-400s, OpenAPI coverage). BE 297/297.
+
 ### Added - FR-P2 Phase 5 (slice 1): JSON mutations claim/cqb/hangar-share (2026-06-11)
 
 - New `/api/v1` mutation endpoints (JSON in/out, cookie session + `x-csrf-token` header

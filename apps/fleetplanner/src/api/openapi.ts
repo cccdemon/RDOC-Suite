@@ -17,6 +17,11 @@ import {
   MutationOkSchema,
   OperationDetailSchema,
   OperationListResponseSchema,
+  PatchUnitRequestSchema,
+  RegisterUnitRequestSchema,
+  RegisterUnitResponseSchema,
+  ResourceLinkRequestSchema,
+  ResourceLinkResponseSchema,
   SessionResponseSchema,
   ShipSearchResponseSchema,
 } from "./contracts/index.js";
@@ -35,6 +40,11 @@ const SCHEMAS = {
   ClaimSeatResponse: ClaimSeatResponseSchema,
   CqbSignupRequest: CqbSignupRequestSchema,
   HangarShareRequest: HangarShareRequestSchema,
+  RegisterUnitRequest: RegisterUnitRequestSchema,
+  RegisterUnitResponse: RegisterUnitResponseSchema,
+  PatchUnitRequest: PatchUnitRequestSchema,
+  ResourceLinkRequest: ResourceLinkRequestSchema,
+  ResourceLinkResponse: ResourceLinkResponseSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -254,6 +264,100 @@ export function buildOpenApiDocument(): JsonObject {
           requestBody: { required: true, ...jsonContent(ref("HangarShareRequest")) },
           responses: {
             "200": { description: "Saved", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/units": {
+        post: {
+          operationId: "registerUnit",
+          summary: "Offer a ship / squad / vehicle for the operation",
+          description:
+            "Same validation chain as the SSR flow: ship/vehicle units need a catalog or " +
+            "hangar ship, vehicles need a carrier, squads need a unique name and size 2–8. " +
+            "Optional requirement binding is checked against the fleet composition.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("RegisterUnitRequest")) },
+          responses: {
+            "200": { description: "Registered", ...jsonContent(ref("RegisterUnitResponse")) },
+            ...errorResponses,
+            "409": { description: "Conflict", ...jsonContent(ref("ApiError")) },
+          },
+        },
+      },
+      "/api/v1/operations/{id}/units/{unitId}": {
+        patch: {
+          operationId: "patchUnit",
+          summary: "Edit a unit (captain note, squad rename)",
+          description:
+            "Subset edit — full ship-swap / seat-rebuild editing stays on the SSR flow " +
+            "until the FE reaches parity. Captain, op leaders or fleetoperators only.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "unitId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("PatchUnitRequest")) },
+          responses: {
+            "200": { description: "Updated", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+            "409": { description: "Conflict", ...jsonContent(ref("ApiError")) },
+          },
+        },
+        delete: {
+          operationId: "deleteUnit",
+          summary: "Withdraw/delete a unit (captain or fleetoperator)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "unitId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Deleted", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/resource-links": {
+        post: {
+          operationId: "addResourceLink",
+          summary: "Add an operator briefing/resource link",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("ResourceLinkRequest")) },
+          responses: {
+            "200": { description: "Added", ...jsonContent(ref("ResourceLinkResponse")) },
+            ...errorResponses,
+            "409": { description: "Invalid URL or limit reached", ...jsonContent(ref("ApiError")) },
+          },
+        },
+      },
+      "/api/v1/operations/{id}/resource-links/{linkId}": {
+        delete: {
+          operationId: "removeResourceLink",
+          summary: "Remove an operator resource link",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "linkId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Removed", ...jsonContent(ref("MutationOk")) },
             ...errorResponses,
           },
         },

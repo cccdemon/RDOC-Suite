@@ -116,6 +116,57 @@ describe("mutations (phase 5 slice 1) — auth/CSRF gates", () => {
     expect(doc.paths["/api/v1/operations/{id}/seats/{seatId}/claim"].delete).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/cqb/signup"].post).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/hangar-share"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/units"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/units/{unitId}"].patch).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/units/{unitId}"].delete).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/resource-links"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/resource-links/{linkId}"].delete).toBeTruthy();
+  });
+});
+
+describe("mutations (phase 5 slice 2) — units + resource-links gates", () => {
+  const opId = "cmqaaaaaaaaaaaaaaaaaa1";
+  const unitId = "cmqcccccccccccccccccc3";
+  const linkId = "cmqdddddddddddddddddd4";
+
+  it.each([
+    ["POST", `/api/v1/operations/${opId}/units`, { unitType: "squad", squadName: "A", squadSize: 4 }],
+    ["PATCH", `/api/v1/operations/${opId}/units/${unitId}`, { captainNote: "x" }],
+    ["DELETE", `/api/v1/operations/${opId}/units/${unitId}`, undefined],
+    ["POST", `/api/v1/operations/${opId}/resource-links`, { url: "https://example.com" }],
+    ["DELETE", `/api/v1/operations/${opId}/resource-links/${linkId}`, undefined],
+  ] as const)("%s %s without session → 401 JSON envelope", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      ...(body !== undefined
+        ? { headers: { "content-type": "application/json" }, payload: JSON.stringify(body) }
+        : {}),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.headers["content-type"]).toContain("application/json");
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("register unit with invalid body → 400 before auth", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/operations/${opId}/units`,
+      headers: { "content-type": "application/json" },
+      payload: JSON.stringify({ unitType: "battlestation" }),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("squad size out of bounds → 400 (schema-level)", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/operations/${opId}/units`,
+      headers: { "content-type": "application/json" },
+      payload: JSON.stringify({ unitType: "squad", squadName: "A", squadSize: 99 }),
+    });
+    expect(res.statusCode).toBe(400);
   });
 });
 

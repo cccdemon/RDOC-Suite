@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 Phase 5 (Slice 2) — JSON-Mutationen units + resource-links — Branch master
+
+Folgeschritt zu Slice 1 (106663f, deployed). Restliche Phase-5-Endpoints aus dem Plan:
+- `POST /api/v1/operations/:id/units` — eigenes Schiff/Einheit anbieten (registerUnit-Service,
+  inkl. requirementId/ownedShipId/captainNote wie SSR-Form).
+- `PATCH /api/v1/operations/:id/units/:unitId` — Einheit bearbeiten (Captain oder Operator).
+- `DELETE /api/v1/operations/:id/units/:unitId` — Einheit zurückziehen/löschen.
+- `POST /api/v1/operations/:id/resource-links` + `DELETE .../:linkId` — Operator-Links
+  (addResourceLink/removeResourceLink, operator-gated).
+- Gleiche Gates wie Slice 1: Session+CSRF-Header, object-level AuthZ, 409-Mapping, Audit.
+- Contracts+OpenAPI erweitert; SSR-Form-POSTs unangetastet.
+- Tests: inject 401/400/OpenAPI-Abdeckung; FE bleibt unverändert (Unit-Anbieten-UI = spätere
+  FE-Parität, API-first laut Plan).
+- **DONE 2026-06-11:** Routen in apiV1.ts (units POST volle SSR-Validierungskette inkl.
+  requirement-fit + userShip-Persist; PATCH bewusst Teilmenge captainNote/squadName — Ship-Swap/
+  Seat-Rebuild bleibt SSR bis FE-Parität, im OpenAPI dokumentiert; DELETE via deleteUnit;
+  resource-links operator-gated, addResourceLink null → 409). `assertUniqueSquadName`/
+  `assertRequirementFitsUnit` aus api.ts exportiert statt dupliziert. Contracts+OpenAPI erweitert.
+  Gates: tsc 0, BE 297/297 (+7 inject). FE unverändert (9/9).
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 Phase 5 (Slice 1) — JSON-Mutationen claim/cqb/hangar-share — Branch master
 
 Folgeschritt zu Phase 4 (5ec212d, Shadow-Mode live). Erste Mutations-Slice, kein Big-Bang:
