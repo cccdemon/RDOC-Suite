@@ -210,3 +210,28 @@ export const OperationListQuerySchema = z.object({
 export const IdParamSchema = z.object({
   id: z.string().regex(/^[a-z0-9]{20,32}$/i, "invalid id format"),
 });
+
+export const SeatParamSchema = z.object({
+  id: z.string().regex(/^[a-z0-9]{20,32}$/i, "invalid id format"),
+  seatId: z.string().regex(/^[a-z0-9]{20,32}$/i, "invalid id format"),
+});
+
+// ── Mutations (Phase 5, slice 1) ──────────────────────────────────────
+
+export const MutationOkSchema = z
+  .object({ ok: z.literal(true) })
+  .meta({ id: "MutationOk" });
+export type MutationOk = z.infer<typeof MutationOkSchema>;
+
+export const ClaimSeatResponseSchema = z
+  .object({ ok: z.literal(true), seatId: z.string() })
+  .meta({ id: "ClaimSeatResponse" });
+export type ClaimSeatResponse = z.infer<typeof ClaimSeatResponseSchema>;
+
+export const CqbSignupRequestSchema = z
+  .object({ note: z.string().max(280).optional() })
+  .meta({ id: "CqbSignupRequest" });
+
+export const HangarShareRequestSchema = z
+  .object({ allow: z.boolean(), note: z.string().max(280).optional() })
+  .meta({ id: "HangarShareRequest" });

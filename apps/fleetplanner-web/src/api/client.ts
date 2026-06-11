@@ -41,8 +41,39 @@ async function get<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function mutate<T>(method: "POST" | "PUT" | "DELETE", path: string, csrfToken: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method,
+    credentials: "same-origin",
+    headers: {
+      accept: "application/json",
+      "x-csrf-token": csrfToken,
+      ...(body !== undefined ? { "content-type": "application/json" } : {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
+  if (!res.ok) {
+    let errBody: ApiErrorBody | null = null;
+    try {
+      errBody = (await res.json()) as ApiErrorBody;
+    } catch {
+      errBody = null;
+    }
+    throw new ApiError(res.status, errBody);
+  }
+  return (await res.json()) as T;
+}
+
 export function getSession(): Promise<SessionResponse> {
   return get<SessionResponse>("/session");
+}
+
+export function claimSeat(opId: string, seatId: string, csrfToken: string): Promise<{ ok: true; seatId: string }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/claim`, csrfToken);
+}
+
+export function unclaimSeat(opId: string, seatId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/claim`, csrfToken);
 }
 
 export function listOperations(includePast = false): Promise<{ operations: OperationSummary[] }> {

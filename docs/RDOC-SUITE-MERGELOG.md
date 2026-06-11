@@ -1,5 +1,30 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 Phase 5 (Slice 1) — JSON-Mutationen claim/cqb/hangar-share — Branch master
+
+Folgeschritt zu Phase 4 (5ec212d, Shadow-Mode live). Erste Mutations-Slice, kein Big-Bang:
+- **Endpoints** (`/api/v1`, JSON in/out, CSRF-Header `x-csrf-token` gegen Session-Token,
+  401/403/404/409-Envelope, Audit über bestehende Services):
+  - `POST /api/v1/operations/:id/seats/:seatId/claim` (claimSeat) + `DELETE` (unclaimSeat)
+  - `POST /api/v1/operations/:id/cqb/signup` (createSignup) + `DELETE` (withdrawSignup)
+  - `PUT /api/v1/operations/:id/hangar-share` (setHangarShare, body {allow, note?})
+- Object-level AuthZ: Seat→Operation-Zugehörigkeit prüfen; effectiveOpRole-Gate wie SSR.
+  Konflikte (Seat belegt etc.) → 409 statt Redirect-Flash.
+- **FE**: OpDetail bekommt „Platz nehmen"/„Freigeben"-Buttons (eingeloggt, offene/eigene Seats),
+  csrfToken aus `GET /session`, optimistisches Reload nach Erfolg; 409 zeigt Hinweis.
+- Contracts+OpenAPI erweitert; SSR-Form-POST-Routen bleiben UNANGETASTET (Parität erst später).
+- Tests: inject 401-ohne-Session/403-CSRF/400-Validation (DB-lose Fehlerpfade); FE MSW-Tests
+  claim-Erfolg + 409. Erfolgs-Mutationen gegen echte DB = Prod-E2E mutating (geguarded, später).
+- **DONE 2026-06-11:** Routen in apiV1.ts (requireSessionJson: 401-Envelope + x-csrf-token-Check;
+  mutationError-Mapping not found→404/forbidden→403/sonst 409; Captain-vacated-DM-Parität).
+  Error-Handler v1 behält Framework-4xx als bad_request (vorher pauschal 500). Contracts+OpenAPI
+  um Mutations-Schemas/Pfade erweitert. FE: claim/release-Buttons (nur eingeloggt + op open),
+  CSRF aus /session, Reload nach Erfolg, 409-Notice; Testing-Library-cleanup-Fix (globals:false
+  registriert kein auto-cleanup → DOM akkumulierte über Tests). Gates: BE tsc 0 + 290/290,
+  FE 9/9 + Build. Stolpersteine dokumentiert: leerer POST-Body mit content-type json → Fastify-
+  Parse-Error (Tests senden content-type nur mit Body). Offen: units/resource-links-Mutationen
+  (Slice 2), mutating Prod-E2E (geguarded), SSR-Ablösung Phase 6.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 Phase 4 — Shadow-Mode `/fleetplanner-next` — Branch master
 
 User-Freigabe ("shadowpfad ist okay"). Folgeschritt zu Phase 3 (9e393f1; fleetplanner-web läuft

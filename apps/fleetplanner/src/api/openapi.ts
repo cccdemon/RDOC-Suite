@@ -9,8 +9,12 @@
 import { z } from "zod/v4";
 import {
   ApiErrorSchema,
+  ClaimSeatResponseSchema,
+  CqbSignupRequestSchema,
   GuildListResponseSchema,
+  HangarShareRequestSchema,
   HealthResponseSchema,
+  MutationOkSchema,
   OperationDetailSchema,
   OperationListResponseSchema,
   SessionResponseSchema,
@@ -27,6 +31,10 @@ const SCHEMAS = {
   OperationListResponse: OperationListResponseSchema,
   OperationDetail: OperationDetailSchema,
   ShipSearchResponse: ShipSearchResponseSchema,
+  MutationOk: MutationOkSchema,
+  ClaimSeatResponse: ClaimSeatResponseSchema,
+  CqbSignupRequest: CqbSignupRequestSchema,
+  HangarShareRequest: HangarShareRequestSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -161,6 +169,92 @@ export function buildOpenApiDocument(): JsonObject {
           responses: {
             "200": { description: "OK", ...jsonContent(ref("GuildListResponse")) },
             "401": errorResponses["401"],
+          },
+        },
+      },
+      "/api/v1/operations/{id}/seats/{seatId}/claim": {
+        post: {
+          operationId: "claimSeat",
+          summary: "Claim a free seat for the current user",
+          description:
+            "Requires the cookie session AND the x-csrf-token header (token from " +
+            "GET /api/v1/session). Side effects: seat assignment, audit entry. " +
+            "Conflicts (seat taken, already seated in this category) return 409.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "seatId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Claimed", ...jsonContent(ref("ClaimSeatResponse")) },
+            ...errorResponses,
+            "409": { description: "Conflict", ...jsonContent(ref("ApiError")) },
+          },
+        },
+        delete: {
+          operationId: "unclaimSeat",
+          summary: "Release the current user's seat",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "seatId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Released", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+            "409": { description: "Conflict", ...jsonContent(ref("ApiError")) },
+          },
+        },
+      },
+      "/api/v1/operations/{id}/cqb/signup": {
+        post: {
+          operationId: "cqbSignup",
+          summary: "Flexible CQB/personnel signup for the operation",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: false, ...jsonContent(ref("CqbSignupRequest")) },
+          responses: {
+            "200": { description: "Signed up", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+          },
+        },
+        delete: {
+          operationId: "cqbWithdraw",
+          summary: "Withdraw the current user's CQB signup",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Withdrawn", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/hangar-share": {
+        put: {
+          operationId: "setHangarShare",
+          summary: "Allow/deny operator hangar visibility for this operation",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("HangarShareRequest")) },
+          responses: {
+            "200": { description: "Saved", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
           },
         },
       },

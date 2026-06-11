@@ -7,18 +7,26 @@
 // - Stable error envelope { error: { code, message, requestId } }.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../db.js";
-import { optionalAuth } from "../auth/middleware.js";
+import { optionalAuth, type AuthContext } from "../auth/middleware.js";
 import { effectiveOpRole, listUserGuilds } from "../services/guilds.js";
 import {
   getOperation,
   listAllUserOperations,
   listPartnerOperations,
   listPublicOperations,
+  logAudit,
 } from "../services/operations.js";
+import { claimSeat, unclaimSeat } from "../services/units.js";
+import { createSignup as createCqbSignup, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
+import { setHangarShare } from "../services/hangarShare.js";
+import { sendDiscordDm } from "../services/discord.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import {
+  CqbSignupRequestSchema,
+  HangarShareRequestSchema,
   IdParamSchema,
   OperationListQuerySchema,
+  SeatParamSchema,
   ShipSearchQuerySchema,
   type ApiError,
 } from "../api/contracts/index.js";
@@ -204,6 +212,165 @@ export async function apiV1Routes(app: FastifyInstance) {
     return reply.type("application/json").send({ guilds: memberships.map(presentGuild) });
   });
 
+  // ── mutations (Phase 5, slice 1) ────────────────────────────────────
+  // JSON-only: cookie session (401 envelope) + x-csrf-token header checked
+  // against the session token (403). Curated service error messages map to
+  // 404/409 — never internals. SSR form-POST routes stay untouched.
+
+  async function requireSessionJson(
+    req: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<AuthContext | null> {
+    const ctx = await optionalAuth(req);
+    if (!ctx) {
+      await sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+      return null;
+    }
+    const token = req.headers["x-csrf-token"];
+    if (typeof token !== "string" || token !== ctx.csrfToken) {
+      await sendError(reply, req, 403, "forbidden", "Invalid CSRF token.");
+      return null;
+    }
+    return ctx;
+  }
+
+  /** Map curated service errors to the envelope: "not found" → 404, rest 409. */
+  function mutationError(reply: FastifyReply, req: FastifyRequest, err: unknown) {
+    const msg = err instanceof Error ? err.message : "Conflict.";
+    if (/not found/i.test(msg)) return sendError(reply, req, 404, "not_found", msg);
+    if (/forbidden/i.test(msg)) return sendError(reply, req, 403, "forbidden", msg);
+    return sendError(reply, req, 409, "conflict", msg);
+  }
+
+  app.post<{ Params: { id: string; seatId: string } }>(
+    "/api/v1/operations/:id/seats/:seatId/claim",
+    async (req, reply) => {
+      const p = SeatParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+
+      // Object-level: the seat must belong to THIS operation.
+      const seat = await prisma.seatAssignment.findUnique({
+        where: { id: p.data.seatId },
+        select: { fleetUnit: { select: { operationId: true } } },
+      });
+      if (!seat || seat.fleetUnit.operationId !== p.data.id)
+        return sendError(reply, req, 404, "not_found", "Seat not found.");
+
+      // Tenant gate — same rule as the SSR claim route.
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
+      if (!role) return sendError(reply, req, 403, "forbidden", "No access to this operation.");
+
+      try {
+        const result = await claimSeat(p.data.seatId, ctx.user.id);
+        if (result.vacatedCaptainSeat) {
+          await logAudit(p.data.id, ctx.user.id, ctx.user.username, "captain_left_pilot_seat", result.unitName);
+          try {
+            const leaders = await prisma.operationLeader.findMany({
+              where: { operationId: p.data.id },
+              select: { userId: true },
+            });
+            const msg = `⚠️ ${ctx.user.username} left the captain (pilot) seat of "${result.unitName}" — this ship may need a new captain.`;
+            await Promise.all(leaders.map((l) => sendDiscordDm(l.userId, msg).catch(() => {})));
+          } catch {
+            /* best-effort */
+          }
+        }
+        await logAudit(p.data.id, ctx.user.id, ctx.user.username, "seat:claim", "");
+        return reply.type("application/json").send({ ok: true as const, seatId: p.data.seatId });
+      } catch (err) {
+        return mutationError(reply, req, err);
+      }
+    },
+  );
+
+  app.delete<{ Params: { id: string; seatId: string } }>(
+    "/api/v1/operations/:id/seats/:seatId/claim",
+    async (req, reply) => {
+      const p = SeatParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+
+      const seat = await prisma.seatAssignment.findUnique({
+        where: { id: p.data.seatId },
+        select: { fleetUnit: { select: { operationId: true } } },
+      });
+      if (!seat || seat.fleetUnit.operationId !== p.data.id)
+        return sendError(reply, req, 404, "not_found", "Seat not found.");
+
+      try {
+        await unclaimSeat(p.data.seatId, ctx.user.id, ctx.user.role);
+        await logAudit(p.data.id, ctx.user.id, ctx.user.username, "seat:unclaim", "");
+        return reply.type("application/json").send({ ok: true as const });
+      } catch (err) {
+        return mutationError(reply, req, err);
+      }
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/cqb/signup",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = CqbSignupRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+
+      const op = await prisma.operation.findUnique({
+        where: { id: p.data.id },
+        select: { id: true, status: true },
+      });
+      if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
+      if (!role) return sendError(reply, req, 403, "forbidden", "No access to this operation.");
+      if (op.status !== "open" && op.status !== "draft")
+        return sendError(reply, req, 409, "conflict", "Operation is not open for registration.");
+
+      await createCqbSignup(p.data.id, ctx.user.id, body.data.note?.trim() || null);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:signup", "");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    "/api/v1/operations/:id/cqb/signup",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      await withdrawCqbSignup(p.data.id, ctx.user.id);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:withdraw", "");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.put<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/hangar-share",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = HangarShareRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
+      if (!role) return sendError(reply, req, 403, "forbidden", "No access to this operation.");
+
+      await setHangarShare(p.data.id, ctx.user.id, {
+        allow: body.data.allow,
+        note: body.data.note ?? null,
+      });
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "hangar:share", body.data.allow ? "allow" : "deny");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   // ── ships ───────────────────────────────────────────────────────────
   app.get<{ Querystring: Record<string, string> }>("/api/v1/ships/search", async (req, reply) => {
     const q = ShipSearchQuerySchema.safeParse(req.query);
@@ -218,9 +385,17 @@ export async function apiV1Routes(app: FastifyInstance) {
   // ever reach the client (FR-P2 §Fehler).
   app.setErrorHandler((err, req, reply) => {
     req.log.error({ err, requestId: req.id }, "api v1 error");
+    // Framework 4xx (body parse, payload too large, …) keep their status as a
+    // bad_request envelope; everything else is an opaque 500.
+    const sc = (err as { statusCode?: unknown }).statusCode;
+    const status = typeof sc === "number" && sc >= 400 && sc < 500 ? sc : 500;
     const body: ApiError = {
-      error: { code: "internal", message: "Internal error.", requestId: req.id },
+      error: {
+        code: status === 500 ? "internal" : "bad_request",
+        message: status === 500 ? "Internal error." : "Invalid request.",
+        requestId: req.id,
+      },
     };
-    reply.code(500).type("application/json").send(body);
+    reply.code(status).type("application/json").send(body);
   });
 }

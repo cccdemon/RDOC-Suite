@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ApiError, getOperation } from "../api/client";
-import type { OperationDetail } from "../api/types";
+import { ApiError, claimSeat, getOperation, unclaimSeat } from "../api/client";
+import type { OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 
 function fmtDate(iso: string, tz: string | null): string {
@@ -15,17 +15,54 @@ function fmtDate(iso: string, tz: string | null): string {
   }).format(new Date(iso));
 }
 
-export function OpDetailPage() {
+export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const { id } = useParams<{ id: string }>();
   const [op, setOp] = useState<OperationDetail | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [busySeat, setBusySeat] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!id) return;
     getOperation(id)
       .then(setOp)
       .catch((e) => setError(e instanceof ApiError ? e : new ApiError(0, null)));
   }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const me = session?.user ?? null;
+  const csrf = session?.csrfToken ?? null;
+
+  async function onClaim(seatId: string) {
+    if (!id || !csrf) return;
+    setBusySeat(seatId);
+    setNotice(null);
+    try {
+      await claimSeat(id, seatId, csrf);
+      load();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+    } finally {
+      setBusySeat(null);
+    }
+  }
+
+  async function onUnclaim(seatId: string) {
+    if (!id || !csrf) return;
+    setBusySeat(seatId);
+    setNotice(null);
+    try {
+      await unclaimSeat(id, seatId, csrf);
+      load();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+    } finally {
+      setBusySeat(null);
+    }
+  }
 
   if (error) {
     const code = error.status === 401 ? 401 : error.status === 403 ? 403 : error.status === 404 ? 404 : 503;
@@ -52,6 +89,11 @@ export function OpDetailPage() {
         {op.canManage && <span className="fpw-tag gold">OPERATOR</span>}
       </div>
       <h1 className="fpw-h1" data-testid="op-title">{op.title}</h1>
+      {notice && (
+        <p className="fpw-tag gold" role="alert" data-testid="op-notice" style={{ display: "inline-flex" }}>
+          {notice}
+        </p>
+      )}
       <p className="fpw-meta">
         {fmtDate(op.scheduledAt, op.guild.timezone)} · {op.meetingLocation} · {op.meetingSystem} · {op.guild.name}
       </p>
@@ -95,7 +137,32 @@ export function OpDetailPage() {
                     <div key={s.id} className="fpw-seat">
                       <span style={{ flex: 1, color: "var(--text-hi)" }}>{s.label}</span>
                       {s.claimedBy ? (
-                        <span className="fpw-meta">{s.claimedBy.username}</span>
+                        <>
+                          <span className="fpw-meta">{s.claimedBy.username}</span>
+                          {me && s.claimedBy.id === me.id && (
+                            <button
+                              type="button"
+                              className="fpw-btn"
+                              style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem" }}
+                              disabled={busySeat === s.id}
+                              onClick={() => onUnclaim(s.id)}
+                              data-testid={`unclaim-${s.id}`}
+                            >
+                              Freigeben
+                            </button>
+                          )}
+                        </>
+                      ) : me && csrf && op.status === "open" ? (
+                        <button
+                          type="button"
+                          className="fpw-btn"
+                          style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem" }}
+                          disabled={busySeat === s.id}
+                          onClick={() => onClaim(s.id)}
+                          data-testid={`claim-${s.id}`}
+                        >
+                          Platz nehmen
+                        </button>
                       ) : (
                         <span className="fpw-tag dim">OFFEN</span>
                       )}

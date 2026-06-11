@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { App } from "../App";
 import { server } from "./setup";
-import { opSummaryFixture, sessionCrew } from "./fixtures";
+import { opDetailFixture, opSummaryFixture, sessionCrew } from "./fixtures";
 
 const API = "/fleetplanner/api/v1";
 
@@ -81,6 +81,55 @@ describe("Op detail", () => {
     renderAt("/ops/op_1");
     expect(await screen.findByTestId("error-401")).toBeInTheDocument();
     expect(screen.getByText("Anmelden")).toBeInTheDocument();
+  });
+});
+
+describe("Op detail — claim flow (authenticated)", () => {
+  it("claims a free seat and re-renders with the user seated", async () => {
+    let claimed = false;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.post(`${API}/operations/op_1/seats/seat_2/claim`, ({ request }) => {
+        if (request.headers.get("x-csrf-token") !== sessionCrew.csrfToken) {
+          return HttpResponse.json(
+            { error: { code: "forbidden", message: "Invalid CSRF token.", requestId: "req-c" } },
+            { status: 403 },
+          );
+        }
+        claimed = true;
+        return HttpResponse.json({ ok: true, seatId: "seat_2" });
+      }),
+      http.get(`${API}/operations/op_1`, () => {
+        if (!claimed) return HttpResponse.json(opDetailFixture);
+        const seated = structuredClone(opDetailFixture);
+        seated.units[0].seats[1].claimedBy = { id: "user_crew", username: "Crew One" };
+        return HttpResponse.json(seated);
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1");
+    const btn = await findByTestId("claim-seat_2");
+    btn.click();
+    // After reload the seat belongs to the user → the release button appears.
+    expect(await findByTestId("unclaim-seat_2")).toBeInTheDocument();
+    expect(claimed).toBe(true);
+  });
+
+  it("409 conflict shows a notice and keeps the page usable", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.post(`${API}/operations/op_1/seats/seat_2/claim`, () =>
+        HttpResponse.json(
+          { error: { code: "conflict", message: "Seat already taken", requestId: "req-x" } },
+          { status: 409 },
+        ),
+      ),
+    );
+    const { findByTestId } = renderAt("/ops/op_1");
+    const btn = await findByTestId("claim-seat_2");
+    btn.click();
+    const notice = await findByTestId("op-notice");
+    expect(notice).toHaveTextContent("Seat already taken");
+    expect(await findByTestId("op-title")).toBeInTheDocument();
   });
 });
 

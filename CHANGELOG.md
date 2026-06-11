@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2 Phase 5 (slice 1): JSON mutations claim/cqb/hangar-share (2026-06-11)
+
+- New `/api/v1` mutation endpoints (JSON in/out, cookie session + `x-csrf-token` header
+  checked against the session token, stable error envelope, audit entries):
+  `POST/DELETE /operations/:id/seats/:seatId/claim`, `POST/DELETE /operations/:id/cqb/signup`,
+  `PUT /operations/:id/hangar-share`. Reuse the existing services (claimSeat/unclaimSeat,
+  cqb createSignup/withdrawSignup, setHangarShare) incl. the captain-vacated leader DM;
+  conflicts map to 409 instead of redirect flashes. Object-level checks: seat must belong to
+  the operation, `effectiveOpRole` tenant gate as in SSR. SSR form-POST routes untouched.
+- The v1 error handler now keeps framework 4xx (body parse etc.) as `bad_request` envelopes
+  instead of opaque 500s.
+- SPA: seat claim/release buttons on the op detail (signed-in users, open ops) with CSRF
+  token from `/session`, reload after success, 409 notice. Testing-Library cleanup fix
+  (vitest runs with globals:false).
+- Tests: +8 backend inject (401 per mutation route, 400 validation, OpenAPI documents the
+  routes), +2 FE MSW (claim → seated re-render, 409 notice). BE 290/290, FE 9/9 green.
+
 ### Added - FR-P2 Phase 4: /fleetplanner-next shadow mode (2026-06-11)
 
 - Caddy now routes `https://suite.raumdock.org/fleetplanner-next/` to the `fleetplanner-web`

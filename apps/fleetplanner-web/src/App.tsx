@@ -35,7 +35,7 @@ export function App() {
       </header>
       <Routes>
         <Route path="/" element={<OverviewPage session={session} />} />
-        <Route path="/ops/:id" element={<OpDetailPage />} />
+        <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />
       </Routes>

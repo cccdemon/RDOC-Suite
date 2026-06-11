@@ -67,6 +67,58 @@ describe("GET /api/v1/operations/:id", () => {
   });
 });
 
+describe("mutations (phase 5 slice 1) — auth/CSRF gates", () => {
+  const opId = "cmqaaaaaaaaaaaaaaaaaa1";
+  const seatId = "cmqbbbbbbbbbbbbbbbbbb2";
+
+  it.each([
+    ["POST", `/api/v1/operations/${opId}/seats/${seatId}/claim`],
+    ["DELETE", `/api/v1/operations/${opId}/seats/${seatId}/claim`],
+    ["POST", `/api/v1/operations/${opId}/cqb/signup`],
+    ["DELETE", `/api/v1/operations/${opId}/cqb/signup`],
+    ["PUT", `/api/v1/operations/${opId}/hangar-share`],
+  ] as const)("%s %s without session → 401 JSON envelope", async (method, url) => {
+    const res = await app.inject({
+      method,
+      url,
+      ...(method === "PUT"
+        ? { headers: { "content-type": "application/json" }, payload: JSON.stringify({ allow: true }) }
+        : {}),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.headers["content-type"]).toContain("application/json");
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("invalid ids → 400 before any auth/DB work", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/operations/bad/seats/also-bad/claim",
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("hangar-share with invalid body → 400", async () => {
+    const res = await app.inject({
+      method: "PUT",
+      url: `/api/v1/operations/${opId}/hangar-share`,
+      headers: { "content-type": "application/json" },
+      payload: JSON.stringify({ allow: "yes-please" }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents the mutation routes", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/openapi.json" });
+    const doc = res.json();
+    expect(doc.paths["/api/v1/operations/{id}/seats/{seatId}/claim"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/seats/{seatId}/claim"].delete).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/cqb/signup"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/hangar-share"].put).toBeTruthy();
+  });
+});
+
 describe("error envelope hygiene", () => {
   it("a DB-touching route without a database fails closed: 500 JSON, no internals", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/operations" });
