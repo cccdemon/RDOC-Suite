@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — Mutating Prod-E2E (geguarded) — Branch master
+
+Letzter offener Pflichtpunkt aus FR-P2 §Mutating Production Tests / Definition of Done.
+Neues Script `scripts/prod-e2e-mutating.sh`:
+- **Guards:** läuft NUR mit `E2E_ALLOW_PROD_MUTATIONS=1` + `E2E_TEST_OPERATION_ID`
+  (Wegwerf-Test-Op) + `E2E_SESSION_COOKIE` (fp_sid eines Test-Users); sonst sauberer Abbruch
+  mit Anleitung. csrfToken zur Laufzeit via GET /session.
+- **Tests mit Cleanup (afterEach-Äquivalent, Reihenfolge fix):**
+  1. CQB-Signup (note `E2E-mutating-test`) → Withdraw; Verify via viewerCqbSignedUp.
+  2. Hangar-Share: vorherigen Wert lesen → toggeln → zurücksetzen.
+  3. Seat claim→unclaim: ersten offenen aktiven Seat aus dem Read-Model; keiner ⇒ SKIP.
+  4. Resource-Link `E2E-Briefing` add→delete; 403 (kein Operator) ⇒ SKIP.
+- **Guardrails laut Plan:** Testdaten-Prefix `E2E-`, erzeugte IDs gemerkt, Cleanup auch im
+  Fehlerfall (trap), bei Cleanup-Fehler exakter curl-Befehl für manuelles Aufräumen.
+- Verify ohne Mutation möglich: ohne Env → Guard-Abbruch; mit ungültigem Cookie → Abbruch
+  „Session invalid" (read-only /session-Check). Doku in fleetplanner-v1.md §E2E.
+- **DONE 2026-06-11:** Script gebaut + Guards verifiziert (ohne Env → REFUSED rc=2; mit
+  ungültigem Cookie → read-only /session-Check, Abbruch VOR jeder Mutation). Cleanup-Registry
+  mit trap EXIT, fehlgeschlagenes Cleanup druckt manuellen curl. Echter Mutations-Lauf braucht
+  Test-Op + Test-User-Cookie vom User (bewusst nicht automatisierbar). Doku in
+  fleetplanner-v1.md aktualisiert.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — SPA-Operator-Panel — Branch master
 
 Folgeschritt zu e3d9394 (Operator-API v1). FE-only: Operator-Ansicht im SPA-Op-Detail

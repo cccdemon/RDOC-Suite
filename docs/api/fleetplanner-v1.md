@@ -146,6 +146,10 @@ Body `{ answer ≤1000 }` — beantwortet eine Spielerfrage.
 - Operator-Workflows (accept/reject units, seats/assign, needs, leaders, status) — SSR.
 - ~~Rate-Limits~~ → umgesetzt: Mutationen 20/min, `/ships/search` 60/min pro Session/IP;
   Überschreitung ⇒ `429` Envelope (`rate_limited`) + `retry-after`-Header.
-- Mutating Prod-E2E (geguarded via E2E_ALLOW_PROD_MUTATIONS) — noch nicht gebaut.
+- ~~Mutating Prod-E2E~~ → `scripts/prod-e2e-mutating.sh`: läuft NUR mit
+  `E2E_ALLOW_PROD_MUTATIONS=1` + `E2E_TEST_OPERATION_ID` (Wegwerf-Op!) + `E2E_SESSION_COOKIE`;
+  testet cqb-signup/withdraw, hangar-share-Toggle+Restore, seat claim/unclaim (skip ohne
+  freien Seat), resource-link add/delete (skip ohne Operator-Rolle). Cleanup via trap auch
+  im Fehlerfall; Testdaten-Prefix `E2E-`.
 
 Routen-Inventar + Zielstatus je SSR-Route: [`fleetplanner-route-inventory.md`](fleetplanner-route-inventory.md).

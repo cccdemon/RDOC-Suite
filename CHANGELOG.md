@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: guarded mutating production E2E (2026-06-11)
+
+- `scripts/prod-e2e-mutating.sh` — refuses to run without `E2E_ALLOW_PROD_MUTATIONS=1`,
+  a disposable `E2E_TEST_OPERATION_ID` and a test-user `E2E_SESSION_COOKIE` (validated
+  read-only before any mutation). Covers cqb signup/withdraw, hangar-share toggle+restore,
+  seat claim/unclaim (skips without a free seat) and resource-link add/delete (skips
+  without operator role). Cleanup registry runs via trap even on failure and prints the
+  manual curl when cleanup itself fails. Test data is prefixed `E2E-`.
+
 ### Added - FR-P2: SPA operator panel (2026-06-11)
 
 - Op detail gains an "Operator-Ansicht" toggle (canManage only) revealing the operator
