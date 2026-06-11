@@ -5418,22 +5418,6 @@ export function opJoinPage(opts: {
               </script>
             </section>`
           : safe("")}
-        <div class="roster-view-toggle">
-          <span class="rv-label">${t("join.viewLabel")}</span>
-          <button type="button" data-rv="row" class="active">${t("join.viewHorizontal")}</button>
-          <button type="button" data-rv="col">${t("join.viewColumns")}</button>
-        </div>
-        <script>
-          (function () {
-            var btns = document.querySelectorAll(".roster-view-toggle [data-rv]");
-            btns.forEach(function (b) {
-              b.addEventListener("click", function () {
-                document.body.classList.toggle("roster-cols", b.dataset.rv === "col");
-                btns.forEach(function (x) { x.classList.toggle("active", x === b); });
-              });
-            });
-          })();
-        </script>
         ${signupSummaryBanner}
         ${!myId
           ? html`<section class="card">
