@@ -1,5 +1,34 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: board2 (4-Spalten) als Default + merge→master — Branch `feat/mission-board`
+
+User: 4-Spalten = Default. `User.opDetailStyle` Schema-Default classic→board2; Migration
+`20260611010000_op_detail_default_board2` (ALTER DEFAULT + UPDATE classic→board2 für Bestands-Defaults);
+Route-Fallback (auch Gäste) → board2. Klassik/board1 weiter wählbar (Profil/Inline-Switcher).
+Danach feat/mission-board → master + Deploy (Migration beim Start).
+
+## Queued / Planned Step - 2026-06-11: Umsetzung FR-P3 Mission Resource Links + FR-P4 Template Marketplace — Branch `feat/mission-board`
+
+Implementierung der beiden Konzept-Docs ([FR-P3-mission-resource-links.md](FR-P3-mission-resource-links.md),
+[FR-P4-template-marketplace.md](FR-P4-template-marketplace.md)). Nur fleetplanner; Voice/LiveKit/Relay UNANGETASTET.
+- **FR-P3:** neues `OperationResourceLink` (op-scoped, n Links, sortOrder, kind aus URL abgeleitet) +
+  additive Postgres-Migration. `services/resourceLinks.ts` (add/remove/reorder/list, Zod url() http/https,
+  kind-Ableitung youtube/rsi_hub/gdoc/image/link). `getOperation` include `resourceLinks`. API-Routen
+  add/remove/reorder (operator-gated). Manage-UI-Sektion + Op-Detail-Karte „Briefing/Tutorials". i18n de+en.
+- **FR-P4:** `services/opBlueprint.ts` — `serializeOp` (scrubt IDs/Teilnehmer/Zeit/Discord/Voice, behält
+  Settings+Komposition+ResourceLinks) + `instantiateBlueprint` (neue Draft-Op im Ziel-Guild). Neues
+  `OperationTemplate` (ownerGuildId, visibility guild|partners|public, blueprintJson, usageCount,
+  published) + Migration. `services/operationTemplates.ts` (publish/list-scoped/apply, partner-Sichtbarkeit
+  via getActivePartnerGuildIds). Routen: publish, marketplace-Browser-Seite, apply-in-create-flow. i18n de+en.
+  ⚠️ Namenskollision „template": Recurrence-`templateJson` (flach) bleibt; Blueprint ist das reichere Format.
+- Build/Deploy: fleetplanner (tsc + Prisma-Migration beim Start). Tests: resourceLinks + opBlueprint (8 grün).
+  Architektur-Vorbehalt Frontend-Split notiert — Umsetzung hier SSR-konform (render.ts/pages.ts).
+- **DONE 2026-06-11:** `prisma generate` + `tsc --noEmit` exit 0, `vitest` 8/8 grün. Migration
+  `20260611000000_resource_links_template_marketplace`. Routen in api.ts (resource-links + publish-template)
+  und web.ts (/templates browse/apply/delete). UI: Admin-Tab (Links + Publish), Player-Karten (join + beide
+  Mission-Board-Stile), Marktplatz-Seite + Nav-Link „Marktplatz" + Wizard-„Templates durchsuchen". NICHT committet
+  (User committet/deployed selbst).
+
 ## Queued / Planned Step - 2026-06-11: FR-Doc Frontend/Backend-Split — Branch `feat/mission-board`
 
 User-Wunsch: Konzept festhalten, was Trennung Frontend/Backend (API-first + dedizierter FE-Container)

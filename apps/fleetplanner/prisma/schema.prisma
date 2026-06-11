@@ -14,7 +14,7 @@ model User {
   avatarHash String?
   role       String   @default("crew") // superadmin | fleetoperator | crew
   locale     String   @default("de") // UI language: de | en | en-US | fr | es (see src/i18n)
-  opDetailStyle String @default("classic") // op-detail layout: classic | board1 | board2
+  opDetailStyle String @default("board2") // op-detail layout: classic | board1 | board2
   active     Boolean  @default(true)
   joinedAt   DateTime @default(now())
   lastSeenAt DateTime @default(now())
@@ -35,6 +35,8 @@ model User {
   eventInterests   EventInterest[]
   cqbSignups       CqbSignup[]
   hangarShares     OperationHangarShare[]
+  resourceLinksAdded  OperationResourceLink[]
+  templatesCreated    OperationTemplate[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -66,6 +68,7 @@ model Guild {
   voiceChannels FleetVoiceChannel[]
   partnershipsSent     GuildPartnership[] @relation("PartnershipA")
   partnershipsReceived GuildPartnership[] @relation("PartnershipB")
+  operationTemplates   OperationTemplate[]
 }
 
 // ── Guild partnerships (tenant federation) ─────────────────────────
@@ -379,6 +382,7 @@ model Operation {
   eventInterests           EventInterest[]
   cqbSignups               CqbSignup[]
   hangarShares             OperationHangarShare[]
+  resourceLinks            OperationResourceLink[]
 
   @@index([recurrenceId])
 }
@@ -709,4 +713,53 @@ model SeatAssignment {
 
   fleetUnit FleetUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
   user      User?     @relation(fields: [userId], references: [id])
+}
+
+// FR-P3: operator-curated tutorial/resource links on an operation (YouTube
+// guide, RSI Community-Hub one-pager, Google-Doc, image). `kind` drives the
+// display icon and is derived from the URL (see services/resourceLinks.ts).
+// Visibility follows the operation's own visibility — no separate flag.
+model OperationResourceLink {
+  id          String   @id @default(cuid())
+  operationId String
+  url         String
+  title       String
+  kind        String   @default("link") // link | youtube | rsi_hub | gdoc | image
+  sortOrder   Int      @default(0)
+  addedById   String
+  createdAt   DateTime @default(now())
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  addedBy   User      @relation(fields: [addedById], references: [id])
+
+  @@index([operationId])
+  @@index([addedById])
+}
+
+// FR-P4: a shareable, instance-free operation blueprint (settings + composition
+// + resource links, scrubbed of participants/IDs/time/Discord/voice refs).
+// Operators publish an op as a template; others discover it in the marketplace
+// and instantiate it into a fresh draft. NOTE: distinct from
+// OperationRecurrence.templateJson (the flat recurrence seed) — this is the
+// richer blueprint. See services/opBlueprint.ts + services/operationTemplates.ts.
+model OperationTemplate {
+  id            String   @id @default(cuid())
+  ownerGuildId  String   // tenant that created/owns the template
+  createdById   String
+  name          String
+  summary       String   @default("")
+  opType        String   @default("combat") // mirrored for marketplace filter/search
+  visibility    String   @default("guild") // guild | partners | public
+  blueprintJson String   // the instance-free blueprint (see opBlueprint.ts)
+  sourceOpId    String?  // optional provenance: which op it was published from
+  usageCount    Int      @default(0) // how often instantiated (popularity sort)
+  published     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  ownerGuild Guild @relation(fields: [ownerGuildId], references: [id], onDelete: Cascade)
+  createdBy  User  @relation(fields: [createdById], references: [id])
+
+  @@index([visibility, opType])
+  @@index([ownerGuildId])
 }

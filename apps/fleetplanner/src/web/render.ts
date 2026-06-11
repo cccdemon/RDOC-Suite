@@ -123,6 +123,7 @@ export function layout(opts: LayoutOptions): SafeHtml {
     <span class="nav-brand">RDOC // FLEETPLANNER</span>
     <a href="${bp}/">${t("nav.operations")}</a>
     ${u ? html`<a href="${bp}/guilds">${t("nav.servers")}</a>` : ""}
+    ${u ? html`<a href="${bp}/templates">${t("nav.marketplace")}</a>` : ""}
     <a href="${bp}/feedback">${t("nav.feedback")}</a>
     ${u && u.role === "superadmin" ? html`<a href="${bp}/admin">${t("nav.admin")}</a>` : ""}
     <a href="${bp}/changelog">${t("nav.changelog")}</a>
@@ -1429,6 +1430,17 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   border-bottom: 1px solid var(--border);
 }
 .opv2-row:last-child { border-bottom: none; }
+/* FR-P3 resource links */
+.rl-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.rl-item {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.45rem 0.6rem; border: 1px solid var(--border); border-radius: 7px;
+  color: var(--text); text-decoration: none; font-size: 0.9rem;
+}
+.rl-item:hover { border-color: var(--cyan, #35d0e0); }
+.rl-ico { flex-shrink: 0; }
+.rl-title { flex: 1; overflow-wrap: anywhere; }
+.rl-ext { color: var(--dim); font-size: 0.8rem; }
 .opv2-row strong {
   display: block;
   font-family: var(--font-mono);

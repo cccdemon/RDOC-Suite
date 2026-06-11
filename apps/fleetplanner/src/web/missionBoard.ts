@@ -19,6 +19,22 @@ import { shipTypeLabel, SHIP_TYPES } from "../services/needs.js";
 
 type OpFull = Awaited<ReturnType<typeof import("../services/operations.js").getOperation>>;
 
+// FR-P3 — icon for a resource-link kind (mirrors pages.ts resourceLinkEmoji).
+function rlEmoji(kind: string): string {
+  switch (kind) {
+    case "youtube":
+      return "▶";
+    case "rsi_hub":
+      return "📄";
+    case "gdoc":
+      return "📝";
+    case "image":
+      return "🖼";
+    default:
+      return "🔗";
+  }
+}
+
 function flashFromQuery(msg: string | undefined): LayoutOptions["flash"] {
   if (!msg) return null;
   const [kind, ...rest] = msg.split(":");
@@ -416,6 +432,16 @@ export function opMissionBoardPage(opts: {
         <section style="flex:1.7 1 380px;min-width:0;border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1.5rem 1.6rem">
           <div style="font-family:${safe(MONO)};font-size:.72rem;letter-spacing:.14em;color:#9fb1c2;margin-bottom:.85rem">${t("mb.missionObjective")}</div>
           <div class="mb-md" style="color:#c2d2de;font-size:1.02rem;line-height:1.62">${op.description ? renderMarkdown(op.description) : html`<p style="margin:0">${t("mb.noObjective")}</p>`}</div>
+          ${op.resourceLinks && op.resourceLinks.length
+            ? html`<div style="margin-top:1.2rem;border-top:1px solid rgba(0,212,255,.1);padding-top:1rem">
+                <div style="font-family:${safe(MONO)};font-size:.72rem;letter-spacing:.14em;color:#9fb1c2;margin-bottom:.7rem">${t("op.resourceLinksTitle")}</div>
+                <div style="display:flex;flex-direction:column;gap:.5rem">
+                  ${op.resourceLinks.map(
+                    (l) => html`<a href="${l.url}" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:.55rem;color:#00d4ff;text-decoration:none;font-size:.92rem">${rlEmoji(l.kind)} <span>${l.title}</span> <span style="color:#5b6b7a">↗</span></a>`,
+                  )}
+                </div>
+              </div>`
+            : safe("")}
         </section>
         <section style="flex:1 1 290px;min-width:0;border:1px solid rgba(0,212,255,.13);border-radius:14px;background:#090f18;padding:1.5rem 1.6rem">
           <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:.85rem">

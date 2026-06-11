@@ -28,7 +28,13 @@ import {
   datenschutzPage,
   licensePage,
   whyUnsignedPage,
+  marketplacePage,
 } from "../web/pages.js";
+import {
+  listTemplatesForGuild,
+  applyTemplate,
+  deleteTemplate,
+} from "../services/operationTemplates.js";
 import {
   requireRole,
   optionalAuth,
@@ -491,6 +497,119 @@ export async function webRoutes(app: FastifyInstance) {
     }
   });
 
+  // ── Template marketplace (FR-P4) ─────────────────────────────────────
+  app.get<{ Querystring: { _guild?: string; q?: string; opType?: string; flash?: string } }>(
+    "/templates",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      const memberships = await listUserGuilds(ctx.user.id);
+      const operatorGuilds = memberships
+        .filter((m) => m.role === "fleetoperator" || ctx.user.role === "superadmin")
+        .map((m) => ({ id: m.guildId, name: m.guild.name }));
+      if (operatorGuilds.length === 0) return reply.code(403).send({ error: "forbidden" });
+      const selectedGuildId = operatorGuilds.some((g) => g.id === req.query._guild)
+        ? req.query._guild!
+        : operatorGuilds[0].id;
+      const templates = await listTemplatesForGuild(selectedGuildId, {
+        opType: req.query.opType,
+        search: req.query.q,
+      });
+      htmlReply(
+        reply,
+        marketplacePage({
+          basePath: basePath(),
+          currentUser: ctx.user,
+          csrfToken: ctx.csrfToken,
+          flash: req.query.flash,
+          operatorGuilds,
+          selectedGuildId,
+          search: req.query.q ?? "",
+          opType: req.query.opType ?? "all",
+          templates: templates.map((tpl) => ({
+            id: tpl.id,
+            name: tpl.name,
+            summary: tpl.summary,
+            opType: tpl.opType,
+            visibility: tpl.visibility,
+            usageCount: tpl.usageCount,
+            ownerGuildId: tpl.ownerGuildId,
+            ownerName: tpl.ownerGuild?.orgName || tpl.ownerGuild?.name || "—",
+            isOwn: tpl.ownerGuildId === selectedGuildId,
+          })),
+        }),
+      );
+    },
+  );
+
+  // Instantiate a template into a fresh draft op in the chosen guild.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/templates/:id/apply",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const guildId = req.body.guildId?.trim();
+      const memberships = await listUserGuilds(ctx.user.id);
+      const membership = memberships.find(
+        (m) =>
+          m.guildId === guildId &&
+          (m.role === "fleetoperator" || ctx.user.role === "superadmin"),
+      );
+      if (!membership) {
+        return reply.redirect(basePath("/templates?flash=error:Select+a+valid+server"), 302);
+      }
+      const guildRow = await prisma.guild.findUnique({
+        where: { id: membership.guildId },
+        select: { timezone: true },
+      });
+      const guildTz = (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
+      // No date picked → default a week out at 20:00 local; operator edits it.
+      const parsed = req.body.scheduledAt
+        ? parseDateLocalTz(req.body.scheduledAt, guildTz)
+        : new Date(Date.now() + 7 * 24 * 3600 * 1000);
+      const op = await applyTemplate(req.params.id, {
+        guildId: membership.guildId,
+        createdById: ctx.user.id,
+        scheduledAt: parsed ?? new Date(Date.now() + 7 * 24 * 3600 * 1000),
+        title: req.body.title?.trim() || undefined,
+      });
+      if (!op) {
+        return reply.redirect(
+          basePath(`/templates?_guild=${encodeURIComponent(membership.guildId)}&flash=error:Template+konnte+nicht+angewendet+werden.`),
+          302,
+        );
+      }
+      await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "from template");
+      return reply.redirect(
+        basePath(`/ops/${op.id}/manage?flash=ok:Aus+Template+erstellt.+Datum%2FOrt+anpassen.`),
+        302,
+      );
+    },
+  );
+
+  // Delete a template — only an operator of the owning guild may.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/templates/:id/delete",
+    async (req, reply) => {
+      const ctx = await requireAuth(req, reply);
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send("Invalid CSRF token");
+      const guildId = req.body._guild?.trim();
+      const memberships = await listUserGuilds(ctx.user.id);
+      const membership = memberships.find(
+        (m) =>
+          m.guildId === guildId &&
+          (m.role === "fleetoperator" || ctx.user.role === "superadmin"),
+      );
+      if (membership) await deleteTemplate(req.params.id, membership.guildId);
+      return reply.redirect(
+        basePath(`/templates?_guild=${encodeURIComponent(guildId ?? "")}&flash=ok:Template+gelöscht.`),
+        302,
+      );
+    },
+  );
+
   // ── Participant join view (focused sign-up page) ─────────────────────
   // Legacy alias — the canonical player route is /ops/:id. Redirect so old
   // links (and the former ?view=player preview) land on the single player page.
@@ -619,7 +738,7 @@ export async function webRoutes(app: FastifyInstance) {
     const discordInvite = (guildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null;
     // Per-user op-detail layout choice (Profile → Optik). board1/board2 use the
     // mission-board renderer; anything else falls back to the classic page.
-    const opStyle = (ctx?.user as { opDetailStyle?: string } | undefined)?.opDetailStyle ?? "classic";
+    const opStyle = (ctx?.user as { opDetailStyle?: string } | undefined)?.opDetailStyle ?? "board2";
     if (opStyle === "board1" || opStyle === "board2") {
       return htmlReply(
         reply,

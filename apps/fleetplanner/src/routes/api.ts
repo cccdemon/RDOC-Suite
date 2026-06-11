@@ -15,6 +15,12 @@ import { setStatus, addLeader, removeLeader, getOperation, logAudit } from "../s
 import { setPrimaryUnit, clearPrimaryUnit } from "../services/primaryUnits.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import {
+  addResourceLink,
+  removeResourceLink,
+  reorderResourceLinks,
+} from "../services/resourceLinks.js";
+import { publishTemplate, isTemplateVisibility } from "../services/operationTemplates.js";
+import {
   createSignup as createCqbSignup,
   withdrawSignup as withdrawCqbSignup,
   bundleSquad as bundleCqbSquad,
@@ -1389,6 +1395,77 @@ export async function apiRoutes(app: FastifyInstance) {
       });
       return reply.redirect(
         opReturnUrl(req.params.id, req.body, "ok:Hangar+sharing+updated.", "crew"),
+        302,
+      );
+    },
+  );
+
+  // ── Mission resource links (FR-P3) ───────────────────────────────────
+  // Operator-curated tutorial/guide links. Operator/leader of the op only.
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/resource-links",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const link = await addResourceLink(req.params.id, ctx.user.id, {
+        url: req.body.url ?? "",
+        title: req.body.title ?? null,
+        kind: req.body.kind ?? null,
+      });
+      const flash = link
+        ? "ok:Link+hinzugefügt."
+        : "error:Ungültige+URL+oder+Limit+erreicht.";
+      return reply.redirect(opReturnUrl(req.params.id, req.body, flash, "overview"), 302);
+    },
+  );
+
+  app.post<{ Params: { id: string; linkId: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/resource-links/:linkId/delete",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      await removeResourceLink(req.params.id, req.params.linkId);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Link+entfernt.", "overview"), 302);
+    },
+  );
+
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/resource-links/reorder",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const ids = (req.body.order ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+      await reorderResourceLinks(req.params.id, ids);
+      return reply.redirect(opReturnUrl(req.params.id, req.body, "ok:Reihenfolge+gespeichert.", "overview"), 302);
+    },
+  );
+
+  // ── Publish operation as marketplace template (FR-P4) ─────────────────
+  app.post<{ Params: { id: string }; Body: Record<string, string> }>(
+    "/api/ops/:id/publish-template",
+    async (req, reply) => {
+      const ctx = await requireOpRole(req, reply, req.params.id, "fleetoperator");
+      if (!ctx) return;
+      if (!csrfOk(req.body, ctx.csrfToken)) return reply.code(403).send({ error: "csrf" });
+      const op = await getOperation(req.params.id);
+      if (!op) return reply.code(404).send({ error: "Operation not found" });
+      const visibility = isTemplateVisibility(req.body.visibility ?? "")
+        ? req.body.visibility
+        : "guild";
+      await publishTemplate({
+        op,
+        ownerGuildId: op.guildId,
+        createdById: ctx.user.id,
+        name: req.body.name ?? op.title,
+        summary: req.body.summary ?? "",
+        visibility: visibility as "guild" | "partners" | "public",
+        sourceOpId: op.id,
+      });
+      return reply.redirect(
+        opReturnUrl(req.params.id, req.body, "ok:Als+Template+veröffentlicht.", "admin"),
         302,
       );
     },

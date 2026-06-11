@@ -134,6 +134,8 @@ export async function getOperation(id: string) {
         include: { user: true },
         orderBy: { updatedAt: "desc" },
       },
+      // FR-P3: operator-curated tutorial/resource links.
+      resourceLinks: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
     },
   });
 }

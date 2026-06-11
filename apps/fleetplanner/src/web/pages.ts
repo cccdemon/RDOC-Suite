@@ -658,6 +658,47 @@ function multiPosTag(userId: string | null | undefined, multiPos: Set<string>): 
   >`;
 }
 
+// FR-P3 — resource link display helpers (shared by operator + player views).
+type ResourceLinkRow = { id: string; url: string; title: string; kind: string };
+
+function resourceLinkEmoji(kind: string): string {
+  switch (kind) {
+    case "youtube":
+      return "▶";
+    case "rsi_hub":
+      return "📄";
+    case "gdoc":
+      return "📝";
+    case "image":
+      return "🖼";
+    default:
+      return "🔗";
+  }
+}
+
+/** Read-only "Briefing & Tutorials" card; empty string when there are none. */
+function resourceLinksCard(links: ResourceLinkRow[] | undefined | null): SafeHtml | string {
+  if (!links || links.length === 0) return "";
+  return html`<section class="opv2-panel">
+    <div class="opv2-panel-title">${t("op.resourceLinksTitle")}</div>
+    <div class="rl-list">
+      ${links.map(
+        (l) => html`<a
+          class="rl-item"
+          href="${l.url}"
+          target="_blank"
+          rel="noopener noreferrer"
+          title="${l.url}"
+        >
+          <span class="rl-ico">${resourceLinkEmoji(l.kind)}</span>
+          <span class="rl-title">${l.title}</span>
+          <span class="rl-ext">↗</span>
+        </a>`,
+      )}
+    </div>
+  </section>`;
+}
+
 export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): SafeHtml {
   const bp = opts.basePath;
   const op = opts.op;
@@ -2032,6 +2073,7 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
 
   const overviewPanel = html`<div class="opv2-grid">
     ${participantsPanel} ${compositionBoard}
+    ${resourceLinksCard(op.resourceLinks)}
     <section class="opv2-panel">
       <div class="opv2-panel-title">${t("op.briefing")}</div>
       ${op.description
@@ -2913,6 +2955,67 @@ export function opDetailPageV2(opts: OpDetailPageOptions & { tab?: string }): Sa
           </div>`
         : html`<p class="text-dim text-sm">${t("admin.noAudit")}</p>`}
     </section>
+    ${canManage
+      ? html`<section class="opv2-panel">
+          <div class="opv2-panel-title">${t("op.resourceLinksTitle")}${helpIcon(t("op.resourceLinksHelp"))}</div>
+          ${op.resourceLinks && op.resourceLinks.length
+            ? html`<div class="rl-list">
+                ${op.resourceLinks.map(
+                  (l) => html`<div class="opv2-row">
+                    <a href="${l.url}" target="_blank" rel="noopener noreferrer">
+                      ${resourceLinkEmoji(l.kind)} ${l.title}
+                    </a>
+                    <form
+                      method="post"
+                      action="${bp}/api/ops/${op.id}/resource-links/${l.id}/delete"
+                      class="inline"
+                    >
+                      <input type="hidden" name="_csrf" value="${csrf}" />
+                      ${returnFields("admin")}
+                      <button type="submit" class="btn btn-sm btn-ghost">${t("common.remove")}</button>
+                    </form>
+                  </div>`,
+                )}
+              </div>`
+            : html`<p class="text-dim text-sm">${t("op.resourceLinksEmpty")}</p>`}
+          <form method="post" action="${bp}/api/ops/${op.id}/resource-links" class="opv2-form mt-1">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            ${returnFields("admin")}
+            <div class="opv2-form-grid">
+              <div>
+                <label>${t("op.rlUrl")}</label>
+                <input type="url" name="url" placeholder="https://youtube.com/watch?v=…" required />
+              </div>
+              <div>
+                <label>${t("op.rlTitle")}</label>
+                <input type="text" name="title" maxlength="120" placeholder="${t("op.rlTitlePlaceholder")}" />
+              </div>
+            </div>
+            <button type="submit" class="btn btn-sm mt-1">${t("op.rlAdd")}</button>
+          </form>
+        </section>
+        <section class="opv2-panel">
+          <div class="opv2-panel-title">${t("op.publishTemplateTitle")}${helpIcon(t("op.publishTemplateHelp"))}</div>
+          <form method="post" action="${bp}/api/ops/${op.id}/publish-template" class="opv2-form">
+            <input type="hidden" name="_csrf" value="${csrf}" />
+            ${returnFields("admin")}
+            <label>${t("op.tplName")}</label>
+            <input type="text" name="name" maxlength="120" value="${op.title}" required />
+            <label>${t("op.tplSummary")}</label>
+            <input type="text" name="summary" maxlength="500" placeholder="${t("op.tplSummaryPlaceholder")}" />
+            <label>${t("op.tplVisibility")}</label>
+            <select name="visibility">
+              <option value="guild">${t("market.vis.guild")}</option>
+              <option value="partners">${t("market.vis.partners")}</option>
+              <option value="public">${t("market.vis.public")}</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-gold mt-1">${t("op.publishTemplateBtn")}</button>
+            <p class="text-dim text-sm mt-1">
+              ${safe(t("op.publishTemplateNote", { link: `<a href="${bp}/templates">${t("nav.marketplace")}</a>` }))}
+            </p>
+          </form>
+        </section>`
+      : safe("")}
   </div>`;
 
   // All tab panels are rendered; client-side JS toggles visibility so switching
@@ -4210,7 +4313,10 @@ export function opWizardPage(opts: {
         .wiz-rail-hint { display: none; }
       }
     </style>
-    <div class="page-header"><h1 class="page-title">${t("wiz.createEvent")}</h1></div>
+    <div class="page-header">
+      <h1 class="page-title">${t("wiz.createEvent")}</h1>
+      <a class="btn btn-sm" href="${bp}/templates${opts.selectedOperatorGuildId ? `?_guild=${opts.selectedOperatorGuildId}` : ""}">🗂 ${t("wiz.browseTemplates")}</a>
+    </div>
     <form method="post" action="${bp}/ops/new" id="wiz-form" novalidate>
       <input type="hidden" name="_csrf" value="${csrf}" />
       <div class="wiz-layout">
@@ -5267,6 +5373,7 @@ export function opJoinPage(opts: {
           : html`<p class="text-dim text-sm">${t("join.noBriefingYet")}</p>`}
       </aside>
     </section>
+    ${resourceLinksCard(op.resourceLinks)}
     <div class="event-facts">
       <div class="event-fact"><span>${t("join.factTime")}</span><strong>${fmtDateLocal(op.scheduledAt, gtz)} (${gtz})</strong></div>
       <div class="event-fact"><span>${t("op.fldRendezvous")}</span><strong>${op.meetingLocation || t("op.notSet")}</strong></div>
@@ -8998,6 +9105,130 @@ export function roadmapPage(opts: {
     basePath: bp,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
+    body,
+  });
+}
+
+export function marketplacePage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  flash?: string;
+  operatorGuilds: Array<{ id: string; name: string }>;
+  selectedGuildId: string;
+  search: string;
+  opType: string;
+  templates: Array<{
+    id: string;
+    name: string;
+    summary: string;
+    opType: string;
+    visibility: string;
+    usageCount: number;
+    ownerGuildId: string;
+    ownerName: string;
+    isOwn: boolean;
+  }>;
+}): SafeHtml {
+  const bp = opts.basePath;
+  const csrf = opts.csrfToken ?? "";
+  const visTag = (v: string) =>
+    v === "public" ? "tag-green" : v === "partners" ? "tag-gold" : "tag-dim";
+
+  // Guild + filter bar (GET form so links/back work).
+  const filterBar = html`<form method="get" action="${bp}/templates" class="opv2-form" style="margin-bottom:1rem">
+    ${opts.operatorGuilds.length > 1
+      ? html`<label>${t("market.guild")}</label>
+          <select name="_guild" onchange="this.form.submit()">
+            ${opts.operatorGuilds.map(
+              (g) =>
+                html`<option value="${g.id}" ${g.id === opts.selectedGuildId ? safe("selected") : ""}>
+                  ${g.name}
+                </option>`,
+            )}
+          </select>`
+      : html`<input type="hidden" name="_guild" value="${opts.selectedGuildId}" />`}
+    <div class="opv2-form-grid">
+      <div>
+        <label>${t("market.search")}</label>
+        <input type="text" name="q" value="${opts.search}" placeholder="${t("market.searchPlaceholder")}" />
+      </div>
+      <div>
+        <label>${t("op.fldType")}</label>
+        <select name="opType">
+          <option value="all" ${opts.opType === "all" ? safe("selected") : ""}>${t("market.allTypes")}</option>
+          ${OP_TYPES.map(
+            (type) =>
+              html`<option value="${type}" ${opts.opType === type ? safe("selected") : ""}>
+                ${opTypeText(type)}
+              </option>`,
+          )}
+        </select>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-sm mt-1">${t("market.filter")}</button>
+  </form>`;
+
+  const cards = opts.templates.length
+    ? opts.templates.map(
+        (tpl) => html`<div class="card" style="padding:1rem 1.25rem;max-width:52rem;margin-bottom:.85rem">
+          <div class="card-header" style="margin-bottom:.5rem;padding-bottom:.5rem">
+            <span class="card-title" style="flex:1">${tpl.name}</span>
+            <span class="tag tag-dim">${opTypeText(tpl.opType)}</span>
+            <span class="tag ${visTag(tpl.visibility)}">${t("market.vis." + tpl.visibility)}</span>
+          </div>
+          <p class="text-dim text-sm" style="margin:0 0 .4rem">
+            ${t("market.byOrg")}: <strong>${tpl.ownerName}</strong> ·
+            ${t("market.usageCount", { n: String(tpl.usageCount) })}
+          </p>
+          ${tpl.summary ? html`<p style="margin:0 0 .6rem">${tpl.summary}</p>` : safe("")}
+          <div class="opv2-actions" style="gap:.5rem;flex-wrap:wrap">
+            <form method="post" action="${bp}/templates/${tpl.id}/apply" class="opv2-form" style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap">
+              <input type="hidden" name="_csrf" value="${csrf}" />
+              <input type="hidden" name="guildId" value="${opts.selectedGuildId}" />
+              <div>
+                <label style="font-size:.7rem">${t("op.fldWhen")}</label>
+                <input type="datetime-local" name="scheduledAt" />
+              </div>
+              <button type="submit" class="btn btn-sm btn-green">${t("market.useTemplate")}</button>
+            </form>
+            ${tpl.isOwn
+              ? html`<form method="post" action="${bp}/templates/${tpl.id}/delete" class="inline">
+                  <input type="hidden" name="_csrf" value="${csrf}" />
+                  <input type="hidden" name="_guild" value="${opts.selectedGuildId}" />
+                  <button
+                    type="submit"
+                    class="btn btn-sm btn-ghost"
+                    onclick="return confirm('${t("market.confirmDelete")}')"
+                  >
+                    ${t("common.delete")}
+                  </button>
+                </form>`
+              : safe("")}
+          </div>
+        </div>`,
+      )
+    : html`<div class="card" style="padding:1.25rem;max-width:52rem">
+        <p class="text-dim">${t("market.empty")}</p>
+      </div>`;
+
+  const body = html`<div class="page-header">
+      <h1 class="page-title">${t("nav.marketplace").toUpperCase()}</h1>
+      <div class="page-subtitle">${t("market.sub")}</div>
+    </div>
+    <div class="section">
+      ${filterBar}${cards}
+      <p class="text-dim text-sm" style="max-width:52rem;margin-top:.5rem">
+        ${safe(t("market.publishHint", { link: `<a href="${bp}/ops/new">${t("home.newOp")}</a>` }))}
+      </p>
+    </div>`;
+
+  return layout({
+    title: t("nav.marketplace"),
+    basePath: bp,
+    currentUser: opts.currentUser,
+    csrfToken: opts.csrfToken,
+    flash: flashFromQuery(opts.flash),
     body,
   });
 }
