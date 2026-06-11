@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA operator Triage layout + drag & drop (2026-06-12)
+
+- The operator console gains a Befehlsstand / Triage layout toggle. Triage is board-first with
+  a right-hand action queue (flex signups, open needs, questions, operator actions). The
+  panels, fleet board and tools drawer are now shared between both layouts.
+- Drag & drop: flexible signups are draggable onto open seats (green ring while dragging or in
+  place-mode); dropping assigns via the same PUT assignment endpoint, with a dataTransfer
+  fallback so a synchronous drop still resolves the dragged user. FE 24/24.
+
 ### Added - FR-P2: SPA operations calendar (2026-06-12)
 
 - New `/calendar` route in the SPA, ported from the Operations-Kalender design bundle: month

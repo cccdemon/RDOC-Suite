@@ -384,6 +384,32 @@ describe("Op detail — operator panel", () => {
     expect(payload).toMatchObject({ answer: "Everus Harbor, 19:00" });
   });
 
+  it("switches to Triage layout and assigns via drag & drop", async () => {
+    let payload: Record<string, unknown> | null = null;
+    let seatId: string | null = null;
+    useOperatorHandlers([
+      http.put(`${API}/operations/op_1/seats/:seatId/assignment`, async ({ request, params }) => {
+        seatId = String(params.seatId);
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    ]);
+    const { findByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    (await findByTestId("op-layout-b")).click();
+    // drag the flex person onto the open seat
+    const person = await findByTestId("op-place-user_flex");
+    const row = person.closest("[draggable]")!;
+    const dt = { setData: () => {}, getData: () => "user_flex", effectAllowed: "", dropEffect: "" };
+    row.dispatchEvent(Object.assign(new Event("dragstart", { bubbles: true }), { dataTransfer: dt }));
+    const seat = await findByTestId("op-target-seat_2");
+    seat.dispatchEvent(Object.assign(new Event("dragover", { bubbles: true, cancelable: true }), { dataTransfer: dt }));
+    seat.dispatchEvent(Object.assign(new Event("drop", { bubbles: true, cancelable: true }), { dataTransfer: dt }));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(seatId).toBe("seat_2");
+    expect(payload).toMatchObject({ userId: "user_flex" });
+  });
+
   it("accepts a pending unit", async () => {
     let hit = false;
     useOperatorHandlers([

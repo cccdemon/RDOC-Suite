@@ -1,5 +1,22 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Operator-Konsole Triage-Layout B + Drag&Drop — Branch master
+
+Restpunkt 1. FE-only Erweiterung OperatorPanel:
+- **Layout-Toggle** Befehlsstand (A) / Triage (B) als Segment-Control im KPI-Strip (DC v2).
+- **Layout B (Triage):** board-first Main-Spalte + rechte Action-Queue-Rail (FLEXIBEL,
+  OFFENE BEDARFE, FRAGEN, OPERATOR-AKTIONEN gestapelt). Board/Seat-Rows/Hero-Panels aus
+  Layout A faktorisiert, in beiden Layouts wiederverwendet.
+- **Drag & Drop:** Flex-Person-Rows draggable, offene Board-Seats droppable; beim Drag grüner
+  Ring auf offenen Seats, Drop → PUT assignment (gleicher Endpoint wie Klick-Einteilen).
+  Place-Mode (Klick) + Picker bleiben parallel.
+- Tests: Layout-Toggle, DnD-Assign (dragstart/drop) gegen MSW.
+- **DONE 2026-06-12:** OperatorPanel refaktoriert (Panels/Board/Tools/Pending als Variablen),
+  Layout-Toggle Befehlsstand/Triage im KPI-Strip. Triage = board-first Main (KPI%+Bars-Leiste)
+  + rechte Rail (Flex/Bedarfe/Fragen/Aktionen). DnD: Flex-Rows draggable, offene Seats droppable
+  (grüner Ring bei Drag/Place), Drop → PUT assignment; onDrop nutzt dataTransfer.getData-Fallback
+  (State-Lag wie DC). FE 24/24 + Build (250 kB).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Operations-Kalender (Design-Bundle 3) — Branch master
 
 User-Auftrag: neues Design Operations-Kalender.dc.html im SPA umsetzen (vorher Bundle laden,
