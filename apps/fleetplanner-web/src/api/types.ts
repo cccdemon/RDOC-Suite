@@ -74,6 +74,17 @@ export interface ResourceLink {
   sortOrder: number;
 }
 
+export interface ShipSummary {
+  id: string;
+  slug: string;
+  name: string;
+  manufacturer: string;
+  size: string;
+  role: string;
+  minCrew: number;
+  maxCrew: number;
+}
+
 export interface OperationDetail extends Omit<OperationSummary, "guild"> {
   description: string;
   guild: { id: string; name: string; iconHash: string | null; timezone: string | null };

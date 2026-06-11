@@ -1,5 +1,24 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — SPA „Eigenes Schiff anbieten" + GET /api/v1/hangar — Branch master
+
+Folgeschritt zu 0e5de9d (Mitmachen-Karte). Letzter großer Player-Flow ohne SPA-Parität:
+- **BE:** `GET /api/v1/hangar` — eigene Schiffe des Users (UserShip→Ship, ShipSummary-Liste,
+  auth required, 401-Envelope). Contract+OpenAPI+inject-Tests.
+- **FE:** „Eigenes Schiff anbieten"-Bereich in der Mitmachen-Karte: aufklappbares Formular —
+  Hangar-Liste (Radio) ODER Katalog-Suche über bestehendes `/ships/search`, Checkbox „in
+  meinen Hangar übernehmen" (storeOwnedShip) bei Katalogwahl, Notiz an den Operator,
+  Submit → `POST /operations/:id/units` (unitType ship). Erfolg → Reload (Unit erscheint
+  pending); Fehler → Notice. Nur ship-Flow (squad/vehicle = Folgerunde).
+- MSW-Tests: Hangar-Radio-Submit, Katalogsuche-Submit, 409-Fehlerpfad.
+- **DONE 2026-06-11:** `GET /api/v1/hangar` (UserShip→Ship, ShipSummary, 401-Envelope; OpenAPI
+  + inject-Test). FE `components/OfferShip.tsx`: aufklappbar in der Mitmachen-Karte, Hangar-
+  Radio ODER debounced Katalog-Suche (250ms, min 2 Zeichen, max 8 Treffer) mit
+  storeOwnedShip-Checkbox, Captain-Notiz, Submit → POST /units (unitType ship), Erfolg
+  schließt Form + Reload (Unit erscheint pending), Fehler → Notice. 2 neue MSW-Tests
+  (Hangar-Submit mit Payload-Assertion, 409 hält Form offen). Gates: BE 48 API-Tests + tsc 0,
+  FE 14/14 + Build. Squad/Vehicle-Anbieten bleibt SSR (Folgerunde).
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — FE-Parität CQB-Signup + Hangar-Share im SPA — Branch master
 
 Phase-5-APIs existieren (Slice 1, d0c6859 inkl. Rate-Limits); SPA kann bisher nur claim/release.

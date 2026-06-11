@@ -180,6 +180,50 @@ describe("Op detail — Mitmachen card (CQB + hangar share)", () => {
   });
 });
 
+describe("Op detail — offer own ship", () => {
+  const hangarShips = [
+    { id: "ship_h1", slug: "carrack", name: "Carrack", manufacturer: "ANVL", size: "Large", role: "Expedition", minCrew: 4, maxCrew: 6 },
+  ];
+
+  it("offers a hangar ship via POST /units", async () => {
+    let payload: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/hangar`, () => HttpResponse.json({ ships: hangarShips })),
+      http.post(`${API}/operations/op_1/units`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, unitId: "unit_new" });
+      }),
+    );
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    (await findByTestId("offer-ship-open")).click();
+    (await findByText("Carrack")).closest("label")!.querySelector("input")!.click();
+    (await findByTestId("offer-ship-submit")).click();
+    // form closes again after success
+    expect(await findByTestId("offer-ship-open")).toBeInTheDocument();
+    expect(payload).toMatchObject({ unitType: "ship", ownedShipId: "ship_h1" });
+  });
+
+  it("409 from /units surfaces as the notice and keeps the form usable", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/hangar`, () => HttpResponse.json({ ships: hangarShips })),
+      http.post(`${API}/operations/op_1/units`, () =>
+        HttpResponse.json(
+          { error: { code: "conflict", message: "Operation is not open for registration.", requestId: "r" } },
+          { status: 409 },
+        ),
+      ),
+    );
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    (await findByTestId("offer-ship-open")).click();
+    (await findByText("Carrack")).closest("label")!.querySelector("input")!.click();
+    (await findByTestId("offer-ship-submit")).click();
+    expect(await findByTestId("op-notice")).toHaveTextContent("not open");
+    expect(await findByTestId("offer-ship-form")).toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

@@ -385,6 +385,18 @@ export function buildOpenApiDocument(): JsonObject {
           },
         },
       },
+      "/api/v1/hangar": {
+        get: {
+          operationId: "getHangar",
+          summary: "The current user's own ships (hangar)",
+          tags: ["ships"],
+          security: [{ cookieSession: [] }],
+          responses: {
+            "200": { description: "OK", ...jsonContent(ref("ShipSearchResponse")) },
+            "401": errorResponses["401"],
+          },
+        },
+      },
       "/api/v1/ships/search": {
         get: {
           operationId: "searchShips",

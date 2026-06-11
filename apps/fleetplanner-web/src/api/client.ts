@@ -88,6 +88,25 @@ export function setHangarShare(opId: string, csrfToken: string, allow: boolean):
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/hangar-share`, csrfToken, { allow });
 }
 
+export function getHangar(): Promise<{ ships: import("./types").ShipSummary[] }> {
+  return get<{ ships: import("./types").ShipSummary[] }>("/hangar");
+}
+
+export function searchShips(q: string): Promise<{ ships: import("./types").ShipSummary[] }> {
+  return get<{ ships: import("./types").ShipSummary[] }>(`/ships/search?q=${encodeURIComponent(q)}`);
+}
+
+export function registerShipUnit(
+  opId: string,
+  csrfToken: string,
+  input: { shipId?: string; ownedShipId?: string; storeOwnedShip?: boolean; captainNote?: string },
+): Promise<{ ok: true; unitId: string }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/units`, csrfToken, {
+    unitType: "ship",
+    ...input,
+  });
+}
+
 export function listOperations(includePast = false): Promise<{ operations: OperationSummary[] }> {
   return get<{ operations: OperationSummary[] }>(`/operations${includePast ? "?past=true" : ""}`);
 }

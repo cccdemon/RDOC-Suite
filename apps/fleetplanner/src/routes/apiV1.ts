@@ -619,6 +619,21 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // ── hangar ──────────────────────────────────────────────────────────
+  // The caller's own ships (UserShip → Ship), for the "offer own ship" flow.
+  app.get("/api/v1/hangar", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    const rows = await prisma.userShip.findMany({
+      where: { userId: ctx.user.id },
+      include: { ship: true },
+      orderBy: { ship: { name: "asc" } },
+    });
+    return reply
+      .type("application/json")
+      .send({ ships: rows.map((r) => presentShip(r.ship)) });
+  });
+
   // ── ships ───────────────────────────────────────────────────────────
   app.get<{ Querystring: Record<string, string> }>("/api/v1/ships/search", async (req, reply) => {
     const q = ShipSearchQuerySchema.safeParse(req.query);

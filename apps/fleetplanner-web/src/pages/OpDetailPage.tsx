@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { ApiError, claimSeat, cqbSignup, cqbWithdraw, getOperation, setHangarShare, unclaimSeat } from "../api/client";
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
+import { OfferShip } from "../components/OfferShip";
 
 function fmtDate(iso: string, tz: string | null): string {
   return new Intl.DateTimeFormat("de-DE", {
@@ -152,6 +153,15 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               />
               <span className="fpw-meta">Operator darf meinen Hangar sehen</span>
             </label>
+            <OfferShip
+              opId={id!}
+              csrf={csrf}
+              onDone={() => {
+                setNotice(null);
+                load();
+              }}
+              onError={(m) => setNotice(m)}
+            />
           </div>
         </section>
       )}

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA "offer own ship" flow + GET /api/v1/hangar (2026-06-11)
+
+- New `GET /api/v1/hangar` — the caller's own ships (auth required, 401 envelope).
+- SPA Mitmachen card gains "Eigenes Schiff anbieten": pick from the hangar or search the
+  catalog (debounced, with "store in my hangar" option), add a captain note, submit via
+  `POST /operations/:id/units` (ship units). Success closes the form and reloads the read
+  model (unit appears pending); errors surface as the inline notice. Squad/vehicle offers
+  stay on the SSR flow for now.
+- Tests: +1 BE inject (hangar 401), +2 FE MSW (hangar submit payload, 409 keeps form open).
+  BE API tests 48 green, FE 14/14.
+
 ### Added - FR-P2: SPA parity for CQB signup + hangar share (2026-06-11)
 
 - `GET /api/v1/operations/:id` now reports the caller's participation flags

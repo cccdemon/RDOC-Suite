@@ -69,6 +69,14 @@ describe("GET /api/v1/guilds", () => {
   });
 });
 
+describe("GET /api/v1/hangar", () => {
+  it("anonymous → 401 JSON envelope", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/hangar" });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+});
+
 describe("GET /api/v1/operations/:id", () => {
   it("invalid id format → 400 JSON without hitting the database", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/operations/..%2Fetc" });
