@@ -50,9 +50,11 @@ COPY --from=builder /app/apps/fleetplanner/node_modules apps/fleetplanner/node_m
 COPY --from=builder /app/apps/fleetplanner/dist apps/fleetplanner/dist
 COPY --from=builder /app/apps/fleetplanner/public apps/fleetplanner/public
 COPY --from=builder /app/apps/fleetplanner/prisma apps/fleetplanner/prisma
-# Workspace contracts package is symlinked into node_modules; ship its dist.
+# Workspace contracts package is symlinked into node_modules; ship its dist
+# AND its node_modules (its own zod 4 lives there, resolved at runtime).
 COPY --from=builder /app/packages/fleetplanner-contracts/package.json packages/fleetplanner-contracts/package.json
 COPY --from=builder /app/packages/fleetplanner-contracts/dist packages/fleetplanner-contracts/dist
+COPY --from=builder /app/packages/fleetplanner-contracts/node_modules packages/fleetplanner-contracts/node_modules
 
 # Data volume mount point — keep it outside prisma/ to avoid shadowing migrations.
 RUN mkdir -p /app/data
