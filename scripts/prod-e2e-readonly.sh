@@ -33,6 +33,10 @@ for secret in DISCORD_RDOCRTC_BOT_TOKEN FLEETPLANNER_DB_PASSWORD LIVEKIT_API_SEC
   not_contains "openapi no secret: $secret" "$openapi" "$secret"
 done
 
+docs_code="$(curl -s -o /tmp/e2e_docs -w '%{http_code}' "$API/docs")"
+check "api docs 200" "200" "$docs_code"
+contains "api docs swagger ui" "$(cat /tmp/e2e_docs)" "swagger-ui"
+
 session="$(curl -fsS "$API/session")"
 check "session anonymous" '{"user":null,"memberships":[],"csrfToken":null}' "$session"
 

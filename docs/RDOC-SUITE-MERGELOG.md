@@ -1,5 +1,21 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — öffentliche API-Doku (`/api/v1/docs`) für externe Entwickler — Branch master
+
+User-Wunsch: "add OpenApi doc also! So other developers can connect". Eigener Step:
+- `GET /api/v1/docs` — interaktive Swagger-UI-Seite (swagger-ui-dist via CDN, lädt das
+  bereits live generierte `/api/v1/openapi.json`). Public lesbar; enthält keine Secrets
+  (OpenAPI-Hygiene-Tests bestehen bereits).
+- `docs/api/fleetplanner-v1.md` auf Stand bringen: Mutations-Endpoints aus Phase-5 Slice 1+2
+  (claim/cqb/hangar-share/units/resource-links) inkl. CSRF-Header-Flow für externe Clients.
+- Inject-Test `/api/v1/docs` → 200 text/html, referenziert openapi.json; E2E-Script-Check ergänzt.
+- **DONE 2026-06-11:** `/api/v1/docs` in apiV1.ts (Swagger UI 5 via unpkg, lädt relatives
+  `openapi.json` → funktioniert hinter dem /fleetplanner-Prefix), Pfad im OpenAPI-Doc gelistet.
+  `docs/api/fleetplanner-v1.md` komplett aktualisiert: Quickstart für externe Clients
+  (Cookie-Session aus Discord-OAuth, csrfToken aus /session als x-csrf-token-Header), alle
+  Phase-5-Mutationen dokumentiert, "Noch nicht in v1"-Liste korrigiert. Tests: +1 inject
+  (40 API-Tests grün, tsc 0); E2E-Script prüft /docs.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 Phase 5 (Slice 2) — JSON-Mutationen units + resource-links — Branch master
 
 Folgeschritt zu Slice 1 (106663f, deployed). Restliche Phase-5-Endpoints aus dem Plan:

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: public API docs for external developers (2026-06-11)
+
+- `GET /api/v1/docs` — interactive Swagger UI rendering the live `openapi.json` (public,
+  no secrets; the OpenAPI hygiene tests guard the document). Listed in the OpenAPI paths.
+- `docs/api/fleetplanner-v1.md` brought up to date: external-client quickstart (cookie
+  session from the Discord OAuth flow, `csrfToken` from `GET /session` sent as the
+  `x-csrf-token` header on mutations), all phase-5 mutation endpoints documented.
+- Read-only prod E2E now checks `/api/v1/docs`.
+
 ### Added - FR-P2 Phase 5 (slice 2): JSON mutations units + resource-links (2026-06-11)
 
 - `POST /api/v1/operations/:id/units` — offer a ship/squad/vehicle with the full SSR

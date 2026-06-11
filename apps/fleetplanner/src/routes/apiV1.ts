@@ -103,6 +103,36 @@ export async function apiV1Routes(app: FastifyInstance) {
     return reply.type("application/json").send(openApiDocument);
   });
 
+  // Interactive API docs for external developers. Swagger UI from the unpkg
+  // CDN renders the live openapi.json — the page itself contains no data, so
+  // there is nothing to leak (the OpenAPI hygiene tests guard the document).
+  app.get("/api/v1/docs", async (_req, reply) => {
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RDOC Fleetplanner API v1 — Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  <style>body{margin:0;background:#fafafa}</style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: "openapi.json",
+      dom_id: "#swagger-ui",
+      deepLinking: true,
+      tryItOutEnabled: true,
+      requestInterceptor: (req) => req, // cookie session is sent same-origin automatically
+    });
+  </script>
+</body>
+</html>`;
+    return reply.type("text/html; charset=utf-8").send(html);
+  });
+
   // ── session ─────────────────────────────────────────────────────────
   app.get("/api/v1/session", async (req, reply) => {
     const ctx = await optionalAuth(req);

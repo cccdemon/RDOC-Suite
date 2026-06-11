@@ -39,6 +39,16 @@ describe("GET /api/v1/openapi.json", () => {
   });
 });
 
+describe("GET /api/v1/docs", () => {
+  it("serves the Swagger UI page referencing openapi.json", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/docs" });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/html");
+    expect(res.body).toContain("swagger-ui");
+    expect(res.body).toContain("openapi.json");
+  });
+});
+
 describe("GET /api/v1/session", () => {
   it("anonymous → 200 { user: null }, no redirect to a login page", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/session" });
