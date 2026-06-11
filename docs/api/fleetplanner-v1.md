@@ -126,7 +126,8 @@ Limit erzwungen (`409` bei ungültiger URL/Limit). `200 → { ok: true, link }`
 - Unit-Edit voll (Ship-Tausch, Seat-Rebuild, Carrier-Wechsel) — bleibt SSR bis FE-Parität.
 - Operator-/Admin-Read-Models (auditLogs, questions, hangarShares, crewRequests) — role-gated.
 - Operator-Workflows (accept/reject units, seats/assign, needs, leaders, status) — SSR.
-- Rate-Limits (geplant; aktuell schützen Session+CSRF+AuthZ).
+- ~~Rate-Limits~~ → umgesetzt: Mutationen 20/min, `/ships/search` 60/min pro Session/IP;
+  Überschreitung ⇒ `429` Envelope (`rate_limited`) + `retry-after`-Header.
 - Mutating Prod-E2E (geguarded via E2E_ALLOW_PROD_MUTATIONS) — noch nicht gebaut.
 
 Routen-Inventar + Zielstatus je SSR-Route: [`fleetplanner-route-inventory.md`](fleetplanner-route-inventory.md).

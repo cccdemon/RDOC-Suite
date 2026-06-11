@@ -180,6 +180,32 @@ describe("mutations (phase 5 slice 2) — units + resource-links gates", () => {
   });
 });
 
+describe("rate limiting", () => {
+  it("blocks a mutation key after the budget with a 429 envelope + retry-after", async () => {
+    // Invalid op id → the handler answers 400 BEFORE any auth/DB work, so the
+    // loop is fast and DB-free; the limiter hook still counts every request.
+    // Distinct cookie = distinct bucket (never validated against the DB).
+    const url = "/api/v1/operations/not-a-valid-id/cqb/signup";
+    const headers = { cookie: "fp_sid=rate-limit-test-bucket" };
+    let last: { statusCode: number; headers: Record<string, unknown>; body: string } | null = null;
+    for (let i = 0; i < 21; i++) {
+      last = await app.inject({ method: "DELETE", url, headers });
+      if (i < 20) expect(last.statusCode).toBe(400);
+    }
+    expect(last!.statusCode).toBe(429);
+    expect(String(last!.headers["content-type"])).toContain("application/json");
+    expect(JSON.parse(last!.body).error.code).toBe("rate_limited");
+    expect(Number(last!.headers["retry-after"])).toBeGreaterThanOrEqual(1);
+  });
+
+  it("read endpoints stay unlimited", async () => {
+    for (let i = 0; i < 25; i++) {
+      const res = await app.inject({ method: "GET", url: "/api/v1/health" });
+      expect(res.statusCode).toBe(200);
+    }
+  });
+});
+
 describe("error envelope hygiene", () => {
   it("a DB-touching route without a database fails closed: 500 JSON, no internals", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/operations" });

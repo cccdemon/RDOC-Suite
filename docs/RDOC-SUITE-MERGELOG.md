@@ -1,5 +1,21 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — Rate-Limits für /api/v1 Mutationen + Suche — Branch master
+
+Plan-Gap §API-Sicherheit/Abuse-Schutz: Mutationen und Suchendpunkte sind live ohne Limit.
+- Kleiner In-Memory-Sliding-Window-Limiter (`src/api/rateLimit.ts`, KEINE neue Dependency,
+  ein Container ⇒ kein verteilter Store nötig): Key = Session-User-Id sonst IP
+  (`trustProxy` ist gesetzt, Caddy davor). Antwort bei Überschreitung: 429-Envelope
+  `rate_limited` + `retry-after`-Header.
+- Budgets: Mutationen 20/min pro Key; `/ships/search` 60/min; Reads sonst unlimitiert.
+- preHandler-Hook nur in apiV1 (SSR unberührt). Tests: Limiter-Unit (Fenster, Reset,
+  Key-Trennung) + inject (429 nach Budget auf einer Mutation, Envelope-Format).
+- **DONE 2026-06-11:** `src/api/rateLimit.ts` (RateLimiter-Klasse + mutation/search-Instanzen),
+  preHandler in apiV1Routes (Key = fp_sid-Cookie-String ohne DB-Validierung, sonst IP;
+  Suffix :m/:s trennt Buckets). Tests: 4 Limiter-Unit + 2 inject (429-Test nutzt invalide
+  Op-ID → 400-Pfad ohne DB, Limiter zählt trotzdem; Lesson: Cookie+DB-down = Prisma-Timeout
+  pro Request). Suite 305/305, tsc 0.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 Bugfix — OpenAPI $defs-Refs brechen Swagger UI — Branch master
 
 User-Report: Swagger UI Resolver-Fehler `Could not resolve reference "/$defs/SessionUser"` etc.

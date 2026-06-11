@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: rate limits on /api/v1 mutations + search (2026-06-11)
+
+- In-memory sliding-window limiter (no new dependency; single container): mutations
+  20/min, `/ships/search` 60/min, keyed by session cookie (string only, no DB hit) or
+  client IP. Over budget ⇒ `429` envelope (`rate_limited`) + `retry-after` header.
+  Plugin-scoped preHandler — SSR routes untouched. Reads stay unlimited.
+- Tests: 4 limiter unit tests + 2 inject (429 after budget incl. envelope/header, reads
+  unlimited). Suite 305/305.
+
 ### Fixed - OpenAPI $defs refs broke Swagger UI resolution (2026-06-11)
 
 - `z.toJSONSchema` emits sub-schemas carrying a `.meta({id})` as local `$defs` with

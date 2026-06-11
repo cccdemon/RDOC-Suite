@@ -45,6 +45,7 @@ import {
   presentShip,
 } from "../api/presenters.js";
 import { openApiDocument } from "../api/openapi.js";
+import { mutationLimiter, searchLimiter } from "../api/rateLimit.js";
 
 const VERSION = process.env.npm_package_version ?? "0.0.0";
 
@@ -89,6 +90,26 @@ async function signupStateFor(
 }
 
 export async function apiV1Routes(app: FastifyInstance) {
+  // ── rate limits (FR-P2 §Abuse-Schutz) ───────────────────────────────
+  // Plugin-scoped: applies to every /api/v1 route, SSR untouched. Key is the
+  // session cookie when present (no DB hit needed for bucketing), else the
+  // client IP (trustProxy is on; Caddy fronts the app).
+  app.addHook("preHandler", async (req, reply) => {
+    const isSearch = req.method === "GET" && req.url.includes("/ships/search");
+    const isMutation = req.method !== "GET" && req.method !== "HEAD";
+    if (!isSearch && !isMutation) return;
+    const key =
+      ((req.cookies as Record<string, string | undefined>)?.fp_sid ?? req.ip) +
+      (isMutation ? ":m" : ":s");
+    const retry = (isMutation ? mutationLimiter : searchLimiter).hit(key);
+    if (retry !== null) {
+      const body: ApiError = {
+        error: { code: "rate_limited", message: "Too many requests.", requestId: req.id },
+      };
+      return reply.code(429).header("retry-after", String(retry)).type("application/json").send(body);
+    }
+  });
+
   // ── meta ────────────────────────────────────────────────────────────
   app.get("/api/v1/health", async (_req, reply) => {
     return reply.type("application/json").send({
