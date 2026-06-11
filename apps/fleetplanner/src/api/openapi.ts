@@ -11,6 +11,8 @@ import {
   AnswerQuestionRequestSchema,
   ApiErrorSchema,
   AssignSeatRequestSchema,
+  CreateOperationRequestSchema,
+  CreateOperationResponseSchema,
   OperatorViewSchema,
   UnitDecisionRequestSchema,
   ClaimSeatResponseSchema,
@@ -53,6 +55,8 @@ const SCHEMAS = {
   UnitDecisionRequest: UnitDecisionRequestSchema,
   AssignSeatRequest: AssignSeatRequestSchema,
   AnswerQuestionRequest: AnswerQuestionRequestSchema,
+  CreateOperationRequest: CreateOperationRequestSchema,
+  CreateOperationResponse: CreateOperationResponseSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -176,6 +180,18 @@ export function buildOpenApiDocument(): JsonObject {
           ],
           responses: {
             "200": { description: "OK", ...jsonContent(ref("OperationListResponse")) },
+          },
+        },
+        post: {
+          operationId: "createOperation",
+          summary: "Create a draft operation (fleet operator only)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } }],
+          requestBody: { required: true, ...jsonContent(ref("CreateOperationRequest")) },
+          responses: {
+            "200": { description: "Created", ...jsonContent(ref("CreateOperationResponse")) },
+            ...errorResponses,
           },
         },
       },

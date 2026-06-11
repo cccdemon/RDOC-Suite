@@ -513,6 +513,39 @@ describe("Operations calendar", () => {
   });
 });
 
+describe("Create operation", () => {
+  it("submits and navigates to the new op (fleet operator)", async () => {
+    let payload: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () =>
+        HttpResponse.json({ ...sessionCrew, user: { ...sessionCrew.user, role: "fleetoperator" }, memberships: [{ guildId: "guild_1", guildName: "RDOC", role: "fleetoperator" }] }),
+      ),
+      http.get(`${API}/operations/op_new`, () => HttpResponse.json(opDetailFixture)),
+      http.post(`${API}/operations`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, id: "op_new" });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/new");
+    const title = (await findByTestId("create-title")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(title, "Stanton Patrol");
+    title.dispatchEvent(new Event("input", { bubbles: true }));
+    const when = (await findByTestId("create-when")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(when, "2026-07-01T20:00");
+    when.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("create-submit")).click();
+    // navigates to /ops/op_new → its title renders
+    expect(await findByTestId("op-title")).toBeInTheDocument();
+    expect(payload).toMatchObject({ guildId: "guild_1", title: "Stanton Patrol", opType: "combat" });
+  });
+
+  it("denies non-operators", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
+    const { findByTestId } = renderAt("/ops/new");
+    expect(await findByTestId("create-denied")).toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

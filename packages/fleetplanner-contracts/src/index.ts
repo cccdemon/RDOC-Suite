@@ -204,6 +204,25 @@ export const ShipSearchResponseSchema = z
   .object({ ships: z.array(ShipSummarySchema) })
   .meta({ id: "ShipSearchResponse" });
 
+export const CreateOperationRequestSchema = z
+  .object({
+    guildId: z.string().min(1),
+    title: z.string().min(1).max(160),
+    opType: z.enum(["combat", "mining", "salvage", "explore", "transport", "training", "social"]).default("combat"),
+    description: z.string().max(4000).optional(),
+    meetingSystem: z.string().max(80).optional(),
+    meetingLocation: z.string().max(160).optional(),
+    scheduledAt: z.iso.datetime(),
+    minParticipants: z.coerce.number().int().min(0).max(1000).default(0),
+    visibility: z.enum(["private", "guild", "partners", "public"]).default("guild"),
+  })
+  .meta({ id: "CreateOperationRequest" });
+export type CreateOperationRequest = z.infer<typeof CreateOperationRequestSchema>;
+
+export const CreateOperationResponseSchema = z
+  .object({ ok: z.literal(true), id: z.string() })
+  .meta({ id: "CreateOperationResponse" });
+
 // ── Query schemas ─────────────────────────────────────────────────────
 
 export const OperationListQuerySchema = z.object({

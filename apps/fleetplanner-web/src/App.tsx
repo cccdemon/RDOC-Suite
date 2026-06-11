@@ -5,6 +5,7 @@ import type { SessionResponse } from "./api/types";
 import { OverviewPage } from "./pages/OverviewPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
+import { CreatePage } from "./pages/CreatePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
@@ -173,6 +174,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<OverviewPage session={session} />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/ops/new" element={<CreatePage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

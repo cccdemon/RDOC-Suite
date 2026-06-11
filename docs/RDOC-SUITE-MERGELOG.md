@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Op-Erstellung (POST /api/v1/operations + Create-Seite) — Branch master
+
+User-Wahl: größter Self-Service-Gap. Strangler-Schritt:
+- **BE:** `POST /api/v1/operations` {guildId,title,opType?,description?,meetingSystem?,
+  meetingLocation?,scheduledAt(iso),minParticipants?,visibility?} → createOperation (Status
+  draft). Gating: getMembership(user,guildId).role === fleetoperator ODER user.role ===
+  superadmin (Parität SSR /ops/new); 403 sonst. Audit. Returns {ok,id}. Contract/OpenAPI/Test.
+- **FE:** Route `/ops/new` (CreatePage): Guild-Picker aus session.memberships (nur
+  fleetoperator-Guilds), Titel, Typ-Dropdown (7 Design-Typen), Beschreibung, System,
+  Treffpunkt, Datum/Zeit (datetime-local), Mindestteilnehmer, Sichtbarkeit. Submit →
+  navigate /ops/:id. Nav-/Overview-Button „Neue Operation" nur wenn fleetoperator-Membership.
+- Gate: BE+FE grün, Deploy, E2E.
+- **DONE 2026-06-12:** BE `POST /api/v1/operations` (CreateOperationRequest im shared Package;
+  getMembership-fleetoperator/superadmin-Gate; createOperation Status draft; Audit; {ok,id}).
+  Contract/OpenAPI (POST am /operations-Pfad) + 3 inject-Tests (XFF-Buckets). FE CreatePage
+  `/ops/new` (Guild-Picker fleetoperator-only, Typ/Sichtbarkeit-Dropdowns, datetime-local→ISO,
+  useEffect-Guild-Default da session async), Route, Overview-„+ NEUE OPERATION"-Link
+  (operator-gated), Nicht-Operator → create-denied. OpVisibility-Typ-Cast (DB kennt „guild").
+  BE 60 API-Tests + tsc 0, FE 28/28 + Build (259 kB).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 Phase 6 (Schritt 1) — shared Contracts-Package — Branch master
 
 Phase 6 ehrlich: voller SSR-Abriss verboten (SPA deckt ~40% der SSR-Surfaces, Plan verlangt

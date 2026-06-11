@@ -85,6 +85,34 @@ describe("GET /api/v1/operations/:id", () => {
   });
 });
 
+describe("create operation", () => {
+  it("anonymous → 401 envelope", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/operations",
+      headers: { "content-type": "application/json", "x-forwarded-for": "10.8.8.1" },
+      payload: JSON.stringify({ guildId: "g1", title: "Op", scheduledAt: "2026-07-01T18:00:00.000Z" }),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("invalid body → 400", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/v1/operations",
+      headers: { "content-type": "application/json", "x-forwarded-for": "10.8.8.2" },
+      payload: JSON.stringify({ title: "no guild, no date" }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents POST /operations", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/openapi.json" });
+    expect(res.json().paths["/api/v1/operations"].post).toBeTruthy();
+  });
+});
+
 describe("mutations (phase 5 slice 1) — auth/CSRF gates", () => {
   const opId = "cmqaaaaaaaaaaaaaaaaaa1";
   const seatId = "cmqbbbbbbbbbbbbbbbbbb2";

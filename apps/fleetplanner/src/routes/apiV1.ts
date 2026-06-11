@@ -9,7 +9,8 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../db.js";
 import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
-import { effectiveOpRole, listUserGuilds } from "../services/guilds.js";
+import { effectiveOpRole, getMembership, listUserGuilds } from "../services/guilds.js";
+import { createOperation } from "../services/operations.js";
 import {
   addLeader,
   getOperation,
@@ -32,6 +33,7 @@ import {
   AnswerQuestionRequestSchema,
   AssignSeatRequestSchema,
   CqbSignupRequestSchema,
+  CreateOperationRequestSchema,
   HangarShareRequestSchema,
   IdParamSchema,
   LeaderParamSchema,
@@ -288,6 +290,34 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     const memberships = await listUserGuilds(ctx.user.id);
     return reply.type("application/json").send({ guilds: memberships.map(presentGuild) });
+  });
+
+  // ── create operation ────────────────────────────────────────────────
+  // Fleet operators (or superadmins) create draft ops in a guild they manage.
+  app.post<{ Body: unknown }>("/api/v1/operations", async (req, reply) => {
+    const body = CreateOperationRequestSchema.safeParse(req.body);
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+
+    const membership = await getMembership(ctx.user.id, body.data.guildId);
+    const allowed = ctx.user.role === "superadmin" || membership?.role === "fleetoperator";
+    if (!allowed) return sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
+
+    const op = await createOperation(ctx.user.id, {
+      guildId: body.data.guildId,
+      title: body.data.title.trim(),
+      opType: body.data.opType,
+      description: body.data.description?.trim() || "",
+      meetingSystem: body.data.meetingSystem?.trim() || "stanton",
+      meetingLocation: body.data.meetingLocation?.trim() || "",
+      scheduledAt: new Date(body.data.scheduledAt),
+      minParticipants: body.data.minParticipants,
+      // OpVisibility's TS type predates "guild"; the column/UI accept it.
+      visibility: body.data.visibility as "private" | "partners" | "public",
+    });
+    await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "");
+    return reply.type("application/json").send({ ok: true as const, id: op.id });
   });
 
   // ── mutations (Phase 5, slice 1) ────────────────────────────────────

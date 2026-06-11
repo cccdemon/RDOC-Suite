@@ -38,6 +38,11 @@ export function OverviewPage({ session }: { session: SessionResponse | null }) {
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "1rem" }}>
         <h1 className="fpw-h2" style={{ margin: 0 }}>Operationen</h1>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {(session?.memberships ?? []).some((m) => m.role === "fleetoperator") || session?.user?.role === "superadmin" ? (
+            <Link to="/ops/new" className="fpw-mono-label" data-testid="create-link" style={{ color: "var(--green)" }}>
+              + NEUE OPERATION
+            </Link>
+          ) : null}
           <Link to="/calendar" className="fpw-mono-label" data-testid="calendar-link" style={{ color: "var(--cyan)" }}>
             KALENDER →
           </Link>

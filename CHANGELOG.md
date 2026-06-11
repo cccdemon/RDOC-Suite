@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: create operations from the SPA (2026-06-12)
+
+- New `POST /api/v1/operations` — fleet operators (or superadmins) create a draft operation
+  in a guild they manage (membership-gated, 403 otherwise). CreateOperationRequest added to
+  the shared contract package; OpenAPI + tests.
+- SPA: `/ops/new` create page (guild picker limited to operator guilds, type/visibility
+  selects, objective, system/meet point, datetime-local, min participants) that posts and
+  navigates to the new op detail. An "+ NEUE OPERATION" link appears on the overview for
+  operators; non-operators get a clear denied state. BE 60 API tests, FE 28.
+
 ### Changed - FR-P2 Phase 6: shared contracts package (2026-06-12)
 
 - Extracted the API v1 contracts into a shared workspace package

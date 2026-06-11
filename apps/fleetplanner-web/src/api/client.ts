@@ -150,3 +150,20 @@ export { type OperationSummary };
 export function getOperation(id: string): Promise<OperationDetail> {
   return get<OperationDetail>(`/operations/${encodeURIComponent(id)}`);
 }
+
+export function createOperation(
+  csrfToken: string,
+  input: {
+    guildId: string;
+    title: string;
+    opType: string;
+    description?: string;
+    meetingSystem?: string;
+    meetingLocation?: string;
+    scheduledAt: string;
+    minParticipants?: number;
+    visibility?: string;
+  },
+): Promise<{ ok: true; id: string }> {
+  return mutate("POST", "/operations", csrfToken, input);
+}
