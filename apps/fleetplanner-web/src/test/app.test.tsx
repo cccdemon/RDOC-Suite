@@ -581,6 +581,49 @@ describe("Profile / hangar", () => {
   });
 });
 
+describe("Ships database", () => {
+  it("lists ships from the search API", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/ships/search`, () =>
+        HttpResponse.json({ ships: [{ id: "s1", slug: "perseus", name: "Perseus", manufacturer: "RSI", size: "Large", role: "Gunship", minCrew: 2, maxCrew: 6 }] }),
+      ),
+    );
+    const { findByTestId, findByText } = renderAt("/ships");
+    expect(await findByTestId("ships-page")).toBeInTheDocument();
+    expect(await findByText("Perseus")).toBeInTheDocument();
+  });
+});
+
+describe("Feedback", () => {
+  it("submits subject + message", async () => {
+    let payload: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.post(`${API}/feedback`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/feedback");
+    const subj = (await findByTestId("feedback-subject")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(subj, "Bug");
+    subj.dispatchEvent(new Event("input", { bubbles: true }));
+    const msg = (await findByTestId("feedback-message")) as HTMLTextAreaElement;
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(msg, "Seat picker glitch");
+    msg.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("feedback-submit")).click();
+    expect(await findByTestId("feedback-notice")).toHaveTextContent("gesendet");
+    expect(payload).toMatchObject({ subject: "Bug", message: "Seat picker glitch" });
+  });
+
+  it("anonymous sees a sign-in prompt", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
+    const { findByTestId } = renderAt("/feedback");
+    expect(await findByTestId("feedback-anon")).toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

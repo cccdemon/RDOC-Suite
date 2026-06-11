@@ -13,6 +13,7 @@ import {
   AssignSeatRequestSchema,
   CreateOperationRequestSchema,
   CreateOperationResponseSchema,
+  FeedbackRequestSchema,
   HangarShipRequestSchema,
   OperatorViewSchema,
   UnitDecisionRequestSchema,
@@ -59,6 +60,7 @@ const SCHEMAS = {
   CreateOperationRequest: CreateOperationRequestSchema,
   CreateOperationResponse: CreateOperationResponseSchema,
   HangarShipRequest: HangarShipRequestSchema,
+  FeedbackRequest: FeedbackRequestSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -562,6 +564,17 @@ export function buildOpenApiDocument(): JsonObject {
             { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
           ],
           responses: { "200": { description: "Removed", ...jsonContent(ref("MutationOk")) }, "401": errorResponses["401"] },
+        },
+      },
+      "/api/v1/feedback": {
+        post: {
+          operationId: "sendFeedback",
+          summary: "Send feedback to the configured Discord channel",
+          tags: ["meta"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } }],
+          requestBody: { required: true, ...jsonContent(ref("FeedbackRequest")) },
+          responses: { "200": { description: "Sent", ...jsonContent(ref("MutationOk")) }, ...errorResponses, "409": { description: "Send failed", ...jsonContent(ref("ApiError")) } },
         },
       },
       "/api/v1/ships/search": {

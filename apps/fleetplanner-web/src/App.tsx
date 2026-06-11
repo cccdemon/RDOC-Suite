@@ -7,6 +7,8 @@ import { OpDetailPage } from "./pages/OpDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { CreatePage } from "./pages/CreatePage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { ShipsPage } from "./pages/ShipsPage";
+import { FeedbackPage } from "./pages/FeedbackPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
@@ -93,8 +95,9 @@ export function App() {
           Operationen
         </Link>
         <Link to="/calendar" style={navIdle}>Kalender</Link>
+        <Link to="/ships" style={navIdle}>Schiffe</Link>
         <a href="/fleetplanner/guilds" style={navIdle}>Server</a>
-        <a href="/fleetplanner/feedback" style={navIdle}>Feedback</a>
+        <Link to="/feedback" style={navIdle}>Feedback</Link>
         <a href="/fleetplanner/roadmap" style={navIdle}>Roadmap</a>
         <a href="/fleetplanner/how-to" style={navIdle}>Anleitung</a>
         <span style={{ flex: 1 }} />
@@ -177,6 +180,8 @@ export function App() {
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/ops/new" element={<CreatePage session={session} />} />
           <Route path="/profile" element={<ProfilePage session={session} />} />
+          <Route path="/ships" element={<ShipsPage />} />
+          <Route path="/feedback" element={<FeedbackPage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

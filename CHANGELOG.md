@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA ships database + feedback (2026-06-12)
+
+- SPA `/ships` page: a debounced search table over the existing `GET /api/v1/ships/search`
+  (name, manufacturer, size, role, crew). Read-only, no backend change.
+- New `POST /api/v1/feedback` {subject, message} sends to the configured Discord feedback
+  channel (SSR parity, minus image uploads); 409 on send failure. SPA `/feedback` form (anon
+  callers get a sign-in prompt). Both wired into the nav as SPA routes. BE 62 API tests, FE 33.
+
 ### Added - FR-P2: SPA profile / hangar management (2026-06-12)
 
 - New `POST /api/v1/hangar` {shipId} and `DELETE /api/v1/hangar/:shipId` to add/remove the

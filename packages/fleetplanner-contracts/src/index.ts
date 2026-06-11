@@ -227,6 +227,10 @@ export const HangarShipRequestSchema = z
   .object({ shipId: z.string().regex(/^[a-z0-9]{20,32}$/i, "invalid ship id") })
   .meta({ id: "HangarShipRequest" });
 
+export const FeedbackRequestSchema = z
+  .object({ subject: z.string().min(1).max(120), message: z.string().min(1).max(1800) })
+  .meta({ id: "FeedbackRequest" });
+
 // ── Query schemas ─────────────────────────────────────────────────────
 
 export const OperationListQuerySchema = z.object({

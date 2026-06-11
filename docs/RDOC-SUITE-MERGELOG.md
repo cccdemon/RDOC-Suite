@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Schiffsdatenbank + Feedback — Branch master
+
+Kleine Wins. FE + 1 kleiner Endpoint:
+- **Schiffsdatenbank (read-only):** FE `/ships`-Seite gegen bestehendes `GET /api/v1/ships/search`
+  (debounced), Tabelle/Liste mit Manufacturer/Size/Role/Crew. Kein Backend.
+- **Feedback:** `POST /api/v1/feedback` {subject≤120,message≤1800} → sendDiscordChannelMessage an
+  feedback.discordChannelId (Parität SSR, ohne Image-Upload). Auth crew, Rate-Limit greift.
+  Contract FeedbackRequest; OpenAPI; Test. FE `/feedback`-Formular.
+- Nav-Links Schiffe + Feedback. Gate: BE+FE grün, Deploy, E2E.
+- **DONE 2026-06-12:** BE `POST /api/v1/feedback` (FeedbackRequest im Package, sendDiscordChannelMessage
+  an feedback.discordChannelId, 409 bei Send-Fehler). FE ShipsPage `/ships` (debounced
+  Suchtabelle gegen /ships/search) + FeedbackPage `/feedback` (Betreff+Nachricht-Form, anon→
+  Prompt). Nav: Schiffe + Feedback jetzt SPA-Routen (statt SSR-Links). OpenAPI + 1 inject-Test.
+  BE 62 + tsc 0, FE 33/33 + Build.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Profil/Hangar-Verwaltung — Branch master
 
 Nächste Surface. Ergänzt „Schiff anbieten" (Hangar füllen). FE+kleine API:

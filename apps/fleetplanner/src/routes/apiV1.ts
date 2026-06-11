@@ -11,6 +11,8 @@ import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
 import { effectiveOpRole, getMembership, listUserGuilds } from "../services/guilds.js";
 import { createOperation } from "../services/operations.js";
+import { sendDiscordChannelMessage } from "../services/discord.js";
+import { getSetting } from "../services/settings.js";
 import {
   addLeader,
   getOperation,
@@ -34,6 +36,7 @@ import {
   AssignSeatRequestSchema,
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
+  FeedbackRequestSchema,
   HangarShareRequestSchema,
   HangarShipParamSchema,
   HangarShipRequestSchema,
@@ -941,6 +944,30 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!ctx) return;
     await prisma.userShip.deleteMany({ where: { userId: ctx.user.id, shipId: p.data.shipId } });
     return reply.type("application/json").send({ ok: true as const });
+  });
+
+  // ── feedback ────────────────────────────────────────────────────────
+  // Signed-in users send a subject + message to the configured Discord
+  // feedback channel (SSR parity, minus image attachments).
+  app.post<{ Body: unknown }>("/api/v1/feedback", async (req, reply) => {
+    const body = FeedbackRequestSchema.safeParse(req.body);
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Subject and message required.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    const channelId = await getSetting("feedback.discordChannelId");
+    const content = [
+      "**Fleetplanner Feedback**",
+      `From: ${ctx.user.username} (${ctx.user.id})`,
+      `Subject: ${body.data.subject.trim()}`,
+      "",
+      body.data.message.trim(),
+    ].join("\n");
+    try {
+      await sendDiscordChannelMessage(channelId, content);
+      return reply.type("application/json").send({ ok: true as const });
+    } catch (err) {
+      return sendError(reply, req, 409, "conflict", err instanceof Error ? err.message : "Feedback could not be sent.");
+    }
   });
 
   // ── ships ───────────────────────────────────────────────────────────

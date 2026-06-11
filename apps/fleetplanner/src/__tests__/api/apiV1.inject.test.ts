@@ -97,6 +97,17 @@ describe("GET /api/v1/operations/:id", () => {
   });
 });
 
+describe("feedback", () => {
+  it("anonymous → 401, invalid body → 400, documented", async () => {
+    const anon = await app.inject({ method: "POST", url: "/api/v1/feedback", headers: { "content-type": "application/json", "x-forwarded-for": "10.6.6.1" }, payload: JSON.stringify({ subject: "Hi", message: "test" }) });
+    expect(anon.statusCode).toBe(401);
+    const bad = await app.inject({ method: "POST", url: "/api/v1/feedback", headers: { "content-type": "application/json", "x-forwarded-for": "10.6.6.2" }, payload: JSON.stringify({ subject: "" }) });
+    expect(bad.statusCode).toBe(400);
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/feedback"].post).toBeTruthy();
+  });
+});
+
 describe("create operation", () => {
   it("anonymous → 401 envelope", async () => {
     const res = await app.inject({
