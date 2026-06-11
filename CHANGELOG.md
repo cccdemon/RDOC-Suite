@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - FR-P2: SPA operator console redesigned to the Befehlsstand layout (2026-06-12)
+
+- The operator panel is now the design bundle's "Befehlsstand" console: sticky left control
+  rail (88px conic fill ring, status pill, per-category occupancy bars, operator actions
+  linking the SSR manage tabs, leadership list with avatars), hero panels FLEXIBEL / OFFENE
+  BEDARFE / FRAGEN, and the fleet board with operator seat rows.
+- Place-mode assignment as designed: "Einteilen" on a flexible signup shows the sticky
+  EINTEILEN-MODUS banner, open seats glow green ("HIER →") and assign on click; clicking an
+  open seat without place-mode opens the "WER SOLL HIER REIN?" picker. Claimed seats show
+  avatar + name + free button; pending units keep accept/reject. Tools drawer (activity log,
+  hangar shares with ship chips) is collapsible. FE 21/21. Triage layout + drag-and-drop
+  remain follow-ups.
+
 ### Changed - FR-P2: SPA redesigned to the Operationsdetail design bundle (2026-06-11)
 
 - fleetplanner-web now matches the claude.ai/design "Operationsdetail" look: hero section

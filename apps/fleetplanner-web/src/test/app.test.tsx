@@ -322,11 +322,13 @@ describe("Op detail — operator panel", () => {
     expect(await findByText("Hammerhead")).toBeInTheDocument();
     expect(await findByText("Flexi")).toBeInTheDocument();
     expect(await findByText("Treffpunkt?")).toBeInTheDocument();
+    // hangar shares live in the collapsible tools drawer (design)
+    (await findByText("Werkzeuge / Aktivität")).click();
     expect(await findByText("Hangar Guy")).toBeInTheDocument();
     expect(await findByText("Polaris")).toBeInTheDocument();
   });
 
-  it("assigns a flexible signup to a picked seat", async () => {
+  it("assigns a flexible signup via place-mode (Einteilen → seat click)", async () => {
     let payload: Record<string, unknown> | null = null;
     let seatId: string | null = null;
     useOperatorHandlers([
@@ -336,14 +338,31 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1");
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
     (await findByTestId("operator-toggle")).click();
-    const pick = (await findByTestId("pick-user_flex")) as HTMLSelectElement;
-    Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")!.set!.call(pick, "seat_2");
-    pick.dispatchEvent(new Event("change", { bubbles: true }));
-    (await findByTestId("assign-user_flex")).click();
+    (await findByTestId("op-place-user_flex")).click();
+    // place-mode banner appears, open seats become green targets
+    expect(await findByText("EINTEILEN-MODUS")).toBeInTheDocument();
+    (await findByTestId("op-target-seat_2")).click();
     await new Promise((r) => setTimeout(r, 50));
     expect(seatId).toBe("seat_2");
+    expect(payload).toMatchObject({ userId: "user_flex" });
+  });
+
+  it("fills an open seat via the inline picker", async () => {
+    let payload: Record<string, unknown> | null = null;
+    useOperatorHandlers([
+      http.put(`${API}/operations/op_1/seats/seat_2/assignment`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    ]);
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    (await findByTestId("op-target-seat_2")).click(); // no place-mode → picker
+    expect(await findByText("WER SOLL HIER REIN?")).toBeInTheDocument();
+    (await findByTestId("op-pick-user_flex")).click();
+    await new Promise((r) => setTimeout(r, 50));
     expect(payload).toMatchObject({ userId: "user_flex" });
   });
 
@@ -357,8 +376,8 @@ describe("Op detail — operator panel", () => {
     ]);
     const { findByTestId } = renderAt("/ops/op_1");
     (await findByTestId("operator-toggle")).click();
-    const input = (await findByTestId("answer-input-q1")) as HTMLInputElement;
-    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, "Everus Harbor, 19:00");
+    const input = (await findByTestId("answer-input-q1")) as HTMLTextAreaElement;
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Everus Harbor, 19:00");
     input.dispatchEvent(new Event("input", { bubbles: true }));
     (await findByTestId("answer-send-q1")).click();
     await new Promise((r) => setTimeout(r, 50));

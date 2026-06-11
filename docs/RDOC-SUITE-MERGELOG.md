@@ -1,5 +1,30 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA-Operator-Konsole 1:1 (Befehlsstand) nach DC v2 — Branch master
+
+Letzter Design-Baustein: OperatorPanel war funktionaler Eigenbau; DC v2 (Zeilen 303–490 +
+computed styles 1460–1500, frisch gelesen) als Vorlage. FE-only:
+- **Layout A „Befehlsstand":** linke sticky Rail (286px) mit Fill-Ring (88px conic-gradient
+  #00ff88), „x / y Plätze" + „n offen · m flexibel", Kategorie-Bars; OPERATOR-AKTIONEN
+  (opActBtn-Style, Links auf SSR-Manage: bearbeiten/Slots/Status, löschen rot); LEITUNG
+  (op.leaders mit Avatar-Quadraten). Main: drei Hero-Panels FLEXIBEL (gold-Border) /
+  OFFENE BEDARFE / FRAGEN + FLOTTEN-BOARD (Grid 4→2→1) + Tools-Collapsible
+  (AKTIVITÄT, HANGAR-FREIGABEN).
+- **Einteilen-Modus (Place-Mode):** „Einteilen"-Button je Flex-Person (gold; aktiv → rot
+  „Abbrechen", Row gold umrandet), sticky Banner „EINTEILEN-MODUS", offene Board-Seats
+  zeigen grün „HIER →" und assignen per Klick (PUT assignment); ohne Place-Mode öffnet
+  Seat-Klick den Picker „WER SOLL HIER REIN?" mit Flex-Leuten.
+- Pending-Units accept/reject + Fragen-Antwort bleiben (DC-Optik). Triage-Layout B + DnD =
+  Folgerunde. Tests: an Place-Mode-Flow angepasst (op-place/op-target testids).
+- **DONE 2026-06-12:** OperatorPanel komplett neu nach DC v2 Layout A: sticky Rail 286px
+  (Fill-Ring 88px conic, Status-Pill, Kategorie-Bars), opActBtn-Aktionen → SSR-Manage-Tabs,
+  LEITUNG mit Avataren; Hero-Panels FLEXIBEL/BEDARFE/FRAGEN; FLOTTEN-BOARD (fpw-board-Grid,
+  „· Platz anklicken zum Besetzen") mit Operator-Seat-Rows: offen = „+ Einteilen"-Hint,
+  Place-Mode → grüner HIER→-Ring + Klick-Assign, Direktklick → Picker „WER SOLL HIER REIN?";
+  belegt = Avatar+Name+✕; Pending-Units-Block; Tools-Collapsible (AKTIVITÄT, HANGAR-FREIGABEN
+  mit Schiff-Chips). KPI-Strip rechtsbündig. Tests umgestellt (Place-Mode-Flow + Picker-Flow,
+  Tools-Drawer-Klick, textarea-Setter). FE 21/21 + Build (229 kB). Triage-Layout B + DnD offen.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — SPA-Redesign nach Operationsdetail.dc.html (Design-Bundle v2) — Branch master
 
 User-Auftrag: neues Design (claude.ai/design-Bundle, weiterentwickelt: 4-Lane-Board, responsive
