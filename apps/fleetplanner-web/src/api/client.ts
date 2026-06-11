@@ -108,6 +108,14 @@ export function answerQuestion(opId: string, qid: string, answer: string, csrfTo
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/questions/${encodeURIComponent(qid)}/answer`, csrfToken, { answer });
 }
 
+export function addLeader(opId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/leaders`, csrfToken, { userId });
+}
+
+export function removeLeader(opId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/leaders/${encodeURIComponent(userId)}`, csrfToken);
+}
+
 export function getHangar(): Promise<{ ships: import("./types").ShipSummary[] }> {
   return get<{ ships: import("./types").ShipSummary[] }>("/hangar");
 }

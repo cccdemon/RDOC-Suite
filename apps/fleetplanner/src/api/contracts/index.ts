@@ -291,6 +291,7 @@ export const ResourceLinkResponseSchema = z
 export const UnitParamSchema = z.object({ id: cuid, unitId: cuid });
 export const LinkParamSchema = z.object({ id: cuid, linkId: cuid });
 export const QuestionParamSchema = z.object({ id: cuid, qid: cuid });
+export const LeaderParamSchema = z.object({ id: cuid, userId: cuid });
 
 // ── Operator (read model + mutations) ─────────────────────────────────
 

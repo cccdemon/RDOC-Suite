@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — Operator-Spezialflows: Leaders-Verwaltung im SPA — Branch master
+
+Restpunkt 2. Ehrliche Abgrenzung: Slot-Editor + Needs-Editor sind volle CRUD-Masken, die die
+bestehende SSR-Manage-Shell (voll funktional) duplizieren würden — bleiben SSR-Links (im
+Operator-Panel bereits „Slots verwalten"/„Bedarfe verwalten"/„Admin"). Echter neuer Flow:
+Leadership-Verwaltung.
+- **BE:** `POST /api/v1/operations/:id/leaders` {userId} (addLeader) + `DELETE .../leaders/:userId`
+  (removeLeader). Strenger gegated als die übrigen Operator-Mutationen: nur effectiveOpRole
+  === fleetoperator (Leader dürfen sich nicht selbst ernennen) — Parität zur SSR-requireOpRole.
+  Audit. Contract/OpenAPI/inject-Test.
+- **FE:** LEITUNG-Rail bekommt ✕ je Leader + „+ Leiter"-Picker aus den Op-Teilnehmern
+  (claimedBy aus units, noch nicht Leader). Nur sichtbar wenn viewerRole === fleetoperator.
+- Gate: BE+FE grün, Deploy, E2E.
+- **DONE 2026-06-12:** BE `POST /api/v1/operations/:id/leaders` + `DELETE .../leaders/:userId`
+  (fleetoperator-gated via requireFleetOperator; LeaderParamSchema; Audit). Contract/OpenAPI/
+  inject-Tests (+2; XFF-IPs für eigene Rate-Buckets). FE: LEITUNG-Rail mit ✕ je Leader +
+  „+ Leiter"-Picker aus Op-Teilnehmern (claimedBy, nicht schon Leader), nur bei
+  viewerRole===fleetoperator. FE +2 Tests (Ernennen + versteckt für Nicht-FO). Slot-/Needs-
+  Editor bewusst SSR-Link (Manage-Shell, Duplikat vermieden). BE 57 API-Tests + tsc 0, FE 26/26.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Operator-Konsole Triage-Layout B + Drag&Drop — Branch master
 
 Restpunkt 1. FE-only Erweiterung OperatorPanel:

@@ -410,6 +410,45 @@ describe("Op detail — operator panel", () => {
     expect(payload).toMatchObject({ userId: "user_flex" });
   });
 
+  it("appoints a participant as leader (fleet operator)", async () => {
+    let payload: Record<string, unknown> | null = null;
+    const opFO = {
+      ...opAsOperator,
+      viewerRole: "fleetoperator",
+      leaders: [],
+      units: [
+        {
+          id: "unit_1", unitType: "ship", status: "accepted", name: "Perseus", shipName: "Perseus",
+          squadName: null, captain: null, captainNote: null, carrierUnitId: null,
+          seats: [{ id: "seat_a", label: "Pilot", order: 0, active: true, claimedBy: { id: "user_part", username: "Partaker" } }],
+        },
+      ],
+    };
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opFO)),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(operatorView)),
+      http.post(`${API}/operations/op_1/leaders`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    (await findByTestId("leader-add-toggle")).click();
+    (await findByTestId("leader-cand-user_part")).click();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(payload).toMatchObject({ userId: "user_part" });
+  });
+
+  it("hides leader management for non-fleet-operators", async () => {
+    useOperatorHandlers(); // opAsOperator has canManage:true but no viewerRole
+    const { findByTestId, queryByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    await findByTestId("operator-panel");
+    expect(queryByTestId("leader-add-toggle")).not.toBeInTheDocument();
+  });
+
   it("accepts a pending unit", async () => {
     let hit = false;
     useOperatorHandlers([

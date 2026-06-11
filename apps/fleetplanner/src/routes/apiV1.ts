@@ -11,11 +11,13 @@ import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
 import { effectiveOpRole, listUserGuilds } from "../services/guilds.js";
 import {
+  addLeader,
   getOperation,
   listAllUserOperations,
   listPartnerOperations,
   listPublicOperations,
   logAudit,
+  removeLeader,
 } from "../services/operations.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
 import { listSharedHangars } from "../services/hangarShare.js";
@@ -32,6 +34,7 @@ import {
   CqbSignupRequestSchema,
   HangarShareRequestSchema,
   IdParamSchema,
+  LeaderParamSchema,
   LinkParamSchema,
   OperationListQuerySchema,
   PatchUnitRequestSchema,
@@ -821,6 +824,50 @@ export async function apiV1Routes(app: FastifyInstance) {
       });
       if (result.count === 0) return sendError(reply, req, 404, "not_found", "Question not found.");
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "answer", "");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // Leadership — stricter than the other operator mutations: only the
+  // fleetoperator may appoint/remove leaders (leaders can't self-appoint).
+  // Parity with the SSR requireOpRole("fleetoperator") gate.
+  async function requireFleetOperator(req: FastifyRequest, reply: FastifyReply, opId: string): Promise<AuthContext | null> {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return null;
+    if ((await effectiveOpRole(ctx.user.id, ctx.user.role, opId)) !== "fleetoperator") {
+      await sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
+      return null;
+    }
+    return ctx;
+  }
+
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/leaders",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = AssignSeatRequestSchema.safeParse(req.body); // { userId }
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireFleetOperator(req, reply, p.data.id);
+      if (!ctx) return;
+
+      const user = await prisma.user.findUnique({ where: { id: body.data.userId }, select: { id: true, active: true } });
+      if (!user || !user.active) return sendError(reply, req, 404, "not_found", "User not found or inactive.");
+      await addLeader(p.data.id, body.data.userId);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "leader:add", "");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.delete<{ Params: { id: string; userId: string } }>(
+    "/api/v1/operations/:id/leaders/:userId",
+    async (req, reply) => {
+      const p = LeaderParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireFleetOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      await removeLeader(p.data.id, p.data.userId);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "leader:remove", "");
       return reply.type("application/json").send({ ok: true as const });
     },
   );

@@ -488,6 +488,34 @@ export function buildOpenApiDocument(): JsonObject {
           responses: { "200": { description: "Answered", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
         },
       },
+      "/api/v1/operations/{id}/leaders": {
+        post: {
+          operationId: "addLeader",
+          summary: "Appoint an operation leader (fleet operator only)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AssignSeatRequest")) },
+          responses: { "200": { description: "Added", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/leaders/{userId}": {
+        delete: {
+          operationId: "removeLeader",
+          summary: "Remove an operation leader (fleet operator only)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "userId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Removed", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
       "/api/v1/hangar": {
         get: {
           operationId: "getHangar",

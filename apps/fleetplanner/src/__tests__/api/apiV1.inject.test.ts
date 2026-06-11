@@ -223,10 +223,21 @@ describe("operator API — gates", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("leader routes reject anonymous callers (401)", async () => {
+    // distinct x-forwarded-for so these requests get their own rate buckets
+    // (trustProxy is on) and don't trip the shared anon ip:m budget.
+    const add = await app.inject({ method: "POST", url: `/api/v1/operations/${opId}/leaders`, headers: { "content-type": "application/json", "x-forwarded-for": "10.9.9.1" }, payload: JSON.stringify({ userId: "cmqffffffffffffffffff6" }) });
+    expect(add.statusCode).toBe(401);
+    const del = await app.inject({ method: "DELETE", url: `/api/v1/operations/${opId}/leaders/cmqffffffffffffffffff6`, headers: { "x-forwarded-for": "10.9.9.2" } });
+    expect(del.statusCode).toBe(401);
+  });
+
   it("openapi documents the operator routes", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/openapi.json" });
     const doc = res.json();
     expect(doc.paths["/api/v1/operations/{id}/operator"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/leaders"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/leaders/{userId}"].delete).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/units/{unitId}/accept"].post).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/units/{unitId}/reject"].post).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/seats/{seatId}/assignment"].put).toBeTruthy();

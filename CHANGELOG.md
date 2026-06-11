@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: operator leadership management (2026-06-12)
+
+- New `POST /api/v1/operations/:id/leaders` + `DELETE .../leaders/:userId` (fleet operator
+  only — leaders can't self-appoint; parity with the SSR gate). Audit + OpenAPI + tests.
+- SPA operator console: the LEITUNG rail gains a remove ✕ per leader and a "+ Leiter" picker
+  that appoints op participants (anyone who claimed a seat and isn't already a leader). Only
+  shown to fleet operators. The slot editor and needs editor stay linked to the SSR manage
+  shell (full CRUD there; no SPA duplication). BE 57 API tests, FE 26.
+
 ### Added - FR-P2: SPA operator Triage layout + drag & drop (2026-06-12)
 
 - The operator console gains a Befehlsstand / Triage layout toggle. Triage is board-first with

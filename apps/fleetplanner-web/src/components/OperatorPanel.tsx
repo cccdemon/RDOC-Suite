@@ -1,10 +1,12 @@
 import { useEffect, useState, type ReactNode } from "react";
 import {
+  addLeader,
   ApiError,
   answerQuestion,
   assignSeat,
   decideUnit,
   getOperatorView,
+  removeLeader,
   unassignSeat,
 } from "../api/client";
 import type { FleetUnit, OperationDetail, OperatorView } from "../api/types";
@@ -53,6 +55,7 @@ export function OperatorPanel({
   const [toolsOpen, setToolsOpen] = useState(false);
   const [layout, setLayout] = useState<"a" | "b">("a");
   const [dragUserId, setDragUserId] = useState<string | null>(null);
+  const [leaderPick, setLeaderPick] = useState(false);
 
   function reload() {
     getOperatorView(op.id)
@@ -302,10 +305,28 @@ export function OperatorPanel({
     </section>
   );
 
-  const leadersPanel = op.leaders.length > 0 && (
+  // Leadership management — fleet operators only (leaders can't self-appoint).
+  const canManageLeaders = op.viewerRole === "fleetoperator";
+  const leaderIds = new Set(op.leaders.map((l) => l.id));
+  // candidate appointees = op participants (claimed a seat) not already leaders
+  const leaderCandidates = (() => {
+    const seen = new Map<string, string>();
+    for (const u of accepted) for (const s of u.seats) if (s.claimedBy && !leaderIds.has(s.claimedBy.id)) seen.set(s.claimedBy.id, s.claimedBy.username);
+    return [...seen.entries()].map(([id, username]) => ({ id, username }));
+  })();
+
+  const leadersPanel = (op.leaders.length > 0 || canManageLeaders) && (
     <section style={card}>
-      <div style={railLabel}>LEITUNG</div>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: "0.7rem" }}>
+        <span style={railLabel as React.CSSProperties}>LEITUNG</span>
+        {canManageLeaders && (
+          <button type="button" data-testid="leader-add-toggle" onClick={() => setLeaderPick((v) => !v)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid rgba(0,212,255,0.28)", background: "rgba(0,212,255,0.05)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}>
+            <Ic name="plus" size={12} sw={2} /> Leiter
+          </button>
+        )}
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        {op.leaders.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>Keine Leiter ernannt.</div>}
         {op.leaders.map((l) => (
           <div key={l.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Avatar name={l.username} />
@@ -313,9 +334,30 @@ export function OperatorPanel({
               <div style={{ fontSize: "0.85rem", color: "#eaf4fb" }}>{l.username}</div>
               <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.04em", color: "#5b6b7a" }}>Leitung</div>
             </div>
+            {canManageLeaders && (
+              <button type="button" data-testid={`leader-remove-${l.id}`} title="Leiter entfernen" onClick={() => run(() => removeLeader(op.id, l.id, csrf))} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#7e92a4", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <Ic name="x" size={11} sw={2} />
+              </button>
+            )}
           </div>
         ))}
       </div>
+      {canManageLeaders && leaderPick && (
+        <div style={{ marginTop: "0.7rem", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>TEILNEHMER ERNENNEN</div>
+          {leaderCandidates.length === 0 ? (
+            <div style={{ color: "#5b6b7a", fontSize: "0.78rem" }}>Keine geeigneten Teilnehmer.</div>
+          ) : (
+            leaderCandidates.map((c) => (
+              <button key={c.id} type="button" data-testid={`leader-cand-${c.id}`} onClick={() => run(() => addLeader(op.id, c.id, csrf))} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+                <Avatar name={c.username} />
+                <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{c.username}</span>
+                <Ic name="plus" size={13} sw={2} />
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </section>
   );
 
