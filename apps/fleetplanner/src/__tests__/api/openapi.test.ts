@@ -31,6 +31,17 @@ describe("openapi document", () => {
     }
   });
 
+  it("has no local $defs refs left (they break Swagger UI's root-based resolver)", () => {
+    const json = JSON.stringify(doc);
+    expect(json).not.toContain("#/$defs/");
+    expect(json).not.toContain('"$defs"');
+    // every $ref in the document must point into components/schemas
+    const allRefs = [...json.matchAll(/"\$ref":"([^"]+)"/g)].map((m) => m[1]);
+    for (const r of allRefs) {
+      expect(r.startsWith("#/components/schemas/"), `bad $ref target ${r}`).toBe(true);
+    }
+  });
+
   it("leaks no secret env names or token examples (FR-P2 docs hygiene)", () => {
     const json = JSON.stringify(doc);
     for (const banned of [

@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 Bugfix — OpenAPI $defs-Refs brechen Swagger UI — Branch master
+
+User-Report: Swagger UI Resolver-Fehler `Could not resolve reference "/$defs/SessionUser"` etc.
+Ursache: `z.toJSONSchema` emittiert Sub-Schemas mit `.meta({id})` (SessionUser, Membership, Seat …)
+als `$defs` + `$ref:"#/$defs/X"` INNERHALB des jeweiligen Component-Schemas; Swagger UI löst
+$refs gegen den Dokument-Root → key not found. Fix in `src/api/openapi.ts`: beim Generieren
+alle `$defs` in `components/schemas` heben und sämtliche `#/$defs/X`-Refs auf
+`#/components/schemas/X` umschreiben. Test ergänzt: Dokument enthält kein `#/$defs/` und kein
+`$defs`-Objekt mehr; alle Refs lösbar (bestehender Test griff nur components-Refs).
+- **DONE 2026-06-11:** Fix + verschärfter Test (jeder $ref muss auf components/schemas zeigen).
+  41 API-Tests grün, tsc 0. Deployed + auf Prod verifiziert (openapi.json ohne $defs).
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — öffentliche API-Doku (`/api/v1/docs`) für externe Entwickler — Branch master
 
 User-Wunsch: "add OpenApi doc also! So other developers can connect". Eigener Step:

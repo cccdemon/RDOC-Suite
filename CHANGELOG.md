@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - OpenAPI $defs refs broke Swagger UI resolution (2026-06-11)
+
+- `z.toJSONSchema` emits sub-schemas carrying a `.meta({id})` as local `$defs` with
+  `#/$defs/X` refs inside each component schema; Swagger UI resolves refs against the
+  document root and failed (SessionUser, Membership, …). The generator now hoists all
+  `$defs` into `components/schemas` and rewrites the refs. Tightened test: no `$defs`
+  anywhere, every `$ref` must target `#/components/schemas/`.
+
 ### Added - FR-P2: public API docs for external developers (2026-06-11)
 
 - `GET /api/v1/docs` — interactive Swagger UI rendering the live `openapi.json` (public,

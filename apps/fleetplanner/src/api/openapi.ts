@@ -72,9 +72,24 @@ function buildComponentSchemas(): JsonObject {
     }) as JsonObject;
     delete js.$schema;
     delete js.id;
+    // zod emits sub-schemas that carry a .meta({id}) (SessionUser, Seat, …)
+    // as local $defs with $ref:"#/$defs/X". Swagger UI resolves $refs against
+    // the DOCUMENT root, so those break. Hoist every $def into
+    // components/schemas instead; the $refs are rewritten below.
+    const defs = js.$defs as Record<string, JsonObject> | undefined;
+    if (defs) {
+      for (const [defName, defSchema] of Object.entries(defs)) {
+        delete (defSchema as JsonObject).id;
+        out[defName] ??= defSchema;
+      }
+      delete js.$defs;
+    }
     out[name] = js;
   }
-  return out;
+  // Rewrite all local $defs references to the hoisted component location.
+  return JSON.parse(
+    JSON.stringify(out).replaceAll('"#/$defs/', '"#/components/schemas/'),
+  ) as JsonObject;
 }
 
 export function buildOpenApiDocument(): JsonObject {
