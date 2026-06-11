@@ -76,6 +76,18 @@ export function unclaimSeat(opId: string, seatId: string, csrfToken: string): Pr
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/claim`, csrfToken);
 }
 
+export function cqbSignup(opId: string, csrfToken: string, note?: string): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb/signup`, csrfToken, note ? { note } : {});
+}
+
+export function cqbWithdraw(opId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/cqb/signup`, csrfToken);
+}
+
+export function setHangarShare(opId: string, csrfToken: string, allow: boolean): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/hangar-share`, csrfToken, { allow });
+}
+
 export function listOperations(includePast = false): Promise<{ operations: OperationSummary[] }> {
   return get<{ operations: OperationSummary[] }>(`/operations${includePast ? "?past=true" : ""}`);
 }

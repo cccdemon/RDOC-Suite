@@ -133,6 +133,53 @@ describe("Op detail — claim flow (authenticated)", () => {
   });
 });
 
+describe("Op detail — Mitmachen card (CQB + hangar share)", () => {
+  it("signs up flexibly and toggles to the withdraw state", async () => {
+    let signedUp = false;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.post(`${API}/operations/op_1/cqb/signup`, () => {
+        signedUp = true;
+        return HttpResponse.json({ ok: true });
+      }),
+      http.get(`${API}/operations/op_1`, () =>
+        HttpResponse.json({ ...opDetailFixture, viewerCqbSignedUp: signedUp }),
+      ),
+    );
+    const { findByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("cqb-signup")).click();
+    expect(await findByTestId("cqb-withdraw")).toBeInTheDocument();
+    expect(signedUp).toBe(true);
+  });
+
+  it("toggles the hangar share via PUT", async () => {
+    let allow: boolean | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.put(`${API}/operations/op_1/hangar-share`, async ({ request }) => {
+        allow = ((await request.json()) as { allow: boolean }).allow;
+        return HttpResponse.json({ ok: true });
+      }),
+      http.get(`${API}/operations/op_1`, () =>
+        HttpResponse.json({ ...opDetailFixture, viewerHangarShared: allow === true }),
+      ),
+    );
+    const { findByTestId } = renderAt("/ops/op_1");
+    const toggle = (await findByTestId("hangar-toggle")) as HTMLInputElement;
+    expect(toggle.checked).toBe(false);
+    toggle.click();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(allow).toBe(true);
+    expect(((await findByTestId("hangar-toggle")) as HTMLInputElement).checked).toBe(true);
+  });
+
+  it("guest sees no Mitmachen card", async () => {
+    const { findByTestId, queryByTestId } = renderAt("/ops/op_1");
+    await findByTestId("op-title");
+    expect(queryByTestId("join-card")).not.toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

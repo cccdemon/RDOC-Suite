@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA parity for CQB signup + hangar share (2026-06-11)
+
+- `GET /api/v1/operations/:id` now reports the caller's participation flags
+  `viewerCqbSignedUp` / `viewerHangarShared` (computed from the already-loaded relations,
+  no extra queries; anonymous ⇒ false).
+- SPA op detail gains a "Mitmachen" card for signed-in users on open ops: flexible signup
+  toggle ("Teilt mich ein" ⇄ withdraw) against `POST/DELETE /cqb/signup`, and the
+  operator-hangar-visibility checkbox against `PUT /hangar-share`. Errors surface as the
+  inline notice. 3 new MSW tests; FE 12/12, BE 305/305.
+
 ### Added - FR-P2: rate limits on /api/v1 mutations + search (2026-06-11)
 
 - In-memory sliding-window limiter (no new dependency; single container): mutations

@@ -171,6 +171,10 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
   /** Caller's effective role on this op (null = anonymous public viewer). */
   viewerRole: z.string().nullable(),
   canManage: z.boolean(),
+  /** Caller has an active flexible (CQB/personnel) signup. */
+  viewerCqbSignedUp: z.boolean(),
+  /** Caller shares their hangar with the operators for this op. */
+  viewerHangarShared: z.boolean(),
 }).meta({ id: "OperationDetail" });
 export type OperationDetail = z.infer<typeof OperationDetailSchema>;
 

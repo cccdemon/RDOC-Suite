@@ -256,9 +256,18 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!guild) return sendError(reply, req, 404, "not_found", "Operation not found.");
 
     const signupState = ctx ? await signupStateFor(ctx.user.id, op.id) : null;
+    // Viewer flags for the SPA's "Mitmachen" controls — both relations are
+    // already loaded by getOperation(), so this is a pure in-memory check.
+    const myId = ctx?.user.id;
+    const cqbSignedUp =
+      !!myId &&
+      ((op as { cqbSignups?: Array<{ userId: string }> }).cqbSignups ?? []).some((s) => s.userId === myId);
+    const hangarShared =
+      !!myId &&
+      ((op as { hangarShares?: Array<{ userId: string }> }).hangarShares ?? []).some((h) => h.userId === myId);
     const row = { ...op, guild } as unknown as Parameters<typeof presentOperationDetail>[0];
     return reply.type("application/json").send(
-      presentOperationDetail(row, { role: viewerRole, canManage, signupState }),
+      presentOperationDetail(row, { role: viewerRole, canManage, signupState, cqbSignedUp, hangarShared }),
     );
   });
 

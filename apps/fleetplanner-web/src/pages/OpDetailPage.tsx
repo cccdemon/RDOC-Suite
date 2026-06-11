@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { ApiError, claimSeat, getOperation, unclaimSeat } from "../api/client";
+import { ApiError, claimSeat, cqbSignup, cqbWithdraw, getOperation, setHangarShare, unclaimSeat } from "../api/client";
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 
@@ -64,6 +64,17 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     }
   }
 
+  async function run(action: () => Promise<unknown>) {
+    if (!id || !csrf) return;
+    setNotice(null);
+    try {
+      await action();
+      load();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+    }
+  }
+
   if (error) {
     const code = error.status === 401 ? 401 : error.status === 403 ? 403 : error.status === 404 ? 404 : 503;
     const msg =
@@ -115,6 +126,33 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               </a>
             </div>
           ))}
+        </section>
+      )}
+
+      {me && csrf && op.status === "open" && (
+        <section className="fpw-card" style={{ margin: "1.2rem 0" }} data-testid="join-card">
+          <div className="fpw-mono-label" style={{ marginBottom: "0.8rem" }}>MITMACHEN</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem", alignItems: "center" }}>
+            {op.viewerCqbSignedUp ? (
+              <button type="button" className="fpw-btn" data-testid="cqb-withdraw" onClick={() => run(() => cqbWithdraw(id!, csrf))}>
+                ✓ Flexibel angemeldet — zurückziehen
+              </button>
+            ) : (
+              <button type="button" className="fpw-btn" data-testid="cqb-signup" onClick={() => run(() => cqbSignup(id!, csrf))}>
+                Teilt mich ein (flexibel anmelden)
+              </button>
+            )}
+            <label style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={op.viewerHangarShared}
+                data-testid="hangar-toggle"
+                onChange={(e) => run(() => setHangarShare(id!, csrf, e.target.checked))}
+                style={{ accentColor: "var(--cyan)", width: 18, height: 18 }}
+              />
+              <span className="fpw-meta">Operator darf meinen Hangar sehen</span>
+            </label>
+          </div>
         </section>
       )}
 

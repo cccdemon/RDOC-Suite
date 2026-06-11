@@ -1,5 +1,21 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — FE-Parität CQB-Signup + Hangar-Share im SPA — Branch master
+
+Phase-5-APIs existieren (Slice 1, d0c6859 inkl. Rate-Limits); SPA kann bisher nur claim/release.
+- **BE (Read-Model-Erweiterung):** `OperationDetail` + `viewerCqbSignedUp: boolean` +
+  `viewerHangarShared: boolean` (aus bereits geladenen op.cqbSignups/hangarShares, myId-Match;
+  anonym false). Contract+OpenAPI+Presenter+Tests.
+- **FE:** „Mitmachen"-Karte im Op-Detail (eingeloggt + open): „Teilt mich ein"-Button
+  (POST/DELETE cqb/signup, Zustand toggelt), Hangar-Share-Toggle (PUT hangar-share).
+  Reload nach Erfolg, 409/Fehler als Notice. MSW-Tests: signup-Toggle, hangar-Toggle.
+- Gate: beide Suiten grün, Deploy + E2E.
+- **DONE 2026-06-11:** OperationDetail + viewerCqbSignedUp/viewerHangarShared (in-memory aus
+  OpFull-Relationen; hangarShares ist im Loader bereits auf allow=true gefiltert ⇒ Flag korrekt).
+  SPA-Mitmachen-Karte (eingeloggt + op open): CQB-Toggle anmelden/zurückziehen, Hangar-Checkbox
+  via PUT. 3 neue MSW-Tests (Signup-Toggle, Hangar-PUT-Roundtrip, Gast sieht keine Karte) +
+  BE-Fixture-Update. Gates: BE 305/305 + tsc 0, FE 12/12 + Build.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — Rate-Limits für /api/v1 Mutationen + Suche — Branch master
 
 Plan-Gap §API-Sicherheit/Abuse-Schutz: Mutationen und Suchendpunkte sind live ohne Limit.

@@ -51,4 +51,6 @@ export const opDetailFixture: OperationDetail = {
   ],
   viewerRole: null,
   canManage: false,
+  viewerCqbSignedUp: false,
+  viewerHangarShared: false,
 };

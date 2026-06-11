@@ -82,4 +82,6 @@ export interface OperationDetail extends Omit<OperationSummary, "guild"> {
   resourceLinks: ResourceLink[];
   viewerRole: string | null;
   canManage: boolean;
+  viewerCqbSignedUp: boolean;
+  viewerHangarShared: boolean;
 }

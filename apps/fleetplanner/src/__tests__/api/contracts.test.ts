@@ -74,6 +74,8 @@ describe("contracts", () => {
       ],
       viewerRole: "crew",
       canManage: false,
+      viewerCqbSignedUp: false,
+      viewerHangarShared: true,
     };
     const parsed = OperationDetailSchema.safeParse(detail);
     expect(parsed.success).toBe(true);

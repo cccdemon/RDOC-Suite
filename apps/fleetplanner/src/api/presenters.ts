@@ -109,10 +109,18 @@ export function presentOperationSummary(
 
 export function presentOperationDetail(
   op: OpDetailRow,
-  viewer: { role: string | null; canManage: boolean; signupState: "joined" | "waitlist" | null },
+  viewer: {
+    role: string | null;
+    canManage: boolean;
+    signupState: "joined" | "waitlist" | null;
+    cqbSignedUp?: boolean;
+    hangarShared?: boolean;
+  },
 ): OperationDetail {
   return {
     ...presentOperationSummary(op, viewer.signupState),
+    viewerCqbSignedUp: viewer.cqbSignedUp ?? false,
+    viewerHangarShared: viewer.hangarShared ?? false,
     description: op.description,
     guild: {
       id: op.guild.id,
