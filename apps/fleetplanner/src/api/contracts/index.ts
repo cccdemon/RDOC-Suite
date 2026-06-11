@@ -286,3 +286,58 @@ export const ResourceLinkResponseSchema = z
 
 export const UnitParamSchema = z.object({ id: cuid, unitId: cuid });
 export const LinkParamSchema = z.object({ id: cuid, linkId: cuid });
+export const QuestionParamSchema = z.object({ id: cuid, qid: cuid });
+
+// ── Operator (read model + mutations) ─────────────────────────────────
+
+export const OperatorViewSchema = z
+  .object({
+    crewRequests: z.array(
+      z.object({
+        userId: z.string(),
+        username: z.string(),
+        note: z.string().nullable(),
+        createdAt: z.iso.datetime(),
+      }),
+    ),
+    questions: z.array(
+      z.object({
+        id: z.string(),
+        asker: z.string(),
+        body: z.string(),
+        answer: z.string().nullable(),
+        answeredBy: z.string().nullable(),
+        createdAt: z.iso.datetime(),
+      }),
+    ),
+    hangarShares: z.array(
+      z.object({
+        userId: z.string(),
+        username: z.string(),
+        note: z.string().nullable(),
+        ships: z.array(z.object({ id: z.string(), name: z.string(), nickname: z.string().nullable() })),
+      }),
+    ),
+    auditLogs: z.array(
+      z.object({
+        actor: z.string(),
+        action: z.string(),
+        detail: z.string(),
+        createdAt: z.iso.datetime(),
+      }),
+    ),
+  })
+  .meta({ id: "OperatorView" });
+export type OperatorView = z.infer<typeof OperatorViewSchema>;
+
+export const UnitDecisionRequestSchema = z
+  .object({ note: z.string().max(280).optional(), requirementId: cuid.optional() })
+  .meta({ id: "UnitDecisionRequest" });
+
+export const AssignSeatRequestSchema = z
+  .object({ userId: cuid })
+  .meta({ id: "AssignSeatRequest" });
+
+export const AnswerQuestionRequestSchema = z
+  .object({ answer: z.string().min(1).max(1000) })
+  .meta({ id: "AnswerQuestionRequest" });

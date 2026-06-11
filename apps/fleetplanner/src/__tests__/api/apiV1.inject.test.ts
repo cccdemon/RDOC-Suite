@@ -188,6 +188,53 @@ describe("mutations (phase 5 slice 2) — units + resource-links gates", () => {
   });
 });
 
+describe("operator API — gates", () => {
+  const opId = "cmqaaaaaaaaaaaaaaaaaa1";
+  const unitId = "cmqcccccccccccccccccc3";
+  const seatId = "cmqbbbbbbbbbbbbbbbbbb2";
+  const qid = "cmqeeeeeeeeeeeeeeeeee5";
+
+  it.each([
+    ["GET", `/api/v1/operations/${opId}/operator`, undefined],
+    ["POST", `/api/v1/operations/${opId}/units/${unitId}/accept`, {}],
+    ["POST", `/api/v1/operations/${opId}/units/${unitId}/reject`, {}],
+    ["PUT", `/api/v1/operations/${opId}/seats/${seatId}/assignment`, { userId: "cmqffffffffffffffffff6" }],
+    ["DELETE", `/api/v1/operations/${opId}/seats/${seatId}/assignment`, undefined],
+    ["POST", `/api/v1/operations/${opId}/questions/${qid}/answer`, { answer: "x" }],
+  ] as const)("%s %s without session → 401 envelope", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      ...(body !== undefined
+        ? { headers: { "content-type": "application/json" }, payload: JSON.stringify(body) }
+        : {}),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("assignment with invalid body → 400", async () => {
+    const res = await app.inject({
+      method: "PUT",
+      url: `/api/v1/operations/${opId}/seats/${seatId}/assignment`,
+      headers: { "content-type": "application/json" },
+      payload: JSON.stringify({ userId: "nope" }),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents the operator routes", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/openapi.json" });
+    const doc = res.json();
+    expect(doc.paths["/api/v1/operations/{id}/operator"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/units/{unitId}/accept"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/units/{unitId}/reject"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/seats/{seatId}/assignment"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/seats/{seatId}/assignment"].delete).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/questions/{qid}/answer"].post).toBeTruthy();
+  });
+});
+
 describe("rate limiting", () => {
   it("blocks a mutation key after the budget with a 429 envelope + retry-after", async () => {
     // Invalid op id → the handler answers 400 BEFORE any auth/DB work, so the

@@ -189,7 +189,7 @@ export async function assertUniqueSquadName(
 
 
 
-async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
+export async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
   const opRole = await effectiveOpRole(userId, instanceRole, operationId);
   if (opRole === "fleetoperator") return true;
   if (!opRole) return false;

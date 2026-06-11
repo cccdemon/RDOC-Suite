@@ -8,7 +8,11 @@
 // URLs. The only security scheme is the browser cookie session.
 import { z } from "zod/v4";
 import {
+  AnswerQuestionRequestSchema,
   ApiErrorSchema,
+  AssignSeatRequestSchema,
+  OperatorViewSchema,
+  UnitDecisionRequestSchema,
   ClaimSeatResponseSchema,
   CqbSignupRequestSchema,
   GuildListResponseSchema,
@@ -45,6 +49,10 @@ const SCHEMAS = {
   PatchUnitRequest: PatchUnitRequestSchema,
   ResourceLinkRequest: ResourceLinkRequestSchema,
   ResourceLinkResponse: ResourceLinkResponseSchema,
+  OperatorView: OperatorViewSchema,
+  UnitDecisionRequest: UnitDecisionRequestSchema,
+  AssignSeatRequest: AssignSeatRequestSchema,
+  AnswerQuestionRequest: AnswerQuestionRequestSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -383,6 +391,101 @@ export function buildOpenApiDocument(): JsonObject {
             "200": { description: "Removed", ...jsonContent(ref("MutationOk")) },
             ...errorResponses,
           },
+        },
+      },
+      "/api/v1/operations/{id}/operator": {
+        get: {
+          operationId: "getOperatorView",
+          summary: "Operator read model (flexible signups, questions, hangar shares, activity)",
+          description: "Operator-only (fleetoperator or op leader). Hangar shares are never exposed elsewhere.",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: {
+            "200": { description: "OK", ...jsonContent(ref("OperatorView")) },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/units/{unitId}/accept": {
+        post: {
+          operationId: "acceptUnit",
+          summary: "Accept an offered unit (optionally slotting it into a requirement)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "unitId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: false, ...jsonContent(ref("UnitDecisionRequest")) },
+          responses: { "200": { description: "Accepted", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/units/{unitId}/reject": {
+        post: {
+          operationId: "rejectUnit",
+          summary: "Reject an offered unit (frees its seats)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "unitId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: false, ...jsonContent(ref("UnitDecisionRequest")) },
+          responses: { "200": { description: "Rejected", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/seats/{seatId}/assignment": {
+        put: {
+          operationId: "assignSeat",
+          summary: "Operator: assign a player to an open seat",
+          description: "Clears the player's flexible request and notifies them via DM (best-effort).",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "seatId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AssignSeatRequest")) },
+          responses: {
+            "200": { description: "Assigned", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+            "409": { description: "Seat taken / player already seated", ...jsonContent(ref("ApiError")) },
+          },
+        },
+        delete: {
+          operationId: "unassignSeat",
+          summary: "Operator: free an occupied seat (captain seat protected)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "seatId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Freed", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+            "409": { description: "Captain seat", ...jsonContent(ref("ApiError")) },
+          },
+        },
+      },
+      "/api/v1/operations/{id}/questions/{qid}/answer": {
+        post: {
+          operationId: "answerQuestion",
+          summary: "Operator: answer a player question",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "qid", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AnswerQuestionRequest")) },
+          responses: { "200": { description: "Answered", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
         },
       },
       "/api/v1/hangar": {

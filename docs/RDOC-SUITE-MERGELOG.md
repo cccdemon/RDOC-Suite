@@ -1,5 +1,40 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: SACompanion-Befund in Discord-autark-Studie
+
+RDOC-SACompanion untersucht: echtes SquadLink Lite, standalone P2P-WebRTC-Mesh mit InitConnection,
+Room-Auth, PIN/Share-Link, `squadlink://connect` Direktlink/Fleetplanner-Modus, PTT/Chat/TURN-Option,
+Warn@12/Hard@16. Feasibility-Doc korrigieren: SquadNet kann SACompanion nutzen, Command/GlobalNet
+brauchen neues Multi-Room/Orchestrator-Konzept; nicht LiveKit-only denken. Reine Doku.
+
+## Queued / Planned Step - 2026-06-11: Machbarkeitsstudie Discord-autarker SquadLink Lite
+
+User-Wunsch: pruefen, ob RDOC-Suite/Fleetplanner/LiveKit/SquadLink Lite ohne Discord-Voice und
+perspektivisch ohne Discord-Abhaengigkeit fuer Mission Voice arbeiten kann. Neue Feasibility-Doc
+`docs/FR-P2-discord-autarkic-squadlink-lite-feasibility.md` mit Zielbild, Raum-/Rechte-Modell,
+Risiken, Phasenplan, Tests und Empfehlung. Reine Doku, kein Code.
+
+## Queued / Planned Step - 2026-06-11: FR-P2 — Operator-API v1 (Read-Model + Kern-Mutationen) — Branch master
+
+Folgeschritt zu 09c08b4 (SPA-Player-Parität komplett). Operator-Flows als JSON, SPA-Operator-UI
+= Folgerunde. Alle Routen canManage-gated (effectiveOpRole fleetoperator ODER Op-Leader):
+- **Read:** `GET /api/v1/operations/:id/operator` — crewRequests (flexible Anmeldungen),
+  questions (inkl. unbeantwortete), hangarShares (operator-only!), auditLogs (letzte 50).
+  403/404 ohne Leak für Nicht-Operatoren.
+- **Mutationen** (Session+CSRF wie gehabt, Audit, 409-Mapping):
+  - `POST /api/v1/operations/:id/units/:unitId/accept` + `/reject` (setUnitStatus, body {note?})
+  - `PUT /api/v1/operations/:id/seats/:seatId/assignment` {userId} (assignSeat + crewRequest-
+    Cleanup + Seat-DM wie SSR) + `DELETE` (Seat freigeben, Captain-Seat geschützt)
+  - `POST /api/v1/operations/:id/questions/:qid/answer` {answer ≤1000}
+- Contracts+OpenAPI+Doku (fleetplanner-v1.md), inject-Tests (401/403-Gate/400/OpenAPI-Coverage).
+- **DONE 2026-06-11:** Alle Routen in apiV1.ts. `canApproveUnits` aus api.ts exportiert
+  (Operator-Gate = fleetoperator ODER Op-Leader, identisch SSR). Accept-into-slot-Parität
+  (voller Slot → accept unslotted), Reject befreit Seats via setUnitStatus-Service,
+  Assignment löscht crewRequest + Seat-DM best-effort. OperatorView aus OpFull +
+  listSharedHangars. Tests: +8 inject (401 je Route, 400, OpenAPI-Coverage). Suite 314/314,
+  tsc 0. Hinweis: anonyme Mutations-401-Tests teilen den ip:m-Rate-Bucket (Budget 20,
+  aktuell 16 Hits) — bei weiteren Tests Cookie-Buckets nutzen.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — SPA Squad-/Fahrzeug-Anbieten (OfferUnit-Modi) — Branch master
 
 Folgeschritt zu d02de5f. `POST /api/v1/operations/:id/units` beherrscht squad/vehicle bereits

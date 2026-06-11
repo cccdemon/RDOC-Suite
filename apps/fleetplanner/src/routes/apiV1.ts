@@ -7,6 +7,7 @@
 // - Stable error envelope { error: { code, message, requestId } }.
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../db.js";
+import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
 import { effectiveOpRole, listUserGuilds } from "../services/guilds.js";
 import {
@@ -16,26 +17,33 @@ import {
   listPublicOperations,
   logAudit,
 } from "../services/operations.js";
-import { claimSeat, deleteUnit, registerUnit, unclaimSeat } from "../services/units.js";
+import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
+import { listSharedHangars } from "../services/hangarShare.js";
+import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
 import { sendDiscordDm } from "../services/discord.js";
 import { searchLocalShips } from "../services/scwiki.js";
-import { assertRequirementFitsUnit, assertUniqueSquadName } from "./api.js";
+import { assertRequirementFitsUnit, assertUniqueSquadName, canApproveUnits } from "./api.js";
 import {
+  AnswerQuestionRequestSchema,
+  AssignSeatRequestSchema,
   CqbSignupRequestSchema,
   HangarShareRequestSchema,
   IdParamSchema,
   LinkParamSchema,
   OperationListQuerySchema,
   PatchUnitRequestSchema,
+  QuestionParamSchema,
   RegisterUnitRequestSchema,
   ResourceLinkRequestSchema,
   SeatParamSchema,
   ShipSearchQuerySchema,
+  UnitDecisionRequestSchema,
   UnitParamSchema,
   type ApiError,
+  type OperatorView,
 } from "../api/contracts/index.js";
 import {
   presentGuild,
@@ -615,6 +623,204 @@ export async function apiV1Routes(app: FastifyInstance) {
         return sendError(reply, req, 403, "forbidden", "Operator role required.");
       await removeResourceLink(p.data.id, p.data.linkId);
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "resource_link:remove", p.data.linkId);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // ── operator (read model + mutations; canManage-gated) ─────────────
+
+  async function requireOperator(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    opId: string,
+  ): Promise<AuthContext | null> {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return null;
+    if (!(await canApproveUnits(ctx.user.id, ctx.user.role, opId))) {
+      await sendError(reply, req, 403, "forbidden", "Operator role required.");
+      return null;
+    }
+    return ctx;
+  }
+
+  app.get<{ Params: { id: string } }>("/api/v1/operations/:id/operator", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (!(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+      return sendError(reply, req, 403, "forbidden", "Operator role required.");
+
+    const op = await getOperation(p.data.id);
+    if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+    const shares = await listSharedHangars(p.data.id);
+    const o = op as {
+      crewRequests: Array<{ user: { id: string; username: string }; note: string | null; createdAt: Date }>;
+      questions: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null; createdAt: Date }>;
+      auditLogs: Array<{ actor: string; action: string; detail: string; createdAt: Date }>;
+    };
+    const view: OperatorView = {
+      crewRequests: o.crewRequests.map((r) => ({
+        userId: r.user.id,
+        username: r.user.username,
+        note: r.note,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      questions: o.questions.map((q) => ({
+        id: q.id,
+        asker: q.asker,
+        body: q.body,
+        answer: q.answer,
+        answeredBy: q.answeredBy,
+        createdAt: q.createdAt.toISOString(),
+      })),
+      hangarShares: shares.map((s) => ({
+        userId: s.userId,
+        username: s.username,
+        note: s.note,
+        ships: s.ships,
+      })),
+      auditLogs: o.auditLogs.map((a) => ({
+        actor: a.actor,
+        action: a.action,
+        detail: a.detail,
+        createdAt: a.createdAt.toISOString(),
+      })),
+    };
+    return reply.type("application/json").send(view);
+  });
+
+  for (const decision of ["accept", "reject"] as const) {
+    app.post<{ Params: { id: string; unitId: string }; Body: unknown }>(
+      `/api/v1/operations/:id/units/:unitId/${decision}`,
+      async (req, reply) => {
+        const p = UnitParamSchema.safeParse(req.params);
+        if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+        const body = UnitDecisionRequestSchema.safeParse(req.body ?? {});
+        if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+        const ctx = await requireOperator(req, reply, p.data.id);
+        if (!ctx) return;
+
+        const unit = await prisma.fleetUnit.findFirst({
+          where: { id: p.data.unitId, operationId: p.data.id },
+          select: { id: true, unitType: true, shipId: true },
+        });
+        if (!unit) return sendError(reply, req, 404, "not_found", "Unit not found.");
+
+        try {
+          await setUnitStatus(p.data.unitId, decision === "accept" ? "accepted" : "rejected", body.data.note);
+          // Accept-into-slot parity with the SSR route: a full/mismatched slot
+          // is skipped, the unit stays accepted but unslotted.
+          if (decision === "accept" && body.data.requirementId) {
+            try {
+              await assertRequirementFitsUnit(p.data.id, body.data.requirementId, unit.unitType, unit.shipId ?? undefined, unit.id);
+              await prisma.fleetUnit.update({
+                where: { id: unit.id },
+                data: { requirementId: body.data.requirementId },
+              });
+            } catch {
+              /* accept unslotted */
+            }
+          }
+          await logAudit(p.data.id, ctx.user.id, ctx.user.username, `unit:${decision}`, "");
+          return reply.type("application/json").send({ ok: true as const });
+        } catch (err) {
+          return mutationError(reply, req, err);
+        }
+      },
+    );
+  }
+
+  app.put<{ Params: { id: string; seatId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/seats/:seatId/assignment",
+    async (req, reply) => {
+      const p = SeatParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = AssignSeatRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+
+      const seat = await prisma.seatAssignment.findUnique({
+        where: { id: p.data.seatId },
+        select: { fleetUnit: { select: { operationId: true } } },
+      });
+      if (!seat || seat.fleetUnit.operationId !== p.data.id)
+        return sendError(reply, req, 404, "not_found", "Seat not found.");
+
+      try {
+        await assignSeat(p.data.seatId, body.data.userId);
+        // Parity with the SSR assign route: clear the flexible request and
+        // notify the player via DM (best-effort).
+        await prisma.crewAssignmentRequest.deleteMany({
+          where: { operationId: p.data.id, userId: body.data.userId },
+        });
+        const assigned = await prisma.seatAssignment.findUnique({
+          where: { id: p.data.seatId },
+          include: { fleetUnit: { include: { ship: true, captain: true, operation: { select: { id: true, title: true } } } } },
+        });
+        if (assigned) {
+          const env = getEnv();
+          const unitName =
+            assigned.fleetUnit.unitType === "ship"
+              ? (assigned.fleetUnit.ship?.name ?? "Unknown Ship")
+              : (assigned.fleetUnit.squadName ?? "Squad");
+          sendSeatAssignmentDm(body.data.userId, {
+            operationTitle: assigned.fleetUnit.operation.title,
+            operationUrl: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${assigned.fleetUnit.operation.id}`,
+            unitName,
+            captainName: assigned.fleetUnit.captain.username,
+            seatLabel: assigned.label,
+          }).catch((err) => req.log.warn(err, "Seat assignment DM failed"));
+        }
+        await logAudit(p.data.id, ctx.user.id, ctx.user.username, "seat:assign", "");
+        return reply.type("application/json").send({ ok: true as const });
+      } catch (err) {
+        return mutationError(reply, req, err);
+      }
+    },
+  );
+
+  app.delete<{ Params: { id: string; seatId: string } }>(
+    "/api/v1/operations/:id/seats/:seatId/assignment",
+    async (req, reply) => {
+      const p = SeatParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+
+      const seat = await prisma.seatAssignment.findUnique({
+        where: { id: p.data.seatId },
+        select: { order: true, fleetUnit: { select: { operationId: true } } },
+      });
+      if (!seat || seat.fleetUnit.operationId !== p.data.id)
+        return sendError(reply, req, 404, "not_found", "Seat not found.");
+      // The captain seat (order 0) can't be vacated — that would orphan the unit.
+      if (seat.order === 0)
+        return sendError(reply, req, 409, "conflict", "Cannot free the captain seat.");
+
+      await prisma.seatAssignment.update({ where: { id: p.data.seatId }, data: { userId: null } });
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "seat:unassign", "");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.post<{ Params: { id: string; qid: string }; Body: unknown }>(
+    "/api/v1/operations/:id/questions/:qid/answer",
+    async (req, reply) => {
+      const p = QuestionParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = AnswerQuestionRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+
+      const result = await prisma.opQuestion.updateMany({
+        where: { id: p.data.qid, operationId: p.data.id },
+        data: { answer: body.data.answer.trim(), answeredBy: ctx.user.username, answeredAt: new Date() },
+      });
+      if (result.count === 0) return sendError(reply, req, 404, "not_found", "Question not found.");
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "answer", "");
       return reply.type("application/json").send({ ok: true as const });
     },
   );

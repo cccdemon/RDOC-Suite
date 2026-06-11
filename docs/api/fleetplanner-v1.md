@@ -121,6 +121,24 @@ Limit erzwungen (`409` bei ungültiger URL/Limit). `200 → { ok: true, link }`
 - OpenAPI-Hygiene: keine Secret-Env-Namen, Token-Beispiele, internen IPs (Test: `openapi.test.ts`).
 - Presenter geben keine Secrets/HTML-Felder aus (Test: `presenters.test.ts`).
 
+## Operator-API (canManage: Fleetoperator oder Op-Leader; sonst 403)
+
+### GET /api/v1/operations/:id/operator
+Operator-Read-Model: `crewRequests` (flexible Anmeldungen), `questions` (inkl. offene),
+`hangarShares` (NUR hier sichtbar — Spieler-Freigaben mit Schiffsliste), `auditLogs` (50).
+
+### POST /api/v1/operations/:id/units/:unitId/accept | /reject
+Body `{ note?, requirementId? }`. Accept kann direkt in einen Bedarfs-Slot einsortieren
+(voller/unpassender Slot wird übersprungen — Unit bleibt angenommen, unslotted). Reject
+gibt alle Sitze der Unit (inkl. getragener Fahrzeuge) frei.
+
+### PUT /api/v1/operations/:id/seats/:seatId/assignment
+Body `{ userId }` — Spieler auf offenen Platz setzen; löscht dessen flexible Anmeldung,
+DM-Benachrichtigung best-effort. `DELETE` gibt den Platz frei (Captain-Seat ⇒ 409).
+
+### POST /api/v1/operations/:id/questions/:qid/answer
+Body `{ answer ≤1000 }` — beantwortet eine Spielerfrage.
+
 ## Noch nicht in v1 (Folge-Phasen laut FR-P2)
 
 - Unit-Edit voll (Ship-Tausch, Seat-Rebuild, Carrier-Wechsel) — bleibt SSR bis FE-Parität.

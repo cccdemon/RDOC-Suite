@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: operator API v1 (2026-06-11)
+
+- `GET /api/v1/operations/:id/operator` — operator-only read model: flexible signups,
+  questions, hangar shares (exposed nowhere else) and the activity log.
+- Operator mutations (session + CSRF, audit, 409 mapping): `POST .../units/:unitId/accept`
+  (with optional accept-into-slot, skipped gracefully when full/mismatched) and `/reject`
+  (frees the unit's seats incl. carried vehicles), `PUT/DELETE .../seats/:seatId/assignment`
+  (assign clears the player's flexible request + sends the seat DM; captain seat protected
+  on free), `POST .../questions/:qid/answer`.
+- Gate parity with SSR: fleetoperator or op leader (`canApproveUnits`, now exported).
+  Tests: +8 inject. Suite 314/314, tsc clean.
+
 ### Added - FR-P2: SPA squad + vehicle offers (2026-06-11)
 
 - The SPA offer form now has mode segments Schiff / Squad / Fahrzeug over the single
