@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 Phase 4 — Shadow-Mode `/fleetplanner-next` — Branch master
+
+User-Freigabe ("shadowpfad ist okay"). Folgeschritt zu Phase 3 (9e393f1; fleetplanner-web läuft
+auf Prod 127.0.0.1:3210, nicht geroutet):
+- Caddy (`deploy/caddy-rdoc/Caddyfile`): `handle_path /fleetplanner-next*` → 127.0.0.1:3210.
+  Caddy ordnet handle-Blöcke nach Pfad-Spezifität — `-next*` gewinnt über `/fleetplanner*`
+  (gleiches dokumentiertes Muster wie `/cover/v1*` vs `/cover*`). SSR bleibt unverändert
+  Public Entry; kein alter Flow entfernt.
+- SPA braucht keine Änderung: BASE_PATH `/fleetplanner-next/` ist im Image gebacken, Router-
+  basename aus BASE_URL, API-Calls absolut auf `/fleetplanner/api/v1` (same-origin).
+- Read-only Prod-E2E-Script `scripts/prod-e2e-readonly.sh` (curl): API health/openapi/session
+  JSON + Content-Type nie HTML, 401-Envelope, OpenAPI-Secret-Scan, SPA index 200 + Asset-Pfad,
+  JS-Bundle 200, /metrics weiterhin 404. Mutationen: keine (read-only by default laut Plan).
+- Deploy: caddy-rdoc restart (Caddyfile ist ro-Volume-Mount). Gate: Script grün gegen Prod.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 Phase 3 — Frontend-Workspace `apps/fleetplanner-web` — Branch master
 
 Folgeschritt zu Phase 0–2 (Commit 42151b3, deployed; /api/v1 read slice live). Phase 3 laut Plan:
