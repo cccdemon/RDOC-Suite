@@ -1,7 +1,13 @@
 # FR-P2 - Microservice API/Frontend Split: Claude Code Opus Implementation Plan
 
+
+
 > **FeatureRequest · Priorität 2 · Status: PLAN, kein Code.**
 > Umsetzung nur nach expliziter Freigabe. Ziel: Fleetplanner aus dem heutigen Fastify+Prisma+SSR-Monolithen in ein API-only Backend und ein API-only Frontend trennen.
+
+## Rules
+- read docs folder to get the context!
+
 
 ## Dependency-Block
 

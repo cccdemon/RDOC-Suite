@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2 Phase 0–2: API contracts + /api/v1 read slice (2026-06-11)
+
+- Started the FR-P2 microservice split (strangler, no big-bang). SSR is untouched and keeps
+  serving everything; the new JSON API runs in parallel.
+- **Phase 0:** route inventory with target states per SSR route in
+  `docs/api/fleetplanner-route-inventory.md`; fixed the test baseline (removed orphaned
+  voice-service test files, updated primaryUnits expectations).
+- **Phase 1:** contract module `apps/fleetplanner/src/api/contracts/` (Zod v4 via the
+  `zod/v4` subpath — no new dependency) with ApiError envelope
+  `{error:{code,message,requestId}}`, Session, Guild, OperationSummary/Detail, FleetUnit,
+  Seat, ResourceLink, ShipSummary + bounded query/id schemas. OpenAPI 3.1 generated from the
+  contracts (`z.toJSONSchema`), served at `GET /api/v1/openapi.json`; human-readable docs in
+  `docs/api/fleetplanner-v1.md`.
+- **Phase 2:** JSON-only read routes in `src/routes/apiV1.ts` — `/api/v1/health`, `/session`,
+  `/operations`, `/operations/:id`, `/guilds`, `/ships/search`. Reuses the existing services;
+  presenters (`src/api/presenters.ts`) map DB rows to contract types with no `web/*` imports
+  and no secret/HTML fields. Object-level AuthZ mirrors the SSR gates (anonymous only for
+  public ops; no role ⇒ 404 without leaking). Plugin-scoped error handler fails closed with
+  the stable envelope (no stack traces/Prisma details).
+- Tests: 24 new (contracts, presenters, OpenAPI hygiene incl. secret-leak scan, route inject
+  incl. 401-as-JSON and fail-closed 500). Suite: 282/282 green, `tsc` clean.
+
 ### Added - Operator backend console on the op-detail mission board (2026-06-11)
 
 - Added an in-page **Operator-Ansicht** to the op-detail mission board (`web/missionBoard.ts`),

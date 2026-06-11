@@ -72,7 +72,6 @@ describe("userUnitsByUser", () => {
         createdAt: createdAt(1),
         captainId: "user-a",
         ship: { name: "Carrack" },
-        voiceChannel: { channelId: "vc-1" },
         seats: [{ userId: "user-a" }, { userId: "user-b" }],
       },
       {
@@ -82,7 +81,6 @@ describe("userUnitsByUser", () => {
         createdAt: createdAt(2),
         captainId: "user-b",
         ship: null,
-        voiceChannel: null,
         seats: [],
       },
     ]);
@@ -95,7 +93,7 @@ describe("userUnitsByUser", () => {
         unitType: "ship",
         name: "Carrack",
         createdAt: createdAt(1),
-        hasChannel: true,
+        hasChannel: false,
       },
     ]);
     expect(byUser.get("user-b")?.map((u) => u.unitId)).toEqual(["unit-1", "unit-2"]);
@@ -112,7 +110,6 @@ describe("resolvePrimaryUnits", () => {
         createdAt: createdAt(1),
         captainId: "user-a",
         ship: { name: "Carrack" },
-        voiceChannel: null,
         seats: [{ userId: "user-b" }],
       },
       {
@@ -122,7 +119,6 @@ describe("resolvePrimaryUnits", () => {
         createdAt: createdAt(2),
         captainId: "user-b",
         ship: null,
-        voiceChannel: null,
         seats: [],
       },
     ]);
@@ -148,7 +144,6 @@ describe("setPrimaryUnit", () => {
         createdAt: createdAt(1),
         captainId: "user-a",
         ship: { name: "Carrack" },
-        voiceChannel: null,
         seats: [],
       },
     ]);
@@ -168,7 +163,6 @@ describe("setPrimaryUnit", () => {
         createdAt: createdAt(1),
         captainId: "user-a",
         ship: { name: "Carrack" },
-        voiceChannel: null,
         seats: [],
       },
     ]);
@@ -193,7 +187,6 @@ describe("getMultiPositionAssignments", () => {
         createdAt: createdAt(1),
         captainId: "user-a",
         ship: { name: "Carrack" },
-        voiceChannel: null,
         seats: [{ userId: "user-b" }],
       },
       {
@@ -203,7 +196,6 @@ describe("getMultiPositionAssignments", () => {
         createdAt: createdAt(2),
         captainId: "user-b",
         ship: null,
-        voiceChannel: null,
         seats: [],
       },
     ]);

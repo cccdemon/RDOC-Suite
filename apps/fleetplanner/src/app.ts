@@ -6,6 +6,7 @@ import { getEnv } from "./config/env.js";
 import { authRoutes } from "./routes/auth.js";
 import { webRoutes } from "./routes/web.js";
 import { apiRoutes } from "./routes/api.js";
+import { apiV1Routes } from "./routes/apiV1.js";
 import { guildRoutes } from "./routes/guilds.js";
 import { partnershipRoutes } from "./routes/partnerships.js";
 import { bridgeAdminRoutes } from "./routes/bridgeAdmin.js";
@@ -94,6 +95,8 @@ export async function buildApp() {
   await app.register(coverRoutes);
   await app.register(discordInteractionRoutes);
   await app.register(apiRoutes);
+  // FR-P2: JSON-only /api/v1 read slice (strangler split — SSR stays in parallel).
+  await app.register(apiV1Routes);
 
   // Load the persisted maintenance flag into memory (best-effort; defaults off).
   await loadMaintenance().catch((err) => app.log.error(err, "loadMaintenance failed"));

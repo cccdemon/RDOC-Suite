@@ -1,5 +1,35 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 Umsetzung Phase 0–2 — API-Contracts + API-only Backend-Slice — Branch master
+
+User-Freigabe für FR-P2 (`docs/FR-P2-microservice-api-split-opus-plan.md`). Inkrementell, kein Big-Bang.
+Dieser Schritt = Phase 0–2 des Plans:
+- **Phase 0:** Baseline grün (build+test), Route-Inventar SSR/API mit Zielstatus (`keep temporarily` /
+  `api replacement` / `delete after FE`), als `docs/api/fleetplanner-route-inventory.md`.
+- **Phase 1:** Contract-Modul `apps/fleetplanner/src/api/contracts/` (Zod): ApiError, Session,
+  OperationSummary, OperationDetail, FleetUnit, Seat, ResourceLink, Guild. OpenAPI 3.1-Generierung
+  (zod-to-openapi) + `GET /api/v1/openapi.json` + `docs/api/fleetplanner-v1.md`. Einheitliches
+  Fehlerformat `{error:{code,message,requestId}}`.
+- **Phase 2:** Read-only JSON-Routen `/api/v1/health`, `/api/v1/session`, `/api/v1/operations`,
+  `/api/v1/operations/:id`, `/api/v1/guilds`, `/api/v1/ships/search` — Services wiederverwendet,
+  KEINE Imports aus `web/*`; Presenter-Funktionen statt HTML-Datenformen. AuthZ object-level
+  (public/guild/partner-Sichtbarkeit), 401/403 JSON ohne Leaks.
+- Tests: app.inject für alle neuen Routen (anon/auth/forbidden/Fehlerformat/kein HTML), OpenAPI-
+  Validierung, Presenter-Unit-Tests. SSR bleibt vollständig unangetastet (Parallelbetrieb).
+- Security-Gate aus FR-P2 §API-Sicherheit gilt pro Endpoint. Voice/Bridge unberührt.
+- Phase 3+ (FE-Workspace, Shadow-Mode, Mutationen, SSR-Ablösung) = separate Folgeschritte.
+- **DONE 2026-06-11:** Phase 0: `docs/api/fleetplanner-route-inventory.md` + Baseline-Fix
+  (verwaiste livekit/missionCommanders-Tests gelöscht, primaryUnits-Test an entferntes
+  voiceChannel angepasst). Phase 1: `src/api/contracts/index.ts` (Zod v4 via `zod/v4`-Subpath,
+  KEINE neue Dependency), `src/api/openapi.ts` (OpenAPI 3.1 aus `z.toJSONSchema`),
+  `docs/api/fleetplanner-v1.md`. Phase 2: `src/routes/apiV1.ts` (health/openapi.json/session/
+  operations/operations:id/guilds/ships-search; JSON-only, 401 statt Login-Redirect,
+  object-level AuthZ wie SSR-Gates, plugin-scoped Error-Handler fail-closed ohne
+  Prisma-/Stack-Leak), `src/api/presenters.ts` (keine web/*-Imports, keine Secrets),
+  Registrierung in app.ts. Hinweis: `getOperation()` lädt guild nicht — Route holt
+  Public-Guild-Felder separat. Tests: 24 neu (contracts/presenters/openapi-Hygiene mit
+  Secret-Scan/inject inkl. fail-closed-500). Suite 282/282 grün, tsc 0 Fehler. NICHT committet.
+
 ## Queued / Planned Step - 2026-06-11: Operator-Backend-Konsole auf Op-Detail (Mission-Board) — Branch `feat/mission-board`
 
 Umsetzung des Claude-Design-Handoffs `Operationsdetail.dc.html` (chat2 = Operator-Backend).
