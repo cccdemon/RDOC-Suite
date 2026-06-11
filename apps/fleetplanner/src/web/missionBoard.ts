@@ -343,6 +343,18 @@ export function opMissionBoardPage(opts: {
 
   const tabActive = "display:inline-flex;align-items:center;gap:7px;padding:.5rem .95rem;border:none;border-radius:7px;background:#00d4ff;color:#04060a;font-family:" + MONO + ";font-size:.78rem;letter-spacing:.04em;font-weight:700";
   const tabIdle = "display:inline-flex;align-items:center;gap:7px;padding:.5rem .95rem;border:none;border-radius:7px;background:transparent;color:#9fb1c2;font-family:" + MONO + ";font-size:.78rem;letter-spacing:.04em;text-decoration:none";
+  // Inline Optik switcher (also on this player page, not only in Profile).
+  const optSeg = "padding:.35rem .65rem;border:none;border-radius:6px;font-family:" + MONO + ";font-size:.68rem;letter-spacing:.03em;cursor:pointer;background:transparent;color:#9fb1c2";
+  const optSegOn = "padding:.35rem .65rem;border:none;border-radius:6px;font-family:" + MONO + ";font-size:.68rem;letter-spacing:.03em;cursor:pointer;background:#00d4ff;color:#04060a;font-weight:700";
+  const optikSwitch = html`<form method="post" action="${bp}/profile/opstyle" style="display:inline-flex;align-items:center;gap:.45rem;flex-wrap:wrap">
+    <input type="hidden" name="_csrf" value="${csrf}" /><input type="hidden" name="returnOp" value="${op.id}" />
+    <span style="font-family:${safe(MONO)};font-size:.58rem;letter-spacing:.1em;color:#5b6b7a">${t("profile.opstyle.short")}</span>
+    <div style="display:inline-flex;border:1px solid rgba(0,212,255,.16);border-radius:8px;padding:2px;background:#090f18;gap:2px">
+      <button type="submit" name="opStyle" value="classic" style="${safe(optSeg)}">${t("mb.optClassic")}</button>
+      <button type="submit" name="opStyle" value="board1" style="${safe(isBoard2 ? optSeg : optSegOn)}">${t("mb.optBoard1")}</button>
+      <button type="submit" name="opStyle" value="board2" style="${safe(isBoard2 ? optSegOn : optSeg)}">${t("mb.optBoard2")}</button>
+    </div>
+  </form>`;
   const legendSpan = (kind: Kind, label: string) =>
     html`<span style="display:inline-flex;align-items:center;gap:6px"><span style="${safe(tagStyle(kind))}">${TAGTEXT[kind]}</span><span style="color:#9fb1c2;font-size:.8rem">${label}</span></span>`;
 
@@ -426,7 +438,10 @@ export function opMissionBoardPage(opts: {
           <span style="${safe(tabActive)}">${ic("fps", 15, "currentColor", 1.7)}${t("join.playerView")}</span>
           ${opts.canManage ? html`<a href="${bp}/ops/${op.id}/manage" style="${safe(tabIdle)}">${ic("board", 15, "currentColor", 1.7)}${t("join.operatorView")}</a>` : safe("")}
         </div>
-        ${signedUp ? html`<span style="display:inline-flex;align-items:center;gap:.45rem;color:#00ff88;font-size:.88rem">${ic("check", 15, "currentColor", 1.7)}${t("mb.youAreParticipant")}</span>` : safe("")}
+        <div style="display:flex;align-items:center;gap:1.1rem;flex-wrap:wrap">
+          ${optikSwitch}
+          ${signedUp ? html`<span style="display:inline-flex;align-items:center;gap:.45rem;color:#00ff88;font-size:.88rem">${ic("check", 15, "currentColor", 1.7)}${t("mb.youAreParticipant")}</span>` : safe("")}
+        </div>
       </div>
 
       ${myId && isOpen

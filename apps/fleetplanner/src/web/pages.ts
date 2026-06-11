@@ -5361,11 +5361,20 @@ export function opJoinPage(opts: {
 
     <div class="join-layout">
       <div class="join-main">
-        <div class="op-viewtabs">
-          <span class="op-viewtab active">${t("join.playerView")}</span>
-          ${opts.canManage
-            ? html`<a class="op-viewtab" href="${bp}/ops/${op.id}/manage">${t("join.operatorView")}</a>`
-            : safe("")}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap">
+          <div class="op-viewtabs" style="margin-bottom:0">
+            <span class="op-viewtab active">${t("join.playerView")}</span>
+            ${opts.canManage
+              ? html`<a class="op-viewtab" href="${bp}/ops/${op.id}/manage">${t("join.operatorView")}</a>`
+              : safe("")}
+          </div>
+          <form method="post" action="${bp}/profile/opstyle" class="op-optik-switch" style="display:inline-flex;align-items:center;gap:.45rem;flex-wrap:wrap;font-family:var(--font-mono);font-size:.7rem">
+            <input type="hidden" name="_csrf" value="${csrf}" /><input type="hidden" name="returnOp" value="${op.id}" />
+            <span class="text-dim" style="font-size:.62rem;letter-spacing:.1em">${t("profile.opstyle.short")}</span>
+            <button type="submit" name="opStyle" value="classic" class="op-viewtab active" style="margin:0;cursor:pointer">${t("mb.optClassic")}</button>
+            <button type="submit" name="opStyle" value="board1" class="op-viewtab" style="margin:0;cursor:pointer;background:transparent">${t("mb.optBoard1")}</button>
+            <button type="submit" name="opStyle" value="board2" class="op-viewtab" style="margin:0;cursor:pointer;background:transparent">${t("mb.optBoard2")}</button>
+          </form>
         </div>
         ${myId && isOpen
           ? html`<section class="card mitmachen">

@@ -1067,6 +1067,11 @@ export async function webRoutes(app: FastifyInstance) {
     const v = req.body.opStyle;
     const opStyle = v === "board1" || v === "board2" ? v : "classic";
     await prisma.user.update({ where: { id: ctx.user.id }, data: { opDetailStyle: opStyle } });
+    // Inline switcher on an op page posts returnOp so we go back to that op.
+    const returnOp = req.body.returnOp;
+    if (returnOp && /^[a-z0-9]+$/i.test(returnOp)) {
+      return reply.redirect(basePath(`/ops/${returnOp}`), 302);
+    }
     return reply.redirect(basePath("/profile?flash=ok:Layout+updated."), 302);
   });
 

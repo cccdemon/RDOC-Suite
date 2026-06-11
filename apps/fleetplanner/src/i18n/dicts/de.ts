@@ -30,6 +30,10 @@ export const de: Record<string, string> = {
   "profile.opstyle.classic": "Klassisch (Liste)",
   "profile.opstyle.board1": "Mission Board (Sektionen)",
   "profile.opstyle.board2": "Mission Board (4 Spalten)",
+  "profile.opstyle.short": "Optik",
+  "mb.optClassic": "Liste",
+  "mb.optBoard1": "Sektionen",
+  "mb.optBoard2": "4 Spalten",
   "profile.language.save": "Sprache speichern",
   "profile.language.saved": "Sprache aktualisiert.",
 
