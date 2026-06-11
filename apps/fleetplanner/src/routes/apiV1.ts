@@ -11,6 +11,7 @@ import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
 import { effectiveOpRole, getMembership, listUserGuilds } from "../services/guilds.js";
 import { createOperation } from "../services/operations.js";
+import { applyTemplate, listTemplatesForGuild } from "../services/operationTemplates.js";
 import { sendDiscordChannelMessage } from "../services/discord.js";
 import { getSetting } from "../services/settings.js";
 import {
@@ -33,6 +34,7 @@ import { searchLocalShips } from "../services/scwiki.js";
 import { assertRequirementFitsUnit, assertUniqueSquadName, canApproveUnits } from "./api.js";
 import {
   AnswerQuestionRequestSchema,
+  ApplyTemplateRequestSchema,
   AssignSeatRequestSchema,
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
@@ -324,6 +326,57 @@ export async function apiV1Routes(app: FastifyInstance) {
     await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "");
     return reply.type("application/json").send({ ok: true as const, id: op.id });
   });
+
+  // ── templates marketplace ───────────────────────────────────────────
+  app.get<{ Querystring: Record<string, string> }>("/api/v1/templates", async (req, reply) => {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    const guildId = (req.query.guildId ?? "").trim();
+    if (!guildId) return sendError(reply, req, 400, "bad_request", "guildId required.");
+    // Must be a member of the guild whose marketplace scope is requested.
+    if (!(await getMembership(ctx.user.id, guildId)) && ctx.user.role !== "superadmin")
+      return sendError(reply, req, 403, "forbidden", "Not a member of that guild.");
+    const rows = await listTemplatesForGuild(guildId, {
+      opType: req.query.opType,
+      search: req.query.q,
+    });
+    return reply.type("application/json").send({
+      templates: rows.map((t: { id: string; name: string; summary: string | null; opType: string; visibility: string; usageCount: number; ownerGuild: { name: string; orgName: string | null } }) => ({
+        id: t.id,
+        name: t.name,
+        summary: t.summary ?? "",
+        opType: t.opType,
+        visibility: t.visibility,
+        usageCount: t.usageCount,
+        ownerGuildName: t.ownerGuild.orgName || t.ownerGuild.name,
+      })),
+    });
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/templates/:id/apply",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid template id.");
+      const body = ApplyTemplateRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const membership = await getMembership(ctx.user.id, body.data.guildId);
+      if (!(ctx.user.role === "superadmin" || membership?.role === "fleetoperator"))
+        return sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
+
+      const op = await applyTemplate(p.data.id, {
+        guildId: body.data.guildId,
+        createdById: ctx.user.id,
+        scheduledAt: new Date(body.data.scheduledAt),
+        title: body.data.title?.trim() || undefined,
+      });
+      if (!op) return sendError(reply, req, 404, "not_found", "Template not found or not usable here.");
+      await logAudit((op as { id: string }).id, ctx.user.id, ctx.user.username, "created", "from template");
+      return reply.type("application/json").send({ ok: true as const, id: (op as { id: string }).id });
+    },
+  );
 
   // ── mutations (Phase 5, slice 1) ────────────────────────────────────
   // JSON-only: cookie session (401 envelope) + x-csrf-token header checked

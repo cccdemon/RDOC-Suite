@@ -231,6 +231,31 @@ export const FeedbackRequestSchema = z
   .object({ subject: z.string().min(1).max(120), message: z.string().min(1).max(1800) })
   .meta({ id: "FeedbackRequest" });
 
+export const TemplateSummarySchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    summary: z.string(),
+    opType: z.string(),
+    visibility: z.string(),
+    usageCount: z.number().int(),
+    ownerGuildName: z.string(),
+  })
+  .meta({ id: "TemplateSummary" });
+export type TemplateSummary = z.infer<typeof TemplateSummarySchema>;
+
+export const TemplateListResponseSchema = z
+  .object({ templates: z.array(TemplateSummarySchema) })
+  .meta({ id: "TemplateListResponse" });
+
+export const ApplyTemplateRequestSchema = z
+  .object({
+    guildId: z.string().min(1),
+    scheduledAt: z.iso.datetime(),
+    title: z.string().max(160).optional(),
+  })
+  .meta({ id: "ApplyTemplateRequest" });
+
 // ── Query schemas ─────────────────────────────────────────────────────
 
 export const OperationListQuerySchema = z.object({

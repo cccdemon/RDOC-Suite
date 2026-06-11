@@ -136,6 +136,19 @@ export function sendFeedback(subject: string, message: string, csrfToken: string
   return mutate("POST", "/feedback", csrfToken, { subject, message });
 }
 
+export function listTemplates(guildId: string, q?: string): Promise<{ templates: import("./types").TemplateSummary[] }> {
+  const qs = `?guildId=${encodeURIComponent(guildId)}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+  return get<{ templates: import("./types").TemplateSummary[] }>(`/templates${qs}`);
+}
+
+export function applyTemplate(
+  id: string,
+  csrfToken: string,
+  input: { guildId: string; scheduledAt: string; title?: string },
+): Promise<{ ok: true; id: string }> {
+  return mutate("POST", `/templates/${encodeURIComponent(id)}/apply`, csrfToken, input);
+}
+
 export function registerUnit(
   opId: string,
   csrfToken: string,

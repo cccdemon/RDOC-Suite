@@ -581,6 +581,34 @@ describe("Profile / hangar", () => {
   });
 });
 
+describe("Templates marketplace", () => {
+  it("lists templates and applies one to a new op (fleet operator)", async () => {
+    let payload: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () =>
+        HttpResponse.json({ ...sessionCrew, user: { ...sessionCrew.user, role: "fleetoperator" }, memberships: [{ guildId: "guild_1", guildName: "RDOC", role: "fleetoperator" }] }),
+      ),
+      http.get(`${API}/templates`, () =>
+        HttpResponse.json({ templates: [{ id: "tpl_1", name: "Xeno Defense", summary: "std", opType: "combat", visibility: "public", usageCount: 5, ownerGuildName: "RDOC" }] }),
+      ),
+      http.get(`${API}/operations/op_t`, () => HttpResponse.json(opDetailFixture)),
+      http.post(`${API}/templates/tpl_1/apply`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, id: "op_t" });
+      }),
+    );
+    const { findByTestId } = renderAt("/templates");
+    expect(await findByTestId("template-tpl_1")).toBeInTheDocument();
+    (await findByTestId("template-apply-tpl_1")).click();
+    const when = (await findByTestId("template-when-tpl_1")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(when, "2026-07-02T20:00");
+    when.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("template-confirm-tpl_1")).click();
+    expect(await findByTestId("op-title")).toBeInTheDocument();
+    expect(payload).toMatchObject({ guildId: "guild_1" });
+  });
+});
+
 describe("Ships database", () => {
   it("lists ships from the search API", async () => {
     server.use(

@@ -109,6 +109,7 @@ export function CreatePage({ session }: { session: SessionResponse | null }) {
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
         <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="plus" size={20} sw={2} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Neue Operation</h1>
+        <Link to="/templates" className="fpw-mono-label" style={{ marginLeft: "auto", color: "var(--cyan)" }} data-testid="templates-link">VORLAGEN →</Link>
       </div>
       {notice && <p className="fpw-tag gold" role="alert" data-testid="create-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
 

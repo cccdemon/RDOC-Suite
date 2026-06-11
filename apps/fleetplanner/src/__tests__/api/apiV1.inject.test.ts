@@ -97,6 +97,18 @@ describe("GET /api/v1/operations/:id", () => {
   });
 });
 
+describe("templates marketplace", () => {
+  it("list/apply reject anonymous + validate; documented", async () => {
+    const list = await app.inject({ method: "GET", url: "/api/v1/templates?guildId=g1" });
+    expect(list.statusCode).toBe(401);
+    const apply = await app.inject({ method: "POST", url: "/api/v1/templates/cmqaaaaaaaaaaaaaaaaaa1/apply", headers: { "content-type": "application/json", "x-forwarded-for": "10.5.5.1" }, payload: JSON.stringify({ guildId: "g1", scheduledAt: "2026-07-01T18:00:00.000Z" }) });
+    expect(apply.statusCode).toBe(401);
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/templates"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/templates/{id}/apply"].post).toBeTruthy();
+  });
+});
+
 describe("feedback", () => {
   it("anonymous → 401, invalid body → 400, documented", async () => {
     const anon = await app.inject({ method: "POST", url: "/api/v1/feedback", headers: { "content-type": "application/json", "x-forwarded-for": "10.6.6.1" }, payload: JSON.stringify({ subject: "Hi", message: "test" }) });

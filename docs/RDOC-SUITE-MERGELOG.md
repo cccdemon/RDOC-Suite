@@ -1,5 +1,22 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Templates-Marktplatz (browse + apply) — Branch master
+
+Ergänzt Op-Erstellung. FE + 2 Endpoints:
+- **BE:** `GET /api/v1/templates?guildId=&q=&opType=` (listTemplatesForGuild, Membership in
+  guildId nötig) → TemplateSummary-Liste. `POST /api/v1/templates/:id/apply`
+  {guildId,scheduledAt,title?} → applyTemplate (fleetoperator-gated in guildId; canUseTemplate-
+  Recheck im Service), neue Draft-Op, {ok,id}. Contracts/OpenAPI/Tests.
+- **FE:** TemplatesPage `/templates`: Guild-Picker (Operator-Guilds), Suche, Karten (Name/Typ/
+  Owner/Nutzungen) mit „Anwenden" → datetime-local-Prompt → navigate /ops/:id. Nav „Vorlagen".
+  Publish/Delete bleiben SSR (Operator-Aktion). Gate: BE+FE grün, Deploy, E2E.
+- **DONE 2026-06-12:** BE `GET /api/v1/templates?guildId=&q=&opType=` (Membership-gated,
+  TemplateSummary aus listTemplatesForGuild) + `POST /api/v1/templates/:id/apply`
+  {guildId,scheduledAt,title?} (fleetoperator-gated, applyTemplate → Draft, {ok,id}).
+  TemplateSummary/List/ApplyRequest im Package; OpenAPI; inject-Test. FE TemplatesPage
+  `/templates` (Guild-Picker, Suche, Karten mit Anwenden→datetime-local→/ops/:id), Nav
+  „Vorlagen" + Create-Link. BE 63 + tsc 0, FE 34/34 + Build. Publish/Delete bleiben SSR.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Schiffsdatenbank + Feedback — Branch master
 
 Kleine Wins. FE + 1 kleiner Endpoint:

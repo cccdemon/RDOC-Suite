@@ -11,11 +11,13 @@ import {
   AnswerQuestionRequestSchema,
   ApiErrorSchema,
   AssignSeatRequestSchema,
+  ApplyTemplateRequestSchema,
   CreateOperationRequestSchema,
   CreateOperationResponseSchema,
   FeedbackRequestSchema,
   HangarShipRequestSchema,
   OperatorViewSchema,
+  TemplateListResponseSchema,
   UnitDecisionRequestSchema,
   ClaimSeatResponseSchema,
   CqbSignupRequestSchema,
@@ -61,6 +63,8 @@ const SCHEMAS = {
   CreateOperationResponse: CreateOperationResponseSchema,
   HangarShipRequest: HangarShipRequestSchema,
   FeedbackRequest: FeedbackRequestSchema,
+  TemplateListResponse: TemplateListResponseSchema,
+  ApplyTemplateRequest: ApplyTemplateRequestSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -564,6 +568,34 @@ export function buildOpenApiDocument(): JsonObject {
             { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
           ],
           responses: { "200": { description: "Removed", ...jsonContent(ref("MutationOk")) }, "401": errorResponses["401"] },
+        },
+      },
+      "/api/v1/templates": {
+        get: {
+          operationId: "listTemplates",
+          summary: "Operation templates visible to a guild",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "guildId", in: "query", required: true, schema: { type: "string" } },
+            { name: "q", in: "query", required: false, schema: { type: "string" } },
+            { name: "opType", in: "query", required: false, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "OK", ...jsonContent(ref("TemplateListResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/templates/{id}/apply": {
+        post: {
+          operationId: "applyTemplate",
+          summary: "Create a draft operation from a template (fleet operator only)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("ApplyTemplateRequest")) },
+          responses: { "200": { description: "Created", ...jsonContent(ref("CreateOperationResponse")) }, ...errorResponses },
         },
       },
       "/api/v1/feedback": {

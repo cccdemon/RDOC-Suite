@@ -9,6 +9,7 @@ import { CreatePage } from "./pages/CreatePage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ShipsPage } from "./pages/ShipsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
+import { TemplatesPage } from "./pages/TemplatesPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
@@ -181,6 +182,7 @@ export function App() {
           <Route path="/ops/new" element={<CreatePage session={session} />} />
           <Route path="/profile" element={<ProfilePage session={session} />} />
           <Route path="/ships" element={<ShipsPage />} />
+          <Route path="/templates" element={<TemplatesPage session={session} />} />
           <Route path="/feedback" element={<FeedbackPage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />

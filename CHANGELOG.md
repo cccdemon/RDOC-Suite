@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA templates marketplace (2026-06-12)
+
+- New `GET /api/v1/templates?guildId=&q=&opType=` (membership-gated) and
+  `POST /api/v1/templates/:id/apply` {guildId, scheduledAt, title?} (fleet operator only)
+  to browse and instantiate operation templates into a fresh draft. Contracts + OpenAPI +
+  tests.
+- SPA `/templates` page: guild picker, search and template cards with an "Anwenden" →
+  datetime → new op flow; reachable from the nav and the create page. Publishing/deleting
+  templates stays on the SSR manage surface. BE 63 API tests, FE 34.
+
 ### Added - FR-P2: SPA ships database + feedback (2026-06-12)
 
 - SPA `/ships` page: a debounced search table over the existing `GET /api/v1/ships/search`
