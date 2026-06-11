@@ -187,6 +187,9 @@ importers:
       '@prisma/client':
         specifier: ^6.19.3
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@rdoc-suite/fleetplanner-contracts':
+        specifier: workspace:*
+        version: link:../../packages/fleetplanner-contracts
       fastify:
         specifier: ^5.2.1
         version: 5.8.5
@@ -224,6 +227,9 @@ importers:
 
   apps/fleetplanner-web:
     dependencies:
+      '@rdoc-suite/fleetplanner-contracts':
+        specifier: workspace:*
+        version: link:../../packages/fleetplanner-contracts
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -330,6 +336,16 @@ importers:
       '@types/node':
         specifier: ^22.10.5
         version: 22.19.19
+
+  packages/fleetplanner-contracts:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
 
   packages/shared:
     dependencies:
@@ -5419,7 +5435,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@22.19.19)(@vitest/coverage-v8@4.1.7)(jsdom@26.1.0)(msw@2.14.6(@types/node@22.19.19)(typescript@5.9.3))(vite@6.4.2(@types/node@22.19.19)(jiti@2.7.0)(lightningcss@1.32.0)(tsx@4.22.3))
+      vitest: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@22.19.19)(@vitest/coverage-v8@4.1.7)(jsdom@26.1.0)(msw@2.14.6(@types/node@22.19.19)(typescript@5.9.3))(vite@8.0.14(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.3))
 
   '@vitest/expect@4.1.7':
     dependencies:

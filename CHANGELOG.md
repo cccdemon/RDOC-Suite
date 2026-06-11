@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - FR-P2 Phase 6: shared contracts package (2026-06-12)
+
+- Extracted the API v1 contracts into a shared workspace package
+  `@rdoc-suite/fleetplanner-contracts` (zod 4): zod schemas, inferred types and a
+  `toOpenApiJsonSchema` helper. The backend re-exports them (imports unchanged) and the
+  OpenAPI generator uses the helper; the SPA now imports the types directly (type-only, so
+  zod is not bundled — bundle size unchanged), replacing the hand-mirrored `types.ts`. Both
+  Dockerfiles build the package before the app. This removes the contract duplication that
+  was the standing Phase-6 prerequisite; the SSR teardown / container rename stays deferred
+  until the SPA reaches full parity. BE 57 + FE 26 green.
+
 ### Added - FR-P2: operator leadership management (2026-06-12)
 
 - New `POST /api/v1/operations/:id/leaders` + `DELETE .../leaders/:userId` (fleet operator

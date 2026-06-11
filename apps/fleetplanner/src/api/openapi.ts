@@ -6,7 +6,7 @@
 //
 // Security note (FR-P2 §API Docs): no secrets, no example tokens, no internal
 // URLs. The only security scheme is the browser cookie session.
-import { z } from "zod/v4";
+import { toOpenApiJsonSchema } from "@rdoc-suite/fleetplanner-contracts";
 import {
   AnswerQuestionRequestSchema,
   ApiErrorSchema,
@@ -73,11 +73,7 @@ const errorResponses: Record<string, JsonObject> = {
 function buildComponentSchemas(): JsonObject {
   const out: JsonObject = {};
   for (const [name, schema] of Object.entries(SCHEMAS)) {
-    const js = z.toJSONSchema(schema, {
-      target: "draft-2020-12",
-      reused: "inline",
-      io: "output",
-    }) as JsonObject;
+    const js = toOpenApiJsonSchema(schema) as JsonObject;
     delete js.$schema;
     delete js.id;
     // zod emits sub-schemas that carry a .meta({id}) (SessionUser, Seat, …)

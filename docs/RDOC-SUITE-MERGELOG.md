@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 Phase 6 (Schritt 1) — shared Contracts-Package — Branch master
+
+Phase 6 ehrlich: voller SSR-Abriss verboten (SPA deckt ~40% der SSR-Surfaces, Plan verlangt
+Vollparität). Risikoarmer Architektur-Kern stattdessen: gemeinsames Contract-Paket
+(Plan-Ziel „shared contract package", eliminiert die FE-Typ-Spiegelung).
+- Neues Workspace-Package `packages/fleetplanner-contracts` (zod 4, analog packages/shared):
+  Zod-Schemas + abgeleitete Typen + `toOpenApiJsonSchema`-Helper (alle zod-Nutzung bleibt im
+  Paket → kein zweiter zod-Pin im Backend; fleetplanner behält zod 3.24 für env/i18n).
+- BE: `api/contracts/index.ts` → re-export des Pakets (Server-Imports unverändert); `openapi.ts`
+  nutzt Paket-Helper statt eigenem `zod/v4`.
+- FE: `api/types.ts` → type-only re-export aus dem Paket (zod NICHT gebundelt — Bundle 253 kB
+  unverändert), löst die manuelle Spiegelung ab.
+- Dockerfiles (fleetplanner + fleetplanner-web): bridge-Muster — `--filter X...` zieht das
+  Paket, baut es vor der App, runtime kopiert dessen dist.
+- Risiko gemildert: failed Docker-Build = kein Deploy (alte Container laufen weiter).
+- Kein SSR-Abriss/Container-Rename (kommt erst nach FE-Vollparität). Gate: lokal BE 57 + FE 26
+  + tsc 0 beide; Prod-Docker-Build ist finaler Test.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — Operator-Spezialflows: Leaders-Verwaltung im SPA — Branch master
 
 Restpunkt 2. Ehrliche Abgrenzung: Slot-Editor + Needs-Editor sind volle CRUD-Masken, die die
