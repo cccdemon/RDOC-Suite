@@ -14,6 +14,12 @@ auf Prod 127.0.0.1:3210, nicht geroutet):
   JSON + Content-Type nie HTML, 401-Envelope, OpenAPI-Secret-Scan, SPA index 200 + Asset-Pfad,
   JS-Bundle 200, /metrics weiterhin 404. Mutationen: keine (read-only by default laut Plan).
 - Deploy: caddy-rdoc restart (Caddyfile ist ro-Volume-Mount). Gate: Script grün gegen Prod.
+- **DONE 2026-06-11:** Commit 9724b61, deployed (git pull + caddy-rdoc restart). E2E-Script
+  gegen Prod: **23/23 ok** — API JSON/Envelope/400-Validation/Secret-Scan, SPA index+Bundle+
+  Deep-Link-Fallback unter https://suite.raumdock.org/fleetplanner-next/, Bundle zielt auf
+  /fleetplanner/api/v1, /metrics-Guards intakt, SSR unverändert Entry. Offen (optional):
+  Browser-DOM/Screenshot-Check (Playwright) statt curl-only; Phase 5 Mutationen; Phase 6
+  SSR-Ablösung + shared Contracts-Package.
 
 ## Queued / Planned Step - 2026-06-11: FR-P2 Phase 3 — Frontend-Workspace `apps/fleetplanner-web` — Branch master
 

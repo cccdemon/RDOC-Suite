@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2 Phase 4: /fleetplanner-next shadow mode (2026-06-11)
+
+- Caddy now routes `https://suite.raumdock.org/fleetplanner-next/` to the `fleetplanner-web`
+  SPA container. The SSR app stays the public entry point; nothing was removed.
+- Added `scripts/prod-e2e-readonly.sh` — strictly read-only production smoke per the FR-P2
+  E2E plan (API JSON/error-envelope/validation checks, OpenAPI secret scan, SPA index +
+  hashed bundle + deep-link fallback, metrics guards, SSR alive). Run result: 23/23 green
+  against production.
+
 ### Added - FR-P2 Phase 3: fleetplanner-web SPA workspace (2026-06-11)
 
 - New workspace package `apps/fleetplanner-web` (Vite + React + TS): read-only strangler
