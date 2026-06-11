@@ -27,8 +27,18 @@ bleibt unverändert.
   unassign-Route registriert + auth-gated (8/8 grün). `tsc --noEmit`: **0 Fehler in geänderten Dateien**;
   übrige tsc-Fehler (discordDiagnostics/primaryUnits/relayBots) sind PRE-EXISTING aus dem laufenden
   Voice-Removal (Schema geändert, Services gelöscht) → vor Build `prisma generate` nötig, nicht Teil dieser
-  Änderung. NICHT committet. Restpunkt: Frage-Antwort redirectet (bestehende Route) auf `/manage?tab=admin`
+  Änderung. Restpunkt: Frage-Antwort redirectet (bestehende Route) auf `/manage?tab=admin`
   statt zurück in die In-Page-Operator-Ansicht — funktional, kleiner UX-Sprung.
+- **COMMIT + DEPLOY 2026-06-11:** Commit `9135ee1` (Operator-Konsole + Voice-Removal gebündelt, da
+  api.ts/web.ts geteilt) → master gepusht (gh-https). Prod-Build schlug zuerst fehl: die mitgelieferte
+  Voice-Removal war UNVOLLSTÄNDIG — `relayBots.ts`/`discordDiagnostics.ts`/`primaryUnits.ts`
+  referenzierten gedroppte Felder (globalVoiceRoom/fleetVoiceChannel/guildVoiceBot/voiceChannel),
+  `tsc` brach ab → altes Image blieb laufen, Migration NICHT angewandt (Prod unbeschädigt). Diese
+  tsc-Fehler waren also REAL (nicht stale client). Fix-Commit `04f6f9f`: relayBots.ts gelöscht (kein
+  Code-Import), VoiceBot-Diagnostics + FleetUnit.voiceChannel-Select entfernt. tsc 0 Fehler, inject 8/8.
+  Rebuild grün → Container recreated, Entrypoint `prisma migrate deploy` hat `20260611020000_remove_fleet_voice`
+  (DROP voice tables/columns CASCADE) angewandt, Server listening :3200, `https://suite.raumdock.org/fleetplanner` → 200.
+  **Prod jetzt auf `04f6f9f`.** Deploy-Pfad: ve.raumdock.org → pct exec 103 → /opt/RDOC-Suite, docker-compose.prod.yml.
 
 ## Queued / Planned Step - 2026-06-11: API-Security-Ergaenzung Microservice-Split
 
