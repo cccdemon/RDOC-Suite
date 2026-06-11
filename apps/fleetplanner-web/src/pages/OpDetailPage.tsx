@@ -156,6 +156,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             <OfferShip
               opId={id!}
               csrf={csrf}
+              carrierOptions={op.units
+                .filter((u) => u.status === "accepted" && u.unitType === "ship")
+                .map((u) => ({ id: u.id, name: u.name }))}
               onDone={() => {
                 setNotice(null);
                 load();

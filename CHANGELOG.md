@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA squad + vehicle offers (2026-06-11)
+
+- The SPA offer form now has mode segments Schiff / Squad / Fahrzeug over the single
+  `POST /operations/:id/units` mutation: squads with name + size (2–8), vehicles with a
+  catalog search filtered to vehicle-class entries and a mandatory carrier select fed from
+  the operation's accepted ship units. Client-side guards surface as the inline notice;
+  server conflicts (duplicate squad name etc.) arrive as 409 envelopes. FE 16/16.
+
 ### Added - FR-P2: SPA "offer own ship" flow + GET /api/v1/hangar (2026-06-11)
 
 - New `GET /api/v1/hangar` — the caller's own ships (auth required, 401 envelope).

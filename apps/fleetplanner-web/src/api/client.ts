@@ -96,15 +96,21 @@ export function searchShips(q: string): Promise<{ ships: import("./types").ShipS
   return get<{ ships: import("./types").ShipSummary[] }>(`/ships/search?q=${encodeURIComponent(q)}`);
 }
 
-export function registerShipUnit(
+export function registerUnit(
   opId: string,
   csrfToken: string,
-  input: { shipId?: string; ownedShipId?: string; storeOwnedShip?: boolean; captainNote?: string },
+  input: {
+    unitType: "ship" | "squad" | "vehicle";
+    shipId?: string;
+    ownedShipId?: string;
+    storeOwnedShip?: boolean;
+    squadName?: string;
+    squadSize?: number;
+    carrierUnitId?: string;
+    captainNote?: string;
+  },
 ): Promise<{ ok: true; unitId: string }> {
-  return mutate("POST", `/operations/${encodeURIComponent(opId)}/units`, csrfToken, {
-    unitType: "ship",
-    ...input,
-  });
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/units`, csrfToken, input);
 }
 
 export function listOperations(includePast = false): Promise<{ operations: OperationSummary[] }> {

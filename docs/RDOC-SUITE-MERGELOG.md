@@ -1,5 +1,24 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — SPA Squad-/Fahrzeug-Anbieten (OfferUnit-Modi) — Branch master
+
+Folgeschritt zu d02de5f. `POST /api/v1/operations/:id/units` beherrscht squad/vehicle bereits
+(Slice 2) — nur die SPA-UI fehlt. Erweiterung `components/OfferShip.tsx` → Modus-Segmente:
+- **Schiff** (bestehend): Hangar/Katalog.
+- **Squad**: Name (unique, serverseitig geprüft → 409-Notice) + Größe 2–8 + Notiz →
+  `{unitType:"squad", squadName, squadSize}`.
+- **Fahrzeug**: Katalog-Suche client-seitig auf size==Vehicle gefiltert + Pflicht-Carrier-
+  Dropdown (accepted Ship-Units aus dem bereits geladenen OperationDetail) →
+  `{unitType:"vehicle", shipId, carrierUnitId}`.
+- MSW-Tests: Squad-Submit (Payload), Vehicle-Submit (carrierUnitId), Carrier-Pflicht-Hinweis.
+- BE unverändert. Gate: FE-Suite + Build grün, Deploy fleetplanner-web, E2E.
+- **DONE 2026-06-11:** OfferShip mit Modus-Segmenten Schiff/Squad/Fahrzeug. Squad: Name+Größe-
+  Select (2–8, default 4). Fahrzeug: Katalog-Suche client-gefiltert auf size==Vehicle +
+  Pflicht-Carrier-Dropdown (accepted Ship-Units via Prop aus OperationDetail); Client-
+  Validierung vor Submit (Fahrzeug ohne Träger → Notice). client.ts: registerShipUnit →
+  generisches registerUnit. 2 neue MSW-Tests (Squad-/Vehicle-Payload inkl. Filter-Assertion).
+  FE 16/16 + Build. BE unverändert.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 — SPA „Eigenes Schiff anbieten" + GET /api/v1/hangar — Branch master
 
 Folgeschritt zu 0e5de9d (Mitmachen-Karte). Letzter großer Player-Flow ohne SPA-Parität:

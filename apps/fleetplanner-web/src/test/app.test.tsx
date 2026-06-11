@@ -224,6 +224,63 @@ describe("Op detail — offer own ship", () => {
   });
 });
 
+describe("Op detail — offer squad / vehicle", () => {
+  it("offers a squad with name + size", async () => {
+    let payload: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.post(`${API}/operations/op_1/units`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, unitId: "unit_sq" });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("offer-ship-open")).click();
+    (await findByTestId("offer-mode-squad")).click();
+    const name = (await findByTestId("squad-name")) as HTMLInputElement;
+    // fire native input event so React's onChange picks it up
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(name, "Bravo Team");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("offer-ship-submit")).click();
+    expect(await findByTestId("offer-ship-open")).toBeInTheDocument();
+    expect(payload).toMatchObject({ unitType: "squad", squadName: "Bravo Team", squadSize: 4 });
+  });
+
+  it("offers a vehicle with a required carrier", async () => {
+    let payload: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/ships/search`, () =>
+        HttpResponse.json({
+          ships: [
+            { id: "veh_1", slug: "cyclone", name: "Cyclone", manufacturer: "TMBL", size: "Vehicle", role: "Recon", minCrew: 1, maxCrew: 2 },
+            { id: "ship_x", slug: "carrack", name: "Carrack", manufacturer: "ANVL", size: "Large", role: "Expedition", minCrew: 4, maxCrew: 6 },
+          ],
+        }),
+      ),
+      http.post(`${API}/operations/op_1/units`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, unitId: "unit_v" });
+      }),
+    );
+    const { findByTestId, findByText, queryByText } = renderAt("/ops/op_1");
+    (await findByTestId("offer-ship-open")).click();
+    (await findByTestId("offer-mode-vehicle")).click();
+    const search = (await findByTestId("ship-search")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(search, "cy");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+    // vehicle filter: only the Cyclone shows up
+    (await findByText("Cyclone")).closest("label")!.querySelector("input")!.click();
+    expect(queryByText("Carrack")).not.toBeInTheDocument();
+    const carrier = (await findByTestId("carrier-select")) as HTMLSelectElement;
+    Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")!.set!.call(carrier, "unit_1");
+    carrier.dispatchEvent(new Event("change", { bubbles: true }));
+    (await findByTestId("offer-ship-submit")).click();
+    expect(await findByTestId("offer-ship-open")).toBeInTheDocument();
+    expect(payload).toMatchObject({ unitType: "vehicle", shipId: "veh_1", carrierUnitId: "unit_1" });
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");
