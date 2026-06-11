@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2 Phase 3: fleetplanner-web SPA workspace (2026-06-11)
+
+- New workspace package `apps/fleetplanner-web` (Vite + React + TS): read-only strangler
+  frontend against `/api/v1` — routes `/` (operations overview), `/ops/:id` (detail with
+  units/seats/resource links), `/login` (links the existing same-origin Discord OAuth) and
+  shared 401/403/404/503 error states. Cookie-session auth, no tokens in the client.
+- Typed API client (`src/api/client.ts`) with the stable error envelope; contract types
+  mirrored in `src/api/types.ts` (server contracts stay the source of truth; shared package
+  is a Phase-6 candidate). No imports from fleetplanner server code.
+- Tests: Vitest + Testing Library + MSW (7 — guest/auth overview, joined badge, 503
+  maintenance, op detail incl. read-only assertion, API-404/401 states, login link).
+- Docker: multi-stage build → nginx static with security headers (CSP, nosniff,
+  frame-ancestors none) and immutable asset caching. Compose service `fleetplanner-web`
+  bound to 127.0.0.1:3210 only — the public proxy still serves the SSR app; the
+  `/fleetplanner-next` shadow path is Phase 4.
+
 ### Added - FR-P2 Phase 0–2: API contracts + /api/v1 read slice (2026-06-11)
 
 - Started the FR-P2 microservice split (strangler, no big-bang). SSR is untouched and keeps

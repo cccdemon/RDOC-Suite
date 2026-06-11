@@ -154,6 +154,21 @@ services:
       fleetplanner-db:
         condition: service_healthy
 
+  # FR-P2 Phase 3 — SPA frontend (read-only strangler slice against /api/v1).
+  # NOT publicly routed yet: the proxy keeps serving the SSR app. Bound to
+  # localhost only for shadow testing; Phase 4 wires /fleetplanner-next.
+  fleetplanner-web:
+    build:
+      context: .
+      dockerfile: apps/fleetplanner-web/Dockerfile
+      args:
+        BASE_PATH: "/fleetplanner-next/"
+    image: rdoc-suite-fleetplanner-web:latest
+    container_name: rdoc-suite-fleetplanner-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3210:80"
+
   error-page:
     build:
       context: .

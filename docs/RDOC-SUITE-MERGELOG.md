@@ -1,5 +1,28 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 Phase 3 — Frontend-Workspace `apps/fleetplanner-web` — Branch master
+
+Folgeschritt zu Phase 0–2 (Commit 42151b3, deployed; /api/v1 read slice live). Phase 3 laut Plan:
+- Neues Workspace-Package `apps/fleetplanner-web`: Vite + React + TypeScript.
+- API-Client minimal typisiert aus den Contract-Typen (`credentials: same-origin`, Fehler-Envelope
+  typisiert); KEINE Imports aus fleetplanner-Server-Code (services/db/auth/web) — nur Typen aus
+  `src/api/contracts` (type-only, erlaubt laut Plan "gemeinsames Contract-Paket oder API-Modul").
+- FE-Routen: `/` (Ops Overview), `/ops/:id` (Detail read-only), `/login`, Fehlerzustände 401/403/404/503.
+  Cookie-Auth same-origin, kein Token im LocalStorage.
+- Tests: Vitest + Testing Library + MSW (Fixtures sessionGuest/sessionCrew/opDetail laut Plan §Mockups).
+- Dockerfile (nginx, statische Assets) + Compose-Service `fleetplanner-web` — Prod-Proxy zeigt
+  weiter auf SSR; Shadow-Pfad-Wiring (`/fleetplanner-next`) = Phase 4, NICHT hier.
+- Gate: `pnpm --filter @rdoc-suite/fleetplanner-web build` + `test` grün; fleetplanner-Suite bleibt grün.
+- **DONE 2026-06-11:** Package steht (package.json/tsconfig/vite.config/index.html, src/api
+  client+types, App+Router, Pages Overview/OpDetail/Login, ErrorState 401/403/404/503,
+  styles im RDOC-Theme). Tests 7/7 (MSW: Gast/Auth-Overview, DABEI-Badge, 503-Wartung,
+  Op-Detail read-only, 404/401-States, OAuth-Link). Build grün (tsc+vite, 172 kB JS).
+  Dockerfile (node22→nginx:1.27, BASE_PATH-Arg `/fleetplanner-next/`, Security-Header/CSP)
+  + Compose-Service `fleetplanner-web` 127.0.0.1:3210 (kein Public-Routing — Phase 4).
+  Contract-Typen im FE gespiegelt (kein Server-Import; gemeinsames Package = Phase-6-Kandidat).
+  pnpm-lock um fleetplanner-web erweitert. Phase 4 (Shadow-Pfad via Caddy auf LXC 101 + E2E)
+  + Phase 5 (Mutationen) offen.
+
 ## Queued / Planned Step - 2026-06-11: FR-P2 Umsetzung Phase 0–2 — API-Contracts + API-only Backend-Slice — Branch master
 
 User-Freigabe für FR-P2 (`docs/FR-P2-microservice-api-split-opus-plan.md`). Inkrementell, kein Big-Bang.

@@ -1,0 +1,78 @@
+/* RDOC theme tokens — same palette as the SSR mission board. */
+:root {
+  --bg: #050810;
+  --bg2: #090f18;
+  --bg3: #0e1926;
+  --cyan: #00d4ff;
+  --gold: #f0a500;
+  --green: #00ff88;
+  --red: #ff4444;
+  --text: #ccdde8;
+  --text-hi: #eaf4fb;
+  --dim: #7e92a4;
+  --dim2: #5b6b7a;
+  --mono: "Share Tech Mono", ui-monospace, monospace;
+  --body: "Rajdhani", "Inter", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--body);
+}
+a { color: var(--cyan); }
+
+.fpw-main { max-width: 1100px; margin: 0 auto; padding: 1.4rem 1.2rem 5rem; }
+.fpw-topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0.8rem 0; margin-bottom: 1.4rem;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.14);
+}
+.fpw-brand {
+  font-family: var(--mono); font-size: 0.95rem; letter-spacing: 0.18em;
+  color: var(--cyan); text-decoration: none;
+}
+.fpw-user { font-family: var(--mono); font-size: 0.74rem; color: var(--dim); }
+
+.fpw-card {
+  border: 1px solid rgba(0, 212, 255, 0.13); border-radius: 14px;
+  background: var(--bg2); padding: 1.1rem 1.2rem;
+}
+.fpw-cardlink { display: block; text-decoration: none; color: inherit; }
+.fpw-cardlink:hover { border-color: rgba(0, 212, 255, 0.35); }
+
+.fpw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
+
+.fpw-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em;
+  padding: 0.16rem 0.45rem; border-radius: 4px; border: 1px solid;
+  text-transform: uppercase; white-space: nowrap;
+}
+.fpw-tag.cyan { color: var(--cyan); border-color: rgba(0, 212, 255, 0.38); background: rgba(0, 212, 255, 0.08); }
+.fpw-tag.green { color: var(--green); border-color: rgba(0, 255, 136, 0.4); background: rgba(0, 255, 136, 0.08); }
+.fpw-tag.gold { color: var(--gold); border-color: rgba(240, 165, 0, 0.42); background: rgba(240, 165, 0, 0.09); }
+.fpw-tag.dim { color: #9fb6c9; border-color: rgba(159, 182, 201, 0.34); background: rgba(159, 182, 201, 0.07); }
+
+.fpw-h1 { font-weight: 700; font-size: 1.9rem; line-height: 1.15; color: var(--text-hi); margin: 0 0 0.5rem; }
+.fpw-h2 { font-weight: 700; font-size: 1.2rem; color: var(--text-hi); margin: 0 0 0.6rem; }
+.fpw-meta { color: var(--dim); font-size: 0.9rem; }
+.fpw-mono-label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.12em; color: #9fb1c2; }
+
+.fpw-seat {
+  display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(0, 212, 255, 0.08); border-radius: 9px;
+  background: rgba(255, 255, 255, 0.013); margin-top: 0.4rem;
+}
+.fpw-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 0.8rem; min-height: 40vh; text-align: center;
+}
+.fpw-btn {
+  display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem;
+  border: 1px solid rgba(0, 212, 255, 0.45); background: rgba(0, 212, 255, 0.1);
+  color: var(--cyan); font-family: var(--mono); font-size: 0.8rem;
+  letter-spacing: 0.05em; border-radius: 8px; text-decoration: none; cursor: pointer;
+}
