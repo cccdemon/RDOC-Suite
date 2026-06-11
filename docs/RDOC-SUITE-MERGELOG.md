@@ -1,5 +1,11 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-Doc Frontend/Backend-Split — Branch `feat/mission-board`
+
+User-Wunsch: Konzept festhalten, was Trennung Frontend/Backend (API-first + dedizierter FE-Container)
+kosten würde. Neue Planungs-Doc `docs/FR-P3-frontend-split.md` (FR-Marker, Prio 3, Dependency-Block,
+Kostentabelle, 3 Migrationsstrategien, Empfehlung Strangler ab Op-Detail). Reine Doku, kein Code.
+
 ## Queued / Planned Step - 2026-06-11: Konzept-Docs — Mission Resource Links + Template Marketplace (docs only)
 
 Reine Design-Docs, KEIN Code. Zwei neue FR aus Operator-Wunsch (Tutorial-Links an komplexen Missionen
