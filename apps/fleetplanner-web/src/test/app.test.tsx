@@ -281,6 +281,105 @@ describe("Op detail — offer squad / vehicle", () => {
   });
 });
 
+describe("Op detail — operator panel", () => {
+  const operatorView = {
+    crewRequests: [{ userId: "user_flex", username: "Flexi", note: "Gerne Medic", createdAt: "2026-06-11T10:00:00.000Z" }],
+    questions: [
+      { id: "q1", asker: "Asker One", body: "Treffpunkt?", answer: null, answeredBy: null, createdAt: "2026-06-11T10:00:00.000Z" },
+    ],
+    hangarShares: [
+      { userId: "user_h", username: "Hangar Guy", note: null, ships: [{ id: "s1", name: "Polaris", nickname: null }] },
+    ],
+    auditLogs: [],
+  };
+  const opAsOperator = {
+    ...opDetailFixture,
+    canManage: true,
+    units: [
+      ...opDetailFixture.units,
+      {
+        id: "unit_p", unitType: "ship", status: "pending", name: "Hammerhead", shipName: "Hammerhead",
+        squadName: null, captain: { id: "u9", username: "Niner" }, captainNote: null, carrierUnitId: null, seats: [],
+      },
+    ],
+  };
+
+  function useOperatorHandlers(extra: Parameters<typeof server.use>[0][] = []) {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opAsOperator)),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(operatorView)),
+      ...extra,
+    );
+  }
+
+  it("renders pending units, flex signups, questions and hangar shares", async () => {
+    useOperatorHandlers();
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    expect(await findByTestId("operator-panel")).toBeInTheDocument();
+    expect(await findByText("Hammerhead")).toBeInTheDocument();
+    expect(await findByText("Flexi")).toBeInTheDocument();
+    expect(await findByText("Treffpunkt?")).toBeInTheDocument();
+    expect(await findByText("Hangar Guy")).toBeInTheDocument();
+    expect(await findByText("Polaris")).toBeInTheDocument();
+  });
+
+  it("assigns a flexible signup to a picked seat", async () => {
+    let payload: Record<string, unknown> | null = null;
+    let seatId: string | null = null;
+    useOperatorHandlers([
+      http.put(`${API}/operations/op_1/seats/:seatId/assignment`, async ({ request, params }) => {
+        seatId = String(params.seatId);
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    ]);
+    const { findByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    const pick = (await findByTestId("pick-user_flex")) as HTMLSelectElement;
+    Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")!.set!.call(pick, "seat_2");
+    pick.dispatchEvent(new Event("change", { bubbles: true }));
+    (await findByTestId("assign-user_flex")).click();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(seatId).toBe("seat_2");
+    expect(payload).toMatchObject({ userId: "user_flex" });
+  });
+
+  it("answers an open question", async () => {
+    let payload: Record<string, unknown> | null = null;
+    useOperatorHandlers([
+      http.post(`${API}/operations/op_1/questions/q1/answer`, async ({ request }) => {
+        payload = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    ]);
+    const { findByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    const input = (await findByTestId("answer-input-q1")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, "Everus Harbor, 19:00");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("answer-send-q1")).click();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(payload).toMatchObject({ answer: "Everus Harbor, 19:00" });
+  });
+
+  it("accepts a pending unit", async () => {
+    let hit = false;
+    useOperatorHandlers([
+      http.post(`${API}/operations/op_1/units/unit_p/accept`, () => {
+        hit = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    ]);
+    const { findByTestId } = renderAt("/ops/op_1");
+    (await findByTestId("operator-toggle")).click();
+    (await findByTestId("accept-unit_p")).click();
+    await new Promise((r) => setTimeout(r, 50));
+    expect(hit).toBe(true);
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

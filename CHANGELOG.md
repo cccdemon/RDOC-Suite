@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA operator panel (2026-06-11)
+
+- Op detail gains an "Operator-Ansicht" toggle (canManage only) revealing the operator
+  panel against the new operator API: accept/reject pending units, assign flexible signups
+  to open seats via a seat picker, answer open questions inline, and view hangar shares.
+  In operator mode, foreign-claimed seats (except the captain seat) show a free-seat ✕.
+- 4 new MSW tests (panel render, assign payload, answer payload, accept). FE 20/20.
+
 ### Added - FR-P2: operator API v1 (2026-06-11)
 
 - `GET /api/v1/operations/:id/operator` — operator-only read model: flexible signups,

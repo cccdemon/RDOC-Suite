@@ -85,6 +85,13 @@ export interface ShipSummary {
   maxCrew: number;
 }
 
+export interface OperatorView {
+  crewRequests: Array<{ userId: string; username: string; note: string | null; createdAt: string }>;
+  questions: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null; createdAt: string }>;
+  hangarShares: Array<{ userId: string; username: string; note: string | null; ships: Array<{ id: string; name: string; nickname: string | null }> }>;
+  auditLogs: Array<{ actor: string; action: string; detail: string; createdAt: string }>;
+}
+
 export interface OperationDetail extends Omit<OperationSummary, "guild"> {
   description: string;
   guild: { id: string; name: string; iconHash: string | null; timezone: string | null };

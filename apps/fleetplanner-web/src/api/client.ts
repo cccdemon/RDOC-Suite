@@ -88,6 +88,26 @@ export function setHangarShare(opId: string, csrfToken: string, allow: boolean):
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/hangar-share`, csrfToken, { allow });
 }
 
+export function getOperatorView(opId: string): Promise<import("./types").OperatorView> {
+  return get<import("./types").OperatorView>(`/operations/${encodeURIComponent(opId)}/operator`);
+}
+
+export function decideUnit(opId: string, unitId: string, decision: "accept" | "reject", csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/${decision}`, csrfToken, {});
+}
+
+export function assignSeat(opId: string, seatId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/assignment`, csrfToken, { userId });
+}
+
+export function unassignSeat(opId: string, seatId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/assignment`, csrfToken);
+}
+
+export function answerQuestion(opId: string, qid: string, answer: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/questions/${encodeURIComponent(qid)}/answer`, csrfToken, { answer });
+}
+
 export function getHangar(): Promise<{ ships: import("./types").ShipSummary[] }> {
   return get<{ ships: import("./types").ShipSummary[] }>("/hangar");
 }

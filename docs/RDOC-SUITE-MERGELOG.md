@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: FR-P2 — SPA-Operator-Panel — Branch master
+
+Folgeschritt zu e3d9394 (Operator-API v1). FE-only: Operator-Ansicht im SPA-Op-Detail
+(`canManage`, Umschalter), Komponente `OperatorPanel.tsx` gegen `GET /operator` + Mutationen:
+- **Anstehende Einheiten**: pending Units (aus OperationDetail) mit Annehmen/Ablehnen.
+- **Flexible Anmeldungen**: crewRequests mit Seat-Select (offene aktive Seats aus accepted
+  Units, Label „Unit · Seat") + Einteilen → PUT assignment.
+- **Fragen**: offene mit Textarea+Senden (POST answer), beantwortete read-only.
+- **Hangar-Freigaben**: Liste User + Schiffe (operator-only Daten).
+- **Seats freigeben**: ✕ an besetzten Seats in der Flotte (DELETE assignment) nur in
+  Operator-Ansicht.
+- Reload nach jeder Mutation; Fehler → Notice. MSW-Tests: Panel-Render, Assign-Payload,
+  Answer-Payload, Accept-Payload. Gate: FE-Suite+Build, Deploy fleetplanner-web, E2E.
+- **DONE 2026-06-11:** `components/OperatorPanel.tsx` + Gold-Umschalter „Operator-Ansicht" im
+  Op-Detail-Header (nur canManage). Panel: pending Units annehmen/ablehnen, crewRequests mit
+  Seat-Select (offene Seats accepted Units, „Unit · Seat") → PUT assignment, offene Fragen
+  inline beantworten, Hangar-Freigaben-Liste. Zusätzlich in Operator-Ansicht: rotes ✕ an
+  fremdbesetzten Seats (außer Captain order 0) → DELETE assignment. 4 neue MSW-Tests.
+  FE 20/20 + Build; BE unverändert.
+
 ## Queued / Planned Step - 2026-06-11: SACompanion-Befund in Discord-autark-Studie
 
 RDOC-SACompanion untersucht: echtes SquadLink Lite, standalone P2P-WebRTC-Mesh mit InitConnection,

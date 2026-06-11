@@ -4,6 +4,8 @@ import { ApiError, claimSeat, cqbSignup, cqbWithdraw, getOperation, setHangarSha
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { OfferShip } from "../components/OfferShip";
+import { OperatorPanel } from "../components/OperatorPanel";
+import { unassignSeat as operatorUnassignSeat } from "../api/client";
 
 function fmtDate(iso: string, tz: string | null): string {
   return new Intl.DateTimeFormat("de-DE", {
@@ -22,6 +24,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busySeat, setBusySeat] = useState<string | null>(null);
+  const [operatorMode, setOperatorMode] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -95,10 +98,20 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
   return (
     <article>
-      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.7rem" }}>
+      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.7rem", alignItems: "center" }}>
         <span className="fpw-tag green">{op.status}</span>
         <span className="fpw-tag cyan">{op.visibility}</span>
-        {op.canManage && <span className="fpw-tag gold">OPERATOR</span>}
+        {op.canManage && (
+          <button
+            type="button"
+            className="fpw-btn"
+            data-testid="operator-toggle"
+            style={{ marginLeft: "auto", padding: "0.35rem 0.7rem", fontSize: "0.7rem", ...(operatorMode ? { background: "var(--gold)", color: "#04060a", borderColor: "var(--gold)" } : { color: "var(--gold)", borderColor: "rgba(240,165,0,.45)", background: "rgba(240,165,0,.08)" }) }}
+            onClick={() => setOperatorMode((v) => !v)}
+          >
+            {operatorMode ? "Operator-Ansicht ✓" : "Operator-Ansicht"}
+          </button>
+        )}
       </div>
       <h1 className="fpw-h1" data-testid="op-title">{op.title}</h1>
       {notice && (
@@ -128,6 +141,10 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             </div>
           ))}
         </section>
+      )}
+
+      {operatorMode && op.canManage && csrf && (
+        <OperatorPanel op={op} csrf={csrf} onChanged={load} onError={(m) => setNotice(m)} />
       )}
 
       {me && csrf && op.status === "open" && (
@@ -190,6 +207,18 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                       {s.claimedBy ? (
                         <>
                           <span className="fpw-meta">{s.claimedBy.username}</span>
+                          {operatorMode && op.canManage && s.order !== 0 && s.claimedBy.id !== me?.id && (
+                            <button
+                              type="button"
+                              className="fpw-btn"
+                              data-testid={`op-free-${s.id}`}
+                              title="Platz freigeben"
+                              style={{ padding: "0.25rem 0.5rem", fontSize: "0.68rem", color: "var(--red)", borderColor: "rgba(255,68,68,.45)", background: "rgba(255,68,68,.08)" }}
+                              onClick={() => run(() => operatorUnassignSeat(id!, s.id, csrf!))}
+                            >
+                              ✕
+                            </button>
+                          )}
                           {me && s.claimedBy.id === me.id && (
                             <button
                               type="button"
