@@ -38,13 +38,6 @@ export async function setHangarShare(
   });
 }
 
-/** A player's own share row for an op (null if never set). */
-export async function getHangarShare(operationId: string, userId: string) {
-  return prisma.operationHangarShare.findUnique({
-    where: { operationId_userId: { operationId, userId } },
-  });
-}
-
 /**
  * All players who shared their hangar for this op, each with their UserShip
  * list. Operator-only data — callers MUST gate with canViewHangars first.

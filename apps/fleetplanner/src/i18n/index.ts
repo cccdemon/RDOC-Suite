@@ -91,19 +91,6 @@ export function localeFromAcceptLanguage(header: string | undefined): Locale {
 }
 
 /**
- * Single source of truth resolution: an authenticated user's stored locale
- * wins; otherwise the Accept-Language header; otherwise the default (de).
- */
-export function resolveLocale(
-  user: { locale?: string | null } | null | undefined,
-  acceptLanguage: string | undefined,
-): Locale {
-  const fromUser = parseLocale(user?.locale);
-  if (fromUser) return fromUser;
-  return localeFromAcceptLanguage(acceptLanguage);
-}
-
-/**
  * Translate a key for the active request locale, interpolating {var} tokens.
  * Falls back to the en base, then to the key itself.
  */

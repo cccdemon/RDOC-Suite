@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-11: Dead-Code-Cleanup Fleetplanner (Batch 1) — Branch master
+
+Defensiver Dead-Code-Pass (ts-prune + grep-Verifikation). Batch 1, hohe Sicherheit, kein Voice:
+- **auth/discord.ts gelöscht** — toter Legacy-OAuth-Duplikat (echter Flow lebt in `auth/providers.ts`;
+  Modul nirgends importiert, nur URL-Pfade `/auth/discord/...` matchen).
+- Ungenutzte Exports entfernt: `units.getUnitWithDetails`, `i18n.resolveLocale`,
+  `hangarShare.getHangarShare` (je 0 Non-Test-Refs, keine Tests).
+Gate: tsc + 260 Tests. Weitere Kandidaten (cqb.assignToSquad, slotKind-Helpers, scwiki/resourceLinks/
+coverService/operationTemplates/eventInterest/seats-Exports, pages.opPublicPreviewPage) als Folge-Batch
+gelistet — manuell bestätigen.
+
 ## Queued / Planned Step - 2026-06-11: board2 (4-Spalten) als Default + merge→master — Branch `feat/mission-board`
 
 User: 4-Spalten = Default. `User.opDetailStyle` Schema-Default classic→board2; Migration

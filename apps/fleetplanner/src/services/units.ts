@@ -267,14 +267,3 @@ export async function unclaimSeat(seatId: string, userId: string, userRole: stri
     throw new Error("Cannot release captain seat; delete the unit instead");
   await prisma.seatAssignment.update({ where: { id: seatId }, data: { userId: null } });
 }
-
-export async function getUnitWithDetails(unitId: string) {
-  return prisma.fleetUnit.findUnique({
-    where: { id: unitId },
-    include: {
-      ship: true,
-      captain: true,
-      seats: { include: { user: true }, orderBy: { order: "asc" } },
-    },
-  });
-}
