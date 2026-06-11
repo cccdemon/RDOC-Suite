@@ -4,15 +4,20 @@ import { getSession } from "./api/client";
 import type { SessionResponse } from "./api/types";
 import { OverviewPage } from "./pages/OverviewPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
+import { CalendarPage } from "./pages/CalendarPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
 
 const MONO = "var(--mono)";
 
+// Green-phosphor CRT preview filter — same transform as the design bundle.
+const CRT_FILTER = "grayscale(1) sepia(1) hue-rotate(62deg) saturate(2.8) brightness(1.06) contrast(1.05)";
+
 export function App() {
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [sessionFailed, setSessionFailed] = useState(false);
+  const [crt, setCrt] = useState(false);
 
   useEffect(() => {
     getSession()
@@ -24,7 +29,19 @@ export function App() {
   const navIdle = { display: "block", padding: "0.9rem 0.9rem", color: "#9fb1c2", textDecoration: "none", whiteSpace: "nowrap" } as const;
 
   return (
-    <div style={{ minHeight: "100vh" }}>
+    <div style={{ minHeight: "100vh", filter: crt ? CRT_FILTER : "none" }}>
+      {crt && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            pointerEvents: "none",
+            zIndex: 9998,
+            background: "repeating-linear-gradient(0deg, rgba(0,0,0,0) 0px, rgba(0,0,0,0) 2px, rgba(0,25,10,0.26) 3px, rgba(0,0,0,0) 4px)",
+            boxShadow: "inset 0 0 200px rgba(0,45,18,0.6)",
+          }}
+        />
+      )}
       {/* scanline overlay (design) */}
       <div
         style={{
@@ -73,11 +90,35 @@ export function App() {
         <Link to="/" style={{ ...navIdle, color: "#00d4ff", background: "rgba(0,212,255,0.08)" }}>
           Operationen
         </Link>
+        <Link to="/calendar" style={navIdle}>Kalender</Link>
         <a href="/fleetplanner/guilds" style={navIdle}>Server</a>
         <a href="/fleetplanner/feedback" style={navIdle}>Feedback</a>
         <a href="/fleetplanner/roadmap" style={navIdle}>Roadmap</a>
         <a href="/fleetplanner/how-to" style={navIdle}>Anleitung</a>
         <span style={{ flex: 1 }} />
+        <button
+          type="button"
+          data-testid="crt-toggle"
+          onClick={() => setCrt((v) => !v)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            padding: "0.32rem 0.7rem",
+            fontFamily: MONO,
+            fontSize: "0.66rem",
+            letterSpacing: "0.1em",
+            borderRadius: 6,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+            border: crt ? "1px solid rgba(0,255,136,0.55)" : "1px solid rgba(0,212,255,0.28)",
+            background: crt ? "rgba(0,255,136,0.12)" : "rgba(0,212,255,0.05)",
+            color: crt ? "#00ff88" : "#9fb1c2",
+          }}
+        >
+          <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: crt ? "#00ff88" : "#5b6b7a", boxShadow: crt ? "0 0 8px #00ff88" : "none" }} />
+          GRÜN-CRT
+        </button>
         <span style={{ color: "#5b6b7a", fontSize: "0.72rem", letterSpacing: "0.12em", padding: "0 1rem", whiteSpace: "nowrap" }}>
           RAUMDOCK.ORG
         </span>
@@ -131,6 +172,7 @@ export function App() {
       <main className="fpw-main">
         <Routes>
           <Route path="/" element={<OverviewPage session={session} />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

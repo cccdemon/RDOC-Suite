@@ -51,10 +51,18 @@ const opRow = {
 };
 
 describe("presenters", () => {
-  it("operation summary matches the contract and counts accepted units", () => {
-    const out = presentOperationSummary({ ...opRow, units: [{ id: "u1", status: "accepted" }, { id: "u2", status: "pending" }] });
+  it("operation summary matches the contract, counts accepted units + seats", () => {
+    const out = presentOperationSummary({
+      ...opRow,
+      units: [
+        { id: "u1", status: "accepted", seats: [{ userId: "a" }, { userId: null }] },
+        { id: "u2", status: "pending", seats: [{ userId: "b" }] },
+      ],
+    });
     expect(OperationSummarySchema.safeParse(out).success).toBe(true);
     expect(out.acceptedUnitCount).toBe(1);
+    expect(out.filledSeats).toBe(1);
+    expect(out.totalSeats).toBe(2);
     expect(out.scheduledAt).toBe("2026-06-20T18:00:00.000Z");
   });
 

@@ -22,6 +22,8 @@ const summaryFixture = {
   guild: { id: "guild_1", name: "RDOC", iconHash: null },
   signupState: null,
   acceptedUnitCount: 2,
+  filledSeats: 3,
+  totalSeats: 8,
 };
 
 describe("contracts", () => {

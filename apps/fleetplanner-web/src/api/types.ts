@@ -43,6 +43,8 @@ export interface OperationSummary {
   guild: { id: string; name: string; iconHash: string | null };
   signupState: "joined" | "waitlist" | null;
   acceptedUnitCount: number;
+  filledSeats: number;
+  totalSeats: number;
 }
 
 export interface Seat {

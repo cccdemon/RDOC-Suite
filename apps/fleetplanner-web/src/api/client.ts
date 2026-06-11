@@ -137,6 +137,8 @@ export function listOperations(includePast = false): Promise<{ operations: Opera
   return get<{ operations: OperationSummary[] }>(`/operations${includePast ? "?past=true" : ""}`);
 }
 
+export { type OperationSummary };
+
 export function getOperation(id: string): Promise<OperationDetail> {
   return get<OperationDetail>(`/operations/${encodeURIComponent(id)}`);
 }

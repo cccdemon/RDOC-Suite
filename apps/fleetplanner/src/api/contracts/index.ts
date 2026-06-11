@@ -110,6 +110,10 @@ export const OperationSummarySchema = z
     /** Current user's signup state for the op; null when anonymous/none. */
     signupState: z.enum(["joined", "waitlist"]).nullable(),
     acceptedUnitCount: z.number().int(),
+    /** Claimed seats across accepted units (calendar occupancy bar). */
+    filledSeats: z.number().int(),
+    /** Total seats across accepted units. */
+    totalSeats: z.number().int(),
   })
   .meta({ id: "OperationSummary" });
 export type OperationSummary = z.infer<typeof OperationSummarySchema>;

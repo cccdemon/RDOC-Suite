@@ -1,5 +1,29 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Operations-Kalender (Design-Bundle 3) — Branch master
+
+User-Auftrag: neues Design Operations-Kalender.dc.html im SPA umsetzen (vorher Bundle laden,
+README+chat3 gelesen — harte Regel). Danach Restpunkte (Triage-Layout B+DnD, Operator-
+Spezialflows, Phase 6) — separat.
+- **BE:** OperationSummary + `filledSeats`/`totalSeats` (aus accepted units→seats, für die
+  Kalender-Belegungsbalken + Status VOLL/FAST VOLL/OFFEN). Drei List-Loader laden statt
+  `units{id,status}` jetzt `units{status,seats{userId}}`; Presenter berechnet. Contract+
+  OpenAPI+Presenter-Test.
+- **FE:** neue Route `/calendar` (CalendarPage) gegen `GET /api/v1/operations?past=true`,
+  clientseitige Monatsgruppierung. Monat-Raster (158px-Zellen, Event-Chips, +N mehr) +
+  Agenda (mobile auto), Prev/Heute/Next, Typ-Filter-Chips (opType→7 Design-Typen-Map,
+  defensiv), Tagesdetail unten + Monats-Stats + Legende, Status aus scheduledAt+Belegung,
+  GRÜN-CRT-Toggle. Op-Karten verlinken auf /ops/:id. Overview bekommt Liste|Kalender-Umschalter.
+- Gate: BE+FE Suiten grün, Deploy, E2E.
+- **DONE 2026-06-12:** BE OperationSummary + filledSeats/totalSeats (4 List-Loader units→seats,
+  Presenter, contract+OpenAPI auto, Test). FE CalendarPage (Route /calendar, Nav-Link Kalender +
+  Overview-Umschalter, globaler GRÜN-CRT-Toggle in App-Nav mit root-Filter+Overlay). Monat-Raster
+  1:1 (158px-Zellen, Event-Chips line-clamp 2, +N mehr, HEUTE/N OP), Agenda mobil-auto, Prev/
+  Heute/Next, 7 Typ-Filter-Chips (opType→TYPES defensiv + de-Aliasse), Tagesdetail-Grid + Stats +
+  Legende, Status aus scheduledAt+Belegung, i-lead/i-back/i-cal Icons ergänzt. Op-Karten → /ops/:id.
+  Gate: BE 56 API-Tests + tsc 0, FE 23/23 + Build (248 kB). Hinweis: API liefert nur sichtbare Ops
+  (public/eigene Guild) → Kalender zeigt entsprechend; Monatsnavigation clientseitig über past=true.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA-Operator-Konsole 1:1 (Befehlsstand) nach DC v2 — Branch master
 
 Letzter Design-Baustein: OperatorPanel war funktionaler Eigenbau; DC v2 (Zeilen 303–490 +

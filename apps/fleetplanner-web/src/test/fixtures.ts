@@ -22,6 +22,8 @@ export const opSummaryFixture: OperationSummary = {
   guild: { id: "guild_1", name: "RDOC", iconHash: null },
   signupState: null,
   acceptedUnitCount: 1,
+  filledSeats: 1,
+  totalSeats: 2,
 };
 
 export const opDetailFixture: OperationDetail = {

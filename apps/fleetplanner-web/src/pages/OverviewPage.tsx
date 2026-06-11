@@ -37,11 +37,16 @@ export function OverviewPage({ session }: { session: SessionResponse | null }) {
     <section>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "1rem" }}>
         <h1 className="fpw-h2" style={{ margin: 0 }}>Operationen</h1>
-        {!session?.user && (
-          <Link to="/login" className="fpw-mono-label" data-testid="login-cta" style={{ color: "var(--cyan)" }}>
-            ANMELDEN →
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <Link to="/calendar" className="fpw-mono-label" data-testid="calendar-link" style={{ color: "var(--cyan)" }}>
+            KALENDER →
           </Link>
-        )}
+          {!session?.user && (
+            <Link to="/login" className="fpw-mono-label" data-testid="login-cta" style={{ color: "var(--cyan)" }}>
+              ANMELDEN →
+            </Link>
+          )}
+        </div>
       </div>
       {ops.length === 0 ? (
         <p className="fpw-meta">Keine anstehenden Operationen.</p>

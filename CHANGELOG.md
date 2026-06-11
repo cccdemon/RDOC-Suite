@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA operations calendar (2026-06-12)
+
+- New `/calendar` route in the SPA, ported from the Operations-Kalender design bundle: month
+  grid (158px day cells with event chips, "+N mehr", HEUTE/op-count), agenda view (auto on
+  mobile), prev/today/next month nav, seven type filter chips, selected-day detail grid +
+  month stats + legend, status (ABGESCHLOSSEN / VOLL / FAST VOLL / OFFEN) from the schedule
+  and occupancy, and a global GRÜN-CRT console-mode toggle in the nav. Op cards link to
+  /ops/:id; reachable from the nav and an Overview switcher.
+- Backend: `OperationSummary` gains `filledSeats` / `totalSeats` (claimed/total seats across
+  accepted units) to drive the calendar occupancy bars; the list loaders now select unit
+  seats. BE 56 API tests, FE 23.
+
 ### Changed - FR-P2: SPA operator console redesigned to the Befehlsstand layout (2026-06-12)
 
 - The operator panel is now the design bundle's "Befehlsstand" console: sticky left control

@@ -46,7 +46,7 @@ type OpListRow = {
   meetingLocation: string;
   minParticipants: number;
   guild: { id: string; name: string; iconHash: string | null };
-  units?: Array<{ id: string; status: string }>;
+  units?: Array<{ id?: string; status: string; seats?: Array<{ userId: string | null }> }>;
 };
 type OpDetailRow = OpListRow & {
   description: string;
@@ -91,6 +91,14 @@ export function presentOperationSummary(
   op: OpListRow,
   signupState: "joined" | "waitlist" | null = null,
 ): OperationSummary {
+  const acceptedUnits = (op.units ?? []).filter((u) => u.status === "accepted");
+  let filledSeats = 0;
+  let totalSeats = 0;
+  for (const u of acceptedUnits) {
+    const seats = u.seats ?? [];
+    totalSeats += seats.length;
+    filledSeats += seats.filter((s) => s.userId).length;
+  }
   return {
     id: op.id,
     title: op.title,
@@ -103,7 +111,9 @@ export function presentOperationSummary(
     minParticipants: op.minParticipants,
     guild: { id: op.guild.id, name: op.guild.name, iconHash: op.guild.iconHash },
     signupState,
-    acceptedUnitCount: (op.units ?? []).filter((u) => u.status === "accepted").length,
+    acceptedUnitCount: acceptedUnits.length,
+    filledSeats,
+    totalSeats,
   };
 }
 

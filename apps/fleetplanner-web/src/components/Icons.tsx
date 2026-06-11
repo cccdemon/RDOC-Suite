@@ -25,6 +25,9 @@ export function IconSprite() {
         <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" /><circle cx="12" cy="12" r="2.7" /></symbol>
         <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></symbol>
         <symbol id="i-vehicle" viewBox="0 0 24 24"><path d="M4 13l2.3-4.5h8.4L18 13" /><path d="M3 13h18v3.4H3z" /><circle cx="7.5" cy="17.4" r="2.1" /><circle cx="16.5" cy="17.4" r="2.1" /></symbol>
+        <symbol id="i-lead" viewBox="0 0 24 24"><path d="M6 13l6-5 6 5M6 18l6-5 6 5" /></symbol>
+        <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" /></symbol>
+        <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></symbol>
       </defs>
     </svg>
   );

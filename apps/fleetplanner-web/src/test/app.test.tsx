@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { App } from "../App";
 import { server } from "./setup";
-import { opDetailFixture, opSummaryFixture, sessionCrew } from "./fixtures";
+import { opDetailFixture, opSummaryFixture, sessionCrew, sessionGuest } from "./fixtures";
 
 const API = "/fleetplanner/api/v1";
 
@@ -397,6 +397,54 @@ describe("Op detail — operator panel", () => {
     (await findByTestId("accept-unit_p")).click();
     await new Promise((r) => setTimeout(r, 50));
     expect(hit).toBe(true);
+  });
+});
+
+describe("Operations calendar", () => {
+  it("renders the current month, an op in its day cell, and links to the op", async () => {
+    const today = new Date();
+    const scheduled = new Date(today.getFullYear(), today.getMonth(), 15, 20, 30, 0);
+    const ev = {
+      ...opSummaryFixture,
+      id: "op_cal",
+      title: "Quantanium-Mining HUR-L1",
+      opType: "mining",
+      scheduledAt: scheduled.toISOString(),
+      filledSeats: 14,
+      totalSeats: 16,
+    };
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/operations`, () => HttpResponse.json({ operations: [ev] })),
+    );
+    const { findByTestId, getAllByText } = renderAt("/calendar");
+    expect(await findByTestId("calendar-page")).toBeInTheDocument();
+    // title appears in the month cell
+    expect(getAllByText("Quantanium-Mining HUR-L1").length).toBeGreaterThanOrEqual(1);
+    // select day 15 → detail card shows the open link to the op
+    (await findByTestId("cal-day-15")).click();
+    expect(await findByTestId("cal-open-op_cal")).toHaveAttribute("href", "/ops/op_cal");
+  });
+
+  it("filters by type", async () => {
+    const today = new Date();
+    const mk = (id: string, opType: string, day: number) => ({
+      ...opSummaryFixture,
+      id,
+      opType,
+      title: `${opType}-op`,
+      scheduledAt: new Date(today.getFullYear(), today.getMonth(), day, 20, 0, 0).toISOString(),
+    });
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/operations`, () => HttpResponse.json({ operations: [mk("a", "mining", 5), mk("b", "combat", 6)] })),
+    );
+    const { findByTestId, queryAllByText } = renderAt("/calendar");
+    await findByTestId("calendar-page");
+    (await findByTestId("cal-filter-combat")).click();
+    await new Promise((r) => setTimeout(r, 20));
+    expect(queryAllByText("mining-op").length).toBe(0);
+    expect(queryAllByText("combat-op").length).toBeGreaterThanOrEqual(1);
   });
 });
 
