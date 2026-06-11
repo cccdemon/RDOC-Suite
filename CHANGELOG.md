@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Mission resource links + Template marketplace (2026-06-11)
+
+- **Mission resource links (FR-P3):** operators can attach curated tutorial/guide links to an operation — a YouTube guide, an RSI Community-Hub one-pager, a Google-Doc, an image. The link `kind` (and its icon) is derived from the URL; only `http(s)` URLs are accepted. Links appear in a "Briefing & Tutorials" card on the player view (join page + both mission-board styles) and in the operator overview, with add/remove in the operator Admin tab. Helps crews prep for complex missions (TSG, Vanduul Tech Smugglers, Xenothreat, Siege of Orison).
+- **Template marketplace (FR-P4):** an operator can **publish an operation as a reusable template** — a scrubbed, instance-free blueprint of the settings, fleet needs (composition groups + requirements) and resource links, with no participants, dates or Discord/voice references carried over. A new **Marketplace** tab lets operators search/filter templates and instantiate one into a fresh draft op in a click (then just set date + location). Visibility is `Server only` / `Partners` (active partnerships) / `Public`; templates show a usage count, and owners can delete their own. The blueprint serializer is shared with the recurring-events seed.
+- de + en translations for both features.
+
 ### Added - Language preference (i18n) — full Fleetplanner web (de + en) (2026-06-10)
 
 - Each user can now pick their interface **language** (Deutsch, English, English (US), Français, Español) in their profile. The preference is stored on the account and is the single source of truth for all surfaces.
