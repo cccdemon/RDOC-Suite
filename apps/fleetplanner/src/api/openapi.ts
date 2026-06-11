@@ -13,6 +13,7 @@ import {
   AssignSeatRequestSchema,
   CreateOperationRequestSchema,
   CreateOperationResponseSchema,
+  HangarShipRequestSchema,
   OperatorViewSchema,
   UnitDecisionRequestSchema,
   ClaimSeatResponseSchema,
@@ -57,6 +58,7 @@ const SCHEMAS = {
   AnswerQuestionRequest: AnswerQuestionRequestSchema,
   CreateOperationRequest: CreateOperationRequestSchema,
   CreateOperationResponse: CreateOperationResponseSchema,
+  HangarShipRequest: HangarShipRequestSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -538,6 +540,28 @@ export function buildOpenApiDocument(): JsonObject {
             "200": { description: "OK", ...jsonContent(ref("ShipSearchResponse")) },
             "401": errorResponses["401"],
           },
+        },
+        post: {
+          operationId: "addHangarShip",
+          summary: "Add a catalog ship to the current user's hangar",
+          tags: ["ships"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } }],
+          requestBody: { required: true, ...jsonContent(ref("HangarShipRequest")) },
+          responses: { "200": { description: "Added", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/hangar/{shipId}": {
+        delete: {
+          operationId: "removeHangarShip",
+          summary: "Remove a ship from the current user's hangar",
+          tags: ["ships"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "shipId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Removed", ...jsonContent(ref("MutationOk")) }, "401": errorResponses["401"] },
         },
       },
       "/api/v1/ships/search": {

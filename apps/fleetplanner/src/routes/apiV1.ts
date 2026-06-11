@@ -35,6 +35,8 @@ import {
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
   HangarShareRequestSchema,
+  HangarShipParamSchema,
+  HangarShipRequestSchema,
   IdParamSchema,
   LeaderParamSchema,
   LinkParamSchema,
@@ -915,6 +917,30 @@ export async function apiV1Routes(app: FastifyInstance) {
     return reply
       .type("application/json")
       .send({ ships: rows.map((r) => presentShip(r.ship)) });
+  });
+
+  app.post<{ Body: unknown }>("/api/v1/hangar", async (req, reply) => {
+    const body = HangarShipRequestSchema.safeParse(req.body);
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid ship id.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    const ship = await prisma.ship.findUnique({ where: { id: body.data.shipId }, select: { id: true } });
+    if (!ship) return sendError(reply, req, 404, "not_found", "Ship not found.");
+    await prisma.userShip.upsert({
+      where: { userId_shipId: { userId: ctx.user.id, shipId: body.data.shipId } },
+      create: { userId: ctx.user.id, shipId: body.data.shipId },
+      update: {},
+    });
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  app.delete<{ Params: { shipId: string } }>("/api/v1/hangar/:shipId", async (req, reply) => {
+    const p = HangarShipParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid ship id.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    await prisma.userShip.deleteMany({ where: { userId: ctx.user.id, shipId: p.data.shipId } });
+    return reply.type("application/json").send({ ok: true as const });
   });
 
   // ── ships ───────────────────────────────────────────────────────────

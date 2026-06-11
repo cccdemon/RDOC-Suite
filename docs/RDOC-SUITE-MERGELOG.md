@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Profil/Hangar-Verwaltung — Branch master
+
+Nächste Surface. Ergänzt „Schiff anbieten" (Hangar füllen). FE+kleine API:
+- **BE:** `POST /api/v1/hangar` {shipId} (userShip.upsert) + `DELETE /api/v1/hangar/:shipId`
+  (deleteMany userId+shipId). Auth (eigener Hangar, kein Operator-Gate); Schiff muss im
+  Katalog existieren (404 sonst). Contract HangarShipRequest + Param; OpenAPI; Tests.
+- **FE:** ProfilePage `/profile`: eigene Schiffe (GET /hangar) als Liste mit ✕, Katalog-Suche
+  (/ships/search) zum Hinzufügen. Nav-Link „Profil" (eingeloggt). Reload nach Mutation.
+- Gate: BE+FE grün, Deploy, E2E.
+- **DONE 2026-06-12:** BE `POST /api/v1/hangar` {shipId} (Katalog-Check 404, userShip.upsert) +
+  `DELETE /api/v1/hangar/:shipId` (deleteMany userId+shipId). HangarShipRequest/Param im
+  Package; OpenAPI (POST/DELETE am hangar-Pfad); inject-Tests (401/400/coverage, XFF-Buckets).
+  FE ProfilePage `/profile` (Hangar-Liste mit ✕, debounced Katalog-Suche + Hinzufügen, „IM
+  HANGAR"-Badge), User-Chip in Nav → /profile, Anon → profile-anon. BE 61 + tsc 0, FE 30/30.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Op-Erstellung (POST /api/v1/operations + Create-Seite) — Branch master
 
 User-Wahl: größter Self-Service-Gap. Strangler-Schritt:

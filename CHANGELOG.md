@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA profile / hangar management (2026-06-12)
+
+- New `POST /api/v1/hangar` {shipId} and `DELETE /api/v1/hangar/:shipId` to add/remove the
+  current user's own ships (catalog-checked, auth-only). Contracts + OpenAPI + tests.
+- SPA `/profile` page: lists the user's hangar with remove buttons and a debounced catalog
+  search to add ships (with an "IM HANGAR" badge for owned ones). The nav user chip links to
+  the profile; anonymous visitors get a sign-in prompt. This fills the hangar that the
+  "offer own ship" flow picks from. BE 61 API tests, FE 30.
+
 ### Added - FR-P2: create operations from the SPA (2026-06-12)
 
 - New `POST /api/v1/operations` — fleet operators (or superadmins) create a draft operation

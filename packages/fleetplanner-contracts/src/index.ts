@@ -223,6 +223,10 @@ export const CreateOperationResponseSchema = z
   .object({ ok: z.literal(true), id: z.string() })
   .meta({ id: "CreateOperationResponse" });
 
+export const HangarShipRequestSchema = z
+  .object({ shipId: z.string().regex(/^[a-z0-9]{20,32}$/i, "invalid ship id") })
+  .meta({ id: "HangarShipRequest" });
+
 // ── Query schemas ─────────────────────────────────────────────────────
 
 export const OperationListQuerySchema = z.object({
@@ -308,6 +312,7 @@ export const UnitParamSchema = z.object({ id: cuid, unitId: cuid });
 export const LinkParamSchema = z.object({ id: cuid, linkId: cuid });
 export const QuestionParamSchema = z.object({ id: cuid, qid: cuid });
 export const LeaderParamSchema = z.object({ id: cuid, userId: cuid });
+export const HangarShipParamSchema = z.object({ shipId: cuid });
 
 // ── Operator (read model + mutations) ─────────────────────────────────
 

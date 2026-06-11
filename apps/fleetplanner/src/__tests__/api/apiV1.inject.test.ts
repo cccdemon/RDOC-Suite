@@ -75,6 +75,18 @@ describe("GET /api/v1/hangar", () => {
     expect(res.statusCode).toBe(401);
     expect(res.json().error.code).toBe("unauthenticated");
   });
+
+  it("add/remove reject anonymous + invalid ids; documented", async () => {
+    const add = await app.inject({ method: "POST", url: "/api/v1/hangar", headers: { "content-type": "application/json", "x-forwarded-for": "10.7.7.1" }, payload: JSON.stringify({ shipId: "cmqaaaaaaaaaaaaaaaaaa1" }) });
+    expect(add.statusCode).toBe(401);
+    const del = await app.inject({ method: "DELETE", url: "/api/v1/hangar/cmqaaaaaaaaaaaaaaaaaa1", headers: { "x-forwarded-for": "10.7.7.2" } });
+    expect(del.statusCode).toBe(401);
+    const bad = await app.inject({ method: "POST", url: "/api/v1/hangar", headers: { "content-type": "application/json", "x-forwarded-for": "10.7.7.3" }, payload: JSON.stringify({ shipId: "x" }) });
+    expect(bad.statusCode).toBe(400);
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/hangar"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/hangar/{shipId}"].delete).toBeTruthy();
+  });
 });
 
 describe("GET /api/v1/operations/:id", () => {

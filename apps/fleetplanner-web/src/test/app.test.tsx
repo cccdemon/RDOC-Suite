@@ -546,6 +546,41 @@ describe("Create operation", () => {
   });
 });
 
+describe("Profile / hangar", () => {
+  const ship = { id: "ship_z1", slug: "perseus", name: "Perseus", manufacturer: "RSI", size: "Large", role: "Gunship", minCrew: 2, maxCrew: 6 };
+
+  it("lists hangar ships and adds one from search", async () => {
+    let added = false;
+    let addedId: string | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/hangar`, () => HttpResponse.json({ ships: added ? [ship] : [] })),
+      http.get(`${API}/ships/search`, () => HttpResponse.json({ ships: [ship] })),
+      http.post(`${API}/hangar`, async ({ request }) => {
+        addedId = ((await request.json()) as { shipId: string }).shipId;
+        added = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId, findByText } = renderAt("/profile");
+    expect(await findByTestId("profile-page")).toBeInTheDocument();
+    const search = (await findByTestId("profile-search")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(search, "per");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("hangar-add-ship_z1")).click();
+    // after reload the ship shows in the hangar list
+    expect(await findByTestId("hangar-row-ship_z1")).toBeInTheDocument();
+    expect(addedId).toBe("ship_z1");
+    expect(await findByText("IM HANGAR")).toBeInTheDocument();
+  });
+
+  it("anonymous sees a sign-in prompt", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
+    const { findByTestId } = renderAt("/profile");
+    expect(await findByTestId("profile-anon")).toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

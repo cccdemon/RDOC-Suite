@@ -6,6 +6,7 @@ import { OverviewPage } from "./pages/OverviewPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { CreatePage } from "./pages/CreatePage";
+import { ProfilePage } from "./pages/ProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
@@ -132,7 +133,7 @@ export function App() {
           ) : session === null ? (
             <span style={{ color: "#5b6b7a" }}>…</span>
           ) : user ? (
-            <>
+            <Link to="/profile" data-testid="profile-link" style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem", textDecoration: "none" }}>
               <span
                 style={{
                   border: "1px solid rgba(240,165,0,0.38)",
@@ -148,7 +149,7 @@ export function App() {
               </span>
               <Avatar name={user.username} size={24} />
               <span style={{ color: "#ccdde8", fontSize: "0.82rem", fontFamily: "var(--body)" }}>{user.username}</span>
-            </>
+            </Link>
           ) : (
             <span style={{ color: "#9fb1c2" }}>GAST</span>
           )}
@@ -175,6 +176,7 @@ export function App() {
           <Route path="/" element={<OverviewPage session={session} />} />
           <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/ops/new" element={<CreatePage session={session} />} />
+          <Route path="/profile" element={<ProfilePage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

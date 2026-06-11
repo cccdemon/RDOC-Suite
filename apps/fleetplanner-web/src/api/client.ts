@@ -124,6 +124,14 @@ export function searchShips(q: string): Promise<{ ships: import("./types").ShipS
   return get<{ ships: import("./types").ShipSummary[] }>(`/ships/search?q=${encodeURIComponent(q)}`);
 }
 
+export function addHangarShip(shipId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", "/hangar", csrfToken, { shipId });
+}
+
+export function removeHangarShip(shipId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/hangar/${encodeURIComponent(shipId)}`, csrfToken);
+}
+
 export function registerUnit(
   opId: string,
   csrfToken: string,
