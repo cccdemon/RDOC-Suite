@@ -258,6 +258,22 @@ export function unbanGuild(id: string, csrfToken: string): Promise<{ ok: true }>
   return mutate("POST", `/admin/guilds/${encodeURIComponent(id)}/unban`, csrfToken);
 }
 
+export function getAdminSettings(): Promise<import("./types").AdminSettingsResponse> {
+  return get<import("./types").AdminSettingsResponse>("/admin/settings");
+}
+
+export function setMaintenanceMode(csrfToken: string, enabled: boolean): Promise<{ ok: true }> {
+  return mutate("POST", "/admin/maintenance", csrfToken, { enabled });
+}
+
+export function setFeedbackChannel(csrfToken: string, channelId: string): Promise<{ ok: true }> {
+  return mutate("PUT", "/admin/settings/feedback", csrfToken, { channelId });
+}
+
+export function syncCatalog(csrfToken: string, kind: "ships" | "locations"): Promise<{ ok: true }> {
+  return mutate("POST", `/admin/${kind}/sync`, csrfToken);
+}
+
 export function getAdminUsers(): Promise<import("./types").AdminUsersResponse> {
   return get<import("./types").AdminUsersResponse>("/admin/users");
 }

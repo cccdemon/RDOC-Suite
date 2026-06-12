@@ -488,6 +488,42 @@ describe("superadmin guild management — gates", () => {
   });
 });
 
+describe("superadmin instance settings — gates", () => {
+  it("GET admin/settings anonymous → 401", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/admin/settings" });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it.each([
+    ["POST", "/api/v1/admin/maintenance", { enabled: true }],
+    ["PUT", "/api/v1/admin/settings/feedback", { channelId: "123456789012345678" }],
+    ["POST", "/api/v1/admin/ships/sync", undefined],
+    ["POST", "/api/v1/admin/locations/sync", undefined],
+  ] as const)("%s %s without session → 401", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      headers: { "x-forwarded-for": `10.20.0.${url.length}`, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+      ...(body !== undefined ? { payload: JSON.stringify(body) } : {}),
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("maintenance with non-boolean → 400", async () => {
+    const res = await app.inject({ method: "POST", url: "/api/v1/admin/maintenance", headers: { "content-type": "application/json", "x-forwarded-for": "10.20.1.1" }, payload: JSON.stringify({ enabled: "yes" }) });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents the admin settings routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/admin/settings"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/maintenance"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/settings/feedback"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/ships/sync"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/locations/sync"].post).toBeTruthy();
+  });
+});
+
 describe("superadmin user management — gates", () => {
   const uid = "cmqffffffffffffffffff6";
 

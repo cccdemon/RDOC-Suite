@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Superadmin Instanz-Settings — Branch master
+
+- BE `GET /api/v1/admin/settings` (cookie-only superadmin), `POST …/maintenance` {enabled},
+  `PUT …/settings/feedback` {channelId, snowflake|leer}, `POST …/{ships,locations}/sync` (Trigger).
+  requireSuperadmin+CSRF. SSR-twin web.ts /admin/maintenance + feedback/config + {ships,locations}/sync.
+- Contract AdminSettingsResponse/MaintenanceRequest/FeedbackChannelRequest; OpenAPI; inject-Tests
+  (anon 401, non-bool 400, doc). FE client getAdminSettings/setMaintenanceMode/setFeedbackChannel/
+  syncCatalog, AdminPage Settings-Card (Wartung-Toggle, Feedback-Channel, Sync-Buttons), MSW-Tests.
+  E2E-readonly +1. Katalog-Intervall-Config + Bridge-Admin bleiben SSR.
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E).** Lokal NICHT gebaut (Docker-Regel).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Superadmin User-Verwaltung — Branch master
 
 - BE `GET /api/v1/admin/users` (cookie-only superadmin) + `PUT …/:id/role` + `POST …/:id/active`

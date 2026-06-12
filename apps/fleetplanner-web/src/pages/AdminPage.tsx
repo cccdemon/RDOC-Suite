@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, banGuild, getAdminGuilds, getAdminUsers, setUserRole, toggleUserActive, unbanGuild } from "../api/client";
-import type { AdminGuild, AdminUser, SessionResponse } from "../api/types";
+import { ApiError, banGuild, getAdminGuilds, getAdminSettings, getAdminUsers, setFeedbackChannel, setMaintenanceMode, setUserRole, syncCatalog, toggleUserActive, unbanGuild } from "../api/client";
+import type { AdminGuild, AdminSettingsResponse, AdminUser, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 
 const MONO = "var(--mono)";
@@ -19,6 +19,8 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
 
   const [guilds, setGuilds] = useState<AdminGuild[] | null>(null);
   const [users, setUsers] = useState<AdminUser[] | null>(null);
+  const [settings, setSettings] = useState<AdminSettingsResponse | null>(null);
+  const [feedbackInput, setFeedbackInput] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -29,6 +31,12 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
     getAdminUsers()
       .then((r) => setUsers(r.users))
       .catch((e) => setNotice(e instanceof ApiError ? e.message : "Nutzer nicht ladbar."));
+    getAdminSettings()
+      .then((r) => {
+        setSettings(r);
+        setFeedbackInput(r.feedbackChannelId);
+      })
+      .catch(() => {});
   }
   useEffect(() => {
     if (me?.role === "superadmin") reload();
@@ -64,6 +72,28 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Admin · Server</h1>
       </div>
       {notice && <p className="fpw-tag gold" role="alert" data-testid="admin-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
+
+      {settings && (
+        <section className="fpw-card" style={{ marginBottom: "1.2rem" }} data-testid="admin-settings">
+          <div style={label}>INSTANZ-EINSTELLUNGEN</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem", alignItems: "center", marginBottom: "0.9rem" }}>
+            <span style={{ color: "#c2d2de", fontSize: "0.9rem" }}>Wartungsmodus: <strong style={{ color: settings.maintenanceOn ? "#f0a500" : "#00ff88" }}>{settings.maintenanceOn ? "AN" : "AUS"}</strong></span>
+            <button type="button" data-testid="maint-toggle" className="fpw-btn" disabled={busy || !csrf || settings.maintenanceForcedByEnv} onClick={() => run(() => setMaintenanceMode(csrf!, !settings.maintenanceOn))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}>
+              {settings.maintenanceOn ? "Ausschalten" : "Einschalten"}
+            </button>
+            {settings.maintenanceForcedByEnv && <span className="fpw-meta" style={{ fontSize: "0.78rem" }}>(per ENV erzwungen)</span>}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center", marginBottom: "0.9rem" }}>
+            <span style={{ color: "#9fb1c2", fontSize: "0.82rem" }}>Feedback-Channel-ID</span>
+            <input data-testid="feedback-channel" type="text" inputMode="numeric" value={feedbackInput} placeholder="leer = aus" onChange={(e) => setFeedbackInput(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: MONO, fontSize: "0.82rem", padding: "0.4rem 0.55rem", borderRadius: 7, width: 220 }} />
+            <button type="button" data-testid="feedback-save" className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => setFeedbackChannel(csrf!, feedbackInput.trim()))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}>Speichern</button>
+          </div>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+            <button type="button" data-testid="sync-ships" className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => syncCatalog(csrf!, "ships"))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}><Ic name="swap" size={12} sw={2} /> Schiffe synchronisieren</button>
+            <button type="button" data-testid="sync-locations" className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => syncCatalog(csrf!, "locations"))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}><Ic name="pin" size={12} sw={2} /> Orte synchronisieren</button>
+          </div>
+        </section>
+      )}
 
       <section className="fpw-card">
         <div style={label}>ALLE DISCORD-SERVER</div>

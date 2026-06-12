@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA superadmin instance settings (2026-06-12)
+
+- New superadmin API: `GET /api/v1/admin/settings` (maintenance + feedback channel state),
+  `POST /api/v1/admin/maintenance` {enabled}, `PUT /api/v1/admin/settings/feedback` {channelId},
+  and `POST /api/v1/admin/{ships,locations}/sync` (trigger a manual catalog sync). SSR twins:
+  web.ts /admin/maintenance + /admin/feedback/config + /admin/{ships,locations}/sync.
+- Contract AdminSettingsResponse/MaintenanceRequest/FeedbackChannelRequest + OpenAPI + inject
+  tests (anon 401, non-boolean 400). prod-e2e-readonly: settings anon-gate.
+- SPA `/admin`: an instance-settings card (maintenance toggle, feedback channel id, ship/location
+  sync buttons). MSW tests. (Catalog interval-config and the bridge admin stay on SSR.)
+
 ### Added - FR-P2: SPA superadmin user management (2026-06-12)
 
 - New superadmin API: `GET /api/v1/admin/users` (all instance users), `PUT /api/v1/admin/users/

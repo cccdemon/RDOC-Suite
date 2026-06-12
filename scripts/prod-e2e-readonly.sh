@@ -56,6 +56,8 @@ admin_anon="$(curl -s -o /dev/null -w '%{http_code}' "$API/admin/guilds")"
 check "admin guilds anon 401" "401" "$admin_anon"
 admin_users_anon="$(curl -s -o /dev/null -w '%{http_code}' "$API/admin/users")"
 check "admin users anon 401" "401" "$admin_users_anon"
+admin_settings_anon="$(curl -s -o /dev/null -w '%{http_code}' "$API/admin/settings")"
+check "admin settings anon 401" "401" "$admin_settings_anon"
 
 # op editor lifecycle — anon gates (side-effect-free: 401 fires before any write)
 life_status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"status":"open"}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/status")"

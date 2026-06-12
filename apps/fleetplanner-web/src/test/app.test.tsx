@@ -964,13 +964,18 @@ describe("Admin guild management", () => {
       { id: "user_x", username: "Member X", role: "crew", active: true },
     ],
   };
+  const adminSettings = { maintenanceOn: false, maintenanceForcedByEnv: false, feedbackChannelId: "" };
+  const adminBaseHandlers = () => [
+    http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),
+    http.get(`${API}/admin/users`, () => HttpResponse.json(adminUsers)),
+    http.get(`${API}/admin/settings`, () => HttpResponse.json(adminSettings)),
+  ];
 
   it("superadmin lists guilds and bans one", async () => {
     let banned = false;
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionSuper)),
-      http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),
-      http.get(`${API}/admin/users`, () => HttpResponse.json(adminUsers)),
+      ...adminBaseHandlers(),
       http.post(`${API}/admin/guilds/111111111111111111/ban`, () => {
         banned = true;
         return HttpResponse.json({ ok: true });
@@ -988,8 +993,7 @@ describe("Admin guild management", () => {
     let roleBody: Record<string, unknown> | null = null;
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionSuper)),
-      http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),
-      http.get(`${API}/admin/users`, () => HttpResponse.json(adminUsers)),
+      ...adminBaseHandlers(),
       http.put(`${API}/admin/users/user_x/role`, async ({ request }) => {
         roleBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ ok: true });
@@ -1001,6 +1005,22 @@ describe("Admin guild management", () => {
     sel.dispatchEvent(new Event("change", { bubbles: true }));
     await findByTestId("admin-page");
     expect(roleBody).toMatchObject({ role: "fleetoperator" });
+  });
+
+  it("superadmin toggles maintenance mode (POST maintenance)", async () => {
+    let maint: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionSuper)),
+      ...adminBaseHandlers(),
+      http.post(`${API}/admin/maintenance`, async ({ request }) => {
+        maint = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/admin");
+    (await findByTestId("maint-toggle")).click();
+    await findByTestId("admin-settings");
+    expect(maint).toMatchObject({ enabled: true });
   });
 
   it("non-superadmin sees a forbidden state", async () => {

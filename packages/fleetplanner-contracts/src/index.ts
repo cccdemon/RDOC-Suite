@@ -516,6 +516,23 @@ export const SetUserRoleRequestSchema = z
   .object({ role: z.enum(["superadmin", "fleetoperator", "crew"]) })
   .meta({ id: "SetUserRoleRequest" });
 
+export const AdminSettingsResponseSchema = z
+  .object({
+    maintenanceOn: z.boolean(),
+    maintenanceForcedByEnv: z.boolean(),
+    feedbackChannelId: z.string(),
+  })
+  .meta({ id: "AdminSettingsResponse" });
+export type AdminSettingsResponse = z.infer<typeof AdminSettingsResponseSchema>;
+
+export const MaintenanceRequestSchema = z
+  .object({ enabled: z.boolean() })
+  .meta({ id: "MaintenanceRequest" });
+
+export const FeedbackChannelRequestSchema = z
+  .object({ channelId: z.string().max(40) })
+  .meta({ id: "FeedbackChannelRequest" });
+
 // ── Operation editor (lifecycle) ────────────────────────────────────────
 
 /** PATCH /api/v1/operations/:id — every field optional; only present fields

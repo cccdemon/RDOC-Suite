@@ -24,7 +24,10 @@ import { isValidTimezone, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { createOperation } from "../services/operations.js";
 import { applyTemplate, listTemplatesForGuild, publishTemplate } from "../services/operationTemplates.js";
 import { sendDiscordChannelMessage } from "../services/discord.js";
-import { getSetting } from "../services/settings.js";
+import { getSetting, setSetting } from "../services/settings.js";
+import { isMaintenanceForcedByEnv, isMaintenanceOn, setMaintenance } from "../services/maintenance.js";
+import { runSync } from "../services/shipSync.js";
+import { runLocationSync } from "../services/locations.js";
 import { ROADMAP } from "../lib/roadmap.js";
 import {
   addLeader,
@@ -98,6 +101,8 @@ import {
   SetFighterSquadsRequestSchema,
   SetStatusRequestSchema,
   SetUserRoleRequestSchema,
+  MaintenanceRequestSchema,
+  FeedbackChannelRequestSchema,
   HangarShareRequestSchema,
   HangarShipParamSchema,
   HangarShipRequestSchema,
@@ -566,6 +571,50 @@ export async function apiV1Routes(app: FastifyInstance) {
     await prisma.user.update({ where: { id: p.data.id }, data: { active: !user.active } });
     return reply.type("application/json").send({ ok: true as const, active: !user.active });
   });
+
+  // ── superadmin: instance settings (maintenance / feedback / catalog sync)
+  // SSR twins: web.ts /admin/maintenance, /admin/feedback/config, /admin/{ships,locations}/sync.
+  app.get("/api/v1/admin/settings", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
+    return reply.type("application/json").send({
+      maintenanceOn: isMaintenanceOn(),
+      maintenanceForcedByEnv: isMaintenanceForcedByEnv(),
+      feedbackChannelId: await getSetting("feedback.discordChannelId"),
+    });
+  });
+
+  app.post<{ Body: unknown }>("/api/v1/admin/maintenance", async (req, reply) => {
+    const body = MaintenanceRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireSuperadmin(req, reply);
+    if (!ctx) return;
+    await setMaintenance(body.data.enabled);
+    return reply.type("application/json").send({ ok: true as const, maintenanceOn: body.data.enabled });
+  });
+
+  app.put<{ Body: unknown }>("/api/v1/admin/settings/feedback", async (req, reply) => {
+    const body = FeedbackChannelRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireSuperadmin(req, reply);
+    if (!ctx) return;
+    const channelId = body.data.channelId.trim();
+    if (channelId && !/^\d{16,25}$/.test(channelId))
+      return sendError(reply, req, 400, "bad_request", "Invalid Discord channel ID.");
+    await setSetting("feedback.discordChannelId", channelId);
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  for (const kind of ["ships", "locations"] as const) {
+    app.post(`/api/v1/admin/${kind}/sync`, async (req, reply) => {
+      const ctx = await requireSuperadmin(req, reply);
+      if (!ctx) return;
+      const run = kind === "ships" ? runSync("manual") : runLocationSync("manual");
+      run.catch((err: unknown) => req.log.error(err, `Manual ${kind} catalog sync failed (v1)`));
+      return reply.type("application/json").send({ ok: true as const });
+    });
+  }
 
   // ── guild partnerships (admiral console) ─────────────────────────────
   // SSR twins: routes/partnerships.ts. Guild-scoped via :id; approve/decline
