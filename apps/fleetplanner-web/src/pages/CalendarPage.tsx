@@ -63,6 +63,7 @@ export function CalendarPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [filter, setFilter] = useState("alle");
+  const [showPast, setShowPast] = useState(false);
   const [selDay, setSelDay] = useState(now.getDate());
   const [vw, setVw] = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
   const [ops, setOps] = useState<OperationSummary[] | null>(null);
@@ -139,8 +140,11 @@ export function CalendarPage() {
   const selDateLabel = selDay ? `${DOW[new Date(Date.UTC(year, month, selDay)).getUTCDay()]} · ${selDay}. ${MONTHS[month]}` : "—";
 
   // ── agenda groups ─────────────────────────────────────────────
+  // Agenda defaults to upcoming-only; the toggle reveals past events too.
+  const agendaSource = visible.filter((e) => showPast || e.ts >= now.getTime());
+  const hasPast = visible.some((e) => e.ts < now.getTime());
   const agenda: Array<{ day: number; dow: string; mon: string; isToday: boolean; ops: Ev[] }> = [];
-  visible
+  agendaSource
     .slice()
     .sort((a, b) => a.day - b.day || a.time.localeCompare(b.time))
     .forEach((e) => {
@@ -287,6 +291,23 @@ export function CalendarPage() {
             </button>
           );
         })}
+        {!isMonat && (
+          <button
+            type="button"
+            data-testid="cal-toggle-past"
+            onClick={() => setShowPast((v) => !v)}
+            style={{
+              ...chipBase,
+              marginLeft: "auto",
+              border: showPast ? "1px solid rgba(240,165,0,0.5)" : "1px solid rgba(0,212,255,0.28)",
+              background: showPast ? "rgba(240,165,0,0.12)" : "rgba(0,212,255,0.05)",
+              color: showPast ? "#f0a500" : "#9fb1c2",
+            }}
+          >
+            <Ic name={showPast ? "eye" : "clock"} size={13} sw={1.7} />
+            {showPast ? "Vergangene sichtbar" : "Nur anstehende"}
+          </button>
+        )}
       </div>
 
       {ops === null ? (
@@ -380,7 +401,14 @@ export function CalendarPage() {
           <div style={mobile ? { width: "100%", minWidth: 0 } : { flex: "1 1 0", minWidth: 0 }}>
             {agenda.length === 0 ? (
               <div style={{ padding: "3rem 1rem", textAlign: "center", color: "#5b6b7a", fontSize: "0.92rem", border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 12 }}>
-                Keine Operationen in diesem Monat — wähle einen anderen Monat oder lockere den Filter.
+                {!showPast && hasPast ? (
+                  <>
+                    Keine anstehenden Operationen in diesem Monat.{" "}
+                    <button type="button" data-testid="cal-show-past-inline" onClick={() => setShowPast(true)} style={{ background: "none", border: "none", color: "#00d4ff", cursor: "pointer", font: "inherit", textDecoration: "underline", padding: 0 }}>Vergangene anzeigen</button>.
+                  </>
+                ) : (
+                  "Keine Operationen in diesem Monat — wähle einen anderen Monat oder lockere den Filter."
+                )}
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1.3rem" }}>

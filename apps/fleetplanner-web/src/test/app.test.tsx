@@ -491,6 +491,26 @@ describe("Operations calendar", () => {
     expect(await findByTestId("cal-open-op_cal")).toHaveAttribute("href", "/ops/op_cal");
   });
 
+  it("agenda hides past events by default, toggle reveals them", async () => {
+    const t = new Date();
+    const [y, m, d] = [t.getFullYear(), t.getMonth(), t.getDate()];
+    const pastEv = { ...opSummaryFixture, id: "past_op", title: "Past Op", scheduledAt: new Date(y, m, d, 0, 0, 0).toISOString() };
+    const futureEv = { ...opSummaryFixture, id: "future_op", title: "Future Op", scheduledAt: new Date(y, m, d, 23, 59, 0).toISOString() };
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/operations`, () => HttpResponse.json({ operations: [pastEv, futureEv] })),
+    );
+    const { findByTestId, queryAllByText } = renderAt("/calendar");
+    await findByTestId("calendar-page");
+    (await findByTestId("cal-view-agenda")).click();
+    // default: only upcoming events in the agenda
+    expect(queryAllByText("Future Op").length).toBeGreaterThanOrEqual(1);
+    expect(queryAllByText("Past Op").length).toBe(0);
+    // toggle past events on
+    (await findByTestId("cal-toggle-past")).click();
+    expect(queryAllByText("Past Op").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("filters by type", async () => {
     const today = new Date();
     const mk = (id: string, opType: string, day: number) => ({

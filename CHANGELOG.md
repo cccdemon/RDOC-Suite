@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Calendar agenda showed past events (2026-06-12)
+
+- The calendar agenda listed past operations by default. It now shows only upcoming events,
+  with a "Nur anstehende ⇄ Vergangene sichtbar" toggle (and an inline reveal link in the empty
+  state). The month grid is unchanged (past days stay visible, dimmed).
+
 ### Added - FR-P2: SPA guild partnerships (2026-06-12)
 
 - New guild-scoped partnership API (fleet operator of that guild / superadmin):
