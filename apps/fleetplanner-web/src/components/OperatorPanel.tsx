@@ -42,18 +42,24 @@ export function OperatorPanel({
   csrf,
   onChanged,
   onError,
+  embedded = false,
 }: {
   op: OperationDetail;
   csrf: string;
   onChanged: () => void;
   onError: (msg: string) => void;
+  // When embedded in the Op-Management "Flotte & Warteliste" tab, the operator-
+  // actions panel (links back to manage tabs) and the leaders panel are dropped —
+  // manage already has a Commanders tab. Default layout = Triage (board + right
+  // waitlist) to match the design's Flotte-tab.
+  embedded?: boolean;
 }) {
   const [view, setView] = useState<OperatorView | null>(null);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [placing, setPlacing] = useState<{ userId: string; name: string } | null>(null);
   const [picker, setPicker] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [layout, setLayout] = useState<"a" | "b">("a");
+  const [layout, setLayout] = useState<"a" | "b">(embedded ? "b" : "a");
   const [dragUserId, setDragUserId] = useState<string | null>(null);
   const [leaderPick, setLeaderPick] = useState(false);
 
@@ -491,8 +497,8 @@ export function OperatorPanel({
         <div style={{ display: "flex", gap: "1.3rem", alignItems: "flex-start", flexWrap: "wrap" }}>
           <aside style={{ flex: "0 0 286px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "1rem" }}>
             {fillRingCard}
-            {actionsPanel}
-            {leadersPanel}
+            {!embedded && actionsPanel}
+            {!embedded && leadersPanel}
           </aside>
           <div style={{ flex: "1 1 380px", minWidth: 0 }}>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "1.6rem" }}>
@@ -530,7 +536,7 @@ export function OperatorPanel({
             {flexPanel}
             {needsPanel}
             {qaPanel}
-            {actionsPanel}
+            {!embedded && actionsPanel}
           </aside>
         </div>
       )}

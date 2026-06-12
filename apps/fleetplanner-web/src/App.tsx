@@ -7,7 +7,6 @@ import { Sidebar, MobileNav } from "./components/Sidebar";
 import { ToastHost } from "./components/Toast";
 import { OverviewPage } from "./pages/OverviewPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
-import { EditOpPage } from "./pages/EditOpPage";
 import { OpManagePage } from "./pages/OpManagePage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { WizardPage } from "./pages/WizardPage";
@@ -31,6 +30,12 @@ import { ErrorState } from "./components/ErrorState";
 function CoverRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={`/ops/${id}/manage?tab=cover`} replace />;
+}
+
+// Standalone edit screen is fused into Op-Management as the Eckdaten tab.
+function EditRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/ops/${id}/manage?tab=eckdaten`} replace />;
 }
 
 export function App() {
@@ -71,7 +76,7 @@ export function App() {
             <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
             <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
             <Route path="/admin" element={<AdminPage session={session} />} />
-            <Route path="/ops/:id/edit" element={<EditOpPage session={session} />} />
+            <Route path="/ops/:id/edit" element={<EditRedirect />} />
             <Route path="/ops/:id/manage" element={<OpManagePage session={session} />} />
             <Route path="/ops/:id/cover" element={<CoverRedirect />} />
             <Route path="/ops/:id" element={<OpDetailPage session={session} />} />

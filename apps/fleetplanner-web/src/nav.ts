@@ -1,5 +1,6 @@
 // Sidebar navigation model (design README §71 — grouped rail).
 // `gate` hides an item unless it matches the viewer's role perspective.
+// `auth` hides an item entirely unless the viewer is logged in.
 export type Perspective = "crew" | "fleetoperator" | "superadmin";
 
 export type NavItem = {
@@ -7,6 +8,7 @@ export type NavItem = {
   label: string;
   icon: string;
   gate?: Perspective;
+  auth?: boolean;
 };
 
 export type NavGroup = {
@@ -20,26 +22,26 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: "/", label: "Übersicht", icon: "board" },
       { to: "/calendar", label: "Kalender", icon: "cal" },
-      { to: "/ops/new", label: "Neue Operation", icon: "plus" },
+      { to: "/ops/new", label: "Neue Operation", icon: "plus", auth: true },
       { to: "/ships", label: "Schiffe", icon: "ship" },
-      { to: "/templates", label: "Marktplatz", icon: "swap" },
+      { to: "/templates", label: "Marktplatz", icon: "swap", auth: true },
     ],
   },
   {
     label: "Server / Discord",
     items: [
-      { to: "/guilds", label: "Server", icon: "server" },
-      { to: "/guilds/settings", label: "Einstellungen", icon: "wrench" },
-      { to: "/guilds/diagnostics", label: "Diagnose", icon: "refresh" },
-      { to: "/guilds/partnerships", label: "Partnerschaften", icon: "link" },
+      { to: "/guilds", label: "Server", icon: "server", auth: true },
+      { to: "/guilds/settings", label: "Einstellungen", icon: "wrench", auth: true },
+      { to: "/guilds/diagnostics", label: "Diagnose", icon: "refresh", auth: true },
+      { to: "/guilds/partnerships", label: "Partnerschaften", icon: "link", auth: true },
     ],
   },
   {
     label: "Nutzer / Konto",
     items: [
-      { to: "/profile", label: "Profil & Flotte", icon: "users" },
-      { to: "/account", label: "Verknüpfte Logins", icon: "lock" },
-      { to: "/feedback", label: "Feedback", icon: "chat" },
+      { to: "/profile", label: "Profil & Flotte", icon: "users", auth: true },
+      { to: "/account", label: "Verknüpfte Logins", icon: "lock", auth: true },
+      { to: "/feedback", label: "Feedback", icon: "chat", auth: true },
     ],
   },
   {
@@ -65,12 +67,21 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-// Flat list (mobile <select>), gate-filtered for the viewer.
+// An item is visible when (a) login-gated items only show to logged-in users, and
+// (b) role-gated items only show to the matching perspective. `perspective === null`
+// means "not logged in".
+export function isVisible(item: NavItem, perspective: Perspective | null): boolean {
+  if (item.auth && perspective === null) return false;
+  if (item.gate && item.gate !== perspective) return false;
+  return true;
+}
+
+// Flat list (mobile <select>), filtered for the viewer.
 export function visibleItems(perspective: Perspective | null): NavItem[] {
   const out: NavItem[] = [];
   for (const g of NAV_GROUPS) {
     for (const it of g.items) {
-      if (!it.gate || it.gate === perspective) out.push(it);
+      if (isVisible(it, perspective)) out.push(it);
     }
   }
   return out;

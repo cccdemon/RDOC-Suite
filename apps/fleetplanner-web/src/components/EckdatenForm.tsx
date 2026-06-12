@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ApiError, deleteOperation, editOperation, getOperation } from "../api/client";
-import type { OperationDetail, SessionResponse } from "../api/types";
-import { Ic } from "../components/Icons";
-import { CardHead, MONO, actionBar, btnGhost, btnPrimary, card, inp, lbl, segChip, ta } from "../components/ui";
+import { useNavigate } from "react-router-dom";
+import { ApiError, deleteOperation, editOperation } from "../api/client";
+import type { OperationDetail } from "../api/types";
+import { Ic } from "./Icons";
+import { CardHead, MONO, actionBar, btnGhost, btnPrimary, card, inp, lbl, segChip, ta } from "./ui";
 
 const OP_TYPES = [
   { key: "combat", label: "Kampf", color: "var(--red)", rgb: "255,68,68", icon: "fighter" },
@@ -14,8 +14,6 @@ const OP_TYPES = [
   { key: "training", label: "Training", color: "var(--green)", rgb: "0,255,136", icon: "lead" },
   { key: "social", label: "Sozial", color: "#ff70c8", rgb: "255,112,200", icon: "users" },
 ];
-// Design visibility list: 3 options (no separate "Guild"). Legacy guild-visibility
-// ops map onto "Privat" on load.
 const VIS = [
   { key: "private", label: "Privat", desc: "Nur dein Server", icon: "lock" },
   { key: "partners", label: "Partner", desc: "Verbündete Server sehen es", icon: "link" },
@@ -29,7 +27,6 @@ function isoToLocalInput(iso: string): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-/** Short timezone label for the date field, e.g. "CEST" — derived from the guild tz. */
 function tzAbbr(tz: string | null): string {
   if (!tz) return "";
   try {
@@ -40,50 +37,50 @@ function tzAbbr(tz: string | null): string {
   }
 }
 
-export function EditOpPage({ session }: { session: SessionResponse | null }) {
-  const { id } = useParams<{ id: string }>();
+// The "Eckdaten" tab of Op-Management = the full op edit form (fused; the
+// standalone edit screen is gone). Title/date/max/type/meeting/briefing/
+// visibility + danger zone + sticky save bar.
+export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDetail; csrf: string | null; onSaved: () => void; onNotice: (m: string) => void }) {
   const navigate = useNavigate();
-  const csrf = session?.csrfToken ?? null;
-
-  const [op, setOp] = useState<OperationDetail | null>(null);
-  const [loadError, setLoadError] = useState<ApiError | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", opType: "combat", scheduledAt: "", maxParticipants: "", meetingSystem: "Stanton", meetingLocation: "", visibility: "private" });
-  const [saved, setSaved] = useState(form);
-  const [notice, setNotice] = useState<string | null>(null);
+  const initial = {
+    title: op.title,
+    description: op.description ?? "",
+    opType: op.opType,
+    scheduledAt: isoToLocalInput(op.scheduledAt),
+    maxParticipants: op.maxParticipants != null ? String(op.maxParticipants) : "",
+    meetingSystem: op.meetingSystem || "Stanton",
+    meetingLocation: op.meetingLocation ?? "",
+    visibility: op.visibility === "guild" ? "private" : op.visibility,
+  };
+  const [form, setForm] = useState(initial);
+  const [saved, setSaved] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
 
-  function reload() {
-    if (!id) return;
-    getOperation(id)
-      .then((o) => {
-        setOp(o);
-        const next = {
-          title: o.title,
-          description: o.description ?? "",
-          opType: o.opType,
-          scheduledAt: isoToLocalInput(o.scheduledAt),
-          maxParticipants: o.maxParticipants != null ? String(o.maxParticipants) : "",
-          meetingSystem: o.meetingSystem || "Stanton",
-          meetingLocation: o.meetingLocation ?? "",
-          // Legacy "guild" visibility collapses onto "Privat" in the 3-option design.
-          visibility: o.visibility === "guild" ? "private" : o.visibility,
-        };
-        setForm(next);
-        setSaved(next);
-      })
-      .catch((e) => setLoadError(e instanceof ApiError ? e : new ApiError(0, null)));
-  }
-  useEffect(reload, [id]);
+  // Re-seed when the op reloads (e.g. after save).
+  useEffect(() => {
+    const next = {
+      title: op.title,
+      description: op.description ?? "",
+      opType: op.opType,
+      scheduledAt: isoToLocalInput(op.scheduledAt),
+      maxParticipants: op.maxParticipants != null ? String(op.maxParticipants) : "",
+      meetingSystem: op.meetingSystem || "Stanton",
+      meetingLocation: op.meetingLocation ?? "",
+      visibility: op.visibility === "guild" ? "private" : op.visibility,
+    };
+    setForm(next);
+    setSaved(next);
+  }, [op]);
 
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
 
   async function save() {
-    if (!csrf || !id) return;
-    setBusy(true); setNotice(null);
+    if (!csrf) return;
+    setBusy(true);
     try {
-      await editOperation(id, csrf, {
+      await editOperation(op.id, csrf, {
         title: form.title.trim(),
         description: form.description,
         opType: form.opType,
@@ -93,51 +90,38 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
         visibility: form.visibility,
         maxParticipants: form.maxParticipants.trim() === "" ? null : Math.max(0, Number(form.maxParticipants) || 0),
       });
-      setNotice("Gespeichert."); reload();
+      onNotice("Gespeichert.");
+      onSaved();
     } catch (e) {
-      setNotice(e instanceof ApiError ? e.message : "Speichern fehlgeschlagen.");
+      onNotice(e instanceof ApiError ? e.message : "Speichern fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
   }
 
   async function remove() {
-    if (!csrf || !id) return;
-    setBusy(true); setNotice(null);
-    try { await deleteOperation(id, csrf); navigate("/"); }
-    catch (e) { setNotice(e instanceof ApiError ? e.message : "Löschen fehlgeschlagen."); setBusy(false); }
+    if (!csrf) return;
+    setBusy(true);
+    try {
+      await deleteOperation(op.id, csrf);
+      navigate("/");
+    } catch (e) {
+      onNotice(e instanceof ApiError ? e.message : "Löschen fehlgeschlagen.");
+      setBusy(false);
+    }
   }
-
-  if (loadError)
-    return <div className="fpw-state" data-testid="edit-error"><span style={lbl}>OPERATION {loadError.status === 404 ? "NICHT GEFUNDEN" : "NICHT LADBAR"}</span><Link className="fpw-btn" to="/">Zurück</Link></div>;
-  if (session === null || !op) return <div className="fpw-state"><span style={lbl}>LADE…</span></div>;
-  if (!op.canManage)
-    return <div className="fpw-state" data-testid="edit-forbidden"><span style={lbl}>KEINE OPERATOR-RECHTE</span><Link className="fpw-btn" to={`/ops/${id}`}>Zur Operation</Link></div>;
 
   const zone = tzAbbr(op.guild.timezone);
   const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" };
 
   return (
-    <div data-testid="edit-op-page" style={{ maxWidth: 1080, margin: "0 auto" }}>
-      {/* header */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: "0.6rem 1rem", marginBottom: "1.4rem" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
-            <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="edit" size={17} sw={1.7} /></span>
-            <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATION // BEARBEITEN</span>
-          </div>
-          <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: "0 0 0.4rem" }}>{op.title}</h1>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--dim)", fontSize: "0.8rem", fontFamily: MONO }}><Ic name="server" size={13} sw={1.6} /> {op.guild.name} · OP-ID {op.id.slice(-6)}</div>
-        </div>
-        {dirty && <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.1)", color: "var(--green)", flexShrink: 0, marginTop: "0.2rem" }}>GEÄNDERT</span>}
-      </div>
-
-      {notice && <p className="fpw-tag gold" role="alert" data-testid="edit-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
-
+    <div data-testid="edit-op-page">
+      {dirty && (
+        <span data-testid="edit-dirty" className="tag tag-green" style={{ marginBottom: "1rem" }}>GEÄNDERT</span>
+      )}
       <div className="fpw-edit-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.7fr) minmax(0,1fr)", gap: "1rem", alignItems: "start" }}>
         {/* main column */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
-          {/* Eckdaten */}
           <section style={card}>
             <CardHead icon="bolt" label="ECKDATEN" tone="cyan" />
             <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
@@ -164,7 +148,6 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
             </div>
           </section>
 
-          {/* Treffpunkt */}
           <section style={card}>
             <CardHead icon="pin" label="TREFFPUNKT" tone="violet" />
             <div className="fpw-two" style={twoCol}>
@@ -181,7 +164,6 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
             </div>
           </section>
 
-          {/* Briefing */}
           <section style={card}>
             <CardHead icon="doc" label="BRIEFING" tone="cyan" right={<span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim2)" }}>Markdown</span>} />
             <textarea data-testid="edit-description" value={form.description} maxLength={4000} onChange={(e) => set({ description: e.target.value })} placeholder={"## Missionsziel\n…\n\n## Einsatzregeln\n…"} style={ta} />
@@ -206,8 +188,7 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
             </div>
           </section>
 
-          {/* Gefahrenzone */}
-          <div style={{ border: "1px solid rgba(255,68,68,0.25)", borderRadius: 13, background: "rgba(255,68,68,0.04)", padding: "1rem 1.1rem" }}>
+          <div className="danger">
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", color: "#ff6b6b", marginBottom: "0.5rem" }}><Ic name="alert" size={14} sw={1.7} /> GEFAHRENZONE</div>
             {confirmDel ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -224,11 +205,9 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
         </div>
       </div>
 
-      {/* sticky action bar */}
       <div style={actionBar}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--dim)", fontSize: "0.78rem" }}><span style={{ color: "var(--gold)" }}><Ic name="alert" size={14} sw={1.7} /></span><span style={{ color: "var(--gold)" }}>*</span> Pflichtfeld</div>
         <div style={{ flex: 1 }} />
-        <Link to={`/ops/${id}`} style={{ ...btnGhost, textDecoration: "none" }}>Abbrechen</Link>
         <button type="button" data-testid="edit-save" style={{ ...btnPrimary, opacity: dirty ? 1 : 0.7 }} disabled={busy || !csrf} onClick={save}><Ic name="save" size={15} sw={1.8} /> Änderungen speichern</button>
       </div>
 

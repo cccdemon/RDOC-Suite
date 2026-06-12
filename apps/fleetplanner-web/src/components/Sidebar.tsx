@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { logout } from "../api/client";
 import type { SessionResponse } from "../api/types";
-import { NAV_GROUPS, visibleItems, type NavItem, type Perspective } from "../nav";
+import { NAV_GROUPS, isVisible, visibleItems, type NavItem, type Perspective } from "../nav";
 import { THEMES, type Theme } from "../theme";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
@@ -89,7 +89,7 @@ export function Sidebar({ session, theme, setThemeId }: { session: SessionRespon
       <Brand />
       <nav className="sidebar-nav">
         {NAV_GROUPS.map((g) => {
-          const items = g.items.filter((it) => !it.gate || it.gate === perspective);
+          const items = g.items.filter((it) => isVisible(it, perspective));
           if (items.length === 0) return null;
           return (
             <div className="nav-group" key={g.label}>
