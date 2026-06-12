@@ -1068,7 +1068,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
       const g = await requireCoverManager(req, reply, p.data.id, true);
       if (!g) return;
-      if (!coverServiceConfigured()) return sendError(reply, req, 503, "unavailable", "Cover service not configured.");
+      if (!coverServiceConfigured()) return sendError(reply, req, 503, "internal", "Cover service not configured.");
       const format = pickCoverFormat(req.body?.format);
       const preset = pickCoverPreset(req.body?.preset);
       try {
@@ -1084,7 +1084,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         return reply.type("application/json").send({ ok: true as const, cover: presentCover(cover) });
       } catch (err) {
         req.log.error(err, "cover generate failed (v1)");
-        return sendError(reply, req, 502, "upstream_error", "Cover render failed.");
+        return sendError(reply, req, 502, "internal", "Cover render failed.");
       }
     },
   );
@@ -1113,7 +1113,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!g) return;
       const env = getEnv();
       const secret = env.MISSIONCOVER_SERVICE_SECRET;
-      if (!secret) return sendError(reply, req, 503, "unavailable", "Cover service not configured.");
+      if (!secret) return sendError(reply, req, 503, "internal", "Cover service not configured.");
       const baseUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
       const existing = await prisma.opCover.findUnique({ where: { opId: g.op.id } });
       const token = signCoverToken(
