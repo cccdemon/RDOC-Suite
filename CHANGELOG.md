@@ -14,6 +14,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dead legacy Voice/Relay config and production E2E acceptance tests.
 - Added the review to `docs/ROADMAP.md` as a P1 implementation item.
 
+### Changed - FR-P2 cutover: the SPA is now the primary /fleetplanner interface (2026-06-12)
+
+- Promoted the React SPA from the `/fleetplanner-next` shadow path to the canonical
+  `/fleetplanner`. The `fleetplanner-web` nginx is now the single front door: it serves the SPA
+  for client routes and proxies `/api`, `/auth`, `/discord`, `/e2e`, the per-op SSR downloads
+  (calendar.ics / participants.csv / cover) and every remaining SSR-only page to the backend
+  (`fleetplanner:3200`). The SPA is rebuilt with `BASE_PATH=/fleetplanner/`; Caddy routes
+  `/fleetplanner*` to the web container and 301-redirects the old `/fleetplanner-next*` so
+  bookmarks keep working. OAuth callbacks and the API base are unchanged (`/fleetplanner/...`).
+  Un-migrated pages keep rendering from SSR through the proxy until their SPA versions land.
+
 ### Changed - SPA op-creation wizard (Claude Design handoff, Fleetplanner-App) (2026-06-12)
 
 - Replaced the single-form `/ops/new` create page with a guided 6-step **Erstellungs-Assistent**

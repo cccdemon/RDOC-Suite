@@ -116,10 +116,15 @@ services:
       context: .
       dockerfile: apps/fleetplanner-web/Dockerfile
       args:
-        BASE_PATH: "/fleetplanner-next/"
+        # FR-P2 cutover: the SPA is now the primary /fleetplanner interface.
+        BASE_PATH: "/fleetplanner/"
     image: rdoc-suite-fleetplanner-web:latest
     container_name: rdoc-suite-fleetplanner-web
     restart: unless-stopped
+    # nginx here is the single front door for /fleetplanner and proxies API/auth
+    # /SSR to the backend, so it must share the network + start after it.
+    depends_on:
+      - fleetplanner
     ports:
       - "127.0.0.1:3210:80"
 

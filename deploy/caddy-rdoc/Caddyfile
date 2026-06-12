@@ -14,16 +14,16 @@ suite.raumdock.org:9443 {
 		redir * /fleetplanner 302
 	}
 
-	# FR-P2 Phase 4 — SPA shadow mode. The longer path wins over /fleetplanner*
-	# (Caddy orders handle blocks by path specificity, same pattern as
-	# /cover/v1* below). handle_path strips the prefix; the SPA build bakes
-	# BASE_PATH=/fleetplanner-next/ into its asset URLs.
+	# FR-P2 cutover — the SPA web container (127.0.0.1:3210) is now the single
+	# front door for the whole app. Its nginx serves the SPA and proxies
+	# /api, /auth, /discord, /e2e and the remaining SSR pages to the backend.
+	# The old shadow path redirects so bookmarks/links keep working.
 	handle_path /fleetplanner-next* {
-		reverse_proxy 127.0.0.1:3210
+		redir * /fleetplanner{uri} 301
 	}
 
 	handle_path /fleetplanner* {
-		reverse_proxy 127.0.0.1:3200 {
+		reverse_proxy 127.0.0.1:3210 {
 			@upstream_5xx status 5xx
 			handle_response @upstream_5xx {
 				error "upstream error" {http.reverse_proxy.status_code}
