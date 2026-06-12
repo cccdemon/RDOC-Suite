@@ -234,6 +234,30 @@ export function setCqbTeams(id: string, csrfToken: string, count: number, size: 
   return mutate("PUT", `/operations/${encodeURIComponent(id)}/needs/cqb`, csrfToken, { count, size });
 }
 
+export function getPartnerships(guildId: string): Promise<import("./types").PartnershipsResponse> {
+  return get<import("./types").PartnershipsResponse>(`/guilds/${encodeURIComponent(guildId)}/partnerships`);
+}
+
+export function mintPartnerInvite(guildId: string, csrfToken: string, label: string): Promise<{ ok: true; token: string; label: string }> {
+  return mutate("POST", `/guilds/${encodeURIComponent(guildId)}/partnerships/invite`, csrfToken, { label });
+}
+
+export function acceptPartnerToken(guildId: string, csrfToken: string, token: string): Promise<{ ok: true }> {
+  return mutate("POST", `/guilds/${encodeURIComponent(guildId)}/partnerships/accept`, csrfToken, { token });
+}
+
+export function setPartnerAutoShare(guildId: string, partnerGuildId: string, csrfToken: string, autoShare: boolean): Promise<{ ok: true }> {
+  return mutate("PUT", `/guilds/${encodeURIComponent(guildId)}/partnerships/${encodeURIComponent(partnerGuildId)}/auto-share`, csrfToken, { autoShare });
+}
+
+export function revokePartnership(guildId: string, partnershipId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/guilds/${encodeURIComponent(guildId)}/partnerships/${encodeURIComponent(partnershipId)}/revoke`, csrfToken);
+}
+
+export function decideSharedEvent(guildId: string, eventId: string, decision: "approve" | "decline", csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/guilds/${encodeURIComponent(guildId)}/partnerships/events/${encodeURIComponent(eventId)}/${decision}`, csrfToken);
+}
+
 export function getGuildSettings(guildId: string): Promise<import("./types").GuildSettingsResponse> {
   return get<import("./types").GuildSettingsResponse>(`/guilds/${encodeURIComponent(guildId)}/settings`);
 }

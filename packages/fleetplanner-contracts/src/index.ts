@@ -553,6 +553,61 @@ export const PublishTemplateRequestSchema = z
   .meta({ id: "PublishTemplateRequest" });
 export type PublishTemplateRequest = z.infer<typeof PublishTemplateRequestSchema>;
 
+// ── Guild partnerships ──────────────────────────────────────────────────
+
+export const PartnershipSchema = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    status: z.string(),
+    partnerGuildId: z.string().nullable(),
+    partnerGuildName: z.string().nullable(),
+    isInitiator: z.boolean(),
+    activatedAt: z.iso.datetime().nullable(),
+    createdAt: z.iso.datetime(),
+    autoShare: z.boolean(),
+  })
+  .meta({ id: "Partnership" });
+export type Partnership = z.infer<typeof PartnershipSchema>;
+
+export const IncomingDistributionSchema = z
+  .object({
+    id: z.string(),
+    opId: z.string(),
+    opTitle: z.string(),
+    scheduledAt: z.iso.datetime(),
+    meetingSystem: z.string().nullable(),
+    meetingLocation: z.string().nullable(),
+    hostGuildName: z.string(),
+    hostOrgName: z.string().nullable(),
+  })
+  .meta({ id: "IncomingDistribution" });
+export type IncomingDistribution = z.infer<typeof IncomingDistributionSchema>;
+
+export const PartnershipsResponseSchema = z
+  .object({
+    partnerships: z.array(PartnershipSchema),
+    incoming: z.array(IncomingDistributionSchema),
+  })
+  .meta({ id: "PartnershipsResponse" });
+export type PartnershipsResponse = z.infer<typeof PartnershipsResponseSchema>;
+
+export const MintInviteRequestSchema = z
+  .object({ label: z.string().min(1).max(80) })
+  .meta({ id: "MintInviteRequest" });
+
+export const MintInviteResponseSchema = z
+  .object({ ok: z.literal(true), token: z.string(), label: z.string() })
+  .meta({ id: "MintInviteResponse" });
+
+export const AcceptTokenRequestSchema = z
+  .object({ token: z.string().min(1).max(200) })
+  .meta({ id: "AcceptTokenRequest" });
+
+export const SetAutoShareRequestSchema = z
+  .object({ autoShare: z.boolean() })
+  .meta({ id: "SetAutoShareRequest" });
+
 export const GuildIdParamSchema = z.object({ id: z.string().regex(/^\d{16,25}$/) });
 export const GuildMemberParamSchema = z.object({
   id: z.string().regex(/^\d{16,25}$/),

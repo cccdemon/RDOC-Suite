@@ -50,6 +50,8 @@ check "guild settings anon 401" "401" "$gset_code"
 contains "guild settings 401 envelope" "$(cat /tmp/e2e_gset)" '"code":"unauthenticated"'
 gset_bad="$(curl -s -o /dev/null -w '%{http_code}' "$API/guilds/not-a-snowflake/settings")"
 check "guild settings bad id 400" "400" "$gset_bad"
+part_anon="$(curl -s -o /dev/null -w '%{http_code}' "$API/guilds/123456789012345678/partnerships")"
+check "partnerships anon 401" "401" "$part_anon"
 
 # op editor lifecycle — anon gates (side-effect-free: 401 fires before any write)
 life_status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"status":"open"}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/status")"

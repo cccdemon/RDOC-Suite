@@ -437,6 +437,62 @@ describe("operation needs editor — gates + validation", () => {
   });
 });
 
+describe("guild partnerships — gates + validation", () => {
+  const gid = "123456789012345678";
+  const partnerGid = "987654321098765432";
+  const cuid = "cmqcccccccccccccccccc3";
+
+  it("GET partnerships anonymous → 401", async () => {
+    const res = await app.inject({ method: "GET", url: `/api/v1/guilds/${gid}/partnerships` });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("GET partnerships invalid guild id → 400", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/guilds/nope/partnerships" });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it.each([
+    ["POST", `/api/v1/guilds/${gid}/partnerships/invite`, { label: "Ally" }],
+    ["POST", `/api/v1/guilds/${gid}/partnerships/accept`, { token: "abc123" }],
+    ["PUT", `/api/v1/guilds/${gid}/partnerships/${partnerGid}/auto-share`, { autoShare: true }],
+    ["POST", `/api/v1/guilds/${gid}/partnerships/${cuid}/revoke`, undefined],
+    ["POST", `/api/v1/guilds/${gid}/partnerships/events/${cuid}/approve`, undefined],
+    ["POST", `/api/v1/guilds/${gid}/partnerships/events/${cuid}/decline`, undefined],
+  ] as const)("%s %s without session → 401", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      headers: { "x-forwarded-for": `10.16.0.${url.length}`, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+      ...(body !== undefined ? { payload: JSON.stringify(body) } : {}),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("invite with empty label → 400 before auth", async () => {
+    const res = await app.inject({ method: "POST", url: `/api/v1/guilds/${gid}/partnerships/invite`, headers: { "content-type": "application/json", "x-forwarded-for": "10.16.1.1" }, payload: JSON.stringify({ label: "" }) });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("auto-share with invalid partner id → 400", async () => {
+    const res = await app.inject({ method: "PUT", url: `/api/v1/guilds/${gid}/partnerships/not-a-snowflake/auto-share`, headers: { "content-type": "application/json", "x-forwarded-for": "10.16.1.2" }, payload: JSON.stringify({ autoShare: true }) });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents the partnership routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/guilds/{id}/partnerships"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/partnerships/invite"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/partnerships/accept"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/partnerships/{partnerGuildId}/auto-share"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/partnerships/{partnershipId}/revoke"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/partnerships/events/{eventId}/approve"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/partnerships/events/{eventId}/decline"].post).toBeTruthy();
+  });
+});
+
 describe("guild settings — gates + validation", () => {
   const gid = "123456789012345678"; // valid Discord snowflake
   const uid = "cmqffffffffffffffffff6";

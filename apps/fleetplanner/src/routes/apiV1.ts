@@ -38,10 +38,21 @@ import {
 } from "../services/operations.js";
 import { createScheduledEvent, deleteScheduledEvent, updateScheduledEvent } from "../services/discord.js";
 import {
+  approveDistribution,
+  declineDistribution,
   deleteDistributedEvents,
   distributeOperation,
+  getAutoShareMap,
+  listIncomingDistributions,
+  setAutoShare,
   updateDistributedEvents,
 } from "../services/eventDistribution.js";
+import {
+  acceptPartnerToken,
+  listPartnerships,
+  mintPartnerToken,
+  revokePartnership,
+} from "../services/partnerships.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
 import {
   addShipNeeds,
@@ -66,7 +77,10 @@ import {
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
   AddShipNeedsRequestSchema,
+  AcceptTokenRequestSchema,
+  MintInviteRequestSchema,
   PublishTemplateRequestSchema,
+  SetAutoShareRequestSchema,
   EditOperationRequestSchema,
   FeedbackRequestSchema,
   GuildIdParamSchema,
@@ -444,6 +458,139 @@ export async function apiV1Routes(app: FastifyInstance) {
       return reply.type("application/json").send({ ok: true as const });
     },
   );
+
+  // ── guild partnerships (admiral console) ─────────────────────────────
+  // SSR twins: routes/partnerships.ts. Guild-scoped via :id; approve/decline
+  // re-check the operator role against the distribution's own target guild.
+  const snowflakeRe = /^\d{16,25}$/;
+  const cuidRe = /^[a-z0-9]{20,32}$/i;
+
+  app.get<{ Params: { id: string } }>("/api/v1/guilds/:id/partnerships", async (req, reply) => {
+    const p = GuildIdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") {
+      const m = await getMembership(ctx.user.id, p.data.id);
+      if (m?.role !== "fleetoperator")
+        return sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
+    }
+    const [rows, autoShare, incoming] = await Promise.all([
+      listPartnerships(p.data.id),
+      getAutoShareMap(p.data.id),
+      listIncomingDistributions(p.data.id),
+    ]);
+    return reply.type("application/json").send({
+      partnerships: rows.map((r) => ({
+        id: r.id,
+        label: r.label,
+        status: r.status,
+        partnerGuildId: r.partnerGuildId,
+        partnerGuildName: r.partnerGuildName,
+        isInitiator: r.isInitiator,
+        activatedAt: r.activatedAt ? r.activatedAt.toISOString() : null,
+        createdAt: r.createdAt.toISOString(),
+        autoShare: r.partnerGuildId ? (autoShare.get(r.partnerGuildId) ?? false) : false,
+      })),
+      incoming: incoming.map((d) => ({
+        id: d.id,
+        opId: d.opId,
+        opTitle: d.opTitle,
+        scheduledAt: d.scheduledAt.toISOString(),
+        meetingSystem: d.meetingSystem,
+        meetingLocation: d.meetingLocation,
+        hostGuildName: d.hostGuildName,
+        hostOrgName: d.hostOrgName,
+      })),
+    });
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/v1/guilds/:id/partnerships/invite", async (req, reply) => {
+    const p = GuildIdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+    const body = MintInviteRequestSchema.safeParse(req.body);
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Label required.");
+    const ctx = await requireGuildOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    const minted = await mintPartnerToken(p.data.id, body.data.label.trim(), ctx.user.id);
+    return reply.type("application/json").send({ ok: true as const, token: minted.plaintext, label: minted.label });
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/v1/guilds/:id/partnerships/accept", async (req, reply) => {
+    const p = GuildIdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+    const body = AcceptTokenRequestSchema.safeParse(req.body);
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Token required.");
+    const ctx = await requireGuildOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    const result = await acceptPartnerToken(body.data.token.trim(), p.data.id);
+    if (!result.ok) {
+      const msg =
+        result.reason === "self_partner" ? "Cannot partner with your own Discord."
+          : result.reason === "already_partners" ? "Already partnered with that Discord."
+            : result.reason === "already_used" ? "This token was already used."
+              : result.reason === "revoked" ? "This token was revoked."
+                : "Invalid token.";
+      return sendError(reply, req, 409, "conflict", msg);
+    }
+    return reply.type("application/json").send({ ok: true as const, label: result.label });
+  });
+
+  app.put<{ Params: { id: string; partnerGuildId: string }; Body: unknown }>(
+    "/api/v1/guilds/:id/partnerships/:partnerGuildId/auto-share",
+    async (req, reply) => {
+      const p = GuildIdParamSchema.safeParse(req.params);
+      if (!p.success || !snowflakeRe.test(req.params.partnerGuildId))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = SetAutoShareRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireGuildOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const partners = await listPartnerships(p.data.id);
+      const active = partners.some((x) => x.status === "active" && x.partnerGuildId === req.params.partnerGuildId);
+      if (!active) return sendError(reply, req, 404, "not_found", "Not an active partner.");
+      await setAutoShare(p.data.id, req.params.partnerGuildId, body.data.autoShare);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.post<{ Params: { id: string; partnershipId: string } }>(
+    "/api/v1/guilds/:id/partnerships/:partnershipId/revoke",
+    async (req, reply) => {
+      const p = GuildIdParamSchema.safeParse(req.params);
+      if (!p.success || !cuidRe.test(req.params.partnershipId))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireGuildOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const ok = await revokePartnership(req.params.partnershipId, p.data.id);
+      if (!ok) return sendError(reply, req, 404, "not_found", "Partnership not found.");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  for (const decision of ["approve", "decline"] as const) {
+    app.post<{ Params: { id: string; eventId: string } }>(
+      `/api/v1/guilds/:id/partnerships/events/:eventId/${decision}`,
+      async (req, reply) => {
+        const p = GuildIdParamSchema.safeParse(req.params);
+        if (!p.success || !cuidRe.test(req.params.eventId))
+          return sendError(reply, req, 400, "bad_request", "Invalid id.");
+        const ctx = await requireGuildOperator(req, reply, p.data.id);
+        if (!ctx) return;
+        const result =
+          decision === "approve"
+            ? await approveDistribution(req.params.eventId, ctx.user.id)
+            : await declineDistribution(req.params.eventId, ctx.user.id);
+        if (!result.ok) {
+          if (result.reason === "forbidden") return sendError(reply, req, 403, "forbidden", "Not a fleet operator of the target Discord.");
+          if (result.reason === "not_pending") return sendError(reply, req, 409, "conflict", "This event was already decided.");
+          if (result.reason === "post_failed") return reply.type("application/json").send({ ok: true as const, warning: "post_failed" });
+          return sendError(reply, req, 404, "not_found", "Event not found.");
+        }
+        return reply.type("application/json").send({ ok: true as const });
+      },
+    );
+  }
 
   // ── create operation ────────────────────────────────────────────────
   // Fleet operators (or superadmins) create draft ops in a guild they manage.

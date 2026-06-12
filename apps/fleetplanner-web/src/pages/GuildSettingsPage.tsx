@@ -121,6 +121,9 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
         <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Server-Einstellungen</h1>
       </div>
+      <p className="fpw-meta" style={{ marginBottom: "1.2rem" }}>
+        <Link to="/guilds/partnerships" data-testid="partnerships-link">Partnerschaften verwalten →</Link>
+      </p>
 
       {manageable.length > 1 && (
         <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>

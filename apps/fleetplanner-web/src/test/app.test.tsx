@@ -834,6 +834,60 @@ describe("Op needs editor (Bedarfe)", () => {
   });
 });
 
+describe("Guild partnerships", () => {
+  const sessionFO = {
+    user: { id: "user_admiral", username: "Admiral", role: "fleetoperator", locale: "de" },
+    memberships: [{ guildId: "123456789012345678", guildName: "RDOC", role: "fleetoperator" }],
+    csrfToken: "csrf-test-token",
+  };
+  const partsBody = {
+    partnerships: [
+      { id: "pp_1", label: "Allianz X", status: "active", partnerGuildId: "987654321098765432", partnerGuildName: "Ally Org", isInitiator: true, activatedAt: "2026-06-01T10:00:00.000Z", createdAt: "2026-05-30T10:00:00.000Z", autoShare: false },
+    ],
+    incoming: [
+      { id: "ev_1", opId: "op_x", opTitle: "Joint Patrol", scheduledAt: "2026-06-20T18:00:00.000Z", meetingSystem: "Stanton", meetingLocation: "Port", hostGuildName: "Ally Org", hostOrgName: null },
+    ],
+  };
+
+  it("operator mints a partner invite token", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionFO)),
+      http.get(`${API}/guilds/123456789012345678/partnerships`, () => HttpResponse.json(partsBody)),
+      http.post(`${API}/guilds/123456789012345678/partnerships/invite`, () =>
+        HttpResponse.json({ ok: true, token: "secret-token-xyz", label: "Allianz Y" }),
+      ),
+    );
+    const { findByTestId } = renderAt("/guilds/partnerships");
+    const lbl = (await findByTestId("invite-label")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(lbl, "Allianz Y");
+    lbl.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("invite-mint")).click();
+    expect(await findByTestId("minted-token")).toHaveTextContent("secret-token-xyz");
+  });
+
+  it("operator approves an incoming shared event", async () => {
+    let approved = false;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionFO)),
+      http.get(`${API}/guilds/123456789012345678/partnerships`, () => HttpResponse.json(partsBody)),
+      http.post(`${API}/guilds/123456789012345678/partnerships/events/ev_1/approve`, () => {
+        approved = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/guilds/partnerships");
+    (await findByTestId("incoming-approve-ev_1")).click();
+    await findByTestId("partner-pp_1");
+    expect(approved).toBe(true);
+  });
+
+  it("crew member without operator role sees a no-rights state", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)));
+    const { findByTestId } = renderAt("/guilds/partnerships");
+    expect(await findByTestId("partnerships-none")).toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

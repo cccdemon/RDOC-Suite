@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Guild-Partnerschaften — Branch master
+
+Admiral-Fläche `/guilds/partnerships` ins SPA (steuert Op-Sichtbarkeit „partners" + Event-Sharing).
+- BE guild-scoped (requireGuildOperator / GET cookie-only): `GET …/partnerships` (Liste+autoShare +
+  incoming-Inbox), `POST …/invite` (mintPartnerToken, Token einmalig), `POST …/accept`
+  (acceptPartnerToken, reason→409), `PUT …/:partnerGuildId/auto-share`, `POST …/:partnershipId/
+  revoke`, `POST …/events/:eventId/{approve,decline}` (Service prüft Rolle gegen target-guild der
+  Distribution). SSR-twin routes/partnerships.ts.
+- Contracts Partnership/IncomingDistribution/PartnershipsResponse + Mint/Accept/AutoShare; OpenAPI;
+  inject-Tests (anon 401, bad id/label/partner-id 400, doc). FE client 6 Fn + types,
+  PartnershipsPage (Inbox approve/decline, Partner-Liste autoShare+revoke, Token erstellen/einlösen),
+  Link aus GuildSettingsPage, App-Route. MSW-Tests. E2E-readonly +1.
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E).** Lokal NICHT gebaut (Docker-Regel).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Op-Editor (Slice 1: Lifecycle) — Branch master
 
 Größter SSR-Rest: Op-Management-Editor. Zu groß für einen Wurf → in Slices.

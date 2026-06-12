@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA guild partnerships (2026-06-12)
+
+- New guild-scoped partnership API (fleet operator of that guild / superadmin):
+  `GET /api/v1/guilds/:id/partnerships` (partner list with auto-share flags + the incoming
+  shared-event inbox), `POST …/partnerships/invite` (mint a single-use token, returned once),
+  `POST …/partnerships/accept` (redeem a token), `PUT …/partnerships/:partnerGuildId/auto-share`,
+  `POST …/partnerships/:partnershipId/revoke`, and `POST …/partnerships/events/:eventId/{approve,
+  decline}` (the approve/decline re-check the operator role against the distribution's own target
+  guild). SSR twins: routes/partnerships.ts.
+- Contracts Partnership / IncomingDistribution / PartnershipsResponse + MintInvite/AcceptToken/
+  SetAutoShare requests + OpenAPI paths + inject tests (anon 401, bad id/label/partner-id 400).
+  prod-e2e-readonly: partnerships anon-gate check.
+- SPA `/guilds/partnerships` page: incoming inbox (approve/decline), partner list (auto-share
+  toggle, revoke), mint-invite (one-time token reveal) and redeem-token forms; linked from the
+  server settings page. MSW tests.
+
 ### Added - FR-P2: SPA op editor — publish-template + recurrence (2026-06-12)
 
 - New `POST /api/v1/operations/:id/publish-template` (fleet operator): publish the operation
