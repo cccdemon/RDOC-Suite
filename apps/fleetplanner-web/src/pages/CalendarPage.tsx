@@ -59,7 +59,7 @@ const tagStyle = (color: string): React.CSSProperties => ({
 
 export function CalendarPage() {
   const now = new Date();
-  const [view, setView] = useState<"monat" | "agenda">("monat");
+  const [view, setView] = useState<"monat" | "agenda">("agenda");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [filter, setFilter] = useState("alle");
@@ -181,7 +181,7 @@ export function CalendarPage() {
     const pct = e.cap > 0 ? Math.min(100, Math.round((e.signed / e.cap) * 100)) : 0;
     const dim = st.key === "done";
     return (
-      <div key={e.id} style={{ border: `1px solid rgba(${ty.rgb},0.18)`, borderLeft: `3px solid ${ty.color}`, borderRadius: 10, background: "#0a1018", padding: "0.75rem 0.85rem", opacity: dim ? 0.6 : 1 }}>
+      <Link key={e.id} to={`/ops/${e.id}`} data-testid={`cal-open-${e.id}`} style={{ display: "block", textDecoration: "none", border: `1px solid rgba(${ty.rgb},0.18)`, borderLeft: `3px solid ${ty.color}`, borderRadius: 10, background: "#0a1018", padding: "0.75rem 0.85rem", opacity: dim ? 0.6 : 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <span style={{ fontFamily: MONO, fontSize: compact ? "0.92rem" : "0.98rem", color: "#eaf4fb", flexShrink: 0 }}>{e.time}</span>
           <span style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `rgba(${ty.rgb},0.12)`, border: `1px solid rgba(${ty.rgb},0.3)`, color: ty.color }}>
@@ -200,11 +200,11 @@ export function CalendarPage() {
             </div>
             <span style={{ fontFamily: MONO, fontSize: "0.74rem", color: "#9fb1c2", whiteSpace: "nowrap" }}>{e.signed}/{e.cap}</span>
           </div>
-          <Link to={`/ops/${e.id}`} data-testid={`cal-open-${e.id}`} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid rgba(0,212,255,0.4)", background: "rgba(0,212,255,0.08)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7, textDecoration: "none" }}>
+          <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid rgba(0,212,255,0.4)", background: "rgba(0,212,255,0.08)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7 }}>
             Öffnen <Ic name="arrow" size={13} sw={1.9} />
-          </Link>
+          </span>
         </div>
-      </div>
+      </Link>
     );
   };
 

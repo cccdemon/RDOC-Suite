@@ -16,6 +16,7 @@ import { OfferShip } from "../components/OfferShip";
 import { OperatorPanel } from "../components/OperatorPanel";
 import { Ic } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
+import { Markdown } from "../components/Markdown";
 
 const MONO = "var(--mono)";
 
@@ -457,19 +458,54 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               {filled} angemeldet · min {op.minParticipants}
             </span>
           </div>
+
+          {/* MISSION OBJECTIVE — part of the hero */}
+          <div style={{ marginTop: "1.1rem", paddingTop: "1.1rem", borderTop: "1px solid rgba(0,212,255,0.1)" }}>
+            <div style={monoLabel({ marginBottom: "0.45rem" })}>MISSION OBJECTIVE</div>
+            {op.description ? (
+              <Markdown text={op.description} style={{ fontSize: "0.95rem" }} />
+            ) : (
+              <p style={{ margin: 0, color: "#7e92a4" }}>Kein Missionsziel hinterlegt.</p>
+            )}
+            {op.resourceLinks.length > 0 && (
+              <>
+                <div style={monoLabel({ margin: "1rem 0 0.55rem", fontSize: "0.7rem" })}>BRIEFING / LINKS</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  {op.resourceLinks.map((l) => (
+                    <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "#00d4ff", textDecoration: "none", fontSize: "0.92rem" }}>
+                      {l.title} <span style={{ color: "#5b6b7a" }}>↗</span>
+                    </a>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
-        <div
-          style={{
-            flex: "1 1 230px",
-            minHeight: 130,
-            alignSelf: "stretch",
-            border: "1px solid rgba(0,212,255,0.18)",
-            borderRadius: 10,
-            overflow: "hidden",
-            background: "#0a1622",
-          }}
-        >
-          <img src={heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+
+        {/* right column: banner image + ANMELDUNGEN — part of the hero */}
+        <div style={{ flex: "1 1 260px", minWidth: 0, alignSelf: "stretch", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <div style={{ minHeight: 130, flex: "0 0 auto", height: 150, border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622" }}>
+            <img src={heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          </div>
+          <div style={{ border: "1px solid rgba(0,212,255,0.13)", borderRadius: 12, background: "rgba(9,15,24,0.55)", padding: "0.85rem 1rem" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+              <span style={monoLabel()}>ANMELDUNGEN</span>
+              <span style={{ fontFamily: MONO, fontSize: "1.1rem", color: "#eaf4fb" }}>
+                <strong style={{ color: "#f0a500" }}>{filled}</strong> <span style={{ color: "#5b6b7a" }}>/ {op.minParticipants}</span>
+              </span>
+            </div>
+            <div style={{ height: 7, borderRadius: 5, background: "#0e1926", overflow: "hidden", marginBottom: "0.4rem" }}>
+              <div style={{ height: "100%", width: `${pct}%`, borderRadius: 5, background: "linear-gradient(90deg,#f0a500,#f5c451)" }} />
+            </div>
+            <div style={{ color: "#9fb1c2", fontSize: "0.8rem", marginBottom: "0.6rem" }}>
+              {Math.max(0, op.minParticipants - filled) > 0 ? `Noch ${op.minParticipants - filled} bis zur Mindestzahl.` : "Mindestzahl erreicht."}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {infoRow("clock", "ZEIT", fmtShort(op.scheduledAt, op.guild.timezone))}
+              {infoRow("pin", "TREFFPUNKT", op.meetingLocation)}
+              {infoRow("globe", "SYSTEM", op.meetingSystem)}
+            </div>
+          </div>
         </div>
       </section>
 
@@ -479,49 +515,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         </p>
       )}
 
-      {/* MISSION + ANMELDUNGEN */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "1.1rem", marginBottom: "1.6rem" }}>
-        <section style={{ flex: "1.7 1 380px", minWidth: 0, border: "1px solid rgba(0,212,255,0.13)", borderRadius: 14, background: "#090f18", padding: "1.5rem 1.6rem" }}>
-          <div style={monoLabel({ marginBottom: "0.85rem" })}>MISSION OBJECTIVE</div>
-          {op.description ? (
-            <p style={{ margin: 0, color: "#c2d2de", fontSize: "1.02rem", lineHeight: 1.62, whiteSpace: "pre-wrap" }}>{op.description}</p>
-          ) : (
-            <p style={{ margin: 0, color: "#7e92a4" }}>Kein Missionsziel hinterlegt.</p>
-          )}
-          {op.resourceLinks.length > 0 && (
-            <>
-              <div style={monoLabel({ margin: "1.4rem 0 0.7rem", fontSize: "0.7rem" })}>BRIEFING / LINKS</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
-                {op.resourceLinks.map((l) => (
-                  <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "#00d4ff", textDecoration: "none", fontSize: "0.95rem" }}>
-                    {l.title} <span style={{ color: "#5b6b7a" }}>↗</span>
-                  </a>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-
-        <section style={{ flex: "1 1 290px", minWidth: 0, border: "1px solid rgba(0,212,255,0.13)", borderRadius: 14, background: "#090f18", padding: "1.5rem 1.6rem" }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.85rem" }}>
-            <span style={monoLabel()}>ANMELDUNGEN</span>
-            <span style={{ fontFamily: MONO, fontSize: "1.15rem", color: "#eaf4fb" }}>
-              <strong style={{ color: "#f0a500" }}>{filled}</strong> <span style={{ color: "#5b6b7a" }}>/ {op.minParticipants}</span>
-            </span>
-          </div>
-          <div style={{ height: 7, borderRadius: 5, background: "#0e1926", overflow: "hidden", marginBottom: "0.5rem" }}>
-            <div style={{ height: "100%", width: `${pct}%`, borderRadius: 5, background: "linear-gradient(90deg,#f0a500,#f5c451)" }} />
-          </div>
-          <div style={{ color: "#9fb1c2", fontSize: "0.82rem", marginBottom: "1.15rem" }}>
-            {Math.max(0, op.minParticipants - filled) > 0 ? `Noch ${op.minParticipants - filled} bis zur Mindestzahl.` : "Mindestzahl erreicht."}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
-            {infoRow("clock", "ZEIT", fmtShort(op.scheduledAt, op.guild.timezone))}
-            {infoRow("pin", "TREFFPUNKT", op.meetingLocation)}
-            {infoRow("globe", "SYSTEM", op.meetingSystem)}
-          </div>
-        </section>
-      </div>
 
       {/* VIEW SWITCH */}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.8rem" }}>
