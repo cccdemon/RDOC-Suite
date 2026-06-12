@@ -53,6 +53,7 @@ import {
   mintPartnerToken,
   revokePartnership,
 } from "../services/partnerships.js";
+import { createSeriesForOp } from "../services/recurrence.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
 import {
   addShipNeeds,
@@ -82,6 +83,7 @@ import {
   MintInviteRequestSchema,
   PublishTemplateRequestSchema,
   SetAutoShareRequestSchema,
+  SetRecurrenceRequestSchema,
   EditOperationRequestSchema,
   FeedbackRequestSchema,
   FleetImportRequestSchema,
@@ -830,6 +832,41 @@ export async function apiV1Routes(app: FastifyInstance) {
     });
     await logAudit(p.data.id, ctx.user.id, ctx.user.username, "template_published", "");
     return reply.type("application/json").send({ ok: true as const, id: (tpl as { id: string }).id });
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/v1/operations/:id/recurrence", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const body = SetRecurrenceRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid recurrence.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    const op = await getOperation(p.data.id);
+    if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+    if (op.recurrenceId) return sendError(reply, req, 409, "conflict", "Operation already has a recurring series.");
+    const guild = await prisma.guild.findUnique({ where: { id: op.guildId }, select: { timezone: true } });
+    await createSeriesForOp({
+      op: {
+        id: op.id,
+        guildId: op.guildId,
+        createdById: op.createdById,
+        scheduledAt: op.scheduledAt,
+        title: op.title,
+        description: op.description,
+        opType: op.opType,
+        visibility: op.visibility,
+        meetingSystem: op.meetingSystem,
+        meetingLocation: op.meetingLocation,
+        minParticipants: op.minParticipants,
+        maxParticipants: op.maxParticipants,
+      },
+      freq: body.data.freq,
+      timezone: (guild as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE,
+      seriesEnd: body.data.seriesEnd ? new Date(body.data.seriesEnd) : null,
+      seriesCount: body.data.seriesCount ?? null,
+    });
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, "recurrence_created", body.data.freq);
+    return reply.type("application/json").send({ ok: true as const });
   });
 
   app.post<{ Params: { id: string } }>("/api/v1/operations/:id/recurrence/stop", async (req, reply) => {

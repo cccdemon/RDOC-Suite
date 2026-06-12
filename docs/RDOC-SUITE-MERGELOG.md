@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Op wiederkehrend machen — Branch master
+
+Recurrence-Erstellung an bestehender Op (Stop existierte schon). SSR macht Recurrence nur bei
+Op-Erstellung; hier als eigene Aktion an bestehender Op.
+- BE `POST /api/v1/operations/:id/recurrence` {freq, seriesCount?, seriesEnd?} → createSeriesForOp
+  (Muster aus Op-Datum+Guild-TZ abgeleitet). requireFleetOperator. 409 wenn schon recurrenceId.
+- Contract SetRecurrenceRequest; OpenAPI; inject-Tests (anon 401, bad freq 400, doc). FE client
+  createRecurrence, „Serie erstellen"-Form (freq+count+until) in EditOpPage neben Stop, MSW-Test.
+  E2E-readonly +1. CHANGELOG.
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E).** Lokal NICHT gebaut (Docker-Regel).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Flotten-Import (Profil) — Branch master
 
 Letzte wertvolle Profil-Subfläche ins SPA (opstyle/locale sind SSR-Präferenzen ohne SPA-Nutzen).

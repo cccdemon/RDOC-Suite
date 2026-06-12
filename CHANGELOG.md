@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA make-operation-recurring (2026-06-12)
+
+- New `POST /api/v1/operations/:id/recurrence` (fleet operator): turn an existing operation into
+  a recurring series (freq weekly/biweekly/monthly_nth/yearly + optional seriesCount/seriesEnd);
+  the pattern is derived from the op's own date and guild timezone. 409 if already recurring.
+  Complements the existing recurrence/stop. SSR twin: the /ops/new recurrence fields.
+- Contract SetRecurrenceRequest + OpenAPI + inject tests (anon 401, bad freq 400).
+  prod-e2e-readonly: recurrence anon-gate.
+- SPA: a "Serie erstellen" form (frequency + optional count/until) in the op-editor admin area,
+  next to the stop-series button. MSW test.
+
 ### Added - FR-P2: SPA fleet import (2026-06-12)
 
 - New `POST /api/v1/hangar/import` {fleetJson}: bulk-import owned ships from a CCU-Game JSON

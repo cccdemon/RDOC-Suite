@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ApiError, deleteOperation, editOperation, getOperation, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
+import { ApiError, createRecurrence, deleteOperation, editOperation, getOperation, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { NeedsEditor } from "../components/NeedsEditor";
@@ -48,6 +48,7 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [tpl, setTpl] = useState({ name: "", summary: "", visibility: "guild" });
+  const [recur, setRecur] = useState({ freq: "weekly", seriesCount: "", seriesEnd: "" });
 
   function reload() {
     if (!id) return;
@@ -121,6 +122,24 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
       setTpl({ name: "", summary: "", visibility: "guild" });
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : "Veröffentlichen fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function makeSeries() {
+    if (!csrf || !id) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await createRecurrence(id, csrf, {
+        freq: recur.freq,
+        seriesCount: recur.seriesCount ? Number(recur.seriesCount) : undefined,
+        seriesEnd: recur.seriesEnd ? new Date(recur.seriesEnd).toISOString() : undefined,
+      });
+      setNotice("Serie erstellt.");
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Serie-Erstellung fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -257,6 +276,24 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
           </div>
         </div>
         <div style={{ ...label, fontSize: "0.6rem", marginBottom: "0.5rem" }}>WIEDERKEHRENDE SERIE</div>
+        <p className="fpw-meta" style={{ margin: "0 0 0.6rem", fontSize: "0.8rem" }}>Muster wird aus dem Op-Datum abgeleitet — du wählst nur die Frequenz (+ optional Ende/Anzahl).</p>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.6rem" }}>
+          <select data-testid="recur-freq" value={recur.freq} onChange={(e) => setRecur((r) => ({ ...r, freq: e.target.value }))} style={{ ...field, width: "auto", minWidth: 150 }}>
+            <option value="weekly">Wöchentlich</option>
+            <option value="biweekly">Zweiwöchentlich</option>
+            <option value="monthly_nth">Monatlich (n-ter Wochentag)</option>
+            <option value="yearly">Jährlich</option>
+          </select>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>
+            Anzahl
+            <input data-testid="recur-count" type="number" min={1} max={365} value={recur.seriesCount} placeholder="∞" onChange={(e) => setRecur((r) => ({ ...r, seriesCount: e.target.value }))} style={{ ...field, width: 80 }} />
+          </label>
+          <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>
+            bis
+            <input data-testid="recur-until" type="date" value={recur.seriesEnd} onChange={(e) => setRecur((r) => ({ ...r, seriesEnd: e.target.value }))} style={{ ...field, width: 160 }} />
+          </label>
+          <button type="button" data-testid="recur-create" className="fpw-btn" disabled={busy || !csrf} onClick={makeSeries}>Serie erstellen</button>
+        </div>
         <button type="button" data-testid="recurrence-stop" className="fpw-btn" disabled={busy || !csrf} onClick={stopSeries}>
           Serie stoppen
         </button>

@@ -25,6 +25,7 @@ import {
   MintInviteResponseSchema,
   AcceptTokenRequestSchema,
   SetAutoShareRequestSchema,
+  SetRecurrenceRequestSchema,
   NeedsResponseSchema,
   RenameNeedRequestSchema,
   SetCqbTeamsRequestSchema,
@@ -92,6 +93,7 @@ const SCHEMAS = {
   MintInviteResponse: MintInviteResponseSchema,
   AcceptTokenRequest: AcceptTokenRequestSchema,
   SetAutoShareRequest: SetAutoShareRequestSchema,
+  SetRecurrenceRequest: SetRecurrenceRequestSchema,
   AddShipNeedsRequest: AddShipNeedsRequestSchema,
   RenameNeedRequest: RenameNeedRequestSchema,
   SetFighterSquadsRequest: SetFighterSquadsRequestSchema,
@@ -311,6 +313,21 @@ export function buildOpenApiDocument(): JsonObject {
           ],
           requestBody: { required: true, ...jsonContent(ref("PublishTemplateRequest")) },
           responses: { "200": { description: "Published", ...jsonContent(ref("CreateOperationResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/recurrence": {
+        post: {
+          operationId: "createRecurrence",
+          summary: "Make an operation recurring (fleet operator only)",
+          description: "Derives the pattern from the op's own date; the operator only picks a frequency (+ optional end/count). 409 if already recurring.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("SetRecurrenceRequest")) },
+          responses: { "200": { description: "Series created", ...jsonContent(ref("MutationOk")) }, ...errorResponses, "409": { description: "Already recurring", ...jsonContent(ref("ApiError")) } },
         },
       },
       "/api/v1/operations/{id}/recurrence/stop": {

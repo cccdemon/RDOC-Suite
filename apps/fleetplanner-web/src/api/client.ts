@@ -206,6 +206,14 @@ export function publishTemplate(
   return mutate("POST", `/operations/${encodeURIComponent(id)}/publish-template`, csrfToken, input);
 }
 
+export function createRecurrence(
+  id: string,
+  csrfToken: string,
+  input: { freq: string; seriesCount?: number; seriesEnd?: string },
+): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(id)}/recurrence`, csrfToken, input);
+}
+
 export function stopRecurrence(id: string, csrfToken: string): Promise<{ ok: true; stopped: boolean }> {
   return mutate("POST", `/operations/${encodeURIComponent(id)}/recurrence/stop`, csrfToken);
 }

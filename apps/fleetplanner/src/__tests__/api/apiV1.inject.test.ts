@@ -380,6 +380,7 @@ describe("operation editor — publish-template + recurrence", () => {
 
   it.each([
     ["POST", `/api/v1/operations/${opId}/publish-template`, { name: "Blueprint" }],
+    ["POST", `/api/v1/operations/${opId}/recurrence`, { freq: "weekly" }],
     ["POST", `/api/v1/operations/${opId}/recurrence/stop`, {}],
   ] as const)("%s %s without session → 401 envelope", async (method, url, body) => {
     const res = await app.inject({ method, url, headers: { "content-type": "application/json", "x-forwarded-for": `10.15.0.${url.length}` }, payload: JSON.stringify(body) });
@@ -398,9 +399,16 @@ describe("operation editor — publish-template + recurrence", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("recurrence create with invalid freq → 400 before auth", async () => {
+    const res = await app.inject({ method: "POST", url: `/api/v1/operations/${opId}/recurrence`, headers: { "content-type": "application/json", "x-forwarded-for": "10.15.2.1" }, payload: JSON.stringify({ freq: "hourly" }) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
   it("openapi documents the publish/recurrence routes", async () => {
     const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
     expect(doc.paths["/api/v1/operations/{id}/publish-template"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/recurrence"].post).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/recurrence/stop"].post).toBeTruthy();
   });
 });

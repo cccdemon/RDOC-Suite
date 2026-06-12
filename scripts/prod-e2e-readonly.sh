@@ -64,6 +64,8 @@ tpl_anon="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: app
 check "op publish-template anon 401" "401" "$tpl_anon"
 import_anon="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"fleetJson":"[]"}' "$API/hangar/import")"
 check "fleet import anon 401" "401" "$import_anon"
+recur_anon="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"freq":"weekly"}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/recurrence")"
+check "op recurrence anon 401" "401" "$recur_anon"
 
 ops="$(curl -fsS "$API/operations")"
 contains "operations json" "$ops" '"operations":'

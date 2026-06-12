@@ -568,6 +568,15 @@ export const PublishTemplateRequestSchema = z
   .meta({ id: "PublishTemplateRequest" });
 export type PublishTemplateRequest = z.infer<typeof PublishTemplateRequestSchema>;
 
+export const SetRecurrenceRequestSchema = z
+  .object({
+    freq: z.enum(["weekly", "biweekly", "monthly_nth", "yearly"]),
+    seriesCount: z.coerce.number().int().min(1).max(365).optional(),
+    seriesEnd: z.iso.datetime().optional(),
+  })
+  .meta({ id: "SetRecurrenceRequest" });
+export type SetRecurrenceRequest = z.infer<typeof SetRecurrenceRequestSchema>;
+
 // ── Guild partnerships ──────────────────────────────────────────────────
 
 export const PartnershipSchema = z

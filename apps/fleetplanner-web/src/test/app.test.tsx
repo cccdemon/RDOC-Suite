@@ -803,6 +803,22 @@ describe("Op editor admin (template + recurrence)", () => {
     expect(published).toMatchObject({ name: "Xeno Blueprint", visibility: "guild" });
   });
 
+  it("creates a recurring series (POST recurrence)", async () => {
+    let recurBody: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.post(`${API}/operations/op_1/recurrence`, async ({ request }) => {
+        recurBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("recur-create")).click();
+    expect(await findByTestId("edit-notice")).toHaveTextContent("Serie erstellt");
+    expect(recurBody).toMatchObject({ freq: "weekly" });
+  });
+
   it("stops a recurring series (POST recurrence/stop)", async () => {
     let hit = false;
     server.use(
