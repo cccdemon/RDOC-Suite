@@ -127,6 +127,11 @@ export function coverEditLink(opId: string, csrfToken: string, opts: { format: s
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/cover/edit-link`, csrfToken, opts);
 }
 
+// FR-B8: save the UI language preference on the user.
+export function setProfileLocale(csrfToken: string, locale: "de" | "en"): Promise<{ ok: true }> {
+  return mutate("PATCH", "/profile", csrfToken, { locale });
+}
+
 export function getAccount(): Promise<import("./types").AccountResponse> {
   return get<import("./types").AccountResponse>("/account");
 }
@@ -173,6 +178,11 @@ export function unassignSeat(opId: string, seatId: string, csrfToken: string): P
 
 export function answerQuestion(opId: string, qid: string, answer: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/questions/${encodeURIComponent(qid)}/answer`, csrfToken, { answer });
+}
+
+// FR-B7: a participant/viewer asks the operator a question.
+export function askQuestion(opId: string, csrfToken: string, body: string): Promise<{ ok: true; id: string }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/questions`, csrfToken, { body });
 }
 
 // Withdraw / delete a unit. The backend gate allows the unit's own captain

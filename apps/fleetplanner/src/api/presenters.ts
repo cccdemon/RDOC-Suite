@@ -63,6 +63,7 @@ type OpDetailRow = OpListRow & {
     kind: string;
     sortOrder: number;
   }>;
+  questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
 };
 
 export function presentSeat(s: SeatRow): Seat {
@@ -150,6 +151,13 @@ export function presentOperationDetail(
       url: l.url,
       kind: l.kind,
       sortOrder: l.sortOrder,
+    })),
+    questions: (op.questions ?? []).map((q) => ({
+      id: q.id,
+      asker: q.asker,
+      body: q.body,
+      answer: q.answer,
+      answeredBy: q.answeredBy,
     })),
     viewerRole: viewer.role,
     canManage: viewer.canManage,

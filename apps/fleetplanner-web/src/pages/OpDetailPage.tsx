@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ApiError,
+  askQuestion,
   claimSeat,
   cqbSignup,
   cqbWithdraw,
@@ -10,6 +11,7 @@ import {
   unclaimSeat,
   withdrawUnit,
 } from "../api/client";
+import { useT } from "../i18n";
 import type { FleetUnit, OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { OfferShip } from "../components/OfferShip";
@@ -86,6 +88,8 @@ function seatIcon(u: FleetUnit, order: number): string {
 export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const t = useT();
+  const [qDraft, setQDraft] = useState("");
   const [op, setOp] = useState<OperationDetail | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -139,6 +143,17 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     setNotice(null);
     try {
       await action();
+      load();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+    }
+  }
+  async function submitQuestion() {
+    const text = qDraft.trim();
+    if (!id || !csrf || !text) return;
+    try {
+      await askQuestion(id, csrf, text);
+      setQDraft("");
       load();
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
@@ -688,6 +703,43 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             })}
           </div>
         </>
+      )}
+
+      {/* FR-B7: Q&A — any logged-in viewer asks; operators answer in the console */}
+      {me && id && (
+        <section data-testid="qa-section" style={{ border: "1px solid rgba(0,212,255,0.13)", borderRadius: 14, background: "#090f18", padding: "1.2rem 1.3rem", marginTop: "1.6rem" }}>
+          <div style={monoLabel({ marginBottom: "0.8rem" })}>{t("qa.title").toUpperCase()}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: csrf ? "0.9rem" : 0 }}>
+            {op.questions.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.85rem" }}>{t("qa.empty")}</div>}
+            {op.questions.map((q) => (
+              <div key={q.id} style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 9, padding: "0.6rem 0.7rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}><Avatar name={q.asker} /><strong style={{ fontSize: "0.82rem", color: "#eaf4fb" }}>{q.asker}</strong></div>
+                <div style={{ color: "#c2d2de", fontSize: "0.88rem", lineHeight: 1.4, marginBottom: q.answer ? "0.45rem" : "0.3rem" }}>{q.body}</div>
+                {q.answer ? (
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.45rem", padding: "0.45rem 0.55rem", border: "1px solid rgba(0,255,136,0.28)", background: "rgba(0,255,136,0.05)", borderRadius: 8 }}>
+                    <span style={{ color: "#00ff88", display: "inline-flex", flexShrink: 0, marginTop: 2 }}><Ic name="check" size={13} sw={2} /></span>
+                    <div style={{ minWidth: 0 }}><span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#00ff88" }}>{t("qa.answeredBy", { who: q.answeredBy ?? "" })}</span><div style={{ color: "#c2d2de", fontSize: "0.84rem", lineHeight: 1.4 }}>{q.answer}</div></div>
+                  </div>
+                ) : (
+                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", color: "#7e92a4" }}>{t("qa.unanswered")}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {csrf && (
+            <div style={{ display: "flex", gap: "0.4rem", alignItems: "flex-end" }}>
+              <textarea
+                data-testid="qa-input"
+                value={qDraft}
+                onChange={(e) => setQDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submitQuestion(); } }}
+                placeholder={t("qa.placeholder")}
+                style={{ flex: 1, minWidth: 0, minHeight: 38, background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.9rem", padding: "0.5rem 0.6rem", borderRadius: 8, outline: "none", resize: "vertical" }}
+              />
+              <button type="button" data-testid="qa-send" disabled={!qDraft.trim()} onClick={() => void submitQuestion()} style={{ flexShrink: 0, padding: "0.55rem 0.9rem", border: "1px solid rgba(0,212,255,0.45)", background: "rgba(0,212,255,0.12)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 8, cursor: "pointer" }}>{t("qa.send")}</button>
+            </div>
+          )}
+        </section>
       )}
 
       {/* IA merge D: adaptive operator console — only for leaders of this op */}

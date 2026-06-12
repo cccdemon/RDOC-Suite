@@ -384,6 +384,17 @@ export async function apiV1Routes(app: FastifyInstance) {
     });
   });
 
+  // FR-B8: user preferences. Currently the UI language (de|en); persisted on the
+  // user so it follows the account across devices (session reflects it).
+  app.patch<{ Body: { locale?: string } }>("/api/v1/profile", async (req, reply) => {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    const locale = req.body?.locale;
+    if (locale !== "de" && locale !== "en") return sendError(reply, req, 400, "bad_request", "Invalid locale.");
+    await prisma.user.update({ where: { id: ctx.user.id }, data: { locale } });
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
   // Guild-scoped operator gate: member with fleetoperator role in THIS guild,
   // or instance superadmin. Mirrors the SSR requireGuildRole("fleetoperator").
   async function requireGuildOperator(
@@ -1853,6 +1864,29 @@ export async function apiV1Routes(app: FastifyInstance) {
       await prisma.seatAssignment.update({ where: { id: p.data.seatId }, data: { userId: null } });
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "seat:unassign", "");
       return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // FR-B7: a participant/viewer asks a question (the answer side already exists).
+  app.post<{ Params: { id: string }; Body: { body?: string } }>(
+    "/api/v1/operations/:id/questions",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const text = String(req.body?.body ?? "").trim();
+      if (!text || text.length > 1000) return sendError(reply, req, 400, "bad_request", "Frage erforderlich (max. 1000 Zeichen).");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const op = await getOperation(p.data.id);
+      if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+      const visible = role !== null || (op as { visibility?: string }).visibility === "public";
+      if (!visible) return sendError(reply, req, 404, "not_found", "Operation not found.");
+      const q = await prisma.opQuestion.create({
+        data: { operationId: op.id, askerId: ctx.user.id, asker: ctx.user.username, body: text },
+      });
+      await logAudit(op.id, ctx.user.id, ctx.user.username, "question:ask", "");
+      return reply.type("application/json").send({ ok: true as const, id: q.id });
     },
   );
 

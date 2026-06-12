@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useParams, useSearchParams } from "react-route
 import { getSession } from "./api/client";
 import type { SessionResponse } from "./api/types";
 import { useTheme } from "./theme";
+import { LocaleProvider } from "./i18n";
 import { Sidebar, MobileNav } from "./components/Sidebar";
 import { ToastHost } from "./components/Toast";
 import { OperationenPage } from "./pages/CalendarPage";
@@ -54,6 +55,7 @@ export function App() {
   }, []);
 
   return (
+    <LocaleProvider preferred={session?.user?.locale}>
     <div className="app-root" style={{ filter: theme.filter === "none" ? undefined : theme.filter }}>
       <div className="crt-scanlines" />
       <div className="app-shell">
@@ -112,5 +114,6 @@ export function App() {
       </div>
       <ToastHost />
     </div>
+    </LocaleProvider>
   );
 }

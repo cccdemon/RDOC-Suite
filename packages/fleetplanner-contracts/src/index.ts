@@ -211,6 +211,16 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
   leaders: z.array(z.object({ id: z.string(), username: z.string() })),
   units: z.array(FleetUnitSchema),
   resourceLinks: z.array(ResourceLinkSchema),
+  /** Q&A thread — askers see answers; operators answer in the console. */
+  questions: z.array(
+    z.object({
+      id: z.string(),
+      asker: z.string(),
+      body: z.string(),
+      answer: z.string().nullable(),
+      answeredBy: z.string().nullable(),
+    }),
+  ),
   /** Caller's effective role on this op (null = anonymous public viewer). */
   viewerRole: z.string().nullable(),
   canManage: z.boolean(),
