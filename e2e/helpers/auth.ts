@@ -33,7 +33,7 @@ export async function login(username: string, role: InstanceRole = "crew", guild
 
 /** A browser context already carrying the actor's session cookie. */
 export async function actorContext(browser: Browser, actor: TestActor): Promise<BrowserContext> {
-  const context = await browser.newContext({ baseURL: `${BASE}/fleetplanner-next/`, ignoreHTTPSErrors: true });
+  const context = await browser.newContext({ baseURL: `${BASE}/fleetplanner/`, ignoreHTTPSErrors: true });
   await context.addCookies([
     { name: "fp_sid", value: actor.sid, domain: HOST, path: "/", httpOnly: true, secure: true, sameSite: "Lax" },
   ]);
@@ -51,4 +51,4 @@ export async function cleanup(): Promise<number> {
 
 /** Raw API base for direct JSON calls (mirrors what the SPA client uses). */
 export const API = `${BASE}/fleetplanner/api/v1`;
-export const SPA = `${BASE}/fleetplanner-next`;
+export const SPA = `${BASE}/fleetplanner`;

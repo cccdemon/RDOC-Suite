@@ -16,7 +16,7 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: `${BASE}/fleetplanner-next/`,
+    baseURL: `${BASE}/fleetplanner/`,
     ignoreHTTPSErrors: true,
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
