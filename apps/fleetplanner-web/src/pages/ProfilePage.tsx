@@ -82,7 +82,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
   const owned = new Set((hangar ?? []).map((s) => s.id));
 
   return (
-    <div data-testid="profile-page" style={{ maxWidth: 760, margin: "0 auto" }}>
+    <div data-testid="profile-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.2rem" }}>
         <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Profil · {me.username}</h1>

@@ -59,7 +59,6 @@ export function OperatorPanel({
   const [placing, setPlacing] = useState<{ userId: string; name: string } | null>(null);
   const [picker, setPicker] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
-  const [layout, setLayout] = useState<"a" | "b">(embedded ? "b" : "a");
   const [dragUserId, setDragUserId] = useState<string | null>(null);
   const [leaderPick, setLeaderPick] = useState(false);
 
@@ -465,25 +464,12 @@ export function OperatorPanel({
     </div>
   );
 
-  const layTab = (key: "a" | "b", icon: string, label: string) => (
-    <button type="button" data-testid={`op-layout-${key}`} onClick={() => setLayout(key)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7, cursor: "pointer", border: layout === key ? "1px solid rgba(0,212,255,0.4)" : "1px solid transparent", background: layout === key ? "rgba(0,212,255,0.12)" : "transparent", color: layout === key ? "#00d4ff" : "#9fb1c2" }}>
-      <Ic name={icon} size={14} /> {label}
-    </button>
-  );
-
   return (
     <div data-testid="operator-panel">
       {placeBanner}
 
-      {/* LAYOUT TOGGLE + KPI STRIP */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.9rem 1.4rem", marginBottom: "1.4rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
-          <span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.14em", color: "#5b6b7a" }}>LAYOUT</span>
-          <div style={{ display: "inline-flex", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, padding: 3, background: "#090f18", gap: 3 }}>
-            {layTab("a", "board", "Befehlsstand")}
-            {layTab("b", "bolt", "Triage")}
-          </div>
-        </div>
+      {/* KPI STRIP (no layout toggle — a single Flotte & Warteliste view, IA merge D) */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", gap: "0.9rem 1.4rem", marginBottom: "1.4rem" }}>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           {kpi(filled, "BESETZT", "#00ff88", "rgba(0,255,136,0.25)")}
           {kpi(open, "OFFEN", "#f0a500", "rgba(240,165,0,0.28)")}
@@ -492,54 +478,33 @@ export function OperatorPanel({
         </div>
       </div>
 
-      {layout === "a" ? (
-        // ── BEFEHLSSTAND: rail left + hero panels over board ──
-        <div style={{ display: "flex", gap: "1.3rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-          <aside style={{ flex: "0 0 286px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {fillRingCard}
-            {!embedded && actionsPanel}
-            {!embedded && leadersPanel}
-          </aside>
-          <div style={{ flex: "1 1 380px", minWidth: 0 }}>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "1.6rem" }}>
-              <div style={{ flex: "1 1 270px", minWidth: 0 }}>{flexPanel}</div>
-              <div style={{ flex: "1 1 270px", minWidth: 0 }}>{needsPanel}</div>
-              <div style={{ flex: "1 1 270px", minWidth: 0 }}>{qaPanel}</div>
-            </div>
-            {pendingBlock}
-            {boardBlock}
-            {toolsBlock}
-          </div>
-        </div>
-      ) : (
-        // ── TRIAGE: board-first main + right action-queue rail ──
-        <div style={{ display: "flex", gap: "1.3rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 420px", minWidth: 0 }}>
-            <section style={{ ...card, marginBottom: "1.3rem", padding: "1rem 1.2rem" }}>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.7rem 1.4rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><span style={{ fontFamily: MONO, fontSize: "1.5rem", color: "#eaf4fb", lineHeight: 1 }}>{fillPct}%</span><span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#5b6b7a" }}>BESETZT</span></div>
-                <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-                  {bars.map((b) => (
-                    <div key={b.label}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.22rem" }}><span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.74rem", color: "#c2d2de" }}><span style={{ width: 8, height: 8, borderRadius: 2, background: b.accent }} />{b.label}</span><span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2" }}>{b.f}/{b.t}</span></div>
-                      <div style={{ height: 5, borderRadius: 4, background: "#0e1926", overflow: "hidden" }}><div style={{ height: "100%", width: `${b.pct}%`, background: b.accent, borderRadius: 4 }} /></div>
-                    </div>
-                  ))}
-                </div>
+      {/* Single layout: board-first main + right action-queue rail */}
+      <div style={{ display: "flex", gap: "1.3rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 420px", minWidth: 0 }}>
+          <section style={{ ...card, marginBottom: "1.3rem", padding: "1rem 1.2rem" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.7rem 1.4rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><span style={{ fontFamily: MONO, fontSize: "1.5rem", color: "#eaf4fb", lineHeight: 1 }}>{fillPct}%</span><span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#5b6b7a" }}>BESETZT</span></div>
+              <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                {bars.map((b) => (
+                  <div key={b.label}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.22rem" }}><span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.74rem", color: "#c2d2de" }}><span style={{ width: 8, height: 8, borderRadius: 2, background: b.accent }} />{b.label}</span><span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2" }}>{b.f}/{b.t}</span></div>
+                    <div style={{ height: 5, borderRadius: 4, background: "#0e1926", overflow: "hidden" }}><div style={{ height: "100%", width: `${b.pct}%`, background: b.accent, borderRadius: 4 }} /></div>
+                  </div>
+                ))}
               </div>
-            </section>
-            {pendingBlock}
-            {boardBlock}
-            {toolsBlock}
-          </div>
-          <aside style={{ flex: "0 0 332px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "1rem" }}>
-            {flexPanel}
-            {needsPanel}
-            {qaPanel}
-            {!embedded && actionsPanel}
-          </aside>
+            </div>
+          </section>
+          {pendingBlock}
+          {boardBlock}
+          {toolsBlock}
         </div>
-      )}
+        <aside style={{ flex: "0 0 332px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          {flexPanel}
+          {needsPanel}
+          {qaPanel}
+          {!embedded && actionsPanel}
+        </aside>
+      </div>
     </div>
   );
 }

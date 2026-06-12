@@ -124,7 +124,7 @@ export function OpManagePage({ session }: { session: SessionResponse | null }) {
   const tabActive: React.CSSProperties = { ...tabBase, color: "var(--cyan)", borderBottom: "2px solid var(--cyan)", background: "rgba(0,212,255,0.08)" };
 
   return (
-    <div data-testid="manage-page" style={{ maxWidth: 1180, margin: "0 auto" }}>
+    <div data-testid="manage-page" style={{ width: "100%" }}>
       {/* header */}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.1rem" }}>
         <div style={{ flex: 1, minWidth: 0 }}>

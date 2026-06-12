@@ -24,7 +24,7 @@ export function DocPage({ slug, lang }: { slug: string; lang?: "de" | "en" }) {
     <div
       className="fpw-doc"
       data-testid={`doc-${slug}`}
-      style={{ maxWidth: 900, margin: "0 auto" }}
+      style={{ width: "100%" }}
       dangerouslySetInnerHTML={{ __html: doc.html }}
     />
   );

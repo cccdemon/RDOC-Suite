@@ -35,7 +35,7 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
   if (manageable.length === 0) return <div className="fpw-state" data-testid="diag-none"><span style={lbl}>KEINE SERVER-RECHTE</span><p className="fpw-meta">Diagnose ist Flottenoperatoren vorbehalten.</p></div>;
 
   return (
-    <div data-testid="diagnostics-page" style={{ maxWidth: 980, margin: "0 auto" }}>
+    <div data-testid="diagnostics-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.3rem" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>

@@ -34,7 +34,7 @@ export function AccountPage({ session }: { session: SessionResponse | null }) {
     );
 
   return (
-    <div data-testid="account-page" style={{ maxWidth: 680, margin: "0 auto" }}>
+    <div data-testid="account-page" style={{ width: "100%" }}>
       <div style={{ marginBottom: "1.3rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
           <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="link" size={17} sw={1.7} /></span>

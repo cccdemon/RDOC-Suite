@@ -108,7 +108,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   ];
 
   return (
-    <div data-testid="create-page" style={{ maxWidth: 1080, margin: "0 auto" }}>
+    <div data-testid="create-page" style={{ width: "100%" }}>
       <div style={{ marginBottom: "1.2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
           <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="plus" size={17} sw={1.7} /></span>

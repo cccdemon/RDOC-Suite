@@ -16,7 +16,7 @@ export function RechtlichesPage() {
   if (!active) return <Navigate to="/rechtliches/lizenz" replace />;
 
   return (
-    <div data-testid="rechtliches-page" style={{ maxWidth: 920, margin: "0 auto" }}>
+    <div data-testid="rechtliches-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", borderBottom: "1px solid var(--border)", marginBottom: "1.4rem", paddingBottom: "0.2rem" }}>
         {SECTIONS.map((s) => (
           <Link

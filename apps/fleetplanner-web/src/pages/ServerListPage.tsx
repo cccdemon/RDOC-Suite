@@ -28,7 +28,7 @@ export function ServerListPage({ session }: { session: SessionResponse | null })
     );
 
   return (
-    <div data-testid="servers-page" style={{ maxWidth: 880, margin: "0 auto" }}>
+    <div data-testid="servers-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.3rem" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>

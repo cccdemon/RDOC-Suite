@@ -46,7 +46,7 @@ export function FeedbackPage({ session }: { session: SessionResponse | null }) {
   }
 
   return (
-    <div data-testid="feedback-page" style={{ maxWidth: 640, margin: "0 auto" }}>
+    <div data-testid="feedback-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.3rem" }}>
         <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="chat" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Feedback</h1>
