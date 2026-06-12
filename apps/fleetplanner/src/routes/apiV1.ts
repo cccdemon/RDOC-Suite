@@ -1867,6 +1867,33 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // FR-B1: operator edits a seat — activate/deactivate (e.g. "only fill 6 of 9")
+  // and/or rename (custom label). Schema already carries active + label.
+  app.patch<{ Params: { id: string; seatId: string }; Body: { active?: boolean; label?: string } }>(
+    "/api/v1/operations/:id/seats/:seatId",
+    async (req, reply) => {
+      const p = SeatParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const seat = await prisma.seatAssignment.findUnique({
+        where: { id: p.data.seatId },
+        select: { id: true, fleetUnit: { select: { operationId: true } } },
+      });
+      if (!seat || seat.fleetUnit.operationId !== p.data.id) return sendError(reply, req, 404, "not_found", "Seat not found.");
+      const data: { active?: boolean; label?: string } = {};
+      if (typeof req.body?.active === "boolean") data.active = req.body.active;
+      if (typeof req.body?.label === "string") {
+        const l = req.body.label.trim().slice(0, 80);
+        if (l) data.label = l;
+      }
+      if (Object.keys(data).length === 0) return sendError(reply, req, 400, "bad_request", "Nichts zu ändern.");
+      await prisma.seatAssignment.update({ where: { id: p.data.seatId }, data });
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "seat:edit", "");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   // FR-B7: a participant/viewer asks a question (the answer side already exists).
   app.post<{ Params: { id: string }; Body: { body?: string } }>(
     "/api/v1/operations/:id/questions",

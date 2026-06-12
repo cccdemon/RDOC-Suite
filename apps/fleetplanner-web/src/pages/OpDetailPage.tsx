@@ -691,7 +691,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                                   <span style={{ fontStyle: "italic" }}>{u.captainNote}</span>
                                 </div>
                               )}
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.map((s) => seatRow(u, s, lane))}</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.filter((s) => s.active).map((s) => seatRow(u, s, lane))}</div>
                             </div>
                           )}
                         </article>

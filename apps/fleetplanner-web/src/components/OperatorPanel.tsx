@@ -7,6 +7,7 @@ import {
   decideUnit,
   getGuildSettings,
   getOperatorView,
+  patchSeat,
   removeLeader,
   unassignSeat,
 } from "../api/client";
@@ -95,7 +96,7 @@ export function OperatorPanel({
   const pendingUnits = op.units.filter((u) => u.status === "pending");
   const lanes = LANES.map((l) => ({ ...l, units: accepted.filter((u) => u.unitType === l.type) })).filter((l) => l.units.length > 0);
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
-  const total = accepted.reduce((a, u) => a + u.seats.length, 0);
+  const total = accepted.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0);
   const open = total - filled;
   const fillPct = total ? Math.round((filled / total) * 100) : 0;
   const flexWaiting = view?.crewRequests.length ?? 0;
@@ -104,7 +105,7 @@ export function OperatorPanel({
   const bars = LANES.map((l) => {
     const units = accepted.filter((u) => u.unitType === l.type);
     const f = units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
-    const t = units.reduce((a, u) => a + u.seats.length, 0);
+    const t = units.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0);
     return { label: l.label, accent: l.accent, f, t, pct: t ? Math.round((f / t) * 100) : 0 };
   }).filter((b) => b.t > 0);
 
@@ -120,21 +121,21 @@ export function OperatorPanel({
 
   // ── operator seat row (board): place-mode target / picker / drop target ──
   const opSeatRow = (u: FleetUnit, s: FleetUnit["seats"][number]) => {
-    const isTarget = (!!placing || !!dragUserId) && !s.claimedBy;
+    const isTarget = (!!placing || !!dragUserId) && !s.claimedBy && s.active;
     return (
-      <div key={s.id} style={{ border: "1px solid rgba(0,212,255,0.06)", borderRadius: 9, overflow: "hidden" }}>
+      <div key={s.id} style={{ border: "1px solid rgba(0,212,255,0.06)", borderRadius: 9, overflow: "hidden", opacity: s.active ? 1 : 0.55 }}>
         <div
-          data-testid={!s.claimedBy ? `op-target-${s.id}` : undefined}
+          data-testid={!s.claimedBy && s.active ? `op-target-${s.id}` : undefined}
           onClick={() => {
-            if (s.claimedBy) return;
+            if (s.claimedBy || !s.active) return;
             if (placing) run(() => assignSeat(op.id, s.id, placing.userId, csrf));
             else setPicker(picker === s.id ? null : s.id);
           }}
           onDragOver={(e) => {
-            if (!s.claimedBy && dragUserId) e.preventDefault();
+            if (!s.claimedBy && s.active && dragUserId) e.preventDefault();
           }}
           onDrop={(e) => {
-            if (s.claimedBy) return;
+            if (s.claimedBy || !s.active) return;
             // state update from dragstart can lag a synchronous drop; fall back
             // to the dataTransfer payload (same as the design prototype).
             let uid = dragUserId;
@@ -157,9 +158,19 @@ export function OperatorPanel({
           <span style={{ width: 28, height: 28, borderRadius: 7, background: "#0e1926", border: "1px solid rgba(255,255,255,0.06)", color: "#9fb1c2", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Ic name={seatIcon(u, s.order)} size={15} sw={1.6} />
           </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <strong style={{ fontWeight: 600, fontSize: "0.9rem", color: "#dce8f0" }}>{s.label}</strong>
-          </div>
+          <input
+            className="fpw-inline-edit"
+            data-testid={`op-seat-label-${s.id}`}
+            key={`${s.id}:${s.label}`}
+            defaultValue={s.label}
+            title="Sitz umbenennen (Enter)"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== s.label) run(() => patchSeat(op.id, s.id, csrf, { label: v })); }}
+          />
+          {!s.claimedBy && (
+            <button type="button" data-testid={`op-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} onClick={(e) => { e.stopPropagation(); run(() => patchSeat(op.id, s.id, csrf, { active: !s.active })); }} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "AUS" : "AN"}</button>
+          )}
           {s.claimedBy ? (
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
               <Avatar name={s.claimedBy.username} />
@@ -256,7 +267,7 @@ export function OperatorPanel({
       <div style={{ display: "flex", flexDirection: "column", gap: "0.42rem" }}>
         {lanes.flatMap((lane) =>
           lane.units
-            .map((u) => ({ u, lane, openN: u.seats.filter((s) => !s.claimedBy).length }))
+            .map((u) => ({ u, lane, openN: u.seats.filter((s) => !s.claimedBy && s.active).length }))
             .filter((x) => x.openN > 0)
             .map(({ u, lane, openN }) => (
               <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.45rem 0.55rem", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 8 }}>
@@ -423,7 +434,7 @@ export function OperatorPanel({
             <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", marginBottom: "0.8rem", paddingBottom: "0.5rem", borderBottom: `1px solid rgba(${lane.rgb},0.4)` }}>
               <span style={{ color: lane.accent, display: "inline-flex", flexShrink: 0 }}><Ic name={lane.icon} size={15} /></span>
               <span style={{ flex: 1, minWidth: 0, fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.06em", color: lane.accent, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lane.label}</span>
-              <span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2", flexShrink: 0 }}>{lane.units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0)}/{lane.units.reduce((a, u) => a + u.seats.length, 0)}</span>
+              <span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2", flexShrink: 0 }}>{lane.units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0)}/{lane.units.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0)}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
               {lane.units.map((u) => (
@@ -434,7 +445,7 @@ export function OperatorPanel({
                       <strong style={{ fontWeight: 700, fontSize: "1.02rem", color: "#eaf4fb", lineHeight: 1.15 }}>{u.name}</strong>
                       <div style={{ color: "#7e92a4", fontSize: "0.78rem", marginTop: 1 }}>{u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</div>
                     </div>
-                    <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.length}</span></span>
+                    <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>{u.seats.map((s) => opSeatRow(u, s))}</div>
                 </div>

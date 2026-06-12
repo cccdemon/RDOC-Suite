@@ -87,7 +87,9 @@ export function presentUnit(u: UnitRow): FleetUnit {
     captain: u.captain ? { id: u.captain.id, username: u.captain.username } : null,
     captainNote: u.captainNote,
     carrierUnitId: u.carrierUnitId,
-    seats: u.seats.filter((s) => s.active).map(presentSeat),
+    // FR-B1: include inactive seats too (with the active flag) so the operator can
+    // re-activate them; the player board filters to active client-side.
+    seats: u.seats.map(presentSeat),
   };
 }
 
@@ -99,7 +101,9 @@ export function presentOperationSummary(
   let filledSeats = 0;
   let totalSeats = 0;
   for (const u of acceptedUnits) {
-    const seats = u.seats ?? [];
+    // FR-B1: deactivated seats don't count toward total/open (operator chose not
+    // to fill them). The list loader doesn't select `active` → defaults to active.
+    const seats = (u.seats ?? []).filter((s) => (s as { active?: boolean }).active !== false);
     totalSeats += seats.length;
     filledSeats += seats.filter((s) => s.userId).length;
   }

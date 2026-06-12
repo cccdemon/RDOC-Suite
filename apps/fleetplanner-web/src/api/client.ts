@@ -176,6 +176,11 @@ export function unassignSeat(opId: string, seatId: string, csrfToken: string): P
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/assignment`, csrfToken);
 }
 
+// FR-B1: operator edits a seat — active flag and/or custom label.
+export function patchSeat(opId: string, seatId: string, csrfToken: string, data: { active?: boolean; label?: string }): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}`, csrfToken, data);
+}
+
 export function answerQuestion(opId: string, qid: string, answer: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/questions/${encodeURIComponent(qid)}/answer`, csrfToken, { answer });
 }
