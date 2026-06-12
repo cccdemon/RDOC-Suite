@@ -1,9 +1,28 @@
 import { useEffect, useState } from "react";
-import { ApiError, addShipNeeds, getNeeds, removeNeed, setCqbTeams, setFighterSquads } from "../api/client";
+import { ApiError, addShipNeeds, getNeeds, removeNeed, renameNeed, setCqbTeams, setFighterSquads } from "../api/client";
 import type { NeedsResponse } from "../api/types";
 import { Ic } from "./Icons";
 
 const MONO = "var(--mono)";
+
+// Inline-editable need name: looks like text, confirms on Enter or blur, no button.
+function RenameInput({ value, disabled, onRename }: { value: string; disabled: boolean; onRename: (name: string) => void }) {
+  const [v, setV] = useState(value);
+  useEffect(() => setV(value), [value]);
+  const commit = () => { const t = v.trim(); if (t && t !== value) onRename(t); else setV(value); };
+  return (
+    <input
+      className="fpw-inline-edit"
+      data-testid="need-rename"
+      value={v}
+      disabled={disabled}
+      onChange={(e) => setV(e.target.value)}
+      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") { setV(value); e.currentTarget.blur(); } }}
+      onBlur={commit}
+      title="Klicken zum Umbenennen, Enter bestätigt"
+    />
+  );
+}
 const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
 const field: React.CSSProperties = {
   boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)",
@@ -71,7 +90,7 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.8rem" }}>
           {needs.shipNeeds.map((s) => (
             <div key={s.id} className="fpw-seat" data-testid={`need-row-${s.id}`}>
-              <span style={{ flex: 1, color: "var(--text-hi)" }}>{s.label}</span>
+              <RenameInput value={s.label} disabled={busy || !csrf} onRename={(name) => run(() => renameNeed(opId, s.id, csrf!, name))} />
               <span className="fpw-meta">{s.shipType}</span>
               <button type="button" data-testid={`need-remove-${s.id}`} title="Bedarf entfernen" disabled={busy || !csrf} onClick={() => run(() => removeNeed(opId, s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Ic name="x" size={12} sw={2} />

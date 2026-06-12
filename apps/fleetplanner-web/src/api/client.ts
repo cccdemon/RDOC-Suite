@@ -191,6 +191,14 @@ export function searchShips(q: string): Promise<{ ships: import("./types").ShipS
   return get<{ ships: import("./types").ShipSummary[] }>(`/ships/search?q=${encodeURIComponent(q)}`);
 }
 
+export type LocationHit = { name: string; system: string };
+export function searchLocations(q: string, system?: string): Promise<{ locations: LocationHit[] }> {
+  const qs = new URLSearchParams();
+  if (q) qs.set("q", q);
+  if (system) qs.set("system", system);
+  return get<{ locations: LocationHit[] }>(`/locations/search?${qs.toString()}`);
+}
+
 export function addHangarShip(shipId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", "/hangar", csrfToken, { shipId });
 }

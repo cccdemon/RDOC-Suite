@@ -123,6 +123,17 @@ export function OperatorConsole({
         <StatTile label="WARTELISTE" value={tiles.pending} sub="offene Anfragen" color="var(--purple)" icon="clock" />
       </div>
 
+      {/* STATUS — always visible on the event main page (not buried in a tab) */}
+      <section style={{ ...card, marginBottom: "1.1rem" }}>
+        <CardHead icon="bolt" label={`STATUS · AKTUELL ${op.status.toUpperCase()}`} tone="green" />
+        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
+          <select data-testid="manage-status" value={status} onChange={(e) => setStatusValue(e.target.value)} style={{ ...inp, width: "auto", minWidth: 180 }}>
+            {STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <button type="button" data-testid="manage-status-apply" style={btnPrimary} disabled={busy || !csrf || status === op.status} onClick={() => changeStatus(status)}>Status setzen</button>
+        </div>
+      </section>
+
       {/* tabs */}
       <div style={{ display: "flex", gap: "0.3rem", overflowX: "auto", borderBottom: "1px solid rgba(0,212,255,0.14)", marginBottom: "1.2rem" }}>
         {TABS.map((t) => (
@@ -149,16 +160,6 @@ export function OperatorConsole({
 
       {tab === "admin" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-          <section style={card}>
-            <CardHead icon="bolt" label={`STATUS · AKTUELL ${op.status.toUpperCase()}`} tone="green" />
-            <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
-              <select data-testid="manage-status" value={status} onChange={(e) => setStatusValue(e.target.value)} style={{ ...inp, width: "auto", minWidth: 180 }}>
-                {STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              <button type="button" data-testid="manage-status-apply" style={btnPrimary} disabled={busy || !csrf || status === op.status} onClick={() => changeStatus(status)}>Status setzen</button>
-            </div>
-          </section>
-
           <section style={card}>
             <CardHead icon="shield" label="VORLAGE & SERIE" tone="gold" />
             <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>ALS VORLAGE VERÖFFENTLICHEN</div>

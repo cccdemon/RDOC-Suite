@@ -338,6 +338,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         (() => {
           const list = ops
             .filter((o) => filter === "alle" || typeOf(o.opType).key === filter)
+            .filter((o) => showPast || new Date(o.scheduledAt).getTime() >= now.getTime())
             .slice()
             .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
           return list.length === 0 ? (

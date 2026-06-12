@@ -439,6 +439,13 @@ describe("Op detail — operator panel", () => {
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opFO)),
+      // commanders are appointed from the guild member list now (not seat-holders)
+      http.get(`${API}/guilds/guild_1/settings`, () =>
+        HttpResponse.json({
+          guild: { id: "guild_1", name: "RDOC", orgName: "RDOC", timezone: "Europe/Berlin", discordInviteUrl: null, admiralRoleId: null, ownerUserId: "x", canRemove: false },
+          members: [{ userId: "user_part", username: "Partaker", role: "crew", isOwner: false }],
+        }),
+      ),
       http.post(`${API}/operations/op_1/leaders`, async ({ request }) => {
         payload = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ ok: true });
@@ -459,7 +466,7 @@ describe("Op detail — operator panel", () => {
     const { findByTestId, queryByText } = renderAt("/ops/op_1");
     (await findByTestId("manage-tab-commanders")).click();
     await findByTestId("commanders-panel");
-    expect(queryByText("TEILNEHMER ERNENNEN")).not.toBeInTheDocument();
+    expect(queryByText("MITGLIED ERNENNEN")).not.toBeInTheDocument();
   });
 
   it("accepts a pending unit", async () => {
@@ -893,7 +900,9 @@ describe("Op needs editor (Bedarfe)", () => {
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
     (await findByTestId("manage-tab-fleet")).click();
-    expect(await findByTestId("need-row-req_1")).toHaveTextContent("Flagship");
+    // the need name is now an inline-editable input (value, not text content)
+    const needRow = await findByTestId("need-row-req_1");
+    expect((needRow.querySelector("input") as HTMLInputElement).value).toBe("Flagship");
     (await findByTestId("shiptype-capital")).click();
     (await findByTestId("need-add")).click();
     await findByTestId("needs-editor");

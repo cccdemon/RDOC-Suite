@@ -27,7 +27,7 @@ import { sendDiscordChannelMessage } from "../services/discord.js";
 import { getSetting, setSetting } from "../services/settings.js";
 import { isMaintenanceForcedByEnv, isMaintenanceOn, setMaintenance } from "../services/maintenance.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
-import { getLocationSyncState, runLocationSync, updateLocationSyncConfig } from "../services/locations.js";
+import { getLocationSyncState, runLocationSync, updateLocationSyncConfig, searchLocations } from "../services/locations.js";
 import { ROADMAP } from "../lib/roadmap.js";
 import {
   addLeader,
@@ -2011,6 +2011,19 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!q.success) return sendError(reply, req, 400, "bad_request", "Invalid query.");
     const ships = await searchLocalShips(q.data.q, q.data.limit);
     return reply.type("application/json").send({ ships: ships.map(presentShip) });
+  });
+
+  // Rendezvous autocomplete: manmade locations from the synced catalog, optionally
+  // scoped to a system. Used by the op editor's "Ort / Rendezvous" field.
+  app.get<{ Querystring: { q?: string; system?: string } }>("/api/v1/locations/search", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    const q = String(req.query.q ?? "").slice(0, 80);
+    const sys = req.query.system
+      ? String(req.query.system).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+      : undefined;
+    const rows = await searchLocations(sys, q, 30, true);
+    return reply.type("application/json").send({ locations: rows.map((l) => ({ name: l.name, system: l.system })) });
   });
 
   // ── JSON error envelope for unhandled errors inside /api/v1 ────────

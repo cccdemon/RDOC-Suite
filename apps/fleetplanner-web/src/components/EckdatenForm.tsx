@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, deleteOperation, editOperation } from "../api/client";
+import { ApiError, deleteOperation, editOperation, searchLocations, type LocationHit } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
 import { CardHead, MONO, actionBar, btnGhost, btnPrimary, card, inp, lbl, segChip, ta } from "./ui";
@@ -41,6 +41,16 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
   const [saved, setSaved] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [locHits, setLocHits] = useState<LocationHit[]>([]);
+
+  // Rendezvous autocomplete from the synced location catalog, scoped to the system.
+  useEffect(() => {
+    const q = form.meetingLocation.trim();
+    const t = setTimeout(() => {
+      searchLocations(q, form.meetingSystem).then((r) => setLocHits(r.locations)).catch(() => setLocHits([]));
+    }, 200);
+    return () => clearTimeout(t);
+  }, [form.meetingLocation, form.meetingSystem]);
 
   // Re-seed when the op reloads (e.g. after save).
   useEffect(() => {
@@ -138,7 +148,10 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
               </div>
               <div>
                 <label style={lbl}>Ort / Rendezvous</label>
-                <input data-testid="edit-location" type="text" maxLength={160} value={form.meetingLocation} onChange={(e) => set({ meetingLocation: e.target.value })} placeholder="z. B. HUR-L1" style={inp} />
+                <input data-testid="edit-location" type="text" list="edit-loc-list" maxLength={160} value={form.meetingLocation} onChange={(e) => set({ meetingLocation: e.target.value })} placeholder="z. B. HUR-L1" style={inp} />
+                <datalist id="edit-loc-list">
+                  {locHits.map((h) => <option key={`${h.system}/${h.name}`} value={h.name}>{h.system}</option>)}
+                </datalist>
               </div>
             </div>
           </section>

@@ -21,6 +21,7 @@ export const handlers = [
       cqbTeams: { count: 0, size: 4 },
     }),
   ),
+  http.get(`${API}/locations/search`, () => HttpResponse.json({ locations: [] })),
   http.get(`${API}/operations/:id`, ({ params }) =>
     HttpResponse.json(
       { error: { code: "not_found", message: `Operation ${String(params.id)} not found.`, requestId: "req-test" } },

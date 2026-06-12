@@ -335,6 +335,15 @@ a { color: var(--cyan); }
 /* toast */
 .toast { position: fixed; left: 50%; bottom: 1.4rem; transform: translateX(-50%); z-index: 10000; background: var(--bg2); border: 1px solid var(--border-hi); border-radius: 10px; padding: 0.7rem 1.1rem; font-family: var(--mono); font-size: 0.78rem; color: var(--text); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55); }
 
+/* inline-editable text (need rename): looks like text, box on focus */
+.fpw-inline-edit {
+  flex: 1; min-width: 0; background: transparent; border: 1px solid transparent;
+  border-radius: 6px; color: var(--head); font-family: var(--body); font-size: 0.95rem;
+  padding: 0.25rem 0.4rem; outline: none; cursor: text;
+}
+.fpw-inline-edit:hover:not(:focus) { border-color: rgba(0, 212, 255, 0.18); }
+.fpw-inline-edit:focus { border-color: rgba(0, 212, 255, 0.45); background: var(--bg3); }
+
 @media (max-width: 880px) {
   .sidebar { display: none; }
   .app-content { padding: 1rem clamp(0.8rem, 3vw, 1.4rem) 4rem; }

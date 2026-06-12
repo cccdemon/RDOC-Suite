@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { addLeader, ApiError, removeLeader } from "../api/client";
-import type { OperationDetail } from "../api/types";
+import { useEffect, useState } from "react";
+import { addLeader, ApiError, getGuildSettings, removeLeader } from "../api/client";
+import type { GuildSettingsMember, OperationDetail } from "../api/types";
 import { CardHead, MONO, card } from "./ui";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
@@ -10,7 +10,17 @@ import { Avatar } from "./Avatar";
 // for now this is add/remove only (addLeader takes just a userId).
 export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: OperationDetail; csrf: string | null; onChanged: () => void; onNotice: (m: string) => void }) {
   const [busy, setBusy] = useState(false);
+  const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
+  const [filter, setFilter] = useState("");
   const canManage = op.viewerRole === "fleetoperator";
+
+  // Appoint any guild member as a commander — not just seat-holders.
+  useEffect(() => {
+    if (!canManage) return;
+    getGuildSettings(op.guild.id)
+      .then((r) => setMembers(r.members))
+      .catch(() => setMembers([]));
+  }, [op.guild.id, canManage]);
 
   async function run(action: () => Promise<unknown>) {
     if (!csrf) return;
@@ -26,14 +36,11 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
   }
 
   const leaderIds = new Set(op.leaders.map((l) => l.id));
-  const candidates = (() => {
-    const seen = new Map<string, string>();
-    for (const u of op.units) {
-      if (u.status !== "accepted") continue;
-      for (const s of u.seats) if (s.claimedBy && !leaderIds.has(s.claimedBy.id)) seen.set(s.claimedBy.id, s.claimedBy.username);
-    }
-    return [...seen.entries()].map(([id, username]) => ({ id, username }));
-  })();
+  const q = filter.trim().toLowerCase();
+  const candidates = (members ?? [])
+    .filter((m) => !leaderIds.has(m.userId))
+    .filter((m) => !q || m.username.toLowerCase().includes(q))
+    .map((m) => ({ id: m.userId, username: m.username }));
 
   return (
     <section style={card} data-testid="commanders-panel">
@@ -59,9 +66,19 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
 
       {canManage && (
         <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border)", paddingTop: "0.9rem" }}>
-          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim)", marginBottom: "0.6rem" }}>TEILNEHMER ERNENNEN</div>
-          {candidates.length === 0 ? (
-            <div style={{ color: "var(--dim2)", fontSize: "0.82rem" }}>Keine geeigneten Teilnehmer (Leiter müssen einen Sitz belegen).</div>
+          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim)", marginBottom: "0.6rem" }}>MITGLIED ERNENNEN</div>
+          <input
+            data-testid="leader-filter"
+            type="search"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="Mitglied suchen…"
+            style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.9rem", padding: "0.45rem 0.6rem", borderRadius: 8, outline: "none", marginBottom: "0.6rem" }}
+          />
+          {members === null ? (
+            <div style={{ color: "var(--dim2)", fontSize: "0.82rem" }}>Lade Mitglieder…</div>
+          ) : candidates.length === 0 ? (
+            <div style={{ color: "var(--dim2)", fontSize: "0.82rem" }}>{q ? "Kein Mitglied gefunden." : "Alle Mitglieder sind bereits Leiter."}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               {candidates.map((c) => (
