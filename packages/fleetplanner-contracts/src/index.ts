@@ -478,6 +478,25 @@ export const SetMemberRoleRequestSchema = z
   .meta({ id: "SetMemberRoleRequest" });
 export type SetMemberRoleRequest = z.infer<typeof SetMemberRoleRequestSchema>;
 
+// ── Superadmin: instance guild management ───────────────────────────────
+
+export const AdminGuildSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    active: z.boolean(),
+    bannedAt: z.iso.datetime().nullable(),
+    ownerUserId: z.string().nullable(),
+    memberCount: z.number(),
+  })
+  .meta({ id: "AdminGuild" });
+export type AdminGuild = z.infer<typeof AdminGuildSchema>;
+
+export const AdminGuildsResponseSchema = z
+  .object({ guilds: z.array(AdminGuildSchema) })
+  .meta({ id: "AdminGuildsResponse" });
+export type AdminGuildsResponse = z.infer<typeof AdminGuildsResponseSchema>;
+
 // ── Operation editor (lifecycle) ────────────────────────────────────────
 
 /** PATCH /api/v1/operations/:id — every field optional; only present fields

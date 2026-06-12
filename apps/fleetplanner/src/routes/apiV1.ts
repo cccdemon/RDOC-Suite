@@ -10,11 +10,14 @@ import { prisma } from "../db.js";
 import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
 import {
+  banGuild,
   effectiveOpRole,
   getGuildSettingsData,
   getMembership,
+  listAllGuildsForAdmin,
   listUserGuilds,
   setMembershipRole,
+  unbanGuild,
   updateGuildSettings,
 } from "../services/guilds.js";
 import { isValidTimezone, DEFAULT_TIMEZONE } from "../lib/timezone.js";
@@ -462,6 +465,47 @@ export async function apiV1Routes(app: FastifyInstance) {
       return reply.type("application/json").send({ ok: true as const });
     },
   );
+
+  // ── superadmin: instance guild management ────────────────────────────
+  // SSR twins: web.ts /admin (+ /admin/guilds/:id/{ban,unban}). Instance
+  // superadmin only — these act across all guilds, not the active one.
+  async function requireSuperadmin(req: FastifyRequest, reply: FastifyReply): Promise<AuthContext | null> {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return null;
+    if (ctx.user.role !== "superadmin") {
+      await sendError(reply, req, 403, "forbidden", "Superadmin only.");
+      return null;
+    }
+    return ctx;
+  }
+
+  app.get("/api/v1/admin/guilds", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
+    const rows = await listAllGuildsForAdmin();
+    return reply.type("application/json").send({
+      guilds: rows.map((g) => ({
+        id: g.id,
+        name: g.name,
+        active: g.active,
+        bannedAt: g.bannedAt ? g.bannedAt.toISOString() : null,
+        ownerUserId: g.ownerUserId,
+        memberCount: g.memberCount,
+      })),
+    });
+  });
+
+  for (const action of ["ban", "unban"] as const) {
+    app.post<{ Params: { id: string } }>(`/api/v1/admin/guilds/:id/${action}`, async (req, reply) => {
+      if (!/^\d{16,25}$/.test(req.params.id)) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+      const ctx = await requireSuperadmin(req, reply);
+      if (!ctx) return;
+      if (action === "ban") await banGuild(req.params.id);
+      else await unbanGuild(req.params.id);
+      return reply.type("application/json").send({ ok: true as const });
+    });
+  }
 
   // ── guild partnerships (admiral console) ─────────────────────────────
   // SSR twins: routes/partnerships.ts. Guild-scoped via :id; approve/decline

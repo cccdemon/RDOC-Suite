@@ -246,6 +246,18 @@ export function setCqbTeams(id: string, csrfToken: string, count: number, size: 
   return mutate("PUT", `/operations/${encodeURIComponent(id)}/needs/cqb`, csrfToken, { count, size });
 }
 
+export function getAdminGuilds(): Promise<import("./types").AdminGuildsResponse> {
+  return get<import("./types").AdminGuildsResponse>("/admin/guilds");
+}
+
+export function banGuild(id: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/admin/guilds/${encodeURIComponent(id)}/ban`, csrfToken);
+}
+
+export function unbanGuild(id: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/admin/guilds/${encodeURIComponent(id)}/unban`, csrfToken);
+}
+
 export function getPartnerships(guildId: string): Promise<import("./types").PartnershipsResponse> {
   return get<import("./types").PartnershipsResponse>(`/guilds/${encodeURIComponent(guildId)}/partnerships`);
 }

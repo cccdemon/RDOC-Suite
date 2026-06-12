@@ -14,6 +14,7 @@ import { TemplatesPage } from "./pages/TemplatesPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
 import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { PartnershipsPage } from "./pages/PartnershipsPage";
+import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
@@ -191,6 +192,7 @@ export function App() {
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
           <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
+          <Route path="/admin" element={<AdminPage session={session} />} />
           <Route path="/ops/:id/edit" element={<EditOpPage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />

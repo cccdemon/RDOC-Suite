@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Superadmin Guild-Verwaltung — Branch master
+
+Bounded Admin-Slice (Rest des /admin-Panels — Schiff/Location-Katalog, User-Rollen, Maintenance,
+Bridge — bleibt SSR).
+- BE `GET /api/v1/admin/guilds` (cookie-only superadmin) + `POST …/:id/{ban,unban}` (requireSuper-
+  admin+CSRF). Services listAllGuildsForAdmin/banGuild/unbanGuild. SSR-twin web.ts /admin.
+- Contract AdminGuild/AdminGuildsResponse; OpenAPI; inject-Tests (anon 401, bad id 400, doc). FE
+  client getAdminGuilds/banGuild/unbanGuild, AdminPage `/admin` (Server-Liste Status+ban/unban),
+  Link aus ProfilePage (nur superadmin), App-Route. MSW-Tests. E2E-readonly +1.
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E).** Lokal NICHT gebaut (Docker-Regel).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Op wiederkehrend machen — Branch master
 
 Recurrence-Erstellung an bestehender Op (Stop existierte schon). SSR macht Recurrence nur bei

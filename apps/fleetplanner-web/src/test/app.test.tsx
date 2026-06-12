@@ -945,6 +945,44 @@ describe("Guild partnerships", () => {
   });
 });
 
+describe("Admin guild management", () => {
+  const sessionSuper = {
+    user: { id: "user_root", username: "Root", role: "superadmin", locale: "de" },
+    memberships: [],
+    csrfToken: "csrf-test-token",
+  };
+  const adminGuilds = {
+    guilds: [
+      { id: "111111111111111111", name: "Active Org", active: true, bannedAt: null, ownerUserId: "u1", memberCount: 12 },
+      { id: "222222222222222222", name: "Bad Org", active: false, bannedAt: "2026-06-01T10:00:00.000Z", ownerUserId: "u2", memberCount: 3 },
+    ],
+  };
+
+  it("superadmin lists guilds and bans one", async () => {
+    let banned = false;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionSuper)),
+      http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),
+      http.post(`${API}/admin/guilds/111111111111111111/ban`, () => {
+        banned = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/admin");
+    expect(await findByTestId("admin-guild-111111111111111111")).toHaveTextContent("Active Org");
+    expect(await findByTestId("admin-unban-222222222222222222")).toBeInTheDocument();
+    (await findByTestId("admin-ban-111111111111111111")).click();
+    await findByTestId("admin-page");
+    expect(banned).toBe(true);
+  });
+
+  it("non-superadmin sees a forbidden state", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)));
+    const { findByTestId } = renderAt("/admin");
+    expect(await findByTestId("admin-forbidden")).toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

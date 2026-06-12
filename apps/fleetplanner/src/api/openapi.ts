@@ -21,6 +21,7 @@ import {
   AddShipNeedsRequestSchema,
   PublishTemplateRequestSchema,
   PartnershipsResponseSchema,
+  AdminGuildsResponseSchema,
   MintInviteRequestSchema,
   MintInviteResponseSchema,
   AcceptTokenRequestSchema,
@@ -89,6 +90,7 @@ const SCHEMAS = {
   NeedsResponse: NeedsResponseSchema,
   PublishTemplateRequest: PublishTemplateRequestSchema,
   PartnershipsResponse: PartnershipsResponseSchema,
+  AdminGuildsResponse: AdminGuildsResponseSchema,
   MintInviteRequest: MintInviteRequestSchema,
   MintInviteResponse: MintInviteResponseSchema,
   AcceptTokenRequest: AcceptTokenRequestSchema,
@@ -478,6 +480,41 @@ export function buildOpenApiDocument(): JsonObject {
             ...errorResponses,
             "409": { description: "Owner protected", ...jsonContent(ref("ApiError")) },
           },
+        },
+      },
+      "/api/v1/admin/guilds": {
+        get: {
+          operationId: "listAdminGuilds",
+          summary: "All guilds incl. inactive/banned (superadmin only)",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("AdminGuildsResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/admin/guilds/{id}/ban": {
+        post: {
+          operationId: "banGuild",
+          summary: "Ban a Discord server (superadmin only)",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Banned", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/admin/guilds/{id}/unban": {
+        post: {
+          operationId: "unbanGuild",
+          summary: "Unban a Discord server (stays inactive until re-added; superadmin only)",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Unbanned", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
         },
       },
       "/api/v1/guilds/{id}/partnerships": {

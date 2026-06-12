@@ -87,6 +87,11 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
         <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Profil · {me.username}</h1>
       </div>
+      {me.role === "superadmin" && (
+        <p className="fpw-meta" style={{ marginBottom: "1rem" }}>
+          <Link to="/admin" data-testid="admin-link">Admin · Server-Verwaltung →</Link>
+        </p>
+      )}
       {notice && <p className="fpw-tag gold" role="alert" data-testid="profile-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
 
       <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>

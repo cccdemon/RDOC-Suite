@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA superadmin guild management (2026-06-12)
+
+- New superadmin API: `GET /api/v1/admin/guilds` (all guilds incl. inactive/banned with member
+  counts) and `POST /api/v1/admin/guilds/:id/{ban,unban}`. Instance-superadmin only. SSR twins:
+  web.ts /admin + /admin/guilds/:id/{ban,unban}.
+- Contract AdminGuild/AdminGuildsResponse + OpenAPI + inject tests (anon 401, bad id 400).
+  prod-e2e-readonly: admin anon-gate.
+- SPA `/admin` page (superadmin only): server list with active/inactive/banned status and
+  ban/unban actions; linked from the profile page for superadmins. MSW tests. (The rest of the
+  SSR admin panel — ship/location catalog, user roles, maintenance, bridge — stays on SSR.)
+
 ### Added - FR-P2: SPA make-operation-recurring (2026-06-12)
 
 - New `POST /api/v1/operations/:id/recurrence` (fleet operator): turn an existing operation into

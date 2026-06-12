@@ -457,6 +457,37 @@ describe("operation needs editor — gates + validation", () => {
   });
 });
 
+describe("superadmin guild management — gates", () => {
+  const gid = "123456789012345678";
+
+  it("GET admin/guilds anonymous → 401", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/admin/guilds" });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it.each([
+    ["ban", `/api/v1/admin/guilds/${gid}/ban`],
+    ["unban", `/api/v1/admin/guilds/${gid}/unban`],
+  ] as const)("POST %s without session → 401", async (_name, url) => {
+    const res = await app.inject({ method: "POST", url, headers: { "x-forwarded-for": `10.18.0.${url.length}` } });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("ban with invalid guild id → 400 before auth", async () => {
+    const res = await app.inject({ method: "POST", url: "/api/v1/admin/guilds/nope/ban", headers: { "x-forwarded-for": "10.18.1.1" } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("openapi documents the admin guild routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/admin/guilds"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/guilds/{id}/ban"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/guilds/{id}/unban"].post).toBeTruthy();
+  });
+});
+
 describe("guild partnerships — gates + validation", () => {
   const gid = "123456789012345678";
   const partnerGid = "987654321098765432";
