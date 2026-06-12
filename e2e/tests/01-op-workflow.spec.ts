@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
-import { actorContext, cleanup, login, type TestActor } from "../helpers/auth.js";
+import { API, actorContext, cleanup, login, type TestActor } from "../helpers/auth.js";
 
 // Full operator + player workflow against a live instance, scoped entirely to
 // the synthetic E2E guild. Serial: shared op id flows between tests.
@@ -53,50 +53,24 @@ test("operator: creates an operation via the wizard (name, date, type → create
   expect(opId).not.toBe("");
 });
 
-test("operator: edits meta + sets status open", async () => {
+test("operator: edits meta (title, system, location, briefing, max participants)", async () => {
   await op.goto(`ops/${opId}/edit`);
   await expect(op.getByTestId("edit-op-page")).toBeVisible();
   await op.getByTestId("edit-title").fill("E2E-Op Xenothreat Logistics");
   await op.getByTestId("edit-system-Stanton").click();
   await op.getByTestId("edit-location").fill("HUR-L1");
+  await op.getByTestId("edit-maxparticipants").fill("24");
   await op.getByTestId("edit-description").fill("E2E mission objective.");
   await op.getByTestId("edit-save").click();
   await expect(op.getByTestId("edit-notice")).toContainText(/Gespeichert/i);
 
-  await op.getByTestId("edit-status").selectOption("open");
-  await op.getByTestId("edit-status-apply").click();
-  await expect(op.getByTestId("edit-notice")).toContainText(/Status/i);
-});
-
-test("operator: defines needs (ship pick, fighters, CQB)", async () => {
-  await op.goto(`ops/${opId}/edit`);
-  await expect(op.getByTestId("needs-editor")).toBeVisible();
-  // ship need
-  await op.getByTestId("shiptype-capital").click();
-  await op.getByTestId("need-name").fill("Flaggschiff");
-  await op.getByTestId("need-add").click();
-  await expect(op.getByTestId("needs-editor")).toContainText(/Flaggschiff/);
-  // fighter squads
-  const f = op.getByTestId("fighters-count");
-  await f.fill("2");
-  await op.getByTestId("fighters-save").click();
-  await expect(op.getByTestId("needs-notice").or(op.getByTestId("needs-editor"))).toBeVisible();
-  // CQB teams
-  await op.getByTestId("cqb-count").fill("1");
-  await op.getByTestId("cqb-size").fill("4");
-  await op.getByTestId("cqb-save").click();
-});
-
-test("operator: publishes a template + creates a recurring series", async () => {
-  await op.goto(`ops/${opId}/edit`);
-  await op.getByTestId("tpl-name").fill("E2E-Vorlage");
-  await op.getByTestId("tpl-summary").fill("E2E template summary");
-  await op.getByTestId("tpl-publish").click();
-  await expect(op.getByTestId("edit-notice")).toContainText(/veröffentlicht/i);
-
-  await op.getByTestId("recur-freq").selectOption("weekly");
-  await op.getByTestId("recur-create").click();
-  await expect(op.getByTestId("edit-notice")).toContainText(/Serie erstellt/i);
+  // Status is no longer set from the edit screen (design "Operation bearbeiten"
+  // has no status control). Open the op via the API so downstream tests run.
+  const res = await op.request.post(`${API}/operations/${opId}/status`, {
+    headers: { "x-csrf-token": operator.csrfToken },
+    data: { status: "open" },
+  });
+  expect(res.ok()).toBeTruthy();
 });
 
 test("captain: offers a squad (creates seats)", async () => {

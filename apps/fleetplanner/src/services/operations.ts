@@ -228,6 +228,7 @@ export async function updateOperation(id: string, input: Partial<CreateOperation
       ...(input.meetingSystem !== undefined && { meetingSystem: input.meetingSystem }),
       ...(input.meetingLocation !== undefined && { meetingLocation: input.meetingLocation }),
       ...(input.scheduledAt !== undefined && { scheduledAt: input.scheduledAt }),
+      ...("maxParticipants" in input && { maxParticipants: input.maxParticipants ?? null }),
       ...("eventVoiceChannelId" in input && { eventVoiceChannelId: input.eventVoiceChannelId || null }),
     },
   });

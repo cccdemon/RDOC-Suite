@@ -892,6 +892,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       ...(d.meetingSystem !== undefined && { meetingSystem: d.meetingSystem.trim() }),
       ...(d.meetingLocation !== undefined && { meetingLocation: d.meetingLocation.trim() }),
       ...(d.scheduledAt !== undefined && { scheduledAt: new Date(d.scheduledAt) }),
+      ...(d.maxParticipants !== undefined && { maxParticipants: d.maxParticipants }),
     });
     if (d.visibility !== undefined) {
       // OpVisibility's TS type predates "guild"; the column/UI accept it.

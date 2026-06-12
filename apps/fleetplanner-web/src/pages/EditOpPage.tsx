@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ApiError, createRecurrence, deleteOperation, editOperation, getOperation, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
+import { ApiError, deleteOperation, editOperation, getOperation } from "../api/client";
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
-import { NeedsEditor } from "../components/NeedsEditor";
 import { CardHead, MONO, actionBar, btnGhost, btnPrimary, card, inp, lbl, segChip, ta } from "../components/ui";
 
 const OP_TYPES = [
@@ -15,22 +14,30 @@ const OP_TYPES = [
   { key: "training", label: "Training", color: "var(--green)", rgb: "0,255,136", icon: "lead" },
   { key: "social", label: "Sozial", color: "#ff70c8", rgb: "255,112,200", icon: "users" },
 ];
+// Design visibility list: 3 options (no separate "Guild"). Legacy guild-visibility
+// ops map onto "Privat" on load.
 const VIS = [
-  { key: "guild", label: "Guild", desc: "Mitglieder dieses Servers", icon: "server" },
-  { key: "private", label: "Privat", desc: "Nur Operatoren", icon: "lock" },
+  { key: "private", label: "Privat", desc: "Nur dein Server", icon: "lock" },
   { key: "partners", label: "Partner", desc: "Verbündete Server sehen es", icon: "link" },
   { key: "public", label: "Öffentlich", desc: "Instanzweit sichtbar", icon: "globe" },
 ];
 const SYSTEMS = ["Stanton", "Pyro", "Nyx"];
-const STATUSES: Array<[string, string]> = [
-  ["draft", "Entwurf"], ["open", "Offen"], ["locked", "Gesperrt"], ["starting", "Startet"],
-  ["in_progress", "Läuft"], ["completed", "Abgeschlossen"], ["cancelled", "Abgesagt"],
-];
 
 function isoToLocalInput(iso: string): string {
   const d = new Date(iso);
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+/** Short timezone label for the date field, e.g. "CEST" — derived from the guild tz. */
+function tzAbbr(tz: string | null): string {
+  if (!tz) return "";
+  try {
+    const parts = new Intl.DateTimeFormat("de-DE", { timeZone: tz, timeZoneName: "short" }).formatToParts(new Date());
+    return parts.find((p) => p.type === "timeZoneName")?.value ?? "";
+  } catch {
+    return "";
+  }
 }
 
 export function EditOpPage({ session }: { session: SessionResponse | null }) {
@@ -40,24 +47,30 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
 
   const [op, setOp] = useState<OperationDetail | null>(null);
   const [loadError, setLoadError] = useState<ApiError | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", opType: "combat", scheduledAt: "", meetingSystem: "Stanton", meetingLocation: "", visibility: "guild" });
+  const [form, setForm] = useState({ title: "", description: "", opType: "combat", scheduledAt: "", maxParticipants: "", meetingSystem: "Stanton", meetingLocation: "", visibility: "private" });
   const [saved, setSaved] = useState(form);
-  const [status, setStatusValue] = useState("draft");
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-  const [tpl, setTpl] = useState({ name: "", summary: "", visibility: "guild" });
-  const [recur, setRecur] = useState({ freq: "weekly", seriesCount: "", seriesEnd: "" });
 
   function reload() {
     if (!id) return;
     getOperation(id)
       .then((o) => {
         setOp(o);
-        const next = { title: o.title, description: o.description ?? "", opType: o.opType, scheduledAt: isoToLocalInput(o.scheduledAt), meetingSystem: o.meetingSystem || "Stanton", meetingLocation: o.meetingLocation ?? "", visibility: o.visibility };
+        const next = {
+          title: o.title,
+          description: o.description ?? "",
+          opType: o.opType,
+          scheduledAt: isoToLocalInput(o.scheduledAt),
+          maxParticipants: o.maxParticipants != null ? String(o.maxParticipants) : "",
+          meetingSystem: o.meetingSystem || "Stanton",
+          meetingLocation: o.meetingLocation ?? "",
+          // Legacy "guild" visibility collapses onto "Privat" in the 3-option design.
+          visibility: o.visibility === "guild" ? "private" : o.visibility,
+        };
         setForm(next);
         setSaved(next);
-        setStatusValue(o.status);
       })
       .catch((e) => setLoadError(e instanceof ApiError ? e : new ApiError(0, null)));
   }
@@ -66,28 +79,28 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
   const dirty = JSON.stringify(form) !== JSON.stringify(saved);
 
-  async function run(action: () => Promise<unknown>, msg: string) {
+  async function save() {
     if (!csrf || !id) return;
     setBusy(true); setNotice(null);
-    try { await action(); setNotice(msg); reload(); }
-    catch (e) { setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen."); }
-    finally { setBusy(false); }
+    try {
+      await editOperation(id, csrf, {
+        title: form.title.trim(),
+        description: form.description,
+        opType: form.opType,
+        meetingSystem: form.meetingSystem.trim(),
+        meetingLocation: form.meetingLocation.trim(),
+        scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
+        visibility: form.visibility,
+        maxParticipants: form.maxParticipants.trim() === "" ? null : Math.max(0, Number(form.maxParticipants) || 0),
+      });
+      setNotice("Gespeichert."); reload();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Speichern fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
   }
 
-  const save = () => run(() => editOperation(id!, csrf!, {
-    title: form.title.trim(), description: form.description, opType: form.opType,
-    meetingSystem: form.meetingSystem.trim(), meetingLocation: form.meetingLocation.trim(),
-    scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined, visibility: form.visibility,
-  }), "Gespeichert.");
-  const changeStatus = (next: string) => run(() => setOperationStatus(id!, csrf!, next), `Status: ${next}.`);
-  const publish = () => run(() => publishTemplate(id!, csrf!, { name: tpl.name.trim() || undefined, summary: tpl.summary.trim() || undefined, visibility: tpl.visibility }), "Als Vorlage veröffentlicht.");
-  const makeSeries = () => run(() => createRecurrence(id!, csrf!, { freq: recur.freq, seriesCount: recur.seriesCount ? Number(recur.seriesCount) : undefined, seriesEnd: recur.seriesEnd ? new Date(recur.seriesEnd).toISOString() : undefined }), "Serie erstellt.");
-  async function stopSeries() {
-    if (!csrf || !id) return;
-    setBusy(true); setNotice(null);
-    try { const r = await stopRecurrence(id, csrf); setNotice(r.stopped ? "Serie gestoppt." : "Diese Operation ist keine Serie."); }
-    catch (e) { setNotice(e instanceof ApiError ? e.message : "Stoppen fehlgeschlagen."); } finally { setBusy(false); }
-  }
   async function remove() {
     if (!csrf || !id) return;
     setBusy(true); setNotice(null);
@@ -101,6 +114,9 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
   if (!op.canManage)
     return <div className="fpw-state" data-testid="edit-forbidden"><span style={lbl}>KEINE OPERATOR-RECHTE</span><Link className="fpw-btn" to={`/ops/${id}`}>Zur Operation</Link></div>;
 
+  const zone = tzAbbr(op.guild.timezone);
+  const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" };
+
   return (
     <div data-testid="edit-op-page" style={{ maxWidth: 1080, margin: "0 auto" }}>
       {/* header */}
@@ -113,7 +129,7 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
           <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: "0 0 0.4rem" }}>{op.title}</h1>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--dim)", fontSize: "0.8rem", fontFamily: MONO }}><Ic name="server" size={13} sw={1.6} /> {op.guild.name} · OP-ID {op.id.slice(-6)}</div>
         </div>
-        {dirty && <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(240,165,0,0.4)", background: "rgba(240,165,0,0.1)", color: "var(--gold)", flexShrink: 0, marginTop: "0.2rem" }}>UNGESPEICHERT</span>}
+        {dirty && <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 5, border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.1)", color: "var(--green)", flexShrink: 0, marginTop: "0.2rem" }}>GEÄNDERT</span>}
       </div>
 
       {notice && <p className="fpw-tag gold" role="alert" data-testid="edit-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
@@ -129,9 +145,15 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
                 <label style={lbl}>Operationstitel <span style={{ color: "var(--gold)" }}>*</span></label>
                 <input data-testid="edit-title" type="text" maxLength={160} value={form.title} onChange={(e) => set({ title: e.target.value })} style={inp} />
               </div>
-              <div>
-                <label style={lbl}>Datum &amp; Zeit <span style={{ color: "var(--gold)" }}>*</span></label>
-                <input data-testid="edit-scheduled" type="datetime-local" value={form.scheduledAt} onChange={(e) => set({ scheduledAt: e.target.value })} style={inp} />
+              <div className="fpw-two" style={twoCol}>
+                <div>
+                  <label style={lbl}>Datum &amp; Zeit{zone ? ` (${zone})` : ""} <span style={{ color: "var(--gold)" }}>*</span></label>
+                  <input data-testid="edit-scheduled" type="datetime-local" value={form.scheduledAt} onChange={(e) => set({ scheduledAt: e.target.value })} style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Max. Teilnehmer</label>
+                  <input data-testid="edit-maxparticipants" type="number" min={0} value={form.maxParticipants} placeholder="∞" onChange={(e) => set({ maxParticipants: e.target.value })} style={inp} />
+                </div>
               </div>
               <div>
                 <label style={lbl}>Operationstyp</label>
@@ -145,7 +167,7 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
           {/* Treffpunkt */}
           <section style={card}>
             <CardHead icon="pin" label="TREFFPUNKT" tone="violet" />
-            <div className="fpw-two" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" }}>
+            <div className="fpw-two" style={twoCol}>
               <div>
                 <label style={lbl}>System</label>
                 <div style={{ display: "flex", gap: "0.4rem" }}>
@@ -163,46 +185,6 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
           <section style={card}>
             <CardHead icon="doc" label="BRIEFING" tone="cyan" right={<span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim2)" }}>Markdown</span>} />
             <textarea data-testid="edit-description" value={form.description} maxLength={4000} onChange={(e) => set({ description: e.target.value })} placeholder={"## Missionsziel\n…\n\n## Einsatzregeln\n…"} style={ta} />
-          </section>
-
-          {/* Status */}
-          <section style={card}>
-            <CardHead icon="bolt" label={`STATUS · AKTUELL ${op.status.toUpperCase()}`} tone="green" />
-            <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
-              <select data-testid="edit-status" value={status} onChange={(e) => setStatusValue(e.target.value)} style={{ ...inp, width: "auto", minWidth: 180 }}>
-                {STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              <button type="button" data-testid="edit-status-apply" style={btnPrimary} disabled={busy || !csrf || status === op.status} onClick={() => changeStatus(status)}>Status setzen</button>
-            </div>
-          </section>
-
-          {/* Bedarfe */}
-          {id && <NeedsEditor opId={id} csrf={csrf} />}
-
-          {/* Admin: template + recurrence */}
-          <section style={card}>
-            <CardHead icon="board" label="ADMIN" tone="gold" />
-            <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>ALS VORLAGE VERÖFFENTLICHEN</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.2rem" }}>
-              <input data-testid="tpl-name" type="text" maxLength={120} value={tpl.name} placeholder={`Name (Standard: ${op.title})`} onChange={(e) => setTpl((t) => ({ ...t, name: e.target.value }))} style={inp} />
-              <input data-testid="tpl-summary" type="text" maxLength={500} value={tpl.summary} placeholder="Kurzbeschreibung" onChange={(e) => setTpl((t) => ({ ...t, summary: e.target.value }))} style={inp} />
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                <select data-testid="tpl-visibility" value={tpl.visibility} onChange={(e) => setTpl((t) => ({ ...t, visibility: e.target.value }))} style={{ ...inp, width: "auto", minWidth: 160 }}>
-                  <option value="guild">Guild</option><option value="partners">Partner-Guilds</option><option value="public">Öffentlich</option>
-                </select>
-                <button type="button" data-testid="tpl-publish" style={btnPrimary} disabled={busy || !csrf} onClick={publish}><Ic name="board" size={13} sw={2} /> Veröffentlichen</button>
-              </div>
-            </div>
-            <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>WIEDERKEHRENDE SERIE</div>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.6rem" }}>
-              <select data-testid="recur-freq" value={recur.freq} onChange={(e) => setRecur((r) => ({ ...r, freq: e.target.value }))} style={{ ...inp, width: "auto", minWidth: 150 }}>
-                <option value="weekly">Wöchentlich</option><option value="biweekly">Zweiwöchentlich</option><option value="monthly_nth">Monatlich</option><option value="yearly">Jährlich</option>
-              </select>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>Anzahl<input data-testid="recur-count" type="number" min={1} max={365} value={recur.seriesCount} placeholder="∞" onChange={(e) => setRecur((r) => ({ ...r, seriesCount: e.target.value }))} style={{ ...inp, width: 80 }} /></label>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>bis<input data-testid="recur-until" type="date" value={recur.seriesEnd} onChange={(e) => setRecur((r) => ({ ...r, seriesEnd: e.target.value }))} style={{ ...inp, width: 160 }} /></label>
-              <button type="button" data-testid="recur-create" style={btnPrimary} disabled={busy || !csrf} onClick={makeSeries}>Serie erstellen</button>
-            </div>
-            <button type="button" data-testid="recurrence-stop" style={btnGhost} disabled={busy || !csrf} onClick={stopSeries}>Serie stoppen</button>
           </section>
         </div>
 

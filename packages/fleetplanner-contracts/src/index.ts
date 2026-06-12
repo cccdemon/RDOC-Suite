@@ -200,6 +200,8 @@ export type ResourceLink = z.infer<typeof ResourceLinkSchema>;
 
 export const OperationDetailSchema = OperationSummarySchema.extend({
   description: z.string(),
+  /** Optional participant cap (null = no cap). */
+  maxParticipants: z.number().int().nullable(),
   guild: z.object({
     id: z.string(),
     name: z.string(),
@@ -613,6 +615,7 @@ export const EditOperationRequestSchema = z
     meetingLocation: z.string().max(160).optional(),
     scheduledAt: z.iso.datetime().optional(),
     visibility: z.enum(["private", "guild", "partners", "public"]).optional(),
+    maxParticipants: z.number().int().min(0).max(10000).nullable().optional(),
   })
   .meta({ id: "EditOperationRequest" });
 export type EditOperationRequest = z.infer<typeof EditOperationRequestSchema>;

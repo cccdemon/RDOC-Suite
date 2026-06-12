@@ -52,6 +52,7 @@ type OpListRow = {
 };
 type OpDetailRow = OpListRow & {
   description: string;
+  maxParticipants: number | null;
   guild: { id: string; name: string; iconHash: string | null; timezone: string | null };
   leaders: Array<{ user: UserRow }>;
   units: UnitRow[];
@@ -134,6 +135,7 @@ export function presentOperationDetail(
     viewerCqbSignedUp: viewer.cqbSignedUp ?? false,
     viewerHangarShared: viewer.hangarShared ?? false,
     description: op.description,
+    maxParticipants: op.maxParticipants,
     guild: {
       id: op.guild.id,
       name: op.guild.name,

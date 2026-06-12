@@ -189,6 +189,7 @@ export function editOperation(
     meetingLocation?: string;
     scheduledAt?: string;
     visibility?: string;
+    maxParticipants?: number | null;
   },
 ): Promise<{ ok: true }> {
   return mutate("PATCH", `/operations/${encodeURIComponent(id)}`, csrfToken, input);
