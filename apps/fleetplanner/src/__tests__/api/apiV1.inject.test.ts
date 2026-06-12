@@ -717,6 +717,13 @@ describe("rate limiting", () => {
   });
 });
 
+describe("e2e test-login seam", () => {
+  it("is disabled (404) when E2E_TEST_LOGIN_SECRET is unset", async () => {
+    const res = await app.inject({ method: "POST", url: "/e2e/login", headers: { "content-type": "application/json" }, payload: JSON.stringify({ username: "e2e-op" }) });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
 describe("error envelope hygiene", () => {
   it("a DB-touching route without a database fails closed: 500 JSON, no internals", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/operations" });

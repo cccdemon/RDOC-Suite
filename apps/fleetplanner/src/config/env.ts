@@ -57,6 +57,11 @@ const schema = z.object({
   RELAY_BOTS_ADMIN_URL: z.string().optional(),
   RELAY_BOTS_ADMIN_SECRET: z.string().optional(),
 
+  // E2E test-login seam (scripts/e2e). When set (>=32 chars), enables the
+  // /e2e/login + /e2e/cleanup backdoor for synthetic e2e-* test players ONLY.
+  // Unset in normal prod — the routes do not exist without it.
+  E2E_TEST_LOGIN_SECRET: z.string().min(32).optional(),
+
   // Mission-cover render microservice (FR-P4). Internal docker-network URL +
   // shared M2M secret (matches the service's MISSIONCOVER_SERVICE_SECRET). When
   // the secret is unset, the cover feature is hidden (coverServiceConfigured()).
