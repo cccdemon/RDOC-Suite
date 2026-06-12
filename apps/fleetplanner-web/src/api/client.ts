@@ -136,6 +136,10 @@ export function removeHangarShip(shipId: string, csrfToken: string): Promise<{ o
   return mutate("DELETE", `/hangar/${encodeURIComponent(shipId)}`, csrfToken);
 }
 
+export function importFleet(csrfToken: string, fleetJson: string): Promise<import("./types").FleetImportResponse> {
+  return mutate("POST", "/hangar/import", csrfToken, { fleetJson });
+}
+
 export function sendFeedback(subject: string, message: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", "/feedback", csrfToken, { subject, message });
 }

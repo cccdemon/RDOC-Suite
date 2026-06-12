@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { addHangarShip, ApiError, getHangar, removeHangarShip, searchShips } from "../api/client";
-import type { SessionResponse, ShipSummary } from "../api/types";
+import { addHangarShip, ApiError, getHangar, importFleet, removeHangarShip, searchShips } from "../api/client";
+import type { FleetImportResponse, SessionResponse, ShipSummary } from "../api/types";
 import { Ic } from "../components/Icons";
 
 const MONO = "var(--mono)";
@@ -13,6 +13,8 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
   const [results, setResults] = useState<ShipSummary[]>([]);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [fleetJson, setFleetJson] = useState("");
+  const [importResult, setImportResult] = useState<FleetImportResponse | null>(null);
 
   const csrf = session?.csrfToken ?? null;
   const me = session?.user ?? null;
@@ -47,6 +49,22 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
       reload();
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runImport() {
+    if (!csrf || fleetJson.trim().length === 0) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const r = await importFleet(csrf, fleetJson);
+      setImportResult(r);
+      setFleetJson("");
+      reload();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Import fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -117,6 +135,39 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                 )}
               </div>
             ))}
+          </div>
+        )}
+      </section>
+
+      <section className="fpw-card" style={{ marginTop: "1.2rem" }} data-testid="fleet-import">
+        <div style={label}>FLOTTE IMPORTIEREN</div>
+        <p className="fpw-meta" style={{ margin: "0 0 0.7rem", fontSize: "0.85rem" }}>
+          CCU-Game-Flotten-Export (JSON) einfügen — passende Schiffe landen automatisch im Hangar.
+        </p>
+        <textarea
+          data-testid="fleet-json"
+          value={fleetJson}
+          onChange={(e) => setFleetJson(e.target.value)}
+          placeholder='[{"name":"Polaris", ...}]'
+          rows={5}
+          style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--mono)", fontSize: "0.82rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none", resize: "vertical" }}
+        />
+        <div style={{ marginTop: "0.6rem" }}>
+          <button type="button" data-testid="fleet-import-submit" className="fpw-btn" disabled={busy || !csrf || fleetJson.trim().length === 0} onClick={runImport}>
+            <Ic name="plus" size={12} sw={2} /> Importieren
+          </button>
+        </div>
+        {importResult && (
+          <div data-testid="import-result" style={{ marginTop: "0.8rem" }}>
+            <p className="fpw-meta" style={{ margin: 0 }}>
+              {importResult.added} neu · {importResult.already} bereits vorhanden
+              {importResult.unmatched.length > 0 ? ` · ${importResult.unmatched.length} nicht zugeordnet` : ""}
+            </p>
+            {importResult.unmatched.length > 0 && (
+              <p className="fpw-meta" style={{ margin: "0.4rem 0 0", fontSize: "0.8rem", color: "#7e92a4" }}>
+                Nicht erkannt: {importResult.unmatched.slice(0, 20).join(", ")}{importResult.unmatched.length > 20 ? " …" : ""}
+              </p>
+            )}
           </div>
         )}
       </section>

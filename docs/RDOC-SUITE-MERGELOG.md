@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Flotten-Import (Profil) — Branch master
+
+Letzte wertvolle Profil-Subfläche ins SPA (opstyle/locale sind SSR-Präferenzen ohne SPA-Nutzen).
+- BE `POST /api/v1/hangar/import` {fleetJson} → importUserFleet → {total,added,already,unmatched[]}.
+  requireSessionJson+CSRF; Fehler→400. SSR-twin web.ts /profile/fleet-import.
+- Contract FleetImportRequest/FleetImportResponse; OpenAPI; inject-Tests (anon 401, leer 400).
+- FE ProfilePage: „Flotte importieren"-Sektion (Textarea CCU-Game-JSON + Button), Ergebnis
+  (added/already/unmatched), Hangar-Reload. MSW-Test. E2E-readonly +1.
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E):** Contract FleetImportRequest/FleetImportResponse.
+  apiV1 `POST /hangar/import` (importUserFleet, slice 200k, try/catch→400). OpenAPI; inject-Test
+  (anon 401, leer 400, doc). FE client importFleet, ProfilePage „FLOTTE IMPORTIEREN" (Textarea+
+  Button+Ergebnis added/already/unmatched), MSW-Test. E2E-readonly +1. CHANGELOG. opstyle/locale
+  bewusst SSR (reine SSR-Render-Präferenzen). Lokal NICHT gebaut (Docker-Regel).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Guild-Partnerschaften — Branch master
 
 Admiral-Fläche `/guilds/partnerships` ins SPA (steuert Op-Sichtbarkeit „partners" + Event-Sharing).

@@ -62,6 +62,8 @@ needs_anon="$(curl -s -o /dev/null -w '%{http_code}' "$API/operations/cmqaaaaaaa
 check "op needs anon 401" "401" "$needs_anon"
 tpl_anon="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/publish-template")"
 check "op publish-template anon 401" "401" "$tpl_anon"
+import_anon="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"fleetJson":"[]"}' "$API/hangar/import")"
+check "fleet import anon 401" "401" "$import_anon"
 
 ops="$(curl -fsS "$API/operations")"
 contains "operations json" "$ops" '"operations":'

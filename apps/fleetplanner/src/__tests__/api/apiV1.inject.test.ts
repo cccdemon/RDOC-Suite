@@ -100,6 +100,18 @@ describe("GET /api/v1/hangar", () => {
   });
 });
 
+describe("POST /api/v1/hangar/import", () => {
+  it("anonymous → 401, empty body → 400, documented", async () => {
+    const anon = await app.inject({ method: "POST", url: "/api/v1/hangar/import", headers: { "content-type": "application/json", "x-forwarded-for": "10.17.1.1" }, payload: JSON.stringify({ fleetJson: "[]" }) });
+    expect(anon.statusCode).toBe(401);
+    expect(anon.json().error.code).toBe("unauthenticated");
+    const bad = await app.inject({ method: "POST", url: "/api/v1/hangar/import", headers: { "content-type": "application/json", "x-forwarded-for": "10.17.1.2" }, payload: JSON.stringify({ fleetJson: "" }) });
+    expect(bad.statusCode).toBe(400);
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/hangar/import"].post).toBeTruthy();
+  });
+});
+
 describe("GET /api/v1/operations/:id", () => {
   it("invalid id format → 400 JSON without hitting the database", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/operations/..%2Fetc" });

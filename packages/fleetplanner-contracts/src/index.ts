@@ -227,6 +227,21 @@ export const HangarShipRequestSchema = z
   .object({ shipId: z.string().regex(/^[a-z0-9]{20,32}$/i, "invalid ship id") })
   .meta({ id: "HangarShipRequest" });
 
+export const FleetImportRequestSchema = z
+  .object({ fleetJson: z.string().min(1).max(200000) })
+  .meta({ id: "FleetImportRequest" });
+
+export const FleetImportResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    total: z.number(),
+    added: z.number(),
+    already: z.number(),
+    unmatched: z.array(z.string()),
+  })
+  .meta({ id: "FleetImportResponse" });
+export type FleetImportResponse = z.infer<typeof FleetImportResponseSchema>;
+
 export const FeedbackRequestSchema = z
   .object({ subject: z.string().min(1).max(120), message: z.string().min(1).max(1800) })
   .meta({ id: "FeedbackRequest" });

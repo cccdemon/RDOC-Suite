@@ -63,6 +63,7 @@ import {
   setFighterSquads,
 } from "../services/needs.js";
 import { listSharedHangars } from "../services/hangarShare.js";
+import { importUserFleet } from "../services/fleetImport.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
 import { setHangarShare } from "../services/hangarShare.js";
@@ -83,6 +84,7 @@ import {
   SetAutoShareRequestSchema,
   EditOperationRequestSchema,
   FeedbackRequestSchema,
+  FleetImportRequestSchema,
   GuildIdParamSchema,
   GuildMemberParamSchema,
   NeedParamSchema,
@@ -1516,6 +1518,28 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!ctx) return;
     await prisma.userShip.deleteMany({ where: { userId: ctx.user.id, shipId: p.data.shipId } });
     return reply.type("application/json").send({ ok: true as const });
+  });
+
+  // Bulk-import owned ships from a CCU-Game JSON export (SSR twin:
+  // web.ts /profile/fleet-import). Unmatched names are returned for manual
+  // resolution; no image/attachment handling.
+  app.post<{ Body: unknown }>("/api/v1/hangar/import", async (req, reply) => {
+    const body = FleetImportRequestSchema.safeParse(req.body);
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "fleetJson required.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    try {
+      const r = await importUserFleet(ctx.user.id, body.data.fleetJson.slice(0, 200000));
+      return reply.type("application/json").send({
+        ok: true as const,
+        total: r.total,
+        added: r.added,
+        already: r.already,
+        unmatched: r.unmatched,
+      });
+    } catch (err) {
+      return sendError(reply, req, 400, "bad_request", err instanceof Error ? err.message : "Import failed.");
+    }
   });
 
   // ── feedback ────────────────────────────────────────────────────────

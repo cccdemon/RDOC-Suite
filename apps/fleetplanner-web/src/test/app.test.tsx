@@ -594,6 +594,27 @@ describe("Profile / hangar", () => {
     expect(await findByText("IM HANGAR")).toBeInTheDocument();
   });
 
+  it("imports a fleet from pasted JSON (POST hangar/import)", async () => {
+    let imported: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/hangar`, () => HttpResponse.json({ ships: [] })),
+      http.post(`${API}/hangar/import`, async ({ request }) => {
+        imported = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, total: 3, added: 2, already: 1, unmatched: ["Mystery Ship"] });
+      }),
+    );
+    const { findByTestId } = renderAt("/profile");
+    const ta = (await findByTestId("fleet-json")) as HTMLTextAreaElement;
+    Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(ta, '[{"name":"Polaris"}]');
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("fleet-import-submit")).click();
+    const res = await findByTestId("import-result");
+    expect(res).toHaveTextContent("2 neu");
+    expect(res).toHaveTextContent("nicht zugeordnet");
+    expect(imported).toMatchObject({ fleetJson: '[{"name":"Polaris"}]' });
+  });
+
   it("anonymous sees a sign-in prompt", async () => {
     server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
     const { findByTestId } = renderAt("/profile");

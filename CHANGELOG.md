@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA fleet import (2026-06-12)
+
+- New `POST /api/v1/hangar/import` {fleetJson}: bulk-import owned ships from a CCU-Game JSON
+  export (importUserFleet); returns {total, added, already, unmatched[]}. SSR twin:
+  web.ts /profile/fleet-import.
+- Contract FleetImportRequest/FleetImportResponse + OpenAPI + inject tests (anon 401, empty 400).
+  prod-e2e-readonly: import anon-gate.
+- SPA: a "Flotte importieren" section on the profile page (paste JSON → import, result summary
+  with unmatched names, hangar reload). MSW test. (The opstyle/locale profile sub-forms stay on
+  SSR — they are SSR-render preferences with no SPA effect.)
+
 ### Fixed - Calendar agenda showed past events (2026-06-12)
 
 - The calendar agenda listed past operations by default. It now shows only upcoming events,
