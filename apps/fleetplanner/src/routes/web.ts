@@ -3,37 +3,18 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-// API-only backend: this router serves ONLY data/file endpoints (mission
-// images, .ics/.csv exports) and the static public info/legal pages. All app
-// UI lives in the fleetplanner-web SPA. Do not add HTML/JS app routes here.
-import {
-  rawHtml,
-  whatIsPage,
-  howToPage,
-  scToolsPage,
-  changelogPage,
-  impressumPage,
-  datenschutzPage,
-  licensePage,
-  whyUnsignedPage,
-} from "../web/pages.js";
+// API-only backend: this router serves ONLY data/file endpoints — mission
+// images and per-op .ics/.csv exports. All UI (incl. info/legal pages) lives in
+// the fleetplanner-web SPA. Do not add HTML/JS routes here.
 import { optionalAuth } from "../auth/middleware.js";
 import { effectiveOpRole } from "../services/guilds.js";
-import { basePath, getEnv } from "../config/env.js";
+import { getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import { buildOpIcs } from "../lib/calendar.js";
 import { getOperation } from "../services/operations.js";
-import { getScToolCards } from "../services/scTools.js";
 import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../public");
-
-function htmlReply(
-  reply: import("fastify").FastifyReply,
-  page: import("../web/render.js").SafeHtml,
-) {
-  reply.type("text/html; charset=utf-8").send(rawHtml(page));
-}
 
 export async function webRoutes(app: FastifyInstance) {
   app.get<{ Params: { file: string } }>("/assets/mission-images/:file", async (req, reply) => {
@@ -94,120 +75,6 @@ export async function webRoutes(app: FastifyInstance) {
     reply.header("Content-Disposition", `attachment; filename="${slug}-participants.csv"`);
     reply.header("Cache-Control", "no-store");
     return reply.send(csv);
-  });
-
-  // ── Public info pages (no login required) ────────────────────────────
-  app.get("/was-ist", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      whatIsPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-        lang: "de",
-      }),
-    );
-  });
-
-  app.get("/what-is", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      whatIsPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-        lang: "en",
-      }),
-    );
-  });
-
-  app.get("/how-to", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      howToPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-        superadminContact: getEnv().SUPERADMIN_CONTACT,
-      }),
-    );
-  });
-
-  app.get("/sc-tools", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    const tools = await getScToolCards();
-    htmlReply(
-      reply,
-      scToolsPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-        tools,
-      }),
-    );
-  });
-
-  app.get("/changelog", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      changelogPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-      }),
-    );
-  });
-
-  app.get("/impressum", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      impressumPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-      }),
-    );
-  });
-
-  app.get("/privacy", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      datenschutzPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-      }),
-    );
-  });
-
-  app.get("/license", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      licensePage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-      }),
-    );
-  });
-
-  app.get("/why-unsigned", async (req, reply) => {
-    const ctx = await optionalAuth(req);
-    htmlReply(
-      reply,
-      whyUnsignedPage({
-        basePath: basePath(),
-        currentUser: ctx?.user ?? null,
-        csrfToken: ctx?.csrfToken,
-      }),
-    );
   });
 
 }
