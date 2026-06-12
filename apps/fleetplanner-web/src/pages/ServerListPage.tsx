@@ -41,9 +41,19 @@ export function ServerListPage({ session }: { session: SessionResponse | null })
       </div>
 
       {guilds.length === 0 ? (
-        <div className="fpw-state" data-testid="servers-none">
-          <span style={lbl}>KEIN SERVER</span>
-          <p className="fpw-meta">Du bist auf keinem Server, auf dem der Fleetplanner-Bot installiert ist.</p>
+        <div data-testid="servers-none" style={{ maxWidth: 560, margin: "2.5rem auto", textAlign: "center", padding: "0 1rem" }}>
+          <span style={{ width: 60, height: 60, borderRadius: 15, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)", color: "var(--cyan)", marginBottom: "1.1rem" }}>
+            <Ic name="server" size={28} sw={1.6} />
+          </span>
+          <h2 style={{ fontWeight: 700, fontSize: "1.5rem", color: "var(--text-hi)", margin: "0 0 0.6rem" }}>Kein Server verbunden</h2>
+          <p style={{ color: "var(--dim)", fontSize: "0.95rem", lineHeight: 1.6, maxWidth: "44ch", margin: "0 auto 1.6rem" }}>
+            Du bist auf keinem Discord-Server, auf dem der Fleetplanner-Bot installiert ist. Lade den Bot
+            auf deinen Server, um Operationen zu planen, Sitze zu vergeben und deine Flotte zu organisieren.
+          </p>
+          <a href="/fleetplanner/guilds/add" className="btn" data-testid="servers-none-add"><Ic name="plus" size={14} sw={1.9} /> Bot hinzufügen</a>
+          <p style={{ color: "var(--dim2)", fontSize: "0.82rem", marginTop: "1.3rem" }}>
+            Öffentliche Operationen kannst du auch ohne Server <Link to="/" style={{ color: "var(--cyan)" }}>ansehen</Link>.
+          </p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
