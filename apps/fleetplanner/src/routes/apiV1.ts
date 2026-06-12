@@ -135,6 +135,7 @@ import {
   presentShip,
 } from "../api/presenters.js";
 import { openApiDocument } from "../api/openapi.js";
+import { getDocContent } from "../api/docContent.js";
 import { mutationLimiter, searchLimiter } from "../api/rateLimit.js";
 
 const VERSION = process.env.npm_package_version ?? "0.0.0";
@@ -213,6 +214,18 @@ export async function apiV1Routes(app: FastifyInstance) {
   app.get("/api/v1/openapi.json", async (_req, reply) => {
     return reply.type("application/json").send(openApiDocument);
   });
+
+  // Static info/legal page content as data — the SPA renders it (DocPage). The
+  // backend serves content, never a rendered HTML page.
+  app.get<{ Params: { slug: string }; Querystring: { lang?: string } }>(
+    "/api/v1/content/:slug",
+    async (req, reply) => {
+      const lang = req.query.lang === "en" ? "en" : "de";
+      const content = getDocContent(req.params.slug, lang);
+      if (!content) return sendError(reply, req, 404, "not_found", "Unknown content page.");
+      return reply.type("application/json").send(content);
+    },
+  );
 
   // Public, static player-facing roadmap.
   app.get("/api/v1/roadmap", async (_req, reply) => {

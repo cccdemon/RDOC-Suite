@@ -87,6 +87,10 @@ export function getSession(): Promise<SessionResponse> {
   return get<SessionResponse>("/session");
 }
 
+export function getContent(slug: string, lang?: "de" | "en"): Promise<{ title: string; html: string }> {
+  return get<{ title: string; html: string }>(`/content/${encodeURIComponent(slug)}${lang ? `?lang=${lang}` : ""}`);
+}
+
 export function getAccount(): Promise<import("./types").AccountResponse> {
   return get<import("./types").AccountResponse>("/account");
 }

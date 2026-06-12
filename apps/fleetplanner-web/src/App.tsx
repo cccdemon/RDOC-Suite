@@ -20,6 +20,7 @@ import { AccountPage } from "./pages/AccountPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
+import { DocPage } from "./pages/DocPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
 
@@ -204,6 +205,7 @@ export function App() {
           <Route path="/ops/:id/manage" element={<OpManagePage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/impressum" element={<DocPage slug="impressum" />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />
         </Routes>
       </main>

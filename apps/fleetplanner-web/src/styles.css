@@ -173,3 +173,22 @@ a { color: var(--cyan); }
   letter-spacing: 0.05em; border-radius: 8px; text-decoration: none; cursor: pointer;
 }
 .fpw-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Static info/legal content (DocPage renders backend-served HTML). */
+.fpw-doc { color: var(--text); font-family: var(--body); line-height: 1.6; }
+.fpw-doc a { color: var(--cyan); }
+.fpw-doc .page-header { margin-bottom: 1.6rem; }
+.fpw-doc .page-title { font-weight: 700; font-size: 1.9rem; line-height: 1.15; color: var(--text-hi); margin: 0 0 0.4rem; }
+.fpw-doc .page-subtitle { color: var(--dim); font-size: 0.95rem; }
+.fpw-doc .section { margin-bottom: 1.4rem; }
+.fpw-doc .section-title { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.7rem; }
+.fpw-doc .card { border: 1px solid rgba(0, 212, 255, 0.16); border-radius: 14px; background: var(--bg2); padding: 1.1rem 1.2rem; }
+.fpw-doc .card + .card { margin-top: 1rem; }
+.fpw-doc .card-title { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em; color: var(--text-hi); }
+.fpw-doc .text-dim { color: var(--dim); }
+.fpw-doc .text-sm { font-size: 0.85rem; }
+.fpw-doc .mt-1 { margin-top: 0.5rem; }
+.fpw-doc .user-table { border-collapse: collapse; width: 100%; }
+.fpw-doc .user-table th, .fpw-doc .user-table td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid rgba(0, 212, 255, 0.1); vertical-align: top; }
+.fpw-doc .user-table th { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; color: var(--dim); font-weight: 400; text-transform: uppercase; }
+.fpw-doc .btn, .fpw-doc .btn-sm { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; border: 1px solid rgba(0, 212, 255, 0.4); background: rgba(0, 212, 255, 0.08); color: var(--cyan); font-family: var(--mono); font-size: 0.78rem; border-radius: 8px; text-decoration: none; }
