@@ -47,6 +47,7 @@ import {
   CqbSignupRequestSchema,
   GuildListResponseSchema,
   AccountResponseSchema,
+  DiagnosticsResponseSchema,
   GuildSettingsResponseSchema,
   SetMemberRoleRequestSchema,
   UpdateGuildSettingsRequestSchema,
@@ -72,6 +73,7 @@ const SCHEMAS = {
   SessionResponse: SessionResponseSchema,
   GuildListResponse: GuildListResponseSchema,
   AccountResponse: AccountResponseSchema,
+  DiagnosticsResponse: DiagnosticsResponseSchema,
   GuildSettingsResponse: GuildSettingsResponseSchema,
   UpdateGuildSettingsRequest: UpdateGuildSettingsRequestSchema,
   SetMemberRoleRequest: SetMemberRoleRequestSchema,
@@ -649,6 +651,16 @@ export function buildOpenApiDocument(): JsonObject {
             { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
           ],
           responses: { "200": { description: "Toggled", ...jsonContent(ref("MutationOk")) }, ...errorResponses, "409": { description: "Guarded", ...jsonContent(ref("ApiError")) } },
+        },
+      },
+      "/api/v1/guilds/{id}/diagnostics": {
+        get: {
+          operationId: "getGuildDiagnostics",
+          summary: "Discord install diagnostics for a guild (fleet operator only)",
+          tags: ["guilds"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("DiagnosticsResponse")) }, ...errorResponses },
         },
       },
       "/api/v1/guilds/{id}/partnerships": {

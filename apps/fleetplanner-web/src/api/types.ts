@@ -29,6 +29,7 @@ export type {
   AdminUsersResponse,
   AdminSettingsResponse,
   AccountResponse,
+  DiagnosticsResponse,
 } from "@rdoc-suite/fleetplanner-contracts";
 
 // The error code union is referenced directly by the client; mirror it from

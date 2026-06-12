@@ -637,6 +637,15 @@ describe("guild settings — gates + validation", () => {
   const gid = "123456789012345678"; // valid Discord snowflake
   const uid = "cmqffffffffffffffffff6";
 
+  it("GET diagnostics anonymous → 401; bad id → 400; documented", async () => {
+    const anon = await app.inject({ method: "GET", url: `/api/v1/guilds/${gid}/diagnostics` });
+    expect(anon.statusCode).toBe(401);
+    const bad = await app.inject({ method: "GET", url: "/api/v1/guilds/nope/diagnostics" });
+    expect(bad.statusCode).toBe(400);
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/guilds/{id}/diagnostics"].get).toBeTruthy();
+  });
+
   it("GET settings anonymous → 401 envelope", async () => {
     const res = await app.inject({ method: "GET", url: `/api/v1/guilds/${gid}/settings` });
     expect(res.statusCode).toBe(401);

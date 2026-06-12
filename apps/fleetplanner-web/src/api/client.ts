@@ -294,6 +294,10 @@ export function toggleUserActive(id: string, csrfToken: string): Promise<{ ok: t
   return mutate("POST", `/admin/users/${encodeURIComponent(id)}/active`, csrfToken);
 }
 
+export function getDiagnostics(guildId: string): Promise<import("./types").DiagnosticsResponse> {
+  return get<import("./types").DiagnosticsResponse>(`/guilds/${encodeURIComponent(guildId)}/diagnostics`);
+}
+
 export function getPartnerships(guildId: string): Promise<import("./types").PartnershipsResponse> {
   return get<import("./types").PartnershipsResponse>(`/guilds/${encodeURIComponent(guildId)}/partnerships`);
 }

@@ -60,6 +60,7 @@ import {
   revokePartnership,
 } from "../services/partnerships.js";
 import { createSeriesForOp } from "../services/recurrence.js";
+import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
 import {
   addShipNeeds,
@@ -486,6 +487,36 @@ export async function apiV1Routes(app: FastifyInstance) {
       return reply.type("application/json").send({ ok: true as const });
     },
   );
+
+  // ── discord install diagnostics (fleet operator of that guild) ──────
+  app.get<{ Params: { id: string } }>("/api/v1/guilds/:id/diagnostics", async (req, reply) => {
+    const p = GuildIdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") {
+      const m = await getMembership(ctx.user.id, p.data.id);
+      if (m?.role !== "fleetoperator") return sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
+    }
+    try {
+      const d = await runDiscordInstallDiagnostics(p.data.id);
+      return reply.type("application/json").send({
+        guild: d.guild,
+        canInspectPermissions: d.canInspectPermissions,
+        summary: d.summary,
+        bots: d.bots.map((b) => ({
+          key: b.key, name: b.name, severity: b.severity, configured: b.configured, installed: b.installed,
+          username: b.username, note: b.note, inviteUrl: b.inviteUrl,
+          requiredPermissions: b.requiredPermissions.map((x) => ({ key: x.key, label: x.label })),
+          missingPermissions: b.missingPermissions.map((x) => ({ key: x.key, label: x.label })),
+        })),
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Diagnostics failed.";
+      if (/not found/i.test(msg)) return sendError(reply, req, 404, "not_found", "Server not found.");
+      return sendError(reply, req, 502, "internal", "Discord diagnostics unavailable.");
+    }
+  });
 
   // ── superadmin: instance guild management ────────────────────────────
   // SSR twins: web.ts /admin (+ /admin/guilds/:id/{ban,unban}). Instance

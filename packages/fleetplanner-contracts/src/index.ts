@@ -80,6 +80,35 @@ export const AccountResponseSchema = z
   .meta({ id: "AccountResponse" });
 export type AccountResponse = z.infer<typeof AccountResponseSchema>;
 
+// ── Discord install diagnostics ─────────────────────────────────────────
+
+export const DiagnosticsPermSchema = z.object({ key: z.string(), label: z.string() }).meta({ id: "DiagnosticsPerm" });
+
+export const DiagnosticsBotSchema = z
+  .object({
+    key: z.string(),
+    name: z.string(),
+    severity: z.enum(["ok", "warn", "error"]),
+    configured: z.boolean(),
+    installed: z.boolean(),
+    username: z.string().nullable(),
+    note: z.string(),
+    inviteUrl: z.string().nullable(),
+    requiredPermissions: z.array(DiagnosticsPermSchema),
+    missingPermissions: z.array(DiagnosticsPermSchema),
+  })
+  .meta({ id: "DiagnosticsBot" });
+
+export const DiagnosticsResponseSchema = z
+  .object({
+    guild: z.object({ id: z.string(), name: z.string() }),
+    canInspectPermissions: z.boolean(),
+    summary: z.object({ ok: z.number(), warn: z.number(), error: z.number() }),
+    bots: z.array(DiagnosticsBotSchema),
+  })
+  .meta({ id: "DiagnosticsResponse" });
+export type DiagnosticsResponse = z.infer<typeof DiagnosticsResponseSchema>;
+
 // ── Guilds ────────────────────────────────────────────────────────────
 
 export const GuildSummarySchema = z
