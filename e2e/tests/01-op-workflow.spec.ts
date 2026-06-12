@@ -73,6 +73,20 @@ test("operator: edits meta (title, system, location, briefing, max participants)
   expect(res.ok()).toBeTruthy();
 });
 
+test("operator: management screen — admin tab publishes template + recurring series", async () => {
+  await op.goto(`ops/${opId}/manage`);
+  await expect(op.getByTestId("manage-page")).toBeVisible();
+  await op.getByTestId("manage-tab-admin").click();
+  await op.getByTestId("tpl-name").fill("E2E-Vorlage");
+  await op.getByTestId("tpl-summary").fill("E2E template summary");
+  await op.getByTestId("tpl-publish").click();
+  await expect(op.getByTestId("manage-notice")).toContainText(/veröffentlicht/i);
+
+  await op.getByTestId("recur-freq").selectOption("weekly");
+  await op.getByTestId("recur-create").click();
+  await expect(op.getByTestId("manage-notice")).toContainText(/Serie erstellt/i);
+});
+
 test("captain: offers a squad (creates seats)", async () => {
   await pg1.goto(`ops/${opId}`);
   await expect(pg1.getByTestId("op-title")).toBeVisible();

@@ -5,6 +5,7 @@ import type { SessionResponse } from "./api/types";
 import { OverviewPage } from "./pages/OverviewPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
 import { EditOpPage } from "./pages/EditOpPage";
+import { OpManagePage } from "./pages/OpManagePage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { WizardPage } from "./pages/WizardPage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -200,6 +201,7 @@ export function App() {
           <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
           <Route path="/admin" element={<AdminPage session={session} />} />
           <Route path="/ops/:id/edit" element={<EditOpPage session={session} />} />
+          <Route path="/ops/:id/manage" element={<OpManagePage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

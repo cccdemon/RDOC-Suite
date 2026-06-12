@@ -528,6 +528,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             </button>
           )}
           {op.canManage && (
+            <Link to={`/ops/${id}/manage`} data-testid="manage-op-link" style={{ ...tabBase, textDecoration: "none" }}>
+              <Ic name="board" size={15} /> Management
+            </Link>
+          )}
+          {op.canManage && (
             <Link to={`/ops/${id}/edit`} data-testid="edit-op-link" style={{ ...tabBase, textDecoration: "none" }}>
               <Ic name="bolt" size={15} /> Bearbeiten
             </Link>
