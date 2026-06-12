@@ -258,6 +258,18 @@ export function unbanGuild(id: string, csrfToken: string): Promise<{ ok: true }>
   return mutate("POST", `/admin/guilds/${encodeURIComponent(id)}/unban`, csrfToken);
 }
 
+export function getAdminUsers(): Promise<import("./types").AdminUsersResponse> {
+  return get<import("./types").AdminUsersResponse>("/admin/users");
+}
+
+export function setUserRole(id: string, csrfToken: string, role: string): Promise<{ ok: true }> {
+  return mutate("PUT", `/admin/users/${encodeURIComponent(id)}/role`, csrfToken, { role });
+}
+
+export function toggleUserActive(id: string, csrfToken: string): Promise<{ ok: true; active: boolean }> {
+  return mutate("POST", `/admin/users/${encodeURIComponent(id)}/active`, csrfToken);
+}
+
 export function getPartnerships(guildId: string): Promise<import("./types").PartnershipsResponse> {
   return get<import("./types").PartnershipsResponse>(`/guilds/${encodeURIComponent(guildId)}/partnerships`);
 }

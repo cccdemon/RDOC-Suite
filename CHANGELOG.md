@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA superadmin user management (2026-06-12)
+
+- New superadmin API: `GET /api/v1/admin/users` (all instance users), `PUT /api/v1/admin/users/
+  :id/role` and `POST /api/v1/admin/users/:id/active` (toggle). Mirrors the SSR guards: no
+  self-demote/disable, and the last active superadmin can't be demoted or disabled (409).
+  SSR twins: web.ts /admin/users/:id/{role,active}.
+- Contract AdminUser/AdminUsersResponse/SetUserRoleRequest + OpenAPI + inject tests (anon 401,
+  bad role 400). prod-e2e-readonly: admin users anon-gate.
+- SPA `/admin`: a user list with per-user role select and activate/deactivate, alongside the
+  guild management. MSW tests.
+
 ### Added - FR-P2: SPA superadmin guild management (2026-06-12)
 
 - New superadmin API: `GET /api/v1/admin/guilds` (all guilds incl. inactive/banned with member

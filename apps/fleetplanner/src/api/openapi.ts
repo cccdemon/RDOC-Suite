@@ -22,6 +22,8 @@ import {
   PublishTemplateRequestSchema,
   PartnershipsResponseSchema,
   AdminGuildsResponseSchema,
+  AdminUsersResponseSchema,
+  SetUserRoleRequestSchema,
   MintInviteRequestSchema,
   MintInviteResponseSchema,
   AcceptTokenRequestSchema,
@@ -91,6 +93,8 @@ const SCHEMAS = {
   PublishTemplateRequest: PublishTemplateRequestSchema,
   PartnershipsResponse: PartnershipsResponseSchema,
   AdminGuildsResponse: AdminGuildsResponseSchema,
+  AdminUsersResponse: AdminUsersResponseSchema,
+  SetUserRoleRequest: SetUserRoleRequestSchema,
   MintInviteRequest: MintInviteRequestSchema,
   MintInviteResponse: MintInviteResponseSchema,
   AcceptTokenRequest: AcceptTokenRequestSchema,
@@ -515,6 +519,44 @@ export function buildOpenApiDocument(): JsonObject {
             { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
           ],
           responses: { "200": { description: "Unbanned", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/admin/users": {
+        get: {
+          operationId: "listAdminUsers",
+          summary: "All instance users (superadmin only)",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("AdminUsersResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/admin/users/{id}/role": {
+        put: {
+          operationId: "setUserRole",
+          summary: "Set an instance user's role (superadmin only)",
+          description: "Guards: no self-demote; the last active superadmin can't be demoted (409).",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("SetUserRoleRequest")) },
+          responses: { "200": { description: "Updated", ...jsonContent(ref("MutationOk")) }, ...errorResponses, "409": { description: "Guarded", ...jsonContent(ref("ApiError")) } },
+        },
+      },
+      "/api/v1/admin/users/{id}/active": {
+        post: {
+          operationId: "toggleUserActive",
+          summary: "Toggle an instance user's active flag (superadmin only)",
+          description: "Guards: can't disable yourself or the last active superadmin (409).",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Toggled", ...jsonContent(ref("MutationOk")) }, ...errorResponses, "409": { description: "Guarded", ...jsonContent(ref("ApiError")) } },
         },
       },
       "/api/v1/guilds/{id}/partnerships": {

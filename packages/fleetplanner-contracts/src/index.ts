@@ -497,6 +497,25 @@ export const AdminGuildsResponseSchema = z
   .meta({ id: "AdminGuildsResponse" });
 export type AdminGuildsResponse = z.infer<typeof AdminGuildsResponseSchema>;
 
+export const AdminUserSchema = z
+  .object({
+    id: z.string(),
+    username: z.string(),
+    role: z.enum(["superadmin", "fleetoperator", "crew"]),
+    active: z.boolean(),
+  })
+  .meta({ id: "AdminUser" });
+export type AdminUser = z.infer<typeof AdminUserSchema>;
+
+export const AdminUsersResponseSchema = z
+  .object({ users: z.array(AdminUserSchema) })
+  .meta({ id: "AdminUsersResponse" });
+export type AdminUsersResponse = z.infer<typeof AdminUsersResponseSchema>;
+
+export const SetUserRoleRequestSchema = z
+  .object({ role: z.enum(["superadmin", "fleetoperator", "crew"]) })
+  .meta({ id: "SetUserRoleRequest" });
+
 // ── Operation editor (lifecycle) ────────────────────────────────────────
 
 /** PATCH /api/v1/operations/:id — every field optional; only present fields

@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Superadmin User-Verwaltung — Branch master
+
+- BE `GET /api/v1/admin/users` (cookie-only superadmin) + `PUT …/:id/role` + `POST …/:id/active`
+  (toggle), requireSuperadmin+CSRF. Guards gespiegelt: kein Selbst-Demote/Disable, letzter aktiver
+  superadmin geschützt (409). SSR-twin web.ts /admin/users/:id/{role,active}.
+- Contract AdminUser/AdminUsersResponse/SetUserRoleRequest; OpenAPI; inject-Tests (anon 401, bad
+  role 400, doc). FE client getAdminUsers/setUserRole/toggleUserActive, AdminPage Nutzer-Sektion
+  (Rollen-Select + aktiv-Toggle), MSW-Tests. E2E-readonly +1.
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E).** Lokal NICHT gebaut (Docker-Regel).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Superadmin Guild-Verwaltung — Branch master
 
 Bounded Admin-Slice (Rest des /admin-Panels — Schiff/Location-Katalog, User-Rollen, Maintenance,

@@ -488,6 +488,40 @@ describe("superadmin guild management — gates", () => {
   });
 });
 
+describe("superadmin user management — gates", () => {
+  const uid = "cmqffffffffffffffffff6";
+
+  it("GET admin/users anonymous → 401", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/admin/users" });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it.each([
+    ["PUT", `/api/v1/admin/users/${uid}/role`, { role: "crew" }],
+    ["POST", `/api/v1/admin/users/${uid}/active`, undefined],
+  ] as const)("%s %s without session → 401", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      headers: { "x-forwarded-for": `10.19.0.${url.length}`, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+      ...(body !== undefined ? { payload: JSON.stringify(body) } : {}),
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("set role with invalid role → 400", async () => {
+    const res = await app.inject({ method: "PUT", url: `/api/v1/admin/users/${uid}/role`, headers: { "content-type": "application/json", "x-forwarded-for": "10.19.1.1" }, payload: JSON.stringify({ role: "emperor" }) });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents the admin user routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/admin/users"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/users/{id}/role"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/users/{id}/active"].post).toBeTruthy();
+  });
+});
+
 describe("guild partnerships — gates + validation", () => {
   const gid = "123456789012345678";
   const partnerGid = "987654321098765432";

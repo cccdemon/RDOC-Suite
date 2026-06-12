@@ -97,6 +97,7 @@ import {
   SetCqbTeamsRequestSchema,
   SetFighterSquadsRequestSchema,
   SetStatusRequestSchema,
+  SetUserRoleRequestSchema,
   HangarShareRequestSchema,
   HangarShipParamSchema,
   HangarShipRequestSchema,
@@ -506,6 +507,65 @@ export async function apiV1Routes(app: FastifyInstance) {
       return reply.type("application/json").send({ ok: true as const });
     });
   }
+
+  app.get("/api/v1/admin/users", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
+    const rows = await prisma.user.findMany({
+      orderBy: { joinedAt: "asc" },
+      select: { id: true, username: true, role: true, active: true },
+    });
+    return reply.type("application/json").send({
+      users: rows.map((u) => ({
+        id: u.id,
+        username: u.username,
+        role: (["superadmin", "fleetoperator", "crew"].includes(u.role) ? u.role : "crew") as "superadmin" | "fleetoperator" | "crew",
+        active: u.active,
+      })),
+    });
+  });
+
+  app.put<{ Params: { id: string }; Body: unknown }>("/api/v1/admin/users/:id/role", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid user id.");
+    const body = SetUserRoleRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid role.");
+    const ctx = await requireSuperadmin(req, reply);
+    if (!ctx) return;
+    const role = body.data.role;
+    // Guards mirror SSR /admin/users/:id/role: no self-demote, never demote the
+    // last active superadmin.
+    if (p.data.id === ctx.user.id && role !== "superadmin")
+      return sendError(reply, req, 409, "conflict", "You cannot demote yourself.");
+    if (role !== "superadmin") {
+      const target = await prisma.user.findUnique({ where: { id: p.data.id }, select: { role: true } });
+      if (!target) return sendError(reply, req, 404, "not_found", "User not found.");
+      if (target.role === "superadmin") {
+        const count = await prisma.user.count({ where: { role: "superadmin", active: true } });
+        if (count <= 1) return sendError(reply, req, 409, "conflict", "Cannot demote the last active superadmin.");
+      }
+    }
+    await prisma.user.update({ where: { id: p.data.id }, data: { role } });
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  app.post<{ Params: { id: string } }>("/api/v1/admin/users/:id/active", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid user id.");
+    const ctx = await requireSuperadmin(req, reply);
+    if (!ctx) return;
+    const user = await prisma.user.findUnique({ where: { id: p.data.id }, select: { id: true, role: true, active: true } });
+    if (!user) return sendError(reply, req, 404, "not_found", "User not found.");
+    if (user.id === ctx.user.id && user.active)
+      return sendError(reply, req, 409, "conflict", "You cannot disable yourself.");
+    if (user.role === "superadmin" && user.active) {
+      const count = await prisma.user.count({ where: { role: "superadmin", active: true } });
+      if (count <= 1) return sendError(reply, req, 409, "conflict", "Cannot disable the last active superadmin.");
+    }
+    await prisma.user.update({ where: { id: p.data.id }, data: { active: !user.active } });
+    return reply.type("application/json").send({ ok: true as const, active: !user.active });
+  });
 
   // ── guild partnerships (admiral console) ─────────────────────────────
   // SSR twins: routes/partnerships.ts. Guild-scoped via :id; approve/decline

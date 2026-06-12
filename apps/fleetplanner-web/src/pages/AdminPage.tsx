@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, banGuild, getAdminGuilds, unbanGuild } from "../api/client";
-import type { AdminGuild, SessionResponse } from "../api/types";
+import { ApiError, banGuild, getAdminGuilds, getAdminUsers, setUserRole, toggleUserActive, unbanGuild } from "../api/client";
+import type { AdminGuild, AdminUser, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 
 const MONO = "var(--mono)";
@@ -18,6 +18,7 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
   const csrf = session?.csrfToken ?? null;
 
   const [guilds, setGuilds] = useState<AdminGuild[] | null>(null);
+  const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -25,6 +26,9 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
     getAdminGuilds()
       .then((r) => setGuilds(r.guilds))
       .catch((e) => setNotice(e instanceof ApiError ? e.message : "Nicht ladbar."));
+    getAdminUsers()
+      .then((r) => setUsers(r.users))
+      .catch((e) => setNotice(e instanceof ApiError ? e.message : "Nutzer nicht ladbar."));
   }
   useEffect(() => {
     if (me?.role === "superadmin") reload();
@@ -86,6 +90,39 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
                 </div>
               );
             })}
+          </div>
+        )}
+      </section>
+
+      <section className="fpw-card" style={{ marginTop: "1.2rem" }}>
+        <div style={label}>NUTZER</div>
+        {users === null ? (
+          <p className="fpw-meta">Lade…</p>
+        ) : users.length === 0 ? (
+          <p className="fpw-meta">Keine Nutzer.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {users.map((u) => (
+              <div key={u.id} className="fpw-seat" data-testid={`admin-user-${u.id}`} style={{ opacity: u.active ? 1 : 0.55 }}>
+                <span style={{ flex: 1, minWidth: 0, color: "var(--text-hi)" }}>
+                  {u.username}{u.id === me.id ? " (du)" : ""}
+                </span>
+                <select
+                  data-testid={`admin-user-role-${u.id}`}
+                  value={u.role}
+                  disabled={busy || !csrf}
+                  onChange={(e) => run(() => setUserRole(u.id, csrf!, e.target.value))}
+                  style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: MONO, fontSize: "0.72rem", padding: "0.3rem 0.4rem", borderRadius: 7 }}
+                >
+                  <option value="crew">crew</option>
+                  <option value="fleetoperator">fleetoperator</option>
+                  <option value="superadmin">superadmin</option>
+                </select>
+                <button type="button" data-testid={`admin-user-active-${u.id}`} className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => toggleUserActive(u.id, csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem" }}>
+                  {u.active ? "Deaktivieren" : "Aktivieren"}
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </section>

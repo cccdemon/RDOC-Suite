@@ -958,11 +958,19 @@ describe("Admin guild management", () => {
     ],
   };
 
+  const adminUsers = {
+    users: [
+      { id: "user_root", username: "Root", role: "superadmin", active: true },
+      { id: "user_x", username: "Member X", role: "crew", active: true },
+    ],
+  };
+
   it("superadmin lists guilds and bans one", async () => {
     let banned = false;
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionSuper)),
       http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),
+      http.get(`${API}/admin/users`, () => HttpResponse.json(adminUsers)),
       http.post(`${API}/admin/guilds/111111111111111111/ban`, () => {
         banned = true;
         return HttpResponse.json({ ok: true });
@@ -974,6 +982,25 @@ describe("Admin guild management", () => {
     (await findByTestId("admin-ban-111111111111111111")).click();
     await findByTestId("admin-page");
     expect(banned).toBe(true);
+  });
+
+  it("superadmin changes a user's role (PUT role)", async () => {
+    let roleBody: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionSuper)),
+      http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),
+      http.get(`${API}/admin/users`, () => HttpResponse.json(adminUsers)),
+      http.put(`${API}/admin/users/user_x/role`, async ({ request }) => {
+        roleBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/admin");
+    const sel = (await findByTestId("admin-user-role-user_x")) as HTMLSelectElement;
+    Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")!.set!.call(sel, "fleetoperator");
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    await findByTestId("admin-page");
+    expect(roleBody).toMatchObject({ role: "fleetoperator" });
   });
 
   it("non-superadmin sees a forbidden state", async () => {
