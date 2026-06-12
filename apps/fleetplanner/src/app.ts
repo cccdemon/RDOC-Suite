@@ -8,7 +8,6 @@ import { webRoutes } from "./routes/web.js";
 import { apiRoutes } from "./routes/api.js";
 import { apiV1Routes } from "./routes/apiV1.js";
 import { guildRoutes } from "./routes/guilds.js";
-import { partnershipRoutes } from "./routes/partnerships.js";
 import { e2eAuthRoutes } from "./routes/e2eAuth.js";
 import { coverRoutes } from "./routes/cover.js";
 import { discordInteractionRoutes } from "./routes/discordInteractions.js";
@@ -89,7 +88,6 @@ export async function buildApp() {
   // generating URLs in responses/redirects that go through Caddy.
   await app.register(authRoutes);
   await app.register(guildRoutes);
-  await app.register(partnershipRoutes);
   await app.register(webRoutes);
   await app.register(e2eAuthRoutes); // self-disables unless E2E_TEST_LOGIN_SECRET is set
   await app.register(coverRoutes);
