@@ -87,6 +87,16 @@ export function getSession(): Promise<SessionResponse> {
   return get<SessionResponse>("/session");
 }
 
+// Base without the /api/v1 suffix, e.g. "/fleetplanner" — for /auth/* endpoints.
+const AUTH_BASE = API_BASE.replace(/\/api\/v1\/?$/, "");
+
+// Log out: destroys the server session + clears the cookie (cookie-auth, no CSRF).
+// On success the browser is sent back to the app root.
+export async function logout(): Promise<void> {
+  await fetch(`${AUTH_BASE}/auth/logout`, { method: "POST", credentials: "same-origin", redirect: "manual" }).catch(() => undefined);
+  window.location.href = `${AUTH_BASE}/`;
+}
+
 export function getContent(slug: string, lang?: "de" | "en"): Promise<{ title: string; html: string }> {
   return get<{ title: string; html: string }>(`/content/${encodeURIComponent(slug)}${lang ? `?lang=${lang}` : ""}`);
 }

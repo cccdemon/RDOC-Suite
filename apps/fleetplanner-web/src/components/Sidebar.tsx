@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { logout } from "../api/client";
 import type { SessionResponse } from "../api/types";
 import { NAV_GROUPS, visibleItems, type NavItem, type Perspective } from "../nav";
 import { THEMES, type Theme } from "../theme";
@@ -46,11 +47,24 @@ function UserChip({ session }: { session: SessionResponse | null }) {
     );
   }
   return (
-    <Link to="/profile" className="foot-user" style={{ textDecoration: "none" }} data-testid="profile-link">
-      <Avatar name={user.username} size={26} />
-      <span className="uname">{user.username}</span>
-      <span className="urole">{user.role}</span>
-    </Link>
+    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
+      <Link to="/profile" className="foot-user" style={{ textDecoration: "none", flex: 1, minWidth: 0 }} data-testid="profile-link">
+        <Avatar name={user.username} size={26} />
+        <span className="uname" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user.username}</span>
+        <span className="urole">{user.role}</span>
+      </Link>
+      <button
+        type="button"
+        className="nav-icon"
+        data-testid="logout-btn"
+        title="Abmelden"
+        aria-label="Abmelden"
+        onClick={() => void logout()}
+        style={{ border: "1px solid var(--border)", background: "transparent", borderRadius: 7, padding: "0.35rem", cursor: "pointer", flexShrink: 0, color: "var(--dim)" }}
+      >
+        <Ic name="back" size={15} sw={1.7} />
+      </button>
+    </div>
   );
 }
 
