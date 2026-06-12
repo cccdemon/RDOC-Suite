@@ -133,6 +133,31 @@ function jsonContent(schema: JsonObject): JsonObject {
   return { content: { "application/json": { schema } } };
 }
 
+// Mission-cover endpoints are hand-described (no zod contract). A stored cover
+// pointer …
+const coverSchema: JsonObject = {
+  type: "object",
+  required: ["url", "width", "height", "preset", "format", "updatedAt"],
+  properties: {
+    url: { type: "string" },
+    width: { type: "integer" },
+    height: { type: "integer" },
+    preset: { type: "string" },
+    format: { type: "string" },
+    updatedAt: { type: "string", format: "date-time" },
+  },
+};
+// nullable cover (OpenAPI 3.1: union with null).
+const coverOrNull: JsonObject = { oneOf: [coverSchema, { type: "null" }] };
+// … and the optional format/preset selection body shared by generate + edit-link.
+const coverSelectionSchema: JsonObject = {
+  type: "object",
+  properties: {
+    format: { type: "string", enum: ["16:9", "1:1", "9:16", "4:3"] },
+    preset: { type: "string", enum: ["fleet-ops", "black-ops", "exploration", "outlaw"] },
+  },
+};
+
 const errorResponses: Record<string, JsonObject> = {
   "400": { description: "Validation error", ...jsonContent(ref("ApiError")) },
   "401": { description: "Unauthenticated", ...jsonContent(ref("ApiError")) },
@@ -309,6 +334,82 @@ export function buildOpenApiDocument(): JsonObject {
           ],
           requestBody: { required: true, ...jsonContent(ref("SetStatusRequest")) },
           responses: { "200": { description: "Updated", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/cover": {
+        get: {
+          operationId: "getOperationCover",
+          summary: "Mission-cover state (fleet operator or op leader)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: {
+            "200": {
+              description: "OK",
+              ...jsonContent({
+                type: "object",
+                required: ["serviceConfigured", "cover"],
+                properties: { serviceConfigured: { type: "boolean" }, cover: coverOrNull },
+              }),
+            },
+            ...errorResponses,
+          },
+        },
+        delete: {
+          operationId: "deleteOperationCover",
+          summary: "Remove the operation's mission cover (fleet operator or op leader)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Deleted", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/cover/generate": {
+        post: {
+          operationId: "generateOperationCover",
+          summary: "Render a mission cover from op data (fleet operator or op leader)",
+          description: "Calls the mission-cover microservice; 502 on render failure, 503 if the service is not configured.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: false, ...jsonContent(coverSelectionSchema) },
+          responses: {
+            "200": {
+              description: "Rendered",
+              ...jsonContent({
+                type: "object",
+                required: ["ok", "cover"],
+                properties: { ok: { type: "boolean" }, cover: coverOrNull },
+              }),
+            },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/cover/edit-link": {
+        post: {
+          operationId: "operationCoverEditLink",
+          summary: "Mint an editor token and return the external editor URL (fleet operator or op leader)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: false, ...jsonContent(coverSelectionSchema) },
+          responses: {
+            "200": {
+              description: "OK",
+              ...jsonContent({ type: "object", required: ["editorUrl"], properties: { editorUrl: { type: "string" } } }),
+            },
+            ...errorResponses,
+          },
         },
       },
       "/api/v1/operations/{id}/publish-template": {
