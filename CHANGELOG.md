@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner edit screen pixel-matched to the design handoff (2026-06-12)
+
+- Reworked the SPA `Operation bearbeiten` screen to match the claude.ai/design
+  "Fleetplanner-App" handoff: `GEÄNDERT` badge, ECKDATEN as a 2-column row
+  (Datum & Zeit with the guild timezone abbreviation + Max. Teilnehmer), and a
+  3-option SICHTBARKEIT list (Privat = "Nur dein Server", Partner, Öffentlich).
+- Added `maxParticipants` to the operation edit flow end-to-end (contract,
+  `OperationDetail`, presenter, `updateOperation`, PATCH route, web client). The
+  Prisma column already existed — no migration.
+- Removed the STATUS, BEDARFE (NeedsEditor), ADMIN template/recurrence and the
+  Discord EVENT-VOICE sections from the edit screen (not part of the design;
+  voice stack already removed). The e2e op-workflow test opens the op via the
+  status API instead of the dropped edit control.
+- Fixed SPA index.html caching: all client routes now serve with `no-store`, so
+  a new deploy no longer leaves browsers on a stale immutable bundle.
+- Op detail hero now embeds the MISSION OBJECTIVE (markdown-rendered) and
+  ANMELDUNGEN; the calendar defaults to the Agenda view with fully clickable
+  event cards.
+
 ### Added - FR-P1 security and implementation review (2026-06-12)
 
 - Added `docs/FR-P1-SecurityAndImplenetationReview.md`, a prioritized security review covering
