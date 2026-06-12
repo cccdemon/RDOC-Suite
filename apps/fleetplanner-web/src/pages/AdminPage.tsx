@@ -1,56 +1,118 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ApiError, banGuild, getAdminGuilds, getAdminSettings, getAdminUsers, setFeedbackChannel, setMaintenanceMode, setUserRole, syncCatalog, toggleUserActive, unbanGuild } from "../api/client";
+import {
+  ApiError,
+  banGuild,
+  getAdminGuilds,
+  getAdminSettings,
+  getAdminUsers,
+  setCatalogConfig,
+  setFeedbackChannel,
+  setMaintenanceMode,
+  setUserRole,
+  syncCatalog,
+  toggleUserActive,
+  unbanGuild,
+} from "../api/client";
 import type { AdminGuild, AdminSettingsResponse, AdminUser, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 
-const MONO = "var(--mono)";
+const MONO = "'Share Tech Mono',ui-monospace,monospace";
 const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
 
-function statusOf(g: AdminGuild): { text: string; cls: "green" | "gold" | "dim" } {
-  if (g.bannedAt) return { text: "GEBANNT", cls: "gold" };
-  if (!g.active) return { text: "INAKTIV", cls: "dim" };
-  return { text: "AKTIV", cls: "green" };
+const ROLE_LABELS: Record<string, string> = { superadmin: "Admiral", fleetoperator: "Fleet Op", crew: "Crew" };
+
+function initialsOf(name: string): string {
+  return name.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "??";
 }
+function fmtNum(n: number): string {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+function fmtRel(iso: string | null): string {
+  if (!iso) return "—";
+  const diff = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(diff / 60000);
+  if (min < 1) return "gerade eben";
+  if (min < 60) return `vor ${min} Min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `vor ${h} Std`;
+  const days = Math.floor(h / 24);
+  if (days === 1) return "gestern";
+  return `vor ${days} Tagen`;
+}
+function roleChip(role: string): React.CSSProperties {
+  const map: Record<string, { c: string }> = { superadmin: { c: "#f0a500" }, fleetoperator: { c: "#00d4ff" }, crew: { c: "#9fb1c2" } };
+  const c = (map[role] ?? map.crew).c;
+  return { display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", borderRadius: "4px", border: `1px solid ${c}55`, background: `${c}14`, color: c, whiteSpace: "nowrap" };
+}
+function miniRole(role: string): React.CSSProperties {
+  const c = role === "fleetoperator" ? "#00d4ff" : "#7e92a4";
+  return { display: "inline-flex", alignItems: "center", padding: "1px 5px", fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.04em", borderRadius: "3px", border: `1px solid ${c}44`, background: `${c}12`, color: c, whiteSpace: "nowrap" };
+}
+function statusChip(active: boolean): React.CSSProperties {
+  const c = active ? "#00ff88" : "#ff4444";
+  return { display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", borderRadius: "4px", border: `1px solid ${c}55`, background: `${c}14`, color: c, whiteSpace: "nowrap", cursor: "pointer" };
+}
+function avatarColor(role: string): string {
+  return role === "superadmin" ? "#f0a500" : role === "fleetoperator" ? "#00d4ff" : "#5b6b7a";
+}
+const field: React.CSSProperties = { background: "#0e1926", border: "1px solid rgba(0,212,255,0.12)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.78rem", padding: "0.4rem 0.55rem", borderRadius: "6px" };
+const colHead: React.CSSProperties = { textAlign: "left", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#7e92a4", padding: "0.55rem 0.8rem", borderBottom: "1px solid rgba(0,212,255,0.2)", fontWeight: 400 };
+const cell: React.CSSProperties = { padding: "0.55rem 0.8rem", borderBottom: "1px solid rgba(0,212,255,0.07)", verticalAlign: "middle" };
+const monoSub = (extra?: React.CSSProperties): React.CSSProperties => ({ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: "#5b6b7a", ...extra });
 
 export function AdminPage({ session }: { session: SessionResponse | null }) {
   const me = session?.user ?? null;
   const csrf = session?.csrfToken ?? null;
 
-  const [guilds, setGuilds] = useState<AdminGuild[] | null>(null);
-  const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [settings, setSettings] = useState<AdminSettingsResponse | null>(null);
-  const [feedbackInput, setFeedbackInput] = useState("");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [guilds, setGuilds] = useState<AdminGuild[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [search, setSearch] = useState("");
+  const [feedbackInput, setFeedbackInput] = useState("");
+  const [shipInterval, setShipInterval] = useState(7);
+  const [locInterval, setLocInterval] = useState(7);
+  const [vw, setVw] = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
+
+  function flash(msg: string) {
+    setToast(msg);
+    window.clearTimeout((flash as unknown as { _t?: number })._t);
+    (flash as unknown as { _t?: number })._t = window.setTimeout(() => setToast(null), 2600);
+  }
 
   function reload() {
-    getAdminGuilds()
-      .then((r) => setGuilds(r.guilds))
-      .catch((e) => setNotice(e instanceof ApiError ? e.message : "Nicht ladbar."));
-    getAdminUsers()
-      .then((r) => setUsers(r.users))
-      .catch((e) => setNotice(e instanceof ApiError ? e.message : "Nutzer nicht ladbar."));
     getAdminSettings()
-      .then((r) => {
-        setSettings(r);
-        setFeedbackInput(r.feedbackChannelId);
+      .then((s) => {
+        setSettings(s);
+        setFeedbackInput(s.feedbackChannelId);
+        setShipInterval(s.shipCatalog.intervalDays);
+        setLocInterval(s.locationCatalog.intervalDays);
       })
       .catch(() => {});
+    getAdminGuilds().then((r) => setGuilds(r.guilds)).catch((e) => flash(e instanceof ApiError ? e.message : "Server nicht ladbar."));
+    getAdminUsers().then((r) => setUsers(r.users)).catch((e) => flash(e instanceof ApiError ? e.message : "Nutzer nicht ladbar."));
   }
   useEffect(() => {
     if (me?.role === "superadmin") reload();
   }, [me]);
 
-  async function run(action: () => Promise<unknown>) {
+  useEffect(() => {
+    const onResize = () => { const w = window.innerWidth; setVw((p) => (Math.abs(w - p) > 16 ? w : p)); };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  async function run(action: () => Promise<unknown>, msg?: string) {
     if (!csrf) return;
     setBusy(true);
-    setNotice(null);
     try {
       await action();
+      if (msg) flash(msg);
       reload();
     } catch (e) {
-      setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+      flash(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -65,97 +127,253 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
       </div>
     );
 
-  return (
-    <div data-testid="admin-page" style={{ maxWidth: 820, margin: "0 auto" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.2rem" }}>
-        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="board" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Admin · Server</h1>
-      </div>
-      {notice && <p className="fpw-tag gold" role="alert" data-testid="admin-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
+  const mobile = vw < 760;
+  const narrow = vw < 1180;
+  const activeUsers = users.filter((u) => u.active).length;
+  const activeServers = guilds.filter((g) => g.active && !g.bannedAt).length;
+  const bannedServers = guilds.filter((g) => g.bannedAt).length;
+  const maintOn = settings?.maintenanceOn ?? false;
+  const maintForced = settings?.maintenanceForcedByEnv ?? false;
+  const maintColor = maintOn ? "#f0a500" : "#00ff88";
 
-      {settings && (
-        <section className="fpw-card" style={{ marginBottom: "1.2rem" }} data-testid="admin-settings">
-          <div style={label}>INSTANZ-EINSTELLUNGEN</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem", alignItems: "center", marginBottom: "0.9rem" }}>
-            <span style={{ color: "#c2d2de", fontSize: "0.9rem" }}>Wartungsmodus: <strong style={{ color: settings.maintenanceOn ? "#f0a500" : "#00ff88" }}>{settings.maintenanceOn ? "AN" : "AUS"}</strong></span>
-            <button type="button" data-testid="maint-toggle" className="fpw-btn" disabled={busy || !csrf || settings.maintenanceForcedByEnv} onClick={() => run(() => setMaintenanceMode(csrf!, !settings.maintenanceOn))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}>
-              {settings.maintenanceOn ? "Ausschalten" : "Einschalten"}
-            </button>
-            {settings.maintenanceForcedByEnv && <span className="fpw-meta" style={{ fontSize: "0.78rem" }}>(per ENV erzwungen)</span>}
+  // ── KPI tiles ─────────────────────────────────────────────────────────
+  const tiles: Array<{ label: string; value: string; sub: string; color: string; icon: string }> = [
+    { label: "NUTZER", value: String(users.length), sub: `${activeUsers} aktiv · ${users.length - activeUsers} inaktiv`, color: "#00d4ff", icon: "users" },
+    { label: "DISCORD-SERVER", value: String(guilds.length), sub: `${activeServers} aktiv · ${bannedServers} gebannt`, color: "#00ff88", icon: "server" },
+    { label: "SCHIFFE", value: fmtNum(settings?.shipCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.shipCatalog.lastRun ?? null)}`, color: "#f0a500", icon: "ship" },
+    { label: "STANDORTE", value: fmtNum(settings?.locationCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.locationCatalog.lastRun ?? null)}`, color: "#a064ff", icon: "pin" },
+    { label: "OPERATIONEN", value: String(settings?.operationCount ?? 0), sub: "live", color: "#ff70c8", icon: "cal" },
+    { label: "WARTUNG", value: maintOn ? "AN" : "AUS", sub: maintOn ? "Instanz gesperrt" : "Betrieb normal", color: maintColor, icon: "wrench" },
+  ];
+  const statCols = mobile ? "repeat(2,1fr)" : narrow ? "repeat(3,1fr)" : "repeat(6,1fr)";
+  const ctrlCols = mobile ? "1fr" : narrow ? "repeat(2,1fr)" : "repeat(3,1fr)";
+  const tablesGrid: React.CSSProperties = narrow
+    ? { display: "flex", flexDirection: "column", gap: "1.1rem" }
+    : { display: "grid", gridTemplateColumns: "minmax(0,2.3fr) minmax(0,1fr)", gap: "1.1rem", alignItems: "start" };
+
+  const syncBtn = (busyState: boolean, color: string): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: "6px", padding: "0.42rem 0.8rem", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.03em", borderRadius: "7px", cursor: busyState ? "default" : "pointer", whiteSpace: "nowrap", border: `1px solid ${color}66`, background: `${color}14`, color, opacity: busyState ? 0.7 : 1,
+  });
+
+  const filtered = users.filter((u) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return u.username.toLowerCase().includes(q) || u.id.toLowerCase().includes(q) || (u.discordName ?? "").toLowerCase().includes(q);
+  });
+
+  const catalogCard = (
+    kind: "ships" | "locations",
+    title: string,
+    icon: string,
+    accent: string,
+    rgb: string,
+    state: AdminSettingsResponse["shipCatalog"],
+    interval: number,
+    setInterval: (n: number) => void,
+  ) => {
+    const running = state.running;
+    return (
+      <section style={{ border: "1px solid rgba(0,212,255,0.16)", borderRadius: 13, background: "#090f18", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid rgba(0,212,255,0.1)" }}>
+          <span style={{ width: 30, height: 30, borderRadius: 8, background: `rgba(${rgb},0.12)`, border: `1px solid rgba(${rgb},0.3)`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={icon} size={16} sw={1.6} /></span>
+          <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "#eaf4fb" }}>{title}</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.55rem 0.8rem", marginBottom: "0.85rem" }}>
+          <div><div style={monoSub()}>GECACHED</div><div style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", marginTop: 1 }}>{fmtNum(state.count)}</div></div>
+          <div><div style={monoSub()}>AUTO-REFRESH</div><div style={{ fontSize: "0.86rem", color: "#c2d2de", marginTop: 3 }}>alle {state.intervalDays} Tage</div></div>
+          <div><div style={monoSub()}>LETZTER LAUF</div><div style={{ fontSize: "0.86rem", color: "#c2d2de", marginTop: 3 }}>{fmtRel(state.lastRun)}</div></div>
+          <div><div style={monoSub()}>STATUS</div><div style={{ fontFamily: MONO, fontSize: "0.78rem", color: running ? "#f0a500" : "#00ff88", marginTop: 3 }}>{running ? "⟳ Läuft" : "Bereit"}</div></div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginTop: "auto" }}>
+          <button type="button" data-testid={`sync-${kind}`} disabled={busy || !csrf || running} onClick={() => run(() => syncCatalog(csrf!, kind), `${title} synchronisiert.`)} style={syncBtn(running, accent)}>
+            <span style={running ? { animation: "fpw-spin 0.9s linear infinite", display: "inline-flex" } : { display: "inline-flex" }}><Ic name="refresh" size={14} sw={1.8} /></span>
+            {running ? "Synchronisiert…" : "Sync jetzt"}
+          </button>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.62rem", color: "#7e92a4" }}>
+            Intervall
+            <input
+              type="number" min={1} max={90} value={interval} data-testid={`interval-${kind}`}
+              onChange={(e) => setInterval(Number(e.target.value))}
+              onBlur={() => { if (interval >= 1 && interval <= 90 && interval !== state.intervalDays) run(() => setCatalogConfig(csrf!, kind, interval), "Intervall gespeichert."); }}
+              style={{ ...field, width: "3.4rem" }}
+            />
+          </label>
+        </div>
+      </section>
+    );
+  };
+
+  return (
+    <div data-testid="admin-page" style={{ width: "100%", color: "#ccdde8" }}>
+      <style>{`@keyframes fpw-spin{to{transform:rotate(360deg)}}`}</style>
+
+      {/* PAGE HEADER */}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "1rem 1.4rem", marginBottom: "1.4rem", paddingBottom: "1.1rem", borderBottom: "1px solid rgba(0,212,255,0.14)" }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}><span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="shield" size={19} sw={1.7} /></span><span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.14em", color: "#5b6b7a" }}>ADMIN // SYSTEMSTEUERUNG</span></div>
+          <h1 style={{ fontWeight: 700, fontSize: "1.95rem", lineHeight: 1.05, color: "#eaf4fb", margin: 0 }}>Admin-Konsole</h1>
+          <div style={{ color: "#9fb1c2", fontSize: "0.9rem", marginTop: "0.2rem" }}>RDOC Fleetplanner · Instanz <span style={{ fontFamily: MONO, color: "#7e92a4" }}>raumdock.org</span></div>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.7rem" }}>
+          <button type="button" data-testid="maint-toggle" disabled={busy || !csrf || maintForced} title={maintForced ? "per ENV erzwungen" : undefined} onClick={() => run(() => setMaintenanceMode(csrf!, !maintOn), maintOn ? "Wartungsmodus deaktiviert." : "Wartungsmodus aktiviert.")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "0.5rem 0.85rem", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 9, cursor: maintForced ? "not-allowed" : "pointer", whiteSpace: "nowrap", border: `1px solid ${maintColor}66`, background: `${maintColor}12`, color: maintColor, opacity: maintForced ? 0.6 : 1 }}>
+            <Ic name="wrench" size={15} sw={1.7} /> Wartungsmodus
+            <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.06em", padding: "2px 6px", borderRadius: 4, background: `${maintColor}22`, color: maintColor }}>{maintOn ? "AN" : "AUS"}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* KPI STATUS STRIP */}
+      <div data-testid="admin-settings" style={{ display: "grid", gridTemplateColumns: statCols, gap: "0.8rem", marginBottom: "1.1rem" }}>
+        {tiles.map((t) => (
+          <div key={t.label} style={{ border: "1px solid rgba(0,212,255,0.14)", borderLeft: `3px solid ${t.color}`, borderRadius: 12, background: "#090f18", padding: "0.85rem 0.95rem", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
+              <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#7e92a4" }}>{t.label}</span>
+              <span style={{ color: t.color, display: "inline-flex" }}><Ic name={t.icon} size={15} sw={1.6} /></span>
+            </div>
+            <div style={{ fontFamily: MONO, fontSize: "1.5rem", lineHeight: 1, color: "#eaf4fb" }}>{t.value}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.3rem" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: t.color, flexShrink: 0 }} /><span style={{ fontSize: "0.72rem", color: "#9fb1c2", lineHeight: 1.2 }}>{t.sub}</span></div>
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center", marginBottom: "0.9rem" }}>
-            <span style={{ color: "#9fb1c2", fontSize: "0.82rem" }}>Feedback-Channel-ID</span>
-            <input data-testid="feedback-channel" type="text" inputMode="numeric" value={feedbackInput} placeholder="leer = aus" onChange={(e) => setFeedbackInput(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: MONO, fontSize: "0.82rem", padding: "0.4rem 0.55rem", borderRadius: 7, width: 220 }} />
-            <button type="button" data-testid="feedback-save" className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => setFeedbackChannel(csrf!, feedbackInput.trim()))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}>Speichern</button>
+        ))}
+      </div>
+
+      {/* CONTROL GRID */}
+      <div style={{ display: "grid", gridTemplateColumns: ctrlCols, gap: "0.9rem", marginBottom: "1.1rem" }}>
+        {settings && catalogCard("ships", "SCHIFFSKATALOG", "ship", "#f0a500", "240,165,0", settings.shipCatalog, shipInterval, setShipInterval)}
+        {settings && catalogCard("locations", "STANDORTKATALOG", "pin", "#a064ff", "160,100,255", settings.locationCatalog, locInterval, setLocInterval)}
+        <section style={{ border: "1px solid rgba(0,212,255,0.16)", borderRadius: 13, background: "#090f18", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid rgba(0,212,255,0.1)" }}>
+            <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)", color: "#00d4ff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="chat" size={16} sw={1.6} /></span>
+            <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "#eaf4fb" }}>FEEDBACK-KANAL</div>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-            <button type="button" data-testid="sync-ships" className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => syncCatalog(csrf!, "ships"))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}><Ic name="swap" size={12} sw={2} /> Schiffe synchronisieren</button>
-            <button type="button" data-testid="sync-locations" className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => syncCatalog(csrf!, "locations"))} style={{ padding: "0.3rem 0.7rem", fontSize: "0.7rem" }}><Ic name="pin" size={12} sw={2} /> Orte synchronisieren</button>
+          <div style={monoSub({ marginBottom: "0.3rem" })}>DISCORD-KANAL-ID</div>
+          <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.9rem" }}>
+            <input type="text" inputMode="numeric" data-testid="feedback-channel" value={feedbackInput} placeholder="leer = aus" onChange={(e) => setFeedbackInput(e.target.value)} style={{ ...field, flex: 1, minWidth: 0 }} />
+            <button type="button" data-testid="feedback-save" disabled={busy || !csrf} onClick={() => run(() => setFeedbackChannel(csrf!, feedbackInput.trim()), "Feedback-Kanal gespeichert.")} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, padding: "0 0.7rem", border: "1px solid rgba(0,212,255,0.3)", background: "rgba(0,212,255,0.06)", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 6, cursor: "pointer" }}><Ic name="save" size={13} sw={1.7} /> Speichern</button>
+          </div>
+          <div style={{ marginTop: "auto", paddingTop: "0.8rem", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+            <span style={{ color: "#5b6b7a", flexShrink: 0, display: "inline-flex" }}><Ic name="alert" size={15} sw={1.6} /></span>
+            <span style={{ fontSize: "0.76rem", color: "#7e92a4", lineHeight: 1.35 }}>Feedback aus dem Web wird an diesen Kanal gepostet. Leer lassen, um Weiterleitung zu deaktivieren.</span>
           </div>
         </section>
-      )}
+      </div>
 
-      <section className="fpw-card">
-        <div style={label}>ALLE DISCORD-SERVER</div>
-        {guilds === null ? (
-          <p className="fpw-meta">Lade…</p>
-        ) : guilds.length === 0 ? (
-          <p className="fpw-meta">Keine Server.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {guilds.map((g) => {
-              const st = statusOf(g);
+      {/* DATA TABLES */}
+      <div style={tablesGrid}>
+        {/* USERS */}
+        <section style={{ border: "1px solid rgba(0,212,255,0.14)", borderRadius: 13, background: "#090f18", overflow: "hidden", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", padding: "0.9rem 1.15rem", borderBottom: "1px solid rgba(0,212,255,0.14)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}><span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={16} sw={1.6} /></span><span style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.08em", color: "#eaf4fb" }}>NUTZER</span><span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{users.length} gesamt</span></div>
+            <input type="search" data-testid="user-search" placeholder="Suchen…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...field, width: "9rem", fontSize: "0.74rem", padding: "0.32rem 0.55rem" }} />
+          </div>
+
+          {!mobile ? (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>{["NUTZER", "DISCORD", "SERVER / ROLLE", "INSTANZ-ROLLE", "STATUS", "ZULETZT"].map((h) => <th key={h} style={colHead}>{h}</th>)}</tr>
+                </thead>
+                <tbody>
+                  {filtered.map((u) => {
+                    const ac = avatarColor(u.role);
+                    return (
+                      <tr key={u.id} data-testid={`admin-user-${u.id}`}>
+                        <td style={cell}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+                            <span style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: ac, color: "#04060a", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{initialsOf(u.username)}</span>
+                            <div style={{ minWidth: 0 }}><div style={{ fontSize: "0.88rem", color: "#eaf4fb", lineHeight: 1.15 }}>{u.username}{u.id === me.id ? " (du)" : ""}</div><div style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a" }}>{u.id}</div></div>
+                          </div>
+                        </td>
+                        <td style={cell}>
+                          {u.discordId ? (
+                            <><div style={{ fontFamily: MONO, fontSize: "0.74rem", color: "#c2d2de" }}>{u.discordId}</div><div style={{ fontSize: "0.72rem", color: "#7e92a4" }}>{u.discordName ? `@${u.discordName}` : ""}</div></>
+                          ) : (
+                            <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.05em", borderRadius: 4, border: "1px solid rgba(255,68,68,0.38)", background: "rgba(255,68,68,0.08)", color: "#ff4444" }}>NICHT VERKNÜPFT</span>
+                          )}
+                        </td>
+                        <td style={cell}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+                            {u.guilds.length === 0 ? <span style={{ fontSize: "0.76rem", color: "#5b6b7a" }}>—</span> : u.guilds.map((g, i) => (
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", color: "#c2d2de" }}><span>{g.name}</span><span style={miniRole(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span></div>
+                            ))}
+                          </div>
+                        </td>
+                        <td style={cell}>
+                          <select data-testid={`admin-user-role-${u.id}`} value={u.role} disabled={busy || !csrf} onChange={(e) => run(() => setUserRole(u.id, csrf!, e.target.value), `Rolle von ${u.username} → ${ROLE_LABELS[e.target.value] ?? e.target.value}.`)} style={{ background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.72rem", padding: "0.28rem 0.4rem", borderRadius: 6, cursor: "pointer" }}>
+                            {["superadmin", "fleetoperator", "crew"].map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                          </select>
+                        </td>
+                        <td style={cell}>
+                          <button type="button" data-testid={`admin-user-active-${u.id}`} title="Status umschalten" disabled={busy || !csrf} onClick={() => run(() => toggleUserActive(u.id, csrf!))} style={statusChip(u.active)}>{u.active ? "AKTIV" : "DEAKTIVIERT"}</button>
+                        </td>
+                        <td style={{ ...cell, fontSize: "0.76rem", color: "#7e92a4", whiteSpace: "nowrap" }}>{fmtRel(u.lastSeen)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", padding: "0.85rem" }}>
+              {filtered.map((u) => {
+                const ac = avatarColor(u.role);
+                return (
+                  <div key={u.id} data-testid={`admin-user-${u.id}`} style={{ border: "1px solid rgba(0,212,255,0.12)", borderLeft: `3px solid ${ac}`, borderRadius: 10, background: "#0a1018", padding: "0.8rem 0.9rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.6rem" }}>
+                      <span style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: ac, color: "#04060a", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{initialsOf(u.username)}</span>
+                      <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: "0.95rem", color: "#eaf4fb" }}>{u.username}</div><div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{u.id} · {fmtRel(u.lastSeen)}</div></div>
+                      <button type="button" data-testid={`admin-user-active-${u.id}`} disabled={busy || !csrf} onClick={() => run(() => toggleUserActive(u.id, csrf!))} style={statusChip(u.active)}>{u.active ? "AKTIV" : "DEAKTIVIERT"}</button>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.4rem", marginBottom: "0.55rem" }}>
+                      <select data-testid={`admin-user-role-${u.id}`} value={u.role} disabled={busy || !csrf} onChange={(e) => run(() => setUserRole(u.id, csrf!, e.target.value), `Rolle von ${u.username} → ${ROLE_LABELS[e.target.value] ?? e.target.value}.`)} style={{ ...roleChip(u.role), cursor: "pointer" }}>
+                        {["superadmin", "fleetoperator", "crew"].map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+                      </select>
+                      {u.guilds.map((g, i) => <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontSize: "0.74rem", color: "#9fb1c2" }}>{g.name}<span style={miniRole(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span></span>)}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.68rem", color: "#7e92a4" }}>
+                      <Ic name="link" size={13} sw={1.6} />
+                      {u.discordId ? <span>{u.discordName ? `@${u.discordName}` : u.discordId}</span> : <span style={{ color: "#ff4444" }}>nicht verknüpft</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* SERVERS */}
+        <section style={{ border: "1px solid rgba(0,212,255,0.14)", borderRadius: 13, background: "#090f18", overflow: "hidden", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.9rem 1.15rem", borderBottom: "1px solid rgba(0,212,255,0.14)" }}><span style={{ color: "#00ff88", display: "inline-flex" }}><Ic name="server" size={16} sw={1.6} /></span><span style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.08em", color: "#eaf4fb" }}>DISCORD-SERVER</span><span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{guilds.length} gesamt</span></div>
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {guilds.map((s) => {
+              const banned = !!s.bannedAt;
+              const c = banned ? "#ff4444" : s.active ? "#00ff88" : "#7e92a4";
               return (
-                <div key={g.id} className="fpw-seat" data-testid={`admin-guild-${g.id}`}>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ display: "block", color: "var(--text-hi)" }}>{g.name}</span>
-                    <span className="fpw-meta">{g.memberCount} Mitglieder</span>
-                  </span>
-                  <span className={`fpw-tag ${st.cls}`} style={{ display: "inline-flex" }}>{st.text}</span>
-                  {g.bannedAt ? (
-                    <button type="button" data-testid={`admin-unban-${g.id}`} className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => unbanGuild(g.id, csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem" }}>Entbannen</button>
-                  ) : (
-                    <button type="button" data-testid={`admin-ban-${g.id}`} disabled={busy || !csrf} onClick={() => run(() => banGuild(g.id, csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem", borderRadius: 7, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", cursor: "pointer", fontFamily: MONO }}>Bannen</button>
-                  )}
+                <div key={s.id} data-testid={`admin-guild-${s.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", rowGap: "0.5rem", flexWrap: mobile ? "wrap" : "nowrap", padding: "0.7rem 1.1rem", borderBottom: "1px solid rgba(0,212,255,0.08)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0, flex: 1 }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: `${c}18`, border: `1px solid ${c}55`, color: c, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.64rem", fontWeight: 700 }}>{initialsOf(s.name)}</span>
+                    <div style={{ minWidth: 0 }}><div style={{ fontSize: "0.88rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div><div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{fmtNum(s.memberCount)} Mitglieder</div></div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexShrink: 0 }}>
+                    <span style={statusChip(!banned && s.active)}>{banned ? "GEBANNT" : s.active ? "AKTIV" : "INAKTIV"}</span>
+                    {banned ? (
+                      <button type="button" data-testid={`admin-unban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => unbanGuild(s.id, csrf!), `${s.name} entbannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", color: "#00ff88" }}><Ic name="check" size={12} sw={1.8} /> Entbannen</button>
+                    ) : (
+                      <button type="button" data-testid={`admin-ban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => banGuild(s.id, csrf!), `${s.name} gebannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,68,68,0.32)", background: "rgba(255,68,68,0.07)", color: "#ff4444" }}><Ic name="ban" size={12} sw={1.8} /> Bannen</button>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      </div>
 
-      <section className="fpw-card" style={{ marginTop: "1.2rem" }}>
-        <div style={label}>NUTZER</div>
-        {users === null ? (
-          <p className="fpw-meta">Lade…</p>
-        ) : users.length === 0 ? (
-          <p className="fpw-meta">Keine Nutzer.</p>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-            {users.map((u) => (
-              <div key={u.id} className="fpw-seat" data-testid={`admin-user-${u.id}`} style={{ opacity: u.active ? 1 : 0.55 }}>
-                <span style={{ flex: 1, minWidth: 0, color: "var(--text-hi)" }}>
-                  {u.username}{u.id === me.id ? " (du)" : ""}
-                </span>
-                <select
-                  data-testid={`admin-user-role-${u.id}`}
-                  value={u.role}
-                  disabled={busy || !csrf}
-                  onChange={(e) => run(() => setUserRole(u.id, csrf!, e.target.value))}
-                  style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: MONO, fontSize: "0.72rem", padding: "0.3rem 0.4rem", borderRadius: 7 }}
-                >
-                  <option value="crew">crew</option>
-                  <option value="fleetoperator">fleetoperator</option>
-                  <option value="superadmin">superadmin</option>
-                </select>
-                <button type="button" data-testid={`admin-user-active-${u.id}`} className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => toggleUserActive(u.id, csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem" }}>
-                  {u.active ? "Deaktivieren" : "Aktivieren"}
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      {/* TOAST */}
+      {toast && (
+        <div data-testid="admin-notice" role="status" style={{ position: "fixed", left: "50%", bottom: "1.6rem", transform: "translateX(-50%)", zIndex: 9997, display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.1rem", background: "#0a1018", border: "1px solid rgba(0,212,255,0.4)", borderRadius: 10, color: "#00d4ff", fontFamily: MONO, fontSize: "0.78rem", boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}>
+          <Ic name="check" size={15} sw={1.8} /> {toast}
+        </div>
+      )}
     </div>
   );
 }

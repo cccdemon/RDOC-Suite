@@ -274,6 +274,10 @@ export function syncCatalog(csrfToken: string, kind: "ships" | "locations"): Pro
   return mutate("POST", `/admin/${kind}/sync`, csrfToken);
 }
 
+export function setCatalogConfig(csrfToken: string, kind: "ships" | "locations", intervalDays: number): Promise<{ ok: true }> {
+  return mutate("PUT", `/admin/${kind}/config`, csrfToken, { intervalDays });
+}
+
 export function getAdminUsers(): Promise<import("./types").AdminUsersResponse> {
   return get<import("./types").AdminUsersResponse>("/admin/users");
 }

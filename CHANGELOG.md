@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Admin console redesign (dense dashboard, Claude Design handoff) (2026-06-12)
+
+- Reworked the SPA `/admin` page from stacked full-width sections into a dense full-width
+  dashboard per the `Admin-Konsole.dc.html` design handoff: a 6-tile KPI status strip
+  (users · servers · ships · locations · operations · maintenance), a 3-column control grid
+  (ship catalog · location catalog · feedback channel) with sync buttons + interval inputs, and
+  the user + server tables side by side (2.3:1). Maintenance is a header toggle. Responsive:
+  6/3/2-col KPIs, 3/2/1-col control grid, side-by-side → stacked tables, and the user table
+  collapses to cards on mobile (<760px).
+- Backend: `GET /api/v1/admin/settings` now also returns the ship/location catalog state
+  (count, last run, interval, running) and the operation count; `GET /api/v1/admin/users` now
+  includes each user's Discord link, guild memberships and last-seen. New
+  `PUT /api/v1/admin/{ships,locations}/config` sets the catalog auto-sync interval. Contracts +
+  OpenAPI + inject tests updated. Added the server/wrench/refresh/shield/ban/link/save icons.
+
 ### Removed - Voice/CC legacy stack: apps/bridge, apps/bot, apps/relay-bots (2026-06-12)
 
 - Removed the legacy voice subsystem ahead of a from-scratch redesign: `apps/bridge` (LiveKit

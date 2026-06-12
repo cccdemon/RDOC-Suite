@@ -26,8 +26,8 @@ import { applyTemplate, listTemplatesForGuild, publishTemplate } from "../servic
 import { sendDiscordChannelMessage } from "../services/discord.js";
 import { getSetting, setSetting } from "../services/settings.js";
 import { isMaintenanceForcedByEnv, isMaintenanceOn, setMaintenance } from "../services/maintenance.js";
-import { runSync } from "../services/shipSync.js";
-import { runLocationSync } from "../services/locations.js";
+import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
+import { getLocationSyncState, runLocationSync, updateLocationSyncConfig } from "../services/locations.js";
 import { ROADMAP } from "../lib/roadmap.js";
 import {
   addLeader,
@@ -103,6 +103,7 @@ import {
   SetUserRoleRequestSchema,
   MaintenanceRequestSchema,
   FeedbackChannelRequestSchema,
+  CatalogConfigRequestSchema,
   HangarShareRequestSchema,
   HangarShipParamSchema,
   HangarShipRequestSchema,
@@ -519,15 +520,33 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
     const rows = await prisma.user.findMany({
       orderBy: { joinedAt: "asc" },
-      select: { id: true, username: true, role: true, active: true },
+      select: {
+        id: true, username: true, role: true, active: true, lastSeenAt: true,
+        identities: {
+          where: { provider: "discord" },
+          select: { providerId: true, username: true },
+          take: 1,
+        },
+        guildMemberships: {
+          select: { role: true, guild: { select: { name: true } } },
+          orderBy: { createdAt: "asc" },
+        },
+      },
     });
     return reply.type("application/json").send({
-      users: rows.map((u) => ({
-        id: u.id,
-        username: u.username,
-        role: (["superadmin", "fleetoperator", "crew"].includes(u.role) ? u.role : "crew") as "superadmin" | "fleetoperator" | "crew",
-        active: u.active,
-      })),
+      users: rows.map((u) => {
+        const discord = u.identities[0] ?? null;
+        return {
+          id: u.id,
+          username: u.username,
+          role: (["superadmin", "fleetoperator", "crew"].includes(u.role) ? u.role : "crew") as "superadmin" | "fleetoperator" | "crew",
+          active: u.active,
+          discordId: discord?.providerId ?? null,
+          discordName: discord?.username ?? null,
+          guilds: u.guildMemberships.map((m) => ({ name: m.guild.name, role: m.role })),
+          lastSeen: u.lastSeenAt.toISOString(),
+        };
+      }),
     });
   });
 
@@ -578,10 +597,29 @@ export async function apiV1Routes(app: FastifyInstance) {
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
+    const [feedbackChannelId, ship, loc, operationCount] = await Promise.all([
+      getSetting("feedback.discordChannelId"),
+      getSyncState(),
+      getLocationSyncState(),
+      prisma.operation.count(),
+    ]);
     return reply.type("application/json").send({
       maintenanceOn: isMaintenanceOn(),
       maintenanceForcedByEnv: isMaintenanceForcedByEnv(),
-      feedbackChannelId: await getSetting("feedback.discordChannelId"),
+      feedbackChannelId,
+      shipCatalog: {
+        count: ship.shipCount,
+        lastRun: ship.lastRunAt ? ship.lastRunAt.toISOString() : null,
+        intervalDays: ship.intervalDays,
+        running: ship.running,
+      },
+      locationCatalog: {
+        count: loc.locationCount,
+        lastRun: loc.lastRunAt ? loc.lastRunAt.toISOString() : null,
+        intervalDays: loc.intervalDays,
+        running: loc.running,
+      },
+      operationCount,
     });
   });
 
@@ -612,6 +650,17 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!ctx) return;
       const run = kind === "ships" ? runSync("manual") : runLocationSync("manual");
       run.catch((err: unknown) => req.log.error(err, `Manual ${kind} catalog sync failed (v1)`));
+      return reply.type("application/json").send({ ok: true as const });
+    });
+
+    app.put<{ Body: unknown }>(`/api/v1/admin/${kind}/config`, async (req, reply) => {
+      const body = CatalogConfigRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid interval.");
+      const ctx = await requireSuperadmin(req, reply);
+      if (!ctx) return;
+      const cfg = { enabled: body.data.enabled ?? true, intervalDays: body.data.intervalDays };
+      if (kind === "ships") await updateSyncConfig(cfg);
+      else await updateLocationSyncConfig(cfg);
       return reply.type("application/json").send({ ok: true as const });
     });
   }

@@ -960,11 +960,18 @@ describe("Admin guild management", () => {
 
   const adminUsers = {
     users: [
-      { id: "user_root", username: "Root", role: "superadmin", active: true },
-      { id: "user_x", username: "Member X", role: "crew", active: true },
+      { id: "user_root", username: "Root", role: "superadmin", active: true, discordId: "111", discordName: "root", guilds: [{ name: "RDOC", role: "fleetoperator" }], lastSeen: "2026-06-12T10:00:00.000Z" },
+      { id: "user_x", username: "Member X", role: "crew", active: true, discordId: null, discordName: null, guilds: [], lastSeen: "2026-06-11T10:00:00.000Z" },
     ],
   };
-  const adminSettings = { maintenanceOn: false, maintenanceForcedByEnv: false, feedbackChannelId: "" };
+  const adminSettings = {
+    maintenanceOn: false,
+    maintenanceForcedByEnv: false,
+    feedbackChannelId: "",
+    shipCatalog: { count: 247, lastRun: "2026-06-10T10:00:00.000Z", intervalDays: 7, running: false },
+    locationCatalog: { count: 1842, lastRun: "2026-06-10T10:00:00.000Z", intervalDays: 7, running: false },
+    operationCount: 19,
+  };
   const adminBaseHandlers = () => [
     http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),
     http.get(`${API}/admin/users`, () => HttpResponse.json(adminUsers)),

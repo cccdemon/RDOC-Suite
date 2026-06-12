@@ -28,6 +28,13 @@ export function IconSprite() {
         <symbol id="i-lead" viewBox="0 0 24 24"><path d="M6 13l6-5 6 5M6 18l6-5 6 5" /></symbol>
         <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6" /></symbol>
         <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2" /><path d="M3.5 9.5h17M8 3v4M16 3v4" /></symbol>
+        <symbol id="i-server" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="6.4" rx="1.6" /><rect x="4" y="13.6" width="16" height="6.4" rx="1.6" /><path d="M7.4 7.2h.01M7.4 16.8h.01" /></symbol>
+        <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M15.5 6.3a3.6 3.6 0 0 0-4.7 4.5L4 17.6 6.4 20l6.8-6.8a3.6 3.6 0 0 0 4.5-4.7l-2.3 2.3-2-.4-.4-2z" /></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 13.7-5.6M20 12a8 8 0 0 1-13.7 5.6" /><path d="M18 3.4V7h-3.6M6 20.6V17h3.6" /></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.6-3 7.7-7 9-4-1.3-7-4.4-7-9V6z" /></symbol>
+        <symbol id="i-ban" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2" /><path d="M6.4 6.4l11.2 11.2" /></symbol>
+        <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l2.3-2.3a4 4 0 0 0-5.7-5.7L11 7.3M14 10a4 4 0 0 0-5.7 0L6 12.3a4 4 0 0 0 5.7 5.7L13 16.7" /></symbol>
+        <symbol id="i-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z" /><path d="M8 4v5h7V4M8 20v-6h8v6" /></symbol>
       </defs>
     </svg>
   );

@@ -497,12 +497,20 @@ export const AdminGuildsResponseSchema = z
   .meta({ id: "AdminGuildsResponse" });
 export type AdminGuildsResponse = z.infer<typeof AdminGuildsResponseSchema>;
 
+export const AdminUserGuildSchema = z
+  .object({ name: z.string(), role: z.string() })
+  .meta({ id: "AdminUserGuild" });
+
 export const AdminUserSchema = z
   .object({
     id: z.string(),
     username: z.string(),
     role: z.enum(["superadmin", "fleetoperator", "crew"]),
     active: z.boolean(),
+    discordId: z.string().nullable(),
+    discordName: z.string().nullable(),
+    guilds: z.array(AdminUserGuildSchema),
+    lastSeen: z.iso.datetime(),
   })
   .meta({ id: "AdminUser" });
 export type AdminUser = z.infer<typeof AdminUserSchema>;
@@ -516,11 +524,23 @@ export const SetUserRoleRequestSchema = z
   .object({ role: z.enum(["superadmin", "fleetoperator", "crew"]) })
   .meta({ id: "SetUserRoleRequest" });
 
+export const CatalogStateSchema = z
+  .object({
+    count: z.number(),
+    lastRun: z.iso.datetime().nullable(),
+    intervalDays: z.number(),
+    running: z.boolean(),
+  })
+  .meta({ id: "CatalogState" });
+
 export const AdminSettingsResponseSchema = z
   .object({
     maintenanceOn: z.boolean(),
     maintenanceForcedByEnv: z.boolean(),
     feedbackChannelId: z.string(),
+    shipCatalog: CatalogStateSchema,
+    locationCatalog: CatalogStateSchema,
+    operationCount: z.number(),
   })
   .meta({ id: "AdminSettingsResponse" });
 export type AdminSettingsResponse = z.infer<typeof AdminSettingsResponseSchema>;
@@ -532,6 +552,13 @@ export const MaintenanceRequestSchema = z
 export const FeedbackChannelRequestSchema = z
   .object({ channelId: z.string().max(40) })
   .meta({ id: "FeedbackChannelRequest" });
+
+export const CatalogConfigRequestSchema = z
+  .object({
+    intervalDays: z.coerce.number().int().min(1).max(90),
+    enabled: z.boolean().optional(),
+  })
+  .meta({ id: "CatalogConfigRequest" });
 
 // ── Operation editor (lifecycle) ────────────────────────────────────────
 

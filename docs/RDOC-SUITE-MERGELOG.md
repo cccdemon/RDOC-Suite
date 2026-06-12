@@ -1,5 +1,22 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: Admin-Konsole Redesign (Claude-Design-Handoff) — Branch master
+
+Design-Bundle `Admin-Konsole.dc.html` (chat3: Adminbereich verschwendet Desktop-Breite + zu viel
+Scrollen) → dichtes Full-Width-Dashboard. README+chat3+dc.html 1:1 gelesen (feedback_read_instructions_first).
+- FE AdminPage komplett neu: KPI-Leiste (6 Kacheln Nutzer/Server/Schiffe/Standorte/Operationen/
+  Wartung), 3-Spalten-Steuerraster (Schiff/Location-Sync-Cards + Feedback), Nutzer+Server-Tabellen
+  nebeneinander (2.3:1), Wartungs-Toggle im Header. Responsive 6/3/2 + 3/2/1 + Tabellen gestapelt;
+  Nutzertabelle→Cards mobil (<760). Tokens/Markup aus dc.html. Icons server/wrench/refresh/shield/
+  ban/link/save zu Icons.tsx ergänzt.
+- BE: `GET /admin/settings` +shipCatalog/locationCatalog (count/lastRun/intervalDays/running) +
+  operationCount. `GET /admin/users` +discordId/discordName/guilds/lastSeen. Neu `PUT /admin/
+  {ships,locations}/config` (intervalDays). Contracts (CatalogState/CatalogConfigRequest +
+  AdminUser erweitert), OpenAPI, inject-Tests. FE client setCatalogConfig.
+- MSW-Fixtures aktualisiert (neue settings/users-Shape). 
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E).** Lokal NICHT gebaut (Docker-Regel).
+- Operationsdetail/Kalender im Bundle schon früher implementiert — nicht erneut angefasst.
+
 ## Queued / Planned Step - 2026-06-12: Voice/CC-Altsystem entfernen (Redesign) — Branch master
 
 User-Auftrag: Voice wird komplett neu designed → bestehendes Voice/CC-System raus, vorher Konzept

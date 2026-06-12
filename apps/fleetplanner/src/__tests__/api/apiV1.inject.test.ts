@@ -499,6 +499,8 @@ describe("superadmin instance settings — gates", () => {
     ["PUT", "/api/v1/admin/settings/feedback", { channelId: "123456789012345678" }],
     ["POST", "/api/v1/admin/ships/sync", undefined],
     ["POST", "/api/v1/admin/locations/sync", undefined],
+    ["PUT", "/api/v1/admin/ships/config", { intervalDays: 7 }],
+    ["PUT", "/api/v1/admin/locations/config", { intervalDays: 14 }],
   ] as const)("%s %s without session → 401", async (method, url, body) => {
     const res = await app.inject({
       method,
@@ -514,6 +516,11 @@ describe("superadmin instance settings — gates", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("catalog config with out-of-range interval → 400", async () => {
+    const res = await app.inject({ method: "PUT", url: "/api/v1/admin/ships/config", headers: { "content-type": "application/json", "x-forwarded-for": "10.20.1.2" }, payload: JSON.stringify({ intervalDays: 999 }) });
+    expect(res.statusCode).toBe(400);
+  });
+
   it("openapi documents the admin settings routes", async () => {
     const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
     expect(doc.paths["/api/v1/admin/settings"].get).toBeTruthy();
@@ -521,6 +528,8 @@ describe("superadmin instance settings — gates", () => {
     expect(doc.paths["/api/v1/admin/settings/feedback"].put).toBeTruthy();
     expect(doc.paths["/api/v1/admin/ships/sync"].post).toBeTruthy();
     expect(doc.paths["/api/v1/admin/locations/sync"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/ships/config"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/admin/locations/config"].put).toBeTruthy();
   });
 });
 
