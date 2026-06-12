@@ -20,8 +20,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operationen",
     items: [
-      { to: "/", label: "Übersicht", icon: "board" },
-      { to: "/calendar", label: "Kalender", icon: "cal" },
+      { to: "/", label: "Operationen", icon: "board" },
       { to: "/ops/new", label: "Neue Operation", icon: "plus", auth: true },
       { to: "/ships", label: "Schiffe", icon: "ship" },
       { to: "/templates", label: "Marktplatz", icon: "swap", auth: true },

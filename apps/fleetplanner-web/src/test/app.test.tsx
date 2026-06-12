@@ -515,9 +515,9 @@ describe("Operations calendar", () => {
       http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
       http.get(`${API}/operations`, () => HttpResponse.json({ operations: [pastEv, futureEv] })),
     );
-    const { findByTestId, queryAllByText } = renderAt("/calendar");
+    const { findByTestId, queryAllByText } = renderAt("/?view=agenda");
     await findByTestId("calendar-page");
-    (await findByTestId("cal-view-agenda")).click();
+    await new Promise((r) => setTimeout(r, 30));
     // default: only upcoming events in the agenda
     expect(queryAllByText("Future Op").length).toBeGreaterThanOrEqual(1);
     expect(queryAllByText("Past Op").length).toBe(0);
@@ -789,7 +789,8 @@ describe("Op editor (lifecycle)", () => {
     const { findByTestId } = renderAt("/ops/op_1/edit");
     (await findByTestId("edit-delete")).click();
     (await findByTestId("edit-delete-confirm")).click();
-    await screen.findByText("Operationen");
+    // delete navigates to "/" → the Operationen screen header
+    await screen.findByTestId("cal-month");
     expect(deleted).toBe(true);
   });
 

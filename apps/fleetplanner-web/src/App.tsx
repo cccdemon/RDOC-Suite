@@ -5,10 +5,9 @@ import type { SessionResponse } from "./api/types";
 import { useTheme } from "./theme";
 import { Sidebar, MobileNav } from "./components/Sidebar";
 import { ToastHost } from "./components/Toast";
-import { OverviewPage } from "./pages/OverviewPage";
+import { OperationenPage } from "./pages/CalendarPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
 import { OpManagePage } from "./pages/OpManagePage";
-import { CalendarPage } from "./pages/CalendarPage";
 import { WizardPage } from "./pages/WizardPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ShipsPage } from "./pages/ShipsPage";
@@ -62,8 +61,10 @@ export function App() {
             </div>
           )}
           <Routes>
-            <Route path="/" element={<OverviewPage session={session} />} />
-            <Route path="/calendar" element={<CalendarPage />} />
+            {/* IA merge A: Operationen = Liste / Kalender / Agenda in one screen */}
+            <Route path="/" element={<OperationenPage session={session} />} />
+            <Route path="/operationen" element={<OperationenPage session={session} />} />
+            <Route path="/calendar" element={<Navigate to="/?view=kalender" replace />} />
             <Route path="/ops/new" element={<WizardPage session={session} />} />
             <Route path="/profile" element={<ProfilePage session={session} />} />
             <Route path="/ships" element={<ShipsPage />} />

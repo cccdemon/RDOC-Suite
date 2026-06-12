@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ApiError, listOperations } from "../api/client";
-import type { OperationSummary } from "../api/types";
+import type { OperationSummary, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { ErrorState } from "../components/ErrorState";
 
@@ -57,9 +57,25 @@ const tagStyle = (color: string): React.CSSProperties => ({
   whiteSpace: "nowrap",
 });
 
-export function CalendarPage() {
+// IA merge A: Operationen-Übersicht + Kalender are one screen with a Liste /
+// Kalender / Agenda view switch over a single GET /api/v1/operations dataset.
+// The view persists in the URL (?view=). The list view is session-aware
+// (signup badges, create/login CTAs); kalender/agenda are month-scoped.
+export function OperationenPage({ session }: { session: SessionResponse | null }) {
   const now = new Date();
-  const [view, setView] = useState<"monat" | "agenda">("agenda");
+  const [params, setParams] = useSearchParams();
+  const viewParam = params.get("view");
+  const view: "liste" | "monat" | "agenda" =
+    viewParam === "kalender" || viewParam === "monat" ? "monat" : viewParam === "agenda" ? "agenda" : "liste";
+  const setView = (v: "liste" | "monat" | "agenda") =>
+    setParams(
+      (p) => {
+        const n = new URLSearchParams(p);
+        n.set("view", v === "monat" ? "kalender" : v);
+        return n;
+      },
+      { replace: true },
+    );
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [filter, setFilter] = useState("alle");
@@ -89,7 +105,9 @@ export function CalendarPage() {
   const monthBeforeToday = year < T.y || (year === T.y && month < T.m);
   const monthLabel = `${MONTHS[month]} ${year}`;
   const mobile = vw < 760;
-  const effectiveView = mobile ? "agenda" : view;
+  // month grid is desktop-only; on mobile it falls back to agenda. Liste stays.
+  const effectiveView = mobile && view === "monat" ? "agenda" : view;
+  const isListe = effectiveView === "liste";
   const isMonat = effectiveView === "monat";
 
   // ── map operations of the visible month to events ─────────────
@@ -248,28 +266,32 @@ export function CalendarPage() {
             <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="cal" size={20} /></span>
             <span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.14em", color: "#5b6b7a" }}>OPERATIONS-KALENDER</span>
           </div>
-          <h1 style={{ fontWeight: 700, fontSize: "2rem", lineHeight: 1.05, color: "#eaf4fb", margin: 0 }} data-testid="cal-month">{monthLabel}</h1>
+          <h1 style={{ fontWeight: 700, fontSize: "2rem", lineHeight: 1.05, color: "#eaf4fb", margin: 0 }} data-testid="cal-month">{isListe ? "Operationen" : monthLabel}</h1>
           <div style={{ color: "#9fb1c2", fontSize: "0.92rem", marginTop: "0.2rem" }}>Star Citizen · RDOC Flottenoperationen</div>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.6rem" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, background: "#090f18", overflow: "hidden" }}>
-            <button type="button" data-testid="cal-prev" onClick={() => setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; })} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "#9fb1c2", cursor: "pointer" }}>
-              <Ic name="back" size={16} sw={1.9} />
-            </button>
-            <button type="button" data-testid="cal-today" onClick={() => { setYear(T.y); setMonth(T.m); setSelDay(T.d); }} style={{ padding: "0 0.9rem", height: 36, border: "none", borderLeft: "1px solid rgba(0,212,255,0.12)", borderRight: "1px solid rgba(0,212,255,0.12)", background: "transparent", color: "#00d4ff", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.04em", cursor: "pointer", whiteSpace: "nowrap" }}>HEUTE</button>
-            <button type="button" data-testid="cal-next" onClick={() => setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; })} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "#9fb1c2", cursor: "pointer" }}>
-              <Ic name="chevron" size={16} sw={1.9} />
-            </button>
-          </div>
-          {!mobile && (
-            <div style={{ display: "inline-flex", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, padding: 3, background: "#090f18", gap: 3 }}>
-              <button type="button" data-testid="cal-view-monat" onClick={() => setView("monat")} style={view === "monat" ? tabActive : tabBase}><Ic name="board" size={14} /> Monat</button>
-              <button type="button" data-testid="cal-view-agenda" onClick={() => setView("agenda")} style={view === "agenda" ? tabActive : tabBase}><Ic name="chat" size={14} /> Agenda</button>
+          {!isListe && (
+            <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, background: "#090f18", overflow: "hidden" }}>
+              <button type="button" data-testid="cal-prev" onClick={() => setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; })} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "#9fb1c2", cursor: "pointer" }}>
+                <Ic name="back" size={16} sw={1.9} />
+              </button>
+              <button type="button" data-testid="cal-today" onClick={() => { setYear(T.y); setMonth(T.m); setSelDay(T.d); }} style={{ padding: "0 0.9rem", height: 36, border: "none", borderLeft: "1px solid rgba(0,212,255,0.12)", borderRight: "1px solid rgba(0,212,255,0.12)", background: "transparent", color: "#00d4ff", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.04em", cursor: "pointer", whiteSpace: "nowrap" }}>HEUTE</button>
+              <button type="button" data-testid="cal-next" onClick={() => setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; })} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "#9fb1c2", cursor: "pointer" }}>
+                <Ic name="chevron" size={16} sw={1.9} />
+              </button>
             </div>
           )}
-          <Link to="/" style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", height: 38, padding: "0 1rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.04em", borderRadius: 9, textDecoration: "none" }}>
-            <Ic name="board" size={15} /> Liste
-          </Link>
+          <div style={{ display: "inline-flex", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, padding: 3, background: "#090f18", gap: 3 }}>
+            <button type="button" data-testid="op-view-liste" onClick={() => setView("liste")} style={view === "liste" ? tabActive : tabBase}><Ic name="board" size={14} /> Liste</button>
+            {!mobile && <button type="button" data-testid="cal-view-monat" onClick={() => setView("monat")} style={view === "monat" ? tabActive : tabBase}><Ic name="cal" size={14} /> Kalender</button>}
+            <button type="button" data-testid="cal-view-agenda" onClick={() => setView("agenda")} style={view === "agenda" ? tabActive : tabBase}><Ic name="chat" size={14} /> Agenda</button>
+          </div>
+          {((session?.memberships ?? []).some((m) => m.role === "fleetoperator") || session?.user?.role === "superadmin") && (
+            <Link to="/ops/new" data-testid="create-link" className="btn btn-green" style={{ textDecoration: "none" }}><Ic name="plus" size={14} sw={1.9} /> Neue Op</Link>
+          )}
+          {!session?.user && (
+            <Link to="/login" data-testid="login-cta" className="btn btn-ghost" style={{ textDecoration: "none" }}>Anmelden →</Link>
+          )}
         </div>
       </div>
 
@@ -311,7 +333,37 @@ export function CalendarPage() {
       </div>
 
       {ops === null ? (
-        <div className="fpw-state"><span style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "#9fb1c2" }}>LADE KALENDER…</span></div>
+        <div className="fpw-state"><span style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "#9fb1c2" }}>LADE OPERATIONEN…</span></div>
+      ) : isListe ? (
+        (() => {
+          const list = ops
+            .filter((o) => filter === "alle" || typeOf(o.opType).key === filter)
+            .slice()
+            .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+          return list.length === 0 ? (
+            <p className="fpw-meta" style={{ color: "var(--dim)" }}>Keine Operationen.</p>
+          ) : (
+            <div className="fpw-grid" data-testid="op-grid">
+              {list.map((op) => (
+                <Link key={op.id} to={`/ops/${op.id}`} className="fpw-card fpw-cardlink" data-testid="op-card">
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+                    <span className="fpw-tag green"><span className="fpw-dot" />{op.status}</span>
+                    <span className="fpw-tag cyan">{op.visibility}</span>
+                    {op.signupState === "joined" && <span className="fpw-tag green">DABEI</span>}
+                    {op.signupState === "waitlist" && <span className="fpw-tag gold">WARTELISTE</span>}
+                  </div>
+                  <div className="fpw-h2">{op.title}</div>
+                  <div className="fpw-meta">
+                    {new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(op.scheduledAt))} · {op.meetingSystem} · {op.guild.name}
+                  </div>
+                  <div className="fpw-mono-label" style={{ marginTop: "0.6rem", fontSize: "0.62rem" }}>
+                    {op.acceptedUnitCount} EINHEITEN · {op.opType.toUpperCase()}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          );
+        })()
       ) : isMonat ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.6rem" }}>
           {/* weekday header + cells */}
