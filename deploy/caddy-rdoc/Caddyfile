@@ -69,7 +69,12 @@ suite.raumdock.org:9443 {
 
 	# Catch-all: the legacy bridge web UI was removed (voice redesign). Any
 	# unmatched path now goes to the Fleetplanner, the public entry point.
-	redir * /fleetplanner 302
+	# Wrapped in a matcher-less `handle` so it is the LEAST-specific handle
+	# (evaluated after every path-specific handle/handle_path above) — a bare
+	# site-level `redir` would order ahead of them and catch every path.
+	handle {
+		redir * /fleetplanner 302
+	}
 
 	handle_errors {
 		@server_error expression `{err.status_code} >= 500`
