@@ -4,7 +4,6 @@ import { stat } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { rawHtml } from "../web/pages.js";
-import { opMissionBoardPage } from "../web/missionBoard.js";
 import {
   homePage,
   opDetailPageV2,
@@ -727,29 +726,6 @@ export async function webRoutes(app: FastifyInstance) {
     reply.header("Cache-Control", "no-store");
     const guildTimezone = (guildRow as { timezone?: string } | null)?.timezone ?? DEFAULT_TIMEZONE;
     const discordInvite = (guildRow as { discordInviteUrl?: string | null } | null)?.discordInviteUrl ?? null;
-    // Per-user op-detail layout choice (Profile → Optik). board1/board2 use the
-    // mission-board renderer; anything else falls back to the classic page.
-    const opStyle = (ctx?.user as { opDetailStyle?: string } | undefined)?.opDetailStyle ?? "board2";
-    if (opStyle === "board1" || opStyle === "board2") {
-      return htmlReply(
-        reply,
-        opMissionBoardPage({
-          basePath: basePath(),
-          currentUser: ctx?.user ?? null,
-          csrfToken: ctx?.csrfToken,
-          flash: req.query.flash,
-          op,
-          guildTimezone,
-          voiceChannelName,
-          ownedShips,
-          canManage,
-          discordInvite,
-          variant: opStyle,
-          view: req.query.view,
-          lay: req.query.lay,
-        }),
-      );
-    }
     return htmlReply(
       reply,
       opJoinPage({
