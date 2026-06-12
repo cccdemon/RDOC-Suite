@@ -46,6 +46,7 @@ import {
   ClaimSeatResponseSchema,
   CqbSignupRequestSchema,
   GuildListResponseSchema,
+  AccountResponseSchema,
   GuildSettingsResponseSchema,
   SetMemberRoleRequestSchema,
   UpdateGuildSettingsRequestSchema,
@@ -70,6 +71,7 @@ const SCHEMAS = {
   HealthResponse: HealthResponseSchema,
   SessionResponse: SessionResponseSchema,
   GuildListResponse: GuildListResponseSchema,
+  AccountResponse: AccountResponseSchema,
   GuildSettingsResponse: GuildSettingsResponseSchema,
   UpdateGuildSettingsRequest: UpdateGuildSettingsRequestSchema,
   SetMemberRoleRequest: SetMemberRoleRequestSchema,
@@ -435,6 +437,15 @@ export function buildOpenApiDocument(): JsonObject {
           ],
           requestBody: { required: true, ...jsonContent(ref("SetCqbTeamsRequest")) },
           responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/account": {
+        get: {
+          operationId: "getAccount",
+          summary: "The current user's linked OAuth logins",
+          tags: ["auth"],
+          security: [{ cookieSession: [] }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("AccountResponse")) }, "401": errorResponses["401"] },
         },
       },
       "/api/v1/guilds": {

@@ -373,6 +373,20 @@ export async function apiV1Routes(app: FastifyInstance) {
     return reply.type("application/json").send({ guilds: memberships.map(presentGuild) });
   });
 
+  // ── account: linked OAuth logins ────────────────────────────────────
+  app.get("/api/v1/account", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    const rows = await prisma.userIdentity.findMany({
+      where: { userId: ctx.user.id },
+      select: { provider: true, username: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    });
+    return reply.type("application/json").send({
+      identities: rows.map((i) => ({ provider: i.provider, username: i.username, since: i.createdAt.toISOString() })),
+    });
+  });
+
   // Guild-scoped operator gate: member with fleetoperator role in THIS guild,
   // or instance superadmin. Mirrors the SSR requireGuildRole("fleetoperator").
   async function requireGuildOperator(

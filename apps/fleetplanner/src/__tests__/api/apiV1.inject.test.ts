@@ -80,6 +80,16 @@ describe("GET /api/v1/guilds", () => {
   });
 });
 
+describe("GET /api/v1/account", () => {
+  it("anonymous → 401 envelope + documented", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/account" });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/account"].get).toBeTruthy();
+  });
+});
+
 describe("GET /api/v1/hangar", () => {
   it("anonymous → 401 JSON envelope", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/hangar" });

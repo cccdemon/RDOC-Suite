@@ -15,6 +15,7 @@ import { RoadmapPage } from "./pages/RoadmapPage";
 import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { PartnershipsPage } from "./pages/PartnershipsPage";
 import { ServerListPage } from "./pages/ServerListPage";
+import { AccountPage } from "./pages/AccountPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
@@ -192,6 +193,7 @@ export function App() {
           <Route path="/feedback" element={<FeedbackPage session={session} />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/guilds" element={<ServerListPage session={session} />} />
+          <Route path="/account" element={<AccountPage session={session} />} />
           <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
           <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
           <Route path="/admin" element={<AdminPage session={session} />} />

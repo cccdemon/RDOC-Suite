@@ -68,6 +68,10 @@ export function getSession(): Promise<SessionResponse> {
   return get<SessionResponse>("/session");
 }
 
+export function getAccount(): Promise<import("./types").AccountResponse> {
+  return get<import("./types").AccountResponse>("/account");
+}
+
 export function getRoadmap(): Promise<{ items: import("./types").RoadmapItem[] }> {
   return get<{ items: import("./types").RoadmapItem[] }>("/roadmap");
 }

@@ -69,6 +69,17 @@ export const SessionResponseSchema = z
   .meta({ id: "SessionResponse" });
 export type SessionResponse = z.infer<typeof SessionResponseSchema>;
 
+// ── Account (linked logins) ─────────────────────────────────────────────
+
+export const AccountIdentitySchema = z
+  .object({ provider: z.string(), username: z.string().nullable(), since: z.iso.datetime() })
+  .meta({ id: "AccountIdentity" });
+
+export const AccountResponseSchema = z
+  .object({ identities: z.array(AccountIdentitySchema) })
+  .meta({ id: "AccountResponse" });
+export type AccountResponse = z.infer<typeof AccountResponseSchema>;
+
 // ── Guilds ────────────────────────────────────────────────────────────
 
 export const GuildSummarySchema = z
