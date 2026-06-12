@@ -329,7 +329,7 @@ describe("Op detail — operator panel", () => {
 
   it("renders pending units, flex signups, questions and hangar shares", async () => {
     useOperatorHandlers();
-    const { findByTestId, findByText } = renderAt("/ops/op_1/manage");
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
     await openFleetTab(findByTestId);
     expect(await findByTestId("operator-panel")).toBeInTheDocument();
     expect(await findByText("Hammerhead")).toBeInTheDocument();
@@ -351,7 +351,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId, findByText } = renderAt("/ops/op_1/manage");
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
     await openFleetTab(findByTestId);
     (await findByTestId("op-place-user_flex")).click();
     // place-mode banner appears, open seats become green targets
@@ -370,7 +370,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId, findByText } = renderAt("/ops/op_1/manage");
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
     await openFleetTab(findByTestId);
     (await findByTestId("op-target-seat_2")).click(); // no place-mode → picker
     expect(await findByText("WER SOLL HIER REIN?")).toBeInTheDocument();
@@ -387,7 +387,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1/manage");
+    const { findByTestId } = renderAt("/ops/op_1");
     await openFleetTab(findByTestId);
     const input = (await findByTestId("answer-input-q1")) as HTMLTextAreaElement;
     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Everus Harbor, 19:00");
@@ -407,7 +407,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1/manage");
+    const { findByTestId } = renderAt("/ops/op_1");
     await openFleetTab(findByTestId);
     // drag the flex person onto the open seat
     const person = await findByTestId("op-place-user_flex");
@@ -444,7 +444,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1/manage");
+    const { findByTestId } = renderAt("/ops/op_1");
     (await findByTestId("manage-tab-commanders")).click();
     (await findByTestId("leader-cand-user_part")).click();
     await new Promise((r) => setTimeout(r, 50));
@@ -456,7 +456,7 @@ describe("Op detail — operator panel", () => {
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opAsOperator)), // canManage:true, no viewerRole
     );
-    const { findByTestId, queryByText } = renderAt("/ops/op_1/manage");
+    const { findByTestId, queryByText } = renderAt("/ops/op_1");
     (await findByTestId("manage-tab-commanders")).click();
     await findByTestId("commanders-panel");
     expect(queryByText("TEILNEHMER ERNENNEN")).not.toBeInTheDocument();
@@ -470,7 +470,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1/manage");
+    const { findByTestId } = renderAt("/ops/op_1");
     await openFleetTab(findByTestId);
     (await findByTestId("accept-unit_p")).click();
     await new Promise((r) => setTimeout(r, 50));
@@ -799,8 +799,10 @@ describe("Op editor (lifecycle)", () => {
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: false })),
     );
-    const { findByTestId } = renderAt("/ops/op_1/edit");
-    expect(await findByTestId("manage-forbidden")).toBeInTheDocument();
+    const { findByTestId, queryByTestId } = renderAt("/ops/op_1/edit");
+    // a non-leader lands on the op-detail player view with no operator console
+    expect(await findByTestId("op-title")).toBeInTheDocument();
+    expect(queryByTestId("operator-console")).not.toBeInTheDocument();
   });
 });
 

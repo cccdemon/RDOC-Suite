@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ApiError,
   claimSeat,
@@ -12,6 +12,7 @@ import {
 import type { FleetUnit, OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { OfferShip } from "../components/OfferShip";
+import { OperatorConsole } from "../components/OperatorConsole";
 import { Ic } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { Markdown } from "../components/Markdown";
@@ -83,6 +84,7 @@ function seatIcon(u: FleetUnit, order: number): string {
 
 export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const [op, setOp] = useState<OperationDetail | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -483,23 +485,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       )}
 
 
-      {/* OPERATOR ACTIONS — Spieler sehen das Board direkt; Operatoren steuern über Management/Bearbeiten */}
-      {(op.canManage || op.signupState === "joined") && (
-        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.8rem" }}>
-          {op.canManage ? (
-            <div style={{ display: "inline-flex", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, padding: 3, background: "#090f18", gap: 3 }}>
-              <Link to={`/ops/${id}/manage`} data-testid="manage-op-link" style={{ ...tabBase, textDecoration: "none" }}>
-                <Ic name="board" size={15} /> Management
-              </Link>
-            </div>
-          ) : (
-            <span />
-          )}
-          {op.signupState === "joined" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", color: "#00ff88", fontSize: "0.88rem" }}>
-              <Ic name="check" size={15} /> Du bist Teilnehmer.
-            </span>
-          )}
+      {op.signupState === "joined" && (
+        <div style={{ marginBottom: "1.8rem" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", color: "#00ff88", fontSize: "0.88rem" }}>
+            <Ic name="check" size={15} /> Du bist Teilnehmer.
+          </span>
         </div>
       )}
 
@@ -686,6 +676,18 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             })}
           </div>
         </>
+      )}
+
+      {/* IA merge D: adaptive operator console — only for leaders of this op */}
+      {op.canManage && id && (
+        <OperatorConsole
+          op={op}
+          opId={id}
+          csrf={csrf}
+          reload={load}
+          initialTab={searchParams.get("op")}
+          initialFlash={searchParams.get("flash")}
+        />
       )}
     </article>
   );

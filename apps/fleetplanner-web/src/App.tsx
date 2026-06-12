@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
 import { getSession } from "./api/client";
 import type { SessionResponse } from "./api/types";
 import { useTheme } from "./theme";
@@ -7,7 +7,6 @@ import { Sidebar, MobileNav } from "./components/Sidebar";
 import { ToastHost } from "./components/Toast";
 import { OperationenPage } from "./pages/CalendarPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
-import { OpManagePage } from "./pages/OpManagePage";
 import { WizardPage } from "./pages/WizardPage";
 import { KontoPage } from "./pages/KontoPage";
 import { ShipsPage } from "./pages/ShipsPage";
@@ -23,16 +22,24 @@ import { LoginPage } from "./pages/LoginPage";
 import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { ErrorState } from "./components/ErrorState";
 
-// Legacy cover URL → the cover tab in Op-Management (the SSR cover page is gone).
+// IA merge D: the operator console is now part of /ops/:id (op=<tab>). The old
+// manage/edit/cover URLs redirect there, preserving any tab + flash.
+function ManageRedirect() {
+  const { id } = useParams<{ id: string }>();
+  const [sp] = useSearchParams();
+  const q = new URLSearchParams();
+  q.set("op", sp.get("tab") ?? "fleet");
+  const flash = sp.get("flash");
+  if (flash) q.set("flash", flash);
+  return <Navigate to={`/ops/${id}?${q.toString()}`} replace />;
+}
 function CoverRedirect() {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/ops/${id}/manage?tab=cover`} replace />;
+  return <Navigate to={`/ops/${id}?op=admin`} replace />;
 }
-
-// Standalone edit screen is fused into Op-Management as the Eckdaten tab.
 function EditRedirect() {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/ops/${id}/manage?tab=eckdaten`} replace />;
+  return <Navigate to={`/ops/${id}?op=eckdaten`} replace />;
 }
 
 export function App() {
@@ -78,7 +85,7 @@ export function App() {
             <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
             <Route path="/admin" element={<AdminPage session={session} />} />
             <Route path="/ops/:id/edit" element={<EditRedirect />} />
-            <Route path="/ops/:id/manage" element={<OpManagePage session={session} />} />
+            <Route path="/ops/:id/manage" element={<ManageRedirect />} />
             <Route path="/ops/:id/cover" element={<CoverRedirect />} />
             <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
             <Route path="/login" element={<LoginPage />} />

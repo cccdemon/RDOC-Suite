@@ -1,15 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
-import { ApiError, createRecurrence, getOperation, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
-import type { OperationDetail, SessionResponse } from "../api/types";
-import { Ic } from "../components/Icons";
-import { NeedsEditor } from "../components/NeedsEditor";
-import { OperatorPanel } from "../components/OperatorPanel";
-import { CoverPanel } from "../components/CoverPanel";
-import { CommandersPanel } from "../components/CommandersPanel";
-import { EckdatenForm } from "../components/EckdatenForm";
-import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "../components/ui";
+import { useState } from "react";
+import { ApiError, createRecurrence, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
+import type { OperationDetail } from "../api/types";
+import { Ic } from "./Icons";
+import { NeedsEditor } from "./NeedsEditor";
+import { OperatorPanel } from "./OperatorPanel";
+import { CoverPanel } from "./CoverPanel";
+import { CommandersPanel } from "./CommandersPanel";
+import { EckdatenForm } from "./EckdatenForm";
+import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 
+// IA merge D: the operator console (previously the standalone /ops/:id/manage page)
+// is now an adaptive section of the op-detail screen — rendered only when the viewer
+// is a leader of THIS op (op.canManage from the role-aware payload). One screen,
+// no separate manage URL or layout toggle.
 const STATUSES: Array<[string, string]> = [
   ["draft", "Entwurf"], ["open", "Offen"], ["locked", "Gesperrt"], ["starting", "Startet"],
   ["in_progress", "Läuft"], ["completed", "Abgeschlossen"], ["cancelled", "Abgesagt"],
@@ -23,7 +26,6 @@ const TABS = [
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
-// Legacy / cover-save redirects use older tab names — map them onto the 4 tabs.
 function resolveTab(raw: string | null): TabKey {
   if (TABS.some((t) => t.key === raw)) return raw as TabKey;
   if (raw === "overview") return "eckdaten";
@@ -32,7 +34,6 @@ function resolveTab(raw: string | null): TabKey {
   return "eckdaten";
 }
 
-// Decode a "kind:text" flash param (+ for spaces) from the cover save redirect.
 function decodeFlash(raw: string | null): string | null {
   if (!raw) return null;
   const i = raw.indexOf(":");
@@ -41,14 +42,6 @@ function decodeFlash(raw: string | null): string | null {
     return decodeURIComponent(text.replace(/\+/g, " "));
   } catch {
     return text;
-  }
-}
-
-function fmtWhen(iso: string, tz: string | null): string {
-  try {
-    return new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: tz || undefined, timeZoneName: "short" }).format(new Date(iso));
-  } catch {
-    return new Date(iso).toLocaleString("de-DE");
   }
 }
 
@@ -65,83 +58,61 @@ function StatTile({ label, value, sub, color, icon }: { label: string; value: nu
   );
 }
 
-export function OpManagePage({ session }: { session: SessionResponse | null }) {
-  const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
-  const csrf = session?.csrfToken ?? null;
-
-  const [op, setOp] = useState<OperationDetail | null>(null);
-  const [loadError, setLoadError] = useState<ApiError | null>(null);
-  const [tab, setTab] = useState<TabKey>(resolveTab(searchParams.get("tab")));
-  const [status, setStatusValue] = useState("draft");
-  const [notice, setNotice] = useState<string | null>(() => decodeFlash(searchParams.get("flash")));
+export function OperatorConsole({
+  op,
+  opId,
+  csrf,
+  reload,
+  initialTab,
+  initialFlash,
+}: {
+  op: OperationDetail;
+  opId: string;
+  csrf: string | null;
+  reload: () => void;
+  initialTab: string | null;
+  initialFlash: string | null;
+}) {
+  const [tab, setTab] = useState<TabKey>(resolveTab(initialTab));
+  const [status, setStatusValue] = useState(op.status);
+  const [notice, setNotice] = useState<string | null>(() => decodeFlash(initialFlash));
   const [busy, setBusy] = useState(false);
   const [tpl, setTpl] = useState({ name: "", summary: "", visibility: "guild" });
   const [recur, setRecur] = useState({ freq: "weekly", seriesCount: "", seriesEnd: "" });
 
-  function reload() {
-    if (!id) return;
-    getOperation(id)
-      .then((o) => { setOp(o); setStatusValue(o.status); })
-      .catch((e) => setLoadError(e instanceof ApiError ? e : new ApiError(0, null)));
-  }
-  useEffect(reload, [id]);
-
   async function run(action: () => Promise<unknown>, msg: string) {
-    if (!csrf || !id) return;
+    if (!csrf) return;
     setBusy(true); setNotice(null);
     try { await action(); setNotice(msg); reload(); }
     catch (e) { setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen."); }
     finally { setBusy(false); }
   }
-  const changeStatus = (next: string) => run(() => setOperationStatus(id!, csrf!, next), `Status: ${next}.`);
-  const publish = () => run(() => publishTemplate(id!, csrf!, { name: tpl.name.trim() || undefined, summary: tpl.summary.trim() || undefined, visibility: tpl.visibility }), "Als Vorlage veröffentlicht.");
-  const makeSeries = () => run(() => createRecurrence(id!, csrf!, { freq: recur.freq, seriesCount: recur.seriesCount ? Number(recur.seriesCount) : undefined, seriesEnd: recur.seriesEnd ? new Date(recur.seriesEnd).toISOString() : undefined }), "Serie erstellt.");
+  const changeStatus = (next: string) => run(() => setOperationStatus(opId, csrf!, next), `Status: ${next}.`);
+  const publish = () => run(() => publishTemplate(opId, csrf!, { name: tpl.name.trim() || undefined, summary: tpl.summary.trim() || undefined, visibility: tpl.visibility }), "Als Vorlage veröffentlicht.");
+  const makeSeries = () => run(() => createRecurrence(opId, csrf!, { freq: recur.freq, seriesCount: recur.seriesCount ? Number(recur.seriesCount) : undefined, seriesEnd: recur.seriesEnd ? new Date(recur.seriesEnd).toISOString() : undefined }), "Serie erstellt.");
   async function stopSeries() {
-    if (!csrf || !id) return;
+    if (!csrf) return;
     setBusy(true); setNotice(null);
-    try { const r = await stopRecurrence(id, csrf); setNotice(r.stopped ? "Serie gestoppt." : "Diese Operation ist keine Serie."); }
+    try { const r = await stopRecurrence(opId, csrf); setNotice(r.stopped ? "Serie gestoppt." : "Diese Operation ist keine Serie."); }
     catch (e) { setNotice(e instanceof ApiError ? e.message : "Stoppen fehlgeschlagen."); } finally { setBusy(false); }
   }
 
-  const tiles = useMemo(() => {
-    if (!op) return null;
-    const accepted = op.units.filter((u) => u.status === "accepted");
-    const ships = accepted.filter((u) => u.unitType === "ship").length;
-    const fighters = accepted.length - ships;
-    const pending = op.units.filter((u) => u.status !== "accepted").length;
-    const free = Math.max(0, op.totalSeats - op.filledSeats);
-    return { flotte: accepted.length, ships, fighters, crew: op.filledSeats, free, total: op.totalSeats, pending };
-  }, [op]);
-
-  if (loadError)
-    return <div className="fpw-state" data-testid="manage-error"><span style={lbl}>OPERATION {loadError.status === 404 ? "NICHT GEFUNDEN" : "NICHT LADBAR"}</span><Link className="fpw-btn" to="/">Zurück</Link></div>;
-  if (session === null || !op || !tiles) return <div className="fpw-state"><span style={lbl}>LADE…</span></div>;
-  if (!op.canManage)
-    return <div className="fpw-state" data-testid="manage-forbidden"><span style={lbl}>KEINE OPERATOR-RECHTE</span><Link className="fpw-btn" to={`/ops/${id}`}>Zur Operation</Link></div>;
+  const accepted = op.units.filter((u) => u.status === "accepted");
+  const ships = accepted.filter((u) => u.unitType === "ship").length;
+  const tiles = {
+    flotte: accepted.length, ships, fighters: accepted.length - ships,
+    crew: op.filledSeats, free: Math.max(0, op.totalSeats - op.filledSeats),
+    total: op.totalSeats, pending: op.units.filter((u) => u.status !== "accepted").length,
+  };
 
   const tabBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.9rem", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 0, cursor: "pointer", whiteSpace: "nowrap", border: "none", borderBottom: "2px solid transparent", background: "transparent", color: "#9fb1c2" };
   const tabActive: React.CSSProperties = { ...tabBase, color: "var(--cyan)", borderBottom: "2px solid var(--cyan)", background: "rgba(0,212,255,0.08)" };
 
   return (
-    <div data-testid="manage-page" style={{ width: "100%" }}>
-      {/* header */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.1rem" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
-            <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="board" size={17} sw={1.7} /></span>
-            <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATION // MANAGEMENT</span>
-          </div>
-          <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: "0 0 0.35rem" }}>{op.title}</h1>
-          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", fontFamily: MONO, fontSize: "0.74rem", color: "#9fb1c2" }}>
-            <span style={{ color: "var(--gold)", display: "inline-flex" }}><Ic name="clock" size={13} sw={1.6} /></span>
-            {fmtWhen(op.scheduledAt, op.guild.timezone)}
-            {op.meetingLocation && <><span style={{ color: "var(--dim2)" }}>·</span>{op.meetingLocation}</>}
-          </div>
-        </div>
-        <Link to={`/ops/${id}`} data-testid="manage-view" className="btn btn-ghost">
-          <Ic name="eye" size={13} sw={1.7} /> Spieler-Ansicht
-        </Link>
+    <section data-testid="operator-console" style={{ width: "100%", marginTop: "2rem", paddingTop: "1.6rem", borderTop: "1px solid rgba(0,212,255,0.18)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "1rem" }}>
+        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="board" size={16} sw={1.7} /></span>
+        <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATOR-KONSOLE</span>
       </div>
 
       {/* KPI strip — always visible above the tabs */}
@@ -163,23 +134,19 @@ export function OpManagePage({ session }: { session: SessionResponse | null }) {
 
       {notice && <p className="tag tag-gold" role="alert" data-testid="manage-notice" style={{ marginBottom: "1rem" }}>{notice}</p>}
 
-      {/* TAB: Eckdaten (fused edit form) */}
       {tab === "eckdaten" && <EckdatenForm op={op} csrf={csrf} onSaved={reload} onNotice={setNotice} />}
 
-      {/* TAB: Flotte & Warteliste (board + waitlist D&D + needs) */}
-      {tab === "fleet" && id && (
+      {tab === "fleet" && (
         <>
           {csrf ? <OperatorPanel op={op} csrf={csrf} embedded onChanged={reload} onError={(m) => setNotice(m)} /> : <p style={lbl}>ANMELDUNG ERFORDERLICH</p>}
           <div style={{ marginTop: "1.6rem" }}>
-            <NeedsEditor opId={id} csrf={csrf} />
+            <NeedsEditor opId={opId} csrf={csrf} />
           </div>
         </>
       )}
 
-      {/* TAB: Commanders */}
       {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
 
-      {/* TAB: Admin (status + template + recurrence + cover) */}
       {tab === "admin" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
           <section style={card}>
@@ -217,9 +184,9 @@ export function OpManagePage({ session }: { session: SessionResponse | null }) {
             <button type="button" data-testid="recurrence-stop" style={btnGhost} disabled={busy || !csrf} onClick={stopSeries}>Serie stoppen</button>
           </section>
 
-          {id && <CoverPanel opId={id} csrf={csrf} onNotice={setNotice} />}
+          <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />
         </div>
       )}
-    </div>
+    </section>
   );
 }
