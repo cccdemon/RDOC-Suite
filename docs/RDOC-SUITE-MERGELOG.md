@@ -1,5 +1,24 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: Voice/CC-Altsystem entfernen (Redesign) — Branch master
+
+User-Auftrag: Voice wird komplett neu designed → bestehendes Voice/CC-System raus, vorher Konzept
+archivieren.
+- **Archiv zuerst:** `docs/VOICE-ARCHIVE-2026-06.md` (Konzept Command-Net/Global-Radio + Implementations-
+  Inventar apps/bridge + apps/relay-bots + Env + Datenfluss + Infra). Bestehende Konzept-Docs
+  (companion-voice-architecture.md, FR-P3-federation-voice.md) bleiben.
+- **Gelöscht:** apps/bridge, apps/relay-bots, apps/bot (Bot teilte sich die SQLite-DB der bridge,
+  bridge besaß die Migrationen → User-Entscheidung „Bot auch entfernen"). Fleetplanner-Bridge-UI
+  (routes/bridgeAdmin.ts, services/bridge.ts + bridgeVoiceOrder.ts, ~10 bridge*Page, badm.* i18n,
+  BRIDGE_INTERNAL_URL/FLEET_SECRET env, app.ts-Registration, bridgeVoiceOrder.test.ts).
+- **Infra:** docker-compose.prod.yml bridge/bot/relay-bots-Services + bridge_data-Volume + depends_on
+  raus; prometheus.yml bridge/relay-Scrape-Jobs raus; Caddyfile-Catch-all → /fleetplanner.
+- **Unberührt:** livekit-Service, apps/companion, mission-cover, monitoring, packages/db-Schema,
+  GuildVoiceBot-Tabelle + VOICEBOT_ENCRYPTION_KEY (Redesign kann darauf aufsetzen).
+- Dockerfiles nutzen `--no-frozen-lockfile` → pnpm-lock-Drift unkritisch (kein Regen).
+- **UMGESETZT 2026-06-12.** Offen/optional: .env.example BRIDGE_*/RELAY_*-Blöcke trimmen (kosmetisch).
+- Gate: Prod-Build (fleetplanner kompiliert ohne bridge-Refs), dann Deploy mit `--remove-orphans`.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Superadmin Instanz-Settings — Branch master
 
 - BE `GET /api/v1/admin/settings` (cookie-only superadmin), `POST …/maintenance` {enabled},

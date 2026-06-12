@@ -4,7 +4,7 @@
 # suite.raumdock.org routet:
 #   /              -> 302 redirect to /fleetplanner (root has no own page)
 #   /fleetplanner  -> http://127.0.0.1:3200  (fleetplanner, public entry point)
-#   /  (other)     -> http://127.0.0.1:8787  (bridge / web interfaces, catch-all)
+#   /  (other)     -> 302 redirect to /fleetplanner (legacy bridge UI removed)
 # voice.raumdock.org routet:
 #   /      -> http://127.0.0.1:7880  (livekit signaling)
 # Traefik bekommt das Cert via Cloudflare-DNS-01 (siehe /etc/traefik/...).
@@ -31,7 +31,6 @@ services:
       - caddy_rdoc_config:/config
       - ./downloads:/srv/downloads:ro
     depends_on:
-      - bridge
       - fleetplanner
       - grafana
       - livekit
@@ -67,51 +66,6 @@ services:
       # container ever starts — no envsubst step, no template that
       # `git pull` can overwrite, no secret in committed YAML.
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
-
-  bridge:
-    build:
-      context: .
-      dockerfile: apps/bridge/Dockerfile
-    image: rdoc-suite-bridge:latest
-    container_name: rdoc-suite-bridge
-    restart: unless-stopped
-    env_file: .env
-    environment:
-      BRIDGE_HOST: "0.0.0.0"
-      BRIDGE_PORT: "8787"
-    # An Loopback binden, damit Traefik via http://127.0.0.1:8787 ranreicht
-    # und der Port von extern (durch die LXC-Host-Firewall) nicht offen ist.
-    ports:
-      - "127.0.0.1:8787:8787"
-    volumes:
-      # SQLite file lives outside the image so data survives rebuilds.
-      # IMPORTANT: mount under /app/data, NOT /app/prisma. Mounting on
-      # /app/prisma would shadow the image's prisma/schema.prisma and
-      # prisma/migrations/ with whatever the volume happens to contain,
-      # which is how a prior parallel deployment (better-architecture
-      # branch) silently took over our schema. DATABASE_URL in .env must
-      # point to /app/data/prod.db (the volume) — not /app/prisma/prod.db.
-      # For Postgres, drop this mount and point DATABASE_URL at the DB.
-      - bridge_data:/app/data
-    depends_on:
-      - livekit
-
-  bot:
-    build:
-      context: .
-      dockerfile: apps/bot/Dockerfile
-    image: rdoc-suite-bot:latest
-    container_name: rdoc-suite-bot
-    restart: unless-stopped
-    env_file: .env
-    # Shares the bridge's SQLite DB at /app/data/prod.db. The bridge
-    # container owns migrations (entrypoint runs `prisma migrate deploy`);
-    # the bot only opens the generated client. depends_on ensures the
-    # bridge starts first so the schema is in place before the bot connects.
-    volumes:
-      - bridge_data:/app/data
-    depends_on:
-      - bridge
 
   fleetplanner-db:
     image: postgres:16-alpine
@@ -206,39 +160,6 @@ services:
     volumes:
       - mission_cover_data:/app/data
 
-  relay-bots:
-    build:
-      context: apps/relay-bots
-      dockerfile: Dockerfile
-    image: rdoc-suite-relay-bots:latest
-    container_name: rdoc-suite-relay-bots
-    restart: unless-stopped
-    environment:
-      CONFIG_PATH: "/app/data/config.json"
-      # Bind 0.0.0.0 inside the container so Prometheus can scrape /metrics
-      # over the docker network; the host port below is published to
-      # 127.0.0.1 only. ADMIN_PASSWORD is required now — the admin server
-      # fails closed (refuses to start) on a non-loopback bind without it.
-      # It MUST equal RELAY_BOTS_ADMIN_SECRET — that is the shared secret the
-      # bridge and fleetplanner send (Basic admin:<secret>) when pushing config
-      # / reloading. A separate value here causes 401 "Relay bots sync failed".
-      ADMIN_HOST: "0.0.0.0"
-      ADMIN_PORT: "8788"
-      ADMIN_PASSWORD: "${RELAY_BOTS_ADMIN_SECRET:?set RELAY_BOTS_ADMIN_SECRET in .env}"
-    # Mount a config.json you create on the host — see apps/relay-bots/config.example.json.
-    # Minimal bridge-backed config:
-    #   { "bridge": { "url": "http://bridge:8787", "serviceSecret": "<RELAY_BOTS_SECRET>" },
-    #     "livekit": { "url": "wss://voice.raumdock.org", "apiKey": "x", "apiSecret": "x", "relayRoomName": "voice-relay" },
-    #     "discord": { "guildId": "0", "bots": [] } }
-    # (livekit/discord placeholders are overwritten by the bridge service-config endpoint)
-    volumes:
-      - ./data/relay-bots:/app/data
-    ports:
-      # Admin API (metrics/reload) — localhost only, scraped by Prometheus.
-      - "127.0.0.1:8788:8788"
-    depends_on:
-      - bridge
-
   monitoring:
     build:
       context: .
@@ -256,9 +177,7 @@ services:
     volumes:
       - monitoring_data:/prometheus
     depends_on:
-      - bridge
       - livekit
-      - relay-bots
       - alertmanager
       - node-exporter
       - postgres-exporter
@@ -325,7 +244,6 @@ services:
       - monitoring
 
 volumes:
-  bridge_data:
   caddy_rdoc_config:
   caddy_rdoc_data:
   fleetplanner_pgdata:

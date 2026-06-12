@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed - Voice/CC legacy stack: apps/bridge, apps/bot, apps/relay-bots (2026-06-12)
+
+- Removed the legacy voice subsystem ahead of a from-scratch redesign: `apps/bridge` (LiveKit
+  token + bridge admin API + sessions), `apps/relay-bots` (Discord↔LiveKit audio relay) and
+  `apps/bot` (Discord `/cc` slash bot; it shared the bridge's SQLite DB and had no own migration
+  owner, so it goes with the bridge). The concept + implementation inventory is archived in
+  [`docs/VOICE-ARCHIVE-2026-06.md`](docs/VOICE-ARCHIVE-2026-06.md) for the redesign.
+- Removed the fleetplanner-side bridge admin UI: `routes/bridgeAdmin.ts`, `services/bridge.ts`,
+  `services/bridgeVoiceOrder.ts`, the ~10 `bridge*Page` builders, the `badm.*` i18n keys, the
+  `BRIDGE_INTERNAL_URL`/`BRIDGE_FLEET_SECRET` env, and the app registration.
+- Infra: dropped the `bridge`/`bot`/`relay-bots` services + `bridge_data` volume +
+  their `depends_on` refs from `docker-compose.prod.yml`; removed the bridge/relay Prometheus
+  scrape jobs; pointed the Caddy catch-all at `/fleetplanner` (the bridge web UI it used to
+  serve is gone). LiveKit, `apps/companion`, `apps/mission-cover`, `apps/monitoring` and the
+  `GuildVoiceBot` table are untouched.
+
 ### Added - FR-P2: SPA superadmin instance settings (2026-06-12)
 
 - New superadmin API: `GET /api/v1/admin/settings` (maintenance + feedback channel state),

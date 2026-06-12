@@ -55,11 +55,10 @@ suite.raumdock.org:9443 {
 	}
 
 	# Prometheus scrape endpoints must never be reachable from the public
-	# internet. The bridge serves /metrics on the same Fastify app that this
-	# catch-all proxies, and the fleetplanner serves it under /fleetplanner/metrics
-	# (handle_path strips the prefix to /metrics). Block both here. Prometheus
-	# scrapes bridge:8787 and fleetplanner:3200 over the internal docker network,
-	# so this does not affect monitoring.
+	# internet. The fleetplanner serves /metrics under /fleetplanner/metrics
+	# (handle_path strips the prefix to /metrics). Prometheus scrapes
+	# fleetplanner:3200 over the internal docker network, so this does not
+	# affect monitoring.
 	handle /metrics* {
 		respond 404
 	}
@@ -68,12 +67,9 @@ suite.raumdock.org:9443 {
 		respond 404
 	}
 
-	reverse_proxy 127.0.0.1:8787 {
-		@upstream_5xx status 5xx
-		handle_response @upstream_5xx {
-			error "upstream error" {http.reverse_proxy.status_code}
-		}
-	}
+	# Catch-all: the legacy bridge web UI was removed (voice redesign). Any
+	# unmatched path now goes to the Fleetplanner, the public entry point.
+	redir * /fleetplanner 302
 
 	handle_errors {
 		@server_error expression `{err.status_code} >= 500`

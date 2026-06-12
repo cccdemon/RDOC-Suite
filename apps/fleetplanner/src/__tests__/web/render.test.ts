@@ -1,8 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
-
-vi.mock("../../services/bridge.js", () => ({
-  bridgeConfigured: vi.fn(() => false),
-}));
+import { describe, expect, it } from "vitest";
 
 import { escape, html, rawHtml, renderMarkdown, safe } from "../../web/render.js";
 
