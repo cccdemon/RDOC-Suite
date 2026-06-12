@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetplanner Op-Management screen (2026-06-12)
+
+- New SPA route `/ops/:id/manage` (`OpManagePage`) implementing the design
+  handoff's "Op-Management" screen: header + tabbed console — Übersicht (KPI
+  stat-strip + STATUS control + Einsatzleitung), Operator-Board (OperatorPanel),
+  Bedarfe (NeedsEditor), Admin (template publish + recurring series). This is the
+  design-correct home for the editors removed from the edit screen. Op detail
+  exposes an operator-only "Management" link.
+
 ### Changed - Fleetplanner edit screen pixel-matched to the design handoff (2026-06-12)
 
 - Reworked the SPA `Operation bearbeiten` screen to match the claude.ai/design
