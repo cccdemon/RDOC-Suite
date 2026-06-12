@@ -25,6 +25,7 @@ const opRow = {
   meetingSystem: "Stanton",
   meetingLocation: "Everus",
   minParticipants: 5,
+  maxParticipants: 24,
   guild: { id: "g1", name: "RDOC", iconHash: null, timezone: "Europe/Berlin" },
   units: [
     {

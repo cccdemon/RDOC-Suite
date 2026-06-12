@@ -29,6 +29,7 @@ export const opSummaryFixture: OperationSummary = {
 export const opDetailFixture: OperationDetail = {
   ...opSummaryFixture,
   description: "Bring quant. Stay sharp.",
+  maxParticipants: null,
   guild: { id: "guild_1", name: "RDOC", iconHash: null, timezone: "Europe/Berlin" },
   leaders: [{ id: "user_lead", username: "Lead" }],
   units: [
