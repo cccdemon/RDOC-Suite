@@ -7,7 +7,7 @@ set -u
 
 BASE="${E2E_BASE_URL:-https://suite.raumdock.org}"
 API="$BASE/fleetplanner/api/v1"
-NEXT="$BASE/fleetplanner-next"
+NEXT="$BASE/fleetplanner"
 fail=0
 
 check() { # name, expected, actual
@@ -83,9 +83,9 @@ check "invalid op id 400" "400" "$badid_code"
 # ── SPA shadow path ───────────────────────────────────────────────────
 idx_code="$(curl -s -o /tmp/e2e_idx -w '%{http_code}' "$NEXT/")"
 check "spa index 200" "200" "$idx_code"
-contains "spa index asset base" "$(cat /tmp/e2e_idx)" "/fleetplanner-next/assets/"
+contains "spa index asset base" "$(cat /tmp/e2e_idx)" "/fleetplanner/assets/"
 
-asset="$(grep -o '/fleetplanner-next/assets/index-[^"]*\.js' /tmp/e2e_idx | head -1)"
+asset="$(grep -o '/fleetplanner/assets/index-[^"]*\.js' /tmp/e2e_idx | head -1)"
 if [ -n "$asset" ]; then
   asset_code="$(curl -s -o /tmp/e2e_js -w '%{http_code}' "$BASE$asset")"
   check "spa js bundle 200" "200" "$asset_code"
@@ -103,8 +103,12 @@ m2="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/fleetplanner/metrics")"
 check "/metrics blocked" "404" "$m1"
 check "/fleetplanner/metrics blocked" "404" "$m2"
 
-ssr_code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/fleetplanner/")"
-check "ssr still serves" "200" "$ssr_code"
+# cutover: the web nginx proxies remaining SSR-only pages to the backend
+ssr_code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/fleetplanner/how-to")"
+check "ssr fallback (how-to) serves via proxy" "200" "$ssr_code"
+# old shadow path 301-redirects to the canonical /fleetplanner
+next_code="$(curl -s -o /dev/null -w '%{http_code}' "$BASE/fleetplanner-next/")"
+check "/fleetplanner-next redirects (301)" "301" "$next_code"
 
 echo
 if [ "$fail" = "0" ]; then echo "ALL CHECKS PASSED"; else echo "FAILURES PRESENT"; exit 1; fi
