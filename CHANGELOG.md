@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA guild/server settings (2026-06-12)
+
+- New `GET /api/v1/guilds/:id/settings` (fleet operator of that guild / superadmin) returning
+  the non-voice guild settings (org name, timezone, Discord invite, admiral role, owner,
+  canRemove) plus the member list (userId, username, role, isOwner).
+- New `PATCH /api/v1/guilds/:id/settings` with the same field validation as the SSR form
+  (orgName ≤80, snowflake admiral role, discord-invite-only URL, IANA timezone) and
+  `PUT /api/v1/guilds/:id/members/:userId/role` to set fleetoperator/crew — the guild owner is
+  protected and stays a fleet operator (409 on demote). CSRF-gated, rate-limited. Contracts
+  (GuildSettings / GuildSettingsMember / GuildSettingsResponse / UpdateGuildSettingsRequest /
+  SetMemberRoleRequest) + OpenAPI + inject tests.
+- SPA `/guilds/settings` page (admiral console): guild picker, settings form and member list
+  with a role toggle; the nav "Server" link now points at the SPA route. Removing a server
+  (owner/superadmin, destructive) stays on the SSR surface for now.
+
 ### Added - FR-P2: SPA roadmap (2026-06-12)
 
 - New public `GET /api/v1/roadmap` serving the curated player-facing roadmap; RoadmapItem /

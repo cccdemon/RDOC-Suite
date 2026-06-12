@@ -45,6 +45,12 @@ check "guilds anon 401" "401" "$guilds_code"
 contains "guilds 401 envelope" "$(cat /tmp/e2e_guilds)" '"code":"unauthenticated"'
 not_contains "guilds 401 not html" "$(cat /tmp/e2e_guilds)" "<html"
 
+gset_code="$(curl -s -o /tmp/e2e_gset -w '%{http_code}' "$API/guilds/123456789012345678/settings")"
+check "guild settings anon 401" "401" "$gset_code"
+contains "guild settings 401 envelope" "$(cat /tmp/e2e_gset)" '"code":"unauthenticated"'
+gset_bad="$(curl -s -o /dev/null -w '%{http_code}' "$API/guilds/not-a-snowflake/settings")"
+check "guild settings bad id 400" "400" "$gset_bad"
+
 ops="$(curl -fsS "$API/operations")"
 contains "operations json" "$ops" '"operations":'
 not_contains "operations not html" "$ops" "<html"

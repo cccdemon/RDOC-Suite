@@ -41,7 +41,7 @@ async function get<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
-async function mutate<T>(method: "POST" | "PUT" | "DELETE", path: string, csrfToken: string, body?: unknown): Promise<T> {
+async function mutate<T>(method: "POST" | "PUT" | "PATCH" | "DELETE", path: string, csrfToken: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     credentials: "same-origin",
@@ -168,6 +168,27 @@ export function registerUnit(
   },
 ): Promise<{ ok: true; unitId: string }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/units`, csrfToken, input);
+}
+
+export function getGuildSettings(guildId: string): Promise<import("./types").GuildSettingsResponse> {
+  return get<import("./types").GuildSettingsResponse>(`/guilds/${encodeURIComponent(guildId)}/settings`);
+}
+
+export function updateGuildSettings(
+  guildId: string,
+  csrfToken: string,
+  input: { orgName?: string | null; timezone?: string; discordInviteUrl?: string | null; admiralRoleId?: string | null },
+): Promise<{ ok: true }> {
+  return mutate("PATCH", `/guilds/${encodeURIComponent(guildId)}/settings`, csrfToken, input);
+}
+
+export function setMemberRole(
+  guildId: string,
+  userId: string,
+  role: "fleetoperator" | "crew",
+  csrfToken: string,
+): Promise<{ ok: true }> {
+  return mutate("PUT", `/guilds/${encodeURIComponent(guildId)}/members/${encodeURIComponent(userId)}/role`, csrfToken, { role });
 }
 
 export function listOperations(includePast = false): Promise<{ operations: OperationSummary[] }> {

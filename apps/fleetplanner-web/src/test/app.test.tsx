@@ -677,3 +677,69 @@ describe("Login page", () => {
     expect(link).toHaveAttribute("href", "/fleetplanner/auth/discord/start");
   });
 });
+
+describe("Guild settings", () => {
+  const sessionFO = {
+    user: { id: "user_admiral", username: "Admiral", role: "fleetoperator", locale: "de" },
+    memberships: [{ guildId: "123456789012345678", guildName: "RDOC", role: "fleetoperator" }],
+    csrfToken: "csrf-test-token",
+  };
+  const settingsBody = {
+    guild: {
+      id: "123456789012345678",
+      name: "RDOC",
+      orgName: "Raumdock Fleet",
+      timezone: "Europe/Berlin",
+      discordInviteUrl: null,
+      admiralRoleId: null,
+      ownerUserId: "user_admiral",
+      canRemove: true,
+    },
+    members: [
+      { userId: "user_admiral", username: "Admiral", role: "fleetoperator", isOwner: true },
+      { userId: "user_crew", username: "Crew One", role: "crew", isOwner: false },
+    ],
+  };
+
+  it("operator: edits org name and saves (PATCH)", async () => {
+    let patched: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionFO)),
+      http.get(`${API}/guilds/123456789012345678/settings`, () => HttpResponse.json(settingsBody)),
+      http.patch(`${API}/guilds/123456789012345678/settings`, async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/guilds/settings");
+    const org = (await findByTestId("guild-orgname")) as HTMLInputElement;
+    expect(org.value).toBe("Raumdock Fleet");
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(org, "New Org");
+    org.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("guild-save")).click();
+    expect(await findByTestId("guild-notice")).toHaveTextContent("Gespeichert");
+    expect(patched).toMatchObject({ orgName: "New Org", timezone: "Europe/Berlin" });
+  });
+
+  it("operator: promotes a crew member (PUT role)", async () => {
+    let roleBody: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionFO)),
+      http.get(`${API}/guilds/123456789012345678/settings`, () => HttpResponse.json(settingsBody)),
+      http.put(`${API}/guilds/123456789012345678/members/user_crew/role`, async ({ request }) => {
+        roleBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/guilds/settings");
+    (await findByTestId("member-toggle-user_crew")).click();
+    await screen.findByTestId("member-row-user_admiral");
+    expect(roleBody).toMatchObject({ role: "fleetoperator" });
+  });
+
+  it("crew member without operator role sees a no-rights state", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)));
+    const { findByTestId } = renderAt("/guilds/settings");
+    expect(await findByTestId("guild-none")).toBeInTheDocument();
+  });
+});

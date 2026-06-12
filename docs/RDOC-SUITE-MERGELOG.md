@@ -1,5 +1,36 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Guild-/Server-Einstellungen (Nischen-Surface) — Branch master
+
+Nächste SSR-Nischen-Surface ins SPA: `/guilds/settings` (Admiral-Konsole) als JSON-API + React-Seite.
+Voice-Felder durch Voice-Removal entfernt → reine nicht-Voice-Settings, nichts exklusives.
+- BE `GET /api/v1/guilds/:id/settings` (fleetoperator dieser Guild / superadmin): liefert
+  Guild-Settings (orgName, admiralRoleId, discordInviteUrl, timezone, name, ownerUserId,
+  canRemove) + Mitgliederliste (userId, username, role, isOwner).
+- BE `PATCH /api/v1/guilds/:id/settings`: orgName(≤80), admiralRoleId(Snowflake|null),
+  discordInviteUrl(discord-invite-regex|null), timezone(isValidTimezone→DEFAULT). Gleiche
+  Validierung wie SSR `POST /guilds/settings`. CSRF-Header + mutation-rate-limit.
+- BE `PUT /api/v1/guilds/:id/members/:userId/role`: role ∈ {fleetoperator, crew}. Owner darf
+  nicht unter fleetoperator. Spiegelt SSR `POST /guilds/members/:userId/role`.
+- Contracts: GuildSettings, GuildSettingsMember, GuildSettingsResponse, UpdateGuildSettingsRequest,
+  SetMemberRoleRequest im Package; OpenAPI; inject-Tests (read+gate, patch validation, role 400).
+- FE GuildSettingsPage `/guilds/settings`: Org-Name/Zeitzone/Invite/Admiral-Rolle-Form +
+  Mitgliederliste mit Rollen-Toggle. Nav „Server" → SPA-Route (SSR-Link ersetzt).
+- Remove-Guild (owner/superadmin, destruktiv) bleibt vorerst SSR (Link raus).
+- Gate: BE+FE grün, Deploy, E2E (read 200 als operator, 403 als crew, 401 anon).
+
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E):** Contracts (GuildSettings/GuildSettingsMember/
+  GuildSettingsResponse/UpdateGuildSettingsRequest/SetMemberRoleRequest + GuildId/GuildMember
+  Param). Service `getGuildSettingsData`/`updateGuildSettings`/`setMembershipRole` (Owner-Schutz).
+  Routes: `GET /api/v1/guilds/:id/settings` (cookie-only Read, kein CSRF — wie /operator),
+  `PATCH …/settings` + `PUT …/members/:userId/role` (CSRF + rate-limit). OpenAPI 3 Pfade +
+  inject-Tests (anon 401, bad id 400, bad body/role 400, doc). Presenter
+  `presentGuildSettings`/`presentGuildSettingsMember`. FE: client `getGuildSettings`/
+  `updateGuildSettings`/`setMemberRole` (mutate +PATCH), types re-export, GuildSettingsPage
+  `/guilds/settings` (Server-Picker, Settings-Form, Member-Rollen-Toggle), Nav „Server" → SPA,
+  App-Route. MSW-Test (PATCH save, PUT promote, crew→no-rights). E2E-readonly: 2 neue Checks.
+  CHANGELOG. Lokale Builds/Tests bewusst NICHT gelaufen (Docker-Projekt-Regel) — grün auf Server.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Roadmap (read-only) — Branch master
 
 Kleiner Win. FE + 1 public read-Endpoint:

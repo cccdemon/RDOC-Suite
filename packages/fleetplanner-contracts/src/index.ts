@@ -412,6 +412,63 @@ export const AnswerQuestionRequestSchema = z
   .object({ answer: z.string().min(1).max(1000) })
   .meta({ id: "AnswerQuestionRequest" });
 
+// ── Guild settings (admiral console) ────────────────────────────────────
+
+export const GuildSettingsMemberSchema = z
+  .object({
+    userId: z.string(),
+    username: z.string(),
+    role: z.enum(["fleetoperator", "crew"]),
+    isOwner: z.boolean(),
+  })
+  .meta({ id: "GuildSettingsMember" });
+export type GuildSettingsMember = z.infer<typeof GuildSettingsMemberSchema>;
+
+export const GuildSettingsSchema = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    orgName: z.string().nullable(),
+    timezone: z.string(),
+    discordInviteUrl: z.string().nullable(),
+    admiralRoleId: z.string().nullable(),
+    ownerUserId: z.string().nullable(),
+    canRemove: z.boolean(),
+  })
+  .meta({ id: "GuildSettings" });
+export type GuildSettings = z.infer<typeof GuildSettingsSchema>;
+
+export const GuildSettingsResponseSchema = z
+  .object({
+    guild: GuildSettingsSchema,
+    members: z.array(GuildSettingsMemberSchema),
+  })
+  .meta({ id: "GuildSettingsResponse" });
+export type GuildSettingsResponse = z.infer<typeof GuildSettingsResponseSchema>;
+
+/** PATCH body — all fields optional; omitted fields are left unchanged. An
+ *  explicit null clears orgName/discordInviteUrl/admiralRoleId. */
+export const UpdateGuildSettingsRequestSchema = z
+  .object({
+    orgName: z.string().max(80).nullable().optional(),
+    timezone: z.string().optional(),
+    discordInviteUrl: z.string().nullable().optional(),
+    admiralRoleId: z.string().nullable().optional(),
+  })
+  .meta({ id: "UpdateGuildSettingsRequest" });
+export type UpdateGuildSettingsRequest = z.infer<typeof UpdateGuildSettingsRequestSchema>;
+
+export const SetMemberRoleRequestSchema = z
+  .object({ role: z.enum(["fleetoperator", "crew"]) })
+  .meta({ id: "SetMemberRoleRequest" });
+export type SetMemberRoleRequest = z.infer<typeof SetMemberRoleRequestSchema>;
+
+export const GuildIdParamSchema = z.object({ id: z.string().regex(/^\d{16,25}$/) });
+export const GuildMemberParamSchema = z.object({
+  id: z.string().regex(/^\d{16,25}$/),
+  userId: cuid,
+});
+
 // ── OpenAPI helper ────────────────────────────────────────────────────
 // Kept here so all zod usage (incl. JSON-Schema emission) stays in this
 // package and the backend never needs to pin a second zod version.

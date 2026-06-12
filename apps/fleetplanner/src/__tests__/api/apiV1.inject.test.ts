@@ -320,6 +320,74 @@ describe("operator API — gates", () => {
   });
 });
 
+describe("guild settings — gates + validation", () => {
+  const gid = "123456789012345678"; // valid Discord snowflake
+  const uid = "cmqffffffffffffffffff6";
+
+  it("GET settings anonymous → 401 envelope", async () => {
+    const res = await app.inject({ method: "GET", url: `/api/v1/guilds/${gid}/settings` });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("GET settings invalid guild id → 400 before auth/DB", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/guilds/not-a-snowflake/settings" });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("PATCH settings anonymous → 401 envelope", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/guilds/${gid}/settings`,
+      headers: { "content-type": "application/json", "x-forwarded-for": "10.11.11.1" },
+      payload: JSON.stringify({ orgName: "Test Org" }),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("PATCH settings invalid body → 400 before auth", async () => {
+    const res = await app.inject({
+      method: "PATCH",
+      url: `/api/v1/guilds/${gid}/settings`,
+      headers: { "content-type": "application/json", "x-forwarded-for": "10.11.11.2" },
+      payload: JSON.stringify({ orgName: 123 }),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("PUT member role anonymous → 401 envelope", async () => {
+    const res = await app.inject({
+      method: "PUT",
+      url: `/api/v1/guilds/${gid}/members/${uid}/role`,
+      headers: { "content-type": "application/json", "x-forwarded-for": "10.11.11.3" },
+      payload: JSON.stringify({ role: "crew" }),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("PUT member role invalid role → 400 before auth", async () => {
+    const res = await app.inject({
+      method: "PUT",
+      url: `/api/v1/guilds/${gid}/members/${uid}/role`,
+      headers: { "content-type": "application/json", "x-forwarded-for": "10.11.11.4" },
+      payload: JSON.stringify({ role: "superadmin" }),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("openapi documents the guild settings routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/guilds/{id}/settings"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/settings"].patch).toBeTruthy();
+    expect(doc.paths["/api/v1/guilds/{id}/members/{userId}/role"].put).toBeTruthy();
+  });
+});
+
 describe("rate limiting", () => {
   it("blocks a mutation key after the budget with a 429 envelope + retry-after", async () => {
     // Invalid op id → the handler answers 400 BEFORE any auth/DB work, so the

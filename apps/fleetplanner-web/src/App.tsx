@@ -11,6 +11,7 @@ import { ShipsPage } from "./pages/ShipsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
+import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
@@ -98,7 +99,7 @@ export function App() {
         </Link>
         <Link to="/calendar" style={navIdle}>Kalender</Link>
         <Link to="/ships" style={navIdle}>Schiffe</Link>
-        <a href="/fleetplanner/guilds" style={navIdle}>Server</a>
+        <Link to="/guilds/settings" style={navIdle}>Server</Link>
         <Link to="/feedback" style={navIdle}>Feedback</Link>
         <Link to="/roadmap" style={navIdle}>Roadmap</Link>
         <a href="/fleetplanner/how-to" style={navIdle}>Anleitung</a>
@@ -186,6 +187,7 @@ export function App() {
           <Route path="/templates" element={<TemplatesPage session={session} />} />
           <Route path="/feedback" element={<FeedbackPage session={session} />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
+          <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

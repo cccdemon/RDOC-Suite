@@ -9,7 +9,15 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { prisma } from "../db.js";
 import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
-import { effectiveOpRole, getMembership, listUserGuilds } from "../services/guilds.js";
+import {
+  effectiveOpRole,
+  getGuildSettingsData,
+  getMembership,
+  listUserGuilds,
+  setMembershipRole,
+  updateGuildSettings,
+} from "../services/guilds.js";
+import { isValidTimezone, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { createOperation } from "../services/operations.js";
 import { applyTemplate, listTemplatesForGuild } from "../services/operationTemplates.js";
 import { sendDiscordChannelMessage } from "../services/discord.js";
@@ -40,10 +48,14 @@ import {
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
   FeedbackRequestSchema,
+  GuildIdParamSchema,
+  GuildMemberParamSchema,
   HangarShareRequestSchema,
   HangarShipParamSchema,
   HangarShipRequestSchema,
   IdParamSchema,
+  SetMemberRoleRequestSchema,
+  UpdateGuildSettingsRequestSchema,
   LeaderParamSchema,
   LinkParamSchema,
   OperationListQuerySchema,
@@ -60,6 +72,8 @@ import {
 } from "../api/contracts/index.js";
 import {
   presentGuild,
+  presentGuildSettings,
+  presentGuildSettingsMember,
   presentOperationDetail,
   presentOperationSummary,
   presentSession,
@@ -304,6 +318,106 @@ export async function apiV1Routes(app: FastifyInstance) {
     const memberships = await listUserGuilds(ctx.user.id);
     return reply.type("application/json").send({ guilds: memberships.map(presentGuild) });
   });
+
+  // Guild-scoped operator gate: member with fleetoperator role in THIS guild,
+  // or instance superadmin. Mirrors the SSR requireGuildRole("fleetoperator").
+  async function requireGuildOperator(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    guildId: string,
+  ): Promise<AuthContext | null> {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return null;
+    if (ctx.user.role !== "superadmin") {
+      const m = await getMembership(ctx.user.id, guildId);
+      if (m?.role !== "fleetoperator") {
+        await sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
+        return null;
+      }
+    }
+    return ctx;
+  }
+
+  // ── guild settings (admiral console) ─────────────────────────────────
+  // GET is a read → cookie session only (no CSRF header, mirrors /operator).
+  app.get<{ Params: { id: string } }>("/api/v1/guilds/:id/settings", async (req, reply) => {
+    const p = GuildIdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") {
+      const m = await getMembership(ctx.user.id, p.data.id);
+      if (m?.role !== "fleetoperator")
+        return sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
+    }
+    const data = await getGuildSettingsData(p.data.id);
+    if (!data) return sendError(reply, req, 404, "not_found", "Server not found.");
+    const canRemove = data.guild.ownerUserId === ctx.user.id || ctx.user.role === "superadmin";
+    return reply.type("application/json").send({
+      guild: presentGuildSettings({ ...data.guild, canRemove }),
+      members: data.members.map(presentGuildSettingsMember),
+    });
+  });
+
+  app.patch<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/guilds/:id/settings",
+    async (req, reply) => {
+      const p = GuildIdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+      const body = UpdateGuildSettingsRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireGuildOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const exists = await getMembership(ctx.user.id, p.data.id);
+      if (!exists && ctx.user.role !== "superadmin")
+        return sendError(reply, req, 404, "not_found", "Server not found.");
+
+      // Validate every field exactly like the SSR POST /guilds/settings handler.
+      const snowflake = (v: string | null): string | null =>
+        v && /^\d{16,25}$/.test(v.trim()) ? v.trim() : null;
+      const inviteUrl = (v: string | null): string | null => {
+        const t = (v ?? "").trim();
+        if (!t) return null;
+        return /^https:\/\/(discord\.gg|(www\.)?discord(app)?\.com\/invite)\/[A-Za-z0-9-]+$/.test(t)
+          ? t
+          : null;
+      };
+      const data: {
+        orgName?: string | null;
+        timezone?: string;
+        discordInviteUrl?: string | null;
+        admiralRoleId?: string | null;
+      } = {};
+      if (body.data.orgName !== undefined)
+        data.orgName = body.data.orgName ? body.data.orgName.trim().slice(0, 80) || null : null;
+      if (body.data.timezone !== undefined)
+        data.timezone = isValidTimezone(body.data.timezone) ? body.data.timezone : DEFAULT_TIMEZONE;
+      if (body.data.discordInviteUrl !== undefined)
+        data.discordInviteUrl = inviteUrl(body.data.discordInviteUrl);
+      if (body.data.admiralRoleId !== undefined)
+        data.admiralRoleId = snowflake(body.data.admiralRoleId);
+
+      await updateGuildSettings(p.data.id, data);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.put<{ Params: { id: string; userId: string }; Body: unknown }>(
+    "/api/v1/guilds/:id/members/:userId/role",
+    async (req, reply) => {
+      const p = GuildMemberParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = SetMemberRoleRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid role.");
+      const ctx = await requireGuildOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const res = await setMembershipRole(p.data.id, p.data.userId, body.data.role);
+      if (res.ownerProtected)
+        return sendError(reply, req, 409, "conflict", "The server owner stays a fleet operator.");
+      if (!res.ok) return sendError(reply, req, 404, "not_found", "Member not found.");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
 
   // ── create operation ────────────────────────────────────────────────
   // Fleet operators (or superadmins) create draft ops in a guild they manage.

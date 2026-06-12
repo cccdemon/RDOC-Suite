@@ -14,6 +14,9 @@ export type {
   OperatorView,
   TemplateSummary,
   RoadmapItem,
+  GuildSettings,
+  GuildSettingsMember,
+  GuildSettingsResponse,
 } from "@rdoc-suite/fleetplanner-contracts";
 
 // The error code union is referenced directly by the client; mirror it from

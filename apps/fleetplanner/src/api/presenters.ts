@@ -6,6 +6,8 @@
 // server-side).
 import type {
   FleetUnit,
+  GuildSettings,
+  GuildSettingsMember,
   GuildSummary,
   OperationDetail,
   OperationSummary,
@@ -187,6 +189,42 @@ export function presentGuild(m: {
     iconHash: m.guild.iconHash,
     timezone: m.guild.timezone,
     role: m.role,
+  };
+}
+
+export function presentGuildSettings(g: {
+  id: string;
+  name: string;
+  orgName: string | null;
+  timezone: string;
+  discordInviteUrl: string | null;
+  admiralRoleId: string | null;
+  ownerUserId: string | null;
+  canRemove: boolean;
+}): GuildSettings {
+  return {
+    id: g.id,
+    name: g.name,
+    orgName: g.orgName,
+    timezone: g.timezone,
+    discordInviteUrl: g.discordInviteUrl,
+    admiralRoleId: g.admiralRoleId,
+    ownerUserId: g.ownerUserId,
+    canRemove: g.canRemove,
+  };
+}
+
+export function presentGuildSettingsMember(m: {
+  userId: string;
+  username: string;
+  role: string;
+  isOwner: boolean;
+}): GuildSettingsMember {
+  return {
+    userId: m.userId,
+    username: m.username,
+    role: m.role === "fleetoperator" ? "fleetoperator" : "crew",
+    isOwner: m.isOwner,
   };
 }
 

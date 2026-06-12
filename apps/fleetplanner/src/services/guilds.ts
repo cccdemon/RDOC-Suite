@@ -196,6 +196,85 @@ export async function listUserGuilds(userId: string) {
   });
 }
 
+/** Non-voice guild settings + member list for the admiral console (API v1). */
+export async function getGuildSettingsData(guildId: string): Promise<{
+  guild: {
+    id: string;
+    name: string;
+    orgName: string | null;
+    ownerUserId: string | null;
+    admiralRoleId: string | null;
+    discordInviteUrl: string | null;
+    timezone: string;
+  };
+  members: Array<{ userId: string; username: string; role: string; isOwner: boolean }>;
+} | null> {
+  const [guild, memberships] = await Promise.all([
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (prisma.guild.findUnique as any)({
+      where: { id: guildId },
+      select: {
+        id: true, name: true, orgName: true, ownerUserId: true,
+        admiralRoleId: true, discordInviteUrl: true, timezone: true,
+      },
+    }) as Promise<{
+      id: string; name: string; orgName: string | null; ownerUserId: string | null;
+      admiralRoleId: string | null; discordInviteUrl: string | null; timezone: string;
+    } | null>,
+    prisma.guildMembership.findMany({
+      where: { guildId },
+      include: { user: { select: { id: true, username: true } } },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+  if (!guild) return null;
+  return {
+    guild,
+    members: memberships.map((m) => ({
+      userId: m.userId,
+      username: m.user.username,
+      role: m.role,
+      isOwner: m.userId === guild.ownerUserId,
+    })),
+  };
+}
+
+/** Persist validated non-voice guild settings. Caller pre-validates each field. */
+export async function updateGuildSettings(
+  guildId: string,
+  data: {
+    orgName?: string | null;
+    timezone?: string;
+    discordInviteUrl?: string | null;
+    admiralRoleId?: string | null;
+  },
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (prisma.guild.update as any)({ where: { id: guildId }, data });
+}
+
+/** Set a member's per-guild role. Never demotes the guild owner below
+ *  fleetoperator (owner stays admiral). Returns false if no such member. */
+export async function setMembershipRole(
+  guildId: string,
+  userId: string,
+  role: GuildRole,
+): Promise<{ ok: boolean; ownerProtected?: boolean }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const guild = (await (prisma.guild.findUnique as any)({
+    where: { id: guildId },
+    select: { ownerUserId: true },
+  })) as { ownerUserId: string | null } | null;
+  if (guild?.ownerUserId === userId && role !== "fleetoperator") {
+    return { ok: false, ownerProtected: true };
+  }
+  const res = await prisma.guildMembership.updateMany({
+    where: { guildId, userId },
+    data: { role },
+  });
+  return { ok: res.count > 0 };
+}
+
 export async function getMembership(userId: string, guildId: string) {
   return prisma.guildMembership.findUnique({
     where: { guildId_userId: { guildId, userId } },
