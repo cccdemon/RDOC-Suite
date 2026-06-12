@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner cover management moved to the SPA (2026-06-12)
+
+- `apps/fleetplanner` is now 100% API-only — it renders zero HTML. Deleted the
+  SSR cover management page (`web/coverPage.ts`) and the dead `errorPage` /
+  `loginRequiredPage` renderers (`web/pages.ts`). `routes/cover.ts` is reduced to
+  the single editor save callback `GET /ops/:id/cover/saved` (redirect-only, no
+  HTML — the external mission-cover editor lands the operator's browser here).
+- New `/api/v1` cover endpoints: `GET …/cover` (state), `POST …/cover/generate`,
+  `DELETE …/cover`, `POST …/cover/edit-link` (mints the editor token, returns the
+  URL). Access = fleetoperator OR op leader.
+- SPA: new `CoverPanel` mounted as a "Cover" tab on `OpManagePage`; the legacy
+  `/ops/:id/cover` URL redirects to that tab. nginx routes `/ops/:id/cover` to the
+  SPA and keeps only `/ops/:id/cover/saved` on the backend.
+
 ### Changed - Fleetplanner API docs moved to the SPA (2026-06-12)
 
 - Swagger UI no longer rendered by the backend. Deleted the `GET /api/v1/docs`

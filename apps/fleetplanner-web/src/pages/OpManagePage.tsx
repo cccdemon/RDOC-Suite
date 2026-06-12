@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { ApiError, createRecurrence, getOperation, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { NeedsEditor } from "../components/NeedsEditor";
 import { OperatorPanel } from "../components/OperatorPanel";
+import { CoverPanel } from "../components/CoverPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "../components/ui";
 
 const STATUSES: Array<[string, string]> = [
@@ -16,9 +17,22 @@ const TABS = [
   { key: "overview", label: "Übersicht", icon: "eye" },
   { key: "fleet", label: "Operator-Board", icon: "ship" },
   { key: "needs", label: "Bedarfe", icon: "board" },
+  { key: "cover", label: "Cover", icon: "image" },
   { key: "admin", label: "Admin", icon: "shield" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
+
+// Decode a "kind:text" flash param (+ for spaces) from the cover save redirect.
+function decodeFlash(raw: string | null): string | null {
+  if (!raw) return null;
+  const i = raw.indexOf(":");
+  const text = i >= 0 ? raw.slice(i + 1) : raw;
+  try {
+    return decodeURIComponent(text.replace(/\+/g, " "));
+  } catch {
+    return text;
+  }
+}
 
 function fmtWhen(iso: string, tz: string | null): string {
   try {
@@ -43,13 +57,17 @@ function StatTile({ label, value, sub, color, icon }: { label: string; value: nu
 
 export function OpManagePage({ session }: { session: SessionResponse | null }) {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const csrf = session?.csrfToken ?? null;
 
   const [op, setOp] = useState<OperationDetail | null>(null);
   const [loadError, setLoadError] = useState<ApiError | null>(null);
-  const [tab, setTab] = useState<TabKey>("overview");
+  const initialTab = searchParams.get("tab");
+  const [tab, setTab] = useState<TabKey>(
+    TABS.some((t) => t.key === initialTab) ? (initialTab as TabKey) : "overview",
+  );
   const [status, setStatusValue] = useState("draft");
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(() => decodeFlash(searchParams.get("flash")));
   const [busy, setBusy] = useState(false);
   const [tpl, setTpl] = useState({ name: "", summary: "", visibility: "guild" });
   const [recur, setRecur] = useState({ freq: "weekly", seriesCount: "", seriesEnd: "" });
@@ -174,6 +192,9 @@ export function OpManagePage({ session }: { session: SessionResponse | null }) {
 
       {/* TAB: Bedarfe */}
       {tab === "needs" && id && <NeedsEditor opId={id} csrf={csrf} />}
+
+      {/* TAB: Cover */}
+      {tab === "cover" && id && <CoverPanel opId={id} csrf={csrf} onNotice={setNotice} />}
 
       {/* TAB: Admin (template + recurrence) */}
       {tab === "admin" && (

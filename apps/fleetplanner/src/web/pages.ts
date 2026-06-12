@@ -1,4 +1,4 @@
-import { html, safe, rawHtml, layout, renderMarkdown, type SafeHtml, type LayoutOptions } from "./render.js";
+import { html, safe, rawHtml, renderMarkdown, type SafeHtml, type LayoutOptions } from "./render.js";
 import type { User, Operation, Ship, Location } from "@prisma/client";
 import type { DiscordInstallDiagnostics, BotDiagnostic } from "../services/discordDiagnostics.js";
 import {
@@ -214,58 +214,6 @@ function missionImageType(opType: string): string {
 
 function missionImageUrl(bp: string, opType: string): string {
   return `${bp}/assets/mission-images/${missionImageType(opType)}.png`;
-}
-
-export function errorPage(opts: {
-  basePath: string;
-  currentUser: LayoutOptions["currentUser"];
-  csrfToken?: string;
-  status: number;
-  message: string;
-}): SafeHtml {
-  const body = html` <div style="max-width:32rem;margin:4rem auto;text-align:center">
-    <div class="page-title" style="font-size:3rem;color:var(--red);margin-bottom:0.5rem">
-      ${opts.status}
-    </div>
-    <p class="text-dim">${opts.message}</p>
-    <a href="${opts.basePath}/" class="btn btn-sm mt-2" style="margin-top:1.5rem"
-      >← ${t("err.backToOps")}</a
-    >
-  </div>`;
-
-  return layout({
-    title: t("err.title", { status: opts.status }),
-    basePath: opts.basePath,
-    currentUser: opts.currentUser,
-    csrfToken: opts.csrfToken,
-    body,
-  });
-}
-
-/** Shown when a logged-out guest opens a non-public op link (e.g. the accepted-
- *  captain Discord link). A plain 404 looked like a broken URL (user feedback),
- *  so explain that login is required instead — without revealing op details. */
-export function loginRequiredPage(opts: {
-  basePath: string;
-  csrfToken?: string;
-}): SafeHtml {
-  const bp = opts.basePath;
-  const body = html` <div style="max-width:34rem;margin:4rem auto;text-align:center">
-    <div class="page-title" style="font-size:1.6rem;color:var(--cyan);margin-bottom:0.75rem">
-      ${t("loginReq.title")}
-    </div>
-    <p class="text-dim" style="line-height:1.7">
-      ${t("loginReq.body")}
-    </p>
-    <a href="${bp}/login" class="btn" style="margin-top:1.5rem">${t("nav.login")}</a>
-  </div>`;
-  return layout({
-    title: t("loginReq.title"),
-    basePath: bp,
-    currentUser: null,
-    csrfToken: opts.csrfToken,
-    body,
-  });
 }
 
 // ── Public info pages ────────────────────────────────────────────────

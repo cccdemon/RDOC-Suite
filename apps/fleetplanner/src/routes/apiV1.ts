@@ -42,7 +42,16 @@ import {
   setStatus,
   updateOperation,
 } from "../services/operations.js";
-import { createScheduledEvent, deleteScheduledEvent, updateScheduledEvent } from "../services/discord.js";
+import { createScheduledEvent, deleteScheduledEvent, updateScheduledEvent, updateScheduledEventImage } from "../services/discord.js";
+import {
+  requestCover,
+  deleteCover,
+  coverServiceConfigured,
+  type CoverData,
+  type CoverFormat,
+  type CoverPreset,
+} from "../services/coverService.js";
+import { signCoverToken } from "../services/coverToken.js";
 import {
   approveDistribution,
   declineDistribution,
@@ -966,6 +975,164 @@ export async function apiV1Routes(app: FastifyInstance) {
     }
     return reply.type("application/json").send({ ok: true as const });
   });
+
+  // ── operation cover (mission-cover microservice) ─────────────────────
+  // The backend renders no cover HTML. The SPA cover panel calls these JSON
+  // endpoints; the external editor round-trip lands on GET /ops/:id/cover/saved
+  // (redirect-only, routes/cover.ts). Access = fleetoperator OR op leader.
+  const COVER_FORMATS = ["16:9", "1:1", "9:16", "4:3"] as const;
+  const COVER_PRESETS = ["fleet-ops", "black-ops", "exploration", "outlaw"] as const;
+  const pickCoverFormat = (v: unknown): CoverFormat =>
+    (COVER_FORMATS as readonly string[]).includes(v as string) ? (v as CoverFormat) : "16:9";
+  const pickCoverPreset = (v: unknown): CoverPreset =>
+    (COVER_PRESETS as readonly string[]).includes(v as string) ? (v as CoverPreset) : "fleet-ops";
+
+  type CoverOp = NonNullable<Awaited<ReturnType<typeof getOperation>>>;
+
+  function opToCoverData(op: CoverOp): CoverData {
+    const env = getEnv();
+    const sys = op.meetingSystem ? `SYSTEM: ${op.meetingSystem.toUpperCase()}` : "";
+    const loc = op.meetingLocation ? (sys ? `${sys} // ${op.meetingLocation}` : op.meetingLocation) : sys;
+    const assets = (op.units ?? [])
+      .filter((u) => u.status !== "rejected")
+      .slice(0, 24)
+      .map((u) => ({ name: u.ship?.name ?? "Unit", role: u.captain?.username ?? undefined }));
+    const when = op.scheduledAt
+      ? `${new Date(op.scheduledAt).toISOString().slice(0, 16).replace("T", " ")} UTC`
+      : undefined;
+    return {
+      title: op.title,
+      objectiveText: op.description || undefined,
+      location: loc || undefined,
+      dateTime: when,
+      assets: assets.length ? assets : undefined,
+      briefingUrl: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}/ops/${op.id}`,
+    };
+  }
+
+  function syncCoverEventImage(guildId: string, discordEventId: string | null | undefined, url: string, req: FastifyRequest): void {
+    if (!discordEventId) return;
+    updateScheduledEventImage(guildId, discordEventId, url).catch((err) =>
+      req.log.warn(err, "discord event cover image update failed (non-fatal, v1)"),
+    );
+  }
+
+  function presentCover(c: { url: string; width: number; height: number; preset: string; format: string; updatedAt: Date } | null) {
+    return c
+      ? { url: c.url, width: c.width, height: c.height, preset: c.preset, format: c.format, updatedAt: c.updatedAt.toISOString() }
+      : null;
+  }
+
+  // Cover-manage gate: auth (+CSRF for writes), fleetoperator OR op leader.
+  async function requireCoverManager(
+    req: FastifyRequest,
+    reply: FastifyReply,
+    opId: string,
+    write: boolean,
+  ): Promise<{ ctx: AuthContext; op: CoverOp } | null> {
+    const ctx = write ? await requireSessionJson(req, reply) : await optionalAuth(req);
+    if (!ctx) {
+      if (!write) await sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+      return null;
+    }
+    const op = await getOperation(opId);
+    if (!op) {
+      await sendError(reply, req, 404, "not_found", "Operation not found.");
+      return null;
+    }
+    const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+    const canManage = role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id);
+    if (!canManage) {
+      await sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
+      return null;
+    }
+    return { ctx, op };
+  }
+
+  app.get<{ Params: { id: string } }>("/api/v1/operations/:id/cover", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const g = await requireCoverManager(req, reply, p.data.id, false);
+    if (!g) return;
+    const cover = await prisma.opCover.findUnique({ where: { opId: g.op.id } });
+    return reply.type("application/json").send({
+      serviceConfigured: coverServiceConfigured(),
+      cover: presentCover(cover),
+    });
+  });
+
+  app.post<{ Params: { id: string }; Body: { format?: string; preset?: string } }>(
+    "/api/v1/operations/:id/cover/generate",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const g = await requireCoverManager(req, reply, p.data.id, true);
+      if (!g) return;
+      if (!coverServiceConfigured()) return sendError(reply, req, 503, "unavailable", "Cover service not configured.");
+      const format = pickCoverFormat(req.body?.format);
+      const preset = pickCoverPreset(req.body?.preset);
+      try {
+        const res = await requestCover({ opId: g.op.id, format, preset, data: opToCoverData(g.op) });
+        const url = res.urls.png;
+        await prisma.opCover.upsert({
+          where: { opId: g.op.id },
+          create: { opId: g.op.id, coverId: res.id, url, width: res.width, height: res.height, preset: res.preset, format: res.format },
+          update: { coverId: res.id, url, width: res.width, height: res.height, preset: res.preset, format: res.format },
+        });
+        syncCoverEventImage(g.op.guildId, g.op.discordEventId, url, req);
+        const cover = await prisma.opCover.findUnique({ where: { opId: g.op.id } });
+        return reply.type("application/json").send({ ok: true as const, cover: presentCover(cover) });
+      } catch (err) {
+        req.log.error(err, "cover generate failed (v1)");
+        return sendError(reply, req, 502, "upstream_error", "Cover render failed.");
+      }
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>("/api/v1/operations/:id/cover", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const g = await requireCoverManager(req, reply, p.data.id, true);
+    if (!g) return;
+    const existing = await prisma.opCover.findUnique({ where: { opId: g.op.id } });
+    if (existing) {
+      await deleteCover(existing.coverId).catch((err) => req.log.warn(err, "mission-cover delete failed (non-fatal, v1)"));
+      await prisma.opCover.delete({ where: { opId: g.op.id } });
+    }
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  // Mint a capability token + return the external editor URL; the SPA navigates
+  // there. The editor redirects back to GET /ops/:id/cover/saved on save.
+  app.post<{ Params: { id: string }; Body: { format?: string; preset?: string } }>(
+    "/api/v1/operations/:id/cover/edit-link",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const g = await requireCoverManager(req, reply, p.data.id, true);
+      if (!g) return;
+      const env = getEnv();
+      const secret = env.MISSIONCOVER_SERVICE_SECRET;
+      if (!secret) return sendError(reply, req, 503, "unavailable", "Cover service not configured.");
+      const baseUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+      const existing = await prisma.opCover.findUnique({ where: { opId: g.op.id } });
+      const token = signCoverToken(
+        {
+          opId: g.op.id,
+          returnUrl: `${baseUrl}/ops/${g.op.id}/cover/saved`,
+          cancelUrl: `${baseUrl}/ops/${g.op.id}/manage`,
+          format: pickCoverFormat(req.body?.format),
+          preset: pickCoverPreset(req.body?.preset),
+          data: opToCoverData(g.op),
+          ...(existing ? { coverId: existing.coverId } : {}),
+        },
+        secret,
+        1800,
+      );
+      const editorBase = env.MISSIONCOVER_PUBLIC_URL.replace(/\/$/, "");
+      return reply.type("application/json").send({ editorUrl: `${editorBase}/edit?token=${encodeURIComponent(token)}` });
+    },
+  );
 
   // ── operation editor: Bedarfe / needs ────────────────────────────────
   // SSR twins: api.ts /api/ops/:id/needs/{ships,fighters,cqb} + needs/:reqId/{rename,delete}.

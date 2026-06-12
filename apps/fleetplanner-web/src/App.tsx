@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, Route, Routes } from "react-router-dom";
+import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
 import { getSession } from "./api/client";
 import type { SessionResponse } from "./api/types";
 import { OverviewPage } from "./pages/OverviewPage";
@@ -26,6 +26,12 @@ import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
 
 const MONO = "var(--mono)";
+
+// Legacy cover URL → the cover tab in Op-Management (the SSR cover page is gone).
+function CoverRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/ops/${id}/manage?tab=cover`} replace />;
+}
 
 // Green-phosphor CRT preview filter — same transform as the design bundle.
 const CRT_FILTER = "grayscale(1) sepia(1) hue-rotate(62deg) saturate(2.8) brightness(1.06) contrast(1.05)";
@@ -205,6 +211,7 @@ export function App() {
           <Route path="/admin" element={<AdminPage session={session} />} />
           <Route path="/ops/:id/edit" element={<EditOpPage session={session} />} />
           <Route path="/ops/:id/manage" element={<OpManagePage session={session} />} />
+          <Route path="/ops/:id/cover" element={<CoverRedirect />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/impressum" element={<DocPage slug="impressum" />} />

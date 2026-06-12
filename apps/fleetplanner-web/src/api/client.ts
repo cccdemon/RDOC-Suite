@@ -91,6 +91,32 @@ export function getContent(slug: string, lang?: "de" | "en"): Promise<{ title: s
   return get<{ title: string; html: string }>(`/content/${encodeURIComponent(slug)}${lang ? `?lang=${lang}` : ""}`);
 }
 
+export type OpCover = {
+  url: string;
+  width: number;
+  height: number;
+  preset: string;
+  format: string;
+  updatedAt: string;
+};
+export type OpCoverState = { serviceConfigured: boolean; cover: OpCover | null };
+
+export function getOpCover(opId: string): Promise<OpCoverState> {
+  return get<OpCoverState>(`/operations/${encodeURIComponent(opId)}/cover`);
+}
+
+export function generateOpCover(opId: string, csrfToken: string, opts: { format: string; preset: string }): Promise<{ ok: true; cover: OpCover | null }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cover/generate`, csrfToken, opts);
+}
+
+export function deleteOpCover(opId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/cover`, csrfToken);
+}
+
+export function coverEditLink(opId: string, csrfToken: string, opts: { format: string; preset: string }): Promise<{ editorUrl: string }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cover/edit-link`, csrfToken, opts);
+}
+
 export function getAccount(): Promise<import("./types").AccountResponse> {
   return get<import("./types").AccountResponse>("/account");
 }

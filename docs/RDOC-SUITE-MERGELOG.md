@@ -4227,3 +4227,25 @@ Stage 2 — move Swagger UI out of the backend:
 - Route `/api-docs` + nav link; `nginx.conf`: allowlist `/api-docs` → @spa, drop the
   `location = /api/v1/docs` unpkg CSP relaxation.
 - Backend keeps only `GET /api/v1/openapi.json` (spec as data).
+
+---
+
+## 2026-06-12 — fleetplanner API-only: cover management → SPA (stage 5, FINAL)
+
+Status: Done. apps/fleetplanner now renders ZERO HTML.
+
+- Deleted `web/coverPage.ts` (SSR cover editor) + dead `errorPage`/`loginRequiredPage`
+  from `web/pages.ts` (+ unused `layout` import). `web/pages.ts` keeps only the 6
+  info/legal `*Body` builders (consumed by `api/docContent.ts`) + shared helpers.
+- `routes/cover.ts` stripped to the single redirect-only callback
+  `GET /ops/:id/cover/saved` (verify result token → upsert OpCover → sync Discord
+  event image → 302 back to SPA `/ops/:id/manage?tab=cover&flash=…`). No HTML imports.
+- New `/api/v1/operations/:id/cover` endpoints in `routes/apiV1.ts`: GET state,
+  POST generate, DELETE, POST edit-link (mint token → {editorUrl}). Gate =
+  fleetoperator OR op leader (`requireCoverManager`).
+- SPA `components/CoverPanel.tsx` → "Cover" tab on `OpManagePage`; legacy
+  `/ops/:id/cover` redirects to the tab. `nginx.conf`: `/ops/:id/cover` → SPA,
+  only `/ops/:id/cover/saved` stays on the backend.
+
+This completes the API-only refactor. Remaining HTML-rendering routes in
+apps/fleetplanner: NONE.
