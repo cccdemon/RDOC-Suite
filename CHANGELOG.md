@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - E2E Playwright suite + env-gated test-login seam (2026-06-12)
+
+- New `e2e/` Playwright suite (24 tests) that drives the **real SPA against a live instance**
+  and exercises the full workflow end-to-end: operator creates an operation, edits meta, sets
+  status, defines needs (ship pick / fighter squads / CQB teams), publishes a template and
+  creates a recurring series; a captain offers a squad; a flex player signs up + toggles hangar
+  share; the operator accepts the unit, switches board layout, a player claims an open seat and
+  the operator frees it; plus the admin console (KPI strip, user search, role change, E2E-guild
+  ban/unban) and player surfaces (calendar toggles/filter, ships search, roadmap, profile hangar
+  add/remove + fleet import, feedback form).
+- New env-gated test-login seam `apps/fleetplanner/src/routes/e2eAuth.ts`
+  (`POST /e2e/login` + `/e2e/cleanup`): registered ONLY when `E2E_TEST_LOGIN_SECRET` (≥32 chars)
+  is set, constant-time secret compare, mints sessions for synthetic `e2e-*` users only (never
+  real users), all inside one synthetic E2E guild. The routes 404 when the secret is unset.
+- Safety: the suite never performs real-data destructive actions — no maintenance toggle, no
+  feedback-channel change, no catalog sync trigger, no real-guild ban; feedback is filled but not
+  submitted; ban/role tests act only on the E2E guild / `e2e-*` users; cleanup deletes only the
+  E2E guild's operations.
+
 ### Changed - Admin console redesign (dense dashboard, Claude Design handoff) (2026-06-12)
 
 - Reworked the SPA `/admin` page from stacked full-width sections into a dense full-width

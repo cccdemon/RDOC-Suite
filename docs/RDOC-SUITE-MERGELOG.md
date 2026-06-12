@@ -1,5 +1,30 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: E2E-Playwright-Suite + Test-Login-Seam — Branch master
+
+User: vollständige E2E gegen die API + Admin-Workflow (Klicks/Submits/Needs/Spieler-Assign/
+Testspieler-Login), **gegen Prod, keine destruktiven Aktionen außer Testdaten**.
+- BE Seam `routes/e2eAuth.ts` (env-gated `E2E_TEST_LOGIN_SECRET` ≥32; nur `e2e-*`-User; synthetische
+  E2E-Guild `100000000000000001`; constant-time secret; `/e2e/login` + `/e2e/cleanup`). Ohne Secret
+  → Routes 404 (in app.ts immer registriert, self-disable). inject-Test (Seam aus → 404).
+- `e2e/` Playwright-Package (standalone, npm; nicht im pnpm-workspace). 3 Specs / 24 Tests:
+  01 op-workflow (create→edit→status→needs→template→recurrence→squad-offer→flex-signup→accept→
+  layout→claim→unassign→picker-besteffort), 02 admin (render, search, e2e-User-Rolle, E2E-Guild
+  ban/unban; KEIN maint-toggle/feedback-change/sync/real-ban), 03 surfaces (CRT, calendar, ships,
+  roadmap, profile hangar+fleet-import, feedback fillable-nicht-submit, guild-settings guard).
+- **24/24 grün gegen https://suite.raumdock.org.** squad-size=`<select>`; pending Units nur Operator-
+  Ansicht; op-place/op-pick brauchen CrewAssignmentRequest (SPA erzeugt keinen) → Assign via Spieler-
+  Self-Claim + Operator-unassign, place-mode/drag best-effort.
+- **Seam-Sicherheit:** Secret nach Lauf von Prod entfernt → Seam 404/aus. Re-run: Secret neu setzen.
+- **UMGESETZT + verifiziert 2026-06-12.**
+
+## Queued / Planned Step - 2026-06-12: Security- und Implementation-Review
+
+User-Auftrag: RDOC-Suite Repo auf CVEs, Sicherheitsluecken im Code, toten Code, allgemeine
+Schwachstellen/Designfehler, alte Bibliotheken und deprecated Funktionen pruefen. Ergebnis als
+`docs/FR-P1-SecurityAndImplenetationReview.md` mit Implementierungshinweisen/Verbesserungen.
+Review/Doku only; keine Codefixes, keine lokalen pnpm/npm/cargo-Laeufe wegen Repo-Regel.
+
 ## Queued / Planned Step - 2026-06-12: Admin-Konsole Redesign (Claude-Design-Handoff) — Branch master
 
 Design-Bundle `Admin-Konsole.dc.html` (chat3: Adminbereich verschwendet Desktop-Breite + zu viel
