@@ -6,9 +6,18 @@ import { THEMES, type Theme } from "../theme";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
 
-function isActive(pathname: string, to: string): boolean {
-  if (to === "/") return pathname === "/";
-  return pathname === to;
+// The active nav item = the longest `to` that equals the path or is a path
+// prefix. This keeps deep routes like /handbuch/roadmap highlighting "Handbuch"
+// without also lighting up shorter siblings (e.g. /guilds vs /guilds/settings).
+function bestMatch(pathname: string): string {
+  let best = "";
+  for (const g of NAV_GROUPS) {
+    for (const it of g.items) {
+      const hit = it.to === "/" ? pathname === "/" : pathname === it.to || pathname.startsWith(it.to + "/");
+      if (hit && it.to.length > best.length) best = it.to;
+    }
+  }
+  return best;
 }
 
 function perspectiveOf(session: SessionResponse | null): Perspective | null {
@@ -83,6 +92,7 @@ function Brand() {
 export function Sidebar({ session, theme, setThemeId }: { session: SessionResponse | null; theme: Theme; setThemeId: (id: string) => void }) {
   const { pathname } = useLocation();
   const perspective = perspectiveOf(session);
+  const best = bestMatch(pathname);
 
   return (
     <aside className="sidebar">
@@ -95,7 +105,7 @@ export function Sidebar({ session, theme, setThemeId }: { session: SessionRespon
             <div className="nav-group" key={g.label}>
               <div className="nav-group-label">{g.label}</div>
               {items.map((it) => (
-                <NavLinkItem key={it.to} item={it} active={isActive(pathname, it.to)} />
+                <NavLinkItem key={it.to} item={it} active={it.to === best} />
               ))}
             </div>
           );
@@ -103,6 +113,9 @@ export function Sidebar({ session, theme, setThemeId }: { session: SessionRespon
       </nav>
       <div className="sidebar-foot">
         <ThemePicker theme={theme} setThemeId={setThemeId} />
+        <Link to="/rechtliches" data-testid="footer-legal" style={{ fontFamily: "var(--mono)", fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim2)", textDecoration: "none", padding: "0 0.25rem" }}>
+          Rechtliches · Impressum · Datenschutz
+        </Link>
         <UserChip session={session} />
       </div>
     </aside>
@@ -124,7 +137,8 @@ export function MobileNav({ session, theme, setThemeId }: { session: SessionResp
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const items = visibleItems(perspectiveOf(session));
-  const current = items.find((it) => isActive(pathname, it.to))?.to ?? "";
+  const best = bestMatch(pathname);
+  const current = items.some((it) => it.to === best) ? best : "";
 
   return (
     <>

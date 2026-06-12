@@ -14,7 +14,8 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ShipsPage } from "./pages/ShipsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
-import { RoadmapPage } from "./pages/RoadmapPage";
+import { HandbuchPage } from "./pages/HandbuchPage";
+import { RechtlichesPage } from "./pages/RechtlichesPage";
 import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { PartnershipsPage } from "./pages/PartnershipsPage";
 import { ServerListPage } from "./pages/ServerListPage";
@@ -22,7 +23,6 @@ import { AccountPage } from "./pages/AccountPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
-import { DocPage } from "./pages/DocPage";
 import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { ErrorState } from "./components/ErrorState";
 
@@ -69,7 +69,6 @@ export function App() {
             <Route path="/ships" element={<ShipsPage />} />
             <Route path="/templates" element={<TemplatesPage session={session} />} />
             <Route path="/feedback" element={<FeedbackPage session={session} />} />
-            <Route path="/roadmap" element={<RoadmapPage />} />
             <Route path="/guilds" element={<ServerListPage session={session} />} />
             <Route path="/account" element={<AccountPage session={session} />} />
             <Route path="/guilds/diagnostics" element={<DiagnosticsPage session={session} />} />
@@ -81,15 +80,22 @@ export function App() {
             <Route path="/ops/:id/cover" element={<CoverRedirect />} />
             <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/impressum" element={<DocPage slug="impressum" />} />
-            <Route path="/license" element={<DocPage slug="license" />} />
-            <Route path="/why-unsigned" element={<DocPage slug="why-unsigned" />} />
-            <Route path="/how-to" element={<DocPage slug="how-to" />} />
-            <Route path="/was-ist" element={<DocPage slug="whatis" lang="de" />} />
-            <Route path="/what-is" element={<DocPage slug="whatis" lang="en" />} />
-            <Route path="/privacy" element={<DocPage slug="datenschutz" />} />
-            <Route path="/changelog" element={<DocPage slug="changelog" />} />
-            <Route path="/sc-tools" element={<DocPage slug="sc-tools" />} />
+            {/* IA merge B: docs hub + footer-level legal */}
+            <Route path="/handbuch" element={<HandbuchPage />} />
+            <Route path="/handbuch/:section" element={<HandbuchPage />} />
+            <Route path="/rechtliches" element={<RechtlichesPage />} />
+            <Route path="/rechtliches/:section" element={<RechtlichesPage />} />
+            {/* legacy doc routes → handbuch / rechtliches sections (deep-link safe) */}
+            <Route path="/was-ist" element={<Navigate to="/handbuch/was-ist-das" replace />} />
+            <Route path="/what-is" element={<Navigate to="/handbuch/was-ist-das" replace />} />
+            <Route path="/how-to" element={<Navigate to="/handbuch/anleitung" replace />} />
+            <Route path="/roadmap" element={<Navigate to="/handbuch/roadmap" replace />} />
+            <Route path="/changelog" element={<Navigate to="/handbuch/changelog" replace />} />
+            <Route path="/sc-tools" element={<Navigate to="/handbuch/sc-tools" replace />} />
+            <Route path="/why-unsigned" element={<Navigate to="/handbuch/unsigniert" replace />} />
+            <Route path="/license" element={<Navigate to="/rechtliches/lizenz" replace />} />
+            <Route path="/impressum" element={<Navigate to="/rechtliches/impressum" replace />} />
+            <Route path="/privacy" element={<Navigate to="/rechtliches/datenschutz" replace />} />
             <Route path="/api-docs" element={<ApiDocsPage />} />
             <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />
           </Routes>

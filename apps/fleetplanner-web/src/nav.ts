@@ -48,21 +48,15 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Admin / System",
     items: [
       { to: "/admin", label: "Admin-Konsole", icon: "shield", gate: "superadmin" },
-      { to: "/api-docs", label: "API-Doku", icon: "doc" },
     ],
   },
   {
-    label: "Info / Rechtliches",
+    // IA merge B: the 6 help docs are now sections of the Handbuch hub; the 3 legal
+    // pages moved to a footer-level Rechtliches page (out of the primary nav).
+    label: "Info",
     items: [
-      { to: "/was-ist", label: "Was ist das?", icon: "eye" },
-      { to: "/how-to", label: "Anleitung", icon: "doc" },
-      { to: "/roadmap", label: "Roadmap", icon: "board" },
-      { to: "/changelog", label: "Changelog", icon: "doc" },
-      { to: "/sc-tools", label: "SC-Tools", icon: "wrench" },
-      { to: "/license", label: "Lizenz", icon: "doc" },
-      { to: "/impressum", label: "Impressum", icon: "doc" },
-      { to: "/privacy", label: "Datenschutz", icon: "lock" },
-      { to: "/why-unsigned", label: "Unsignierte Binary", icon: "alert" },
+      { to: "/handbuch", label: "Handbuch", icon: "doc" },
+      { to: "/api-docs", label: "API-Doku", icon: "doc" },
     ],
   },
 ];
