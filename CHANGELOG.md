@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner API docs moved to the SPA (2026-06-12)
+
+- Swagger UI no longer rendered by the backend. Deleted the `GET /api/v1/docs`
+  HTML route (and its OpenAPI path entry) — `apps/fleetplanner` is API-only and
+  now serves zero HTML/JS. New SPA route `/api-docs` (`ApiDocsPage`) renders
+  Swagger UI from a bundled `swagger-ui-dist` (same-origin, so it passes the
+  strict app CSP — no more unpkg CDN), pointed at `/api/v1/openapi.json`.
+- nginx: allowlist `/api-docs` → SPA; removed the `/api/v1/docs` unpkg CSP
+  relaxation. Nav gained an "API" link.
+- Partnership `/api/v1` endpoints (auto-share, revoke, event approve/decline)
+  confirmed already present — no change needed.
+
 ### Added - Fleetplanner Op-Management screen (2026-06-12)
 
 - New SPA route `/ops/:id/manage` (`OpManagePage`) implementing the design

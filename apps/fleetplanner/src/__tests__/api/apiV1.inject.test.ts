@@ -40,12 +40,9 @@ describe("GET /api/v1/openapi.json", () => {
 });
 
 describe("GET /api/v1/docs", () => {
-  it("serves the Swagger UI page referencing openapi.json", async () => {
+  it("is gone — Swagger UI moved to the SPA; backend renders no HTML", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/docs" });
-    expect(res.statusCode).toBe(200);
-    expect(res.headers["content-type"]).toContain("text/html");
-    expect(res.body).toContain("swagger-ui");
-    expect(res.body).toContain("openapi.json");
+    expect(res.statusCode).toBe(404);
   });
 });
 

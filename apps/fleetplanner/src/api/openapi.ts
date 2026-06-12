@@ -206,14 +206,6 @@ export function buildOpenApiDocument(): JsonObject {
           responses: { "200": { description: "OpenAPI 3.1 document" } },
         },
       },
-      "/api/v1/docs": {
-        get: {
-          operationId: "getDocs",
-          summary: "Interactive API documentation (Swagger UI)",
-          tags: ["meta"],
-          responses: { "200": { description: "HTML documentation page" } },
-        },
-      },
       "/api/v1/session": {
         get: {
           operationId: "getSession",

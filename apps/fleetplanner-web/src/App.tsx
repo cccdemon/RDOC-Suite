@@ -21,6 +21,7 @@ import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
 import { DocPage } from "./pages/DocPage";
+import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
 
@@ -111,6 +112,7 @@ export function App() {
         <Link to="/feedback" style={navIdle}>Feedback</Link>
         <Link to="/roadmap" style={navIdle}>Roadmap</Link>
         <a href="/fleetplanner/how-to" style={navIdle}>Anleitung</a>
+        <Link to="/api-docs" style={navIdle}>API</Link>
         <span style={{ flex: 1 }} />
         <button
           type="button"
@@ -214,6 +216,7 @@ export function App() {
           <Route path="/privacy" element={<DocPage slug="datenschutz" />} />
           <Route path="/changelog" element={<DocPage slug="changelog" />} />
           <Route path="/sc-tools" element={<DocPage slug="sc-tools" />} />
+          <Route path="/api-docs" element={<ApiDocsPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />
         </Routes>
       </main>

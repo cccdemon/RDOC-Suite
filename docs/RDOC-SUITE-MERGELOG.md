@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-06-12: Security- und Implementation-Review
+
+User-Auftrag: RDOC-Suite Repo auf CVEs, Sicherheitsluecken im Code, toten Code, allgemeine
+Schwachstellen/Designfehler, alte Bibliotheken und deprecated Funktionen pruefen. Ergebnis als
+`docs/FR-P1-SecurityAndImplenetationReview.md` mit Implementierungshinweisen/Verbesserungen.
+
+- Statische Repo-Sichtung, Dependency-Inventar, OSV-/Registry-Abgleich fuer NPM-Abhaengigkeiten.
+- P1-Befunde dokumentiert: Fastify/Vite/Playwright Advisories, `trustProxy`, Swagger-CDN,
+  globaler Error Handler, E2E-Testlogin/Superadmin, fehlende Security-Header/CSP.
+- P2/P3-Befunde dokumentiert: reproduzierbare Builds, `latest` Images, Session-Cookie-Scope,
+  Legacy Voice-/Relay-Konfig, Doku-Drift, Workspace-Grenzen.
+- Review-Doku, Roadmap und Changelog aktualisiert. Keine Codefixes, keine lokalen pnpm/npm/cargo-Laeufe.
+
 ## Queued / Planned Step - 2026-06-12: E2E-Playwright-Suite + Test-Login-Seam — Branch master
 
 User: vollständige E2E gegen die API + Admin-Workflow (Klicks/Submits/Needs/Spieler-Assign/
@@ -4195,3 +4208,22 @@ with a hardcoded `currentGuildId()="default"` — replaced with the real resolut
 
 Follow-ups (not blocking): header inline guild-switcher dropdown (currently a /guilds
 page); migrating any existing single-tenant data (fresh DB assumed).
+
+---
+
+## 2026-06-12 — fleetplanner API-only: Swagger UI → SPA (stage 2 of API-only)
+
+Status: Queued → in progress.
+
+API-only rule cleanup. Stage 3 (partnership auto-share/revoke/events `/api/v1`
+endpoints) found ALREADY present in `routes/apiV1.ts` (lines 803/821/835) — no work
+needed; memory note was stale.
+
+Stage 2 — move Swagger UI out of the backend:
+- DELETE backend HTML route `GET /api/v1/docs` (`routes/apiV1.ts`) + its openapi path
+  entry + inject test → backend now renders zero HTML/JS.
+- SPA `pages/ApiDocsPage.tsx` renders Swagger UI from the bundled `swagger-ui-dist`
+  (same-origin, strict CSP — no more unpkg), pointed at `/fleetplanner/api/v1/openapi.json`.
+- Route `/api-docs` + nav link; `nginx.conf`: allowlist `/api-docs` → @spa, drop the
+  `location = /api/v1/docs` unpkg CSP relaxation.
+- Backend keeps only `GET /api/v1/openapi.json` (spec as data).
