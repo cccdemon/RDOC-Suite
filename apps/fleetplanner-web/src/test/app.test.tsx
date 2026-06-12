@@ -670,6 +670,76 @@ describe("Feedback", () => {
   });
 });
 
+describe("Op editor (lifecycle)", () => {
+  const opEditable = { ...opDetailFixture, canManage: true };
+
+  it("operator edits meta and saves (PATCH)", async () => {
+    let patched: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.patch(`${API}/operations/op_1`, async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const title = (await findByTestId("edit-title")) as HTMLInputElement;
+    expect(title.value).toBe("Xenothreat Logistics");
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(title, "Renamed Op");
+    title.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("edit-save")).click();
+    expect(await findByTestId("edit-notice")).toHaveTextContent("Gespeichert");
+    expect(patched).toMatchObject({ title: "Renamed Op", opType: "combat" });
+  });
+
+  it("operator changes status (POST status)", async () => {
+    let statusBody: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opEditable, status: "draft" })),
+      http.post(`${API}/operations/op_1/status`, async ({ request }) => {
+        statusBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, status: "open" });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const sel = (await findByTestId("edit-status")) as HTMLSelectElement;
+    Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")!.set!.call(sel, "open");
+    sel.dispatchEvent(new Event("change", { bubbles: true }));
+    (await findByTestId("edit-status-apply")).click();
+    await findByTestId("edit-notice");
+    expect(statusBody).toMatchObject({ status: "open" });
+  });
+
+  it("operator deletes with confirm (DELETE)", async () => {
+    let deleted = false;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.get(`${API}/operations`, () => HttpResponse.json({ operations: [] })),
+      http.delete(`${API}/operations/op_1`, () => {
+        deleted = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("edit-delete")).click();
+    (await findByTestId("edit-delete-confirm")).click();
+    await screen.findByText("Operationen");
+    expect(deleted).toBe(true);
+  });
+
+  it("non-operator sees a forbidden state", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: false })),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    expect(await findByTestId("edit-forbidden")).toBeInTheDocument();
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

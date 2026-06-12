@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   ApiError,
   claimSeat,
@@ -533,6 +533,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             <button type="button" data-testid="operator-toggle" onClick={() => setView(view === "operator" ? "spieler" : "operator")} style={view === "operator" ? tabActive : tabBase}>
               <Ic name="board" size={15} /> Operator-Ansicht
             </button>
+          )}
+          {op.canManage && (
+            <Link to={`/ops/${id}/edit`} data-testid="edit-op-link" style={{ ...tabBase, textDecoration: "none" }}>
+              <Ic name="bolt" size={15} /> Bearbeiten
+            </Link>
           )}
         </div>
         {op.signupState === "joined" && (

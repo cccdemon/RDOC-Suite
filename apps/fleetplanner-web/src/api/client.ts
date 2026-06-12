@@ -170,6 +170,30 @@ export function registerUnit(
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/units`, csrfToken, input);
 }
 
+export function editOperation(
+  id: string,
+  csrfToken: string,
+  input: {
+    title?: string;
+    description?: string;
+    opType?: string;
+    meetingSystem?: string;
+    meetingLocation?: string;
+    scheduledAt?: string;
+    visibility?: string;
+  },
+): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(id)}`, csrfToken, input);
+}
+
+export function setOperationStatus(id: string, csrfToken: string, status: string): Promise<{ ok: true; status: string }> {
+  return mutate("POST", `/operations/${encodeURIComponent(id)}/status`, csrfToken, { status });
+}
+
+export function deleteOperation(id: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(id)}`, csrfToken);
+}
+
 export function getGuildSettings(guildId: string): Promise<import("./types").GuildSettingsResponse> {
   return get<import("./types").GuildSettingsResponse>(`/guilds/${encodeURIComponent(guildId)}/settings`);
 }

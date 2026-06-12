@@ -463,6 +463,30 @@ export const SetMemberRoleRequestSchema = z
   .meta({ id: "SetMemberRoleRequest" });
 export type SetMemberRoleRequest = z.infer<typeof SetMemberRoleRequestSchema>;
 
+// ── Operation editor (lifecycle) ────────────────────────────────────────
+
+/** PATCH /api/v1/operations/:id — every field optional; only present fields
+ *  are updated. Mirrors the SSR /ops/:id/edit + /ops/:id/visibility forms. */
+export const EditOperationRequestSchema = z
+  .object({
+    title: z.string().min(1).max(160).optional(),
+    description: z.string().max(4000).optional(),
+    opType: z.enum(["combat", "mining", "salvage", "explore", "transport", "training", "social"]).optional(),
+    meetingSystem: z.string().max(80).optional(),
+    meetingLocation: z.string().max(160).optional(),
+    scheduledAt: z.iso.datetime().optional(),
+    visibility: z.enum(["private", "guild", "partners", "public"]).optional(),
+  })
+  .meta({ id: "EditOperationRequest" });
+export type EditOperationRequest = z.infer<typeof EditOperationRequestSchema>;
+
+export const OP_STATUSES = ["draft", "open", "locked", "starting", "in_progress", "completed", "cancelled"] as const;
+
+export const SetStatusRequestSchema = z
+  .object({ status: z.enum(OP_STATUSES) })
+  .meta({ id: "SetStatusRequest" });
+export type SetStatusRequest = z.infer<typeof SetStatusRequestSchema>;
+
 export const GuildIdParamSchema = z.object({ id: z.string().regex(/^\d{16,25}$/) });
 export const GuildMemberParamSchema = z.object({
   id: z.string().regex(/^\d{16,25}$/),

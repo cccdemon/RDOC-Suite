@@ -51,6 +51,12 @@ contains "guild settings 401 envelope" "$(cat /tmp/e2e_gset)" '"code":"unauthent
 gset_bad="$(curl -s -o /dev/null -w '%{http_code}' "$API/guilds/not-a-snowflake/settings")"
 check "guild settings bad id 400" "400" "$gset_bad"
 
+# op editor lifecycle — anon gates (side-effect-free: 401 fires before any write)
+life_status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{"status":"open"}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/status")"
+check "op status anon 401" "401" "$life_status"
+life_patchbad="$(curl -s -o /dev/null -w '%{http_code}' -X PATCH -H 'content-type: application/json' --data '{"title":"x"}' "$API/operations/..%2Fetc")"
+check "op edit bad id 400" "400" "$life_patchbad"
+
 ops="$(curl -fsS "$API/operations")"
 contains "operations json" "$ops" '"operations":'
 not_contains "operations not html" "$ops" "<html"

@@ -25,13 +25,23 @@ import { getSetting } from "../services/settings.js";
 import { ROADMAP } from "../lib/roadmap.js";
 import {
   addLeader,
+  deleteOperation,
   getOperation,
   listAllUserOperations,
   listPartnerOperations,
   listPublicOperations,
   logAudit,
   removeLeader,
+  setOperationVisibility,
+  setStatus,
+  updateOperation,
 } from "../services/operations.js";
+import { createScheduledEvent, deleteScheduledEvent, updateScheduledEvent } from "../services/discord.js";
+import {
+  deleteDistributedEvents,
+  distributeOperation,
+  updateDistributedEvents,
+} from "../services/eventDistribution.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
 import { listSharedHangars } from "../services/hangarShare.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
@@ -47,9 +57,11 @@ import {
   AssignSeatRequestSchema,
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
+  EditOperationRequestSchema,
   FeedbackRequestSchema,
   GuildIdParamSchema,
   GuildMemberParamSchema,
+  SetStatusRequestSchema,
   HangarShareRequestSchema,
   HangarShipParamSchema,
   HangarShipRequestSchema,
@@ -445,6 +457,114 @@ export async function apiV1Routes(app: FastifyInstance) {
     });
     await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "");
     return reply.type("application/json").send({ ok: true as const, id: op.id });
+  });
+
+  // ── operation editor: lifecycle (edit / status / delete) ─────────────
+  // SSR twins: web.ts /ops/:id/edit + /ops/:id/visibility, api.ts /api/ops/:id/status,
+  // web.ts /ops/:id/delete. The best-effort Discord/partner side-effects are mirrored
+  // here so the SPA operator never has to fall back to the SSR manage shell.
+
+  app.patch<{ Params: { id: string }; Body: unknown }>("/api/v1/operations/:id", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const body = EditOperationRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+
+    const d = body.data;
+    await updateOperation(p.data.id, {
+      ...(d.title !== undefined && { title: d.title.trim() }),
+      ...(d.description !== undefined && { description: d.description }),
+      ...(d.opType !== undefined && { opType: d.opType }),
+      ...(d.meetingSystem !== undefined && { meetingSystem: d.meetingSystem.trim() }),
+      ...(d.meetingLocation !== undefined && { meetingLocation: d.meetingLocation.trim() }),
+      ...(d.scheduledAt !== undefined && { scheduledAt: new Date(d.scheduledAt) }),
+    });
+    if (d.visibility !== undefined) {
+      // OpVisibility's TS type predates "guild"; the column/UI accept it.
+      await setOperationVisibility(p.data.id, d.visibility as "private" | "partners" | "public");
+    }
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, "edited", "");
+
+    // Keep an already-published op's Discord + partner events in sync (best-effort).
+    const updated = await getOperation(p.data.id);
+    if (updated?.status === "open") {
+      if (updated.discordEventId) {
+        updateScheduledEvent({
+          id: updated.id,
+          guildId: updated.guildId,
+          title: updated.title,
+          description: updated.description,
+          scheduledAt: updated.scheduledAt,
+          eventVoiceChannelId: updated.eventVoiceChannelId,
+          discordEventId: updated.discordEventId,
+          opType: updated.opType,
+        }).catch((err) => req.log.warn(err, "Discord event update failed after op edit (v1)"));
+      }
+      if (updated.visibility === "partners" || updated.visibility === "public") {
+        distributeOperation(updated).catch((err) => req.log.warn(err, "Event distribution failed after op edit (v1)"));
+      }
+      updateDistributedEvents(updated).catch((err) => req.log.warn(err, "Partner event sync failed after op edit (v1)"));
+    }
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/v1/operations/:id/status", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const body = SetStatusRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid status.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+
+    const previous = await prisma.operation.findUnique({ where: { id: p.data.id }, select: { status: true } });
+    const newStatus = body.data.status;
+    const updated = await setStatus(p.data.id, newStatus);
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, `status:${newStatus}`, previous?.status ? `von ${previous.status}` : "");
+
+    // open → create the Discord scheduled event (once) + distribute to partners.
+    if (newStatus === "open" && !updated.discordEventId) {
+      const op = await getOperation(p.data.id);
+      if (op) {
+        try {
+          const event = await createScheduledEvent(op);
+          if (event?.id) await prisma.operation.update({ where: { id: p.data.id }, data: { discordEventId: event.id } });
+        } catch (err) {
+          req.log.warn(err, "Discord event creation failed on status open (v1, non-fatal)");
+        }
+        if (op.visibility === "partners" || op.visibility === "public") {
+          distributeOperation(op).catch((err) => req.log.warn(err, "Event distribution failed on status open (v1)"));
+        }
+      }
+    }
+    // cancelled → tear the Discord event + distributed partner events down.
+    if (newStatus === "cancelled" && updated.discordEventId) {
+      deleteScheduledEvent(updated.guildId, updated.discordEventId)
+        .then(() => prisma.operation.update({ where: { id: p.data.id }, data: { discordEventId: null } }))
+        .catch((err) => req.log.warn(err, "Discord event deletion failed on cancel (v1)"));
+    }
+    if (newStatus === "cancelled") {
+      deleteDistributedEvents(p.data.id).catch((err) => req.log.warn(err, "Partner event teardown failed on cancel (v1)"));
+    }
+    return reply.type("application/json").send({ ok: true as const, status: newStatus });
+  });
+
+  app.delete<{ Params: { id: string } }>("/api/v1/operations/:id", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+
+    const op = await prisma.operation.findUnique({ where: { id: p.data.id }, select: { guildId: true, discordEventId: true } });
+    if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+    // Tear down distributed partner events BEFORE the cascade delete (SSR twin).
+    await deleteDistributedEvents(p.data.id).catch((err) => req.log.warn(err, "Partner event teardown failed before delete (v1)"));
+    await deleteOperation(p.data.id);
+    if (op.discordEventId) {
+      deleteScheduledEvent(op.guildId, op.discordEventId).catch((err) => req.log.warn(err, "Discord event deletion failed after delete (v1)"));
+    }
+    return reply.type("application/json").send({ ok: true as const });
   });
 
   // ── templates marketplace ───────────────────────────────────────────

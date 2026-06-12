@@ -320,6 +320,49 @@ describe("operator API — gates", () => {
   });
 });
 
+describe("operation editor lifecycle — gates + validation", () => {
+  const opId = "cmqaaaaaaaaaaaaaaaaaa1";
+
+  it.each([
+    ["PATCH", `/api/v1/operations/${opId}`, { title: "New" }],
+    ["POST", `/api/v1/operations/${opId}/status`, { status: "open" }],
+    ["DELETE", `/api/v1/operations/${opId}`, undefined],
+  ] as const)("%s %s without session → 401 envelope", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      headers: { "x-forwarded-for": `10.12.12.${url.length}`, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+      ...(body !== undefined ? { payload: JSON.stringify(body) } : {}),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("PATCH invalid op id → 400 before auth", async () => {
+    const res = await app.inject({ method: "PATCH", url: "/api/v1/operations/..%2Fetc", headers: { "content-type": "application/json", "x-forwarded-for": "10.12.13.1" }, payload: JSON.stringify({ title: "x" }) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("PATCH invalid visibility → 400", async () => {
+    const res = await app.inject({ method: "PATCH", url: `/api/v1/operations/${opId}`, headers: { "content-type": "application/json", "x-forwarded-for": "10.12.13.2" }, payload: JSON.stringify({ visibility: "secret" }) });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("POST status with invalid status → 400 before auth", async () => {
+    const res = await app.inject({ method: "POST", url: `/api/v1/operations/${opId}/status`, headers: { "content-type": "application/json", "x-forwarded-for": "10.12.13.3" }, payload: JSON.stringify({ status: "obliterated" }) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("openapi documents the lifecycle routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/operations/{id}"].patch).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}"].delete).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/status"].post).toBeTruthy();
+  });
+});
+
 describe("guild settings — gates + validation", () => {
   const gid = "123456789012345678"; // valid Discord snowflake
   const uid = "cmqffffffffffffffffff6";

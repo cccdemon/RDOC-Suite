@@ -4,6 +4,7 @@ import { getSession } from "./api/client";
 import type { SessionResponse } from "./api/types";
 import { OverviewPage } from "./pages/OverviewPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
+import { EditOpPage } from "./pages/EditOpPage";
 import { CalendarPage } from "./pages/CalendarPage";
 import { CreatePage } from "./pages/CreatePage";
 import { ProfilePage } from "./pages/ProfilePage";
@@ -188,6 +189,7 @@ export function App() {
           <Route path="/feedback" element={<FeedbackPage session={session} />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
+          <Route path="/ops/:id/edit" element={<EditOpPage session={session} />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

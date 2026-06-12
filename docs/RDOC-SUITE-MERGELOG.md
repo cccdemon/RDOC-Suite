@@ -1,5 +1,44 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Op-Editor (Slice 1: Lifecycle) — Branch master
+
+Größter SSR-Rest: Op-Management-Editor. Zu groß für einen Wurf → in Slices.
+**Slice 1 (dieser Schritt): Op-Lifecycle** — der Operator kann eine Op im SPA voll
+verwalten ohne SSR-`/ops/:id/manage`:
+- BE `PATCH /api/v1/operations/:id` — Meta-Edit (title, description, opType, scheduledAt,
+  meetingSystem, meetingLocation, visibility). fleetoperator-gated. Spiegelt SSR
+  `/ops/:id/edit` + `/ops/:id/visibility` inkl. Event-Sideeffects (updateScheduledEvent,
+  distributeOperation, updateDistributedEvents — best-effort, nur bei status=open).
+- BE `POST /api/v1/operations/:id/status` — Status setzen (draft/open/locked/starting/
+  in_progress/completed/cancelled). Spiegelt SSR `/api/ops/:id/status`: bei open Discord-Event
+  + Distribution, bei cancelled Teardown. Audit.
+- BE `DELETE /api/v1/operations/:id` — Op löschen (destruktiv). Partner-Event-Teardown vor
+  delete, Discord-Event-Löschung danach. Spiegelt SSR `/ops/:id/delete`.
+- Contracts EditOperationRequest, SetStatusRequest; OpenAPI; inject-Tests (anon 401, bad id
+  400, bad status/visibility 400, doc).
+- FE `/ops/:id/edit` Seite (operator-only): Edit-Form (vorausgefüllt aus OperationDetail),
+  Status-Steuerung, Löschen mit Bestätigung. Link aus OpDetailPage Operator-Ansicht.
+- Side-effect-Logik wird in v1-Handlern repliziert (paralleler Call-Site, SSR unberührt);
+  Kommentar „SSR twin" gegen Drift.
+- Gate: BE+FE grün, Deploy, E2E.
+
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E):** Contracts EditOperationRequest/SetStatusRequest
+  (+OP_STATUSES). apiV1: `PATCH /operations/:id` (updateOperation + setOperationVisibility +
+  Event-Sync), `POST /operations/:id/status` (setStatus + open→createScheduledEvent/distribute,
+  cancelled→teardown, Audit), `DELETE /operations/:id` (deleteDistributedEvents→deleteOperation→
+  deleteScheduledEvent), alle requireFleetOperator. OpenAPI 3 Pfade. inject-Tests (anon 401, bad
+  id 400, bad status/visibility 400, doc). FE client editOperation/setOperationStatus/
+  deleteOperation (+PATCH in mutate), EditOpPage `/ops/:id/edit` (Form prefill, Status-Select,
+  Delete+Confirm), „Bearbeiten"-Link in OpDetail Operator-Ansicht, App-Route. MSW-Tests (edit
+  PATCH, status POST, delete DELETE+nav, non-operator forbidden). E2E-readonly +2 anon-Gates.
+  CHANGELOG. Lokale Builds/Tests NICHT gelaufen (Docker-Regel).
+
+**Slice 2 (geplant): Bedarfe/Needs-Editor** — `needs/{ships,fighters,cqb}` + rename/delete +
+requirements/delete. Definiert was die Op braucht (Requirement-Slots).
+**Slice 3 (geplant/defer): Fortgeschritten** — formations/groups, cqb-bundling
+(squads/carrier/join/rename/size, bundle/unbundle/place/assign), primary-unit, unit
+edit/seats/carrier, recurrence/stop, publish-template. Selten genutzt; ggf. SSR lassen.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Guild-/Server-Einstellungen (Nischen-Surface) — Branch master
 
 Nächste SSR-Nischen-Surface ins SPA: `/guilds/settings` (Admiral-Konsole) als JSON-API + React-Seite.

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA op editor — lifecycle (2026-06-12)
+
+- New `PATCH /api/v1/operations/:id` (fleet operator) editing title/description/opType/
+  schedule/meeting/visibility; keeps an open op's Discord scheduled event + distributed
+  partner events in sync (best-effort), mirroring the SSR /ops/:id/edit + /visibility forms.
+- New `POST /api/v1/operations/:id/status` (draft/open/locked/starting/in_progress/completed/
+  cancelled): open creates the Discord event + distributes to partners, cancelled tears them
+  down. Audit logged. Mirrors SSR /api/ops/:id/status.
+- New `DELETE /api/v1/operations/:id` (destructive): partner-event teardown before the cascade
+  delete, Discord event removed after. Mirrors SSR /ops/:id/delete.
+- Contracts EditOperationRequest / SetStatusRequest + OpenAPI paths + inject tests (anon 401,
+  bad id 400, bad status/visibility 400). prod-e2e-readonly: anon-gate checks.
+- SPA `/ops/:id/edit` operator page: prefilled edit form, status control and a guarded delete
+  with confirm; reachable via a new "Bearbeiten" link in the op detail operator view. MSW tests.
+- First slice of the op-editor strangler; Bedarfe/Needs and advanced composition (formations,
+  CQB bundling, unit edit) follow in later slices.
+
 ### Added - FR-P2: SPA guild/server settings (2026-06-12)
 
 - New `GET /api/v1/guilds/:id/settings` (fleet operator of that guild / superadmin) returning
