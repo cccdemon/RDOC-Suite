@@ -17,6 +17,7 @@ import {
   FeedbackRequestSchema,
   HangarShipRequestSchema,
   OperatorViewSchema,
+  RoadmapResponseSchema,
   TemplateListResponseSchema,
   UnitDecisionRequestSchema,
   ClaimSeatResponseSchema,
@@ -65,6 +66,7 @@ const SCHEMAS = {
   FeedbackRequest: FeedbackRequestSchema,
   TemplateListResponse: TemplateListResponseSchema,
   ApplyTemplateRequest: ApplyTemplateRequestSchema,
+  RoadmapResponse: RoadmapResponseSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -568,6 +570,14 @@ export function buildOpenApiDocument(): JsonObject {
             { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
           ],
           responses: { "200": { description: "Removed", ...jsonContent(ref("MutationOk")) }, "401": errorResponses["401"] },
+        },
+      },
+      "/api/v1/roadmap": {
+        get: {
+          operationId: "getRoadmap",
+          summary: "Player-facing roadmap (public)",
+          tags: ["meta"],
+          responses: { "200": { description: "OK", ...jsonContent(ref("RoadmapResponse")) } },
         },
       },
       "/api/v1/templates": {

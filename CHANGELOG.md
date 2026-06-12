@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA roadmap (2026-06-12)
+
+- New public `GET /api/v1/roadmap` serving the curated player-facing roadmap; RoadmapItem /
+  RoadmapResponse in the shared contracts package; OpenAPI + test.
+- SPA `/roadmap` page grouping items by status (planned/blocked/rejected/done) with notes and
+  rejection rationale, wired into the nav as an SPA route. BE 64 API tests, FE 35.
+
 ### Added - FR-P2: SPA templates marketplace (2026-06-12)
 
 - New `GET /api/v1/templates?guildId=&q=&opType=` (membership-gated) and

@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Roadmap (read-only) — Branch master
+
+Kleiner Win. FE + 1 public read-Endpoint:
+- BE `GET /api/v1/roadmap` (public) liefert die statische ROADMAP-Konstante (lib/roadmap.ts)
+  als RoadmapItem-Liste. Contract RoadmapResponse; OpenAPI; Test.
+- FE RoadmapPage `/roadmap`: nach Status gruppiert (Geplant/Blockiert/Abgelehnt/Erledigt),
+  Karten mit Titel/Status-Tag/Desc/Note/Reason. Nav „Roadmap" → SPA-Route.
+- Gate: BE+FE grün, Deploy, E2E.
+- **DONE 2026-06-12:** BE `GET /api/v1/roadmap` (public, ROADMAP-Konstante). RoadmapItem/
+  RoadmapResponse im Package; OpenAPI; inject-Test. FE RoadmapPage `/roadmap` (Status-Gruppen
+  Geplant/Blockiert/Abgelehnt/Erledigt, Karten mit Note/Reason), Nav „Roadmap" → SPA-Route.
+  BE 64 + tsc 0, FE 35/35 + Build.
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Templates-Marktplatz (browse + apply) — Branch master
 
 Ergänzt Op-Erstellung. FE + 2 Endpoints:

@@ -231,6 +231,21 @@ export const FeedbackRequestSchema = z
   .object({ subject: z.string().min(1).max(120), message: z.string().min(1).max(1800) })
   .meta({ id: "FeedbackRequest" });
 
+export const RoadmapItemSchema = z
+  .object({
+    title: z.string(),
+    status: z.enum(["planned", "blocked", "rejected", "done"]),
+    desc: z.string(),
+    note: z.string().optional(),
+    reason: z.string().optional(),
+  })
+  .meta({ id: "RoadmapItem" });
+export type RoadmapItem = z.infer<typeof RoadmapItemSchema>;
+
+export const RoadmapResponseSchema = z
+  .object({ items: z.array(RoadmapItemSchema) })
+  .meta({ id: "RoadmapResponse" });
+
 export const TemplateSummarySchema = z
   .object({
     id: z.string(),

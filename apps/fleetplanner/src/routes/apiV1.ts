@@ -14,6 +14,7 @@ import { createOperation } from "../services/operations.js";
 import { applyTemplate, listTemplatesForGuild } from "../services/operationTemplates.js";
 import { sendDiscordChannelMessage } from "../services/discord.js";
 import { getSetting } from "../services/settings.js";
+import { ROADMAP } from "../lib/roadmap.js";
 import {
   addLeader,
   getOperation,
@@ -142,6 +143,11 @@ export async function apiV1Routes(app: FastifyInstance) {
 
   app.get("/api/v1/openapi.json", async (_req, reply) => {
     return reply.type("application/json").send(openApiDocument);
+  });
+
+  // Public, static player-facing roadmap.
+  app.get("/api/v1/roadmap", async (_req, reply) => {
+    return reply.type("application/json").send({ items: ROADMAP });
   });
 
   // Interactive API docs for external developers. Swagger UI from the unpkg

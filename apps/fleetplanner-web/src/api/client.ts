@@ -68,6 +68,10 @@ export function getSession(): Promise<SessionResponse> {
   return get<SessionResponse>("/session");
 }
 
+export function getRoadmap(): Promise<{ items: import("./types").RoadmapItem[] }> {
+  return get<{ items: import("./types").RoadmapItem[] }>("/roadmap");
+}
+
 export function claimSeat(opId: string, seatId: string, csrfToken: string): Promise<{ ok: true; seatId: string }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/claim`, csrfToken);
 }

@@ -10,6 +10,7 @@ import { ProfilePage } from "./pages/ProfilePage";
 import { ShipsPage } from "./pages/ShipsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
+import { RoadmapPage } from "./pages/RoadmapPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
 import { Avatar } from "./components/Avatar";
@@ -99,7 +100,7 @@ export function App() {
         <Link to="/ships" style={navIdle}>Schiffe</Link>
         <a href="/fleetplanner/guilds" style={navIdle}>Server</a>
         <Link to="/feedback" style={navIdle}>Feedback</Link>
-        <a href="/fleetplanner/roadmap" style={navIdle}>Roadmap</a>
+        <Link to="/roadmap" style={navIdle}>Roadmap</Link>
         <a href="/fleetplanner/how-to" style={navIdle}>Anleitung</a>
         <span style={{ flex: 1 }} />
         <button
@@ -184,6 +185,7 @@ export function App() {
           <Route path="/ships" element={<ShipsPage />} />
           <Route path="/templates" element={<TemplatesPage session={session} />} />
           <Route path="/feedback" element={<FeedbackPage session={session} />} />
+          <Route path="/roadmap" element={<RoadmapPage />} />
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />

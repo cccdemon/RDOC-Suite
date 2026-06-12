@@ -609,6 +609,24 @@ describe("Templates marketplace", () => {
   });
 });
 
+describe("Roadmap", () => {
+  it("renders grouped roadmap items", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/roadmap`, () =>
+        HttpResponse.json({ items: [
+          { title: "Org-Flotte", status: "planned", desc: "Schiffe der Mitglieder." },
+          { title: "Alt-Idee", status: "rejected", desc: "Verworfen.", reason: "Zu teuer." },
+        ] }),
+      ),
+    );
+    const { findByTestId, findByText } = renderAt("/roadmap");
+    expect(await findByTestId("roadmap-page")).toBeInTheDocument();
+    expect(await findByText("Org-Flotte")).toBeInTheDocument();
+    expect(await findByText("Zu teuer.")).toBeInTheDocument();
+  });
+});
+
 describe("Ships database", () => {
   it("lists ships from the search API", async () => {
     server.use(

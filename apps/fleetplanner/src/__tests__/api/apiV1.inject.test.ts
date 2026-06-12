@@ -49,6 +49,17 @@ describe("GET /api/v1/docs", () => {
   });
 });
 
+describe("GET /api/v1/roadmap", () => {
+  it("public → 200 with items", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/roadmap" });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(Array.isArray(body.items)).toBe(true);
+    expect(body.items.length).toBeGreaterThan(0);
+    expect(body.items[0]).toHaveProperty("status");
+  });
+});
+
 describe("GET /api/v1/session", () => {
   it("anonymous → 200 { user: null }, no redirect to a login page", async () => {
     const res = await app.inject({ method: "GET", url: "/api/v1/session" });
