@@ -21,7 +21,9 @@ describe("Overview", () => {
     renderAt("/");
     expect(await screen.findByText("Xenothreat Logistics")).toBeInTheDocument();
     expect(screen.getByTestId("login-cta")).toBeInTheDocument();
-    expect(await screen.findByText("GAST")).toBeInTheDocument();
+    // guest footer offers the login link (rendered in both the desktop sidebar
+    // and the mobile head, so there are two in the DOM)
+    expect((await screen.findAllByTestId("login-link")).length).toBeGreaterThanOrEqual(1);
   });
 
   it("authenticated: shows username and the joined badge", async () => {
@@ -32,7 +34,8 @@ describe("Overview", () => {
       ),
     );
     renderAt("/");
-    expect(await screen.findByText("Crew One")).toBeInTheDocument();
+    // username now appears in the sidebar footer (and possibly the page)
+    expect((await screen.findAllByText("Crew One")).length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText("DABEI")).toBeInTheDocument();
   });
 
@@ -80,7 +83,8 @@ describe("Op detail", () => {
     );
     renderAt("/ops/op_1");
     expect(await screen.findByTestId("error-401")).toBeInTheDocument();
-    expect(screen.getByText("Anmelden")).toBeInTheDocument();
+    // "Anmelden" appears in both the splash button and the guest sidebar
+    expect(screen.getAllByText("Anmelden").length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -305,19 +309,28 @@ describe("Op detail — operator panel", () => {
     ],
   };
 
+  // minimal needs payload — the fleet tab also mounts the NeedsEditor (fetches /needs)
+  const emptyNeeds = { shipTypes: [], cqbTeamMax: 8, cqbTeamDefault: 4, fighterSquadSize: 2, shipNeeds: [], fighterSquads: 0, cqbTeams: { count: 0, size: 4 } };
+
   function useOperatorHandlers(extra: Parameters<typeof server.use>[0][] = []) {
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opAsOperator)),
       http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(operatorView)),
+      http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(emptyNeeds)),
       ...extra,
     );
   }
 
+  // The operator board lives in the Op-Management "Flotte & Warteliste" tab.
+  async function openFleetTab(findByTestId: (id: string) => Promise<HTMLElement>) {
+    (await findByTestId("manage-tab-fleet")).click();
+  }
+
   it("renders pending units, flex signups, questions and hangar shares", async () => {
     useOperatorHandlers();
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
+    const { findByTestId, findByText } = renderAt("/ops/op_1/manage");
+    await openFleetTab(findByTestId);
     expect(await findByTestId("operator-panel")).toBeInTheDocument();
     expect(await findByText("Hammerhead")).toBeInTheDocument();
     expect(await findByText("Flexi")).toBeInTheDocument();
@@ -338,8 +351,8 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
+    const { findByTestId, findByText } = renderAt("/ops/op_1/manage");
+    await openFleetTab(findByTestId);
     (await findByTestId("op-place-user_flex")).click();
     // place-mode banner appears, open seats become green targets
     expect(await findByText("EINTEILEN-MODUS")).toBeInTheDocument();
@@ -357,8 +370,8 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
+    const { findByTestId, findByText } = renderAt("/ops/op_1/manage");
+    await openFleetTab(findByTestId);
     (await findByTestId("op-target-seat_2")).click(); // no place-mode → picker
     expect(await findByText("WER SOLL HIER REIN?")).toBeInTheDocument();
     (await findByTestId("op-pick-user_flex")).click();
@@ -374,8 +387,8 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
+    const { findByTestId } = renderAt("/ops/op_1/manage");
+    await openFleetTab(findByTestId);
     const input = (await findByTestId("answer-input-q1")) as HTMLTextAreaElement;
     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Everus Harbor, 19:00");
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -384,7 +397,7 @@ describe("Op detail — operator panel", () => {
     expect(payload).toMatchObject({ answer: "Everus Harbor, 19:00" });
   });
 
-  it("switches to Triage layout and assigns via drag & drop", async () => {
+  it("assigns via drag & drop (Triage layout, default when embedded)", async () => {
     let payload: Record<string, unknown> | null = null;
     let seatId: string | null = null;
     useOperatorHandlers([
@@ -394,9 +407,8 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
-    (await findByTestId("op-layout-b")).click();
+    const { findByTestId } = renderAt("/ops/op_1/manage");
+    await openFleetTab(findByTestId);
     // drag the flex person onto the open seat
     const person = await findByTestId("op-place-user_flex");
     const row = person.closest("[draggable]")!;
@@ -410,7 +422,7 @@ describe("Op detail — operator panel", () => {
     expect(payload).toMatchObject({ userId: "user_flex" });
   });
 
-  it("appoints a participant as leader (fleet operator)", async () => {
+  it("appoints a participant as leader (Commanders tab, fleet operator)", async () => {
     let payload: Record<string, unknown> | null = null;
     const opFO = {
       ...opAsOperator,
@@ -427,26 +439,27 @@ describe("Op detail — operator panel", () => {
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opFO)),
-      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(operatorView)),
       http.post(`${API}/operations/op_1/leaders`, async ({ request }) => {
         payload = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
-    (await findByTestId("leader-add-toggle")).click();
+    const { findByTestId } = renderAt("/ops/op_1/manage");
+    (await findByTestId("manage-tab-commanders")).click();
     (await findByTestId("leader-cand-user_part")).click();
     await new Promise((r) => setTimeout(r, 50));
     expect(payload).toMatchObject({ userId: "user_part" });
   });
 
-  it("hides leader management for non-fleet-operators", async () => {
-    useOperatorHandlers(); // opAsOperator has canManage:true but no viewerRole
-    const { findByTestId, queryByTestId } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
-    await findByTestId("operator-panel");
-    expect(queryByTestId("leader-add-toggle")).not.toBeInTheDocument();
+  it("hides leader appointment for non-fleet-operators", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opAsOperator)), // canManage:true, no viewerRole
+    );
+    const { findByTestId, queryByText } = renderAt("/ops/op_1/manage");
+    (await findByTestId("manage-tab-commanders")).click();
+    await findByTestId("commanders-panel");
+    expect(queryByText("TEILNEHMER ERNENNEN")).not.toBeInTheDocument();
   });
 
   it("accepts a pending unit", async () => {
@@ -457,8 +470,8 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1");
-    (await findByTestId("operator-toggle")).click();
+    const { findByTestId } = renderAt("/ops/op_1/manage");
+    await openFleetTab(findByTestId);
     (await findByTestId("accept-unit_p")).click();
     await new Promise((r) => setTimeout(r, 50));
     expect(hit).toBe(true);
@@ -484,6 +497,8 @@ describe("Operations calendar", () => {
     );
     const { findByTestId, getAllByText } = renderAt("/calendar");
     expect(await findByTestId("calendar-page")).toBeInTheDocument();
+    // month grid (cells) is a desktop-only view; switch to it first
+    (await findByTestId("cal-view-monat")).click();
     // title appears in the month cell
     expect(getAllByText("Quantanium-Mining HUR-L1").length).toBeGreaterThanOrEqual(1);
     // select day 15 → detail card shows the open link to the op
@@ -508,6 +523,7 @@ describe("Operations calendar", () => {
     expect(queryAllByText("Past Op").length).toBe(0);
     // toggle past events on
     (await findByTestId("cal-toggle-past")).click();
+    await new Promise((r) => setTimeout(r, 40));
     expect(queryAllByText("Past Op").length).toBeGreaterThanOrEqual(1);
   });
 
@@ -526,6 +542,8 @@ describe("Operations calendar", () => {
     );
     const { findByTestId, queryAllByText } = renderAt("/calendar");
     await findByTestId("calendar-page");
+    // month view shows all days incl. past, so the filter is date-independent
+    (await findByTestId("cal-view-monat")).click();
     (await findByTestId("cal-filter-combat")).click();
     await new Promise((r) => setTimeout(r, 20));
     expect(queryAllByText("mining-op").length).toBe(0);
@@ -733,11 +751,11 @@ describe("Op editor (lifecycle)", () => {
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(title, "Renamed Op");
     title.dispatchEvent(new Event("input", { bubbles: true }));
     (await findByTestId("edit-save")).click();
-    expect(await findByTestId("edit-notice")).toHaveTextContent("Gespeichert");
+    expect(await findByTestId("manage-notice")).toHaveTextContent("Gespeichert");
     expect(patched).toMatchObject({ title: "Renamed Op", opType: "combat" });
   });
 
-  it("operator changes status (POST status)", async () => {
+  it("operator changes status (POST status, Admin tab)", async () => {
     let statusBody: Record<string, unknown> | null = null;
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
@@ -748,11 +766,12 @@ describe("Op editor (lifecycle)", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
-    const sel = (await findByTestId("edit-status")) as HTMLSelectElement;
+    (await findByTestId("manage-tab-admin")).click();
+    const sel = (await findByTestId("manage-status")) as HTMLSelectElement;
     Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")!.set!.call(sel, "open");
     sel.dispatchEvent(new Event("change", { bubbles: true }));
-    (await findByTestId("edit-status-apply")).click();
-    await findByTestId("edit-notice");
+    (await findByTestId("manage-status-apply")).click();
+    await findByTestId("manage-notice");
     expect(statusBody).toMatchObject({ status: "open" });
   });
 
@@ -780,7 +799,7 @@ describe("Op editor (lifecycle)", () => {
       http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: false })),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
-    expect(await findByTestId("edit-forbidden")).toBeInTheDocument();
+    expect(await findByTestId("manage-forbidden")).toBeInTheDocument();
   });
 });
 
@@ -798,11 +817,12 @@ describe("Op editor admin (template + recurrence)", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("manage-tab-admin")).click();
     const name = (await findByTestId("tpl-name")) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(name, "Xeno Blueprint");
     name.dispatchEvent(new Event("input", { bubbles: true }));
     (await findByTestId("tpl-publish")).click();
-    expect(await findByTestId("edit-notice")).toHaveTextContent("veröffentlicht");
+    expect(await findByTestId("manage-notice")).toHaveTextContent("veröffentlicht");
     expect(published).toMatchObject({ name: "Xeno Blueprint", visibility: "guild" });
   });
 
@@ -817,8 +837,9 @@ describe("Op editor admin (template + recurrence)", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("manage-tab-admin")).click();
     (await findByTestId("recur-create")).click();
-    expect(await findByTestId("edit-notice")).toHaveTextContent("Serie erstellt");
+    expect(await findByTestId("manage-notice")).toHaveTextContent("Serie erstellt");
     expect(recurBody).toMatchObject({ freq: "weekly" });
   });
 
@@ -833,8 +854,9 @@ describe("Op editor admin (template + recurrence)", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("manage-tab-admin")).click();
     (await findByTestId("recurrence-stop")).click();
-    expect(await findByTestId("edit-notice")).toHaveTextContent("gestoppt");
+    expect(await findByTestId("manage-notice")).toHaveTextContent("gestoppt");
     expect(hit).toBe(true);
   });
 });
@@ -859,6 +881,7 @@ describe("Op needs editor (Bedarfe)", () => {
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json({ crewRequests: [], questions: [], hangarShares: [], auditLogs: [] })),
       http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(needs)),
       http.post(`${API}/operations/op_1/needs/ships`, async ({ request }) => {
         added = (await request.json()) as Record<string, unknown>;
@@ -866,6 +889,7 @@ describe("Op needs editor (Bedarfe)", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("manage-tab-fleet")).click();
     expect(await findByTestId("need-row-req_1")).toHaveTextContent("Flagship");
     (await findByTestId("shiptype-capital")).click();
     (await findByTestId("need-add")).click();
@@ -878,6 +902,7 @@ describe("Op needs editor (Bedarfe)", () => {
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json({ crewRequests: [], questions: [], hangarShares: [], auditLogs: [] })),
       http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(needs)),
       http.put(`${API}/operations/op_1/needs/fighters`, async ({ request }) => {
         put = (await request.json()) as Record<string, unknown>;
@@ -885,6 +910,7 @@ describe("Op needs editor (Bedarfe)", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("manage-tab-fleet")).click();
     const count = (await findByTestId("fighters-count")) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(count, "3");
     count.dispatchEvent(new Event("input", { bubbles: true }));
