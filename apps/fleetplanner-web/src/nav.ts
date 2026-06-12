@@ -36,11 +36,10 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Nutzer / Konto",
+    // IA merge C: Profil & Hangar + Logins + Feedback are tabs of one Konto screen.
+    label: "Konto",
     items: [
-      { to: "/profile", label: "Profil & Flotte", icon: "users", auth: true },
-      { to: "/account", label: "Verknüpfte Logins", icon: "lock", auth: true },
-      { to: "/feedback", label: "Feedback", icon: "chat", auth: true },
+      { to: "/konto", label: "Konto", icon: "users", auth: true },
     ],
   },
   {

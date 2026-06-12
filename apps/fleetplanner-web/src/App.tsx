@@ -9,16 +9,14 @@ import { OperationenPage } from "./pages/CalendarPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
 import { OpManagePage } from "./pages/OpManagePage";
 import { WizardPage } from "./pages/WizardPage";
-import { ProfilePage } from "./pages/ProfilePage";
+import { KontoPage } from "./pages/KontoPage";
 import { ShipsPage } from "./pages/ShipsPage";
-import { FeedbackPage } from "./pages/FeedbackPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 import { HandbuchPage } from "./pages/HandbuchPage";
 import { RechtlichesPage } from "./pages/RechtlichesPage";
 import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { PartnershipsPage } from "./pages/PartnershipsPage";
 import { ServerListPage } from "./pages/ServerListPage";
-import { AccountPage } from "./pages/AccountPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -66,12 +64,15 @@ export function App() {
             <Route path="/operationen" element={<OperationenPage session={session} />} />
             <Route path="/calendar" element={<Navigate to="/?view=kalender" replace />} />
             <Route path="/ops/new" element={<WizardPage session={session} />} />
-            <Route path="/profile" element={<ProfilePage session={session} />} />
             <Route path="/ships" element={<ShipsPage />} />
             <Route path="/templates" element={<TemplatesPage session={session} />} />
-            <Route path="/feedback" element={<FeedbackPage session={session} />} />
             <Route path="/guilds" element={<ServerListPage session={session} />} />
-            <Route path="/account" element={<AccountPage session={session} />} />
+            {/* IA merge C: profile/hangar + logins + feedback → /konto tabs */}
+            <Route path="/konto" element={<KontoPage session={session} />} />
+            <Route path="/konto/:tab" element={<KontoPage session={session} />} />
+            <Route path="/profile" element={<Navigate to="/konto/profil" replace />} />
+            <Route path="/account" element={<Navigate to="/konto/logins" replace />} />
+            <Route path="/feedback" element={<Navigate to="/konto/feedback" replace />} />
             <Route path="/guilds/diagnostics" element={<DiagnosticsPage session={session} />} />
             <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
             <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
