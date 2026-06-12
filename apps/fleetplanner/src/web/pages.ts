@@ -6676,15 +6676,8 @@ export function loginRequiredPage(opts: {
 
 // ── Public info pages ────────────────────────────────────────────────
 
-export function whatIsPage(opts: {
-  basePath: string;
-  currentUser: LayoutOptions["currentUser"];
-  csrfToken?: string;
-  lang?: "de" | "en";
-}): SafeHtml {
-  const bp = opts.basePath;
+export function whatIsBody(bp: string, de: boolean): SafeHtml {
   const card = "card";
-  const de = (opts.lang ?? "de") === "de";
 
   const langToggle = html`<div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
     <a href="${bp}/${de ? "what-is" : "was-ist"}" class="btn btn-sm">${de ? "🇬🇧 English version" : "🇩🇪 Deutsche Version"}</a>
@@ -6874,12 +6867,22 @@ export function whatIsPage(opts: {
       <a href="${bp}/how-to" class="btn btn-cyan">On to the detailed guide →</a>
     </div>`;
 
+  return html`${langToggle}${de ? deBody : enBody}`;
+}
+
+export function whatIsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  lang?: "de" | "en";
+}): SafeHtml {
+  const de = (opts.lang ?? "de") === "de";
   return layout({
     title: de ? "Was ist der Fleetmanager?" : "What is the Fleetmanager?",
-    basePath: bp,
+    basePath: opts.basePath,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
-    body: html`${langToggle}${de ? deBody : enBody}`,
+    body: whatIsBody(opts.basePath, de),
   });
 }
 
@@ -6935,15 +6938,9 @@ export function scToolsPage(opts: {
   });
 }
 
-export function howToPage(opts: {
-  basePath: string;
-  currentUser: LayoutOptions["currentUser"];
-  csrfToken?: string;
-  /** Free-text SuperAdmin contact. */
-  superadminContact?: string;
-}): SafeHtml {
-  const bp = opts.basePath;
-  const body = html` <div class="page-header">
+export function howToBody(bp: string, superadminContact?: string): SafeHtml {
+  const opts = { superadminContact };
+  return html` <div class="page-header">
       <h1 class="page-title">HOW TO USE RDOC FLEETPLANNER</h1>
     </div>
 
@@ -7304,13 +7301,21 @@ export function howToPage(opts: {
         </p>
       </div>
     </div>`;
+}
 
+export function howToPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  /** Free-text SuperAdmin contact. */
+  superadminContact?: string;
+}): SafeHtml {
   return layout({
     title: "How to",
-    basePath: bp,
+    basePath: opts.basePath,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
-    body,
+    body: howToBody(opts.basePath, opts.superadminContact),
   });
 }
 
@@ -8281,13 +8286,8 @@ export function impressumPage(opts: {
 }
 
 // ── Privacy policy (English — mirrors raumdock.org + app data) ──────
-export function datenschutzPage(opts: {
-  basePath: string;
-  currentUser: LayoutOptions["currentUser"];
-  csrfToken?: string;
-}): SafeHtml {
-  const bp = opts.basePath;
-  const body = html`<div class="page-header">
+export function datenschutzBody(bp: string): SafeHtml {
+  return html`<div class="page-header">
       <h1 class="page-title">PRIVACY POLICY</h1>
     </div>
     <div class="section" style="max-width:52rem">
@@ -8400,11 +8400,18 @@ export function datenschutzPage(opts: {
         </ul>
       </div>
     </div>`;
+}
+
+export function datenschutzPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
   return layout({
     title: "Privacy",
-    basePath: bp,
+    basePath: opts.basePath,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
-    body,
+    body: datenschutzBody(opts.basePath),
   });
 }

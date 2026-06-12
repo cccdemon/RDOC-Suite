@@ -208,6 +208,10 @@ export function App() {
           <Route path="/impressum" element={<DocPage slug="impressum" />} />
           <Route path="/license" element={<DocPage slug="license" />} />
           <Route path="/why-unsigned" element={<DocPage slug="why-unsigned" />} />
+          <Route path="/how-to" element={<DocPage slug="how-to" />} />
+          <Route path="/was-ist" element={<DocPage slug="whatis" lang="de" />} />
+          <Route path="/what-is" element={<DocPage slug="whatis" lang="en" />} />
+          <Route path="/privacy" element={<DocPage slug="datenschutz" />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />
         </Routes>
       </main>

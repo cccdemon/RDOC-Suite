@@ -3,8 +3,9 @@
 // fleetplanner-web SPA renders it in its DocPage. No page rendering happens here
 // — this is trusted first-party HTML content returned as a string.
 import { html, rawHtml, type SafeHtml } from "../web/render.js";
-import { whyUnsignedBody } from "../web/pages.js";
+import { whyUnsignedBody, whatIsBody, howToBody, datenschutzBody } from "../web/pages.js";
 import { setLocale, t } from "../i18n/index.js";
+import { basePath, getEnv } from "../config/env.js";
 
 export interface DocContent {
   title: string;
@@ -97,10 +98,25 @@ const whyUnsigned: Builder = (lang) => {
   return { title: t("nav.unsignedBinary"), body: whyUnsignedBody() };
 };
 
+const howTo: Builder = () => ({
+  title: "How to",
+  body: howToBody(basePath(), getEnv().SUPERADMIN_CONTACT),
+});
+
+const whatis: Builder = (lang) => ({
+  title: lang === "en" ? "What is the Fleetmanager?" : "Was ist der Fleetmanager?",
+  body: whatIsBody(basePath(), lang !== "en"),
+});
+
+const datenschutz: Builder = () => ({ title: "Privacy", body: datenschutzBody(basePath()) });
+
 const BUILDERS: Record<string, Builder> = {
   impressum,
   license,
   "why-unsigned": whyUnsigned,
+  "how-to": howTo,
+  whatis,
+  datenschutz,
 };
 
 export function getDocContent(slug: string, lang: "de" | "en" = "de"): DocContent | null {
