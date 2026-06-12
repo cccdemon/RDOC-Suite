@@ -4,22 +4,7 @@ import { ApiError, deleteOperation, editOperation } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
 import { CardHead, MONO, actionBar, btnGhost, btnPrimary, card, inp, lbl, segChip, ta } from "./ui";
-
-const OP_TYPES = [
-  { key: "combat", label: "Kampf", color: "var(--red)", rgb: "255,68,68", icon: "fighter" },
-  { key: "mining", label: "Mining", color: "var(--gold)", rgb: "240,165,0", icon: "bolt" },
-  { key: "salvage", label: "Bergung", color: "var(--orange)", rgb: "255,122,69", icon: "swap" },
-  { key: "explore", label: "Exploration", color: "var(--cyan)", rgb: "0,212,255", icon: "globe" },
-  { key: "transport", label: "Transport", color: "var(--purple)", rgb: "160,100,255", icon: "vehicle" },
-  { key: "training", label: "Training", color: "var(--green)", rgb: "0,255,136", icon: "lead" },
-  { key: "social", label: "Sozial", color: "#ff70c8", rgb: "255,112,200", icon: "users" },
-];
-const VIS = [
-  { key: "private", label: "Privat", desc: "Nur dein Server", icon: "lock" },
-  { key: "partners", label: "Partner", desc: "Verbündete Server sehen es", icon: "link" },
-  { key: "public", label: "Öffentlich", desc: "Instanzweit sichtbar", icon: "globe" },
-];
-const SYSTEMS = ["Stanton", "Pyro", "Nyx"];
+import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, normalizeVisibility, coreOpBody } from "./opForm";
 
 function isoToLocalInput(iso: string): string {
   const d = new Date(iso);
@@ -50,7 +35,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
     maxParticipants: op.maxParticipants != null ? String(op.maxParticipants) : "",
     meetingSystem: op.meetingSystem || "Stanton",
     meetingLocation: op.meetingLocation ?? "",
-    visibility: (op.visibility === "guild" ? "private" : op.visibility) as string,
+    visibility: normalizeVisibility(op.visibility),
   };
   const [form, setForm] = useState(initial);
   const [saved, setSaved] = useState(initial);
@@ -67,7 +52,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
       maxParticipants: op.maxParticipants != null ? String(op.maxParticipants) : "",
       meetingSystem: op.meetingSystem || "Stanton",
       meetingLocation: op.meetingLocation ?? "",
-      visibility: (op.visibility === "guild" ? "private" : op.visibility) as string,
+      visibility: normalizeVisibility(op.visibility),
     };
     setForm(next);
     setSaved(next);
@@ -81,13 +66,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
     setBusy(true);
     try {
       await editOperation(op.id, csrf, {
-        title: form.title.trim(),
-        description: form.description,
-        opType: form.opType,
-        meetingSystem: form.meetingSystem.trim(),
-        meetingLocation: form.meetingLocation.trim(),
-        scheduledAt: form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
-        visibility: form.visibility,
+        ...coreOpBody(form),
         maxParticipants: form.maxParticipants.trim() === "" ? null : Math.max(0, Number(form.maxParticipants) || 0),
       });
       onNotice("Gespeichert.");

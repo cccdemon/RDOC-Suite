@@ -3,29 +3,15 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError, addShipNeeds, createOperation, createRecurrence, setCqbTeams, setFighterSquads } from "../api/client";
 import type { SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, coreValid, coreOpBody } from "../components/opForm";
 
 const MONO = "var(--mono)";
 
-const OP_TYPES = [
-  { key: "combat", label: "Kampf", color: "#ff4444", icon: "fighter" },
-  { key: "mining", label: "Mining", color: "#f0a500", icon: "bolt" },
-  { key: "salvage", label: "Bergung", color: "#ff7a45", icon: "swap" },
-  { key: "explore", label: "Exploration", color: "#00d4ff", icon: "globe" },
-  { key: "transport", label: "Transport", color: "#a064ff", icon: "vehicle" },
-  { key: "training", label: "Training", color: "#00ff88", icon: "lead" },
-  { key: "social", label: "Sozial", color: "#ff70c8", icon: "users" },
-];
 const RECUR = [
   { key: "", label: "Nie" },
   { key: "weekly", label: "Wöchentlich" },
   { key: "biweekly", label: "Alle 2 Wochen" },
   { key: "monthly_nth", label: "Monatlich" },
-];
-const VIS = [
-  { key: "guild", label: "Guild" },
-  { key: "partners", label: "Partner" },
-  { key: "public", label: "Öffentlich" },
-  { key: "private", label: "Privat" },
 ];
 const SHIP_TYPES = [
   { slug: "any", label: "Any ship" },
@@ -57,7 +43,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const [description, setDescription] = useState("");
   const [meetingSystem, setMeetingSystem] = useState("Stanton");
   const [meetingLocation, setMeetingLocation] = useState("");
-  const [visibility, setVisibility] = useState("guild");
+  const [visibility, setVisibility] = useState("private");
   const [ships, setShips] = useState<string[]>([]);
   const [fighters, setFighters] = useState(0);
   const [cqb, setCqb] = useState(0);
@@ -67,7 +53,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
 
   useEffect(() => { if (!guildId && operatorGuilds[0]) setGuildId(operatorGuilds[0].guildId); }, [guildId, operatorGuilds]);
 
-  const eckdatenDone = title.trim().length > 0 && scheduledAt.length > 0;
+  const eckdatenDone = coreValid({ title, scheduledAt });
   const stepDone = useMemo(() => [eckdatenDone, true, true, true, true, false], [eckdatenDone]);
 
   if (session === null) return <div className="fpw-state"><span style={lbl}>LADE…</span></div>;
@@ -88,13 +74,8 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
     try {
       const r = await createOperation(csrf, {
         guildId,
-        title: title.trim(),
-        opType,
-        description: description.trim() || undefined,
-        meetingSystem: meetingSystem.trim() || undefined,
-        meetingLocation: meetingLocation.trim() || undefined,
+        ...coreOpBody({ title, scheduledAt, opType, description, meetingSystem, meetingLocation, visibility }),
         scheduledAt: new Date(scheduledAt).toISOString(),
-        visibility,
       });
       // Apply fleet needs + recurrence to the fresh op (best-effort, non-fatal).
       try {
@@ -173,7 +154,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {OP_TYPES.map((t) => {
                       const on = opType === t.key;
-                      return <button key={t.key} type="button" data-testid={`wiz-type-${t.key}`} onClick={() => setOpType(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? `1px solid ${t.color}` : "1px solid rgba(255,255,255,0.12)", background: on ? `${t.color}1f` : "transparent", color: on ? t.color : "#9fb1c2" }}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>;
+                      return <button key={t.key} type="button" data-testid={`wiz-type-${t.key}`} onClick={() => setOpType(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? `1px solid rgb(${t.rgb})` : "1px solid rgba(255,255,255,0.12)", background: on ? `rgba(${t.rgb},0.13)` : "transparent", color: on ? `rgb(${t.rgb})` : "#9fb1c2" }}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>;
                     })}
                   </div>
                 </div>
@@ -190,7 +171,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
             {step === 2 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" }}>
-                  <div><label style={lbl}>System</label><select data-testid="wiz-system" value={meetingSystem} onChange={(e) => setMeetingSystem(e.target.value)} style={inp}>{["Stanton", "Pyro", "Nyx"].map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
+                  <div><label style={lbl}>System</label><select data-testid="wiz-system" value={meetingSystem} onChange={(e) => setMeetingSystem(e.target.value)} style={inp}>{SYSTEMS.map((s) => <option key={s} value={s}>{s}</option>)}</select></div>
                   <div><label style={lbl}>Treffpunkt</label><input data-testid="wiz-location" type="text" maxLength={160} value={meetingLocation} onChange={(e) => setMeetingLocation(e.target.value)} placeholder="z. B. HUR-L1" style={inp} /></div>
                 </div>
                 <div>
