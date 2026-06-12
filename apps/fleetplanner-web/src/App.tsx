@@ -207,6 +207,7 @@ export function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/impressum" element={<DocPage slug="impressum" />} />
           <Route path="/license" element={<DocPage slug="license" />} />
+          <Route path="/why-unsigned" element={<DocPage slug="why-unsigned" />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />
         </Routes>
       </main>

@@ -3,6 +3,8 @@
 // fleetplanner-web SPA renders it in its DocPage. No page rendering happens here
 // — this is trusted first-party HTML content returned as a string.
 import { html, rawHtml, type SafeHtml } from "../web/render.js";
+import { whyUnsignedBody } from "../web/pages.js";
+import { setLocale, t } from "../i18n/index.js";
 
 export interface DocContent {
   title: string;
@@ -88,9 +90,17 @@ Required Notice: The RDOC-Suite credit banner, stamp, logo, and visible attribut
     </div>`,
 });
 
+// i18n-driven pages reuse the existing body-builders; setLocale mutates the
+// request ALS store so t() resolves to the requested language.
+const whyUnsigned: Builder = (lang) => {
+  setLocale(lang === "en" ? "en" : "de");
+  return { title: t("nav.unsignedBinary"), body: whyUnsignedBody() };
+};
+
 const BUILDERS: Record<string, Builder> = {
   impressum,
   license,
+  "why-unsigned": whyUnsigned,
 };
 
 export function getDocContent(slug: string, lang: "de" | "en" = "de"): DocContent | null {

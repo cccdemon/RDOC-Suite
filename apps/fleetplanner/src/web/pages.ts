@@ -7574,13 +7574,7 @@ Required Notice: The RDOC-Suite credit banner, stamp, logo, and visible attribut
   });
 }
 
-export function whyUnsignedPage(opts: {
-  basePath: string;
-  currentUser: LayoutOptions["currentUser"];
-  csrfToken?: string;
-}): SafeHtml {
-  const bp = opts.basePath;
-
+export function whyUnsignedBody(): SafeHtml {
   const option = (n: string, title: string, body: SafeHtml) => html`
     <div class="card" style="padding:1.1rem;margin-bottom:.85rem">
       <h2 style="margin:0 0 .5rem;font-size:1rem;color:var(--cyan)">
@@ -7590,7 +7584,7 @@ export function whyUnsignedPage(opts: {
     </div>
   `;
 
-  const body = html`
+  return html`
     <div class="page-header"><h1 class="page-title">${t("wu.title")}</h1></div>
     <div class="section" style="max-width:52rem">
       <p class="text-sm" style="color:var(--text);line-height:1.6;margin:0 0 1.25rem">
@@ -7612,13 +7606,19 @@ export function whyUnsignedPage(opts: {
       </div>
     </div>
   `;
+}
 
+export function whyUnsignedPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
   return layout({
     title: t("nav.unsignedBinary"),
-    basePath: bp,
+    basePath: opts.basePath,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
-    body,
+    body: whyUnsignedBody(),
   });
 }
 
