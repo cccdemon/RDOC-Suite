@@ -6886,14 +6886,10 @@ export function whatIsPage(opts: {
   });
 }
 
-export function scToolsPage(opts: {
-  basePath: string;
-  currentUser: LayoutOptions["currentUser"];
-  csrfToken?: string;
-  tools: Array<{ url: string; domain: string; name: string; desc: string; image: string | null }>;
-}): SafeHtml {
-  const bp = opts.basePath;
-  const body = html`<div class="page-header">
+export function scToolsBody(
+  tools: Array<{ url: string; domain: string; name: string; desc: string; image: string | null }>,
+): SafeHtml {
+  return html`<div class="page-header">
       <h1 class="page-title">${t("sct.title")}</h1>
       <p class="page-subtitle">${t("sct.subtitle")}</p>
     </div>
@@ -6910,7 +6906,7 @@ export function scToolsPage(opts: {
     </style>
     <div class="section">
       <div class="sct-grid">
-        ${opts.tools.map(
+        ${tools.map(
           (t) => html`<a class="sct-card" href="${t.url}" target="_blank" rel="noopener noreferrer">
             ${t.image
               ? html`<div class="sct-img" style="background-image:url('${t.image}')"></div>`
@@ -6929,12 +6925,20 @@ export function scToolsPage(opts: {
         ${t("sct.footer")}
       </p>
     </div>`;
+}
+
+export function scToolsPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+  tools: Array<{ url: string; domain: string; name: string; desc: string; image: string | null }>;
+}): SafeHtml {
   return layout({
     title: t("sct.tabTitle"),
-    basePath: bp,
+    basePath: opts.basePath,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
-    body,
+    body: scToolsBody(opts.tools),
   });
 }
 
@@ -7319,12 +7323,7 @@ export function howToPage(opts: {
   });
 }
 
-export function changelogPage(opts: {
-  basePath: string;
-  currentUser: LayoutOptions["currentUser"];
-  csrfToken?: string;
-}): SafeHtml {
-  const bp = opts.basePath;
+export function changelogBody(): SafeHtml {
   const entries = CHANGELOG.map(
     (e) => html`<div class="card" style="padding:1rem 1.25rem;max-width:52rem;margin-bottom:1rem">
       <div class="card-header" style="margin-bottom:.75rem;padding-bottom:.6rem">
@@ -7337,18 +7336,24 @@ export function changelogPage(opts: {
     </div>`,
   );
 
-  const body = html`<div class="page-header">
+  return html`<div class="page-header">
       <h1 class="page-title">${t("nav.changelog").toUpperCase()}</h1>
       <div class="page-subtitle">${t("misc.changelogSub")}</div>
     </div>
     <div class="section">${entries}</div>`;
+}
 
+export function changelogPage(opts: {
+  basePath: string;
+  currentUser: LayoutOptions["currentUser"];
+  csrfToken?: string;
+}): SafeHtml {
   return layout({
     title: t("nav.changelog"),
-    basePath: bp,
+    basePath: opts.basePath,
     currentUser: opts.currentUser,
     csrfToken: opts.csrfToken,
-    body,
+    body: changelogBody(),
   });
 }
 

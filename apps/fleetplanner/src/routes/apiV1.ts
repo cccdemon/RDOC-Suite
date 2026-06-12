@@ -221,7 +221,7 @@ export async function apiV1Routes(app: FastifyInstance) {
     "/api/v1/content/:slug",
     async (req, reply) => {
       const lang = req.query.lang === "en" ? "en" : "de";
-      const content = getDocContent(req.params.slug, lang);
+      const content = await getDocContent(req.params.slug, lang);
       if (!content) return sendError(reply, req, 404, "not_found", "Unknown content page.");
       return reply.type("application/json").send(content);
     },

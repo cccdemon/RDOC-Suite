@@ -3,16 +3,18 @@
 // fleetplanner-web SPA renders it in its DocPage. No page rendering happens here
 // — this is trusted first-party HTML content returned as a string.
 import { html, rawHtml, type SafeHtml } from "../web/render.js";
-import { whyUnsignedBody, whatIsBody, howToBody, datenschutzBody } from "../web/pages.js";
+import { whyUnsignedBody, whatIsBody, howToBody, datenschutzBody, changelogBody, scToolsBody } from "../web/pages.js";
 import { setLocale, t } from "../i18n/index.js";
 import { basePath, getEnv } from "../config/env.js";
+import { getScToolCards } from "../services/scTools.js";
 
 export interface DocContent {
   title: string;
   html: string;
 }
 
-type Builder = (lang: "de" | "en") => { title: string; body: SafeHtml };
+type DocResult = { title: string; body: SafeHtml };
+type Builder = (lang: "de" | "en") => DocResult | Promise<DocResult>;
 
 const impressum: Builder = () => ({
   title: "Impressum",
@@ -110,6 +112,17 @@ const whatis: Builder = (lang) => ({
 
 const datenschutz: Builder = () => ({ title: "Privacy", body: datenschutzBody(basePath()) });
 
+const changelog: Builder = (lang) => {
+  setLocale(lang === "en" ? "en" : "de");
+  return { title: t("nav.changelog"), body: changelogBody() };
+};
+
+const scTools: Builder = async (lang) => {
+  setLocale(lang === "en" ? "en" : "de");
+  const tools = await getScToolCards();
+  return { title: t("sct.tabTitle"), body: scToolsBody(tools) };
+};
+
 const BUILDERS: Record<string, Builder> = {
   impressum,
   license,
@@ -117,11 +130,13 @@ const BUILDERS: Record<string, Builder> = {
   "how-to": howTo,
   whatis,
   datenschutz,
+  changelog,
+  "sc-tools": scTools,
 };
 
-export function getDocContent(slug: string, lang: "de" | "en" = "de"): DocContent | null {
+export async function getDocContent(slug: string, lang: "de" | "en" = "de"): Promise<DocContent | null> {
   const build = BUILDERS[slug];
   if (!build) return null;
-  const { title, body } = build(lang);
+  const { title, body } = await build(lang);
   return { title, html: rawHtml(body) };
 }
