@@ -17,6 +17,18 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
   (`i18n.tsx`: `t()`, de/en, `LocaleProvider`); Konto-Tab „Einstellungen". **opStyle bewusst
   weggelassen** (Single-Style-SPA → tote Einstellung). Neue Features nutzen i18n ab sofort;
   Legacy-Strings bleiben DE bis zum Sweep.
+- ✅ **FR-F1** Vorlagen-Marktplatz „Invalid CSRF Token": `GET /api/v1/templates` nutzte
+  `requireSessionJson` (erzwingt CSRF-Header) — ein GET sendet keinen → jeder Listen-Read 403.
+  Auf `optionalAuth` + 401 umgestellt (kein CSRF bei Reads).
+- ✅ **FR-A1** Briefing-/Tutorial-Links: `client.ts` `addResourceLink`/`removeResourceLink` +
+  `ResourceLinksPanel` im Operator-Eckdaten-Tab (Player-Anzeige war bereits read-only da).
+  **Reorder (PATCH sortOrder) aufgeschoben** — Backend hat keine PATCH-Route, nur POST/DELETE.
+- ✅ **FR-C1** Mission-Cover im Assistenten: Wizard hält nach „Erstellen" auf dem letzten Schritt,
+  zeigt `CoverPanel` (op-id da) + „Zur Operation". i18n von Beginn (`cover.*`).
+- ✅ **Bugfix Sitz-Zuweisung 400** (Logs→DB-Query): 10 Legacy-User haben 18-stellige Discord-
+  Snowflakes als `User.id`. `AssignSeatRequestSchema {userId: cuid}` (Regex `{20,32}`) verwarf sie
+  → 400 beim Einteilen/Commander-Ernennen. Neuer `userIdLike` (cuid ODER Snowflake `\d{17,20}`)
+  für AssignSeat + LeaderParam + GuildMemberParam; DB-Lookup bleibt echter Guard.
 - ✅ **FR-B1** (Operation-Ebene) Sitz aktivieren/deaktivieren + umbenennen (`e562954`): Schema
   hatte `active`+`label` schon (keine Migration). `PATCH /api/v1/operations/:id/seats/:seatId`;
   inaktive Sitze zählen nicht mehr als offen; Operator-Board mit Inline-Rename + AUS/AN-Toggle,

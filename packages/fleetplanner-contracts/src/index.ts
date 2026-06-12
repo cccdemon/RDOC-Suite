@@ -377,6 +377,12 @@ export const HangarShareRequestSchema = z
 
 const cuid = z.string().regex(/^[a-z0-9]{20,32}$/i);
 
+/** A user id is EITHER a Prisma cuid (new accounts) OR a legacy Discord snowflake
+ *  (17–20 digits) — early/seeded User rows use the Discord id as their primary key.
+ *  The strict `cuid` (≥20 chars) rejected snowflakes, so assigning/promoting those
+ *  users 400'd. The DB lookup stays the real guard; this just allows both shapes. */
+const userIdLike = z.string().regex(/^([a-z0-9]{20,32}|\d{17,20})$/i, "invalid user id");
+
 export const RegisterUnitRequestSchema = z
   .object({
     unitType: z.enum(["ship", "squad", "vehicle"]),
@@ -422,7 +428,7 @@ export const ResourceLinkResponseSchema = z
 export const UnitParamSchema = z.object({ id: cuid, unitId: cuid });
 export const LinkParamSchema = z.object({ id: cuid, linkId: cuid });
 export const QuestionParamSchema = z.object({ id: cuid, qid: cuid });
-export const LeaderParamSchema = z.object({ id: cuid, userId: cuid });
+export const LeaderParamSchema = z.object({ id: cuid, userId: userIdLike });
 export const HangarShipParamSchema = z.object({ shipId: cuid });
 
 // ── Operator (read model + mutations) ─────────────────────────────────
@@ -472,7 +478,7 @@ export const UnitDecisionRequestSchema = z
   .meta({ id: "UnitDecisionRequest" });
 
 export const AssignSeatRequestSchema = z
-  .object({ userId: cuid })
+  .object({ userId: userIdLike })
   .meta({ id: "AssignSeatRequest" });
 
 export const AnswerQuestionRequestSchema = z
@@ -770,7 +776,7 @@ export const SetAutoShareRequestSchema = z
 export const GuildIdParamSchema = z.object({ id: z.string().regex(/^\d{16,25}$/) });
 export const GuildMemberParamSchema = z.object({
   id: z.string().regex(/^\d{16,25}$/),
-  userId: cuid,
+  userId: userIdLike,
 });
 
 // ── OpenAPI helper ────────────────────────────────────────────────────

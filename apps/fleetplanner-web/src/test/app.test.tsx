@@ -582,7 +582,8 @@ describe("Create operation", () => {
     // jump to the last step via the rail, then create
     (await findByTestId("wiz-step-5")).click();
     (await findByTestId("wiz-create")).click();
-    // navigates to /ops/op_new → its title renders
+    // FR-C1: create now holds on the cover step; "Zur Operation" navigates
+    (await findByTestId("wiz-to-op")).click();
     expect(await findByTestId("op-title")).toBeInTheDocument();
     expect(payload).toMatchObject({ guildId: "guild_1", title: "Stanton Patrol", opType: "combat" });
   });

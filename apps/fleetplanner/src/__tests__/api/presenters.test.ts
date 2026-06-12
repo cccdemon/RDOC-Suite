@@ -67,10 +67,15 @@ describe("presenters", () => {
     expect(out.scheduledAt).toBe("2026-06-20T18:00:00.000Z");
   });
 
-  it("operation detail matches the contract; inactive seats are dropped", () => {
+  it("operation detail matches the contract; inactive seats are included with the active flag (FR-B1)", () => {
     const out = presentOperationDetail(opRow, { role: "crew", canManage: false, signupState: "joined" });
     expect(OperationDetailSchema.safeParse(out).success).toBe(true);
-    expect(out.units[0].seats).toHaveLength(2);
+    // All seats are returned (the operator board needs inactive ones to re-activate);
+    // the player board filters on `active` client-side. Inactive seats don't count
+    // toward totals though.
+    expect(out.units[0].seats).toHaveLength(3);
+    expect(out.units[0].seats[2].active).toBe(false);
+    expect(out.totalSeats).toBe(2);
     expect(out.units[0].seats[0].claimedBy).toEqual({ id: "c1", username: "Cap" });
     expect(out.units[0].seats[1].claimedBy).toBeNull();
     expect(out.signupState).toBe("joined");
@@ -79,7 +84,9 @@ describe("presenters", () => {
   it("emits no HTML-ish or secret-ish fields", () => {
     const out = presentOperationDetail(opRow, { role: null, canManage: false, signupState: null });
     const json = JSON.stringify(out);
-    for (const banned of ["tokenCiphertext", "rawJson", "auditLogs", "questions", "hangarShares", "<div", "style="]) {
+    // NB: `questions` IS a legit op-detail field (FR-B7, public Q&A thread); the
+    // operator-only `auditLogs`/`hangarShares` stay out of the player payload.
+    for (const banned of ["tokenCiphertext", "rawJson", "auditLogs", "hangarShares", "<div", "style="]) {
       expect(json).not.toContain(banned);
     }
   });

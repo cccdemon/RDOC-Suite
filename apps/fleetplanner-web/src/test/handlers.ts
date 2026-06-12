@@ -22,6 +22,8 @@ export const handlers = [
     }),
   ),
   http.get(`${API}/locations/search`, () => HttpResponse.json({ locations: [] })),
+  // default cover state (CoverPanel in OperatorConsole + wizard cover step)
+  http.get(`${API}/operations/:id/cover`, () => HttpResponse.json({ serviceConfigured: false, cover: null })),
   // default empty guild member list (seat picker + commanders); specific tests override
   http.get(`${API}/guilds/:id/settings`, ({ params }) =>
     HttpResponse.json({

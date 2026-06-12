@@ -196,6 +196,15 @@ export function withdrawUnit(opId: string, unitId: string, csrfToken: string): P
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}`, csrfToken);
 }
 
+// FR-A1: operator-curated briefing / tutorial links on an operation.
+export type ResourceLink = { id: string; title: string | null; url: string; kind: string | null; sortOrder: number };
+export function addResourceLink(opId: string, csrfToken: string, input: { url: string; title?: string; kind?: string }): Promise<{ ok: true; link: ResourceLink }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/resource-links`, csrfToken, input);
+}
+export function removeResourceLink(opId: string, linkId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/resource-links/${encodeURIComponent(linkId)}`, csrfToken);
+}
+
 export function addLeader(opId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/leaders`, csrfToken, { userId });
 }

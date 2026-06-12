@@ -3,7 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError, addShipNeeds, createOperation, createRecurrence, setCqbTeams, setFighterSquads } from "../api/client";
 import type { SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { CoverPanel } from "../components/CoverPanel";
 import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, coreValid, coreOpBody } from "../components/opForm";
+import { useT } from "../i18n";
 import { TemplatesPage } from "./TemplatesPage";
 
 const MONO = "var(--mono)";
@@ -32,6 +34,7 @@ const lbl: React.CSSProperties = { fontFamily: MONO, fontSize: "0.62rem", letter
 
 export function WizardPage({ session }: { session: SessionResponse | null }) {
   const nav = useNavigate();
+  const t = useT();
   const operatorGuilds = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator" || session?.user?.role === "superadmin");
   const csrf = session?.csrfToken ?? null;
 
@@ -52,6 +55,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [picker, setPicker] = useState(false); // "Aus Vorlage starten" overlay
+  const [createdId, setCreatedId] = useState<string | null>(null); // FR-C1: hold after create for the cover step
 
   useEffect(() => { if (!guildId && operatorGuilds[0]) setGuildId(operatorGuilds[0].guildId); }, [guildId, operatorGuilds]);
 
@@ -86,7 +90,10 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
         if (cqb > 0) await setCqbTeams(r.id, csrf, cqb, cqbSize);
         if (freq) await createRecurrence(r.id, csrf, { freq });
       } catch { /* op exists; needs/recurrence are optional add-ons */ }
-      nav(`/ops/${r.id}`);
+      // FR-C1: stay on the wizard's final step so the operator can optionally add a
+      // mission cover (the cover editor needs the new op id). "Zur Operation" leaves.
+      setCreatedId(r.id);
+      setNotice(t("cover.created"));
     } catch (err) {
       setNotice(err instanceof ApiError ? err.message : "Erstellen fehlgeschlagen.");
     } finally {
@@ -219,12 +226,25 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
               </div>
             )}
 
-            {step === 5 && (
+            {step === 5 && !createdId && (
               <div style={{ textAlign: "center", padding: "1rem 0.5rem" }}>
                 <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(0,255,136,0.1)", border: "1px solid rgba(0,255,136,0.3)", color: "#00ff88", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "0.9rem" }}><Ic name="check" size={24} sw={1.7} /></div>
                 <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "#eaf4fb", marginBottom: "0.4rem" }}>Bereit zum Erstellen</div>
                 <p style={{ fontSize: "0.84rem", color: "#9fb1c2", maxWidth: "42ch", margin: "0 auto 1rem", lineHeight: 1.5 }}>Die Operation wird als Entwurf angelegt. Bedarfe und Wiederholung werden direkt übernommen.</p>
                 <button type="button" data-testid="wiz-create" disabled={busy || !csrf} onClick={create} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.14)", color: "#00ff88", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}><Ic name="plus" size={15} sw={1.8} /> Operation erstellen</button>
+              </div>
+            )}
+
+            {/* FR-C1: after create, offer the mission-cover step in-place, then leave. */}
+            {step === 5 && createdId && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+                  <span style={{ color: "#00ff88", display: "inline-flex" }}><Ic name="check" size={18} sw={1.8} /></span>
+                  <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "#eaf4fb" }}>{t("cover.created")}</span>
+                </div>
+                <p style={{ fontSize: "0.84rem", color: "#9fb1c2", margin: 0, lineHeight: 1.5 }}>{t("cover.wizardHint")}</p>
+                <CoverPanel opId={createdId} csrf={csrf} onNotice={setNotice} />
+                <button type="button" data-testid="wiz-to-op" onClick={() => nav(`/ops/${createdId}`)} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid rgba(0,212,255,0.5)", background: "rgba(0,212,255,0.14)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}>{t("cover.toOp")}<Ic name="arrow" size={14} sw={1.8} /></button>
               </div>
             )}
           </section>

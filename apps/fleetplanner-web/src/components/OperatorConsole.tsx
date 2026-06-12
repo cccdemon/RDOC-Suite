@@ -7,6 +7,7 @@ import { OperatorPanel } from "./OperatorPanel";
 import { CoverPanel } from "./CoverPanel";
 import { CommandersPanel } from "./CommandersPanel";
 import { EckdatenForm } from "./EckdatenForm";
+import { ResourceLinksPanel } from "./ResourceLinksPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 
 // IA merge D: the operator console (previously the standalone /ops/:id/manage page)
@@ -145,7 +146,12 @@ export function OperatorConsole({
 
       {notice && <p className="tag tag-gold" role="alert" data-testid="manage-notice" style={{ marginBottom: "1rem" }}>{notice}</p>}
 
-      {tab === "eckdaten" && <EckdatenForm op={op} csrf={csrf} onSaved={reload} onNotice={setNotice} />}
+      {tab === "eckdaten" && (
+        <>
+          <EckdatenForm op={op} csrf={csrf} onSaved={reload} onNotice={setNotice} />
+          <ResourceLinksPanel op={op} opId={opId} csrf={csrf} onChanged={reload} onNotice={setNotice} />
+        </>
+      )}
 
       {tab === "fleet" && (
         <>

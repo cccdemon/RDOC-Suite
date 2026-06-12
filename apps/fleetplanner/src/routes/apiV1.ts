@@ -1300,8 +1300,11 @@ export async function apiV1Routes(app: FastifyInstance) {
 
   // ── templates marketplace ───────────────────────────────────────────
   app.get<{ Querystring: Record<string, string> }>("/api/v1/templates", async (req, reply) => {
-    const ctx = await requireSessionJson(req, reply);
-    if (!ctx) return;
+    // FR-F1: this is a GET — require a session but NOT a CSRF token. The marketplace
+    // list call carries no x-csrf-token header, so requireSessionJson rejected every
+    // read with 403 "Invalid CSRF token." (surfaced as the marketplace error).
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     const guildId = (req.query.guildId ?? "").trim();
     if (!guildId) return sendError(reply, req, 400, "bad_request", "guildId required.");
     // Must be a member of the guild whose marketplace scope is requested.

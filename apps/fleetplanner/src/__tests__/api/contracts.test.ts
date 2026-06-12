@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   ApiErrorSchema,
+  AssignSeatRequestSchema,
   IdParamSchema,
+  LeaderParamSchema,
   OperationDetailSchema,
   OperationListQuerySchema,
   OperationSummarySchema,
@@ -46,6 +48,7 @@ describe("contracts", () => {
     const detail = {
       ...summaryFixture,
       description: "Bring quant.",
+      maxParticipants: 24,
       guild: { ...summaryFixture.guild, timezone: "Europe/Berlin" },
       leaders: [{ id: "user_1", username: "Lead" }],
       units: [
@@ -74,6 +77,9 @@ describe("contracts", () => {
       resourceLinks: [
         { id: "link_1", title: "Briefing", url: "https://example.com/briefing", kind: "link", sortOrder: 0 },
       ],
+      questions: [
+        { id: "q_1", asker: "Mira", body: "Treffpunkt?", answer: null, answeredBy: null },
+      ],
       viewerRole: "crew",
       canManage: false,
       viewerCqbSignedUp: false,
@@ -81,6 +87,17 @@ describe("contracts", () => {
     };
     const parsed = OperationDetailSchema.safeParse(detail);
     expect(parsed.success).toBe(true);
+  });
+
+  it("accepts a user id that is a cuid OR a legacy Discord snowflake", () => {
+    // Regression: early/seeded User rows use the 17–19-digit Discord id as their PK.
+    // The strict cuid validator 400'd seat-assign / leader-add for those users.
+    expect(AssignSeatRequestSchema.safeParse({ userId: "cmqbk20mg000zpa07gjlzi1r9" }).success).toBe(true);
+    expect(AssignSeatRequestSchema.safeParse({ userId: "289476670933434368" }).success).toBe(true);
+    expect(LeaderParamSchema.safeParse({ id: "cmq9dlavi0007mo07cwhnorer", userId: "289476670933434368" }).success).toBe(true);
+    // still rejects junk
+    expect(AssignSeatRequestSchema.safeParse({ userId: "nope" }).success).toBe(false);
+    expect(AssignSeatRequestSchema.safeParse({ userId: "12345" }).success).toBe(false);
   });
 
   it("error envelope requires code, message and requestId", () => {
