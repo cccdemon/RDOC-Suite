@@ -14,6 +14,7 @@ import { TemplatesPage } from "./pages/TemplatesPage";
 import { RoadmapPage } from "./pages/RoadmapPage";
 import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { PartnershipsPage } from "./pages/PartnershipsPage";
+import { ServerListPage } from "./pages/ServerListPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ErrorState } from "./components/ErrorState";
@@ -102,7 +103,7 @@ export function App() {
         </Link>
         <Link to="/calendar" style={navIdle}>Kalender</Link>
         <Link to="/ships" style={navIdle}>Schiffe</Link>
-        <Link to="/guilds/settings" style={navIdle}>Server</Link>
+        <Link to="/guilds" style={navIdle}>Server</Link>
         <Link to="/feedback" style={navIdle}>Feedback</Link>
         <Link to="/roadmap" style={navIdle}>Roadmap</Link>
         <a href="/fleetplanner/how-to" style={navIdle}>Anleitung</a>
@@ -190,6 +191,7 @@ export function App() {
           <Route path="/templates" element={<TemplatesPage session={session} />} />
           <Route path="/feedback" element={<FeedbackPage session={session} />} />
           <Route path="/roadmap" element={<RoadmapPage />} />
+          <Route path="/guilds" element={<ServerListPage session={session} />} />
           <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
           <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
           <Route path="/admin" element={<AdminPage session={session} />} />
