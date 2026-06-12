@@ -547,13 +547,16 @@ describe("Create operation", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/new");
-    const title = (await findByTestId("create-title")) as HTMLInputElement;
+    // step 0 (Eckdaten): name + start
+    const title = (await findByTestId("wiz-title")) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(title, "Stanton Patrol");
     title.dispatchEvent(new Event("input", { bubbles: true }));
-    const when = (await findByTestId("create-when")) as HTMLInputElement;
+    const when = (await findByTestId("wiz-when")) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(when, "2026-07-01T20:00");
     when.dispatchEvent(new Event("input", { bubbles: true }));
-    (await findByTestId("create-submit")).click();
+    // jump to the last step via the rail, then create
+    (await findByTestId("wiz-step-5")).click();
+    (await findByTestId("wiz-create")).click();
     // navigates to /ops/op_new → its title renders
     expect(await findByTestId("op-title")).toBeInTheDocument();
     expect(payload).toMatchObject({ guildId: "guild_1", title: "Stanton Patrol", opType: "combat" });

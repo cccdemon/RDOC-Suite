@@ -6,7 +6,7 @@ import { OverviewPage } from "./pages/OverviewPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
 import { EditOpPage } from "./pages/EditOpPage";
 import { CalendarPage } from "./pages/CalendarPage";
-import { CreatePage } from "./pages/CreatePage";
+import { WizardPage } from "./pages/WizardPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { ShipsPage } from "./pages/ShipsPage";
 import { FeedbackPage } from "./pages/FeedbackPage";
@@ -184,7 +184,7 @@ export function App() {
         <Routes>
           <Route path="/" element={<OverviewPage session={session} />} />
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/ops/new" element={<CreatePage session={session} />} />
+          <Route path="/ops/new" element={<WizardPage session={session} />} />
           <Route path="/profile" element={<ProfilePage session={session} />} />
           <Route path="/ships" element={<ShipsPage />} />
           <Route path="/templates" element={<TemplatesPage session={session} />} />

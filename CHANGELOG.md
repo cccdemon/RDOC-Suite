@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P1 security and implementation review (2026-06-12)
+
+- Added `docs/FR-P1-SecurityAndImplenetationReview.md`, a prioritized security review covering
+  OSV findings, API hardening, Caddy/security headers, E2E test-login risk, dependency drift,
+  dead legacy Voice/Relay config and production E2E acceptance tests.
+- Added the review to `docs/ROADMAP.md` as a P1 implementation item.
+
+### Changed - SPA op-creation wizard (Claude Design handoff, Fleetplanner-App) (2026-06-12)
+
+- Replaced the single-form `/ops/new` create page with a guided 6-step **Erstellungs-Assistent**
+  per the full-app design handoff: step rail (Eckdaten · Briefing · Treffpunkt · Flotte · Prüfen ·
+  Erstellen), step body and a live summary aside. Step 0 collects name/start/recurrence/op-type
+  (chips); 1 the markdown briefing; 2 system/location/visibility; 3 fleet needs (ship-type pick +
+  fighter squads + CQB teams); 4 a review; 5 creates. On create it applies the chosen needs + a
+  recurring series to the fresh op, then opens it. (The design's Discord voice-channel step was
+  dropped — voice was removed.) MSW + Playwright create flows updated; the old CreatePage is gone.
+
 ### Added - E2E Playwright suite + env-gated test-login seam (2026-06-12)
 
 - New `e2e/` Playwright suite (24 tests) that drives the **real SPA against a live instance**

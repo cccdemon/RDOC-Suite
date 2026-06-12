@@ -38,14 +38,16 @@ test("operator: session loads with the test guild", async () => {
   await expect(op.getByTestId("session-state")).toContainText("e2e-operator");
 });
 
-test("operator: creates an operation (title, type, visibility, date, submit)", async () => {
+test("operator: creates an operation via the wizard (name, date, type → create)", async () => {
   await op.goto("ops/new");
   await expect(op.getByTestId("create-page")).toBeVisible();
-  await op.getByTestId("create-title").fill("E2E-Op Xenothreat");
-  await op.getByTestId("create-type").selectOption("combat");
-  await op.getByTestId("create-vis").selectOption("guild").catch(() => {});
-  await op.getByTestId("create-when").fill(futureLocal(7));
-  await op.getByTestId("create-submit").click();
+  // step 0 — Eckdaten
+  await op.getByTestId("wiz-title").fill("E2E-Op Xenothreat");
+  await op.getByTestId("wiz-when").fill(futureLocal(7));
+  await op.getByTestId("wiz-type-combat").click();
+  // jump to the final step via the rail and create
+  await op.getByTestId("wiz-step-5").click();
+  await op.getByTestId("wiz-create").click();
   await expect(op.getByTestId("op-title")).toHaveText(/E2E-Op Xenothreat/);
   opId = op.url().match(/ops\/([^/?]+)/)?.[1] ?? "";
   expect(opId).not.toBe("");
