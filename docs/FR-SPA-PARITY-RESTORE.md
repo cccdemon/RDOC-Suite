@@ -10,6 +10,14 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
 
 **Voice/CC: vollständig ausgeklammert.**
 
+## Umgesetzt (Stand 2026-06-13)
+- ✅ **FR-A3** Crew-Schiff-Withdrawal · ✅ **FR-A4** Sitz-Picker beliebiges Guild-Mitglied (`e43efa2`).
+- ✅ **FR-B7** Frage-stellen + Q&A-Thread in OperationDetail-Payload (`71a54d0`).
+- ✅ **FR-B8** Sprach-Präferenz (`PATCH /api/v1/profile {locale}`) + **SPA-i18n-Fundament**
+  (`i18n.tsx`: `t()`, de/en, `LocaleProvider`); Konto-Tab „Einstellungen". **opStyle bewusst
+  weggelassen** (Single-Style-SPA → tote Einstellung). Neue Features nutzen i18n ab sofort;
+  Legacy-Strings bleiben DE bis zum Sweep.
+
 **Legende Status:** 🟢 Backend `/api/v1` vorhanden, nur Frontend fehlt · 🔴 Backend fehlt auch · 🟡 teilweise.
 **Priorität:** **P1** essenziell (Kern-Flow kaputt/blockiert) · **P2** wichtig (Operator-Tiefe) · **P3** Ausbau.
 **⚠️** = Kreuzabhängigkeit oder Design-Widerspruch (unten gesammelt).
