@@ -109,8 +109,8 @@ test("flex player: signs up flexibly + toggles hangar share", async () => {
 });
 
 test("operator: accepts the pending squad (open seats appear)", async () => {
-  await op.goto(`ops/${opId}`);
-  await op.getByTestId("operator-toggle").click();
+  await op.goto(`ops/${opId}/manage`);
+  await op.getByTestId("manage-tab-fleet").click();
   await expect(op.getByTestId("operator-panel")).toBeVisible();
   const accept = op.locator('[data-testid^="accept-"]').first();
   await expect(accept).toBeVisible({ timeout: 15_000 });
@@ -138,8 +138,8 @@ test("player: claims an open seat directly", async () => {
 });
 
 test("operator: frees the claimed seat (unassign ✕)", async () => {
-  await op.goto(`ops/${opId}`);
-  await op.getByTestId("operator-toggle").click();
+  await op.goto(`ops/${opId}/manage`);
+  await op.getByTestId("manage-tab-fleet").click();
   await expect(op.getByTestId("operator-panel")).toBeVisible();
   const free = op.locator('[data-testid^="op-free-"]').first();
   await expect(free).toBeVisible({ timeout: 15_000 });

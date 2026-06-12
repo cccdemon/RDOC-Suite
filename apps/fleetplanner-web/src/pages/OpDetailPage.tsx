@@ -8,12 +8,10 @@ import {
   getOperation,
   setHangarShare,
   unclaimSeat,
-  unassignSeat as operatorUnassignSeat,
 } from "../api/client";
 import type { FleetUnit, OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { OfferShip } from "../components/OfferShip";
-import { OperatorPanel } from "../components/OperatorPanel";
 import { Ic } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { Markdown } from "../components/Markdown";
@@ -89,7 +87,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const [error, setError] = useState<ApiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busySeat, setBusySeat] = useState<string | null>(null);
-  const [view, setView] = useState<"spieler" | "operator">("spieler");
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [offerOpen, setOfferOpen] = useState(false);
   const fleetRef = useRef<HTMLDivElement>(null);
@@ -169,10 +166,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const pct = op.minParticipants > 0 ? Math.min(100, Math.round((filled / op.minParticipants) * 100)) : 0;
   const canJoin = !!me && !!csrf && op.status === "open";
-  const isOperatorView = view === "operator" && op.canManage && !!csrf;
   const heroImg = `${import.meta.env.BASE_URL}assets/operation-hero.png`;
 
-  // design tabBase/tabActive
+  // design tab/link style for the operator action row
   const tabBase: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
@@ -187,12 +183,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     background: "transparent",
     color: "#9fb1c2",
     transition: "all .14s",
-  };
-  const tabActive: React.CSSProperties = {
-    ...tabBase,
-    background: "rgba(0,212,255,0.12)",
-    borderColor: "rgba(0,212,255,0.4)",
-    color: "#00d4ff",
   };
 
   const infoRow = (icon: string, lab: string, val: string) => (
@@ -264,29 +254,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             <span style={{ fontSize: "0.86rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "11rem" }}>
               {s.claimedBy.username}
             </span>
-            {isOperatorView && s.order !== 0 && s.claimedBy.id !== me?.id && (
-              <button
-                type="button"
-                data-testid={`op-free-${s.id}`}
-                title="Platz freigeben"
-                style={{
-                  flexShrink: 0,
-                  width: 21,
-                  height: 21,
-                  borderRadius: 6,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "transparent",
-                  color: "#7e92a4",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                }}
-                onClick={() => run(() => operatorUnassignSeat(id!, s.id, csrf!))}
-              >
-                <Ic name="x" size={11} sw={2} />
-              </button>
-            )}
             {me && s.claimedBy.id === me.id && (
               <button
                 type="button"
@@ -516,38 +483,30 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       )}
 
 
-      {/* VIEW SWITCH */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.8rem" }}>
-        <div style={{ display: "inline-flex", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, padding: 3, background: "#090f18", gap: 3 }}>
-          <button type="button" onClick={() => setView("spieler")} style={view === "spieler" ? tabActive : tabBase}>
-            <Ic name="fps" size={15} /> Spieler-Ansicht
-          </button>
-          {op.canManage && (
-            <button type="button" data-testid="operator-toggle" onClick={() => setView(view === "operator" ? "spieler" : "operator")} style={view === "operator" ? tabActive : tabBase}>
-              <Ic name="board" size={15} /> Operator-Ansicht
-            </button>
+      {/* OPERATOR ACTIONS — Spieler sehen das Board direkt; Operatoren steuern über Management/Bearbeiten */}
+      {(op.canManage || op.signupState === "joined") && (
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.8rem" }}>
+          {op.canManage ? (
+            <div style={{ display: "inline-flex", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, padding: 3, background: "#090f18", gap: 3 }}>
+              <Link to={`/ops/${id}/manage`} data-testid="manage-op-link" style={{ ...tabBase, textDecoration: "none" }}>
+                <Ic name="board" size={15} /> Management
+              </Link>
+              <Link to={`/ops/${id}/edit`} data-testid="edit-op-link" style={{ ...tabBase, textDecoration: "none" }}>
+                <Ic name="bolt" size={15} /> Bearbeiten
+              </Link>
+            </div>
+          ) : (
+            <span />
           )}
-          {op.canManage && (
-            <Link to={`/ops/${id}/manage`} data-testid="manage-op-link" style={{ ...tabBase, textDecoration: "none" }}>
-              <Ic name="board" size={15} /> Management
-            </Link>
-          )}
-          {op.canManage && (
-            <Link to={`/ops/${id}/edit`} data-testid="edit-op-link" style={{ ...tabBase, textDecoration: "none" }}>
-              <Ic name="bolt" size={15} /> Bearbeiten
-            </Link>
+          {op.signupState === "joined" && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", color: "#00ff88", fontSize: "0.88rem" }}>
+              <Ic name="check" size={15} /> Du bist Teilnehmer.
+            </span>
           )}
         </div>
-        {op.signupState === "joined" && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", color: "#00ff88", fontSize: "0.88rem" }}>
-            <Ic name="check" size={15} /> Du bist Teilnehmer.
-          </span>
-        )}
-      </div>
+      )}
 
-      {isOperatorView ? (
-        <OperatorPanel op={op} csrf={csrf!} onChanged={load} onError={(m) => setNotice(m)} />
-      ) : (
+      {(
         <>
           {/* MITMACHEN — three entry cards */}
           {canJoin && (
