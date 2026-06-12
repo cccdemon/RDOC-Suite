@@ -41,17 +41,36 @@ async function get<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+// Last-known-good CSRF token. The session prop is fetched once at App mount, so
+// a token can go stale if the session is replaced (re-login in another tab, etc.)
+// — that surfaced as "Invalid CSRF token" 403s. We refresh it on demand below.
+let csrfOverride: string | null = null;
+
 async function mutate<T>(method: "POST" | "PUT" | "PATCH" | "DELETE", path: string, csrfToken: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    credentials: "same-origin",
-    headers: {
-      accept: "application/json",
-      "x-csrf-token": csrfToken,
-      ...(body !== undefined ? { "content-type": "application/json" } : {}),
-    },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-  });
+  const send = (token: string) =>
+    fetch(`${API_BASE}${path}`, {
+      method,
+      credentials: "same-origin",
+      headers: {
+        accept: "application/json",
+        "x-csrf-token": token,
+        ...(body !== undefined ? { "content-type": "application/json" } : {}),
+      },
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+
+  let res = await send(csrfOverride ?? csrfToken);
+  // A 403 may just be a stale in-memory CSRF token. Refetch the current session
+  // token and retry once — the rejected request had no side effect (the CSRF
+  // gate runs before the mutation), so the retry is safe.
+  if (res.status === 403) {
+    const fresh = await get<SessionResponse>("/session").catch(() => null);
+    const freshCsrf = fresh?.csrfToken ?? null;
+    if (freshCsrf && freshCsrf !== (csrfOverride ?? csrfToken)) {
+      csrfOverride = freshCsrf;
+      res = await send(freshCsrf);
+    }
+  }
   if (!res.ok) {
     let errBody: ApiErrorBody | null = null;
     try {
