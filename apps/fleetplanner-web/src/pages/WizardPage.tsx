@@ -4,6 +4,7 @@ import { ApiError, addShipNeeds, createOperation, createRecurrence, setCqbTeams,
 import type { SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, coreValid, coreOpBody } from "../components/opForm";
+import { TemplatesPage } from "./TemplatesPage";
 
 const MONO = "var(--mono)";
 
@@ -50,6 +51,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const [cqbSize, setCqbSize] = useState(4);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [picker, setPicker] = useState(false); // "Aus Vorlage starten" overlay
 
   useEffect(() => { if (!guildId && operatorGuilds[0]) setGuildId(operatorGuilds[0].guildId); }, [guildId, operatorGuilds]);
 
@@ -113,7 +115,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
           <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="plus" size={17} sw={1.7} /></span>
           <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "#5b6b7a" }}>OPERATION // ERSTELLUNGS-ASSISTENT</span>
-          <Link to="/templates" data-testid="templates-link" style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "#00d4ff", textDecoration: "none" }}>VORLAGEN →</Link>
+          <button type="button" data-testid="templates-link" onClick={() => setPicker(true)} style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "#00d4ff", background: "transparent", border: "1px solid rgba(0,212,255,0.3)", borderRadius: 7, padding: "0.3rem 0.7rem", cursor: "pointer" }}>Aus Vorlage starten</button>
         </div>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "#eaf4fb", margin: 0 }}>Neue Operation</h1>
       </div>
@@ -254,6 +256,20 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
         </aside>
       </div>
       <style>{`@media (max-width: 900px){.fpw-wizard-grid{display:flex !important;flex-direction:column}}`}</style>
+
+      {/* IA merge F: "Aus Vorlage starten" — the marketplace as a picker overlay
+          inside the op-editor (applying navigates to the created op). */}
+      {picker && (
+        <div role="dialog" data-testid="template-picker" style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(2,5,10,0.72)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "3vh 1rem" }} onClick={() => setPicker(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 1080, background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: 14, padding: "1.4rem 1.5rem", boxShadow: "0 24px 70px rgba(0,0,0,0.6)" }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: "0.6rem" }}>
+              <span style={{ flex: 1, fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "#5b6b7a" }}>AUS VORLAGE STARTEN</span>
+              <button type="button" data-testid="template-picker-close" onClick={() => setPicker(false)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#9fb1c2", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Ic name="x" size={14} sw={2} /></button>
+            </div>
+            <TemplatesPage session={session} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

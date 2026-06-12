@@ -23,7 +23,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: "/", label: "Operationen", icon: "board" },
       { to: "/ops/new", label: "Neue Operation", icon: "plus", auth: true },
       { to: "/ships", label: "Schiffe", icon: "ship" },
-      { to: "/templates", label: "Marktplatz", icon: "swap", auth: true },
+      // IA merge F: templates live in the op-editor ("Aus Vorlage starten" in the
+      // wizard + "Als Vorlage sichern" in the Admin tab) — no top-level marketplace.
     ],
   },
   {
