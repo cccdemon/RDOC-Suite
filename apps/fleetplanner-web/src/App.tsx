@@ -206,6 +206,7 @@ export function App() {
           <Route path="/ops/:id" element={<OpDetailPage session={session} />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/impressum" element={<DocPage slug="impressum" />} />
+          <Route path="/license" element={<DocPage slug="license" />} />
           <Route path="*" element={<ErrorState code={404} message="Seite nicht gefunden." />} />
         </Routes>
       </main>

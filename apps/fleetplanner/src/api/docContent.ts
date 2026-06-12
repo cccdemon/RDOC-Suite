@@ -63,8 +63,34 @@ const impressum: Builder = () => ({
     </div>`,
 });
 
+const license: Builder = (lang) => ({
+  title: lang === "en" ? "License" : "Lizenz",
+  body: html`<div class="page-header"><h1 class="page-title">${lang === "en" ? "LICENSE" : "LIZENZ"}</h1></div>
+    <div class="section">
+      <div class="card" style="padding:1.25rem;max-width:48rem">
+        <pre style="font-family:var(--mono);font-size:.82rem;white-space:pre-wrap;color:var(--text);margin:0">
+RDOC-Suite License and Notices
+
+Code license:
+PolyForm Noncommercial License 1.0.0
+https://polyformproject.org/licenses/noncommercial/1.0.0
+
+Required Notice: RDOC-Suite Copyright (c) 2026 xheadwigx and justcallmedeimos.
+Required Notice: Authors: xheadwigx (https://github.com/cccdemon) and justcallmedeimos (https://twitch.tv/justcallmedeimos).
+Required Notice: RDOC-Suite source: https://github.com/cccdemon/RDOC-Suite
+Required Notice: RDOC-Suite is licensed for noncommercial use under the PolyForm Noncommercial License 1.0.0. Commercial use requires prior written permission from the authors.
+Required Notice: The RDOC-Suite credit banner, stamp, logo, and visible attribution notices must not be removed, hidden, or materially altered in public deployments or redistributed versions without prior written permission from the authors.</pre>
+        <p class="text-dim text-sm" style="margin-top:1rem">
+          ${lang === "en" ? "Source" : "Quelle"}:
+          <a href="https://github.com/cccdemon/RDOC-Suite" target="_blank" rel="noopener">github.com/cccdemon/RDOC-Suite</a>
+        </p>
+      </div>
+    </div>`,
+});
+
 const BUILDERS: Record<string, Builder> = {
   impressum,
+  license,
 };
 
 export function getDocContent(slug: string, lang: "de" | "en" = "de"): DocContent | null {
