@@ -22,6 +22,13 @@ export const handlers = [
     }),
   ),
   http.get(`${API}/locations/search`, () => HttpResponse.json({ locations: [] })),
+  // default empty guild member list (seat picker + commanders); specific tests override
+  http.get(`${API}/guilds/:id/settings`, ({ params }) =>
+    HttpResponse.json({
+      guild: { id: String(params.id), name: "RDOC", orgName: "RDOC", timezone: "Europe/Berlin", discordInviteUrl: null, admiralRoleId: null, ownerUserId: "x", canRemove: false },
+      members: [],
+    }),
+  ),
   http.get(`${API}/operations/:id`, ({ params }) =>
     HttpResponse.json(
       { error: { code: "not_found", message: `Operation ${String(params.id)} not found.`, requestId: "req-test" } },

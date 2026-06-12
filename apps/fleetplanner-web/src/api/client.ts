@@ -175,6 +175,12 @@ export function answerQuestion(opId: string, qid: string, answer: string, csrfTo
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/questions/${encodeURIComponent(qid)}/answer`, csrfToken, { answer });
 }
 
+// Withdraw / delete a unit. The backend gate allows the unit's own captain
+// (crew who offered the ship) as well as op operators.
+export function withdrawUnit(opId: string, unitId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}`, csrfToken);
+}
+
 export function addLeader(opId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/leaders`, csrfToken, { userId });
 }

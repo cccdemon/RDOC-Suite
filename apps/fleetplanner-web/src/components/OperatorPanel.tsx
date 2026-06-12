@@ -5,11 +5,12 @@ import {
   answerQuestion,
   assignSeat,
   decideUnit,
+  getGuildSettings,
   getOperatorView,
   removeLeader,
   unassignSeat,
 } from "../api/client";
-import type { FleetUnit, OperationDetail, OperatorView } from "../api/types";
+import type { FleetUnit, GuildSettingsMember, OperationDetail, OperatorView } from "../api/types";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
 
@@ -62,12 +63,20 @@ export function OperatorPanel({
   const [dragUserId, setDragUserId] = useState<string | null>(null);
   const [leaderPick, setLeaderPick] = useState(false);
 
+  const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
+  const [memberFilter, setMemberFilter] = useState("");
+
   function reload() {
     getOperatorView(op.id)
       .then(setView)
       .catch((e) => onError(e instanceof ApiError ? e.message : "Operator-Daten nicht ladbar."));
   }
   useEffect(reload, [op.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Guild members for the seat picker (assign anyone, not just flex signups).
+  useEffect(() => {
+    getGuildSettings(op.guild.id).then((r) => setMembers(r.members)).catch(() => setMembers([]));
+  }, [op.guild.id]);
 
   async function run(action: () => Promise<unknown>) {
     try {
@@ -178,6 +187,28 @@ export function OperatorPanel({
                 <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#f0a500" }}>FLEX</span>
               </button>
             ))}
+            {/* assign ANY guild member (e.g. someone who confirmed by phone) */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.4rem", marginTop: "0.1rem" }}>
+              <input
+                type="search"
+                data-testid="op-pick-search"
+                value={memberFilter}
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => setMemberFilter(e.target.value)}
+                placeholder="Guild-Mitglied suchen…"
+                style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
+              />
+              {memberFilter.trim() && (members ?? [])
+                .filter((m) => m.username.toLowerCase().includes(memberFilter.trim().toLowerCase()))
+                .slice(0, 8)
+                .map((m) => (
+                  <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); run(() => assignSeat(op.id, s.id, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
+                    <Avatar name={m.username} />
+                    <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
+                    <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#00d4ff" }}>MITGLIED</span>
+                  </button>
+                ))}
+            </div>
             <button type="button" onClick={(e) => { e.stopPropagation(); setPicker(null); }} style={{ padding: "0.4rem 0.6rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 7, cursor: "pointer" }}>Schließen</button>
           </div>
         )}

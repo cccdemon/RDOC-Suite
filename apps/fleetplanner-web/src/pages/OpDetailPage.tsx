@@ -8,6 +8,7 @@ import {
   getOperation,
   setHangarShare,
   unclaimSeat,
+  withdrawUnit,
 } from "../api/client";
 import type { FleetUnit, OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
@@ -652,6 +653,17 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                               </div>
                               <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#5b6b7a", marginTop: "0.25rem" }}>BESETZT</div>
                             </div>
+                            {me && csrf && u.captain?.id === me.id && (
+                              <button
+                                type="button"
+                                data-testid={`withdraw-unit-${u.id}`}
+                                title="Mein Schiff zurückziehen"
+                                onClick={(e) => { e.stopPropagation(); if (window.confirm("Dein Schiff aus dieser Operation zurückziehen?")) run(() => withdrawUnit(id!, u.id, csrf)); }}
+                                style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.35rem 0.6rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}
+                              >
+                                <Ic name="x" size={12} sw={2} /> Zurückziehen
+                              </button>
+                            )}
                             <span style={{ display: "inline-flex", flexShrink: 0, transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "#5b6b7a" }}>
                               <Ic name="chevron" size={16} sw={2} />
                             </span>
