@@ -237,6 +237,37 @@ export async function ensureTeamsMaterialized(operationId: string): Promise<void
   }
 }
 
+/** Read model for the SPA Bedarfe/needs editor: current ship needs + the
+ *  fighter-squad and CQB-team counts, plus the picker catalog/constants. */
+export async function getOperationNeeds(operationId: string): Promise<{
+  shipTypes: Array<{ slug: string; label: string }>;
+  cqbTeamMax: number;
+  cqbTeamDefault: number;
+  fighterSquadSize: number;
+  shipNeeds: Array<{ id: string; shipType: string; label: string; note: string | null }>;
+  fighterSquads: number;
+  cqbTeams: { count: number; size: number };
+}> {
+  const reqs = await prisma.compositionRequirement.findMany({
+    where: { group: { operationId } },
+    select: { id: true, needType: true, shipType: true, label: true, note: true, count: true, squadSize: true },
+    orderBy: { order: "asc" },
+  });
+  const fighter = reqs.find((r) => r.needType === "fighter_squad");
+  const cqb = reqs.find((r) => r.needType === "cqb_team");
+  return {
+    shipTypes: SHIP_TYPES.map((t) => ({ slug: t.slug, label: t.label })),
+    cqbTeamMax: CQB_TEAM_MAX,
+    cqbTeamDefault: CQB_TEAM_DEFAULT,
+    fighterSquadSize: FIGHTER_SQUAD_SIZE,
+    shipNeeds: reqs
+      .filter((r) => r.needType === "ship")
+      .map((r) => ({ id: r.id, shipType: r.shipType ?? "any", label: r.label ?? "", note: r.note })),
+    fighterSquads: fighter?.count ?? 0,
+    cqbTeams: { count: cqb?.count ?? 0, size: cqb?.squadSize ?? CQB_TEAM_DEFAULT },
+  };
+}
+
 /** Operator: delete a single ship need. */
 export async function removeShipNeed(operationId: string, reqId: string): Promise<void> {
   await prisma.compositionRequirement.deleteMany({

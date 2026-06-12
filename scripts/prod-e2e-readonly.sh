@@ -56,6 +56,8 @@ life_status="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: 
 check "op status anon 401" "401" "$life_status"
 life_patchbad="$(curl -s -o /dev/null -w '%{http_code}' -X PATCH -H 'content-type: application/json' --data '{"title":"x"}' "$API/operations/..%2Fetc")"
 check "op edit bad id 400" "400" "$life_patchbad"
+needs_anon="$(curl -s -o /dev/null -w '%{http_code}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/needs")"
+check "op needs anon 401" "401" "$needs_anon"
 
 ops="$(curl -fsS "$API/operations")"
 contains "operations json" "$ops" '"operations":'

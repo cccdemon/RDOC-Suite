@@ -35,6 +35,16 @@ verwalten ohne SSR-`/ops/:id/manage`:
 
 **Slice 2 (geplant): Bedarfe/Needs-Editor** — `needs/{ships,fighters,cqb}` + rename/delete +
 requirements/delete. Definiert was die Op braucht (Requirement-Slots).
+
+- **UMGESETZT 2026-06-12 (pending Deploy/E2E):** needs.ts `getOperationNeeds` (read model).
+  Contracts NeedsResponse/ShipNeed/ShipTypeOption/AddShipNeedsRequest/RenameNeedRequest/
+  SetFighterSquadsRequest/SetCqbTeamsRequest/NeedParam. apiV1: `GET …/needs` (operator cookie-
+  only), `POST …/needs/ships`, `PATCH …/needs/:reqId` (rename), `DELETE …/needs/:reqId`,
+  `PUT …/needs/fighters`, `PUT …/needs/cqb` — Writes requireFleetOperator+CSRF, Audit. OpenAPI
+  6 Pfade. inject-Tests (anon 401, empty/negativ 400, doc). FE client 6 Fn + types, NeedsEditor-
+  Komponente (Schiffstyp-Multipick+Name, Jäger-Anzahl, CQB-Anzahl+Größe) in EditOpPage, MSW-
+  Tests (add-ship POST, fighters PUT) + Default-needs-Handler. E2E-readonly +1. CHANGELOG.
+  Rename-Endpoint ohne UI (nur API). Lokal NICHT gebaut (Docker-Regel).
 **Slice 3 (geplant/defer): Fortgeschritten** — formations/groups, cqb-bundling
 (squads/carrier/join/rename/size, bundle/unbundle/place/assign), primary-unit, unit
 edit/seats/carrier, recurrence/stop, publish-template. Selten genutzt; ggf. SSR lassen.

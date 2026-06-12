@@ -194,6 +194,34 @@ export function deleteOperation(id: string, csrfToken: string): Promise<{ ok: tr
   return mutate("DELETE", `/operations/${encodeURIComponent(id)}`, csrfToken);
 }
 
+export function getNeeds(id: string): Promise<import("./types").NeedsResponse> {
+  return get<import("./types").NeedsResponse>(`/operations/${encodeURIComponent(id)}/needs`);
+}
+
+export function addShipNeeds(
+  id: string,
+  csrfToken: string,
+  input: { shipTypes: string[]; name?: string; note?: string },
+): Promise<{ ok: true; added: number }> {
+  return mutate("POST", `/operations/${encodeURIComponent(id)}/needs/ships`, csrfToken, input);
+}
+
+export function renameNeed(id: string, reqId: string, csrfToken: string, name: string): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(id)}/needs/${encodeURIComponent(reqId)}`, csrfToken, { name });
+}
+
+export function removeNeed(id: string, reqId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(id)}/needs/${encodeURIComponent(reqId)}`, csrfToken);
+}
+
+export function setFighterSquads(id: string, csrfToken: string, count: number): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(id)}/needs/fighters`, csrfToken, { count });
+}
+
+export function setCqbTeams(id: string, csrfToken: string, count: number, size: number): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(id)}/needs/cqb`, csrfToken, { count, size });
+}
+
 export function getGuildSettings(guildId: string): Promise<import("./types").GuildSettingsResponse> {
   return get<import("./types").GuildSettingsResponse>(`/guilds/${encodeURIComponent(guildId)}/settings`);
 }

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA op editor — Bedarfe/needs (2026-06-12)
+
+- New `GET /api/v1/operations/:id/needs` (fleet operator) read model: current ship-hull needs,
+  fighter-squad count and CQB-team count/size, plus the ship-type picker catalog + constants.
+- New mutations (fleet operator, CSRF-gated): `POST …/needs/ships` (one hull per picked type,
+  optional name/note), `PATCH …/needs/:reqId` (rename a ship need), `DELETE …/needs/:reqId`
+  (remove a ship need), `PUT …/needs/fighters` (N squads) and `PUT …/needs/cqb` (N teams ×
+  size 1–8). SSR twins: api.ts /api/ops/:id/needs/{ships,fighters,cqb} + needs/:reqId/*.
+- Contracts NeedsResponse / ShipNeed / AddShipNeedsRequest / RenameNeedRequest /
+  SetFighterSquadsRequest / SetCqbTeamsRequest + OpenAPI paths + inject tests (anon 401, empty
+  list / negative count 400). prod-e2e-readonly: needs anon-gate check.
+- SPA NeedsEditor on the `/ops/:id/edit` page: ship-type multi-pick + named ship needs with
+  remove, fighter-squad and CQB-team count/size controls. MSW tests.
+
 ### Added - FR-P2: SPA op editor — lifecycle (2026-06-12)
 
 - New `PATCH /api/v1/operations/:id` (fleet operator) editing title/description/opType/

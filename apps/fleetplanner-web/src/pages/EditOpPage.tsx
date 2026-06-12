@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ApiError, deleteOperation, editOperation, getOperation, setOperationStatus } from "../api/client";
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { NeedsEditor } from "../components/NeedsEditor";
 
 const MONO = "var(--mono)";
 const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
@@ -201,6 +202,8 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
           </div>
         </div>
       </section>
+
+      {id && <NeedsEditor opId={id} csrf={csrf} />}
 
       <section className="fpw-card" style={{ border: "1px solid rgba(255,68,68,0.3)" }}>
         <div style={{ ...label, color: "#ff6b6b" }}>GEFAHRENZONE</div>

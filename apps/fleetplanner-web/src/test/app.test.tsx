@@ -740,6 +740,61 @@ describe("Op editor (lifecycle)", () => {
   });
 });
 
+describe("Op needs editor (Bedarfe)", () => {
+  const opEditable = { ...opDetailFixture, canManage: true };
+  const needs = {
+    shipTypes: [
+      { slug: "any", label: "Any ship" },
+      { slug: "capital", label: "Capital" },
+    ],
+    cqbTeamMax: 8,
+    cqbTeamDefault: 4,
+    fighterSquadSize: 2,
+    shipNeeds: [{ id: "req_1", shipType: "capital", label: "Flagship", note: null }],
+    fighterSquads: 0,
+    cqbTeams: { count: 0, size: 4 },
+  };
+
+  it("adds a ship need (POST needs/ships) with the picked types", async () => {
+    let added: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(needs)),
+      http.post(`${API}/operations/op_1/needs/ships`, async ({ request }) => {
+        added = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, added: 1 });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    expect(await findByTestId("need-row-req_1")).toHaveTextContent("Flagship");
+    (await findByTestId("shiptype-capital")).click();
+    (await findByTestId("need-add")).click();
+    await findByTestId("needs-editor");
+    expect(added).toMatchObject({ shipTypes: ["capital"] });
+  });
+
+  it("sets the fighter-squad count (PUT needs/fighters)", async () => {
+    let put: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(needs)),
+      http.put(`${API}/operations/op_1/needs/fighters`, async ({ request }) => {
+        put = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const count = (await findByTestId("fighters-count")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(count, "3");
+    count.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("fighters-save")).click();
+    await findByTestId("needs-editor");
+    expect(put).toMatchObject({ count: 3 });
+  });
+});
+
 describe("Login page", () => {
   it("links to the same-origin Discord OAuth start", async () => {
     renderAt("/login");

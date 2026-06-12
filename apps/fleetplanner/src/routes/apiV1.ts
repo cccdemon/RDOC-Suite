@@ -43,6 +43,14 @@ import {
   updateDistributedEvents,
 } from "../services/eventDistribution.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
+import {
+  addShipNeeds,
+  getOperationNeeds,
+  removeShipNeed,
+  renameShipNeed,
+  setCqbTeams,
+  setFighterSquads,
+} from "../services/needs.js";
 import { listSharedHangars } from "../services/hangarShare.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
@@ -57,10 +65,15 @@ import {
   AssignSeatRequestSchema,
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
+  AddShipNeedsRequestSchema,
   EditOperationRequestSchema,
   FeedbackRequestSchema,
   GuildIdParamSchema,
   GuildMemberParamSchema,
+  NeedParamSchema,
+  RenameNeedRequestSchema,
+  SetCqbTeamsRequestSchema,
+  SetFighterSquadsRequestSchema,
   SetStatusRequestSchema,
   HangarShareRequestSchema,
   HangarShipParamSchema,
@@ -564,6 +577,83 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (op.discordEventId) {
       deleteScheduledEvent(op.guildId, op.discordEventId).catch((err) => req.log.warn(err, "Discord event deletion failed after delete (v1)"));
     }
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  // ── operation editor: Bedarfe / needs ────────────────────────────────
+  // SSR twins: api.ts /api/ops/:id/needs/{ships,fighters,cqb} + needs/:reqId/{rename,delete}.
+
+  app.get<{ Params: { id: string } }>("/api/v1/operations/:id/needs", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if ((await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id)) !== "fleetoperator")
+      return sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
+    const needs = await getOperationNeeds(p.data.id);
+    return reply.type("application/json").send(needs);
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/v1/operations/:id/needs/ships", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const body = AddShipNeedsRequestSchema.safeParse(req.body);
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    const added = await addShipNeeds(p.data.id, body.data.shipTypes, body.data.note ?? null, body.data.name ?? null);
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, "needs:ships", `+${added}`);
+    return reply.type("application/json").send({ ok: true as const, added });
+  });
+
+  app.patch<{ Params: { id: string; reqId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/needs/:reqId",
+    async (req, reply) => {
+      const p = NeedParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = RenameNeedRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireFleetOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      await renameShipNeed(p.data.id, p.data.reqId, body.data.name);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.delete<{ Params: { id: string; reqId: string } }>(
+    "/api/v1/operations/:id/needs/:reqId",
+    async (req, reply) => {
+      const p = NeedParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireFleetOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      await removeShipNeed(p.data.id, p.data.reqId);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "needs:ship-removed", "");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.put<{ Params: { id: string }; Body: unknown }>("/api/v1/operations/:id/needs/fighters", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const body = SetFighterSquadsRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    await setFighterSquads(p.data.id, body.data.count);
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, "needs:fighters", `${body.data.count}`);
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  app.put<{ Params: { id: string }; Body: unknown }>("/api/v1/operations/:id/needs/cqb", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const body = SetCqbTeamsRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    await setCqbTeams(p.data.id, body.data.count, body.data.size);
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, "needs:cqb", `${body.data.count}x${body.data.size}`);
     return reply.type("application/json").send({ ok: true as const });
   });
 

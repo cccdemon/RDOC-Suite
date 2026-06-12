@@ -487,6 +487,61 @@ export const SetStatusRequestSchema = z
   .meta({ id: "SetStatusRequest" });
 export type SetStatusRequest = z.infer<typeof SetStatusRequestSchema>;
 
+// ── Operation editor: Bedarfe / needs ───────────────────────────────────
+
+export const ShipTypeOptionSchema = z
+  .object({ slug: z.string(), label: z.string() })
+  .meta({ id: "ShipTypeOption" });
+
+export const ShipNeedSchema = z
+  .object({
+    id: z.string(),
+    shipType: z.string(),
+    label: z.string(),
+    note: z.string().nullable(),
+  })
+  .meta({ id: "ShipNeed" });
+export type ShipNeed = z.infer<typeof ShipNeedSchema>;
+
+export const NeedsResponseSchema = z
+  .object({
+    shipTypes: z.array(ShipTypeOptionSchema),
+    cqbTeamMax: z.number(),
+    cqbTeamDefault: z.number(),
+    fighterSquadSize: z.number(),
+    shipNeeds: z.array(ShipNeedSchema),
+    fighterSquads: z.number(),
+    cqbTeams: z.object({ count: z.number(), size: z.number() }),
+  })
+  .meta({ id: "NeedsResponse" });
+export type NeedsResponse = z.infer<typeof NeedsResponseSchema>;
+
+export const AddShipNeedsRequestSchema = z
+  .object({
+    shipTypes: z.array(z.string()).min(1).max(20),
+    name: z.string().max(80).optional(),
+    note: z.string().max(280).optional(),
+  })
+  .meta({ id: "AddShipNeedsRequest" });
+export type AddShipNeedsRequest = z.infer<typeof AddShipNeedsRequestSchema>;
+
+export const RenameNeedRequestSchema = z
+  .object({ name: z.string().max(80) })
+  .meta({ id: "RenameNeedRequest" });
+
+export const SetFighterSquadsRequestSchema = z
+  .object({ count: z.coerce.number().int().min(0).max(50) })
+  .meta({ id: "SetFighterSquadsRequest" });
+
+export const SetCqbTeamsRequestSchema = z
+  .object({
+    count: z.coerce.number().int().min(0).max(50),
+    size: z.coerce.number().int().min(1).max(8).default(4),
+  })
+  .meta({ id: "SetCqbTeamsRequest" });
+
+export const NeedParamSchema = z.object({ id: cuid, reqId: cuid });
+
 export const GuildIdParamSchema = z.object({ id: z.string().regex(/^\d{16,25}$/) });
 export const GuildMemberParamSchema = z.object({
   id: z.string().regex(/^\d{16,25}$/),

@@ -363,6 +363,50 @@ describe("operation editor lifecycle — gates + validation", () => {
   });
 });
 
+describe("operation needs editor — gates + validation", () => {
+  const opId = "cmqaaaaaaaaaaaaaaaaaa1";
+  const reqId = "cmqcccccccccccccccccc3";
+
+  it.each([
+    ["GET", `/api/v1/operations/${opId}/needs`, undefined],
+    ["POST", `/api/v1/operations/${opId}/needs/ships`, { shipTypes: ["capital"] }],
+    ["PATCH", `/api/v1/operations/${opId}/needs/${reqId}`, { name: "Tank" }],
+    ["DELETE", `/api/v1/operations/${opId}/needs/${reqId}`, undefined],
+    ["PUT", `/api/v1/operations/${opId}/needs/fighters`, { count: 3 }],
+    ["PUT", `/api/v1/operations/${opId}/needs/cqb`, { count: 2, size: 5 }],
+  ] as const)("%s %s without session → 401 envelope", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      headers: { "x-forwarded-for": `10.14.0.${url.length}`, ...(body !== undefined ? { "content-type": "application/json" } : {}) },
+      ...(body !== undefined ? { payload: JSON.stringify(body) } : {}),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("add ship needs with empty list → 400 before auth", async () => {
+    const res = await app.inject({ method: "POST", url: `/api/v1/operations/${opId}/needs/ships`, headers: { "content-type": "application/json", "x-forwarded-for": "10.14.1.1" }, payload: JSON.stringify({ shipTypes: [] }) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("set fighters with negative count → 400", async () => {
+    const res = await app.inject({ method: "PUT", url: `/api/v1/operations/${opId}/needs/fighters`, headers: { "content-type": "application/json", "x-forwarded-for": "10.14.1.2" }, payload: JSON.stringify({ count: -3 }) });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents the needs routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/operations/{id}/needs"].get).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/needs/ships"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/needs/{reqId}"].patch).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/needs/{reqId}"].delete).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/needs/fighters"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/needs/cqb"].put).toBeTruthy();
+  });
+});
+
 describe("guild settings — gates + validation", () => {
   const gid = "123456789012345678"; // valid Discord snowflake
   const uid = "cmqffffffffffffffffff6";
