@@ -57,7 +57,7 @@ test("operator: edits meta + sets status open", async () => {
   await op.goto(`ops/${opId}/edit`);
   await expect(op.getByTestId("edit-op-page")).toBeVisible();
   await op.getByTestId("edit-title").fill("E2E-Op Xenothreat Logistics");
-  await op.getByTestId("edit-system").fill("Stanton");
+  await op.getByTestId("edit-system-Stanton").click();
   await op.getByTestId("edit-location").fill("HUR-L1");
   await op.getByTestId("edit-description").fill("E2E mission objective.");
   await op.getByTestId("edit-save").click();
