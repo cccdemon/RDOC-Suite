@@ -17,6 +17,11 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
   (`i18n.tsx`: `t()`, de/en, `LocaleProvider`); Konto-Tab „Einstellungen". **opStyle bewusst
   weggelassen** (Single-Style-SPA → tote Einstellung). Neue Features nutzen i18n ab sofort;
   Legacy-Strings bleiben DE bis zum Sweep.
+- ✅ **FR-B1** (Operation-Ebene) Sitz aktivieren/deaktivieren + umbenennen (`e562954`): Schema
+  hatte `active`+`label` schon (keine Migration). `PATCH /api/v1/operations/:id/seats/:seatId`;
+  inaktive Sitze zählen nicht mehr als offen; Operator-Board mit Inline-Rename + AUS/AN-Toggle,
+  Spieler sehen nur aktive. **Template-Ebene aufgeschoben** — Templates sind requirement-basiert
+  (regenerieren Sitze beim Anwenden), per-Sitz active/label braucht eigenes Blueprint-Design.
 
 **Legende Status:** 🟢 Backend `/api/v1` vorhanden, nur Frontend fehlt · 🔴 Backend fehlt auch · 🟡 teilweise.
 **Priorität:** **P1** essenziell (Kern-Flow kaputt/blockiert) · **P2** wichtig (Operator-Tiefe) · **P3** Ausbau.
