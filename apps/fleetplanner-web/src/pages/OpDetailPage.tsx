@@ -355,10 +355,10 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       <section
         style={{
           position: "relative",
-          border: "1px solid rgba(0,212,255,0.18)",
-          borderRadius: 14,
+          border: "1px solid var(--border-hi)",
+          borderRadius: "var(--r-hero)",
           overflow: "hidden",
-          background: "linear-gradient(135deg,rgba(0,212,255,0.06),transparent 46%),#0a121c",
+          background: "var(--hero-grad)",
           padding: "1.7rem 1.8rem",
           marginBottom: "1.1rem",
           display: "flex",
@@ -490,9 +490,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             <div style={{ display: "inline-flex", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 9, padding: 3, background: "#090f18", gap: 3 }}>
               <Link to={`/ops/${id}/manage`} data-testid="manage-op-link" style={{ ...tabBase, textDecoration: "none" }}>
                 <Ic name="board" size={15} /> Management
-              </Link>
-              <Link to={`/ops/${id}/edit`} data-testid="edit-op-link" style={{ ...tabBase, textDecoration: "none" }}>
-                <Ic name="bolt" size={15} /> Bearbeiten
               </Link>
             </div>
           ) : (
