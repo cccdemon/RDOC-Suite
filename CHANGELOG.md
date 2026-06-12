@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - FR-P2: SPA op editor — publish-template + recurrence (2026-06-12)
+
+- New `POST /api/v1/operations/:id/publish-template` (fleet operator): publish the operation
+  as a marketplace template (name/summary/visibility guild|partners|public). SSR twin:
+  api.ts /api/ops/:id/publish-template.
+- New `POST /api/v1/operations/:id/recurrence/stop` (fleet operator): deactivate a recurring
+  series (idempotent — returns stopped:false when the op is not recurring). SSR twin:
+  web.ts /ops/:id/recurrence/stop.
+- Contract PublishTemplateRequest + OpenAPI paths + inject tests (anon 401, bad id / bad
+  visibility 400). prod-e2e-readonly: publish anon-gate check.
+- SPA: an "Admin" section on `/ops/:id/edit` with the publish-as-template form and a
+  stop-series button. MSW tests. Rounds out the op-editor; remaining advanced composition
+  (formations, CQB bundling, unit edit) stays on SSR for now.
+
 ### Added - FR-P2: SPA op editor — Bedarfe/needs (2026-06-12)
 
 - New `GET /api/v1/operations/:id/needs` (fleet operator) read model: current ship-hull needs,

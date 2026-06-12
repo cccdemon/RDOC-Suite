@@ -542,6 +542,17 @@ export const SetCqbTeamsRequestSchema = z
 
 export const NeedParamSchema = z.object({ id: cuid, reqId: cuid });
 
+// ── Operation editor: publish-as-template + recurrence ──────────────────
+
+export const PublishTemplateRequestSchema = z
+  .object({
+    name: z.string().max(120).optional(),
+    summary: z.string().max(500).optional(),
+    visibility: z.enum(["guild", "partners", "public"]).default("guild"),
+  })
+  .meta({ id: "PublishTemplateRequest" });
+export type PublishTemplateRequest = z.infer<typeof PublishTemplateRequestSchema>;
+
 export const GuildIdParamSchema = z.object({ id: z.string().regex(/^\d{16,25}$/) });
 export const GuildMemberParamSchema = z.object({
   id: z.string().regex(/^\d{16,25}$/),

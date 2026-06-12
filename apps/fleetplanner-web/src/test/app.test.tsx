@@ -740,6 +740,45 @@ describe("Op editor (lifecycle)", () => {
   });
 });
 
+describe("Op editor admin (template + recurrence)", () => {
+  const opEditable = { ...opDetailFixture, canManage: true };
+
+  it("publishes the op as a template (POST publish-template)", async () => {
+    let published: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.post(`${API}/operations/op_1/publish-template`, async ({ request }) => {
+        published = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({ ok: true, id: "tpl_1" });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const name = (await findByTestId("tpl-name")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(name, "Xeno Blueprint");
+    name.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("tpl-publish")).click();
+    expect(await findByTestId("edit-notice")).toHaveTextContent("veröffentlicht");
+    expect(published).toMatchObject({ name: "Xeno Blueprint", visibility: "guild" });
+  });
+
+  it("stops a recurring series (POST recurrence/stop)", async () => {
+    let hit = false;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
+      http.post(`${API}/operations/op_1/recurrence/stop`, () => {
+        hit = true;
+        return HttpResponse.json({ ok: true, stopped: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1/edit");
+    (await findByTestId("recurrence-stop")).click();
+    expect(await findByTestId("edit-notice")).toHaveTextContent("gestoppt");
+    expect(hit).toBe(true);
+  });
+});
+
 describe("Op needs editor (Bedarfe)", () => {
   const opEditable = { ...opDetailFixture, canManage: true };
   const needs = {

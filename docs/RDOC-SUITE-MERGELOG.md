@@ -49,6 +49,15 @@ requirements/delete. Definiert was die Op braucht (Requirement-Slots).
 (squads/carrier/join/rename/size, bundle/unbundle/place/assign), primary-unit, unit
 edit/seats/carrier, recurrence/stop, publish-template. Selten genutzt; ggf. SSR lassen.
 
+- **UMGESETZT 2026-06-12 (Slice 3a, pending Deploy/E2E):** Die kleinen High-Value-Reste aus
+  Slice 3 vorgezogen: `POST /api/v1/operations/:id/publish-template` (publishTemplate, name/
+  summary/visibility) + `POST …/recurrence/stop` (idempotent, stopped-Flag), beide
+  requireFleetOperator+CSRF+Audit. Contract PublishTemplateRequest; OpenAPI 2 Pfade; inject-
+  Tests (anon 401, bad id/visibility 400, doc). FE client publishTemplate/stopRecurrence,
+  „ADMIN"-Sektion in EditOpPage (Template-Form + Serie-stoppen-Button), MSW-Tests. E2E +1.
+  CHANGELOG. REST von Slice 3 (formations/cqb-bundling/unit-edit/primary-unit) bleibt SSR/defer.
+  Lokal NICHT gebaut (Docker-Regel).
+
 ## Queued / Planned Step - 2026-06-12: FR-P2 — SPA Guild-/Server-Einstellungen (Nischen-Surface) — Branch master
 
 Nächste SSR-Nischen-Surface ins SPA: `/guilds/settings` (Admiral-Konsole) als JSON-API + React-Seite.

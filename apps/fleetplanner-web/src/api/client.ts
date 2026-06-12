@@ -194,6 +194,18 @@ export function deleteOperation(id: string, csrfToken: string): Promise<{ ok: tr
   return mutate("DELETE", `/operations/${encodeURIComponent(id)}`, csrfToken);
 }
 
+export function publishTemplate(
+  id: string,
+  csrfToken: string,
+  input: { name?: string; summary?: string; visibility?: string },
+): Promise<{ ok: true; id: string }> {
+  return mutate("POST", `/operations/${encodeURIComponent(id)}/publish-template`, csrfToken, input);
+}
+
+export function stopRecurrence(id: string, csrfToken: string): Promise<{ ok: true; stopped: boolean }> {
+  return mutate("POST", `/operations/${encodeURIComponent(id)}/recurrence/stop`, csrfToken);
+}
+
 export function getNeeds(id: string): Promise<import("./types").NeedsResponse> {
   return get<import("./types").NeedsResponse>(`/operations/${encodeURIComponent(id)}/needs`);
 }

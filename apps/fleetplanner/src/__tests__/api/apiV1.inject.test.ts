@@ -363,6 +363,36 @@ describe("operation editor lifecycle — gates + validation", () => {
   });
 });
 
+describe("operation editor — publish-template + recurrence", () => {
+  const opId = "cmqaaaaaaaaaaaaaaaaaa1";
+
+  it.each([
+    ["POST", `/api/v1/operations/${opId}/publish-template`, { name: "Blueprint" }],
+    ["POST", `/api/v1/operations/${opId}/recurrence/stop`, {}],
+  ] as const)("%s %s without session → 401 envelope", async (method, url, body) => {
+    const res = await app.inject({ method, url, headers: { "content-type": "application/json", "x-forwarded-for": `10.15.0.${url.length}` }, payload: JSON.stringify(body) });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it("publish-template invalid op id → 400 before auth", async () => {
+    const res = await app.inject({ method: "POST", url: "/api/v1/operations/..%2Fetc/publish-template", headers: { "content-type": "application/json", "x-forwarded-for": "10.15.1.1" }, payload: JSON.stringify({}) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
+  });
+
+  it("publish-template invalid visibility → 400", async () => {
+    const res = await app.inject({ method: "POST", url: `/api/v1/operations/${opId}/publish-template`, headers: { "content-type": "application/json", "x-forwarded-for": "10.15.1.2" }, payload: JSON.stringify({ visibility: "private" }) });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it("openapi documents the publish/recurrence routes", async () => {
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    expect(doc.paths["/api/v1/operations/{id}/publish-template"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/recurrence/stop"].post).toBeTruthy();
+  });
+});
+
 describe("operation needs editor — gates + validation", () => {
   const opId = "cmqaaaaaaaaaaaaaaaaaa1";
   const reqId = "cmqcccccccccccccccccc3";

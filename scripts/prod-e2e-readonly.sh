@@ -58,6 +58,8 @@ life_patchbad="$(curl -s -o /dev/null -w '%{http_code}' -X PATCH -H 'content-typ
 check "op edit bad id 400" "400" "$life_patchbad"
 needs_anon="$(curl -s -o /dev/null -w '%{http_code}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/needs")"
 check "op needs anon 401" "401" "$needs_anon"
+tpl_anon="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' --data '{}' "$API/operations/cmqaaaaaaaaaaaaaaaaaa1/publish-template")"
+check "op publish-template anon 401" "401" "$tpl_anon"
 
 ops="$(curl -fsS "$API/operations")"
 contains "operations json" "$ops" '"operations":'

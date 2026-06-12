@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ApiError, deleteOperation, editOperation, getOperation, setOperationStatus } from "../api/client";
+import { ApiError, deleteOperation, editOperation, getOperation, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
 import type { OperationDetail, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { NeedsEditor } from "../components/NeedsEditor";
@@ -47,6 +47,7 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
+  const [tpl, setTpl] = useState({ name: "", summary: "", visibility: "guild" });
 
   function reload() {
     if (!id) return;
@@ -101,6 +102,39 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
       reload();
     } catch (e) {
       setNotice(e instanceof ApiError ? e.message : "Status nicht änderbar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function publish() {
+    if (!csrf || !id) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await publishTemplate(id, csrf, {
+        name: tpl.name.trim() || undefined,
+        summary: tpl.summary.trim() || undefined,
+        visibility: tpl.visibility,
+      });
+      setNotice("Als Vorlage veröffentlicht.");
+      setTpl({ name: "", summary: "", visibility: "guild" });
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Veröffentlichen fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function stopSeries() {
+    if (!csrf || !id) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const r = await stopRecurrence(id, csrf);
+      setNotice(r.stopped ? "Serie gestoppt." : "Diese Operation ist keine Serie.");
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Stoppen fehlgeschlagen.");
     } finally {
       setBusy(false);
     }
@@ -204,6 +238,30 @@ export function EditOpPage({ session }: { session: SessionResponse | null }) {
       </section>
 
       {id && <NeedsEditor opId={id} csrf={csrf} />}
+
+      <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>
+        <div style={label}>ADMIN</div>
+        <div style={{ ...label, fontSize: "0.6rem", marginBottom: "0.5rem" }}>ALS VORLAGE VERÖFFENTLICHEN</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.2rem" }}>
+          <input data-testid="tpl-name" type="text" maxLength={120} value={tpl.name} placeholder={`Name (Standard: ${op.title})`} onChange={(e) => setTpl((t) => ({ ...t, name: e.target.value }))} style={field} />
+          <input data-testid="tpl-summary" type="text" maxLength={500} value={tpl.summary} placeholder="Kurzbeschreibung (optional)" onChange={(e) => setTpl((t) => ({ ...t, summary: e.target.value }))} style={field} />
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <select data-testid="tpl-visibility" value={tpl.visibility} onChange={(e) => setTpl((t) => ({ ...t, visibility: e.target.value }))} style={{ ...field, width: "auto", minWidth: 160 }}>
+              <option value="guild">Guild</option>
+              <option value="partners">Partner-Guilds</option>
+              <option value="public">Öffentlich</option>
+            </select>
+            <button type="button" data-testid="tpl-publish" className="fpw-btn" disabled={busy || !csrf} onClick={publish}>
+              <Ic name="board" size={13} sw={2} /> Veröffentlichen
+            </button>
+          </div>
+        </div>
+        <div style={{ ...label, fontSize: "0.6rem", marginBottom: "0.5rem" }}>WIEDERKEHRENDE SERIE</div>
+        <button type="button" data-testid="recurrence-stop" className="fpw-btn" disabled={busy || !csrf} onClick={stopSeries}>
+          Serie stoppen
+        </button>
+        <p className="fpw-meta" style={{ margin: "0.4rem 0 0", fontSize: "0.8rem" }}>Stoppt nur künftige Wiederholungen; bereits erstellte Operationen bleiben.</p>
+      </section>
 
       <section className="fpw-card" style={{ border: "1px solid rgba(255,68,68,0.3)" }}>
         <div style={{ ...label, color: "#ff6b6b" }}>GEFAHRENZONE</div>

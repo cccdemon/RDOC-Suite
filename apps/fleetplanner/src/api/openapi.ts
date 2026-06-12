@@ -17,6 +17,7 @@ import {
   EditOperationRequestSchema,
   SetStatusRequestSchema,
   AddShipNeedsRequestSchema,
+  PublishTemplateRequestSchema,
   NeedsResponseSchema,
   RenameNeedRequestSchema,
   SetCqbTeamsRequestSchema,
@@ -78,6 +79,7 @@ const SCHEMAS = {
   EditOperationRequest: EditOperationRequestSchema,
   SetStatusRequest: SetStatusRequestSchema,
   NeedsResponse: NeedsResponseSchema,
+  PublishTemplateRequest: PublishTemplateRequestSchema,
   AddShipNeedsRequest: AddShipNeedsRequestSchema,
   RenameNeedRequest: RenameNeedRequestSchema,
   SetFighterSquadsRequest: SetFighterSquadsRequestSchema,
@@ -281,6 +283,34 @@ export function buildOpenApiDocument(): JsonObject {
           ],
           requestBody: { required: true, ...jsonContent(ref("SetStatusRequest")) },
           responses: { "200": { description: "Updated", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/publish-template": {
+        post: {
+          operationId: "publishTemplate",
+          summary: "Publish this operation as a marketplace template (fleet operator only)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("PublishTemplateRequest")) },
+          responses: { "200": { description: "Published", ...jsonContent(ref("CreateOperationResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/recurrence/stop": {
+        post: {
+          operationId: "stopRecurrence",
+          summary: "Stop a recurring series (fleet operator only)",
+          description: "Deactivates the series; already-spawned operations stay. No-op if the op is not recurring.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Stopped", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
         },
       },
       "/api/v1/operations/{id}/needs": {

@@ -19,7 +19,7 @@ import {
 } from "../services/guilds.js";
 import { isValidTimezone, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { createOperation } from "../services/operations.js";
-import { applyTemplate, listTemplatesForGuild } from "../services/operationTemplates.js";
+import { applyTemplate, listTemplatesForGuild, publishTemplate } from "../services/operationTemplates.js";
 import { sendDiscordChannelMessage } from "../services/discord.js";
 import { getSetting } from "../services/settings.js";
 import { ROADMAP } from "../lib/roadmap.js";
@@ -66,6 +66,7 @@ import {
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
   AddShipNeedsRequestSchema,
+  PublishTemplateRequestSchema,
   EditOperationRequestSchema,
   FeedbackRequestSchema,
   GuildIdParamSchema,
@@ -655,6 +656,47 @@ export async function apiV1Routes(app: FastifyInstance) {
     await setCqbTeams(p.data.id, body.data.count, body.data.size);
     await logAudit(p.data.id, ctx.user.id, ctx.user.username, "needs:cqb", `${body.data.count}x${body.data.size}`);
     return reply.type("application/json").send({ ok: true as const });
+  });
+
+  // ── operation editor: publish-as-template + stop recurrence ──────────
+  // SSR twins: api.ts /api/ops/:id/publish-template, web.ts /ops/:id/recurrence/stop.
+
+  app.post<{ Params: { id: string }; Body: unknown }>("/api/v1/operations/:id/publish-template", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const body = PublishTemplateRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    const op = await getOperation(p.data.id);
+    if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+    const tpl = await publishTemplate({
+      op,
+      ownerGuildId: op.guildId,
+      createdById: ctx.user.id,
+      name: body.data.name?.trim() || op.title,
+      summary: body.data.summary ?? "",
+      visibility: body.data.visibility,
+      sourceOpId: op.id,
+    });
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, "template_published", "");
+    return reply.type("application/json").send({ ok: true as const, id: (tpl as { id: string }).id });
+  });
+
+  app.post<{ Params: { id: string } }>("/api/v1/operations/:id/recurrence/stop", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const ctx = await requireFleetOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    const op = await prisma.operation.findUnique({ where: { id: p.data.id }, select: { recurrenceId: true } });
+    if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+    let stopped = false;
+    if (op.recurrenceId) {
+      await prisma.operationRecurrence.update({ where: { id: op.recurrenceId }, data: { active: false } });
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "recurrence_stopped", "");
+      stopped = true;
+    }
+    return reply.type("application/json").send({ ok: true as const, stopped });
   });
 
   // ── templates marketplace ───────────────────────────────────────────
