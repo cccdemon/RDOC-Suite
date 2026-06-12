@@ -50,7 +50,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
     maxParticipants: op.maxParticipants != null ? String(op.maxParticipants) : "",
     meetingSystem: op.meetingSystem || "Stanton",
     meetingLocation: op.meetingLocation ?? "",
-    visibility: op.visibility === "guild" ? "private" : op.visibility,
+    visibility: (op.visibility === "guild" ? "private" : op.visibility) as string,
   };
   const [form, setForm] = useState(initial);
   const [saved, setSaved] = useState(initial);
@@ -67,7 +67,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
       maxParticipants: op.maxParticipants != null ? String(op.maxParticipants) : "",
       meetingSystem: op.meetingSystem || "Stanton",
       meetingLocation: op.meetingLocation ?? "",
-      visibility: op.visibility === "guild" ? "private" : op.visibility,
+      visibility: (op.visibility === "guild" ? "private" : op.visibility) as string,
     };
     setForm(next);
     setSaved(next);
