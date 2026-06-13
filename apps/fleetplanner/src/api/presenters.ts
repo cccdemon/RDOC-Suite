@@ -4,6 +4,7 @@
 // existing services already load and emit exactly the contract types — no
 // HTML-flavored fields, no secrets (tokens, ciphertexts, audit details stay
 // server-side).
+import { shipClass } from "../services/composition.js";
 import type {
   FleetUnit,
   GuildSettings,
@@ -33,7 +34,8 @@ type UnitRow = {
   squadName: string | null;
   captainNote: string | null;
   carrierUnitId: string | null;
-  ship?: { name: string } | null;
+  requirementId?: string | null;
+  ship?: { name: string; size?: string | null; career?: string | null; role?: string | null } | null;
   captain?: UserRow | null;
   seats: SeatRow[];
 };
@@ -83,10 +85,14 @@ export function presentUnit(u: UnitRow): FleetUnit {
     status: u.status,
     name: u.ship?.name ?? u.squadName ?? "Unit",
     shipName: u.ship?.name ?? null,
+    // Derived class so the board can split fighters into their own lane; null for
+    // non-ship units (squads/vehicles get their own lanes by unitType).
+    shipClass: u.unitType === "ship" && u.ship ? shipClass(u.ship) : null,
     squadName: u.squadName,
     captain: u.captain ? { id: u.captain.id, username: u.captain.username } : null,
     captainNote: u.captainNote,
     carrierUnitId: u.carrierUnitId,
+    requirementId: u.requirementId ?? null,
     // FR-B1: include inactive seats too (with the active flag) so the operator can
     // re-activate them; the player board filters to active client-side.
     seats: u.seats.map(presentSeat),

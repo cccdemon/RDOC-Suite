@@ -8,6 +8,7 @@ import {
   getGuildSettings,
   getOperatorView,
   patchSeat,
+  patchUnit,
   removeLeader,
   unassignSeat,
 } from "../api/client";
@@ -19,9 +20,18 @@ const MONO = "var(--mono)";
 
 const LANES = [
   { type: "ship", label: "SCHIFFE & CREW", icon: "ship", accent: "#00d4ff", rgb: "0,212,255" },
+  { type: "fighter", label: "JÄGER", icon: "fighter", accent: "#a78bfa", rgb: "167,139,250" },
   { type: "squad", label: "BODENTRUPPEN", icon: "fps", accent: "#f0a500", rgb: "240,165,0" },
   { type: "vehicle", label: "FAHRZEUGE", icon: "vehicle", accent: "#ff7a45", rgb: "255,122,69" },
 ] as const;
+
+// Board lane for a unit. Fighter-class ships get their own lane (the user wants
+// fighters as a distinct class, not lumped with capital ships); everything else
+// buckets by unitType.
+function laneOf(u: FleetUnit): string {
+  if (u.unitType === "ship") return u.shipClass === "Fighter" ? "fighter" : "ship";
+  return u.unitType;
+}
 
 const card: React.CSSProperties = { border: "1px solid rgba(0,212,255,0.13)", borderRadius: 14, background: "#090f18", padding: "1.1rem 1.2rem" };
 const railLabel: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
@@ -66,6 +76,8 @@ export function OperatorPanel({
 
   const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
   const [memberFilter, setMemberFilter] = useState("");
+  // Per-pending-unit chosen Bedarf at accept time (defaults to a suggested slot).
+  const [acceptReq, setAcceptReq] = useState<Record<string, string>>({});
 
   function reload() {
     getOperatorView(op.id)
@@ -94,7 +106,7 @@ export function OperatorPanel({
 
   const accepted = op.units.filter((u) => u.status === "accepted");
   const pendingUnits = op.units.filter((u) => u.status === "pending");
-  const lanes = LANES.map((l) => ({ ...l, units: accepted.filter((u) => u.unitType === l.type) })).filter((l) => l.units.length > 0);
+  const lanes = LANES.map((l) => ({ ...l, units: accepted.filter((u) => laneOf(u) === l.type) })).filter((l) => l.units.length > 0);
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const total = accepted.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0);
   const open = total - filled;
@@ -103,7 +115,7 @@ export function OperatorPanel({
   const openQ = view?.questions.filter((q) => !q.answer).length ?? 0;
 
   const bars = LANES.map((l) => {
-    const units = accepted.filter((u) => u.unitType === l.type);
+    const units = accepted.filter((u) => laneOf(u) === l.type);
     const f = units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
     const t = units.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0);
     return { label: l.label, accent: l.accent, f, t, pct: t ? Math.round((f / t) * 100) : 0 };
@@ -111,6 +123,43 @@ export function OperatorPanel({
 
   if (!view)
     return <div className="fpw-state" data-testid="operator-loading"><span style={railLabel}>LADE OPERATOR-DATEN…</span></div>;
+
+  // ── Fleet requirements (Bedarfe) — bind an offered unit to a slot ──────
+  const requirements = view.requirements;
+  // Light client-side category match (mirrors backend matchesCategory hint) to
+  // preselect a sensible Bedarf when accepting a unit.
+  const unitMatchesCat = (u: FleetUnit, cat: string): boolean => {
+    const c = cat.toLowerCase();
+    if (c === "any" || c === "") return true;
+    if (c === "fps" || c === "ground") return u.unitType === "squad" || u.unitType === "vehicle";
+    if (u.unitType !== "ship") return false;
+    if (c === "fighter") return u.shipClass === "Fighter";
+    return (u.shipClass ?? "").toLowerCase().includes(c) || c.includes((u.shipClass ?? "").toLowerCase());
+  };
+  const openReqs = () => requirements.filter((r) => r.filled < r.count);
+  const suggestReqId = (u: FleetUnit): string => {
+    const open = openReqs();
+    return (open.find((r) => r.category.toLowerCase() !== "any" && unitMatchesCat(u, r.category))
+      ?? open.find((r) => r.category.toLowerCase() === "any")
+      ?? open[0])?.id ?? "";
+  };
+  // Dropdown of Bedarfe for a unit: open slots + the currently-bound one.
+  const reqChoices = (u: FleetUnit) =>
+    requirements.filter((r) => r.filled < r.count || r.id === u.requirementId);
+  const reqSelect = (u: FleetUnit, value: string, onPick: (id: string) => void, testid: string) => (
+    <select
+      data-testid={testid}
+      value={value}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => onPick(e.target.value)}
+      style={{ maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.18)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+    >
+      <option value="">— kein Bedarf —</option>
+      {reqChoices(u).map((r) => (
+        <option key={r.id} value={r.id}>{r.label} ({r.filled}/{r.count})</option>
+      ))}
+    </select>
+  );
 
   const kpi = (val: number, lab: string, color: string, border: string) => (
     <div key={lab} style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.42rem 0.7rem", border: `1px solid ${border}`, background: "rgba(255,255,255,0.01)", borderRadius: 8 }}>
@@ -412,13 +461,22 @@ export function OperatorPanel({
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }}>
       <div style={railLabel}>ANSTEHENDE EINHEITEN ({pendingUnits.length})</div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        {pendingUnits.map((u) => (
-          <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "0.7rem", padding: "0.6rem 0.7rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(240,165,0,0.14)", borderRadius: 9 }}>
-            <span style={{ flex: 1, minWidth: 0, color: "#eaf4fb", fontWeight: 600 }}>{u.name} <span style={{ color: "#7e92a4", fontWeight: 400, fontSize: "0.84rem" }}>· {u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</span></span>
-            <button type="button" data-testid={`accept-${u.id}`} onClick={() => run(() => decideUnit(op.id, u.id, "accept", csrf))} style={{ padding: "0.38rem 0.7rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, cursor: "pointer" }}>Annehmen</button>
+        {pendingUnits.map((u) => {
+          const sel = acceptReq[u.id] ?? suggestReqId(u);
+          return (
+          <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap", padding: "0.6rem 0.7rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(240,165,0,0.14)", borderRadius: 9 }}>
+            <span style={{ flex: "1 1 160px", minWidth: 0, color: "#eaf4fb", fontWeight: 600 }}>{u.name} <span style={{ color: "#7e92a4", fontWeight: 400, fontSize: "0.84rem" }}>· {u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</span></span>
+            {requirements.length > 0 && (
+              <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
+                BEDARF
+                {reqSelect(u, sel, (id) => setAcceptReq((m) => ({ ...m, [u.id]: id })), `accept-req-${u.id}`)}
+              </label>
+            )}
+            <button type="button" data-testid={`accept-${u.id}`} onClick={() => run(() => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ padding: "0.38rem 0.7rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, cursor: "pointer" }}>Annehmen</button>
             <button type="button" data-testid={`reject-${u.id}`} onClick={() => run(() => decideUnit(op.id, u.id, "reject", csrf))} style={{ padding: "0.38rem 0.7rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, cursor: "pointer" }}>Ablehnen</button>
           </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -443,10 +501,16 @@ export function OperatorPanel({
                     <span style={{ width: 36, height: 36, borderRadius: 9, background: `rgba(${lane.rgb},0.1)`, border: `1px solid rgba(${lane.rgb},0.26)`, color: lane.accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={lane.icon} size={18} sw={1.6} /></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <strong style={{ fontWeight: 700, fontSize: "1.02rem", color: "#eaf4fb", lineHeight: 1.15 }}>{u.name}</strong>
-                      <div style={{ color: "#7e92a4", fontSize: "0.78rem", marginTop: 1 }}>{u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</div>
+                      <div style={{ color: "#7e92a4", fontSize: "0.78rem", marginTop: 1 }}>{u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</div>
                     </div>
                     <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
                   </div>
+                  {requirements.length > 0 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
+                      <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>BEDARF</span>
+                      {reqSelect(u, u.requirementId ?? "", (id) => run(() => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
+                    </div>
+                  )}
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>{u.seats.map((s) => opSeatRow(u, s))}</div>
                 </div>
               ))}

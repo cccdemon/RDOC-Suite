@@ -1605,6 +1605,11 @@ export async function apiV1Routes(app: FastifyInstance) {
             return sendError(reply, req, 409, "conflict", "Only squads can be renamed here.");
           await assertUniqueSquadName(p.data.id, body.data.squadName);
         }
+        // Rebind to a different Fleet Requirement (Bedarf). null detaches. The
+        // category↔unit fit is a hint (assert only blocks wrong-op / full slots).
+        if (body.data.requirementId) {
+          await assertRequirementFitsUnit(p.data.id, body.data.requirementId, unit.unitType, unit.shipId ?? undefined, unit.id);
+        }
         await prisma.fleetUnit.update({
           where: { id: p.data.unitId },
           data: {
@@ -1612,6 +1617,7 @@ export async function apiV1Routes(app: FastifyInstance) {
               ? { captainNote: body.data.captainNote?.trim() || null }
               : {}),
             ...(body.data.squadName !== undefined ? { squadName: body.data.squadName } : {}),
+            ...(body.data.requirementId !== undefined ? { requirementId: body.data.requirementId } : {}),
           },
         });
         await logAudit(p.data.id, ctx.user.id, ctx.user.username, "unit:edit", "");
@@ -1719,6 +1725,15 @@ export async function apiV1Routes(app: FastifyInstance) {
     const op = await getOperation(p.data.id);
     if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
     const shares = await listSharedHangars(p.data.id);
+    // Fleet requirements (Bedarfe) for the accept-bind dropdown + rebind control.
+    const reqRows = await prisma.compositionRequirement.findMany({
+      where: { group: { operationId: p.data.id } },
+      select: {
+        id: true, label: true, needType: true, category: true, count: true,
+        fleetUnits: { select: { status: true } },
+      },
+      orderBy: { order: "asc" },
+    });
     const o = op as {
       crewRequests: Array<{ user: { id: string; username: string }; note: string | null; createdAt: Date }>;
       questions: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null; createdAt: Date }>;
@@ -1750,6 +1765,14 @@ export async function apiV1Routes(app: FastifyInstance) {
         action: a.action,
         detail: a.detail,
         createdAt: a.createdAt.toISOString(),
+      })),
+      requirements: reqRows.map((r) => ({
+        id: r.id,
+        label: r.label,
+        needType: r.needType ?? "ship",
+        category: r.category,
+        count: r.count,
+        filled: r.fleetUnits.filter((u) => u.status !== "rejected").length,
       })),
     };
     return reply.type("application/json").send(view);
@@ -1877,13 +1900,18 @@ export async function apiV1Routes(app: FastifyInstance) {
     async (req, reply) => {
       const p = SeatParamSchema.safeParse(req.params);
       if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
-      const ctx = await requireOperator(req, reply, p.data.id);
+      const ctx = await requireSessionJson(req, reply);
       if (!ctx) return;
       const seat = await prisma.seatAssignment.findUnique({
         where: { id: p.data.seatId },
-        select: { id: true, fleetUnit: { select: { operationId: true } } },
+        select: { id: true, fleetUnit: { select: { operationId: true, captainId: true } } },
       });
       if (!seat || seat.fleetUnit.operationId !== p.data.id) return sendError(reply, req, 404, "not_found", "Seat not found.");
+      // Operators/leaders OR the unit's own captain (the player who offered the
+      // ship) may rename/activate/deactivate its seats.
+      const isCaptain = seat.fleetUnit.captainId === ctx.user.id;
+      if (!isCaptain && !(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+        return sendError(reply, req, 403, "forbidden", "Operator role or unit captain required.");
       const data: { active?: boolean; label?: string } = {};
       if (typeof req.body?.active === "boolean") data.active = req.body.active;
       if (typeof req.body?.label === "string") {

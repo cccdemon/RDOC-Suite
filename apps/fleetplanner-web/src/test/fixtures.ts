@@ -39,10 +39,12 @@ export const opDetailFixture: OperationDetail = {
       status: "accepted",
       name: "Perseus",
       shipName: "Perseus",
+      shipClass: "Capital",
       squadName: null,
       captain: { id: "user_lead", username: "Lead" },
       captainNote: null,
       carrierUnitId: null,
+      requirementId: null,
       seats: [
         { id: "seat_1", label: "Pilot", order: 0, active: true, claimedBy: { id: "user_lead", username: "Lead" } },
         { id: "seat_2", label: "Gunner", order: 1, active: true, claimedBy: null },

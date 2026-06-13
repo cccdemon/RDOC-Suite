@@ -25,6 +25,15 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
   **Reorder (PATCH sortOrder) aufgeschoben** — Backend hat keine PATCH-Route, nur POST/DELETE.
 - ✅ **FR-C1** Mission-Cover im Assistenten: Wizard hält nach „Erstellen" auf dem letzten Schritt,
   zeigt `CoverPanel` (op-id da) + „Zur Operation". i18n von Beginn (`cover.*`).
+- ✅ **Bedarf-Bindung + Jäger-Klasse** (FR-A2-Teil / B6-Teil): `FleetUnit` liefert jetzt
+  `shipClass` (abgeleitet via `shipClass()`) + `requirementId`; `OperatorView` listet
+  `requirements` (Bedarfe mit filled/count). Operator weist gestelltes Schiff einem Bedarf zu —
+  Dropdown beim Annehmen (`decideUnit(requirementId)`, Auto-Vorschlag nach Klasse) **und**
+  nachträglich umbindbar an akzeptierten Einheiten (`PATCH unit {requirementId}`). Fighter-Schiffe
+  (shipClass=Fighter) erhalten eine **eigene Lane „JÄGER"** in Operator- und Spieler-Board.
+- ✅ **Captain editiert eigene Sitze** (PS-Wunsch): `patchSeat` erlaubt zusätzlich den Unit-Captain
+  (nicht nur Operator). Im Spieler-Board zeigt die eigene Einheit Inline-Rename + AUS/AN je Sitz
+  (inkl. inaktiver Sitze zum Reaktivieren).
 - ✅ **Bugfix Sitz-Zuweisung 400** (Logs→DB-Query): 10 Legacy-User haben 18-stellige Discord-
   Snowflakes als `User.id`. `AssignSeatRequestSchema {userId: cuid}` (Regex `{20,32}`) verwarf sie
   → 400 beim Einteilen/Commander-Ernennen. Neuer `userIdLike` (cuid ODER Snowflake `\d{17,20}`)

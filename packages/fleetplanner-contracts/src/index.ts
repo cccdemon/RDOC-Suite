@@ -178,10 +178,15 @@ export const FleetUnitSchema = z
     status: z.string(),
     name: z.string(),
     shipName: z.string().nullable(),
+    /** Derived ship class (Fighter/Capital/Transport…) for board grouping; null
+     *  for non-ship units. Lets the board split fighters into their own lane. */
+    shipClass: z.string().nullable(),
     squadName: z.string().nullable(),
     captain: z.object({ id: z.string(), username: z.string() }).nullable(),
     captainNote: z.string().nullable(),
     carrierUnitId: z.string().nullable(),
+    /** Fleet-requirement (Bedarf) this offered unit is bound to, if any. */
+    requirementId: z.string().nullable(),
     seats: z.array(SeatSchema),
   })
   .meta({ id: "FleetUnit" });
@@ -410,6 +415,8 @@ export const PatchUnitRequestSchema = z
   .object({
     captainNote: z.string().max(280).nullable().optional(),
     squadName: z.string().min(1).max(80).optional(),
+    /** Rebind the unit to a different Fleet Requirement (Bedarf); null detaches. */
+    requirementId: cuid.nullable().optional(),
   })
   .meta({ id: "PatchUnitRequest" });
 
@@ -467,6 +474,18 @@ export const OperatorViewSchema = z
         action: z.string(),
         detail: z.string(),
         createdAt: z.iso.datetime(),
+      }),
+    ),
+    /** Fleet requirements (Bedarfe) an offered unit can be bound to — used by the
+     *  accept dropdown + the rebind control. `filled` excludes rejected units. */
+    requirements: z.array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        needType: z.string(),
+        category: z.string(),
+        count: z.number().int(),
+        filled: z.number().int(),
       }),
     ),
   })

@@ -164,8 +164,25 @@ export function getOperatorView(opId: string): Promise<import("./types").Operato
   return get<import("./types").OperatorView>(`/operations/${encodeURIComponent(opId)}/operator`);
 }
 
-export function decideUnit(opId: string, unitId: string, decision: "accept" | "reject", csrfToken: string): Promise<{ ok: true }> {
-  return mutate("POST", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/${decision}`, csrfToken, {});
+export function decideUnit(
+  opId: string,
+  unitId: string,
+  decision: "accept" | "reject",
+  csrfToken: string,
+  requirementId?: string,
+): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/${decision}`, csrfToken, requirementId ? { requirementId } : {});
+}
+
+// Edit an offered unit: rebind to a Bedarf (requirementId; null detaches),
+// rename a squad, or set the captain note. Allowed for operators + the captain.
+export function patchUnit(
+  opId: string,
+  unitId: string,
+  csrfToken: string,
+  data: { requirementId?: string | null; squadName?: string; captainNote?: string | null },
+): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}`, csrfToken, data);
 }
 
 export function assignSeat(opId: string, seatId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {

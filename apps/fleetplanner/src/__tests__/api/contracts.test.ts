@@ -58,10 +58,12 @@ describe("contracts", () => {
           status: "accepted",
           name: "Perseus",
           shipName: "Perseus",
+          shipClass: "Capital",
           squadName: null,
           captain: { id: "user_1", username: "Lead" },
           captainNote: null,
           carrierUnitId: null,
+          requirementId: null,
           seats: [
             { id: "seat_1", label: "Pilot", order: 0, active: true, claimedBy: null },
             {

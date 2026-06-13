@@ -7,6 +7,7 @@ import {
   cqbSignup,
   cqbWithdraw,
   getOperation,
+  patchSeat,
   setHangarShare,
   unclaimSeat,
   withdrawUnit,
@@ -46,9 +47,16 @@ function fmtShort(iso: string, tz: string | null): string {
 // design: category lanes with accent color + rgb (for borders/washes)
 const LANES = [
   { type: "ship", label: "SCHIFFE & CREW", icon: "ship", accent: "#00d4ff", rgb: "0,212,255" },
+  { type: "fighter", label: "JÄGER", icon: "fighter", accent: "#a78bfa", rgb: "167,139,250" },
   { type: "squad", label: "BODENTRUPPEN", icon: "fps", accent: "#f0a500", rgb: "240,165,0" },
   { type: "vehicle", label: "FAHRZEUGE", icon: "vehicle", accent: "#ff7a45", rgb: "255,122,69" },
 ] as const;
+
+// Fighter-class ships get their own lane (a fighter is its own class, not a ship).
+function laneOf(u: FleetUnit): string {
+  if (u.unitType === "ship") return u.shipClass === "Fighter" ? "fighter" : "ship";
+  return u.unitType;
+}
 
 // design tagInfo()
 const TAG_BASE: React.CSSProperties = {
@@ -178,7 +186,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     );
 
   const accepted = op.units.filter((u) => u.status === "accepted");
-  const lanes = LANES.map((l) => ({ ...l, units: accepted.filter((u) => u.unitType === l.type) })).filter(
+  const lanes = LANES.map((l) => ({ ...l, units: accepted.filter((u) => laneOf(u) === l.type) })).filter(
     (l) => l.units.length > 0,
   );
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
@@ -316,6 +324,35 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       </div>
     );
   };
+
+  // Captain view of a seat on their OWN offered ship: rename + activate/deactivate
+  // (mirrors the operator's controls, but scoped to the unit's captain). Shows
+  // inactive seats too so they can be re-activated. Claimed seats aren't toggled.
+  const captainSeatRow = (u: FleetUnit, s: FleetUnit["seats"][number]) => (
+    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(0,212,255,0.08)", borderRadius: 9, opacity: s.active ? 1 : 0.55 }}>
+      <span style={{ width: 28, height: 28, borderRadius: 7, background: "#0e1926", border: "1px solid rgba(255,255,255,0.06)", color: "#9fb1c2", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <Ic name={seatIcon(u, s.order)} size={15} sw={1.6} />
+      </span>
+      <input
+        className="fpw-inline-edit"
+        data-testid={`cap-seat-label-${s.id}`}
+        key={`${s.id}:${s.label}`}
+        defaultValue={s.label}
+        title="Sitz umbenennen (Enter)"
+        disabled={busySeat === s.id}
+        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+        onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== s.label) run(() => patchSeat(id!, s.id, csrf!, { label: v })); }}
+      />
+      {s.claimedBy ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
+          <Avatar name={s.claimedBy.username} />
+          <span style={{ fontSize: "0.82rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "8rem" }}>{s.claimedBy.username}</span>
+        </div>
+      ) : (
+        <button type="button" data-testid={`cap-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} disabled={busySeat === s.id} onClick={() => run(() => patchSeat(id!, s.id, csrf!, { active: !s.active }))} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "AUS" : "AN"}</button>
+      )}
+    </div>
+  );
 
   const entryCard = (
     rgb: string,
@@ -691,7 +728,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                                   <span style={{ fontStyle: "italic" }}>{u.captainNote}</span>
                                 </div>
                               )}
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.filter((s) => s.active).map((s) => seatRow(u, s, lane))}</div>
+                              {me && csrf && u.captain?.id === me.id ? (
+                                <>
+                                  <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#5b6b7a", marginBottom: "0.5rem" }}>DEINE SITZE · UMBENENNEN / AKTIVIEREN</div>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.map((s) => captainSeatRow(u, s))}</div>
+                                </>
+                              ) : (
+                                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.filter((s) => s.active).map((s) => seatRow(u, s, lane))}</div>
+                              )}
                             </div>
                           )}
                         </article>
