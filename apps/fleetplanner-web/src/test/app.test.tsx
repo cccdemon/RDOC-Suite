@@ -463,15 +463,20 @@ describe("Op detail — operator panel", () => {
     expect(payload).toMatchObject({ userId: "user_part" });
   });
 
-  it("hides leader appointment for non-fleet-operators", async () => {
+  it("shows leader appointment for any op manager (operator/creator/commander)", async () => {
+    // New role model: all op-level roles share rights — anyone who can manage the
+    // op (canManage) may appoint commanders, not just guild fleet operators.
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
-      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opAsOperator)), // canManage:true, no viewerRole
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(opAsOperator)), // canManage:true
+      http.get(`${API}/guilds/guild_1/settings`, () =>
+        HttpResponse.json({ guild: { id: "guild_1", name: "RDOC", orgName: "RDOC", timezone: "Europe/Berlin", discordInviteUrl: null, admiralRoleId: null, ownerUserId: "x", canRemove: false }, members: [] }),
+      ),
     );
-    const { findByTestId, queryByText } = renderAt("/ops/op_1");
+    const { findByTestId, findByText } = renderAt("/ops/op_1");
     (await findByTestId("manage-tab-commanders")).click();
     await findByTestId("commanders-panel");
-    expect(queryByText("MITGLIED ERNENNEN")).not.toBeInTheDocument();
+    expect(await findByText("MITGLIED ERNENNEN")).toBeInTheDocument();
   });
 
   it("accepts a pending unit", async () => {

@@ -189,9 +189,19 @@ export async function assertUniqueSquadName(
 
 
 
+// Per-operation management gate. All op-level roles share the SAME rights
+// (user requirement): the guild's fleet operators + superadmin, the op CREATOR
+// (Event Manager), and any appointed op LEADER (Raid Leiter / Wing Commander).
 export async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
   const opRole = await effectiveOpRole(userId, instanceRole, operationId);
   if (opRole === "fleetoperator") return true;
+  // The creator keeps full control of their own op even if their guild role is
+  // only crew (or they later lose guild membership).
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    select: { createdById: true },
+  });
+  if (op?.createdById === userId) return true;
   if (!opRole) return false;
   const leader = await prisma.operationLeader.findUnique({
     where: { operationId_userId: { operationId, userId } },

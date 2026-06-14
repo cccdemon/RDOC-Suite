@@ -341,6 +341,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!viewerRole) return sendError(reply, req, 404, "not_found", "Operation not found.");
       canManage =
         viewerRole === "fleetoperator" ||
+        (op as { createdById?: string }).createdById === ctx.user.id ||
         op.leaders.some((l: { user: { id: string } }) => l.user.id === ctx.user.id);
     }
 
@@ -1873,10 +1874,9 @@ export async function apiV1Routes(app: FastifyInstance) {
       const ctx = await requireSessionJson(req, reply);
       if (!ctx) return;
 
-      // Operator-only (parity with the SSR route's requireOpRole fleetoperator).
-      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
-      if (role !== "fleetoperator")
-        return sendError(reply, req, 403, "forbidden", "Operator role required.");
+      // Any op manager (operator/creator/leader) may curate links.
+      if (!(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+        return sendError(reply, req, 403, "forbidden", "Operator, creator or commander role required.");
 
       const link = await addResourceLink(p.data.id, ctx.user.id, {
         url: body.data.url,
@@ -1900,9 +1900,8 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
       const ctx = await requireSessionJson(req, reply);
       if (!ctx) return;
-      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
-      if (role !== "fleetoperator")
-        return sendError(reply, req, 403, "forbidden", "Operator role required.");
+      if (!(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+        return sendError(reply, req, 403, "forbidden", "Operator, creator or commander role required.");
       await removeResourceLink(p.data.id, p.data.linkId);
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "resource_link:remove", p.data.linkId);
       return reply.type("application/json").send({ ok: true as const });
@@ -2205,11 +2204,14 @@ export async function apiV1Routes(app: FastifyInstance) {
   // Leadership — stricter than the other operator mutations: only the
   // fleetoperator may appoint/remove leaders (leaders can't self-appoint).
   // Parity with the SSR requireOpRole("fleetoperator") gate.
+  // Op management gate. Per the role model all op-level roles share the same
+  // rights — operator/superadmin, the op creator (Event Manager) and appointed
+  // leaders (Raid Leiter / Wing Commander) — so this mirrors requireOperator.
   async function requireFleetOperator(req: FastifyRequest, reply: FastifyReply, opId: string): Promise<AuthContext | null> {
     const ctx = await requireSessionJson(req, reply);
     if (!ctx) return null;
-    if ((await effectiveOpRole(ctx.user.id, ctx.user.role, opId)) !== "fleetoperator") {
-      await sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
+    if (!(await canApproveUnits(ctx.user.id, ctx.user.role, opId))) {
+      await sendError(reply, req, 403, "forbidden", "Operator, creator or commander role required.");
       return null;
     }
     return ctx;

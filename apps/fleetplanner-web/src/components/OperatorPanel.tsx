@@ -440,8 +440,8 @@ export function OperatorPanel({
     </section>
   );
 
-  // Leadership management — fleet operators only (leaders can't self-appoint).
-  const canManageLeaders = op.viewerRole === "fleetoperator";
+  // Leadership management — any op manager (operator / creator / commander).
+  const canManageLeaders = op.canManage;
   const leaderIds = new Set(op.leaders.map((l) => l.id));
   // candidate appointees = op participants (claimed a seat) not already leaders
   const leaderCandidates = (() => {

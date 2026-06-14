@@ -12,7 +12,8 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
   const [busy, setBusy] = useState(false);
   const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
   const [filter, setFilter] = useState("");
-  const canManage = op.viewerRole === "fleetoperator";
+  // All op managers (operator / creator / commander) may appoint commanders.
+  const canManage = op.canManage;
 
   // Appoint any guild member as a commander — not just seat-holders.
   useEffect(() => {
