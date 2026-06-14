@@ -106,15 +106,29 @@ export function OperatorConsole({
     total: op.totalSeats, pending: op.units.filter((u) => u.status !== "accepted").length,
   };
 
-  const tabBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.9rem", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 0, cursor: "pointer", whiteSpace: "nowrap", border: "none", borderBottom: "2px solid transparent", background: "transparent", color: "#9fb1c2" };
-  const tabActive: React.CSSProperties = { ...tabBase, color: "var(--cyan)", borderBottom: "2px solid var(--cyan)", background: "rgba(0,212,255,0.08)" };
+  const tabBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.1rem", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.04em", borderRadius: 9, cursor: "pointer", whiteSpace: "nowrap", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.02)", color: "#9fb1c2" };
+  const tabActive: React.CSSProperties = { ...tabBase, color: "#04060a", fontWeight: 700, border: "1px solid var(--cyan)", background: "var(--cyan)", boxShadow: "0 0 14px rgba(0,212,255,0.4)" };
 
   return (
-    <section data-testid="operator-console" style={{ width: "100%", marginTop: "2rem", paddingTop: "1.6rem", borderTop: "1px solid rgba(0,212,255,0.18)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "1rem" }}>
-        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="board" size={16} sw={1.7} /></span>
-        <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATOR-KONSOLE</span>
+    <section
+      data-testid="operator-console"
+      style={{
+        width: "100%",
+        marginTop: "2.5rem",
+        border: "1px solid rgba(0,212,255,0.4)",
+        borderRadius: 16,
+        background: "rgba(0,212,255,0.04)",
+        boxShadow: "0 0 0 1px rgba(0,212,255,0.06), 0 18px 50px rgba(0,0,0,0.35)",
+        overflow: "hidden",
+      }}
+    >
+      {/* Header bar — clearly marks the operator-only zone. */}
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.9rem 1.3rem", background: "linear-gradient(90deg, rgba(0,212,255,0.16), rgba(0,212,255,0.03))", borderBottom: "1px solid rgba(0,212,255,0.3)" }}>
+        <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(0,212,255,0.16)", border: "1px solid rgba(0,212,255,0.4)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="board" size={17} sw={1.8} /></span>
+        <span style={{ fontFamily: MONO, fontSize: "0.82rem", letterSpacing: "0.16em", color: "#eaf4fb", fontWeight: 700 }}>OPERATOR-KONSOLE</span>
+        <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.1em", color: "var(--cyan)", border: "1px solid rgba(0,212,255,0.35)", borderRadius: 5, padding: "0.18rem 0.5rem" }}>NUR EINSATZLEITUNG</span>
       </div>
+      <div style={{ padding: "1.3rem 1.3rem 1.5rem" }}>
 
       {/* KPI strip — always visible above the tabs */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.8rem", marginBottom: "1.1rem" }}>
@@ -135,11 +149,11 @@ export function OperatorConsole({
         </div>
       </section>
 
-      {/* tabs */}
-      <div style={{ display: "flex", gap: "0.3rem", overflowX: "auto", borderBottom: "1px solid rgba(0,212,255,0.14)", marginBottom: "1.2rem" }}>
+      {/* tabs — pill segmented control in its own bar */}
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", padding: "0.7rem 0.8rem", marginBottom: "1.2rem", borderRadius: 11, background: "rgba(0,0,0,0.25)", border: "1px solid rgba(0,212,255,0.16)" }}>
         {TABS.map((t) => (
           <button key={t.key} type="button" data-testid={`manage-tab-${t.key}`} onClick={() => setTab(t.key)} style={tab === t.key ? tabActive : tabBase}>
-            <Ic name={t.icon} size={14} sw={1.7} />{t.label}
+            <Ic name={t.icon} size={15} sw={1.8} />{t.label}
           </button>
         ))}
       </div>
@@ -194,6 +208,7 @@ export function OperatorConsole({
           <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />
         </div>
       )}
+      </div>
     </section>
   );
 }
