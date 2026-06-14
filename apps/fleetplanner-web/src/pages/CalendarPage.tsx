@@ -137,6 +137,9 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   }, [ops, year, month]);
 
   const visible = events.filter((e) => filter === "alle" || e.typeKey === filter);
+  // Drafts are hidden from the calendar grid/agenda, but the operator must still
+  // reach them — surfaced via a quick-access pill into the (draft-aware) list view.
+  const draftCount = (ops ?? []).filter((o) => o.status === "draft").length;
 
   const statusOf = (e: Ev) => {
     if (e.ts < now.getTime()) return { key: "done", label: "ABGESCHLOSSEN", color: "#5b6b7a" };
@@ -290,6 +293,11 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             {!mobile && <button type="button" data-testid="cal-view-monat" onClick={() => setView("monat")} style={view === "monat" ? tabActive : tabBase}><Ic name="cal" size={14} /> Kalender</button>}
             <button type="button" data-testid="cal-view-agenda" onClick={() => setView("agenda")} style={view === "agenda" ? tabActive : tabBase}><Ic name="chat" size={14} /> Agenda</button>
           </div>
+          {draftCount > 0 && view !== "liste" && (
+            <button type="button" data-testid="cal-drafts" onClick={() => setView("liste")} title="Entwürfe sind in der Listen-Ansicht sichtbar" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid rgba(240,165,0,0.45)", background: "rgba(240,165,0,0.1)", color: "#f0a500", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}>
+              <Ic name="edit" size={13} sw={1.7} /> {draftCount} {draftCount === 1 ? "Entwurf" : "Entwürfe"}
+            </button>
+          )}
           {((session?.memberships ?? []).some((m) => m.role === "fleetoperator") || session?.user?.role === "superadmin") && (
             <Link to="/ops/new" data-testid="create-link" className="btn btn-green" style={{ textDecoration: "none" }}><Ic name="plus" size={14} sw={1.9} /> Neue Op</Link>
           )}
