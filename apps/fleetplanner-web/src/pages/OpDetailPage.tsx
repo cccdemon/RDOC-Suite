@@ -7,6 +7,7 @@ import {
   cqbSignup,
   cqbWithdraw,
   getNeeds,
+  getOpCover,
   getOperation,
   patchSeat,
   setHangarShare,
@@ -110,6 +111,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const [viewAs, setViewAs] = useState<"self" | "crew" | "guest">("self");
   // What the mission needs (crew planning) — readable by any viewer with access.
   const [needs, setNeeds] = useState<import("../api/types").NeedsResponse | null>(null);
+  // Mission-cover URL (if generated) for the hero banner; null → default asset.
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const fleetRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -129,6 +132,12 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     if (!id || !session?.user) { setNeeds(null); return; }
     getNeeds(id).then(setNeeds).catch(() => setNeeds(null));
   }, [id, session?.user]);
+
+  // Mission-cover for the hero banner (any viewer); falls back to the default.
+  useEffect(() => {
+    if (!id) { setCoverUrl(null); return; }
+    getOpCover(id).then((s) => setCoverUrl(s.cover?.url ?? null)).catch(() => setCoverUrl(null));
+  }, [id]);
 
   const realUser = session?.user ?? null;
   // In "guest" preview the operator sees the page as a logged-out visitor → no
@@ -569,8 +578,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               {infoRow("globe", "SYSTEM", op.meetingSystem)}
             </div>
           </div>
-          <div style={{ flex: "1 1 220px", minWidth: 0, minHeight: 170, border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622" }}>
-            <img src={heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+          <div style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622" }}>
+            <img src={coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
         </div>
       </section>
@@ -702,9 +711,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             ))}
           </div>
 
-          {/* CATEGORY BOARD */}
-          <div ref={fleetRef} style={{ display: "flex", flexWrap: "wrap", gap: "1.3rem", alignItems: "flex-start" }}>
-            {lanes.length === 0 && <p style={{ color: "#7e92a4" }}>Noch keine Einheiten.</p>}
+          {/* CATEGORY BOARD — Schiffe / Jäger / CQB / Fahrzeuge as columns */}
+          <div ref={fleetRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.3rem", alignItems: "start" }}>
+            {lanes.length === 0 && op.cqbTeams.length === 0 && <p style={{ color: "#7e92a4" }}>Noch keine Einheiten.</p>}
             {lanes.map((lane) => {
               const laneFilled = lane.units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
               const laneTotal = lane.units.reduce((a, u) => a + u.seats.length, 0);
@@ -820,51 +829,55 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 </section>
               );
             })}
-          </div>
 
-          {/* CQB SQUADS — a squad is a need, so crew can take a slot directly. */}
-          {op.cqbTeams.length > 0 && (
-            <section style={{ marginTop: "1.6rem" }} data-testid="cqb-squads">
-              <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "1rem" }}>
-                <span style={{ color: "#f0a500", display: "inline-flex" }}><Ic name="fps" size={16} /></span>
-                <span style={{ fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "#f0a500" }}>CQB-SQUADS · FREIEN PLATZ NEHMEN</span>
-              </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
-                {op.cqbTeams.map((tm) => {
-                  const inTeam = !!me && tm.members.some((m) => m.id === me.id);
-                  const openSlots = tm.targetSize != null ? Math.max(0, tm.targetSize - tm.members.length) : null;
-                  const full = openSlots === 0 && !inTeam;
-                  return (
-                    <article key={tm.id} data-testid={`cqb-squad-${tm.id}`} style={{ flex: "1 1 260px", minWidth: 0, border: "1px solid rgba(240,165,0,0.2)", borderTop: "2px solid rgba(240,165,0,0.5)", borderRadius: 13, background: "#0a1018", padding: "1.1rem 1.2rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.7rem" }}>
-                        <span style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(240,165,0,0.12)", border: "1px solid rgba(240,165,0,0.3)", color: "#f0a500", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="fps" size={18} sw={1.6} /></span>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <strong style={{ fontSize: "1.02rem", color: "#eaf4fb" }}>{tm.name}</strong>
-                          <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", marginTop: 1 }}>BODENTRUPPE</div>
-                        </div>
-                        <span style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", flexShrink: 0 }}>{tm.members.length}<span style={{ color: "#5b6b7a" }}>/{tm.targetSize ?? "∞"}</span></span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: me && csrf ? "0.8rem" : 0 }}>
-                        {tm.members.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Noch keine Soldaten.</div>}
-                        {tm.members.map((m) => (
-                          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8" }}>
-                            <Avatar name={m.username} /> {m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}
+            {/* CQB column — a squad is a need, so crew take a slot like a seat. */}
+            {op.cqbTeams.length > 0 && (
+              <section style={{ minWidth: 0 }} data-testid="cqb-squads">
+                <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "1rem" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "#f0a500", whiteSpace: "nowrap" }}>
+                    <Ic name="fps" size={16} /> CQB-TEAMS
+                  </span>
+                  <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(240,165,0,0.4),transparent)" }} />
+                  <span style={{ fontFamily: MONO, fontSize: "0.78rem", color: "#9fb1c2", whiteSpace: "nowrap" }}>
+                    {op.cqbTeams.reduce((a, tm) => a + tm.members.length, 0)}/{op.cqbTeams.reduce((a, tm) => a + (tm.targetSize ?? tm.members.length), 0)}
+                  </span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+                  {op.cqbTeams.map((tm) => {
+                    const inTeam = !!me && tm.members.some((m) => m.id === me.id);
+                    const full = tm.targetSize != null && tm.members.length >= tm.targetSize && !inTeam;
+                    return (
+                      <article key={tm.id} data-testid={`cqb-squad-${tm.id}`} style={{ width: "100%", minWidth: 0, border: "1px solid rgba(240,165,0,0.2)", borderTop: "2px solid rgba(240,165,0,0.5)", borderRadius: 13, background: "#0a1018", padding: "1.1rem 1.2rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.7rem" }}>
+                          <span style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(240,165,0,0.12)", border: "1px solid rgba(240,165,0,0.3)", color: "#f0a500", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="fps" size={18} sw={1.6} /></span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <strong style={{ fontSize: "1.02rem", color: "#eaf4fb" }}>{tm.name}</strong>
+                            <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", marginTop: 1 }}>BODENTRUPPE</div>
                           </div>
-                        ))}
-                      </div>
-                      {me && csrf && (
-                        inTeam ? (
-                          <button type="button" data-testid={`cqb-leave-${tm.id}`} disabled={busySeat === tm.id} onClick={() => run(() => cqbWithdraw(id!, csrf!))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Squad verlassen</button>
-                        ) : canJoin ? (
-                          <button type="button" data-testid={`cqb-join-${tm.id}`} disabled={full || busySeat === tm.id} onClick={() => run(() => cqbSignup(id!, csrf!, { groupId: tm.id }))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.9rem", border: `1px solid ${full ? "rgba(255,255,255,0.12)" : "rgba(240,165,0,0.45)"}`, background: full ? "transparent" : "rgba(240,165,0,0.12)", color: full ? "#5b6b7a" : "#f0a500", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: full ? "default" : "pointer" }}>{full ? "Voll" : <>Platz nehmen <Ic name="arrow" size={13} sw={1.8} /></>}</button>
-                        ) : null
-                      )}
-                    </article>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                          <span style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", flexShrink: 0 }}>{tm.members.length}<span style={{ color: "#5b6b7a" }}>/{tm.targetSize ?? "∞"}</span></span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: me && csrf ? "0.8rem" : 0 }}>
+                          {tm.members.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Noch keine Soldaten.</div>}
+                          {tm.members.map((m) => (
+                            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8" }}>
+                              <Avatar name={m.username} /> {m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}
+                            </div>
+                          ))}
+                        </div>
+                        {me && csrf && (
+                          inTeam ? (
+                            <button type="button" data-testid={`cqb-leave-${tm.id}`} onClick={() => run(() => cqbWithdraw(id!, csrf!))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Squad verlassen</button>
+                          ) : canJoin ? (
+                            <button type="button" data-testid={`cqb-join-${tm.id}`} disabled={full} onClick={() => run(() => cqbSignup(id!, csrf!, { groupId: tm.id }))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.9rem", border: `1px solid ${full ? "rgba(255,255,255,0.12)" : "rgba(240,165,0,0.45)"}`, background: full ? "transparent" : "rgba(240,165,0,0.12)", color: full ? "#5b6b7a" : "#f0a500", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: full ? "default" : "pointer" }}>{full ? "Voll" : <>Platz nehmen <Ic name="arrow" size={13} sw={1.8} /></>}</button>
+                          ) : null
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
         </>
       )}
 
