@@ -1489,8 +1489,22 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (op.status !== "open" && op.status !== "draft")
         return sendError(reply, req, 409, "conflict", "Operation is not open for registration.");
 
-      await createCqbSignup(p.data.id, ctx.user.id, body.data.note?.trim() || null);
-      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:signup", "");
+      // Direct squad join (self-service slot): validate the team belongs to the op
+      // and still has an open slot (unless the caller is already in it).
+      const groupId = body.data.groupId ?? null;
+      if (groupId) {
+        const team = await prisma.compositionGroup.findFirst({
+          where: { id: groupId, operationId: p.data.id, kind: "squad" },
+          select: { id: true, targetSize: true, cqbSignups: { where: { status: { not: "rejected" } }, select: { userId: true } } },
+        });
+        if (!team) return sendError(reply, req, 404, "not_found", "CQB squad not found.");
+        const already = team.cqbSignups.some((s) => s.userId === ctx.user.id);
+        if (!already && team.targetSize != null && team.cqbSignups.length >= team.targetSize)
+          return sendError(reply, req, 409, "conflict", "Dieses Squad ist voll.");
+      }
+
+      await createCqbSignup(p.data.id, ctx.user.id, body.data.note?.trim() || null, groupId);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:signup", groupId ?? "");
       return reply.type("application/json").send({ ok: true as const });
     },
   );

@@ -67,6 +67,8 @@ type OpDetailRow = OpListRow & {
     sortOrder: number;
   }>;
   questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
+  groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null }>;
+  cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; user: { id: string; username: string } }>;
 };
 
 export function presentSeat(s: SeatRow): Seat {
@@ -171,6 +173,17 @@ export function presentOperationDetail(
       answer: q.answer,
       answeredBy: q.answeredBy,
     })),
+    // CQB squads as joinable slot groups (a squad is a need crew can take directly).
+    cqbTeams: (op.groups ?? [])
+      .filter((g) => g.kind === "squad")
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        targetSize: g.targetSize,
+        members: (op.cqbSignups ?? [])
+          .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
+          .map((s) => ({ id: s.user.id, username: s.user.username })),
+      })),
     viewerRole: viewer.role,
     canManage: viewer.canManage,
   };

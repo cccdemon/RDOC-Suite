@@ -821,6 +821,50 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               );
             })}
           </div>
+
+          {/* CQB SQUADS — a squad is a need, so crew can take a slot directly. */}
+          {op.cqbTeams.length > 0 && (
+            <section style={{ marginTop: "1.6rem" }} data-testid="cqb-squads">
+              <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "1rem" }}>
+                <span style={{ color: "#f0a500", display: "inline-flex" }}><Ic name="fps" size={16} /></span>
+                <span style={{ fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "#f0a500" }}>CQB-SQUADS · FREIEN PLATZ NEHMEN</span>
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem" }}>
+                {op.cqbTeams.map((tm) => {
+                  const inTeam = !!me && tm.members.some((m) => m.id === me.id);
+                  const openSlots = tm.targetSize != null ? Math.max(0, tm.targetSize - tm.members.length) : null;
+                  const full = openSlots === 0 && !inTeam;
+                  return (
+                    <article key={tm.id} data-testid={`cqb-squad-${tm.id}`} style={{ flex: "1 1 260px", minWidth: 0, border: "1px solid rgba(240,165,0,0.2)", borderTop: "2px solid rgba(240,165,0,0.5)", borderRadius: 13, background: "#0a1018", padding: "1.1rem 1.2rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.7rem" }}>
+                        <span style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(240,165,0,0.12)", border: "1px solid rgba(240,165,0,0.3)", color: "#f0a500", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="fps" size={18} sw={1.6} /></span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <strong style={{ fontSize: "1.02rem", color: "#eaf4fb" }}>{tm.name}</strong>
+                          <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", marginTop: 1 }}>BODENTRUPPE</div>
+                        </div>
+                        <span style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", flexShrink: 0 }}>{tm.members.length}<span style={{ color: "#5b6b7a" }}>/{tm.targetSize ?? "∞"}</span></span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: me && csrf ? "0.8rem" : 0 }}>
+                        {tm.members.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Noch keine Soldaten.</div>}
+                        {tm.members.map((m) => (
+                          <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8" }}>
+                            <Avatar name={m.username} /> {m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}
+                          </div>
+                        ))}
+                      </div>
+                      {me && csrf && (
+                        inTeam ? (
+                          <button type="button" data-testid={`cqb-leave-${tm.id}`} disabled={busySeat === tm.id} onClick={() => run(() => cqbWithdraw(id!, csrf!))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Squad verlassen</button>
+                        ) : canJoin ? (
+                          <button type="button" data-testid={`cqb-join-${tm.id}`} disabled={full || busySeat === tm.id} onClick={() => run(() => cqbSignup(id!, csrf!, { groupId: tm.id }))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.9rem", border: `1px solid ${full ? "rgba(255,255,255,0.12)" : "rgba(240,165,0,0.45)"}`, background: full ? "transparent" : "rgba(240,165,0,0.12)", color: full ? "#5b6b7a" : "#f0a500", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: full ? "default" : "pointer" }}>{full ? "Voll" : <>Platz nehmen <Ic name="arrow" size={13} sw={1.8} /></>}</button>
+                        ) : null
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </>
       )}
 

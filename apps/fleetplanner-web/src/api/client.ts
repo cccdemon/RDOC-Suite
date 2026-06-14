@@ -148,8 +148,11 @@ export function unclaimSeat(opId: string, seatId: string, csrfToken: string): Pr
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/claim`, csrfToken);
 }
 
-export function cqbSignup(opId: string, csrfToken: string, note?: string): Promise<{ ok: true }> {
-  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb/signup`, csrfToken, note ? { note } : {});
+export function cqbSignup(opId: string, csrfToken: string, opts?: { note?: string; groupId?: string }): Promise<{ ok: true }> {
+  const body: { note?: string; groupId?: string } = {};
+  if (opts?.note) body.note = opts.note;
+  if (opts?.groupId) body.groupId = opts.groupId;
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb/signup`, csrfToken, body);
 }
 
 export function cqbWithdraw(opId: string, csrfToken: string): Promise<{ ok: true }> {

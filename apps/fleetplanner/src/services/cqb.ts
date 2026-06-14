@@ -5,12 +5,19 @@
 import { prisma } from "../db.js";
 import { shipClass } from "./composition.js";
 
-/** Player: volunteer as a CQB soldier (idempotent per op+user). */
-export async function createSignup(operationId: string, userId: string, note: string | null) {
+/** Player: volunteer as a CQB soldier (idempotent per op+user). When `groupId`
+ *  is given the player joins that squad directly (self-service slot); otherwise
+ *  it's a flexible signup the operator places later. */
+export async function createSignup(
+  operationId: string,
+  userId: string,
+  note: string | null,
+  groupId?: string | null,
+) {
   return prisma.cqbSignup.upsert({
     where: { operationId_userId: { operationId, userId } },
-    create: { operationId, userId, note },
-    update: { note },
+    create: { operationId, userId, note, ...(groupId ? { assignedGroupId: groupId, status: "accepted" } : {}) },
+    update: { note, ...(groupId ? { assignedGroupId: groupId, status: "accepted" } : {}) },
   });
 }
 

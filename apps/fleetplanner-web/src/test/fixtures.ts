@@ -56,6 +56,7 @@ export const opDetailFixture: OperationDetail = {
     { id: "link_1", title: "Briefing", url: "https://example.com/briefing", kind: "link", sortOrder: 0 },
   ],
   questions: [],
+  cqbTeams: [],
   viewerRole: null,
   canManage: false,
   viewerCqbSignedUp: false,

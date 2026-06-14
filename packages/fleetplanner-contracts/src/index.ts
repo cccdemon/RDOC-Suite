@@ -228,6 +228,16 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
       answeredBy: z.string().nullable(),
     }),
   ),
+  /** CQB squads as joinable slot groups — a squad IS a need, so crew can take a
+   *  slot directly (like a seat). `members` excludes rejected signups. */
+  cqbTeams: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      targetSize: z.number().int().nullable(),
+      members: z.array(z.object({ id: z.string(), username: z.string() })),
+    }),
+  ),
   /** Caller's effective role on this op (null = anonymous public viewer). */
   viewerRole: z.string().nullable(),
   canManage: z.boolean(),
@@ -378,7 +388,11 @@ export const ClaimSeatResponseSchema = z
 export type ClaimSeatResponse = z.infer<typeof ClaimSeatResponseSchema>;
 
 export const CqbSignupRequestSchema = z
-  .object({ note: z.string().max(280).optional() })
+  .object({
+    note: z.string().max(280).optional(),
+    /** Join a specific CQB squad directly (self-service slot); omit = flex pool. */
+    groupId: z.string().regex(/^[a-z0-9]{20,32}$/i).optional(),
+  })
   .meta({ id: "CqbSignupRequest" });
 
 export const HangarShareRequestSchema = z
