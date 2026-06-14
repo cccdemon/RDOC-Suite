@@ -704,7 +704,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           </div>
 
           {/* CATEGORY BOARD — Schiffe / Jäger / CQB / Fahrzeuge as columns */}
-          <div ref={fleetRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "1.3rem", alignItems: "start" }}>
+          <div ref={fleetRef} style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(500px, 1fr))", gap: "1.3rem", alignItems: "start" }}>
             {lanes.length === 0 && op.cqbTeams.length === 0 && <p style={{ color: "#7e92a4" }}>Noch keine Einheiten.</p>}
             {lanes.map((lane) => {
               const laneFilled = lane.units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);

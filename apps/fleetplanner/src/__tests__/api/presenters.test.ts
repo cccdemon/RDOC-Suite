@@ -81,6 +81,15 @@ describe("presenters", () => {
     expect(out.signupState).toBe("joined");
   });
 
+  it("redacts player identities for anonymous viewers (role null)", () => {
+    const out = presentOperationDetail(opRow, { role: null, canManage: false, signupState: null });
+    // Claimed seats show only "occupied", never a username; captain + leaders hidden.
+    expect(out.units[0].seats[0].claimedBy).toEqual({ id: "", username: "Belegt" });
+    expect(out.units[0].captain).toBeNull();
+    expect(out.leaders).toHaveLength(0);
+    expect(JSON.stringify(out)).not.toContain("Cap");
+  });
+
   it("emits no HTML-ish or secret-ish fields", () => {
     const out = presentOperationDetail(opRow, { role: null, canManage: false, signupState: null });
     const json = JSON.stringify(out);

@@ -72,17 +72,20 @@ type OpDetailRow = OpListRow & {
   cover?: { url: string } | null;
 };
 
-export function presentSeat(s: SeatRow): Seat {
+// `redact` hides player identities — anonymous (not-logged-in) viewers of a
+// public op must never see usernames; a claimed seat shows only "occupied".
+export function presentSeat(s: SeatRow, redact = false): Seat {
+  const claimed = !!(s.userId && s.user);
   return {
     id: s.id,
     label: s.label,
     order: s.order,
     active: s.active,
-    claimedBy: s.userId && s.user ? { id: s.user.id, username: s.user.username } : null,
+    claimedBy: claimed ? (redact ? { id: "", username: "Belegt" } : { id: s.user!.id, username: s.user!.username }) : null,
   };
 }
 
-export function presentUnit(u: UnitRow): FleetUnit {
+export function presentUnit(u: UnitRow, redact = false): FleetUnit {
   return {
     id: u.id,
     unitType: u.unitType,
@@ -93,14 +96,14 @@ export function presentUnit(u: UnitRow): FleetUnit {
     // non-ship units (squads/vehicles get their own lanes by unitType).
     shipClass: u.unitType === "ship" && u.ship ? shipClass(u.ship) : null,
     squadName: u.squadName,
-    captain: u.captain ? { id: u.captain.id, username: u.captain.username } : null,
+    captain: u.captain ? (redact ? null : { id: u.captain.id, username: u.captain.username }) : null,
     captainNote: u.captainNote,
     carrierUnitId: u.carrierUnitId,
     requirementId: u.requirementId ?? null,
     formationId: u.formationId ?? null,
     // FR-B1: include inactive seats too (with the active flag) so the operator can
     // re-activate them; the player board filters to active client-side.
-    seats: u.seats.map(presentSeat),
+    seats: u.seats.map((s) => presentSeat(s, redact)),
   };
 }
 
@@ -146,6 +149,8 @@ export function presentOperationDetail(
     hangarShared?: boolean;
   },
 ): OperationDetail {
+  // Anonymous viewers (public op, not logged in) never see player identities.
+  const redact = viewer.role === null;
   return {
     ...presentOperationSummary(op, viewer.signupState),
     viewerCqbSignedUp: viewer.cqbSignedUp ?? false,
@@ -158,8 +163,8 @@ export function presentOperationDetail(
       iconHash: op.guild.iconHash,
       timezone: op.guild.timezone,
     },
-    leaders: op.leaders.map((l) => ({ id: l.user.id, username: l.user.username })),
-    units: op.units.map(presentUnit),
+    leaders: redact ? [] : op.leaders.map((l) => ({ id: l.user.id, username: l.user.username })),
+    units: op.units.map((u) => presentUnit(u as UnitRow, redact)),
     resourceLinks: (op.resourceLinks ?? []).map((l) => ({
       id: l.id,
       title: l.title,
@@ -183,7 +188,7 @@ export function presentOperationDetail(
         targetSize: g.targetSize,
         members: (op.cqbSignups ?? [])
           .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
-          .map((s) => ({ id: s.user.id, username: s.user.username })),
+          .map((s) => (redact ? { id: "", username: "Belegt" } : { id: s.user.id, username: s.user.username })),
       })),
     coverUrl: op.cover?.url ?? null,
     viewerRole: viewer.role,
