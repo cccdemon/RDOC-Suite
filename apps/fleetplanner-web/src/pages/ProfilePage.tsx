@@ -15,6 +15,10 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
   const [busy, setBusy] = useState(false);
   const [fleetJson, setFleetJson] = useState("");
   const [importResult, setImportResult] = useState<FleetImportResponse | null>(null);
+  // FR-D2: manually assign an unmatched import name to a catalog ship.
+  const [assignName, setAssignName] = useState<string | null>(null);
+  const [assignQ, setAssignQ] = useState("");
+  const [assignResults, setAssignResults] = useState<ShipSummary[]>([]);
 
   const csrf = session?.csrfToken ?? null;
   const me = session?.user ?? null;
@@ -39,6 +43,37 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
     }, 250);
     return () => clearTimeout(t);
   }, [query]);
+
+  // FR-D2: search for the catalog ship matching an unmatched name (seeded with it).
+  useEffect(() => {
+    const q = assignQ.trim();
+    if (assignName === null || q.length < 2) {
+      setAssignResults([]);
+      return;
+    }
+    const t = setTimeout(() => {
+      searchShips(q).then((r) => setAssignResults(r.ships.slice(0, 8))).catch(() => setAssignResults([]));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [assignQ, assignName]);
+
+  // Assign an unmatched name → add the picked catalog ship, drop the name locally.
+  async function assignUnmatched(name: string, shipId: string) {
+    if (!csrf) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      await addHangarShip(shipId, csrf);
+      setImportResult((r) => (r ? { ...r, unmatched: r.unmatched.filter((n) => n !== name) } : r));
+      setAssignName(null);
+      setAssignQ("");
+      reload();
+    } catch (e) {
+      setNotice(e instanceof ApiError ? e.message : "Zuordnung fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function run(action: () => Promise<unknown>) {
     if (!csrf) return;
@@ -169,9 +204,57 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
               {importResult.unmatched.length > 0 ? ` · ${importResult.unmatched.length} nicht zugeordnet` : ""}
             </p>
             {importResult.unmatched.length > 0 && (
-              <p className="fpw-meta" style={{ margin: "0.4rem 0 0", fontSize: "0.8rem", color: "#7e92a4" }}>
-                Nicht erkannt: {importResult.unmatched.slice(0, 20).join(", ")}{importResult.unmatched.length > 20 ? " …" : ""}
-              </p>
+              <div style={{ marginTop: "0.6rem" }}>
+                <div style={{ ...label, fontSize: "0.6rem", marginBottom: "0.45rem" }}>NICHT ERKANNT — MANUELL ZUORDNEN</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  {importResult.unmatched.map((name) => (
+                    <div key={name} data-testid={`unmatched-${name}`} style={{ border: "1px solid rgba(240,165,0,0.2)", background: "rgba(240,165,0,0.04)", borderRadius: 8, padding: "0.45rem 0.6rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: "0.86rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+                        <button
+                          type="button"
+                          data-testid={`unmatched-assign-${name}`}
+                          className="fpw-btn"
+                          style={{ flexShrink: 0, padding: "0.28rem 0.6rem", fontSize: "0.68rem" }}
+                          onClick={() => { const open = assignName === name; setAssignName(open ? null : name); setAssignQ(open ? "" : name); }}
+                        >
+                          {assignName === name ? "Abbrechen" : "Zuordnen"}
+                        </button>
+                      </div>
+                      {assignName === name && (
+                        <div style={{ marginTop: "0.5rem" }}>
+                          <input
+                            type="search"
+                            data-testid="unmatched-search"
+                            autoFocus
+                            value={assignQ}
+                            onChange={(e) => setAssignQ(e.target.value)}
+                            placeholder="Katalog-Schiff suchen…"
+                            style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.18)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.85rem", padding: "0.4rem 0.55rem", borderRadius: 7, outline: "none" }}
+                          />
+                          {assignResults.length > 0 && (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.4rem" }}>
+                              {assignResults.map((s) => (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  data-testid={`unmatched-pick-${s.id}`}
+                                  disabled={busy}
+                                  onClick={() => assignUnmatched(name, s.id)}
+                                  style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 6, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}
+                                >
+                                  <span style={{ flex: 1, fontSize: "0.82rem", color: "#eaf4fb" }}>{s.name}</span>
+                                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#7e92a4" }}>{s.manufacturer}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         )}

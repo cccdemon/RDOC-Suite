@@ -680,6 +680,37 @@ export function OperatorPanel({
                       )}
                     </div>
                   )}
+                  {/* FR-A2: rename a squad + set a captain note (patchUnit). */}
+                  {u.unitType === "squad" && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.5rem" }}>
+                      <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>SQUAD</span>
+                      <input
+                        className="fpw-inline-edit"
+                        data-testid={`unit-name-${u.id}`}
+                        key={`name:${u.id}:${u.squadName ?? ""}`}
+                        defaultValue={u.squadName ?? ""}
+                        placeholder="Squad-Name"
+                        title="Squad umbenennen (Enter)"
+                        onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                        onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== u.squadName) run(() => patchUnit(op.id, u.id, csrf, { squadName: v })); }}
+                      />
+                    </div>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
+                    <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={13} /></span>
+                    <input
+                      className="fpw-inline-edit"
+                      data-testid={`unit-note-${u.id}`}
+                      key={`note:${u.id}:${u.captainNote ?? ""}`}
+                      defaultValue={u.captainNote ?? ""}
+                      maxLength={280}
+                      placeholder="Captain-Notiz (z. B. Treffen an Gate 3)…"
+                      title="Notiz setzen (Enter)"
+                      onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                      onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v !== (u.captainNote ?? "")) run(() => patchUnit(op.id, u.id, csrf, { captainNote: v || null })); }}
+                      style={{ flex: 1, minWidth: 0 }}
+                    />
+                  </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>{u.seats.map((s) => opSeatRow(u, s))}</div>
                 </div>
               ))}
