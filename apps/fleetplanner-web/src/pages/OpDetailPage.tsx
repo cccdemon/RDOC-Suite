@@ -6,6 +6,7 @@ import {
   claimSeat,
   cqbSignup,
   cqbWithdraw,
+  getNeeds,
   getOperation,
   patchSeat,
   setHangarShare,
@@ -107,6 +108,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   // FR-A5: operators preview the page as a guest / crew member / themselves. Pure
   // UI — changes no rights; just suppresses operator + me-based controls.
   const [viewAs, setViewAs] = useState<"self" | "crew" | "guest">("self");
+  // What the mission needs (crew planning) — readable by any viewer with access.
+  const [needs, setNeeds] = useState<import("../api/types").NeedsResponse | null>(null);
   const fleetRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -119,6 +122,13 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Load the mission's needs once we have access (logged in). Best-effort: a 403
+  // for a viewer without access just leaves the card hidden.
+  useEffect(() => {
+    if (!id || !session?.user) { setNeeds(null); return; }
+    getNeeds(id).then(setNeeds).catch(() => setNeeds(null));
+  }, [id, session?.user]);
 
   const realUser = session?.user ?? null;
   // In "guest" preview the operator sees the page as a logged-out visitor → no
@@ -564,6 +574,36 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           </div>
         </div>
       </section>
+
+      {/* What the mission needs — visible to crew for planning (read-only). */}
+      {needs && (needs.shipNeeds.length > 0 || needs.fighterSquads > 0 || needs.cqbTeams.count > 0) && (
+        <section data-testid="needs-overview" style={{ border: "1px solid rgba(0,212,255,0.13)", borderRadius: 12, background: "rgba(9,15,24,0.55)", padding: "1rem 1.2rem", marginBottom: "1.4rem" }}>
+          <div style={monoLabel({ marginBottom: "0.7rem" })}>GESUCHT — WAS DIE MISSION BRAUCHT</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+            {needs.shipNeeds.map((s) => {
+              const bound = accepted.filter((u) => u.requirementId === s.id).length;
+              return (
+                <span key={s.id} data-testid={`need-chip-${s.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: `1px solid ${bound > 0 ? "rgba(0,255,136,0.35)" : "rgba(0,212,255,0.25)"}`, background: bound > 0 ? "rgba(0,255,136,0.06)" : "rgba(0,212,255,0.05)", color: "#dce8f0" }}>
+                  <span style={{ color: bound > 0 ? "#00ff88" : "#00d4ff", display: "inline-flex" }}><Ic name={bound > 0 ? "check" : "ship"} size={13} sw={1.8} /></span>
+                  {s.label}
+                </span>
+              );
+            })}
+            {needs.fighterSquads > 0 && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: "1px solid rgba(167,139,250,0.3)", background: "rgba(167,139,250,0.06)", color: "#dce8f0" }}>
+                <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="fighter" size={13} sw={1.8} /></span>
+                {needs.fighterSquads} Jäger-Staffel{needs.fighterSquads === 1 ? "" : "n"} · je {needs.fighterSquadSize} Piloten
+              </span>
+            )}
+            {needs.cqbTeams.count > 0 && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: "1px solid rgba(240,165,0,0.3)", background: "rgba(240,165,0,0.06)", color: "#dce8f0" }}>
+                <span style={{ color: "#f0a500", display: "inline-flex" }}><Ic name="fps" size={13} sw={1.8} /></span>
+                {needs.cqbTeams.count} CQB-Team{needs.cqbTeams.count === 1 ? "" : "s"} · je {needs.cqbTeams.size} Soldaten
+              </span>
+            )}
+          </div>
+        </section>
+      )}
 
       {notice && (
         <p className="fpw-tag gold" role="alert" data-testid="op-notice" style={{ display: "inline-flex", marginTop: 0 }}>

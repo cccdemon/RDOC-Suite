@@ -1169,8 +1169,10 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
-    if ((await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id)) !== "fleetoperator")
-      return sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
+    // Any viewer with access to the op may READ what it needs (crew planning) —
+    // editing the needs stays fleetoperator-only (PUT/POST routes below).
+    if (!(await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id)))
+      return sendError(reply, req, 403, "forbidden", "No access to this operation.");
     const needs = await getOperationNeeds(p.data.id);
     return reply.type("application/json").send(needs);
   });
