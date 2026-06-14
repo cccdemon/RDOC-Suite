@@ -67,8 +67,11 @@ export function ServerListPage({ session }: { session: SessionResponse | null })
                 </div>
               </div>
               <span style={roleStyle(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span>
-              {(g.role === "fleetoperator" || me.role === "superadmin") && (
-                <Link to="/guilds/settings" data-testid={`server-settings-${g.guildId}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none" }}><Ic name="wrench" size={13} sw={1.6} /> Einstellungen</Link>
+              {/* Only the guild's own fleet operators manage its settings — a
+                  partner/crew membership (or instance superadmin status) must NOT
+                  expose another guild's settings here. Link carries the guild id. */}
+              {g.role === "fleetoperator" && (
+                <Link to={`/guilds/settings?guild=${encodeURIComponent(g.guildId)}`} data-testid={`server-settings-${g.guildId}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none" }}><Ic name="wrench" size={13} sw={1.6} /> Einstellungen</Link>
               )}
             </div>
           ))}

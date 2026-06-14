@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ApiError, getGuildSettings, setMemberRole, updateGuildSettings } from "../api/client";
 import type { GuildSettings, GuildSettingsMember, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
@@ -28,11 +28,11 @@ const TIMEZONES: Array<[string, string]> = [
 export function GuildSettingsPage({ session }: { session: SessionResponse | null }) {
   const me = session?.user ?? null;
   const csrf = session?.csrfToken ?? null;
-  // Guilds where the viewer can manage settings: fleetoperator member, or any
-  // membership when instance superadmin.
-  const manageable = (session?.memberships ?? []).filter(
-    (m) => m.role === "fleetoperator" || me?.role === "superadmin",
-  );
+  const [searchParams] = useSearchParams();
+  // Only a guild's OWN fleet operators manage its settings here — being a partner
+  // (or instance superadmin) must not expose another guild's config. (Superadmins
+  // use the Admin console for instance-wide actions.)
+  const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
 
   const [guildId, setGuildId] = useState<string | null>(null);
   const [guild, setGuild] = useState<GuildSettings | null>(null);
@@ -41,10 +41,14 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Default to the first manageable guild once the session arrives.
+  // Respect the guild picked on the server list (?guild=…) if it's actually
+  // manageable; otherwise fall back to the first manageable guild.
   useEffect(() => {
-    if (guildId === null && manageable.length > 0) setGuildId(manageable[0].guildId);
-  }, [manageable, guildId]);
+    if (guildId !== null || manageable.length === 0) return;
+    const wanted = searchParams.get("guild");
+    const pick = manageable.find((m) => m.guildId === wanted)?.guildId ?? manageable[0].guildId;
+    setGuildId(pick);
+  }, [manageable, guildId, searchParams]);
 
   function reload(id: string) {
     getGuildSettings(id)
