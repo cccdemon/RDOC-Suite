@@ -11,6 +11,8 @@ import {
   createFormation,
   decideUnit,
   deleteFormation,
+  renameCqbTeam,
+  renameFormation,
   getGuildSettings,
   getOperatorView,
   patchSeat,
@@ -527,12 +529,21 @@ export function OperatorPanel({
   const cqbBlock = (cqbTeams.length > 0 || cqbSoldiers.length > 0) && (
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="cqb-block">
       {panelHead("fps", "#f0a500", "CQB-TEAMS · SOLDATEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>)}
-      {/* FR-B3: each team can ride in a carrier ship. */}
-      {cqbTeams.length > 0 && accepted.some((u) => u.unitType === "ship") && (
+      {/* FR-B6 rename + FR-B3 carrier: list teams (carrier dropdown when ships exist). */}
+      {cqbTeams.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.9rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           {cqbTeams.map((tm) => (
             <div key={tm.id} data-testid={`cqb-team-${tm.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "#dce8f0" }}>{tm.name}</span>
+              <input
+                className="fpw-inline-edit"
+                data-testid={`cqb-team-name-${tm.id}`}
+                key={`tmname:${tm.id}:${tm.name}`}
+                defaultValue={tm.name}
+                title="Squad umbenennen (Enter)"
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== tm.name) run(() => renameCqbTeam(op.id, tm.id, csrf, v)); }}
+                style={{ flex: 1, minWidth: 0, fontSize: "0.82rem" }}
+              />
               <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>FÄHRT IN</span>
               <select
                 data-testid={`cqb-team-carrier-${tm.id}`}
@@ -626,7 +637,16 @@ export function OperatorPanel({
             return (
               <div key={f.id} data-testid={`formation-${f.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.04)" }}>
                 <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="board" size={14} /></span>
-                <strong style={{ flex: 1, minWidth: 0, fontSize: "0.86rem", color: "#eaf4fb" }}>{f.name}</strong>
+                <input
+                  className="fpw-inline-edit"
+                  data-testid={`formation-name-${f.id}`}
+                  key={`fname:${f.id}:${f.name}`}
+                  defaultValue={f.name}
+                  title="Verband umbenennen (Enter)"
+                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                  onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== f.name) run(() => renameFormation(op.id, f.id, csrf, v)); }}
+                  style={{ flex: 1, minWidth: 0, fontSize: "0.86rem" }}
+                />
                 <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#9fb1c2" }}>{count} Schiff{count === 1 ? "" : "e"}</span>
                 <button type="button" data-testid={`formation-del-${f.id}`} title="Verband löschen" onClick={() => run(() => deleteFormation(op.id, f.id, csrf))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
               </div>

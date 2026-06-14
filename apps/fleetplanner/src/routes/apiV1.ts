@@ -82,8 +82,8 @@ import {
 import { listSharedHangars } from "../services/hangarShare.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
-import { createSignup as createCqbSignup, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
-import { assignUnitToFormation, createFormation, deleteFormation } from "../services/formations.js";
+import { createSignup as createCqbSignup, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
+import { assignUnitToFormation, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
 import { sendDiscordDm } from "../services/discord.js";
@@ -1557,6 +1557,23 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // FR-B6: rename a CQB squad ("CQB Team 1" → "Alpha Squad").
+  app.patch<{ Params: { id: string; groupId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/cqb-teams/:groupId",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse({ id: req.params.id });
+      if (!p.success || !/^[a-z0-9]{20,32}$/i.test(req.params.groupId))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = FormationRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      await renameCqbSquad(p.data.id, req.params.groupId, body.data.name);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb_team:rename", body.data.name);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   // FR-B3: embed a CQB team (squad group) into a carrier ship — "rides in <ship>".
   // carrierUnitId null = standalone. Carrier must be a ship in this op.
   app.put<{ Params: { id: string; groupId: string }; Body: unknown }>(
@@ -1606,6 +1623,22 @@ export async function apiV1Routes(app: FastifyInstance) {
       const f = await createFormation(p.data.id, body.data.name);
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "formation:create", body.data.name);
       return reply.type("application/json").send({ ok: true as const, id: f.id });
+    },
+  );
+
+  app.patch<{ Params: { id: string; fid: string }; Body: unknown }>(
+    "/api/v1/operations/:id/formations/:fid",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse({ id: req.params.id });
+      if (!p.success || !/^[a-z0-9]{20,32}$/i.test(req.params.fid))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = FormationRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      await renameFormation(p.data.id, req.params.fid, body.data.name);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "formation:rename", body.data.name);
+      return reply.type("application/json").send({ ok: true as const });
     },
   );
 

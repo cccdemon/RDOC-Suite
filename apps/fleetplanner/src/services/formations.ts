@@ -20,6 +20,16 @@ export async function createFormation(operationId: string, name: string) {
   });
 }
 
+/** Rename a formation. */
+export async function renameFormation(operationId: string, formationId: string, name: string): Promise<void> {
+  const n = name.trim().slice(0, 80);
+  if (!n) return;
+  await prisma.compositionGroup.updateMany({
+    where: { id: formationId, operationId, kind: "formation" },
+    data: { name: n },
+  });
+}
+
 /** Delete a formation; its ships are freed (formationId → null via FK). */
 export async function deleteFormation(operationId: string, formationId: string): Promise<void> {
   await prisma.compositionGroup.deleteMany({

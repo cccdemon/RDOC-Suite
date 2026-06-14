@@ -176,6 +176,13 @@ export function createFormation(opId: string, csrfToken: string, name: string): 
 export function deleteFormation(opId: string, fid: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/formations/${encodeURIComponent(fid)}`, csrfToken);
 }
+export function renameFormation(opId: string, fid: string, csrfToken: string, name: string): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/formations/${encodeURIComponent(fid)}`, csrfToken, { name });
+}
+// FR-B6: rename a CQB squad.
+export function renameCqbTeam(opId: string, groupId: string, csrfToken: string, name: string): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}`, csrfToken, { name });
+}
 export function assignUnitFormation(opId: string, unitId: string, csrfToken: string, formationId: string | null): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/formation`, csrfToken, { formationId });
 }
