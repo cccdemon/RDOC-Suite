@@ -110,6 +110,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const [viewAs, setViewAs] = useState<"self" | "crew" | "guest">("self");
   // What the mission needs (crew planning) — readable by any viewer with access.
   const [needs, setNeeds] = useState<import("../api/types").NeedsResponse | null>(null);
+  const [lightbox, setLightbox] = useState(false); // hero cover full-size overlay
   const fleetRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -129,6 +130,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     if (!id || !session?.user) { setNeeds(null); return; }
     getNeeds(id).then(setNeeds).catch(() => setNeeds(null));
   }, [id, session?.user]);
+
+  // Close the cover lightbox on Escape.
+  useEffect(() => {
+    if (!lightbox) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setLightbox(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
 
   const realUser = session?.user ?? null;
@@ -570,9 +579,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               {infoRow("globe", "SYSTEM", op.meetingSystem)}
             </div>
           </div>
-          <div style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622" }}>
+          <button type="button" data-testid="cover-open" title="Cover vergrößern" onClick={() => setLightbox(true)} style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622", padding: 0, cursor: "zoom-in" }}>
             <img src={op.coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
-          </div>
+          </button>
         </div>
       </section>
 
@@ -921,6 +930,32 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           initialTab={searchParams.get("op")}
           initialFlash={searchParams.get("flash")}
         />
+      )}
+
+      {/* Cover lightbox overlay — click anywhere / Esc to close. */}
+      {lightbox && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          data-testid="cover-lightbox"
+          onClick={() => setLightbox(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(2,5,10,0.88)", display: "flex", alignItems: "center", justifyContent: "center", padding: "3vh 3vw", cursor: "zoom-out" }}
+        >
+          <img
+            src={op.coverUrl ?? heroImg}
+            alt={`Operation ${op.title}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: "100%", maxHeight: "94vh", objectFit: "contain", borderRadius: 10, border: "1px solid rgba(0,212,255,0.25)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}
+          />
+          <button
+            type="button"
+            data-testid="cover-lightbox-close"
+            onClick={() => setLightbox(false)}
+            style={{ position: "fixed", top: "2vh", right: "2vw", width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(9,15,24,0.8)", color: "#eaf4fb", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <Ic name="x" size={18} sw={2} />
+          </button>
+        </div>
       )}
     </article>
   );
