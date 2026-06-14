@@ -30,6 +30,13 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
 - ✅ **FR-E1** Event-Interesse im Board — `OperatorView.eventInterests` (Payload erweitert);
   Sektion „EVENT-INTERESSE" listet Discord-„Interested"-Nutzer; verknüpfte → Einteilen via Place-Mode,
   Shadows (kein Account) → „unbekannt"-Badge + Metrik „X verknüpft · Y unbekannt".
+- ✅ **FR-B2** Verbände (Formations) — `POST/DELETE …/formations`, `PUT …/units/:unitId/formation`;
+  OperatorPanel „VERBÄNDE"-Panel + per-Schiff Verband-Dropdown. (Service+Schema waren da, nur kein API.)
+- ✅ **FR-B3** CQB-Team in Träger-Schiff — `PUT …/cqb-teams/:groupId/carrier`; „FÄHRT IN"-Dropdown je Team.
+- ✅ **FR-B4** Fahrzeug in Träger-Schiff — `PUT …/units/:unitId/carrier`; „TRÄGER"-Dropdown auf Fahrzeug-Karten.
+  Echter Bay-Fit-Check aufgeschoben (Fleetyards-Bay-Daten nicht modelliert) — nur Strukturprüfung.
+- ⏸️ **FR-B6** abgegrenzt: Requirements-Mgmt (Needs-Editor) + Groups (Formations/CQB-Teams) bereits
+  abgedeckt; **primary-unit ist voice-gekoppelt → außerhalb des Scopes** (Voice vollständig außen vor).
 - ✅ **FR-B5** CQB per-Soldat-Platzierung — `OperatorView.cqbTeams`+`cqbSoldiers`;
   `POST /api/v1/operations/:id/cqb/:signupId/assign {groupId|null}` setzt `CqbSignup.assignedGroupId`.
   OperatorPanel-Block „CQB-TEAMS · SOLDATEN EINTEILEN": je Soldat Team-Dropdown (zuweisen/verschieben/lösen),
