@@ -213,11 +213,22 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     );
 
   const accepted = op.units.filter((u) => u.status === "accepted");
-  // Squads are shown in the CQB column (model A: an offered squad IS a CQB team),
-  // so they're excluded from the standalone board lanes.
-  const lanes = LANES.filter((l) => l.type !== "squad").map((l) => ({ ...l, units: accepted.filter((u) => laneOf(u) === l.type) })).filter(
-    (l) => l.units.length > 0,
-  );
+  // The roster shows the OPTIMAL LINEUP: every fleet need appears as a slot — an
+  // empty "unerfüllt" placeholder until a unit fills it, then the unit with its
+  // claimable seats. Ship needs (one hull each) + the fighter need become slots;
+  // CQB needs are the team cards in the CQB column. (Squads → CQB column.)
+  const shipReqs = (needs?.requirements ?? []).filter((r) => r.needType === "ship");
+  const shipReqUnfilled = shipReqs.filter((r) => !accepted.some((u) => u.requirementId === r.id));
+  const fighterUnitsCount = accepted.filter((u) => laneOf(u) === "fighter").length;
+  const fighterEmpty = Math.max(0, (needs?.fighterSquads ?? 0) - fighterUnitsCount);
+  const lanes = LANES.filter((l) => l.type !== "squad").map((l) => {
+    const units = accepted.filter((u) => laneOf(u) === l.type);
+    const placeholders: string[] =
+      l.type === "ship" ? shipReqUnfilled.map((r) => r.label || r.category || "Schiff")
+      : l.type === "fighter" ? Array.from({ length: fighterEmpty }, () => "Jäger")
+      : [];
+    return { ...l, units, placeholders };
+  }).filter((l) => l.units.length > 0 || l.placeholders.length > 0);
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const pct = op.minParticipants > 0 ? Math.min(100, Math.round((filled / op.minParticipants) * 100)) : 0;
   const canJoin = !!me && !!csrf && op.status === "open";
@@ -496,6 +507,22 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       </article>
     );
   };
+
+  // Empty need slot — a requested unit that nobody has provided yet (no seats).
+  const emptyNeedCard = (label: string, lane: (typeof LANES)[number], key: string) => (
+    <article key={key} data-testid="need-slot" style={{ width: "100%", minWidth: 0, border: `1px dashed rgba(${lane.rgb},0.4)`, borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1rem 1.15rem", opacity: 0.92 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.8rem" }}>
+        <span style={{ width: 42, height: 42, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: `rgba(${lane.rgb},0.07)`, border: `1px dashed rgba(${lane.rgb},0.4)`, color: lane.accent }}>
+          <Ic name={lane.icon} size={19} sw={1.5} />
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <strong style={{ fontWeight: 700, fontSize: "1rem", color: "#c2d2de" }}>{label}</strong>
+          <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.08em", color: lane.accent, marginTop: "0.2rem" }}>BEDARF · UNERFÜLLT</div>
+        </div>
+        <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a", flexShrink: 0, whiteSpace: "nowrap" }}>noch kein Schiff</span>
+      </div>
+    </article>
+  );
 
   const squadLane = LANES.find((l) => l.type === "squad")!;
   const squadUnits = accepted.filter((u) => u.unitType === "squad");
@@ -816,6 +843,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
                     {lane.units.map((u) => unitCard(u, lane))}
+                    {lane.placeholders.map((label, i) => emptyNeedCard(label, lane, `ph-${lane.type}-${i}`))}
                   </div>
                 </section>
               );
