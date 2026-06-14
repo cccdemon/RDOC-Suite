@@ -115,7 +115,20 @@ export function OperatorPanel({
 
   const accepted = op.units.filter((u) => u.status === "accepted");
   const pendingUnits = op.units.filter((u) => u.status === "pending");
-  const lanes = LANES.map((l) => ({ ...l, units: accepted.filter((u) => laneOf(u) === l.type) })).filter((l) => l.units.length > 0);
+  // Roster = optimal lineup: open needs show as empty "unerfüllt" slots so every
+  // category column appears even before a ship is offered (ship + fighter needs;
+  // CQB lives in its own block). A lane shows when it has units OR open needs.
+  const shipReqUnfilled = (view?.requirements ?? []).filter((r) => r.needType === "ship" && r.filled < r.count);
+  const fighterReqO = (view?.requirements ?? []).find((r) => r.needType === "fighter_squad");
+  const fighterEmptyO = fighterReqO ? Math.max(0, fighterReqO.count - fighterReqO.filled) : 0;
+  const lanes = LANES.map((l) => {
+    const units = accepted.filter((u) => laneOf(u) === l.type);
+    const placeholders: string[] =
+      l.type === "ship" ? shipReqUnfilled.map((r) => r.label || r.category || "Schiff")
+      : l.type === "fighter" ? Array.from({ length: fighterEmptyO }, () => "Jäger")
+      : [];
+    return { ...l, units, placeholders };
+  }).filter((l) => l.units.length > 0 || l.placeholders.length > 0);
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const total = accepted.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0);
   const open = total - filled;
@@ -795,6 +808,16 @@ export function OperatorPanel({
                     />
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>{u.seats.map((s) => opSeatRow(u, s))}</div>
+                </div>
+              ))}
+              {lane.placeholders.map((label, i) => (
+                <div key={`ph-${lane.type}-${i}`} data-testid="need-slot" style={{ border: `1px dashed rgba(${lane.rgb},0.4)`, borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "0.9rem 1rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                  <span style={{ width: 32, height: 32, borderRadius: 8, background: `rgba(${lane.rgb},0.07)`, border: `1px dashed rgba(${lane.rgb},0.4)`, color: lane.accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={lane.icon} size={16} sw={1.5} /></span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <strong style={{ fontSize: "0.92rem", color: "#c2d2de" }}>{label}</strong>
+                    <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: lane.accent, marginTop: 1 }}>BEDARF · UNERFÜLLT</div>
+                  </div>
+                  <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>kein Schiff</span>
                 </div>
               ))}
             </div>
