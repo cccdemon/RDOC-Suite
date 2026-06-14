@@ -10,7 +10,7 @@ export function OfferShip({
   opId,
   csrf,
   carrierOptions,
-  shipNeeds = [],
+  requirements = [],
   onDone,
   onCancel,
   onError,
@@ -19,8 +19,9 @@ export function OfferShip({
   csrf: string;
   /** Accepted ship units of the op (vehicle carriers). */
   carrierOptions: Array<{ id: string; name: string }>;
-  /** Open ship requirements (Bedarfe) the player can offer this ship for. */
-  shipNeeds?: Array<{ id: string; label: string; shipType: string }>;
+  /** All fleet requirements (Bedarfe); a ship can be offered for ship- or
+   *  fighter-needs, a squad for CQB-needs. */
+  requirements?: Array<{ id: string; label: string; needType: string; category: string }>;
   onDone: () => void;
   onCancel: () => void;
   onError: (msg: string) => void;
@@ -101,6 +102,7 @@ export function OfferShip({
           unitType: "squad",
           squadName: squadName.trim(),
           squadSize,
+          ...(requirementId ? { requirementId } : {}),
           ...(note.trim() ? { captainNote: note.trim() } : {}),
         });
       } else {
@@ -230,24 +232,30 @@ export function OfferShip({
 
       {mode !== "squad" && shipPicker}
 
-      {/* Offer this ship for a specific Bedarf — a hull can fill multiple roles
-          (e.g. a Perseus as Capital OR Support); the player picks which. */}
-      {mode === "ship" && shipNeeds.length > 0 && (
-        <div style={{ marginTop: "0.8rem" }}>
-          <div className="fpw-mono-label" style={{ marginBottom: "0.5rem" }}>FÜR WELCHEN BEDARF? (OPTIONAL)</div>
-          <select
-            value={requirementId}
-            data-testid="offer-requirement"
-            onChange={(e) => setRequirementId(e.target.value)}
-            style={{ width: "100%", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
-          >
-            <option value="">— Operator entscheidet —</option>
-            {shipNeeds.map((n) => (
-              <option key={n.id} value={n.id}>{n.label}{n.shipType && n.shipType !== "any" ? ` (${n.shipType})` : ""}</option>
-            ))}
-          </select>
-        </div>
-      )}
+      {/* Offer this unit for a specific Bedarf — a ship fits ship- or fighter-needs
+          (a hull can fill multiple roles); a squad fits CQB/ground needs. */}
+      {(() => {
+        const offerNeeds = mode === "squad"
+          ? requirements.filter((r) => r.needType === "cqb_team" || ["fps", "ground"].includes(r.category))
+          : requirements.filter((r) => r.needType === "ship" || r.needType === "fighter_squad");
+        if (offerNeeds.length === 0) return null;
+        return (
+          <div style={{ marginTop: "0.8rem" }}>
+            <div className="fpw-mono-label" style={{ marginBottom: "0.5rem" }}>FÜR WELCHEN BEDARF? (OPTIONAL)</div>
+            <select
+              value={requirementId}
+              data-testid="offer-requirement"
+              onChange={(e) => setRequirementId(e.target.value)}
+              style={{ width: "100%", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
+            >
+              <option value="">— Operator entscheidet —</option>
+              {offerNeeds.map((n) => (
+                <option key={n.id} value={n.id}>{n.label}{n.category && n.category !== "any" ? ` (${n.category})` : ""}</option>
+              ))}
+            </select>
+          </div>
+        );
+      })()}
 
       {mode === "squad" && (
         <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>

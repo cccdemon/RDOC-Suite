@@ -315,7 +315,7 @@ describe("Op detail — operator panel", () => {
   };
 
   // minimal needs payload — the fleet tab also mounts the NeedsEditor (fetches /needs)
-  const emptyNeeds = { shipTypes: [], cqbTeamMax: 8, cqbTeamDefault: 4, fighterSquadSize: 2, shipNeeds: [], fighterSquads: 0, cqbTeams: { count: 0, size: 4 } };
+  const emptyNeeds = { shipTypes: [], cqbTeamMax: 8, cqbTeamDefault: 4, fighterSquadSize: 2, shipNeeds: [], fighterSquads: 0, cqbTeams: { count: 0, size: 4 }, requirements: [] };
 
   function useOperatorHandlers(extra: Parameters<typeof server.use>[0][] = []) {
     server.use(
@@ -895,6 +895,7 @@ describe("Op needs editor (Bedarfe)", () => {
     shipNeeds: [{ id: "req_1", shipType: "capital", label: "Flagship", note: null }],
     fighterSquads: 0,
     cqbTeams: { count: 0, size: 4 },
+    requirements: [],
   };
 
   it("adds a ship need (POST needs/ships) with the picked types", async () => {

@@ -765,6 +765,14 @@ export const NeedsResponseSchema = z
     shipNeeds: z.array(ShipNeedSchema),
     fighterSquads: z.number(),
     cqbTeams: z.object({ count: z.number(), size: z.number() }),
+    /** All requirements (ship + fighter_squad + cqb_team) so a player can offer a
+     *  unit for a specific need — e.g. a fighter for the fighter-squad need. */
+    requirements: z.array(z.object({
+      id: z.string(),
+      label: z.string(),
+      needType: z.string(),
+      category: z.string(),
+    })),
   })
   .meta({ id: "NeedsResponse" });
 export type NeedsResponse = z.infer<typeof NeedsResponseSchema>;

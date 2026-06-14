@@ -247,10 +247,11 @@ export async function getOperationNeeds(operationId: string): Promise<{
   shipNeeds: Array<{ id: string; shipType: string; label: string; note: string | null }>;
   fighterSquads: number;
   cqbTeams: { count: number; size: number };
+  requirements: Array<{ id: string; label: string; needType: string; category: string }>;
 }> {
   const reqs = await prisma.compositionRequirement.findMany({
     where: { group: { operationId } },
-    select: { id: true, needType: true, shipType: true, label: true, note: true, count: true, squadSize: true },
+    select: { id: true, needType: true, shipType: true, label: true, note: true, count: true, squadSize: true, category: true },
     orderBy: { order: "asc" },
   });
   const fighter = reqs.find((r) => r.needType === "fighter_squad");
@@ -265,6 +266,7 @@ export async function getOperationNeeds(operationId: string): Promise<{
       .map((r) => ({ id: r.id, shipType: r.shipType ?? "any", label: r.label ?? "", note: r.note })),
     fighterSquads: fighter?.count ?? 0,
     cqbTeams: { count: cqb?.count ?? 0, size: cqb?.squadSize ?? CQB_TEAM_DEFAULT },
+    requirements: reqs.map((r) => ({ id: r.id, label: r.label ?? "", needType: r.needType ?? "ship", category: r.category })),
   };
 }
 

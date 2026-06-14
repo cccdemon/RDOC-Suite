@@ -144,12 +144,8 @@ export async function assertRequirementFitsUnit(
   if (!requirement || requirement.group.operationId !== operationId) {
     throw new Error("Fleet Requirement slot does not belong to this operation");
   }
-  const filled = requirement.fleetUnits.filter(
-    (unit) => unit.id !== currentUnitId && unit.status !== "rejected",
-  ).length;
-  if (filled >= requirement.count) {
-    throw new Error("Fleet Requirement slot is already full");
-  }
+  // Over-fulfilment is allowed (a need may be exceeded), so a full slot is NOT a
+  // hard block — the board shows "(über)". We only validate op-ownership + category.
   if (
     !REQUIREMENT_CATEGORIES.includes(
       requirement.category as (typeof REQUIREMENT_CATEGORIES)[number],

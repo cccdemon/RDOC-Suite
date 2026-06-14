@@ -19,6 +19,7 @@ export const handlers = [
       shipNeeds: [],
       fighterSquads: 0,
       cqbTeams: { count: 0, size: 4 },
+      requirements: [],
     }),
   ),
   http.get(`${API}/locations/search`, () => HttpResponse.json({ locations: [] })),

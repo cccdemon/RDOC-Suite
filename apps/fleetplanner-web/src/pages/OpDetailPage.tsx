@@ -754,7 +754,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   opId={id!}
                   csrf={csrf!}
                   carrierOptions={accepted.filter((u) => u.unitType === "ship").map((u) => ({ id: u.id, name: u.name }))}
-                  shipNeeds={needs?.shipNeeds ?? []}
+                  requirements={needs?.requirements ?? []}
                   onDone={() => {
                     setNotice(null);
                     setOfferOpen(false);
