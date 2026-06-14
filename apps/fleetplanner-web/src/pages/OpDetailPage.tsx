@@ -499,6 +499,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
   const squadLane = LANES.find((l) => l.type === "squad")!;
   const squadUnits = accepted.filter((u) => u.unitType === "squad");
+  // A player squad FULFILLS a CQB-team need. We never hide teams — a need can be
+  // OVER-fulfilled (more teams than requested is fine), so all squads + all
+  // soldier-teams stay joinable; we only show progress (provided vs requested).
+  const cqbNeedCount = needs?.cqbTeams.count ?? null;
+  const cqbProvidedTeams = squadUnits.length + op.cqbTeams.filter((t) => t.targetSize != null && t.members.length >= t.targetSize).length;
 
   return (
     <article>
@@ -674,12 +679,15 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 {needs.fighterSquads} Jäger-Staffel{needs.fighterSquads === 1 ? "" : "n"} · je {needs.fighterSquadSize} Piloten
               </span>
             )}
-            {needs.cqbTeams.count > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: "1px solid rgba(240,165,0,0.3)", background: "rgba(240,165,0,0.06)", color: "#dce8f0" }}>
-                <span style={{ color: "#f0a500", display: "inline-flex" }}><Ic name="fps" size={13} sw={1.8} /></span>
-                {needs.cqbTeams.count} CQB-Team{needs.cqbTeams.count === 1 ? "" : "s"} · je {needs.cqbTeams.size} Soldaten
-              </span>
-            )}
+            {needs.cqbTeams.count > 0 && (() => {
+              const covered = cqbProvidedTeams >= needs.cqbTeams.count;
+              return (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: `1px solid ${covered ? "rgba(0,255,136,0.35)" : "rgba(240,165,0,0.3)"}`, background: covered ? "rgba(0,255,136,0.06)" : "rgba(240,165,0,0.06)", color: "#dce8f0" }}>
+                  <span style={{ color: covered ? "#00ff88" : "#f0a500", display: "inline-flex" }}><Ic name={covered ? "check" : "fps"} size={13} sw={1.8} /></span>
+                  {cqbProvidedTeams}/{needs.cqbTeams.count} CQB-Teams{cqbProvidedTeams > needs.cqbTeams.count ? " (über)" : ""} · je {needs.cqbTeams.size} Soldaten
+                </span>
+              );
+            })()}
           </div>
         </section>
       )}
@@ -815,6 +823,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                     <Ic name="fps" size={16} /> BODENTRUPPEN / CQB
                   </span>
                   <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(240,165,0,0.4),transparent)" }} />
+                  {cqbNeedCount != null && (
+                    <span style={{ fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: cqbProvidedTeams >= cqbNeedCount ? "#00ff88" : "#9fb1c2" }}>
+                      {cqbProvidedTeams}/{cqbNeedCount} Teams{cqbProvidedTeams > cqbNeedCount ? " (über)" : ""}
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
                   {/* Offered squads as their own CQB teams (members = seat holders). */}
