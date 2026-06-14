@@ -3,6 +3,7 @@ import {
   addLeader,
   ApiError,
   answerQuestion,
+  assignCqbSoldier,
   assignSeat,
   decideUnit,
   getGuildSettings,
@@ -513,6 +514,46 @@ export function OperatorPanel({
     </section>
   );
 
+  // FR-B5: CQB soldier placement. The pool of soldiers is split into teams
+  // (squad groups); the operator assigns/moves each via a team dropdown.
+  const cqbTeams = view.cqbTeams;
+  const cqbSoldiers = view.cqbSoldiers;
+  const cqbBlock = (cqbTeams.length > 0 || cqbSoldiers.length > 0) && (
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="cqb-block">
+      {panelHead("fps", "#f0a500", "CQB-TEAMS · SOLDATEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>)}
+      {cqbSoldiers.length === 0 ? (
+        <div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          {cqbSoldiers.map((s) => {
+            const team = cqbTeams.find((t) => t.id === s.assignedGroupId);
+            return (
+              <div key={s.id} data-testid={`cqb-soldier-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, border: `1px solid ${team ? "rgba(0,255,136,0.2)" : "rgba(240,165,0,0.2)"}`, background: team ? "rgba(0,255,136,0.04)" : "rgba(240,165,0,0.04)" }}>
+                <Avatar name={s.username} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ fontSize: "0.86rem", color: "#eaf4fb" }}>{s.username}</strong>
+                  {s.note && <div style={{ color: "#7e92a4", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.note}</div>}
+                </div>
+                <select
+                  data-testid={`cqb-assign-${s.id}`}
+                  value={s.assignedGroupId ?? ""}
+                  onChange={(e) => run(() => assignCqbSoldier(op.id, s.id, csrf, e.target.value || null))}
+                  style={{ flexShrink: 0, maxWidth: "50%", background: "#0e1926", border: "1px solid rgba(240,165,0,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                >
+                  <option value="">— kein Team —</option>
+                  {cqbTeams.map((t) => <option key={t.id} value={t.id}>{t.name}{t.targetSize ? ` (${cqbSoldiers.filter((x) => x.assignedGroupId === t.id).length}/${t.targetSize})` : ""}</option>)}
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {cqbTeams.length === 0 && cqbSoldiers.length > 0 && (
+        <p style={{ margin: "0.7rem 0 0", color: "#7e92a4", fontSize: "0.78rem" }}>Keine CQB-Teams definiert — lege unter „Bedarfe" CQB-Teams an, um Soldaten einzuteilen.</p>
+      )}
+    </section>
+  );
+
   const boardBlock = (
     <>
       <div style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "#9fb1c2", marginBottom: "1rem" }}>
@@ -634,6 +675,7 @@ export function OperatorPanel({
           </section>
           {pendingBlock}
           {boardBlock}
+          {cqbBlock}
           {toolsBlock}
         </div>
         <aside style={{ flex: "0 0 332px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "1rem" }}>

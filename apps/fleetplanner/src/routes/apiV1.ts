@@ -92,6 +92,7 @@ import {
   AnswerQuestionRequestSchema,
   ApplyTemplateRequestSchema,
   AssignSeatRequestSchema,
+  AssignCqbRequestSchema,
   CqbSignupRequestSchema,
   CreateOperationRequestSchema,
   AddShipNeedsRequestSchema,
@@ -1489,6 +1490,41 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // FR-B5: operator places/moves a CQB soldier into a team (squad group). groupId
+  // null unassigns. Object-level checks: signup + group both belong to this op.
+  app.post<{ Params: { id: string; signupId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/cqb/:signupId/assign",
+    async (req, reply) => {
+      const pid = IdParamSchema.safeParse({ id: req.params.id });
+      const sid = req.params.signupId;
+      if (!pid.success || !/^[a-z0-9]{20,32}$/i.test(sid))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = AssignCqbRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, pid.data.id);
+      if (!ctx) return;
+
+      const signup = await prisma.cqbSignup.findFirst({
+        where: { id: sid, operationId: pid.data.id },
+        select: { id: true },
+      });
+      if (!signup) return sendError(reply, req, 404, "not_found", "CQB signup not found.");
+      if (body.data.groupId) {
+        const group = await prisma.compositionGroup.findFirst({
+          where: { id: body.data.groupId, operationId: pid.data.id, kind: "squad" },
+          select: { id: true },
+        });
+        if (!group) return sendError(reply, req, 404, "not_found", "CQB team not found.");
+      }
+      await prisma.cqbSignup.update({
+        where: { id: sid },
+        data: { assignedGroupId: body.data.groupId, status: "accepted" },
+      });
+      await logAudit(pid.data.id, ctx.user.id, ctx.user.username, "cqb:assign", body.data.groupId ?? "unassigned");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   app.put<{ Params: { id: string }; Body: unknown }>(
     "/api/v1/operations/:id/hangar-share",
     async (req, reply) => {
@@ -1740,6 +1776,8 @@ export async function apiV1Routes(app: FastifyInstance) {
       auditLogs: Array<{ actor: string; action: string; detail: string; createdAt: Date }>;
       eventInterests: Array<{ id: string; displayName: string; userId: string | null }>;
       units: Array<{ seats: Array<{ userId: string | null }> }>;
+      groups: Array<{ id: string; name: string; kind: string; targetSize: number | null }>;
+      cqbSignups: Array<{ id: string; userId: string; status: string; note: string | null; assignedGroupId: string | null; user: { username: string } }>;
     };
     // userIds already holding a seat in this op → mark interested users "seated".
     const seatedUserIds = new Set(
@@ -1786,6 +1824,12 @@ export async function apiV1Routes(app: FastifyInstance) {
         userId: e.userId,
         seated: e.userId ? seatedUserIds.has(e.userId) : false,
       })),
+      cqbTeams: o.groups
+        .filter((g) => g.kind === "squad")
+        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize })),
+      cqbSoldiers: o.cqbSignups
+        .filter((s) => s.status !== "rejected")
+        .map((s) => ({ id: s.id, username: s.user.username, assignedGroupId: s.assignedGroupId, note: s.note })),
     };
     return reply.type("application/json").send(view);
   });

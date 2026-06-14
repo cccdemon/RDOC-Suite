@@ -30,6 +30,10 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
 - ✅ **FR-E1** Event-Interesse im Board — `OperatorView.eventInterests` (Payload erweitert);
   Sektion „EVENT-INTERESSE" listet Discord-„Interested"-Nutzer; verknüpfte → Einteilen via Place-Mode,
   Shadows (kein Account) → „unbekannt"-Badge + Metrik „X verknüpft · Y unbekannt".
+- ✅ **FR-B5** CQB per-Soldat-Platzierung — `OperatorView.cqbTeams`+`cqbSoldiers`;
+  `POST /api/v1/operations/:id/cqb/:signupId/assign {groupId|null}` setzt `CqbSignup.assignedGroupId`.
+  OperatorPanel-Block „CQB-TEAMS · SOLDATEN EINTEILEN": je Soldat Team-Dropdown (zuweisen/verschieben/lösen),
+  Metrik eingeteilt/gesamt, Team-Auslastung im Option-Label.
 - ✅ **Bedarf-Bindung + Jäger-Klasse** (FR-A2-Teil / B6-Teil): `FleetUnit` liefert jetzt
   `shipClass` (abgeleitet via `shipClass()`) + `requirementId`; `OperatorView` listet
   `requirements` (Bedarfe mit filled/count). Operator weist gestelltes Schiff einem Bedarf zu —

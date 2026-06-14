@@ -156,6 +156,11 @@ export function cqbWithdraw(opId: string, csrfToken: string): Promise<{ ok: true
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/cqb/signup`, csrfToken);
 }
 
+// FR-B5: operator places/moves a CQB soldier into a team (groupId null = unassign).
+export function assignCqbSoldier(opId: string, signupId: string, csrfToken: string, groupId: string | null): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb/${encodeURIComponent(signupId)}/assign`, csrfToken, { groupId });
+}
+
 export function setHangarShare(opId: string, csrfToken: string, allow: boolean): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/hangar-share`, csrfToken, { allow });
 }

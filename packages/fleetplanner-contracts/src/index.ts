@@ -498,8 +498,26 @@ export const OperatorViewSchema = z
         seated: z.boolean(),
       }),
     ),
+    /** FR-B5: CQB teams (materialized squad groups) + the soldier pool. The
+     *  operator places each soldier into a team via assignedGroupId. */
+    cqbTeams: z.array(
+      z.object({ id: z.string(), name: z.string(), targetSize: z.number().int().nullable() }),
+    ),
+    cqbSoldiers: z.array(
+      z.object({
+        id: z.string(),
+        username: z.string(),
+        assignedGroupId: z.string().nullable(),
+        note: z.string().nullable(),
+      }),
+    ),
   })
   .meta({ id: "OperatorView" });
+
+/** FR-B5: operator places/moves a CQB soldier into a team (null = unassign). */
+export const AssignCqbRequestSchema = z
+  .object({ groupId: cuid.nullable() })
+  .meta({ id: "AssignCqbRequest" });
 export type OperatorView = z.infer<typeof OperatorViewSchema>;
 
 export const UnitDecisionRequestSchema = z
