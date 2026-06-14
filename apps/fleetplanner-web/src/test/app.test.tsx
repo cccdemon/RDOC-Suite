@@ -33,7 +33,7 @@ describe("Overview", () => {
         HttpResponse.json({ operations: [{ ...opSummaryFixture, signupState: "joined" }] }),
       ),
     );
-    renderAt("/");
+    renderAt("/?view=liste"); // the joined "DABEI" badge is a list-view card feature
     // username now appears in the sidebar footer (and possibly the page)
     expect((await screen.findAllByText("Crew One")).length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText("DABEI")).toBeInTheDocument();

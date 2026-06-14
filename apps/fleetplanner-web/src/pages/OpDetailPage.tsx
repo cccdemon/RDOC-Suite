@@ -735,11 +735,21 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       )}
 
 
-      {op.signupState === "joined" && (
-        <div style={{ marginBottom: "1.8rem" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", color: "#00ff88", fontSize: "0.88rem" }}>
-            <Ic name="check" size={15} /> Du bist Teilnehmer.
-          </span>
+      {me && (
+        <div style={{ marginBottom: "1.8rem", display: "flex", alignItems: "center", gap: "1.2rem", flexWrap: "wrap" }}>
+          {op.signupState === "joined" && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", color: "#00ff88", fontSize: "0.88rem" }}>
+              <Ic name="check" size={15} /> Du bist Teilnehmer.
+            </span>
+          )}
+          {/* Calendar export (.ics) — backend route, proxied by nginx. */}
+          <a
+            href={`${import.meta.env.BASE_URL}ops/${id}/calendar.ics`}
+            data-testid="calendar-export"
+            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#00d4ff", textDecoration: "none", fontFamily: MONO, fontSize: "0.74rem", border: "1px solid rgba(0,212,255,0.3)", borderRadius: 8, padding: "0.4rem 0.75rem" }}
+          >
+            <Ic name="cal" size={14} sw={1.7} /> Im Kalender speichern
+          </a>
         </div>
       )}
 

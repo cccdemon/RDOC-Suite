@@ -66,7 +66,9 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   const [params, setParams] = useSearchParams();
   const viewParam = params.get("view");
   const view: "liste" | "monat" | "agenda" =
-    viewParam === "kalender" || viewParam === "monat" ? "monat" : viewParam === "agenda" ? "agenda" : "liste";
+    viewParam === "kalender" || viewParam === "monat" ? "monat"
+    : viewParam === "liste" ? "liste"
+    : "agenda"; // default = agenda
   const setView = (v: "liste" | "monat" | "agenda") =>
     setParams(
       (p) => {
@@ -115,6 +117,8 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
     if (!ops) return [];
     const out: Ev[] = [];
     for (const op of ops) {
+      // Drafts (unpublished) never appear in the calendar grid / agenda.
+      if (op.status === "draft") continue;
       const d = new Date(op.scheduledAt);
       if (d.getFullYear() !== year || d.getMonth() !== month) continue;
       out.push({
