@@ -313,6 +313,8 @@ export function registerUnit(
     squadSize?: number;
     carrierUnitId?: string;
     captainNote?: string;
+    /** FR: offer the ship for a specific fleet requirement (Bedarf). */
+    requirementId?: string;
   },
 ): Promise<{ ok: true; unitId: string }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/units`, csrfToken, input);

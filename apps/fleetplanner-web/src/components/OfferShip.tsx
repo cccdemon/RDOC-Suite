@@ -10,6 +10,7 @@ export function OfferShip({
   opId,
   csrf,
   carrierOptions,
+  shipNeeds = [],
   onDone,
   onCancel,
   onError,
@@ -18,6 +19,8 @@ export function OfferShip({
   csrf: string;
   /** Accepted ship units of the op (vehicle carriers). */
   carrierOptions: Array<{ id: string; name: string }>;
+  /** Open ship requirements (Bedarfe) the player can offer this ship for. */
+  shipNeeds?: Array<{ id: string; label: string; shipType: string }>;
   onDone: () => void;
   onCancel: () => void;
   onError: (msg: string) => void;
@@ -33,6 +36,7 @@ export function OfferShip({
   const [squadName, setSquadName] = useState("");
   const [squadSize, setSquadSize] = useState(4);
   const [carrierUnitId, setCarrierUnitId] = useState("");
+  const [requirementId, setRequirementId] = useState(""); // chosen Bedarf (ship mode)
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -70,6 +74,7 @@ export function OfferShip({
     setSquadName("");
     setNote("");
     setCarrierUnitId("");
+    setRequirementId("");
   }
 
   async function submit() {
@@ -84,6 +89,7 @@ export function OfferShip({
         await registerUnit(opId, csrf, {
           unitType: "ship",
           ...(ownedShipId ? { ownedShipId } : { shipId: catalogShipId!, storeOwnedShip: store }),
+          ...(requirementId ? { requirementId } : {}),
           ...(note.trim() ? { captainNote: note.trim() } : {}),
         });
       } else if (mode === "squad") {
@@ -223,6 +229,25 @@ export function OfferShip({
       </div>
 
       {mode !== "squad" && shipPicker}
+
+      {/* Offer this ship for a specific Bedarf — a hull can fill multiple roles
+          (e.g. a Perseus as Capital OR Support); the player picks which. */}
+      {mode === "ship" && shipNeeds.length > 0 && (
+        <div style={{ marginTop: "0.8rem" }}>
+          <div className="fpw-mono-label" style={{ marginBottom: "0.5rem" }}>FÜR WELCHEN BEDARF? (OPTIONAL)</div>
+          <select
+            value={requirementId}
+            data-testid="offer-requirement"
+            onChange={(e) => setRequirementId(e.target.value)}
+            style={{ width: "100%", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
+          >
+            <option value="">— Operator entscheidet —</option>
+            {shipNeeds.map((n) => (
+              <option key={n.id} value={n.id}>{n.label}{n.shipType && n.shipType !== "any" ? ` (${n.shipType})` : ""}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {mode === "squad" && (
         <div style={{ display: "flex", gap: "0.8rem", flexWrap: "wrap", alignItems: "center" }}>
