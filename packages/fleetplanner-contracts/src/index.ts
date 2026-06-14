@@ -255,6 +255,9 @@ export const ShipSummarySchema = z
     role: z.string(),
     minCrew: z.number().int(),
     maxCrew: z.number().int(),
+    /** FR-D1: player's custom name from the CCU import (hangar only; null/absent
+     *  in the catalog + search where ships have no owner-given nickname). */
+    nickname: z.string().nullable().optional(),
   })
   .meta({ id: "ShipSummary" });
 export type ShipSummary = z.infer<typeof ShipSummarySchema>;
@@ -543,6 +546,11 @@ export const AssignFormationRequestSchema = z
 export const AssignCarrierRequestSchema = z
   .object({ carrierUnitId: cuid.nullable() })
   .meta({ id: "AssignCarrierRequest" });
+
+/** FR-C2: post an op announcement to a Discord text channel (snowflake id). */
+export const AnnounceRequestSchema = z
+  .object({ channelId: z.string().regex(/^\d{16,25}$/) })
+  .meta({ id: "AnnounceRequest" });
 export type OperatorView = z.infer<typeof OperatorViewSchema>;
 
 export const UnitDecisionRequestSchema = z

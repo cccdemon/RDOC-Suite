@@ -25,6 +25,14 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
   **Reorder (PATCH sortOrder) aufgeschoben** — Backend hat keine PATCH-Route, nur POST/DELETE.
 - ✅ **FR-C1** Mission-Cover im Assistenten: Wizard hält nach „Erstellen" auf dem letzten Schritt,
   zeigt `CoverPanel` (op-id da) + „Zur Operation". i18n von Beginn (`cover.*`).
+- ✅ **FR-C2** Share-Channel beim Erstellen — `GET /api/v1/guilds/:id/channels` (Text-/Announcement-
+  Kanäle) + `POST /api/v1/operations/:id/announce {channelId}` (postet Titel/Zeit/Link via
+  `sendDiscordChannelMessage`, Kanal muss zur Op-Guild gehören). Wizard-Schritt „Ankündigung teilen"
+  nach dem Erstellen (neben Cover).
+- ✅ **FR-D1** Hangar Custom-Name — `UserShip.nickname` (vom CCU-Import) jetzt in der Hangar-Response
+  (`ShipSummary.nickname`, nur Hangar); ProfilePage zeigt „Nickname · Typ".
+- ✅ **Hero-Layout-Fix** — Banner war gequetscht (fixe 150px); jetzt ANMELDUNGEN-Box links + Banner
+  rechts auf gleicher Höhe (box-getrieben, `object-fit: cover` → nicht verzerrt), wrappt mobil.
 - ✅ **FR-D2** Hangar: unmatched Import-Namen manuell zuordnen — pro nicht erkanntem Namen Inline-Suche
   (mit Namen vorbefüllt) → Katalog-Schiff wählen → `addHangarShip`, Name verschwindet aus der Liste.
 - ✅ **FR-A2** Squad/Einheit umbenennen + Captain-Note — Inline-Edit auf der Operator-Unit-Karte

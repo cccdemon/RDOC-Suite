@@ -42,7 +42,7 @@ import {
   setStatus,
   updateOperation,
 } from "../services/operations.js";
-import { createScheduledEvent, deleteScheduledEvent, updateScheduledEvent, updateScheduledEventImage } from "../services/discord.js";
+import { createScheduledEvent, deleteScheduledEvent, fetchGuildTextChannels, updateScheduledEvent, updateScheduledEventImage } from "../services/discord.js";
 import {
   requestCover,
   deleteCover,
@@ -93,6 +93,7 @@ import {
   AnswerQuestionRequestSchema,
   ApplyTemplateRequestSchema,
   AssignSeatRequestSchema,
+  AnnounceRequestSchema,
   AssignCarrierRequestSchema,
   AssignCqbRequestSchema,
   AssignFormationRequestSchema,
@@ -438,6 +439,16 @@ export async function apiV1Routes(app: FastifyInstance) {
       guild: presentGuildSettings({ ...data.guild, canRemove }),
       members: data.members.map(presentGuildSettingsMember),
     });
+  });
+
+  // FR-C2: guild text/announcement channels for the wizard "share" picker.
+  app.get<{ Params: { id: string } }>("/api/v1/guilds/:id/channels", async (req, reply) => {
+    const p = GuildIdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+    const ctx = await requireGuildOperator(req, reply, p.data.id);
+    if (!ctx) return;
+    const channels = await fetchGuildTextChannels(p.data.id);
+    return reply.type("application/json").send({ channels });
   });
 
   app.patch<{ Params: { id: string }; Body: unknown }>(
@@ -1654,6 +1665,39 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // FR-C2: post an op announcement (title, time, link) to a Discord text channel.
+  // One-shot share chosen at create time; operator-gated on the op.
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/announce",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = AnnounceRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid channel id.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const op = await getOperation(p.data.id);
+      if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+      const o = op as { title: string; scheduledAt: Date; meetingSystem: string; meetingLocation: string };
+      // Channel must belong to this op's guild (operator could otherwise target any id).
+      const channels = await fetchGuildTextChannels((op as { guildId: string }).guildId);
+      if (!channels.some((c) => c.id === body.data.channelId))
+        return sendError(reply, req, 404, "not_found", "Channel not found in this server.");
+      const env = getEnv();
+      const url = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${p.data.id}`;
+      const when = o.scheduledAt.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+      const where = [o.meetingSystem, o.meetingLocation].filter(Boolean).join(" · ");
+      const content = `📡 **${o.title}**\n🕒 ${when}${where ? `\n📍 ${where}` : ""}\n🔗 ${url}`;
+      try {
+        await sendDiscordChannelMessage(body.data.channelId, content);
+      } catch {
+        return sendError(reply, req, 502, "internal", "Discord post failed.");
+      }
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "announce", body.data.channelId);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   app.put<{ Params: { id: string }; Body: unknown }>(
     "/api/v1/operations/:id/hangar-share",
     async (req, reply) => {
@@ -2212,7 +2256,7 @@ export async function apiV1Routes(app: FastifyInstance) {
     });
     return reply
       .type("application/json")
-      .send({ ships: rows.map((r) => presentShip(r.ship)) });
+      .send({ ships: rows.map((r) => ({ ...presentShip(r.ship), nickname: r.nickname })) });
   });
 
   app.post<{ Body: unknown }>("/api/v1/hangar", async (req, reply) => {

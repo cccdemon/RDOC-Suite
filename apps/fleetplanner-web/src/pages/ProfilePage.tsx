@@ -139,7 +139,13 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
             {hangar.map((s) => (
               <div key={s.id} className="fpw-seat" data-testid={`hangar-row-${s.id}`}>
-                <span style={{ flex: 1, color: "var(--text-hi)" }}>{s.name}</span>
+                <span style={{ flex: 1, minWidth: 0, color: "var(--text-hi)" }}>
+                  {s.nickname ? (
+                    <>„{s.nickname}" <span className="fpw-meta" style={{ fontSize: "0.8rem" }}>· {s.name}</span></>
+                  ) : (
+                    s.name
+                  )}
+                </span>
                 <span className="fpw-meta">{s.manufacturer} · {s.maxCrew} Crew</span>
                 <button type="button" data-testid={`hangar-remove-${s.id}`} title="Aus Hangar entfernen" disabled={busy} onClick={() => run(() => removeHangarShip(s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={12} sw={2} />
