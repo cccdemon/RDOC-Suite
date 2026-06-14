@@ -18,7 +18,10 @@ import {
   patchSeat,
   patchUnit,
   removeLeader,
+  removeNeed,
+  setFighterSquads,
   unassignSeat,
+  withdrawUnit,
 } from "../api/client";
 import type { FleetUnit, GuildSettingsMember, OperationDetail, OperatorView } from "../api/types";
 import { Ic } from "./Icons";
@@ -121,14 +124,17 @@ export function OperatorPanel({
   const shipReqUnfilled = (view?.requirements ?? []).filter((r) => r.needType === "ship" && r.filled < r.count);
   const fighterReqO = (view?.requirements ?? []).find((r) => r.needType === "fighter_squad");
   const fighterEmptyO = fighterReqO ? Math.max(0, fighterReqO.count - fighterReqO.filled) : 0;
+  type NeedSlot = { label: string; key: string; onRemove?: () => void };
   const lanes = LANES.map((l) => {
     const units = accepted.filter((u) => laneOf(u) === l.type);
-    const placeholders: string[] =
-      l.type === "ship" ? shipReqUnfilled.map((r) => r.label || r.category || "Schiff")
-      : l.type === "fighter" ? Array.from({ length: fighterEmptyO }, () => "Jäger")
-      : [];
+    const placeholders: NeedSlot[] =
+      l.type === "ship"
+        ? shipReqUnfilled.map((r) => ({ label: r.label || r.category || "Schiff", key: r.id, onRemove: () => run(() => removeNeed(op.id, r.id, csrf)) }))
+        : l.type === "fighter"
+          ? Array.from({ length: fighterEmptyO }, (_, i) => ({ label: "Jäger", key: `fighter-${i}`, onRemove: () => run(() => setFighterSquads(op.id, csrf, Math.max(0, (fighterReqO?.count ?? 0) - 1))) }))
+          : [];
     return { ...l, units, placeholders };
-  }).filter((l) => l.units.length > 0 || l.placeholders.length > 0);
+  });
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const total = accepted.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0);
   const open = total - filled;
@@ -735,6 +741,7 @@ export function OperatorPanel({
                       <div style={{ color: "#7e92a4", fontSize: "0.78rem", marginTop: 1 }}>{u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</div>
                     </div>
                     <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
+                    <button type="button" data-testid={`unit-remove-${u.id}`} title="Einheit entfernen" onClick={() => { if (window.confirm(`„${u.name}" aus der Operation entfernen?`)) run(() => withdrawUnit(op.id, u.id, csrf)); }} style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
                   </div>
                   {(requirements.length > 0 || (u.unitType === "ship" && view.formations.length > 0) || u.unitType === "vehicle") && (
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
@@ -810,16 +817,21 @@ export function OperatorPanel({
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>{u.seats.map((s) => opSeatRow(u, s))}</div>
                 </div>
               ))}
-              {lane.placeholders.map((label, i) => (
+              {lane.placeholders.map((ph, i) => (
                 <div key={`ph-${lane.type}-${i}`} data-testid="need-slot" style={{ border: `1px dashed rgba(${lane.rgb},0.4)`, borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "0.9rem 1rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
                   <span style={{ width: 32, height: 32, borderRadius: 8, background: `rgba(${lane.rgb},0.07)`, border: `1px dashed rgba(${lane.rgb},0.4)`, color: lane.accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={lane.icon} size={16} sw={1.5} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <strong style={{ fontSize: "0.92rem", color: "#c2d2de" }}>{label}</strong>
+                    <strong style={{ fontSize: "0.92rem", color: "#c2d2de" }}>{ph.label}</strong>
                     <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: lane.accent, marginTop: 1 }}>BEDARF · UNERFÜLLT</div>
                   </div>
-                  <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>kein Schiff</span>
+                  {ph.onRemove && (
+                    <button type="button" data-testid={`need-remove-${ph.key}`} title="Bedarf entfernen" onClick={ph.onRemove} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
+                  )}
                 </div>
               ))}
+              {lane.units.length === 0 && lane.placeholders.length === 0 && (
+                <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.3rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+              )}
             </div>
           </div>
         ))}

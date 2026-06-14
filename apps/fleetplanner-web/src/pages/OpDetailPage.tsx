@@ -221,6 +221,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const shipReqUnfilled = shipReqs.filter((r) => !accepted.some((u) => u.requirementId === r.id));
   const fighterUnitsCount = accepted.filter((u) => laneOf(u) === "fighter").length;
   const fighterEmpty = Math.max(0, (needs?.fighterSquads ?? 0) - fighterUnitsCount);
+  // Every category column is always shown (Schiffe / Jäger / CQB / Fahrzeuge);
+  // an empty one (no units, no open needs) reads "Kein Bedarf".
   const lanes = LANES.filter((l) => l.type !== "squad").map((l) => {
     const units = accepted.filter((u) => laneOf(u) === l.type);
     const placeholders: string[] =
@@ -228,7 +230,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       : l.type === "fighter" ? Array.from({ length: fighterEmpty }, () => "Jäger")
       : [];
     return { ...l, units, placeholders };
-  }).filter((l) => l.units.length > 0 || l.placeholders.length > 0);
+  });
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const pct = op.minParticipants > 0 ? Math.min(100, Math.round((filled / op.minParticipants) * 100)) : 0;
   const canJoin = !!me && !!csrf && op.status === "open";
@@ -844,6 +846,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
                     {lane.units.map((u) => unitCard(u, lane))}
                     {lane.placeholders.map((label, i) => emptyNeedCard(label, lane, `ph-${lane.type}-${i}`))}
+                    {lane.units.length === 0 && lane.placeholders.length === 0 && (
+                      <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                    )}
                   </div>
                 </section>
               );
@@ -851,7 +856,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
             {/* CQB column — squads (offered units) + soldier teams. A squad is a
                 need, so it shows here as its own team, next to single-soldier teams. */}
-            {(cqbGroupsShown.length > 0 || squadUnits.length > 0) && (
+            {(
               <section style={{ minWidth: 0 }} data-testid="cqb-squads">
                 <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "1rem" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "#f0a500", whiteSpace: "nowrap" }}>
@@ -901,6 +906,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                       </article>
                     );
                   })}
+                  {squadUnits.length === 0 && cqbGroupsShown.length === 0 && (
+                    <div data-testid="lane-empty-cqb" style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                  )}
                 </div>
               </section>
             )}
