@@ -161,6 +161,17 @@ export function assignCqbSoldier(opId: string, signupId: string, csrfToken: stri
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb/${encodeURIComponent(signupId)}/assign`, csrfToken, { groupId });
 }
 
+// FR-B2: operator formations (Verbände).
+export function createFormation(opId: string, csrfToken: string, name: string): Promise<{ ok: true; id: string }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/formations`, csrfToken, { name });
+}
+export function deleteFormation(opId: string, fid: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/formations/${encodeURIComponent(fid)}`, csrfToken);
+}
+export function assignUnitFormation(opId: string, unitId: string, csrfToken: string, formationId: string | null): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/formation`, csrfToken, { formationId });
+}
+
 export function setHangarShare(opId: string, csrfToken: string, allow: boolean): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/hangar-share`, csrfToken, { allow });
 }

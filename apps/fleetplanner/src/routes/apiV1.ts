@@ -83,6 +83,7 @@ import { listSharedHangars } from "../services/hangarShare.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
+import { assignUnitToFormation, createFormation, deleteFormation } from "../services/formations.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
 import { sendDiscordDm } from "../services/discord.js";
@@ -93,7 +94,9 @@ import {
   ApplyTemplateRequestSchema,
   AssignSeatRequestSchema,
   AssignCqbRequestSchema,
+  AssignFormationRequestSchema,
   CqbSignupRequestSchema,
+  FormationRequestSchema,
   CreateOperationRequestSchema,
   AddShipNeedsRequestSchema,
   AcceptTokenRequestSchema,
@@ -1525,6 +1528,56 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // FR-B2: operator formations (Verbände). Operator-gated. The service enforces
+  // ship-only membership and op ownership.
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/formations",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = FormationRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const f = await createFormation(p.data.id, body.data.name);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "formation:create", body.data.name);
+      return reply.type("application/json").send({ ok: true as const, id: f.id });
+    },
+  );
+
+  app.delete<{ Params: { id: string; fid: string } }>(
+    "/api/v1/operations/:id/formations/:fid",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse({ id: req.params.id });
+      if (!p.success || !/^[a-z0-9]{20,32}$/i.test(req.params.fid))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      await deleteFormation(p.data.id, req.params.fid);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "formation:delete", req.params.fid);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.put<{ Params: { id: string; unitId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/units/:unitId/formation",
+    async (req, reply) => {
+      const p = UnitParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = AssignFormationRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const res = await assignUnitToFormation(p.data.id, p.data.unitId, body.data.formationId);
+      if (!res.ok) {
+        if (res.reason === "only_ships") return sendError(reply, req, 409, "conflict", "Only ships can join a formation.");
+        return sendError(reply, req, 404, "not_found", "Unit or formation not found.");
+      }
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "formation:assign", body.data.formationId ?? "detach");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   app.put<{ Params: { id: string }; Body: unknown }>(
     "/api/v1/operations/:id/hangar-share",
     async (req, reply) => {
@@ -1830,6 +1883,9 @@ export async function apiV1Routes(app: FastifyInstance) {
       cqbSoldiers: o.cqbSignups
         .filter((s) => s.status !== "rejected")
         .map((s) => ({ id: s.id, username: s.user.username, assignedGroupId: s.assignedGroupId, note: s.note })),
+      formations: o.groups
+        .filter((g) => g.kind === "formation")
+        .map((g) => ({ id: g.id, name: g.name })),
     };
     return reply.type("application/json").send(view);
   });

@@ -64,6 +64,7 @@ describe("contracts", () => {
           captainNote: null,
           carrierUnitId: null,
           requirementId: null,
+          formationId: null,
           seats: [
             { id: "seat_1", label: "Pilot", order: 0, active: true, claimedBy: null },
             {

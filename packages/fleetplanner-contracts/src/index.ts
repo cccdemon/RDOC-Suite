@@ -187,6 +187,8 @@ export const FleetUnitSchema = z
     carrierUnitId: z.string().nullable(),
     /** Fleet-requirement (Bedarf) this offered unit is bound to, if any. */
     requirementId: z.string().nullable(),
+    /** FR-B2: formation (Verband) this ship belongs to, if any. */
+    formationId: z.string().nullable(),
     seats: z.array(SeatSchema),
   })
   .meta({ id: "FleetUnit" });
@@ -511,6 +513,8 @@ export const OperatorViewSchema = z
         note: z.string().nullable(),
       }),
     ),
+    /** FR-B2: operator formations (Verbände) — ships group into these. */
+    formations: z.array(z.object({ id: z.string(), name: z.string() })),
   })
   .meta({ id: "OperatorView" });
 
@@ -518,6 +522,16 @@ export const OperatorViewSchema = z
 export const AssignCqbRequestSchema = z
   .object({ groupId: cuid.nullable() })
   .meta({ id: "AssignCqbRequest" });
+
+/** FR-B2: create a formation. */
+export const FormationRequestSchema = z
+  .object({ name: z.string().min(1).max(80) })
+  .meta({ id: "FormationRequest" });
+
+/** FR-B2: assign/detach a ship to a formation (null = detach). */
+export const AssignFormationRequestSchema = z
+  .object({ formationId: cuid.nullable() })
+  .meta({ id: "AssignFormationRequest" });
 export type OperatorView = z.infer<typeof OperatorViewSchema>;
 
 export const UnitDecisionRequestSchema = z

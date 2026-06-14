@@ -45,6 +45,7 @@ export const opDetailFixture: OperationDetail = {
       captainNote: null,
       carrierUnitId: null,
       requirementId: null,
+      formationId: null,
       seats: [
         { id: "seat_1", label: "Pilot", order: 0, active: true, claimedBy: { id: "user_lead", username: "Lead" } },
         { id: "seat_2", label: "Gunner", order: 1, active: true, claimedBy: null },

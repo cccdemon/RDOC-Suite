@@ -5,7 +5,10 @@ import {
   answerQuestion,
   assignCqbSoldier,
   assignSeat,
+  assignUnitFormation,
+  createFormation,
   decideUnit,
+  deleteFormation,
   getGuildSettings,
   getOperatorView,
   patchSeat,
@@ -79,6 +82,7 @@ export function OperatorPanel({
   const [memberFilter, setMemberFilter] = useState("");
   // Per-pending-unit chosen Bedarf at accept time (defaults to a suggested slot).
   const [acceptReq, setAcceptReq] = useState<Record<string, string>>({});
+  const [newFormation, setNewFormation] = useState(""); // FR-B2 create-formation input
 
   function reload() {
     getOperatorView(op.id)
@@ -554,6 +558,42 @@ export function OperatorPanel({
     </section>
   );
 
+  // FR-B2: formations (Verbände) — create/delete; ships join via the per-unit
+  // dropdown on the board. Counts show how many ships sit in each formation.
+  const formationBlock = (
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(167,139,250,0.22)" }} data-testid="formation-block">
+      {panelHead("board", "#a78bfa", "VERBÄNDE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{view.formations.length}</span>)}
+      {view.formations.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.8rem" }}>
+          {view.formations.map((f) => {
+            const count = accepted.filter((u) => u.formationId === f.id).length;
+            return (
+              <div key={f.id} data-testid={`formation-${f.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.04)" }}>
+                <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="board" size={14} /></span>
+                <strong style={{ flex: 1, minWidth: 0, fontSize: "0.86rem", color: "#eaf4fb" }}>{f.name}</strong>
+                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#9fb1c2" }}>{count} Schiff{count === 1 ? "" : "e"}</span>
+                <button type="button" data-testid={`formation-del-${f.id}`} title="Verband löschen" onClick={() => run(() => deleteFormation(op.id, f.id, csrf))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+        <input
+          type="text"
+          data-testid="formation-name"
+          value={newFormation}
+          maxLength={80}
+          placeholder="Verbandsname (z. B. Task Force Alpha)"
+          onChange={(e) => setNewFormation(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && newFormation.trim()) { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); } }}
+          style={{ flex: "1 1 200px", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.86rem", padding: "0.4rem 0.55rem", borderRadius: 7, outline: "none" }}
+        />
+        <button type="button" data-testid="formation-add" disabled={!newFormation.trim()} onClick={() => { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.7rem", border: "1px solid rgba(167,139,250,0.45)", background: "rgba(167,139,250,0.1)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7, cursor: "pointer" }}><Ic name="plus" size={12} sw={2} /> Verband</button>
+      </div>
+    </section>
+  );
+
   const boardBlock = (
     <>
       <div style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "#9fb1c2", marginBottom: "1rem" }}>
@@ -578,10 +618,29 @@ export function OperatorPanel({
                     </div>
                     <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
                   </div>
-                  {requirements.length > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
-                      <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>BEDARF</span>
-                      {reqSelect(u, u.requirementId ?? "", (id) => run(() => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
+                  {(requirements.length > 0 || (u.unitType === "ship" && view.formations.length > 0)) && (
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
+                      {requirements.length > 0 && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>BEDARF</span>
+                          {reqSelect(u, u.requirementId ?? "", (id) => run(() => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
+                        </span>
+                      )}
+                      {u.unitType === "ship" && view.formations.length > 0 && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>VERBAND</span>
+                          <select
+                            data-testid={`unit-formation-${u.id}`}
+                            value={u.formationId ?? ""}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => run(() => assignUnitFormation(op.id, u.id, csrf, e.target.value || null))}
+                            style={{ background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                          >
+                            <option value="">— kein —</option>
+                            {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                          </select>
+                        </span>
+                      )}
                     </div>
                   )}
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>{u.seats.map((s) => opSeatRow(u, s))}</div>
@@ -675,6 +734,7 @@ export function OperatorPanel({
           </section>
           {pendingBlock}
           {boardBlock}
+          {formationBlock}
           {cqbBlock}
           {toolsBlock}
         </div>

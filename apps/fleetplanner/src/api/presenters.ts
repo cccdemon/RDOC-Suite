@@ -35,6 +35,7 @@ type UnitRow = {
   captainNote: string | null;
   carrierUnitId: string | null;
   requirementId?: string | null;
+  formationId?: string | null;
   ship?: { name: string; size?: string | null; career?: string | null; role?: string | null } | null;
   captain?: UserRow | null;
   seats: SeatRow[];
@@ -93,6 +94,7 @@ export function presentUnit(u: UnitRow): FleetUnit {
     captainNote: u.captainNote,
     carrierUnitId: u.carrierUnitId,
     requirementId: u.requirementId ?? null,
+    formationId: u.formationId ?? null,
     // FR-B1: include inactive seats too (with the active flag) so the operator can
     // re-activate them; the player board filters to active client-side.
     seats: u.seats.map(presentSeat),
