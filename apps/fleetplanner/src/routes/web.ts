@@ -31,6 +31,51 @@ export async function webRoutes(app: FastifyInstance) {
     }
   });
 
+  // ── Link unfurl (OpenGraph) — crawler-only meta document. ──────────────
+  // Deliberate exception to the "backend = API-only" rule: link-preview bots
+  // (Discord/Twitter/Slack…) don't run JS, so the SPA can't provide per-op OG.
+  // nginx routes ONLY bot user-agents here; humans get the SPA. No interactive
+  // UI — just <meta> tags + an immediate redirect to the app for any human that
+  // lands here. Private ops emit a generic card (no detail leak).
+  app.get<{ Params: { id: string } }>("/ops/:id", async (req, reply) => {
+    const esc = (s: unknown) =>
+      String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+    const env = getEnv();
+    const base = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+    const appUrl = `${base}/ops/${encodeURIComponent(req.params.id)}`;
+    const defaultImg = `${base}/assets/operation-hero.png`;
+
+    const op = /^[a-z0-9]{20,32}$/i.test(req.params.id) ? await getOperation(req.params.id) : null;
+    let title = "RDOC Fleetplanner";
+    let description = "Star-Citizen-Operationen planen.";
+    let image = defaultImg;
+    if (op) {
+      const o = op as { title: string; visibility: string; description: string | null; scheduledAt: Date; meetingSystem: string; meetingLocation: string; cover?: { url: string } | null };
+      if (o.visibility === "public") {
+        const when = o.scheduledAt.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+        const where = [o.meetingSystem, o.meetingLocation].filter(Boolean).join(" · ");
+        title = o.title;
+        description = `🕒 ${when}${where ? ` · 📍 ${where}` : ""}`;
+        image = o.cover?.url || defaultImg;
+      } else {
+        title = "Private Operation — RDOC Fleetplanner";
+        description = "Anmeldung erforderlich.";
+      }
+    }
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8">`
+      + `<title>${esc(title)} — RDOC Fleetplanner</title>`
+      + `<meta property="og:type" content="website">`
+      + `<meta property="og:site_name" content="RDOC Fleetplanner">`
+      + `<meta property="og:title" content="${esc(title)}">`
+      + `<meta property="og:description" content="${esc(description)}">`
+      + `<meta property="og:image" content="${esc(image)}">`
+      + `<meta property="og:url" content="${esc(appUrl)}">`
+      + `<meta name="twitter:card" content="summary_large_image">`
+      + `<meta http-equiv="refresh" content="0; url=${esc(appUrl)}">`
+      + `</head><body><a href="${esc(appUrl)}">${esc(title)}</a></body></html>`;
+    return reply.header("Cache-Control", "public, max-age=300").type("text/html; charset=utf-8").send(html);
+  });
+
   // ── Calendar download (.ics) — add the op to your calendar after signing up.
   app.get<{ Params: { id: string } }>("/ops/:id/calendar.ics", async (req, reply) => {
     const ctx = await optionalAuth(req);
