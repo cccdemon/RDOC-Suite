@@ -238,6 +238,9 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
       members: z.array(z.object({ id: z.string(), username: z.string() })),
     }),
   ),
+  /** Mission-cover image URL (banner) if generated; null → client uses the
+   *  default asset. Visible to all viewers of the op (not operator-gated). */
+  coverUrl: z.string().nullable(),
   /** Caller's effective role on this op (null = anonymous public viewer). */
   viewerRole: z.string().nullable(),
   canManage: z.boolean(),

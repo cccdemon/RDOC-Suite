@@ -84,6 +84,7 @@ describe("contracts", () => {
         { id: "q_1", asker: "Mira", body: "Treffpunkt?", answer: null, answeredBy: null },
       ],
       cqbTeams: [],
+      coverUrl: null,
       viewerRole: "crew",
       canManage: false,
       viewerCqbSignedUp: false,

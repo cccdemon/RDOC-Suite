@@ -69,6 +69,7 @@ type OpDetailRow = OpListRow & {
   questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
   groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null }>;
   cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; user: { id: string; username: string } }>;
+  cover?: { url: string } | null;
 };
 
 export function presentSeat(s: SeatRow): Seat {
@@ -184,6 +185,7 @@ export function presentOperationDetail(
           .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
           .map((s) => ({ id: s.user.id, username: s.user.username })),
       })),
+    coverUrl: op.cover?.url ?? null,
     viewerRole: viewer.role,
     canManage: viewer.canManage,
   };

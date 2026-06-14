@@ -7,7 +7,6 @@ import {
   cqbSignup,
   cqbWithdraw,
   getNeeds,
-  getOpCover,
   getOperation,
   patchSeat,
   setHangarShare,
@@ -111,8 +110,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const [viewAs, setViewAs] = useState<"self" | "crew" | "guest">("self");
   // What the mission needs (crew planning) — readable by any viewer with access.
   const [needs, setNeeds] = useState<import("../api/types").NeedsResponse | null>(null);
-  // Mission-cover URL (if generated) for the hero banner; null → default asset.
-  const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const fleetRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -133,11 +130,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     getNeeds(id).then(setNeeds).catch(() => setNeeds(null));
   }, [id, session?.user]);
 
-  // Mission-cover for the hero banner (any viewer); falls back to the default.
-  useEffect(() => {
-    if (!id) { setCoverUrl(null); return; }
-    getOpCover(id).then((s) => setCoverUrl(s.cover?.url ?? null)).catch(() => setCoverUrl(null));
-  }, [id]);
 
   const realUser = session?.user ?? null;
   // In "guest" preview the operator sees the page as a logged-out visitor → no
@@ -579,7 +571,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             </div>
           </div>
           <div style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622" }}>
-            <img src={coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img src={op.coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </div>
         </div>
       </section>

@@ -57,6 +57,7 @@ export const opDetailFixture: OperationDetail = {
   ],
   questions: [],
   cqbTeams: [],
+  coverUrl: null,
   viewerRole: null,
   canManage: false,
   viewerCqbSignedUp: false,
