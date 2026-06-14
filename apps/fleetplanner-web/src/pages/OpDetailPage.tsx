@@ -499,11 +499,18 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
   const squadLane = LANES.find((l) => l.type === "squad")!;
   const squadUnits = accepted.filter((u) => u.unitType === "squad");
-  // A player squad FULFILLS a CQB-team need. We never hide teams — a need can be
-  // OVER-fulfilled (more teams than requested is fine), so all squads + all
-  // soldier-teams stay joinable; we only show progress (provided vs requested).
+  // A player squad FULFILLS a CQB-team need. Show squads as teams, then only the
+  // still-needed single-soldier teams (target − squads − already-staffed groups).
+  // Staffed groups (members>0) always show; surplus EMPTY operator teams are
+  // hidden. Over-fulfilment stays possible (operator raises the team count).
   const cqbNeedCount = needs?.cqbTeams.count ?? null;
-  const cqbProvidedTeams = squadUnits.length + op.cqbTeams.filter((t) => t.targetSize != null && t.members.length >= t.targetSize).length;
+  const cqbGroupsStaffed = op.cqbTeams.filter((t) => t.members.length > 0);
+  const cqbGroupsEmpty = op.cqbTeams.filter((t) => t.members.length === 0);
+  const cqbProvidedTeams = squadUnits.length + cqbGroupsStaffed.filter((t) => t.targetSize != null && t.members.length >= t.targetSize).length;
+  const cqbRemainingEmpty = cqbNeedCount != null
+    ? Math.max(0, cqbNeedCount - squadUnits.length - cqbGroupsStaffed.length)
+    : cqbGroupsEmpty.length;
+  const cqbGroupsShown = [...cqbGroupsStaffed, ...cqbGroupsEmpty.slice(0, cqbRemainingEmpty)];
 
   return (
     <article>
@@ -816,7 +823,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
             {/* CQB column — squads (offered units) + soldier teams. A squad is a
                 need, so it shows here as its own team, next to single-soldier teams. */}
-            {(op.cqbTeams.length > 0 || squadUnits.length > 0) && (
+            {(cqbGroupsShown.length > 0 || squadUnits.length > 0) && (
               <section style={{ minWidth: 0 }} data-testid="cqb-squads">
                 <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "1rem" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "#f0a500", whiteSpace: "nowrap" }}>
@@ -832,10 +839,10 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
                   {/* Offered squads as their own CQB teams (members = seat holders). */}
                   {squadUnits.map((u) => unitCard(u, squadLane))}
-                  {op.cqbTeams.length > 0 && (
+                  {cqbGroupsShown.length > 0 && (
                     <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a", marginTop: squadUnits.length ? "0.3rem" : 0 }}>EINZEL-SOLDATEN — FREIEN PLATZ NEHMEN</div>
                   )}
-                  {op.cqbTeams.map((tm) => {
+                  {cqbGroupsShown.map((tm) => {
                     const inTeam = !!me && tm.members.some((m) => m.id === me.id);
                     const full = tm.targetSize != null && tm.members.length >= tm.targetSize && !inTeam;
                     return (
