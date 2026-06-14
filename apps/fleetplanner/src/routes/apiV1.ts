@@ -93,6 +93,7 @@ import {
   AnswerQuestionRequestSchema,
   ApplyTemplateRequestSchema,
   AssignSeatRequestSchema,
+  AssignCarrierRequestSchema,
   AssignCqbRequestSchema,
   AssignFormationRequestSchema,
   CqbSignupRequestSchema,
@@ -1574,6 +1575,46 @@ export async function apiV1Routes(app: FastifyInstance) {
         return sendError(reply, req, 404, "not_found", "Unit or formation not found.");
       }
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "formation:assign", body.data.formationId ?? "detach");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // FR-B4: load a ground vehicle into a carrier ship (carrierUnitId null = detach).
+  // The carried unit inherits the carrier's accept/reject status. A real cargo-bay
+  // fit-check needs Fleetyards bay data we don't model yet → this validates the
+  // structural rules (carrier is a ship in this op, no self-carry) only.
+  app.put<{ Params: { id: string; unitId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/units/:unitId/carrier",
+    async (req, reply) => {
+      const p = UnitParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = AssignCarrierRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+
+      const unit = await prisma.fleetUnit.findFirst({
+        where: { id: p.data.unitId, operationId: p.data.id, unitType: { in: ["vehicle", "ship"] } },
+        select: { id: true },
+      });
+      if (!unit) return sendError(reply, req, 404, "not_found", "Unit not found.");
+      if (body.data.carrierUnitId === p.data.unitId)
+        return sendError(reply, req, 409, "conflict", "A unit can't carry itself.");
+
+      if (body.data.carrierUnitId) {
+        const carrier = await prisma.fleetUnit.findFirst({
+          where: { id: body.data.carrierUnitId, operationId: p.data.id, unitType: "ship" },
+          select: { status: true },
+        });
+        if (!carrier) return sendError(reply, req, 404, "not_found", "Carrier ship not found.");
+        await prisma.fleetUnit.update({
+          where: { id: p.data.unitId },
+          data: { carrierUnitId: body.data.carrierUnitId, status: carrier.status },
+        });
+      } else {
+        await prisma.fleetUnit.update({ where: { id: p.data.unitId }, data: { carrierUnitId: null } });
+      }
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "carrier:assign", body.data.carrierUnitId ?? "detach");
       return reply.type("application/json").send({ ok: true as const });
     },
   );

@@ -532,6 +532,11 @@ export const FormationRequestSchema = z
 export const AssignFormationRequestSchema = z
   .object({ formationId: cuid.nullable() })
   .meta({ id: "AssignFormationRequest" });
+
+/** FR-B4: load a vehicle into a carrier ship (null = detach / standalone). */
+export const AssignCarrierRequestSchema = z
+  .object({ carrierUnitId: cuid.nullable() })
+  .meta({ id: "AssignCarrierRequest" });
 export type OperatorView = z.infer<typeof OperatorViewSchema>;
 
 export const UnitDecisionRequestSchema = z

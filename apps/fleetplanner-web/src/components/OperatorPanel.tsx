@@ -5,6 +5,7 @@ import {
   answerQuestion,
   assignCqbSoldier,
   assignSeat,
+  assignUnitCarrier,
   assignUnitFormation,
   createFormation,
   decideUnit,
@@ -618,7 +619,7 @@ export function OperatorPanel({
                     </div>
                     <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
                   </div>
-                  {(requirements.length > 0 || (u.unitType === "ship" && view.formations.length > 0)) && (
+                  {(requirements.length > 0 || (u.unitType === "ship" && view.formations.length > 0) || u.unitType === "vehicle") && (
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
                       {requirements.length > 0 && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
@@ -638,6 +639,21 @@ export function OperatorPanel({
                           >
                             <option value="">— kein —</option>
                             {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                          </select>
+                        </span>
+                      )}
+                      {u.unitType === "vehicle" && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>TRÄGER</span>
+                          <select
+                            data-testid={`unit-carrier-${u.id}`}
+                            value={u.carrierUnitId ?? ""}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => run(() => assignUnitCarrier(op.id, u.id, csrf, e.target.value || null))}
+                            style={{ background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                          >
+                            <option value="">— eigenständig —</option>
+                            {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                           </select>
                         </span>
                       )}

@@ -172,6 +172,11 @@ export function assignUnitFormation(opId: string, unitId: string, csrfToken: str
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/formation`, csrfToken, { formationId });
 }
 
+// FR-B4: load a vehicle into a carrier ship (carrierUnitId null = standalone).
+export function assignUnitCarrier(opId: string, unitId: string, csrfToken: string, carrierUnitId: string | null): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/carrier`, csrfToken, { carrierUnitId });
+}
+
 export function setHangarShare(opId: string, csrfToken: string, allow: boolean): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/hangar-share`, csrfToken, { allow });
 }
