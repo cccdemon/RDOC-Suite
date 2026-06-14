@@ -104,6 +104,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const [busySeat, setBusySeat] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [offerOpen, setOfferOpen] = useState(false);
+  // FR-A5: operators preview the page as a guest / crew member / themselves. Pure
+  // UI — changes no rights; just suppresses operator + me-based controls.
+  const [viewAs, setViewAs] = useState<"self" | "crew" | "guest">("self");
   const fleetRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
@@ -117,7 +120,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     load();
   }, [load]);
 
-  const me = session?.user ?? null;
+  const realUser = session?.user ?? null;
+  // In "guest" preview the operator sees the page as a logged-out visitor → no
+  // me-based controls (join/claim/withdraw/seat-edit). "crew" keeps the user but
+  // hides the operator console (see below).
+  const me = viewAs === "guest" ? null : realUser;
   const csrf = session?.csrfToken ?? null;
 
   async function onClaim(seatId: string) {
@@ -406,6 +413,31 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
   return (
     <article>
+      {/* FR-A5: operator preview switcher — see the page as guest / crew / self. */}
+      {op.canManage && (
+        <div data-testid="viewas-bar" style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "1rem", padding: "0.55rem 0.75rem", border: "1px solid rgba(0,212,255,0.18)", background: "rgba(0,212,255,0.04)", borderRadius: 10 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>
+            <Ic name="eye" size={14} /> ANSICHT ALS
+          </span>
+          {([["self", "Ich selbst"], ["crew", "Crew"], ["guest", "Gast"]] as const).map(([key, lab]) => {
+            const on = viewAs === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                data-testid={`viewas-${key}`}
+                onClick={() => setViewAs(key)}
+                style={{ padding: "0.3rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid rgba(0,212,255,0.5)" : "1px solid rgba(255,255,255,0.12)", background: on ? "rgba(0,212,255,0.14)" : "transparent", color: on ? "#00d4ff" : "#9fb1c2" }}
+              >
+                {lab}
+              </button>
+            );
+          })}
+          {viewAs !== "self" && (
+            <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.62rem", color: "#f0a500" }}>VORSCHAU — keine Operator-Steuerung</span>
+          )}
+        </div>
+      )}
       {/* HERO — two columns with the operation banner image */}
       <section
         style={{
@@ -786,8 +818,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         </section>
       )}
 
-      {/* IA merge D: adaptive operator console — only for leaders of this op */}
-      {op.canManage && id && (
+      {/* IA merge D: adaptive operator console — only for leaders of this op,
+          and hidden while previewing as guest/crew (FR-A5). */}
+      {op.canManage && viewAs === "self" && id && (
         <OperatorConsole
           op={op}
           opId={id}
