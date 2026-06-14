@@ -213,7 +213,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     );
 
   const accepted = op.units.filter((u) => u.status === "accepted");
-  const lanes = LANES.map((l) => ({ ...l, units: accepted.filter((u) => laneOf(u) === l.type) })).filter(
+  // Squads are shown in the CQB column (model A: an offered squad IS a CQB team),
+  // so they're excluded from the standalone board lanes.
+  const lanes = LANES.filter((l) => l.type !== "squad").map((l) => ({ ...l, units: accepted.filter((u) => laneOf(u) === l.type) })).filter(
     (l) => l.units.length > 0,
   );
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
@@ -430,6 +432,73 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       </span>
     </button>
   );
+
+  // Unit card (ship/fighter/vehicle/squad) — shared by the board lanes and the
+  // CQB column (model A: an offered squad IS a CQB team).
+  const unitCard = (u: FleetUnit, lane: (typeof LANES)[number]) => {
+    const uFilled = u.seats.filter((s) => s.claimedBy).length;
+    const expanded = !collapsed[u.id];
+    const full = u.seats.length > 0 && uFilled === u.seats.length;
+    return (
+      <article
+        key={u.id}
+        data-testid="unit-card"
+        style={{ width: "100%", minWidth: 0, border: `1px solid rgba(${lane.rgb},0.16)`, borderTop: `2px solid rgba(${lane.rgb},0.5)`, borderRadius: 13, background: "#0a1018", padding: "1.15rem 1.2rem" }}
+      >
+        <div onClick={() => setCollapsed((c) => ({ ...c, [u.id]: !c[u.id] }))} style={{ display: "flex", alignItems: "flex-start", gap: "0.8rem", cursor: "pointer" }}>
+          <span style={{ width: 42, height: 42, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: `rgba(${lane.rgb},0.13)`, border: `1px solid rgba(${lane.rgb},0.28)`, color: lane.accent }}>
+            <Ic name={lane.icon} size={20} sw={1.6} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <strong style={{ fontWeight: 700, fontSize: "1.12rem", color: "#eaf4fb", lineHeight: 1.2 }}>{u.name}</strong>
+              {full && (
+                <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "#00ff88", borderColor: "rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", gap: 4, padding: "2px 8px" }}>
+                  <Ic name="check" size={12} sw={2} /> VOLL
+                </span>
+              )}
+            </div>
+            <div style={{ color: "#9fb1c2", fontSize: "0.86rem", marginTop: "0.15rem" }}>
+              {u.unitType}{u.captain ? ` · Captain: ${u.captain.username}` : ""}
+            </div>
+          </div>
+          <div style={{ textAlign: "right", flexShrink: 0 }}>
+            <div style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", lineHeight: 1 }}>{uFilled}<span style={{ color: "#5b6b7a" }}>/{u.seats.length}</span></div>
+            <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#5b6b7a", marginTop: "0.25rem" }}>BESETZT</div>
+          </div>
+          {me && csrf && u.captain?.id === me.id && (
+            <button type="button" data-testid={`withdraw-unit-${u.id}`} title="Mein Schiff zurückziehen" onClick={(e) => { e.stopPropagation(); if (window.confirm("Dein Schiff aus dieser Operation zurückziehen?")) run(() => withdrawUnit(id!, u.id, csrf)); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.35rem 0.6rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}>
+              <Ic name="x" size={12} sw={2} /> Zurückziehen
+            </button>
+          )}
+          <span style={{ display: "inline-flex", flexShrink: 0, transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "#5b6b7a" }}>
+            <Ic name="chevron" size={16} sw={2} />
+          </span>
+        </div>
+        {expanded && (
+          <div style={{ marginTop: "1rem" }}>
+            {u.captainNote && (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#9fb1c2", fontSize: "0.86rem", marginBottom: "0.9rem" }}>
+                <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={15} /></span>
+                <span style={{ fontStyle: "italic" }}>{u.captainNote}</span>
+              </div>
+            )}
+            {me && csrf && u.captain?.id === me.id ? (
+              <>
+                <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#5b6b7a", marginBottom: "0.5rem" }}>DEINE SITZE · UMBENENNEN / AKTIVIEREN</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.map((s) => captainSeatRow(u, s))}</div>
+              </>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.filter((s) => s.active).map((s) => seatRow(u, s, lane))}</div>
+            )}
+          </div>
+        )}
+      </article>
+    );
+  };
+
+  const squadLane = LANES.find((l) => l.type === "squad")!;
+  const squadUnits = accepted.filter((u) => u.unitType === "squad");
 
   return (
     <article>
@@ -731,119 +800,28 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-                    {lane.units.map((u) => {
-                      const uFilled = u.seats.filter((s) => s.claimedBy).length;
-                      const expanded = !collapsed[u.id];
-                      const full = u.seats.length > 0 && uFilled === u.seats.length;
-                      return (
-                        <article
-                          key={u.id}
-                          data-testid="unit-card"
-                          style={{
-                            width: "100%",
-                            minWidth: 0,
-                            border: `1px solid rgba(${lane.rgb},0.16)`,
-                            borderTop: `2px solid rgba(${lane.rgb},0.5)`,
-                            borderRadius: 13,
-                            background: "#0a1018",
-                            padding: "1.15rem 1.2rem",
-                          }}
-                        >
-                          <div
-                            onClick={() => setCollapsed((c) => ({ ...c, [u.id]: !c[u.id] }))}
-                            style={{ display: "flex", alignItems: "flex-start", gap: "0.8rem", cursor: "pointer" }}
-                          >
-                            <span
-                              style={{
-                                width: 42,
-                                height: 42,
-                                borderRadius: 11,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                                background: `rgba(${lane.rgb},0.13)`,
-                                border: `1px solid rgba(${lane.rgb},0.28)`,
-                                color: lane.accent,
-                              }}
-                            >
-                              <Ic name={lane.icon} size={20} sw={1.6} />
-                            </span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-                                <strong style={{ fontWeight: 700, fontSize: "1.12rem", color: "#eaf4fb", lineHeight: 1.2 }}>{u.name}</strong>
-                                {full && (
-                                  <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "#00ff88", borderColor: "rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", gap: 4, padding: "2px 8px" }}>
-                                    <Ic name="check" size={12} sw={2} /> VOLL
-                                  </span>
-                                )}
-                              </div>
-                              <div style={{ color: "#9fb1c2", fontSize: "0.86rem", marginTop: "0.15rem" }}>
-                                {u.unitType}
-                                {u.captain ? ` · Captain: ${u.captain.username}` : ""}
-                              </div>
-                            </div>
-                            <div style={{ textAlign: "right", flexShrink: 0 }}>
-                              <div style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", lineHeight: 1 }}>
-                                {uFilled}
-                                <span style={{ color: "#5b6b7a" }}>/{u.seats.length}</span>
-                              </div>
-                              <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#5b6b7a", marginTop: "0.25rem" }}>BESETZT</div>
-                            </div>
-                            {me && csrf && u.captain?.id === me.id && (
-                              <button
-                                type="button"
-                                data-testid={`withdraw-unit-${u.id}`}
-                                title="Mein Schiff zurückziehen"
-                                onClick={(e) => { e.stopPropagation(); if (window.confirm("Dein Schiff aus dieser Operation zurückziehen?")) run(() => withdrawUnit(id!, u.id, csrf)); }}
-                                style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.35rem 0.6rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}
-                              >
-                                <Ic name="x" size={12} sw={2} /> Zurückziehen
-                              </button>
-                            )}
-                            <span style={{ display: "inline-flex", flexShrink: 0, transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "#5b6b7a" }}>
-                              <Ic name="chevron" size={16} sw={2} />
-                            </span>
-                          </div>
-                          {expanded && (
-                            <div style={{ marginTop: "1rem" }}>
-                              {u.captainNote && (
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#9fb1c2", fontSize: "0.86rem", marginBottom: "0.9rem" }}>
-                                  <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={15} /></span>
-                                  <span style={{ fontStyle: "italic" }}>{u.captainNote}</span>
-                                </div>
-                              )}
-                              {me && csrf && u.captain?.id === me.id ? (
-                                <>
-                                  <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#5b6b7a", marginBottom: "0.5rem" }}>DEINE SITZE · UMBENENNEN / AKTIVIEREN</div>
-                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.map((s) => captainSeatRow(u, s))}</div>
-                                </>
-                              ) : (
-                                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.filter((s) => s.active).map((s) => seatRow(u, s, lane))}</div>
-                              )}
-                            </div>
-                          )}
-                        </article>
-                      );
-                    })}
+                    {lane.units.map((u) => unitCard(u, lane))}
                   </div>
                 </section>
               );
             })}
 
-            {/* CQB column — a squad is a need, so crew take a slot like a seat. */}
-            {op.cqbTeams.length > 0 && (
+            {/* CQB column — squads (offered units) + soldier teams. A squad is a
+                need, so it shows here as its own team, next to single-soldier teams. */}
+            {(op.cqbTeams.length > 0 || squadUnits.length > 0) && (
               <section style={{ minWidth: 0 }} data-testid="cqb-squads">
                 <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "1rem" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "#f0a500", whiteSpace: "nowrap" }}>
-                    <Ic name="fps" size={16} /> CQB-TEAMS
+                    <Ic name="fps" size={16} /> BODENTRUPPEN / CQB
                   </span>
                   <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(240,165,0,0.4),transparent)" }} />
-                  <span style={{ fontFamily: MONO, fontSize: "0.78rem", color: "#9fb1c2", whiteSpace: "nowrap" }}>
-                    {op.cqbTeams.reduce((a, tm) => a + tm.members.length, 0)}/{op.cqbTeams.reduce((a, tm) => a + (tm.targetSize ?? tm.members.length), 0)}
-                  </span>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+                  {/* Offered squads as their own CQB teams (members = seat holders). */}
+                  {squadUnits.map((u) => unitCard(u, squadLane))}
+                  {op.cqbTeams.length > 0 && (
+                    <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a", marginTop: squadUnits.length ? "0.3rem" : 0 }}>EINZEL-SOLDATEN — FREIEN PLATZ NEHMEN</div>
+                  )}
                   {op.cqbTeams.map((tm) => {
                     const inTeam = !!me && tm.members.some((m) => m.id === me.id);
                     const full = tm.targetSize != null && tm.members.length >= tm.targetSize && !inTeam;
