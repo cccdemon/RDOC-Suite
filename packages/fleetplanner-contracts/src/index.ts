@@ -488,6 +488,16 @@ export const OperatorViewSchema = z
         filled: z.number().int(),
       }),
     ),
+    /** FR-E1: Discord "Interested" RSVPs. `userId` null = shadow (no app account
+     *  yet → not directly assignable; counts toward the "unknown" metric). */
+    eventInterests: z.array(
+      z.object({
+        id: z.string(),
+        displayName: z.string(),
+        userId: z.string().nullable(),
+        seated: z.boolean(),
+      }),
+    ),
   })
   .meta({ id: "OperatorView" });
 export type OperatorView = z.infer<typeof OperatorViewSchema>;

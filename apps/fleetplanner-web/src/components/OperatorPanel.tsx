@@ -310,6 +310,38 @@ export function OperatorPanel({
     </section>
   );
 
+  // FR-E1: Discord "Interested" RSVPs. Linked users (have an app account) can be
+  // placed onto a seat via place-mode; shadows (no account yet) only show as a
+  // metric until they log in once. Withdrawn/converted aren't sent by the API.
+  const interests = view.eventInterests;
+  const interestUnknown = interests.filter((e) => !e.userId).length;
+  const interestPanel = interests.length > 0 && (
+    <section style={{ ...card, border: "1px solid rgba(88,166,255,0.22)" }} data-testid="interest-panel">
+      {panelHead("users", "#58a6ff", "EVENT-INTERESSE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{interests.length - interestUnknown} verknüpft · {interestUnknown} unbekannt</span>)}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+        {interests.map((e) => {
+          const isPlacing = !!e.userId && placing?.userId === e.userId;
+          return (
+            <div key={e.id} data-testid={`interest-${e.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", borderRadius: 9, border: isPlacing ? "1px solid rgba(88,166,255,0.6)" : "1px solid rgba(255,255,255,0.06)", background: isPlacing ? "rgba(88,166,255,0.08)" : "transparent" }}>
+              <Avatar name={e.displayName} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <strong style={{ fontSize: "0.88rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>{e.displayName}</strong>
+                {!e.userId && <div style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#7e92a4", marginTop: 1 }}>nicht verknüpft · muss sich einmal anmelden</div>}
+              </div>
+              {e.seated ? (
+                <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, fontFamily: MONO, fontSize: "0.64rem", color: "#00ff88" }}><Ic name="check" size={12} sw={2} /> eingeteilt</span>
+              ) : e.userId ? (
+                <button type="button" data-testid={`interest-place-${e.id}`} onClick={() => setPlacing(isPlacing ? null : { userId: e.userId!, name: e.displayName })} style={{ flexShrink: 0, padding: "0.34rem 0.65rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem", border: isPlacing ? "1px solid rgba(255,68,68,0.45)" : "1px solid rgba(88,166,255,0.45)", background: isPlacing ? "rgba(255,68,68,0.08)" : "rgba(88,166,255,0.1)", color: isPlacing ? "#ff6b6b" : "#58a6ff" }}>{isPlacing ? "Abbrechen" : "Einteilen"}</button>
+              ) : (
+                <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a", border: "1px solid rgba(255,255,255,0.1)", padding: "0.18rem 0.42rem", borderRadius: 5 }}>UNBEKANNT</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+
   const needsPanel = (
     <section style={card}>
       {panelHead("alert", "#00d4ff", "OFFENE BEDARFE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{open} offen</span>)}
@@ -606,6 +638,7 @@ export function OperatorPanel({
         </div>
         <aside style={{ flex: "0 0 332px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "1rem" }}>
           {flexPanel}
+          {interestPanel}
           {needsPanel}
           {qaPanel}
           {!embedded && actionsPanel}

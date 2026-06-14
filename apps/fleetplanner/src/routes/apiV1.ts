@@ -1738,7 +1738,13 @@ export async function apiV1Routes(app: FastifyInstance) {
       crewRequests: Array<{ user: { id: string; username: string }; note: string | null; createdAt: Date }>;
       questions: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null; createdAt: Date }>;
       auditLogs: Array<{ actor: string; action: string; detail: string; createdAt: Date }>;
+      eventInterests: Array<{ id: string; displayName: string; userId: string | null }>;
+      units: Array<{ seats: Array<{ userId: string | null }> }>;
     };
+    // userIds already holding a seat in this op → mark interested users "seated".
+    const seatedUserIds = new Set(
+      o.units.flatMap((u) => u.seats.map((s) => s.userId).filter((x): x is string => !!x)),
+    );
     const view: OperatorView = {
       crewRequests: o.crewRequests.map((r) => ({
         userId: r.user.id,
@@ -1773,6 +1779,12 @@ export async function apiV1Routes(app: FastifyInstance) {
         category: r.category,
         count: r.count,
         filled: r.fleetUnits.filter((u) => u.status !== "rejected").length,
+      })),
+      eventInterests: o.eventInterests.map((e) => ({
+        id: e.id,
+        displayName: e.displayName,
+        userId: e.userId,
+        seated: e.userId ? seatedUserIds.has(e.userId) : false,
       })),
     };
     return reply.type("application/json").send(view);

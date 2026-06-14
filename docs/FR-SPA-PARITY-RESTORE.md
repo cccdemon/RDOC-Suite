@@ -25,6 +25,11 @@ nie nach `/api/v1` gebaut. Dieses Dokument plant die Wiederherstellung als prior
   **Reorder (PATCH sortOrder) aufgeschoben** — Backend hat keine PATCH-Route, nur POST/DELETE.
 - ✅ **FR-C1** Mission-Cover im Assistenten: Wizard hält nach „Erstellen" auf dem letzten Schritt,
   zeigt `CoverPanel` (op-id da) + „Zur Operation". i18n von Beginn (`cover.*`).
+- ✅ **FR-A5** „Ansicht als" — Operator schaltet Vorschau Ich/Crew/Gast (reine UI, `viewAs`-State;
+  Gast nullt den effektiven Nutzer → keine Join/Claim/Seat-Edit-Controls, Crew blendet Konsole aus).
+- ✅ **FR-E1** Event-Interesse im Board — `OperatorView.eventInterests` (Payload erweitert);
+  Sektion „EVENT-INTERESSE" listet Discord-„Interested"-Nutzer; verknüpfte → Einteilen via Place-Mode,
+  Shadows (kein Account) → „unbekannt"-Badge + Metrik „X verknüpft · Y unbekannt".
 - ✅ **Bedarf-Bindung + Jäger-Klasse** (FR-A2-Teil / B6-Teil): `FleetUnit` liefert jetzt
   `shipClass` (abgeleitet via `shipClass()`) + `requirementId`; `OperatorView` listet
   `requirements` (Bedarfe mit filled/count). Operator weist gestelltes Schiff einem Bedarf zu —
