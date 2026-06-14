@@ -582,6 +582,40 @@ export function OperatorPanel({
 
   // FR-B2: formations (Verbände) — create/delete; ships join via the per-unit
   // dropdown on the board. Counts show how many ships sit in each formation.
+  // FR-B2/B3/B4: composition tree — show how it all fits together. Per formation
+  // its ships, and under each ship what it carries (CQB teams that ride in it +
+  // loaded vehicles). Ships without a formation list under "Ohne Verband".
+  const carriedTeams = (shipId: string) => view.cqbTeams.filter((tm) => tm.carrierUnitId === shipId);
+  const carriedVehicles = (shipId: string) => accepted.filter((u) => u.unitType === "vehicle" && u.carrierUnitId === shipId);
+  const formationShips = (fid: string) => accepted.filter((u) => u.unitType === "ship" && u.formationId === fid);
+  const ungroupedShips = accepted.filter((u) => u.unitType === "ship" && !u.formationId);
+  const compShipNode = (ship: FleetUnit) => {
+    const teams = carriedTeams(ship.id);
+    const vehicles = carriedVehicles(ship.id);
+    return (
+      <div key={ship.id} style={{ marginBottom: "0.3rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.82rem", color: "#dce8f0" }}>
+          <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name={ship.shipClass === "Fighter" ? "fighter" : "ship"} size={13} sw={1.7} /></span>
+          {ship.name}{ship.shipClass ? <span style={{ color: "#5b6b7a", fontFamily: MONO, fontSize: "0.62rem" }}> · {ship.shipClass}</span> : null}
+        </div>
+        {(teams.length > 0 || vehicles.length > 0) && (
+          <div style={{ marginLeft: "1.3rem", marginTop: "0.2rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
+            {teams.map((tm) => (
+              <div key={tm.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.76rem", color: "#9fb1c2" }}>
+                <span style={{ color: "#f0a500" }}>⮡</span><Ic name="fps" size={11} sw={1.7} /> {tm.name} <span style={{ color: "#5b6b7a", fontSize: "0.62rem" }}>fährt mit</span>
+              </div>
+            ))}
+            {vehicles.map((v) => (
+              <div key={v.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.76rem", color: "#9fb1c2" }}>
+                <span style={{ color: "#ff7a45" }}>⮡</span><Ic name="vehicle" size={11} sw={1.7} /> {v.name} <span style={{ color: "#5b6b7a", fontSize: "0.62rem" }}>verladen</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const formationBlock = (
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(167,139,250,0.22)" }} data-testid="formation-block">
       {panelHead("board", "#a78bfa", "VERBÄNDE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{view.formations.length}</span>)}
@@ -598,6 +632,35 @@ export function OperatorPanel({
               </div>
             );
           })}
+        </div>
+      )}
+      {/* ZUSAMMENSETZUNG — read-only preview of the final assembly */}
+      {accepted.some((u) => u.unitType === "ship") && (
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.8rem", marginBottom: "0.9rem" }}>
+          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2", marginBottom: "0.6rem" }}>ZUSAMMENSETZUNG</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+            {view.formations.map((f) => (
+              <div key={f.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}>
+                  <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="board" size={13} /></span>
+                  <strong style={{ fontSize: "0.8rem", color: "#c9b8ff" }}>{f.name}</strong>
+                </div>
+                <div style={{ marginLeft: "0.4rem" }}>
+                  {formationShips(f.id).length > 0
+                    ? formationShips(f.id).map(compShipNode)
+                    : <div style={{ fontSize: "0.74rem", color: "#5b6b7a", fontStyle: "italic" }}>noch keine Schiffe zugeordnet</div>}
+                </div>
+              </div>
+            ))}
+            {ungroupedShips.length > 0 && (
+              <div>
+                {view.formations.length > 0 && (
+                  <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", marginBottom: "0.3rem" }}>OHNE VERBAND</div>
+                )}
+                <div style={{ marginLeft: "0.4rem" }}>{ungroupedShips.map(compShipNode)}</div>
+              </div>
+            )}
+          </div>
         </div>
       )}
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
