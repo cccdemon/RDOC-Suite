@@ -503,7 +503,13 @@ export const OperatorViewSchema = z
     /** FR-B5: CQB teams (materialized squad groups) + the soldier pool. The
      *  operator places each soldier into a team via assignedGroupId. */
     cqbTeams: z.array(
-      z.object({ id: z.string(), name: z.string(), targetSize: z.number().int().nullable() }),
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        targetSize: z.number().int().nullable(),
+        /** FR-B3: carrier ship this team rides in, if any. */
+        carrierUnitId: z.string().nullable(),
+      }),
     ),
     cqbSoldiers: z.array(
       z.object({

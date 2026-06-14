@@ -4,6 +4,7 @@ import {
   ApiError,
   answerQuestion,
   assignCqbSoldier,
+  assignCqbTeamCarrier,
   assignSeat,
   assignUnitCarrier,
   assignUnitFormation,
@@ -526,6 +527,26 @@ export function OperatorPanel({
   const cqbBlock = (cqbTeams.length > 0 || cqbSoldiers.length > 0) && (
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="cqb-block">
       {panelHead("fps", "#f0a500", "CQB-TEAMS · SOLDATEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>)}
+      {/* FR-B3: each team can ride in a carrier ship. */}
+      {cqbTeams.length > 0 && accepted.some((u) => u.unitType === "ship") && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.9rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          {cqbTeams.map((tm) => (
+            <div key={tm.id} data-testid={`cqb-team-${tm.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "#dce8f0" }}>{tm.name}</span>
+              <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>FÄHRT IN</span>
+              <select
+                data-testid={`cqb-team-carrier-${tm.id}`}
+                value={tm.carrierUnitId ?? ""}
+                onChange={(e) => run(() => assignCqbTeamCarrier(op.id, tm.id, csrf, e.target.value || null))}
+                style={{ flexShrink: 0, maxWidth: "55%", background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
+              >
+                <option value="">— eigenständig —</option>
+                {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
       {cqbSoldiers.length === 0 ? (
         <div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div>
       ) : (

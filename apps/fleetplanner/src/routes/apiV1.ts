@@ -1529,6 +1529,41 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // FR-B3: embed a CQB team (squad group) into a carrier ship — "rides in <ship>".
+  // carrierUnitId null = standalone. Carrier must be a ship in this op.
+  app.put<{ Params: { id: string; groupId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/cqb-teams/:groupId/carrier",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse({ id: req.params.id });
+      const gid = req.params.groupId;
+      if (!p.success || !/^[a-z0-9]{20,32}$/i.test(gid))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = AssignCarrierRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+
+      const team = await prisma.compositionGroup.findFirst({
+        where: { id: gid, operationId: p.data.id, kind: "squad" },
+        select: { id: true },
+      });
+      if (!team) return sendError(reply, req, 404, "not_found", "CQB team not found.");
+      if (body.data.carrierUnitId) {
+        const carrier = await prisma.fleetUnit.findFirst({
+          where: { id: body.data.carrierUnitId, operationId: p.data.id, unitType: "ship" },
+          select: { id: true },
+        });
+        if (!carrier) return sendError(reply, req, 404, "not_found", "Carrier ship not found.");
+      }
+      await prisma.compositionGroup.update({
+        where: { id: gid },
+        data: { carrierUnitId: body.data.carrierUnitId },
+      });
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb_team:carrier", body.data.carrierUnitId ?? "detach");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   // FR-B2: operator formations (Verbände). Operator-gated. The service enforces
   // ship-only membership and op ownership.
   app.post<{ Params: { id: string }; Body: unknown }>(
@@ -1870,7 +1905,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       auditLogs: Array<{ actor: string; action: string; detail: string; createdAt: Date }>;
       eventInterests: Array<{ id: string; displayName: string; userId: string | null }>;
       units: Array<{ seats: Array<{ userId: string | null }> }>;
-      groups: Array<{ id: string; name: string; kind: string; targetSize: number | null }>;
+      groups: Array<{ id: string; name: string; kind: string; targetSize: number | null; carrierUnitId: string | null }>;
       cqbSignups: Array<{ id: string; userId: string; status: string; note: string | null; assignedGroupId: string | null; user: { username: string } }>;
     };
     // userIds already holding a seat in this op → mark interested users "seated".
@@ -1920,7 +1955,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       })),
       cqbTeams: o.groups
         .filter((g) => g.kind === "squad")
-        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize })),
+        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize, carrierUnitId: g.carrierUnitId })),
       cqbSoldiers: o.cqbSignups
         .filter((s) => s.status !== "rejected")
         .map((s) => ({ id: s.id, username: s.user.username, assignedGroupId: s.assignedGroupId, note: s.note })),
