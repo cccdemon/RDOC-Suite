@@ -146,9 +146,11 @@ import {
   presentGuildSettingsMember,
   presentOperationDetail,
   presentOperationSummary,
+  presentOrgFleet,
   presentSession,
   presentShip,
 } from "../api/presenters.js";
+import { getOrgFleetRows } from "../services/orgFleet.js";
 import { openApiDocument } from "../api/openapi.js";
 import { getDocContent } from "../api/docContent.js";
 import { mutationLimiter, searchLimiter } from "../api/rateLimit.js";
@@ -440,6 +442,21 @@ export async function apiV1Routes(app: FastifyInstance) {
       guild: presentGuildSettings({ ...data.guild, canRemove }),
       members: data.members.map(presentGuildSettingsMember),
     });
+  });
+
+  // FR-P3: Org Fleet — guild ship roster. Any MEMBER of the guild may read it
+  // (not operator-gated); non-members get 404 (no existence leak). superadmin ok.
+  app.get<{ Params: { id: string } }>("/api/v1/guilds/:id/fleet", async (req, reply) => {
+    const p = GuildIdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") {
+      const m = await getMembership(ctx.user.id, p.data.id);
+      if (!m) return sendError(reply, req, 404, "not_found", "Server not found.");
+    }
+    const rows = await getOrgFleetRows(p.data.id);
+    return reply.type("application/json").send(presentOrgFleet(rows));
   });
 
   // FR-C2: guild text/announcement channels for the wizard "share" picker.

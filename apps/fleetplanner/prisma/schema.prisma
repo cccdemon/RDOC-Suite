@@ -253,6 +253,9 @@ model UserShip {
   userId    String
   shipId    String
   nickname  String?
+  // FR-P3 org-fleet: hulls owned of this model (UserShip is unique per user×model,
+  // so duplicates collapse to one row carrying the count). FR-P2 import sets it.
+  quantity  Int      @default(1)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

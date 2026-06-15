@@ -17,6 +17,7 @@ import { RechtlichesPage } from "./pages/RechtlichesPage";
 import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { PartnershipsPage } from "./pages/PartnershipsPage";
 import { ServerListPage } from "./pages/ServerListPage";
+import { OrgFleetPage } from "./pages/OrgFleetPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -76,6 +77,7 @@ export function App() {
             <Route path="/ships" element={<ShipsPage />} />
             <Route path="/templates" element={<TemplatesPage session={session} />} />
             <Route path="/guilds" element={<ServerListPage session={session} />} />
+            <Route path="/guilds/fleet" element={<OrgFleetPage session={session} />} />
             {/* IA merge C: profile/hangar + logins + feedback → /konto tabs */}
             <Route path="/konto" element={<KontoPage session={session} />} />
             <Route path="/konto/:tab" element={<KontoPage session={session} />} />

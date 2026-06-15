@@ -23,7 +23,7 @@ export const ROADMAP: RoadmapItem[] = [
   },
   {
     title: "Org-Flotte",
-    status: "planned",
+    status: "done",
     desc: "Übersicht, welches Mitglied welches Schiff besitzt (inkl. Anzahl) — um Schiffe auszuleihen oder anzusehen, mit Discord-Kontaktlink.",
   },
   {

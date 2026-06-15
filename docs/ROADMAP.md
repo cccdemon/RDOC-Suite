@@ -20,7 +20,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | ✓ Done (2026-06-06; series-distribution deferred → FR-P1) |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | Plan |
 | P3 | Language Switch / i18n (Fleetplanner + Companion + MissionCover) | [FR-P3-language-switch.md](FR-P3-language-switch.md) | `User` profile as single source of truth | Plan (large/phased) |
-| P3 | Org Fleet (guild ship roster — who owns what) | [FR-P3-org-fleet.md](FR-P3-org-fleet.md) | UserShip + GuildMembership + ship catalog (exists) | Plan |
+| P3 | Org Fleet (guild ship roster — who owns what) | [archiv/FR-P3-org-fleet.md](archiv/FR-P3-org-fleet.md) | UserShip + GuildMembership + ship catalog (exists) | ✓ Done (2026-06-15: MVP + Discord tier-1; bot-DM relay deferred) |
 | P3 | Member Last-Seen + 6-month inactivity alert | [FR-P3-inactivity-alert.md](FR-P3-inactivity-alert.md) | Fleetmanager bot **gateway** + GUILD_MEMBERS intent | Plan |
 | P3 | Mission Resource Links (tutorial/guide links on an op) | [FR-P3-mission-resource-links.md](FR-P3-mission-resource-links.md) | `Operation` + Op-UI (exists) | ✓ Implemented (2026-06-11; tsc+tests green, pending deploy) |
 | P4 | Mission-Cover Microservice (server-render API, op→cover image) | [FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md) | — (standalone svc; synergy → FR-P1 cross-post) | ✓ Done (incl. Discord-event image); partner cross-post → FR-P1 |
@@ -28,10 +28,10 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P5 | Item Database (loot/distribution) | [FR-P5-item-database.md](FR-P5-item-database.md) | **blocked: no items API** | Plan |
 
 ## Recommended order (open items only)
-*Done: FR-P1 gui-ux, FR-P1 eventcreation (core), FR-P2 fleet-import, FR-P3 recurring-events, FR-P4 mission-cover.*
+*Done: FR-P1 gui-ux, FR-P1 eventcreation (core), FR-P2 fleet-import, FR-P3 recurring-events, FR-P3 org-fleet, FR-P4 mission-cover.*
 1. ~~**FR-P1 event-distribution**~~ — ✓ Done (Phase 1+2, 2026-06-07).
 2. ~~**FR-P2 discord-event-interest**~~ — ✓ Done (2026-06-07).
-3. **FR-P3 org-fleet** — light, most infra exists (needs `UserShip.quantity`).
+3. ~~**FR-P3 org-fleet**~~ — ✓ Done (2026-06-15; MVP + Discord tier-1, `UserShip.quantity` added). Phase-3 bot-DM relay deferred.
 3. **FR-P3 roadmap-tab** — surfaces everything else + feedback intake.
 4. **FR-P3 inactivity-alert** — gateway bot + GUILD_MEMBERS intent.
 5. **FR-P3 language-switch / i18n** — large/phased; cross-app.

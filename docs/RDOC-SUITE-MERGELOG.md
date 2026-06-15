@@ -1,5 +1,21 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: FR-P3 Org-Flotte (guild ship roster) umsetzen — Branch master
+
+User: "so umsetzen bitte" (nach Design-Preview). Implementiert [archiv/FR-P3-org-fleet.md](archiv/FR-P3-org-fleet.md) (nach Umsetzung dorthin verschoben)
+MVP (Build-Order 1+2, Tier-1 Discord-Kontakt). Bot-DM-Relay (Phase 3) bewusst ausgelassen.
+- **Schema:** `UserShip.quantity Int @default(1)` + Migration `usership_quantity` (Postgres). FR-P2
+  Import (`services/fleetImport.ts`) zählt jetzt Hulls pro Modell statt collapse-to-1; Re-Import
+  aktualisiert die Anzahl.
+- **Contract:** `OrgFleetResponse` (entries[] + totals) in `@rdoc-suite/fleetplanner-contracts`.
+- **Backend:** `services/orgFleet.ts` aggregiert `GuildMembership → User → UserShip → Ship` (+ Discord
+  `UserIdentity` für Handle/Deep-Link). `GET /api/v1/guilds/:id/fleet` — auth + **Mitglieds-Gate**
+  (404 ohne Mitgliedschaft, kein Leak; superadmin erlaubt). `presentOrgFleet` Presenter.
+- **SPA:** Nav-Item „Org-Flotte" (Server/Discord-Gruppe), Route `/guilds/fleet`, `pages/OrgFleetPage.tsx`
+  (Pivots Nach-Schiff/Nach-Mitglied, Suche, Anzahl-Spalte, Discord-„Anschreiben"-Link). Guild-Pick
+  wie GuildSettings (`?guild=` sonst erste Mitgliedschaft) — aber **alle** Rollen, nicht nur operator.
+- Privacy: guild-scoped, sichtbar für Mitglieder (Decision: kein Opt-out). Discord-IDs als String, Zod an Boundary.
+
 ## Queued / Planned Step - 2026-06-15: docs/-Ordner konsolidieren — implementierte FRs nach archiv/ — Branch master
 
 User: "Analize Consolidate the docs folder (recursive). move all implemented to archiv".

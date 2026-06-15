@@ -1,0 +1,243 @@
+import { useEffect, useMemo, useState } from "react";
+import { ApiError, getOrgFleet } from "../api/client";
+import type { OrgFleetEntry, OrgFleetResponse, SessionResponse } from "../api/types";
+import { Ic } from "../components/Icons";
+import { useSearchParams } from "react-router-dom";
+
+const MONO = "var(--mono)";
+
+// Discord contact: deep link to the member's profile. Zero bot work (FR-P3 tier 1).
+function discordUrl(id: string): string {
+  return `https://discord.com/users/${id}`;
+}
+
+function DiscordLink({ id, handle }: { id: string | null; handle: string | null }) {
+  if (!id) return <span style={{ color: "#5b6b7a", fontFamily: MONO, fontSize: "0.72rem" }}>kein Discord</span>;
+  return (
+    <a
+      href={discordUrl(id)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Im Discord anschreiben"
+      style={{
+        display: "inline-flex", alignItems: "center", gap: "0.4rem", padding: "0.26rem 0.6rem",
+        borderRadius: 6, border: "1px solid rgba(88,101,242,0.5)", background: "rgba(88,101,242,0.14)",
+        color: "#c7ccf8", textDecoration: "none", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.06em",
+      }}
+    >
+      <Ic name="chat" size={12} sw={1.6} />
+      {handle ? `@${handle}` : "Anschreiben"}
+    </a>
+  );
+}
+
+type ShipGroup = {
+  shipId: string; shipName: string; manufacturer: string; shipClass: string;
+  totalQty: number; owners: OrgFleetEntry[];
+};
+type MemberGroup = {
+  userId: string; username: string; discordId: string | null; discordHandle: string | null;
+  totalHulls: number; ships: OrgFleetEntry[];
+};
+
+export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
+  const memberships = session?.memberships ?? [];
+  const [searchParams] = useSearchParams();
+  const [guildId, setGuildId] = useState<string | null>(null);
+  const [data, setData] = useState<OrgFleetResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [pivot, setPivot] = useState<"ship" | "member">("ship");
+  const [q, setQ] = useState("");
+  const [openShips, setOpenShips] = useState<Set<string>>(new Set());
+
+  // Pick guild from ?guild= if a membership, else the first server.
+  useEffect(() => {
+    if (guildId !== null || memberships.length === 0) return;
+    const wanted = searchParams.get("guild");
+    setGuildId(memberships.find((m) => m.guildId === wanted)?.guildId ?? memberships[0].guildId);
+  }, [memberships, guildId, searchParams]);
+
+  useEffect(() => {
+    if (!guildId) return;
+    setLoading(true);
+    setError(null);
+    getOrgFleet(guildId)
+      .then(setData)
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Flotte nicht ladbar."))
+      .finally(() => setLoading(false));
+  }, [guildId]);
+
+  const needle = q.trim().toLowerCase();
+  const entries = data?.entries ?? [];
+
+  const byShip = useMemo<ShipGroup[]>(() => {
+    const m = new Map<string, ShipGroup>();
+    for (const e of entries) {
+      let g = m.get(e.shipId);
+      if (!g) {
+        g = { shipId: e.shipId, shipName: e.shipName, manufacturer: e.manufacturer, shipClass: e.shipClass, totalQty: 0, owners: [] };
+        m.set(e.shipId, g);
+      }
+      g.totalQty += e.quantity;
+      g.owners.push(e);
+    }
+    let list = [...m.values()].sort((a, b) => b.totalQty - a.totalQty || a.shipName.localeCompare(b.shipName));
+    if (needle) {
+      list = list.filter(
+        (g) => g.shipName.toLowerCase().includes(needle) || g.owners.some((o) => o.user.username.toLowerCase().includes(needle)),
+      );
+    }
+    return list;
+  }, [entries, needle]);
+
+  const byMember = useMemo<MemberGroup[]>(() => {
+    const m = new Map<string, MemberGroup>();
+    for (const e of entries) {
+      let g = m.get(e.user.id);
+      if (!g) {
+        g = { userId: e.user.id, username: e.user.username, discordId: e.user.discordId, discordHandle: e.user.discordHandle, totalHulls: 0, ships: [] };
+        m.set(e.user.id, g);
+      }
+      g.totalHulls += e.quantity;
+      g.ships.push(e);
+    }
+    let list = [...m.values()].sort((a, b) => b.totalHulls - a.totalHulls || a.username.localeCompare(b.username));
+    if (needle) {
+      list = list.filter(
+        (g) => g.username.toLowerCase().includes(needle) || g.ships.some((s) => s.shipName.toLowerCase().includes(needle)),
+      );
+    }
+    return list;
+  }, [entries, needle]);
+
+  function toggleShip(id: string) {
+    setOpenShips((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  if (!session?.user) return <p className="fpw-meta">Bitte einloggen, um die Org-Flotte zu sehen.</p>;
+  if (memberships.length === 0) return <p className="fpw-meta">Du bist auf keinem Server. Tritt einem Discord mit RDOC-Fleetplanner bei.</p>;
+
+  const segOn: React.CSSProperties = { background: "rgba(0,212,255,0.14)", borderColor: "rgba(0,212,255,0.4)", color: "var(--cyan)" };
+  const seg: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6, padding: "0.42rem 0.8rem", fontFamily: MONO,
+    fontSize: "0.7rem", borderRadius: 7, cursor: "pointer", border: "1px solid transparent", background: "transparent", color: "var(--dim)",
+  };
+
+  return (
+    <div data-testid="org-fleet-page" style={{ width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
+        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="ship" size={20} /></span>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Org-Flotte</h1>
+      </div>
+      <div style={{ color: "#9fb1c2", fontSize: "0.9rem", marginBottom: "1.1rem" }}>
+        Wer hat welches Schiff — zum Ausleihen, Ansehen oder Anfragen. Nur für Mitglieder dieses Servers.
+      </div>
+
+      {/* server picker (only when on several servers) */}
+      {memberships.length > 1 && (
+        <select
+          value={guildId ?? ""}
+          onChange={(e) => setGuildId(e.target.value)}
+          style={{ marginBottom: "1rem", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.5rem 0.7rem", borderRadius: 8 }}
+        >
+          {memberships.map((m) => <option key={m.guildId} value={m.guildId}>{m.guildName}</option>)}
+        </select>
+      )}
+
+      {data && (
+        <div style={{ display: "flex", gap: "0.6rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+          {([["Schiffe gesamt", data.totals.hulls], ["Modelle", data.totals.models], ["Mitglieder m. Hangar", data.totals.membersWithHangar]] as const).map(([lab, val]) => (
+            <div key={lab} style={{ border: "1px solid rgba(255,255,255,0.07)", borderLeft: "3px solid var(--cyan)", borderRadius: 12, background: "var(--bg2)", padding: "0.7rem 0.95rem", minWidth: 120 }}>
+              <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#7e92a4", textTransform: "uppercase" }}>{lab}</div>
+              <div style={{ fontFamily: MONO, fontSize: "1.35rem", lineHeight: 1.1, color: "#eaf4fb" }}>{val}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: "0.7rem", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap" }}>
+        <div style={{ display: "inline-flex", gap: 6, background: "var(--bg2)", border: "1px solid rgba(255,255,255,0.08)", padding: 4, borderRadius: 10 }}>
+          <span data-testid="pivot-ship" style={pivot === "ship" ? { ...seg, ...segOn } : seg} onClick={() => setPivot("ship")}><Ic name="board" size={13} /> Nach Schiff</span>
+          <span data-testid="pivot-member" style={pivot === "member" ? { ...seg, ...segOn } : seg} onClick={() => setPivot("member")}><Ic name="users" size={13} /> Nach Mitglied</span>
+        </div>
+        <input
+          type="search"
+          data-testid="org-fleet-search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Schiff oder Mitglied suchen…"
+          style={{ flex: 1, minWidth: 220, boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.98rem", padding: "0.6rem 0.8rem", borderRadius: 8, outline: "none" }}
+        />
+      </div>
+
+      {loading ? (
+        <p className="fpw-meta">Lade…</p>
+      ) : error ? (
+        <p className="fpw-meta" style={{ color: "#ff7a7a" }}>{error}</p>
+      ) : entries.length === 0 ? (
+        <p className="fpw-meta">Noch keine Schiffe hinterlegt. Mitglieder pflegen ihren Hangar im Konto-Tab (oder per Flotten-Import).</p>
+      ) : pivot === "ship" ? (
+        /* ── BY SHIP ── */
+        <div className="fpw-card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a", padding: "0.7rem 1rem", borderBottom: "1px solid rgba(0,212,255,0.12)", textTransform: "uppercase" }}>
+            <span>Schiff</span><span>Hersteller</span><span>Klasse</span><span style={{ textAlign: "right" }}>Anzahl</span><span style={{ textAlign: "right" }}>Besitzer</span>
+          </div>
+          {byShip.map((g) => {
+            const open = openShips.has(g.shipId);
+            return (
+              <div key={g.shipId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                <div
+                  data-testid={`ship-grp-${g.shipId}`}
+                  onClick={() => toggleShip(g.shipId)}
+                  style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, padding: "0.62rem 1rem", alignItems: "center", fontSize: "0.92rem", cursor: "pointer" }}
+                >
+                  <span style={{ color: "var(--text-hi)", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    <span style={{ display: "inline-flex", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s", color: "#5b6b7a" }}><Ic name="arrow" size={13} sw={2} /></span>
+                    {g.shipName}
+                  </span>
+                  <span className="fpw-meta">{g.manufacturer || "—"}</span>
+                  <span className="fpw-meta">{g.shipClass || "—"}</span>
+                  <span style={{ fontFamily: MONO, color: "#f0a500", textAlign: "right" }}>×{g.totalQty}</span>
+                  <span style={{ fontFamily: MONO, fontSize: "0.82rem", color: "#9fb1c2", textAlign: "right" }}>{g.owners.length} {g.owners.length === 1 ? "Mitglied" : "Mitglieder"}</span>
+                </div>
+                {open && (
+                  <div style={{ background: "var(--bg)" }}>
+                    {g.owners.map((o) => (
+                      <div key={o.user.id} style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, padding: "0.5rem 1rem 0.5rem 2.1rem", alignItems: "center", borderTop: "1px solid rgba(255,255,255,0.04)", fontSize: "0.88rem" }}>
+                        <span style={{ color: "var(--text)" }}>{o.user.username}</span>
+                        <span className="fpw-meta" style={{ gridColumn: "2 / 4" }}>{o.nickname ? `„${o.nickname}“` : "—"}</span>
+                        <span style={{ fontFamily: MONO, color: "#f0a500", textAlign: "right" }}>×{o.quantity}</span>
+                        <span style={{ textAlign: "right" }}><DiscordLink id={o.user.discordId} handle={o.user.discordHandle} /></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* ── BY MEMBER ── */
+        <div className="fpw-card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.6fr 2.4fr 0.7fr 1.2fr", gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a", padding: "0.7rem 1rem", borderBottom: "1px solid rgba(0,212,255,0.12)", textTransform: "uppercase" }}>
+            <span>Mitglied</span><span>Schiffe</span><span style={{ textAlign: "right" }}>Hulls</span><span style={{ textAlign: "right" }}>Kontakt</span>
+          </div>
+          {byMember.map((g) => (
+            <div key={g.userId} data-testid={`member-row-${g.userId}`} style={{ display: "grid", gridTemplateColumns: "1.6fr 2.4fr 0.7fr 1.2fr", gap: 0, padding: "0.62rem 1rem", alignItems: "center", borderBottom: "1px solid rgba(255,255,255,0.04)", fontSize: "0.92rem" }}>
+              <span style={{ color: "var(--text-hi)", fontWeight: 600 }}>{g.username}</span>
+              <span className="fpw-meta">{g.ships.map((s) => `${s.shipName}·${s.quantity}`).join(" · ")}</span>
+              <span style={{ fontFamily: MONO, color: "#f0a500", textAlign: "right" }}>{g.totalHulls}</span>
+              <span style={{ textAlign: "right" }}><DiscordLink id={g.discordId} handle={g.discordHandle} /></span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

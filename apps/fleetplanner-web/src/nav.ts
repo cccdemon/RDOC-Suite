@@ -31,6 +31,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Server / Discord",
     items: [
       { to: "/guilds", label: "Server", icon: "server", auth: true },
+      { to: "/guilds/fleet", label: "Org-Flotte", icon: "ship", auth: true },
       { to: "/guilds/settings", label: "Einstellungen", icon: "wrench", auth: true },
       { to: "/guilds/diagnostics", label: "Diagnose", icon: "refresh", auth: true },
       { to: "/guilds/partnerships", label: "Partnerschaften", icon: "link", auth: true },

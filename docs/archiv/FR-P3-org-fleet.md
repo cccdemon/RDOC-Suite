@@ -1,7 +1,10 @@
 # Org Fleet — guild ship roster (who owns what)
 
 **FeatureRequest — Priority 3** (scale 1 highest … 5 lowest)
-**Status:** Plan, **NOT yet implemented**. Captured 2026-06-07.
+**Status:** ✓ **Implemented (2026-06-15)** — archived. MVP (build-order 1+2 + Discord tier-1):
+`UserShip.quantity` + import count, `services/orgFleet.ts`, `GET /api/v1/guilds/:id/fleet`
+(member-gated), SPA `OrgFleetPage` (`/guilds/fleet`, both pivots + search + Discord link).
+Bot-DM relay (phase 3) deferred. Captured 2026-06-07.
 **Requested by:** SilentKnight — *"Org fleet tab: see which member has which ship, to ask to borrow
 or look at it; maybe a Discord link to message/mention the owner. Most infra already exists."*
 
@@ -9,7 +12,7 @@ or look at it; maybe a Discord link to message/mention the owner. Most infra alr
 - **Hängt an:** nichts hartes. Nutzt das, was es schon gibt: `UserShip` (owned ships), `GuildMembership`
   (member↔guild), ship catalog (`Ship`), `UserIdentity` (Discord id/handle for contact).
 - **Blockiert:** nichts.
-- **Verwandt:** [orgmodule-implementationplan.md](orgmodule-implementationplan.md) (full SC-Org entities)
+- **Verwandt:** [../orgmodule-implementationplan.md](../orgmodule-implementationplan.md) (full SC-Org entities)
   und [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) (füllt die Schiffsliste). Org Fleet ist
   die **leichte, guild-scoped** Variante — kein neues Org-Datenmodell nötig.
 - **Quer:** mergelog-first; Discord IDs als String; Zod an der Boundary; per-guild Tenant-Scoping.

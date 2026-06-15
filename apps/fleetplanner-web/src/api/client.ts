@@ -479,6 +479,11 @@ export function getGuildSettings(guildId: string): Promise<import("./types").Gui
   return get<import("./types").GuildSettingsResponse>(`/guilds/${encodeURIComponent(guildId)}/settings`);
 }
 
+// FR-P3: guild Org Fleet roster (who owns what). Members-only on the server.
+export function getOrgFleet(guildId: string): Promise<import("./types").OrgFleetResponse> {
+  return get<import("./types").OrgFleetResponse>(`/guilds/${encodeURIComponent(guildId)}/fleet`);
+}
+
 // FR-C2: list a guild's text channels + post an op announcement to one.
 export function getGuildChannels(guildId: string): Promise<{ channels: Array<{ id: string; name: string }> }> {
   return get<{ channels: Array<{ id: string; name: string }> }>(`/guilds/${encodeURIComponent(guildId)}/channels`);

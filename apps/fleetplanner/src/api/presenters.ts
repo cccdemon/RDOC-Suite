@@ -12,6 +12,7 @@ import type {
   GuildSummary,
   OperationDetail,
   OperationSummary,
+  OrgFleetResponse,
   Seat,
   SessionResponse,
   ShipSummary,
@@ -273,6 +274,42 @@ export function presentGuildSettingsMember(m: {
     username: m.username,
     role: m.role === "fleetoperator" ? "fleetoperator" : "crew",
     isOwner: m.isOwner,
+  };
+}
+
+// FR-P3 org fleet: flat owner×ship rows → entries + roster totals.
+type OrgFleetRowLike = {
+  userId: string;
+  username: string;
+  discordId: string | null;
+  discordHandle: string | null;
+  shipId: string;
+  shipName: string;
+  manufacturer: string;
+  shipClass: string;
+  nickname: string | null;
+  quantity: number;
+};
+export function presentOrgFleet(rows: OrgFleetRowLike[]): OrgFleetResponse {
+  const models = new Set<string>();
+  const members = new Set<string>();
+  let hulls = 0;
+  for (const r of rows) {
+    models.add(r.shipId);
+    members.add(r.userId);
+    hulls += r.quantity;
+  }
+  return {
+    entries: rows.map((r) => ({
+      user: { id: r.userId, username: r.username, discordId: r.discordId, discordHandle: r.discordHandle },
+      shipId: r.shipId,
+      shipName: r.shipName,
+      manufacturer: r.manufacturer,
+      shipClass: r.shipClass,
+      nickname: r.nickname,
+      quantity: r.quantity,
+    })),
+    totals: { hulls, models: models.size, membersWithHangar: members.size },
   };
 }
 

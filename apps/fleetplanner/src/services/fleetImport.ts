@@ -31,10 +31,11 @@ export async function importUserFleet(userId: string, raw: string): Promise<Flee
   // catalog name ("Ares Star Fighter Ion") when all its words are present.
   const shipToks = ships.map((s) => ({ ship: s, set: new Set(toks(s.name)), len: s.name.length }));
 
-  let added = 0;
-  let already = 0;
   let total = 0;
   const unmatched: string[] = [];
+  // FR-P3: tally hulls per matched model first; duplicates of the same model
+  // collapse to one UserShip row carrying a `quantity` (instead of being dropped).
+  const byShip = new Map<string, { count: number; nickname: string | null }>();
 
   for (const entry of entries.slice(0, 1000)) {
     const rawName =
@@ -72,20 +73,31 @@ export async function importUserFleet(userId: string, raw: string): Promise<Flee
         : "";
     const nickname = rawNick ? rawNick.slice(0, 80) : null;
 
+    const acc = byShip.get(ship.id);
+    if (acc) {
+      acc.count++;
+      if (!acc.nickname && nickname) acc.nickname = nickname; // keep first named hull
+    } else {
+      byShip.set(ship.id, { count: 1, nickname });
+    }
+  }
+
+  let added = 0;
+  let already = 0;
+  for (const [shipId, { count, nickname }] of byShip) {
     const existing = await prisma.userShip.findUnique({
-      where: { userId_shipId: { userId, shipId: ship.id } },
+      where: { userId_shipId: { userId, shipId } },
       select: { id: true },
     });
     if (existing) {
       already++;
-      if (nickname) {
-        await prisma.userShip.update({
-          where: { userId_shipId: { userId, shipId: ship.id } },
-          data: { nickname },
-        });
-      }
+      // Re-import refreshes the hull count (and nickname if the export carries one).
+      await prisma.userShip.update({
+        where: { userId_shipId: { userId, shipId } },
+        data: { quantity: count, ...(nickname ? { nickname } : {}) },
+      });
     } else {
-      await prisma.userShip.create({ data: { userId, shipId: ship.id, nickname } });
+      await prisma.userShip.create({ data: { userId, shipId, nickname, quantity: count } });
       added++;
     }
   }

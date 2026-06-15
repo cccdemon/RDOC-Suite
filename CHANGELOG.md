@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Org-Flotte: guild ship roster (FR-P3, 2026-06-15)
+
+- New **Org-Flotte** tab (Server/Discord nav, route `/guilds/fleet`): a guild-scoped
+  roster of which member owns which ship — to borrow, inspect, or ask about a hull.
+  Two pivots off one dataset (by ship / by member), search, hull counts, and a
+  Discord contact deep link (`discord.com/users/<id>`) per owner. Members-only:
+  `GET /api/v1/guilds/:id/fleet` returns 404 to non-members (no leak).
+- Backend: `services/orgFleet.ts` aggregates `GuildMembership → UserShip → Ship`
+  (+ Discord identity); `presentOrgFleet` presenter; `OrgFleetResponse` contract.
+- Schema: `UserShip.quantity Int @default(1)` + migration. The CCU-Game fleet
+  import now tallies hulls per model (e.g. `MDC ×7`) instead of collapsing to one;
+  re-import refreshes the count.
+- Discord contact = MVP tier-1 (profile link, zero bot work). Bot-DM relay deferred.
+
 ### Added - Discord "Join" link on operation panels (2026-06-15)
 
 - Operation panels now surface the guild's Discord invite (`Guild.discordInviteUrl`,

@@ -284,6 +284,43 @@ export const ShipSearchResponseSchema = z
   .object({ ships: z.array(ShipSummarySchema) })
   .meta({ id: "ShipSearchResponse" });
 
+// ── Org Fleet (FR-P3) — guild ship roster ─────────────────────────────
+// Flat owner×ship rows; the SPA pivots by ship or by member off one dataset.
+export const OrgFleetEntrySchema = z
+  .object({
+    user: z.object({
+      id: z.string(),
+      username: z.string(),
+      /** Discord snowflake (string) + handle for the contact deep link; null when
+       *  the member never linked a Discord identity. */
+      discordId: z.string().nullable(),
+      discordHandle: z.string().nullable(),
+    }),
+    shipId: z.string(),
+    shipName: z.string(),
+    manufacturer: z.string(),
+    /** Ship size band (Small/Medium/Large/Capital/Vehicle) — used as the class column. */
+    shipClass: z.string(),
+    /** Owner-given name from the CCU import, if any. */
+    nickname: z.string().nullable(),
+    /** Hulls of this model the member owns. */
+    quantity: z.number().int(),
+  })
+  .meta({ id: "OrgFleetEntry" });
+export type OrgFleetEntry = z.infer<typeof OrgFleetEntrySchema>;
+
+export const OrgFleetResponseSchema = z
+  .object({
+    entries: z.array(OrgFleetEntrySchema),
+    totals: z.object({
+      hulls: z.number().int(),
+      models: z.number().int(),
+      membersWithHangar: z.number().int(),
+    }),
+  })
+  .meta({ id: "OrgFleetResponse" });
+export type OrgFleetResponse = z.infer<typeof OrgFleetResponseSchema>;
+
 export const CreateOperationRequestSchema = z
   .object({
     guildId: z.string().min(1),

@@ -6,6 +6,8 @@ export type {
   SessionUser,
   SessionResponse,
   OperationSummary,
+  OrgFleetResponse,
+  OrgFleetEntry,
   Seat,
   FleetUnit,
   ResourceLink,
