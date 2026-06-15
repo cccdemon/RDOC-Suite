@@ -3,7 +3,8 @@
 **For:** Claude Opus (implementation agent)  
 **From:** Architecture session 2026-06-01  
 **Repo root:** `c:\Users\streamer\Documents\Projekte\RDOC-Suite`  
-**Status:** Plan approved, NOT yet implemented. Read this file fully before touching anything.
+**Status:** ✓ **Implemented** — archived 2026-06-15. Op-visibility (`private/partners/public`) +
+`GuildPartnership` shipped; this file is now design reference / history only (code = ground truth).
 
 ---
 

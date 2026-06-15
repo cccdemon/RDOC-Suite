@@ -268,7 +268,7 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 
 | Datei | Inhalt | Status |
 |---|---|---|
-| [docs/opus-tennant-architecture.md](docs/opus-tennant-architecture.md) | Op-Visibility (`private/partners/public`) + Guild-Partnerships (`GuildPartnership`-Tabelle) | ✓ **Umgesetzt** — nur noch Design-Referenz/Historie |
+| [docs/archiv/opus-tennant-architecture.md](docs/archiv/opus-tennant-architecture.md) | Op-Visibility (`private/partners/public`) + Guild-Partnerships (`GuildPartnership`-Tabelle) | ✓ **Umgesetzt** — archiviert 2026-06-15, Design-Referenz/Historie |
 | [docs/orgmodule-implementationplan.md](docs/orgmodule-implementationplan.md) | Org-Modul: SC-Orgs als First-Class-Entities (`Org`, `OrgMembership`, `OrgInvite`) | Plan, kein Code |
 | [docs/composition-rebuild-plan.md](docs/composition-rebuild-plan.md) | Composition Board + Leader-Assign + Auto-Match (Schritte 1+2 im Code, Schritte 3-5 offen) | Teilweise umgesetzt |
 | [docs/FR-P1-event-distribution.md](docs/FR-P1-event-distribution.md) | **FeatureRequest, Prio 1.** Event-Distribution: Op-Discord-Event an alle aktiven Partner-Discords cross-posten (einer Fleetplanner-Bot, bereits in allen Partner-Guilds), Allowlist (`PartnerSharePolicy.autoShare`) + Approval (Web-Inbox + DM-Buttons) durch **alle Fleetoperators des Ziel-Guilds**. Basis für FR-P3-federation-voice. | ✓ **Umgesetzt** (Phase 1+2, 2026-06-07) |

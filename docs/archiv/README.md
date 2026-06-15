@@ -23,6 +23,14 @@ Moved here 2026-06-12:
 | FR-P4-mission-cover-service | Mission-cover render microservice | ✓ 2026-06-07 |
 | FR-P4-template-marketplace | Operation template marketplace | ✓ |
 
-Still open (in [`../`](../)): FR-P1-fleetplanner-gui-ux-implementation,
-FR-P2-discord-autarkic-squadlink-lite-feasibility (study),
-FR-P3-federation-voice (rejected), FR-P3-inactivity-alert, FR-P3-org-fleet, FR-P5-item-database.
+Moved here 2026-06-15 (stale "NOT yet implemented" headers; ROADMAP/CLAUDE.md = ground truth):
+
+| Doc | Feature | Status |
+| --- | --- | --- |
+| FR-P1-fleetplanner-gui-ux-implementation | Event wizard + join view + Fleet-Requirements wording | ✓ 2026-06-06 |
+| opus-tennant-architecture | Op visibility (`private/partners/public`) + Guild partnerships | ✓ (design ref/history) |
+
+Still open (in [`../`](../)): FR-P1-SecurityAndImplenetationReview (review done, impl pending),
+FR-SPA-PARITY-RESTORE (partial), FR-P2-discord-autarkic-squadlink-lite-feasibility (study),
+FR-P3-federation-voice (rejected), FR-P3-inactivity-alert, FR-P3-org-fleet, FR-P5-item-database,
+orgmodule-implementationplan (plan), composition-rebuild-plan (partial).

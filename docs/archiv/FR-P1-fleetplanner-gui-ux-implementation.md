@@ -1,7 +1,8 @@
 # Fleetplanner GUI UX - Event Wizard, Join View, Fleet Requirements
 
 **FeatureRequest - Priority 1** (scale 1 highest ... 5 lowest)  
-**Status:** Plan, **NOT yet implemented**.  
+**Status:** ✓ **Done (2026-06-06)** — archived 2026-06-15. Guided wizard, participant join view +
+Fleet-Requirements wording shipped (see ROADMAP). Header was stale ("NOT yet implemented"); code = ground truth.  
 **Target app:** `apps/fleetplanner`  
 **Audience:** Claude-Code / Opus implementation agent
 

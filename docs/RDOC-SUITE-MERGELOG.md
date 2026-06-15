@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: docs/-Ordner konsolidieren — implementierte FRs nach archiv/ — Branch master
+
+User: "Analize Consolidate the docs folder (recursive). move all implemented to archiv".
+- Status je Doc aus ROADMAP.md + diesem Mergelog (Ground Truth), NICHT aus veralteten Doc-Headern
+  (gui-ux-Header sagt "Plan", ROADMAP sagt ✓ Done 2026-06-06 → ROADMAP gewinnt).
+- Verschiebe vollständig **implementierte** FR-/Plan-Docs aus `docs/` nach `docs/archiv/` via `git mv`.
+  NICHT verschoben: laufende/teilweise (composition-rebuild, FR-SPA-PARITY, Security-Review impl pending),
+  reine Pläne (org-fleet, inactivity, item-database, orgmodule, squadlink-lite), Guides/Overviews/
+  Living-Docs (ROADMAP, MERGELOG, BACKLOG, UEBERBLICK, guides, privacy, Testing-Checklist, api/*),
+  Reports (security-review, websecurity-review-2, claude-code-testbericht), Voice-Archiv.
+- Danach Links in ROADMAP.md + root CLAUDE.md + archiv/README.md auf die neuen `archiv/`-Pfade ziehen.
+
 ## Queued / Planned Step - 2026-06-15: Discord-Join-Link auf Operation-Panels — Branch master
 
 User: "Add Discord Join Link to Operation Panels." Entscheidung (Rückfrage): Link = **Guild
