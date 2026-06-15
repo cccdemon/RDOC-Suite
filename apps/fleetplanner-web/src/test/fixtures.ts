@@ -19,7 +19,7 @@ export const opSummaryFixture: OperationSummary = {
   meetingSystem: "Stanton",
   meetingLocation: "Everus Harbor",
   minParticipants: 8,
-  guild: { id: "guild_1", name: "RDOC", iconHash: null },
+  guild: { id: "guild_1", name: "RDOC", iconHash: null, discordInviteUrl: "https://discord.gg/example" },
   signupState: null,
   acceptedUnitCount: 1,
   filledSeats: 1,
@@ -30,7 +30,7 @@ export const opDetailFixture: OperationDetail = {
   ...opSummaryFixture,
   description: "Bring quant. Stay sharp.",
   maxParticipants: null,
-  guild: { id: "guild_1", name: "RDOC", iconHash: null, timezone: "Europe/Berlin" },
+  guild: { id: "guild_1", name: "RDOC", iconHash: null, timezone: "Europe/Berlin", discordInviteUrl: "https://discord.gg/example" },
   leaders: [{ id: "user_lead", username: "Lead" }],
   units: [
     {

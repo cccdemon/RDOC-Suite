@@ -372,6 +372,40 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                   <div className="fpw-mono-label" style={{ marginTop: "0.6rem", fontSize: "0.62rem" }}>
                     {op.acceptedUnitCount} EINHEITEN · {op.opType.toUpperCase()}
                   </div>
+                  {op.guild.discordInviteUrl && (
+                    // Card itself is a <Link> (anchor); render the invite as a button
+                    // and stop propagation so it doesn't trigger op navigation, and
+                    // never nests an <a> inside an <a>.
+                    <button
+                      type="button"
+                      data-testid="discord-join"
+                      title="Auf Discord beitreten"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.open(op.guild.discordInviteUrl!, "_blank", "noopener,noreferrer");
+                      }}
+                      style={{
+                        marginTop: "0.6rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.4rem",
+                        padding: "0.3rem 0.6rem",
+                        borderRadius: 6,
+                        border: "1px solid rgba(88,101,242,0.5)",
+                        background: "rgba(88,101,242,0.14)",
+                        color: "#c7ccf8",
+                        cursor: "pointer",
+                        fontFamily: MONO,
+                        fontSize: "0.6rem",
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      <Ic name="chat" size={12} sw={1.6} />
+                      Discord
+                    </button>
+                  )}
                 </Link>
               ))}
             </div>

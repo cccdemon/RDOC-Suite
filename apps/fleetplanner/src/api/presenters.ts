@@ -50,13 +50,13 @@ type OpListRow = {
   meetingSystem: string;
   meetingLocation: string;
   minParticipants: number;
-  guild: { id: string; name: string; iconHash: string | null };
+  guild: { id: string; name: string; iconHash: string | null; discordInviteUrl?: string | null };
   units?: Array<{ id?: string; status: string; seats?: Array<{ userId: string | null }> }>;
 };
 type OpDetailRow = OpListRow & {
   description: string;
   maxParticipants: number | null;
-  guild: { id: string; name: string; iconHash: string | null; timezone: string | null };
+  guild: { id: string; name: string; iconHash: string | null; timezone: string | null; discordInviteUrl?: string | null };
   leaders: Array<{ user: UserRow }>;
   units: UnitRow[];
   resourceLinks?: Array<{
@@ -131,7 +131,12 @@ export function presentOperationSummary(
     meetingSystem: op.meetingSystem,
     meetingLocation: op.meetingLocation,
     minParticipants: op.minParticipants,
-    guild: { id: op.guild.id, name: op.guild.name, iconHash: op.guild.iconHash },
+    guild: {
+      id: op.guild.id,
+      name: op.guild.name,
+      iconHash: op.guild.iconHash,
+      discordInviteUrl: op.guild.discordInviteUrl ?? null,
+    },
     signupState,
     acceptedUnitCount: acceptedUnits.length,
     filledSeats,
@@ -162,6 +167,7 @@ export function presentOperationDetail(
       name: op.guild.name,
       iconHash: op.guild.iconHash,
       timezone: op.guild.timezone,
+      discordInviteUrl: op.guild.discordInviteUrl ?? null,
     },
     leaders: redact ? [] : op.leaders.map((l) => ({ id: l.user.id, username: l.user.username })),
     units: op.units.map((u) => presentUnit(u as UnitRow, redact)),

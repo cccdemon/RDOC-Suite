@@ -62,9 +62,14 @@ Auth: optional + object-level AuthZ. Read-Model der Op-Detailseite.
 - Anonym nur bei `public`, sonst `401`.
 - Authentifiziert ohne `effectiveOpRole` ⇒ `404` (kein Leak).
 - `id` formatvalidiert (cuid-artig) ⇒ sonst `400`.
-`200 → OperationDetail` (Summary + description, guild{timezone}, leaders, units→seats mit
-`claimedBy`, resourceLinks, `viewerRole`, `canManage`). Keine auditLogs/questions/hangarShares —
-Operator-Daten kommen später als eigene, role-gated Endpoints.
+`200 → OperationDetail` (Summary + description, guild{timezone, discordInviteUrl}, leaders,
+units→seats mit `claimedBy`, resourceLinks, `viewerRole`, `canManage`). Keine
+auditLogs/questions/hangarShares — Operator-Daten kommen später als eigene, role-gated Endpoints.
+
+Das eingebettete `guild`-Objekt führt `discordInviteUrl` (string|null, aus den Server-Settings;
+treibt den „Auf Discord beitreten"-Link auf den Op-Panels) — sowohl in `OperationSummary` als auch
+`OperationDetail`. Es ist **nicht** der Scheduled-Event-Link (`Operation.discordEventId`), sondern
+die konfigurierte Guild-Einladung.
 
 ### GET /api/v1/guilds
 Auth: required (`401` sonst). Guild-Mitgliedschaften des Users.

@@ -688,6 +688,34 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               {infoRow("pin", "TREFFPUNKT", op.meetingLocation)}
               {infoRow("globe", "SYSTEM", op.meetingSystem)}
             </div>
+            {op.guild.discordInviteUrl && (
+              <a
+                href={op.guild.discordInviteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="discord-join"
+                style={{
+                  marginTop: "0.7rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.5rem",
+                  padding: "0.55rem 0.8rem",
+                  borderRadius: 8,
+                  border: "1px solid rgba(88,101,242,0.5)",
+                  background: "rgba(88,101,242,0.14)",
+                  color: "#c7ccf8",
+                  textDecoration: "none",
+                  fontFamily: MONO,
+                  fontSize: "0.72rem",
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                }}
+              >
+                <Ic name="chat" size={15} sw={1.6} />
+                Auf Discord beitreten
+              </a>
+            )}
           </div>
           <button type="button" data-testid="cover-open" title="Cover vergrößern" onClick={() => setLightbox(true)} style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622", padding: 0, cursor: "zoom-in" }}>
             <img src={op.coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />

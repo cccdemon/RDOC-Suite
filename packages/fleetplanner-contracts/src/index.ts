@@ -143,6 +143,9 @@ export const OperationSummarySchema = z
       id: z.string(),
       name: z.string(),
       iconHash: z.string().nullable(),
+      /** Guild's Discord invite URL (server settings); null when unset. Drives
+       *  the "Join on Discord" link on op panels/cards. */
+      discordInviteUrl: z.string().nullable(),
     }),
     /** Current user's signup state for the op; null when anonymous/none. */
     signupState: z.enum(["joined", "waitlist"]).nullable(),
@@ -214,6 +217,8 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
     name: z.string(),
     iconHash: z.string().nullable(),
     timezone: z.string().nullable(),
+    /** Guild's Discord invite URL (server settings); null when unset. */
+    discordInviteUrl: z.string().nullable(),
   }),
   leaders: z.array(z.object({ id: z.string(), username: z.string() })),
   units: z.array(FleetUnitSchema),

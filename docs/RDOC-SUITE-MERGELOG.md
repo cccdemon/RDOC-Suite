@@ -1,5 +1,26 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Discord-Join-Link auf Operation-Panels — Branch master
+
+User: "Add Discord Join Link to Operation Panels." Entscheidung (Rückfrage): Link = **Guild
+Discord-Invite** (`Guild.discordInviteUrl`), sichtbar auf **Op-Detail (ANMELDUNGEN-Box)** + **Liste/
+Kalender-Cards**.
+**Parity-Restore:** Das war bereits auf der SSR-`opJoinPage` als „Discord"-Fact umgesetzt
+(Completed 2026-06-07, Z.1830; Feld+Settings 2026-06-03, Z.2966). Die SPA-Migration
+(`fleetplanner-web`) hat es verloren — dieser Schritt holt es in die SPA zurück (gleiche Klasse wie
+FR-SPA-PARITY-RESTORE). KEIN Scheduled-Event-Deep-Link (`Operation.discordEventId`).
+- Contract: `guild`-Objekt in `OperationSummarySchema` + `OperationDetailSchema` um
+  `discordInviteUrl: string|null` erweitert (`packages/fleetplanner-contracts`). SPA-Typen erben
+  via Re-Export automatisch.
+- Backend: `discordInviteUrl: true` in den Guild-Selects der List-Loader (`services/operations.ts`)
+  + im Detail-Guild-Fetch (`routes/apiV1.ts`). Presenter (`api/presenters.ts`) reicht das Feld in
+  Summary + Detail durch (Row-Typen erweitert).
+- SPA: Discord-CTA in der ANMELDUNGEN-Box (`OpDetailPage.tsx`) + kleiner Discord-Link auf den
+  Listen-Cards (`CalendarPage.tsx`, Button mit `stopPropagation` wegen umschließendem `<Link>`),
+  nur wenn `guild.discordInviteUrl` gesetzt.
+- Tests: Fixtures (`test/fixtures.ts`) um `discordInviteUrl` (Platzhalter `discord.gg/example`) ergänzt.
+- Kein lokaler Build (Repo-Regel); tsc/vitest laufen im Docker-/CI-Build.
+
 ## Completed - 2026-06-12: Security- und Implementation-Review
 
 User-Auftrag: RDOC-Suite Repo auf CVEs, Sicherheitsluecken im Code, toten Code, allgemeine

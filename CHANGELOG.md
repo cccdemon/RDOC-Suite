@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Discord "Join" link on operation panels (2026-06-15)
+
+- Operation panels now surface the guild's Discord invite (`Guild.discordInviteUrl`,
+  configured in server settings) as a "Auf Discord beitreten" link: a CTA in the
+  ANMELDUNGEN box on the op detail page (`OpDetailPage`) and a compact Discord
+  button on the list/calendar cards (`CalendarPage`). Shown only when the guild
+  has an invite URL configured.
+- Contract: `OperationSummary.guild` and `OperationDetail.guild` gained
+  `discordInviteUrl: string | null` (`@rdoc-suite/fleetplanner-contracts`); the
+  backend presenters + op loaders now select and pass the field through. No new
+  DB field — reuses the existing guild invite URL from server settings.
+
 ### Changed - Fleetplanner cover management moved to the SPA (2026-06-12)
 
 - `apps/fleetplanner` is now 100% API-only — it renders zero HTML. Deleted the

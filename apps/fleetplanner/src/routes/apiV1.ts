@@ -349,7 +349,7 @@ export async function apiV1Routes(app: FastifyInstance) {
     // separately) — fetch the public guild fields here.
     const guild = await prisma.guild.findUnique({
       where: { id: (op as { guildId: string }).guildId },
-      select: { id: true, name: true, iconHash: true, timezone: true },
+      select: { id: true, name: true, iconHash: true, timezone: true, discordInviteUrl: true },
     });
     if (!guild) return sendError(reply, req, 404, "not_found", "Operation not found.");
 
