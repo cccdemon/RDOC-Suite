@@ -293,14 +293,11 @@ export function whatIsBody(bp: string, de: boolean): SafeHtml {
       <div class="${card}" style="padding:1.1rem;max-width:54rem">
         <ul style="margin:0;padding-left:1.2rem;line-height:1.7">
           <li><strong>Mission Cover</strong> — ein schickes Briefing-Poster für die Operation, automatisch aus den Daten erzeugt.</li>
-          <li><strong>Voice / Funk</strong> — Sprach-Kanäle für die Mission, <strong>über die Raumdock-Infrastruktur</strong>. Das bringt zwei Dinge (einfach gesagt):
-            <ul style="margin:.35rem 0 0;padding-left:1.1rem;line-height:1.6">
-              <li><strong>Geschlossener Missions-Funk:</strong> nur wer zur Mission gehört, hört mit — und das über Channel-Grenzen hinweg (ähnlich „Whisper to" bei TeamSpeak).</li>
-              <li><strong>Durchsage in Discord-Kanäle:</strong> einer spricht, alle hören — direkt in euren Discord-Sprachkanälen.</li>
-            </ul>
-          </li>
+          <li><strong>Wiederkehrende Einsätze</strong> — ein fester Termin (z. B. „jeden Samstag") wird automatisch immer wieder neu angelegt, jeder mit eigener Crew-Liste.</li>
+          <li><strong>Deine Schiffe</strong> — trag im Profil ein, welche Schiffe dir gehören (auch als Sammel-Import aus dem CCU-Game). Dann musst du sie beim Anmelden nicht jedes Mal neu suchen.</li>
+          <li><strong>Org-Flotte</strong> — eine Übersicht, wer in deiner Org welches Schiff besitzt (freiwillig). Praktisch, wenn man für einen Einsatz ein bestimmtes Schiff sucht oder sich eins ausleihen will.</li>
           <li><strong>Erinnerungen</strong> — Discord schickt rechtzeitig eine Nachricht, bevor es losgeht.</li>
-          <li><strong>Partner-Server</strong> — befreundete Orgs können gemeinsame Einsätze sehen und mitmachen.</li>
+          <li><strong>Partner-Server</strong> — befreundete Orgs können gemeinsame Einsätze sehen und mitmachen; ein Einsatz lässt sich auf einen Klick auch in die Discords der Partner posten.</li>
         </ul>
       </div>
     </div>
@@ -385,14 +382,11 @@ export function whatIsBody(bp: string, de: boolean): SafeHtml {
       <div class="${card}" style="padding:1.1rem;max-width:54rem">
         <ul style="margin:0;padding-left:1.2rem;line-height:1.7">
           <li><strong>Mission Cover</strong> — a slick briefing-poster image for the operation, generated automatically from its data.</li>
-          <li><strong>Voice / comms</strong> — mission voice channels, <strong>powered by the Raumdock infrastructure</strong>. In plain terms it gives you two things:
-            <ul style="margin:.35rem 0 0;padding-left:1.1rem;line-height:1.6">
-              <li><strong>Closed mission comms:</strong> only people in the mission hear it — across channel boundaries (like TeamSpeak's "Whisper to").</li>
-              <li><strong>Broadcast into Discord channels:</strong> one person talks, everyone hears — straight into your Discord voice channels.</li>
-            </ul>
-          </li>
+          <li><strong>Recurring operations</strong> — a fixed slot (e.g. "every Saturday") is re-created automatically, each with its own crew list.</li>
+          <li><strong>Your ships</strong> — record which ships you own in your profile (or bulk-import from CCU-Game), so you don't have to search for them every time you sign up.</li>
+          <li><strong>Org fleet</strong> — an overview of who in your org owns which ship (opt-in). Handy when you need a particular hull for an op or want to borrow one.</li>
           <li><strong>Reminders</strong> — Discord pings everyone in time before it starts.</li>
-          <li><strong>Partner servers</strong> — friendly orgs can see and join shared operations.</li>
+          <li><strong>Partner servers</strong> — friendly orgs can see and join shared operations; an op can also be cross-posted into the partners' Discords with one click.</li>
         </ul>
       </div>
     </div>
@@ -469,7 +463,7 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
         </p>
         <p style="margin-top:.5rem">
           The core — planning operations and posting them as Discord scheduled events — needs nothing
-          but this web app and the Fleetplanner Discord bot. Voice, briefing covers and metrics are
+          but this web app and the Fleetplanner Discord bot. Briefing covers and metrics are
           <strong>optional add-ons</strong> (see below).
         </p>
       </div>
@@ -479,7 +473,9 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
       <div class="section-title">Optional features</div>
       <div class="card" style="padding:1rem;max-width:52rem">
         <p style="margin-top:0">
-          These extend the Fleetplanner but are not required to plan and run operations:
+          These extend the Fleetplanner but are not required to plan and run operations.
+          (Mission voice is currently being rebuilt from scratch and is unavailable for now;
+          planning and Discord events work independently of it.)
         </p>
         <table class="user-table" style="width:100%;margin-top:.75rem">
           <thead>
@@ -487,11 +483,11 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
           </thead>
           <tbody>
             <tr>
-              <td><span class="tag tag-cyan">RDOC Squad Link (Companion)</span></td>
+              <td><span class="tag tag-cyan">Org fleet</span></td>
               <td>
-                The desktop app for <strong>mission voice</strong> (Command Net + Global Radio Net).
-                Only needed by people who use voice during an op, and only when a server has voice
-                enabled by the SuperAdmin. Without it, planning still works fully.
+                An opt-in roster of who in a server owns which ship, so members can find or borrow a
+                hull for an operation. Each member chooses whether their ships appear
+                (Account &rarr; Settings).
               </td>
             </tr>
             <tr>
@@ -516,9 +512,6 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
       <div class="card" style="padding:1rem;max-width:52rem">
         <p style="margin-top:0">
           There are only <strong>three</strong> roles, shown as a coloured tag next to your name.
-          Fleet roles and mission roles are separate: a fleet role grants platform/server
-          permissions; it does <strong>not</strong> automatically grant mission voice — that is
-          assigned per operation (see Mission voice).
         </p>
         <table class="user-table" style="width:100%;margin-top:.75rem">
           <thead>
@@ -532,7 +525,7 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
             <tr>
               <td><span class="tag tag-role">ADMIRAL</span></td>
               <td>Superadmin</td>
-              <td>Instance owner. Manage all Discord servers, ban/unban servers, trigger ship sync, configure the voice bridge. One per instance.</td>
+              <td>Instance owner. Manage all Discord servers, ban/unban servers, trigger ship sync. One per instance.</td>
             </tr>
             <tr>
               <td><span class="tag tag-role">FLEET OP</span></td>
@@ -560,61 +553,6 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
     </div>
 
     <div class="section">
-      <div class="section-title">Mission voice</div>
-      <div class="card" style="padding:1rem;max-width:52rem">
-        <p style="margin-top:0">
-          <em>Optional add-on.</em> Mission voice runs over a separate LiveKit audio path (Discord
-          audio is never touched) and is reached through the optional <strong>RDOC Squad Link</strong>
-          companion app using two push-to-talk keys. It requires the server to have voice enabled by
-          the SuperAdmin. It is granted per operation via the <strong>Commanders</strong> tab — a
-          mission roster, not an admin roster. Fleet admins are not on the nets unless assigned a
-          mission role.
-        </p>
-        <table class="user-table" style="width:100%;margin-top:.75rem">
-          <thead>
-            <tr><th>Net</th><th>Who &amp; what</th></tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><span class="tag tag-cyan">Command Net</span></td>
-              <td>Mission commander voice for mission leaders and commanders.</td>
-            </tr>
-            <tr>
-              <td><span class="tag tag-gold">Global Radio Net</span></td>
-              <td>
-                RelayBot broadcast into assigned Discord voice channels. Intentionally narrower than
-                Command Net — granted only to users who may broadcast.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table class="user-table" style="width:100%;margin-top:1rem">
-          <thead>
-            <tr>
-              <th>Mission role</th>
-              <th>Command Net</th>
-              <th>Global Radio Net</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Event Leader</td><td>Yes</td><td>Yes</td></tr>
-            <tr><td>Raidleader</td><td>Yes</td><td>Yes</td></tr>
-            <tr><td>Wingcommander (deputy)</td><td>Yes</td><td>Yes</td></tr>
-            <tr><td>Fleet Op (operator)</td><td>No by default</td><td>No by default</td></tr>
-            <tr><td>Ship Captain</td><td>Yes</td><td>No by default</td></tr>
-            <tr><td>CQB Captain</td><td>Yes</td><td>No by default</td></tr>
-            <tr><td>Added Commander</td><td>Yes</td><td>Optional</td></tr>
-          </tbody>
-        </table>
-        <p class="text-dim text-sm" style="margin-top:.75rem;margin-bottom:0">
-          The Fleet Op (server operator) manages mission needs and confirms units but is not
-          automatically on the Command Net. To request Global Radio (RelayBot) voice for your server,
-          contact the SuperAdmin (see Contact &amp; support below).
-        </p>
-      </div>
-    </div>
-
-    <div class="section">
       <div class="section-title">Getting started — for Admirals</div>
       <div class="card" style="padding:1rem;max-width:52rem">
         <ol style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem">
@@ -624,7 +562,7 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
             bot on your server. You become that server's Admiral.
           </li>
           <li>
-            Go to <strong>Servers → Settings</strong> to set an optional event voice channel, a
+            Go to <strong>Servers → Settings</strong> to set the server timezone, an optional
             Discord invite link (shown to guests on the signup page), and Discord-role mapping
             (auto-assigns Admiral permissions on login).
           </li>
@@ -646,10 +584,6 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
           <li>
             Accept incoming ships / CQB teams (and any carried ground vehicles). Accepted units open
             their seats for crew; assign people to composition slots as needed.
-          </li>
-          <li>
-            Optionally (with voice enabled): prepare mission voice and pull unit crews into their
-            Discord voice channels.
           </li>
           <li>
             When done, set status to <strong>Completed</strong> (export participants as CSV) or
@@ -764,6 +698,10 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
             token to re-link.
           </li>
         </ol>
+        <p style="margin-top:.5rem">
+          Bonus: an operation can be cross-posted straight into the partners' Discords (event
+          distribution) — the target server's Fleet Ops approve it first.
+        </p>
       </div>
     </div>
 
@@ -806,8 +744,7 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
           <a href="${bp}/feedback">Feedback</a> tab.
         </p>
         <p style="margin-top:.5rem">
-          To reach the instance SuperAdmin directly (e.g. to request Voice Permission for your
-          server):
+          To reach the instance SuperAdmin directly:
           ${
             opts.superadminContact
               ? html`<strong class="text-mono">${opts.superadminContact}</strong>`

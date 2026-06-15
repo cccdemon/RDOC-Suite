@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Info pages + API docs refreshed to current scope (2026-06-15)
+
+- **"Was ist das?" / "Anleitung":** removed all mention of the voice subsystem (Squad
+  Link companion, Command Net, Global Radio Net) — it was removed 2026-06-12 and is
+  being rebuilt. The pages now describe the live feature set (operations, recurring
+  events, owned-ship/CCU import, Org-Fleet, mission cover, partnerships + event
+  distribution, Discord events/reminders). The Anleitung notes voice is temporarily
+  unavailable.
+- **API docs (OpenAPI):** documented previously-undocumented endpoints that exist in
+  the API — `PATCH /api/v1/profile` (UI language + Org-Fleet opt-in),
+  `GET /api/v1/guilds/{id}/fleet` (Org-Fleet roster), `GET /api/v1/guilds/{id}/channels`
+  (wizard share picker), and `GET /api/v1/locations/search` (rendezvous autocomplete).
+
 ### Security - Fleetplanner hardening quick-wins (2026-06-15)
 
 - **No internal error detail in prod:** the global error handler now returns a

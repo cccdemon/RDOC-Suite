@@ -1,5 +1,39 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Info-Seiten "Was ist das?" + "Anleitung" auf aktuellen Stand (Voice entfernt) — Branch master
+
+Auftrag User: alle docs lesen, Code voll analysieren, Funktionsumfang für Nicht-ITler beschreiben,
+darauf basierend die Seiten "Was ist das?" (`whatis`) und "Anleitung" (`how-to`) ändern.
+
+Ist-Stand (Code = Ground Truth): Voice-Stack (bridge/relay-bots/companion-Backend) am 2026-06-12
+entfernt (→ [VOICE-ARCHIVE-2026-06.md](VOICE-ARCHIVE-2026-06.md), Redesign offen). KEINE Voice-Refs
+mehr in apps/fleetplanner oder fleetplanner-web. Beide Info-Seiten bewerben aber noch Squad
+Link / Command Net / Global Radio Net → veraltet.
+
+Änderung 1 — Info-Seiten ([apps/fleetplanner/src/web/pages.ts](apps/fleetplanner/src/web/pages.ts), reiner Content-Builder, kein Route/Schema):
+- `whatIsBody` (DE+EN): Voice-Extra raus; aktuelle Extras rein (Mission Cover, wiederkehrende Events,
+  Schiffe/CCU-Import, Org-Flotte, Partner-Server + Event-Verteilung, Discord-Erinnerungen).
+- `howToBody`: Sprache bleibt Englisch (war es schon; großer DE-Rewrite verworfen → stattdessen
+  chirurgische Edits, weniger Risiko). Entfernt: ganze "Mission voice"-Sektion (Command/Global Net +
+  Rollen-Tabellen), Squad-Link-Add-on-Zeile, "voice bridge"/event-voice-channel/Voice-Schritt/
+  Voice-Permission-Contact. Ergänzt: Hinweis "Voice wird neu gebaut, derzeit nicht verfügbar",
+  Org-Fleet-Add-on-Zeile, Event-Verteilung-Notiz bei Partnerschaften.
+- SPA rendert beide via /api/v1/content/:slug unverändert.
+
+Änderung 2 — API-Docs (OpenAPI) [apps/fleetplanner/src/api/openapi.ts](apps/fleetplanner/src/api/openapi.ts):
+Spec war voice-frei, aber neuere Routes fehlten. Ergänzt (alle real existierend, contract-/handler-belegt):
+- `PATCH /api/v1/profile` (locale + shareHangarWithOrg opt-in)
+- `GET /api/v1/guilds/{id}/fleet` → `OrgFleetResponse` (Contract neu in SCHEMAS importiert) — FR-P3 Org-Flotte
+- `GET /api/v1/guilds/{id}/channels` (Wizard-Share-Picker, {id,name})
+- `GET /api/v1/locations/search` (Rendezvous-Autocomplete)
+- Restliche Drift NACHGEZOGEN (alle haben zod-Contract → importiert: AssignCqbRequest, FormationRequest,
+  AssignFormationRequest, AssignCarrierRequest, AnnounceRequest): cqb/{signupId}/assign,
+  cqb-teams/{groupId}(+/carrier), formations(+/{fid}), units/{}/formation, units/{}/carrier,
+  operations/{id}/announce, operations/{id}/questions(POST), operations/{id}/seats/{seatId}(PATCH),
+  content/{slug}.
+- Verifiziert: `comm` der registrierten /api/v1-Routes vs. dokumentierte = 0 Lücken. Tests
+  (apiV1.inject.test.ts) prüfen Doku-Pfade additiv (keine Snapshot-Bruchgefahr).
+
 ## Queued / Planned Step - 2026-06-15: Security-Quick-Wins apps/fleetplanner (Findings 1,2,7,8) — Branch master
 
 User-Review (static + pnpm audit). Umgesetzt nur die risikoarmen High-Value-Fixes (User-Wahl):

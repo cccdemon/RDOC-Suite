@@ -63,6 +63,12 @@ import {
   ResourceLinkResponseSchema,
   SessionResponseSchema,
   ShipSearchResponseSchema,
+  OrgFleetResponseSchema,
+  AssignCqbRequestSchema,
+  FormationRequestSchema,
+  AssignFormationRequestSchema,
+  AssignCarrierRequestSchema,
+  AnnounceRequestSchema,
 } from "./contracts/index.js";
 
 type JsonObject = Record<string, unknown>;
@@ -123,6 +129,12 @@ const SCHEMAS = {
   TemplateListResponse: TemplateListResponseSchema,
   ApplyTemplateRequest: ApplyTemplateRequestSchema,
   RoadmapResponse: RoadmapResponseSchema,
+  OrgFleetResponse: OrgFleetResponseSchema,
+  AssignCqbRequest: AssignCqbRequestSchema,
+  FormationRequest: FormationRequestSchema,
+  AssignFormationRequest: AssignFormationRequestSchema,
+  AssignCarrierRequest: AssignCarrierRequestSchema,
+  AnnounceRequest: AnnounceRequestSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -543,6 +555,28 @@ export function buildOpenApiDocument(): JsonObject {
           responses: { "200": { description: "OK", ...jsonContent(ref("AccountResponse")) }, "401": errorResponses["401"] },
         },
       },
+      "/api/v1/profile": {
+        patch: {
+          operationId: "updateProfile",
+          summary: "Update own profile preferences (UI language, org-fleet opt-in)",
+          description:
+            "Partial update. `locale` (de|en) sets the UI language that follows the account; " +
+            "`shareHangarWithOrg` opts your ships into the guild Org-Fleet roster.",
+          tags: ["auth"],
+          security: [{ cookieSession: [] }],
+          requestBody: {
+            required: true,
+            ...jsonContent({
+              type: "object",
+              properties: {
+                locale: { type: "string", enum: ["de", "en"] },
+                shareHangarWithOrg: { type: "boolean" },
+              },
+            }),
+          },
+          responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
       "/api/v1/guilds": {
         get: {
           operationId: "listGuilds",
@@ -578,6 +612,48 @@ export function buildOpenApiDocument(): JsonObject {
           ],
           requestBody: { required: true, ...jsonContent(ref("UpdateGuildSettingsRequest")) },
           responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/guilds/{id}/fleet": {
+        get: {
+          operationId: "getOrgFleet",
+          summary: "Org-Fleet roster: who in the guild owns which ship (orgamember only)",
+          description:
+            "Restricted to members with the guild's orgamember role (admiralRoleId → fleetoperator) " +
+            "or the instance superadmin; lists only opted-in members' ships. 403 otherwise.",
+          tags: ["guilds"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("OrgFleetResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/guilds/{id}/channels": {
+        get: {
+          operationId: "listGuildChannels",
+          summary: "Guild text/announcement channels for the wizard share picker (fleet operator only)",
+          tags: ["guilds"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: {
+            "200": {
+              description: "OK",
+              ...jsonContent({
+                type: "object",
+                required: ["channels"],
+                properties: {
+                  channels: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      required: ["id", "name"],
+                      properties: { id: { type: "string" }, name: { type: "string" } },
+                    },
+                  },
+                },
+              }),
+            },
+            ...errorResponses,
+          },
         },
       },
       "/api/v1/guilds/{id}/members/{userId}/role": {
@@ -1154,6 +1230,214 @@ export function buildOpenApiDocument(): JsonObject {
           responses: { "200": { description: "Removed", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
         },
       },
+      "/api/v1/operations/{id}/seats/{seatId}": {
+        patch: {
+          operationId: "editSeat",
+          summary: "Enable/disable or rename a seat (unit captain or operator)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "seatId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: {
+            required: true,
+            ...jsonContent({
+              type: "object",
+              properties: { active: { type: "boolean" }, label: { type: "string", maxLength: 80 } },
+            }),
+          },
+          responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/questions": {
+        post: {
+          operationId: "askQuestion",
+          summary: "Ask a question on an operation (any member, or anyone on a public op)",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: {
+            required: true,
+            ...jsonContent({
+              type: "object",
+              required: ["body"],
+              properties: { body: { type: "string", minLength: 1, maxLength: 1000 } },
+            }),
+          },
+          responses: {
+            "200": {
+              description: "Asked",
+              ...jsonContent({ type: "object", required: ["ok", "id"], properties: { ok: { type: "boolean" }, id: { type: "string" } } }),
+            },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/cqb/{signupId}/assign": {
+        post: {
+          operationId: "assignCqbSoldier",
+          summary: "Operator: place/move a CQB soldier into a squad (null groupId unassigns)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "signupId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AssignCqbRequest")) },
+          responses: { "200": { description: "Assigned", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/cqb-teams/{groupId}": {
+        patch: {
+          operationId: "renameCqbTeam",
+          summary: "Operator: rename a CQB squad",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "groupId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("FormationRequest")) },
+          responses: { "200": { description: "Renamed", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/cqb-teams/{groupId}/carrier": {
+        put: {
+          operationId: "setCqbTeamCarrier",
+          summary: "Operator: embed a CQB squad in a carrier ship (null detaches)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "groupId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AssignCarrierRequest")) },
+          responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/formations": {
+        post: {
+          operationId: "createFormation",
+          summary: "Operator: create a ship formation (Verband)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("FormationRequest")) },
+          responses: {
+            "200": {
+              description: "Created",
+              ...jsonContent({ type: "object", required: ["ok", "id"], properties: { ok: { type: "boolean" }, id: { type: "string" } } }),
+            },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/formations/{fid}": {
+        patch: {
+          operationId: "renameFormation",
+          summary: "Operator: rename a formation",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "fid", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("FormationRequest")) },
+          responses: { "200": { description: "Renamed", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+        delete: {
+          operationId: "deleteFormation",
+          summary: "Operator: delete a formation (its ships become unassigned)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "fid", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Deleted", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/operations/{id}/units/{unitId}/formation": {
+        put: {
+          operationId: "assignUnitFormation",
+          summary: "Operator: assign/detach a ship to a formation (only ships; null detaches)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "unitId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AssignFormationRequest")) },
+          responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses, "409": { description: "Only ships can join a formation", ...jsonContent(ref("ApiError")) } },
+        },
+      },
+      "/api/v1/operations/{id}/units/{unitId}/carrier": {
+        put: {
+          operationId: "setUnitCarrier",
+          summary: "Operator: load a ground vehicle into a carrier ship (null detaches)",
+          description: "Validates structural rules only (carrier is a ship in this op, no self-carry); the carried unit inherits the carrier's accept/reject status.",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "unitId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AssignCarrierRequest")) },
+          responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses, "409": { description: "Self-carry not allowed", ...jsonContent(ref("ApiError")) } },
+        },
+      },
+      "/api/v1/operations/{id}/announce": {
+        post: {
+          operationId: "announceOperation",
+          summary: "Operator: post an op announcement to a Discord text channel of this op's guild",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AnnounceRequest")) },
+          responses: {
+            "200": { description: "Posted", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+            "502": { description: "Discord post failed", ...jsonContent(ref("ApiError")) },
+          },
+        },
+      },
+      "/api/v1/content/{slug}": {
+        get: {
+          operationId: "getContent",
+          summary: "Static info/legal page content as data (public)",
+          description: "Returns first-party HTML for a known slug (e.g. whatis, how-to, impressum, datenschutz, changelog, sc-tools, why-unsigned). 404 on unknown slug.",
+          tags: ["meta"],
+          parameters: [
+            { name: "slug", in: "path", required: true, schema: { type: "string" } },
+            { name: "lang", in: "query", required: false, schema: { type: "string", enum: ["de", "en"] } },
+          ],
+          responses: {
+            "200": {
+              description: "OK",
+              ...jsonContent({ type: "object", required: ["title", "html"], properties: { title: { type: "string" }, html: { type: "string" } } }),
+            },
+            "404": errorResponses["404"],
+          },
+        },
+      },
       "/api/v1/hangar": {
         get: {
           operationId: "getHangar",
@@ -1264,6 +1548,38 @@ export function buildOpenApiDocument(): JsonObject {
           responses: {
             "200": { description: "OK", ...jsonContent(ref("ShipSearchResponse")) },
             "400": errorResponses["400"],
+          },
+        },
+      },
+      "/api/v1/locations/search": {
+        get: {
+          operationId: "searchLocations",
+          summary: "Rendezvous autocomplete: man-made locations from the synced catalog",
+          tags: ["meta"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "q", in: "query", required: false, schema: { type: "string", maxLength: 80 } },
+            { name: "system", in: "query", required: false, schema: { type: "string" }, description: "Scope to a star system (e.g. stanton)." },
+          ],
+          responses: {
+            "200": {
+              description: "OK",
+              ...jsonContent({
+                type: "object",
+                required: ["locations"],
+                properties: {
+                  locations: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      required: ["name", "system"],
+                      properties: { name: { type: "string" }, system: { type: "string" } },
+                    },
+                  },
+                },
+              }),
+            },
+            "401": errorResponses["401"],
           },
         },
       },
