@@ -1,0 +1,339 @@
+<!-- @dsCard group="Polls" name="Umfragen / Polls module" subtitle="List · Vote (single/multi) · Results · Create" -->
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RDOC Fleetplanner — Umfragen (Mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+<style>
+:root{
+  --bg:#050810; --bg2:#090f18; --bg3:#0e1926; --card:#0b1019; --row:#0a1018;
+  --cyan:#00d4ff; --gold:#f0a500; --green:#00ff88; --red:#ff4444; --purple:#a064ff;
+  --text:#ccdde8; --head:#eaf4fb; --dim:#9fb1c2; --dim2:#7e92a4; --dim3:#5b6b7a;
+  --mono:"Share Tech Mono",ui-monospace,monospace; --body:"Rajdhani","Inter",system-ui,sans-serif;
+  --border:rgba(0,212,255,.12); --border-card:rgba(0,212,255,.16); --border-hi:rgba(0,212,255,.32);
+  --r-card:14px; --r-input:8px; --r-chip:6px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.4}
+a{color:var(--cyan);text-decoration:none}
+.crt{position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px)}
+.main{max-width:1180px;margin:0 auto;padding:1.4rem clamp(.9rem,2.5vw,2rem) 5rem}
+
+/* topbar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 0;margin-bottom:1.4rem;border-bottom:1px solid rgba(0,212,255,.14)}
+.brand{font-family:var(--mono);font-size:.95rem;letter-spacing:.18em;color:var(--cyan)}
+.nav{display:flex;gap:.3rem;flex-wrap:wrap}
+.nav a{font-family:var(--mono);font-size:.72rem;letter-spacing:.05em;color:var(--dim);padding:.4rem .7rem;border-radius:7px;text-transform:uppercase}
+.nav a.active{color:var(--cyan);background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3)}
+.user{font-family:var(--mono);font-size:.74rem;color:var(--dim)}
+
+/* headers */
+.h1{font-weight:700;font-size:1.9rem;line-height:1.15;color:var(--head);margin:0 0 .3rem}
+.h2{font-weight:700;font-size:1.2rem;color:var(--head);margin:0 0 .6rem}
+.mono-label{font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+.section-hd{display:flex;align-items:center;gap:.7rem;margin:2.6rem 0 1rem}
+.section-hd .ln{flex:1;height:1px;background:rgba(0,212,255,.14)}
+.section-hd .tag{font-family:var(--mono);font-size:.64rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase}
+
+/* tags */
+.tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:.6rem;letter-spacing:.08em;padding:.16rem .45rem;border-radius:4px;border:1px solid;text-transform:uppercase;white-space:nowrap}
+.tag.cyan{color:var(--cyan);border-color:rgba(0,212,255,.38);background:rgba(0,212,255,.08)}
+.tag.green{color:var(--green);border-color:rgba(0,255,136,.4);background:rgba(0,255,136,.08)}
+.tag.gold{color:var(--gold);border-color:rgba(240,165,0,.42);background:rgba(240,165,0,.09)}
+.tag.purple{color:var(--purple);border-color:rgba(160,100,255,.42);background:rgba(160,100,255,.09)}
+.tag.dim{color:#9fb6c9;border-color:rgba(159,182,201,.34);background:rgba(159,182,201,.07)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+
+/* cards */
+.card{background:var(--bg2);border:1px solid var(--border-card);border-radius:var(--r-card);padding:1.2rem 1.3rem}
+.card-head{display:flex;align-items:center;gap:.55rem;margin-bottom:.9rem;padding-bottom:.7rem;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:.74rem;letter-spacing:.06em;color:var(--head);text-transform:uppercase}
+.card-head .right{margin-left:auto;display:flex;gap:.4rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1rem}
+
+/* poll list card */
+.poll{display:flex;flex-direction:column;gap:.7rem;transition:border-color .15s;cursor:pointer}
+.poll:hover{border-color:var(--border-hi)}
+.poll .toprow{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap}
+.poll .ttl{font-weight:700;font-size:1.08rem;color:var(--head);line-height:1.2}
+.poll .desc{color:var(--dim);font-size:.92rem}
+.poll .foot{display:flex;align-items:center;gap:.3rem 1rem;flex-wrap:wrap;font-family:var(--mono);font-size:.66rem;color:var(--dim2);letter-spacing:.04em}
+.poll .foot .icn{color:var(--cyan)}
+
+/* mini bar */
+.mini{height:5px;border-radius:5px;background:var(--bg3);overflow:hidden;display:flex}
+.mini > i{display:block;height:100%}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.6rem 1rem;border:1px solid rgba(0,212,255,.45);background:rgba(0,212,255,.1);color:var(--cyan);font-family:var(--mono);font-size:.78rem;letter-spacing:.05em;border-radius:8px;cursor:pointer;text-transform:uppercase}
+.btn.primary{border-color:rgba(0,255,136,.5);background:rgba(0,255,136,.12);color:var(--green)}
+.btn.ghost{border-color:rgba(159,182,201,.3);background:transparent;color:var(--dim)}
+.btn.sm{padding:.4rem .7rem;font-size:.7rem}
+
+/* vote options */
+.opt{display:flex;align-items:center;gap:.8rem;padding:.75rem .85rem;border:1px solid rgba(0,212,255,.12);border-radius:10px;background:rgba(255,255,255,.013);margin-top:.55rem;cursor:pointer;transition:.12s}
+.opt:hover{border-color:rgba(0,212,255,.32);background:rgba(0,212,255,.04)}
+.opt.sel{border-color:rgba(0,255,136,.5);background:rgba(0,255,136,.06)}
+.mark{width:20px;height:20px;flex-shrink:0;border:2px solid rgba(159,182,201,.5);display:inline-flex;align-items:center;justify-content:center}
+.mark.radio{border-radius:50%}
+.mark.check{border-radius:5px}
+.opt.sel .mark{border-color:var(--green);color:var(--green)}
+.opt.sel .mark.radio::after{content:"";width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green)}
+.opt.sel .mark.check::after{content:"✓";font-size:.8rem;font-weight:700}
+.opt .lab{font-weight:600;color:#dce8f0}
+
+/* result rows */
+.res{margin-top:.7rem}
+.res .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.3rem}
+.res .name{font-weight:600;color:#dce8f0}
+.res .name .you{font-family:var(--mono);font-size:.55rem;color:var(--green);border:1px solid rgba(0,255,136,.4);background:rgba(0,255,136,.08);border-radius:4px;padding:.05rem .3rem;margin-left:.45rem;letter-spacing:.06em;text-transform:uppercase}
+.res .pct{font-family:var(--mono);font-size:.85rem;color:var(--head)}
+.res .pct small{color:var(--dim2);font-size:.7rem}
+.bar{height:9px;border-radius:6px;background:var(--bg3);overflow:hidden}
+.bar > i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--cyan),#5fe6ff)}
+.bar.win > i{background:linear-gradient(90deg,var(--gold),#f5c451)}
+
+/* form */
+.field{margin-bottom:1.1rem}
+.field > label{display:block;font-family:var(--mono);font-size:.64rem;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin-bottom:.4rem}
+.input,.textarea{width:100%;background:var(--bg);border:1px solid var(--border-card);border-radius:var(--r-input);color:var(--head);font-family:var(--body);font-size:.98rem;padding:.6rem .75rem}
+.textarea{min-height:84px;resize:vertical}
+.optline{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+.optline .input{flex:1}
+.optline .del{color:var(--red);border:1px solid rgba(255,68,68,.3);background:rgba(255,68,68,.06);border-radius:7px;padding:.45rem .6rem;cursor:pointer;font-family:var(--mono);font-size:.7rem}
+.seg{display:flex;gap:.5rem;flex-wrap:wrap}
+.seg .pill{flex:1;min-width:150px;padding:.7rem .8rem;border:1px solid var(--border-card);border-radius:10px;background:var(--bg);cursor:pointer}
+.seg .pill.on{border-color:var(--border-hi);background:rgba(0,212,255,.08)}
+.seg .pill .t{font-weight:700;color:var(--head)}
+.seg .pill .s{font-size:.82rem;color:var(--dim)}
+.seg .pill .t .ic{margin-right:.4rem}
+.toggle{display:flex;align-items:center;justify-content:space-between;padding:.6rem .2rem;border-bottom:1px solid var(--border)}
+.toggle:last-child{border-bottom:none}
+.toggle .lab{font-weight:600;color:#dce8f0}
+.toggle .lab small{display:block;color:var(--dim2);font-weight:400;font-size:.82rem}
+.sw{width:42px;height:24px;border-radius:14px;background:var(--bg3);border:1px solid var(--border-card);position:relative;flex-shrink:0}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:var(--dim2);transition:.15s}
+.sw.on{background:rgba(0,255,136,.18);border-color:rgba(0,255,136,.5)}
+.sw.on::after{left:20px;background:var(--green);box-shadow:0 0 8px var(--green)}
+.note{font-size:.84rem;color:var(--dim2);margin-top:.6rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+.frame-cap{font-family:var(--mono);font-size:.62rem;color:var(--dim3);letter-spacing:.1em;text-transform:uppercase;margin:.2rem 0 .6rem}
+</style>
+</head>
+<body>
+<div class="crt"></div>
+<div class="main">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:1.4rem">
+      <span class="brand">RDOC · FLEETPLANNER</span>
+      <nav class="nav">
+        <a href="#">Operationen</a>
+        <a href="#">Kalender</a>
+        <a href="#">Org-Flotte</a>
+        <a href="#" class="active">Umfragen</a>
+        <a href="#">Roadmap</a>
+      </nav>
+    </div>
+    <span class="user">CMDR_Mueller · ◷ EU</span>
+  </div>
+
+  <!-- ============ SCREEN 1 — LIST ============ -->
+  <div class="frame-cap">Screen 1 — /polls · Liste</div>
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem">
+    <div>
+      <h1 class="h1">Umfragen</h1>
+      <div class="mono-label">3 offen · 1 geschlossen · Filter: Alle Sichtbarkeiten</div>
+    </div>
+    <button class="btn primary">+ Neue Umfrage</button>
+  </div>
+
+  <div class="grid">
+    <!-- card 1 -->
+    <div class="card poll">
+      <div class="toprow">
+        <span class="tag green"><span class="dot"></span>Offen</span>
+        <span class="tag cyan">Privat · Dein Server</span>
+        <span class="tag dim">Einfachauswahl</span>
+      </div>
+      <div class="ttl">Nächster Großeinsatz — welcher Wochentag?</div>
+      <div class="desc">Wir planen die nächste Org-Operation. Wann passt es den meisten?</div>
+      <div class="mini"><i style="width:46%;background:var(--cyan)"></i><i style="width:30%;background:var(--gold)"></i><i style="width:24%;background:var(--purple)"></i></div>
+      <div class="foot">
+        <span><span class="icn">▣</span> 37 Stimmen</span>
+        <span><span class="icn">◷</span> schließt in 2 Tagen</span>
+        <span>von Mueller</span>
+      </div>
+    </div>
+
+    <!-- card 2 -->
+    <div class="card poll">
+      <div class="toprow">
+        <span class="tag green"><span class="dot"></span>Offen</span>
+        <span class="tag gold">Partner</span>
+        <span class="tag dim">Mehrfachauswahl · max 3</span>
+      </div>
+      <div class="ttl">Welche Schiffsklassen für die Allianz-Flotte?</div>
+      <div class="desc">Stimmt für bis zu 3 Klassen, die wir gemeinsam priorisieren.</div>
+      <div class="mini"><i style="width:33%;background:var(--cyan)"></i><i style="width:27%;background:var(--gold)"></i><i style="width:22%;background:var(--green)"></i><i style="width:18%;background:var(--purple)"></i></div>
+      <div class="foot">
+        <span><span class="icn">▣</span> 64 Stimmen</span>
+        <span><span class="icn">◷</span> schließt in 5 Tagen</span>
+        <span>von HEADWiG</span>
+      </div>
+    </div>
+
+    <!-- card 3 -->
+    <div class="card poll">
+      <div class="toprow">
+        <span class="tag green"><span class="dot"></span>Offen</span>
+        <span class="tag purple">Öffentlich</span>
+        <span class="tag dim">Einfachauswahl · anonym</span>
+      </div>
+      <div class="ttl">Community-Event-Format für Q3?</div>
+      <div class="desc">Anonyme Abstimmung — Ergebnis erst nach Schluss sichtbar.</div>
+      <div class="mini"><i style="width:100%;background:var(--bg3)"></i></div>
+      <div class="foot">
+        <span><span class="icn">▣</span> 128 Stimmen</span>
+        <span><span class="icn">◷</span> schließt in 9 Tagen</span>
+        <span>Ergebnis verborgen</span>
+      </div>
+    </div>
+
+    <!-- card 4 closed -->
+    <div class="card poll" style="opacity:.85">
+      <div class="toprow">
+        <span class="tag dim">Geschlossen</span>
+        <span class="tag cyan">Privat · Dein Server</span>
+      </div>
+      <div class="ttl">Logo-Variante für die Org wählen</div>
+      <div class="desc">Abgeschlossen — Variante B hat gewonnen.</div>
+      <div class="mini"><i style="width:62%;background:var(--gold)"></i><i style="width:38%;background:var(--dim3)"></i></div>
+      <div class="foot">
+        <span><span class="icn">▣</span> 51 Stimmen</span>
+        <span>✓ beendet 12.06.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 2 — DETAIL / VOTE ============ -->
+  <div class="section-hd"><span class="tag">Screen 2 — /polls/:id · Abstimmen</span><span class="ln"></span></div>
+  <div class="two">
+    <!-- single choice -->
+    <div class="card">
+      <div class="card-head">Abstimmen — Einfachauswahl <span class="right"><span class="tag cyan">Privat</span><span class="tag green"><span class="dot"></span>Offen</span></span></div>
+      <h2 class="h2">Nächster Großeinsatz — welcher Wochentag?</h2>
+      <p style="color:var(--dim);font-size:.92rem;margin:.2rem 0 1rem">Wähle <b>einen</b> Tag. Du kannst deine Stimme ändern, solange die Umfrage offen ist.</p>
+      <div class="opt sel"><span class="mark radio"></span><span class="lab">Freitag Abend</span></div>
+      <div class="opt"><span class="mark radio"></span><span class="lab">Samstag Nachmittag</span></div>
+      <div class="opt"><span class="mark radio"></span><span class="lab">Samstag Abend</span></div>
+      <div class="opt"><span class="mark radio"></span><span class="lab">Sonntag Abend</span></div>
+      <div style="display:flex;gap:.6rem;margin-top:1.1rem">
+        <button class="btn primary">Stimme abgeben</button>
+        <button class="btn ghost sm">Stimme zurückziehen</button>
+      </div>
+      <div class="foot" style="margin-top:.9rem;font-family:var(--mono);font-size:.66rem;color:var(--dim2)">◷ schließt 17.06. 20:00 · ▣ 37 Stimmen bisher</div>
+    </div>
+
+    <!-- multi choice -->
+    <div class="card">
+      <div class="card-head">Abstimmen — Mehrfachauswahl <span class="right"><span class="tag gold">Partner</span><span class="tag green"><span class="dot"></span>Offen</span></span></div>
+      <h2 class="h2">Welche Schiffsklassen priorisieren?</h2>
+      <p style="color:var(--dim);font-size:.92rem;margin:.2rem 0 1rem">Wähle <b>bis zu 3</b> Optionen. <span style="color:var(--gold)">2 / 3 gewählt</span></p>
+      <div class="opt sel"><span class="mark check"></span><span class="lab">Schwere Jäger (Heavy Fighter)</span></div>
+      <div class="opt"><span class="mark check"></span><span class="lab">Bomber</span></div>
+      <div class="opt sel"><span class="mark check"></span><span class="lab">Capital / Träger</span></div>
+      <div class="opt"><span class="mark check"></span><span class="lab">Support / Medical</span></div>
+      <div class="opt"><span class="mark check"></span><span class="lab">Bergbau (Mining)</span></div>
+      <div style="display:flex;gap:.6rem;margin-top:1.1rem">
+        <button class="btn primary">Auswahl speichern</button>
+      </div>
+      <div class="foot" style="margin-top:.9rem;font-family:var(--mono);font-size:.66rem;color:var(--dim2)">◷ schließt in 5 Tagen · ▣ 64 Stimmen · ＋ eigene Option vorschlagen</div>
+    </div>
+  </div>
+
+  <!-- ============ SCREEN 3 — RESULTS ============ -->
+  <div class="section-hd"><span class="tag">Screen 3 — Ergebnis</span><span class="ln"></span></div>
+  <div class="card">
+    <div class="card-head">Ergebnis <span class="right"><span class="tag cyan">Privat</span><span class="tag green"><span class="dot"></span>Offen · live</span></span></div>
+    <h2 class="h2">Nächster Großeinsatz — welcher Wochentag?</h2>
+    <div class="res">
+      <div class="top"><span class="name">Freitag Abend <span class="you">deine Stimme</span></span><span class="pct">46% <small>· 17</small></span></div>
+      <div class="bar win"><i style="width:46%"></i></div>
+    </div>
+    <div class="res">
+      <div class="top"><span class="name">Samstag Nachmittag</span><span class="pct">30% <small>· 11</small></span></div>
+      <div class="bar"><i style="width:30%"></i></div>
+    </div>
+    <div class="res">
+      <div class="top"><span class="name">Samstag Abend</span><span class="pct">16% <small>· 6</small></span></div>
+      <div class="bar"><i style="width:16%"></i></div>
+    </div>
+    <div class="res">
+      <div class="top"><span class="name">Sonntag Abend</span><span class="pct">8% <small>· 3</small></span></div>
+      <div class="bar"><i style="width:8%"></i></div>
+    </div>
+    <div class="note">Gesamt 37 Stimmen · Ergebnis-Sichtbarkeit: <b style="color:var(--text)">immer</b> · nicht-anonym → Wähler je Option ausklappbar.</div>
+  </div>
+
+  <!-- ============ SCREEN 4 — CREATE ============ -->
+  <div class="section-hd"><span class="tag">Screen 4 — /polls/new · Erstellen</span><span class="ln"></span></div>
+  <div class="two">
+    <div class="card">
+      <div class="card-head">Umfrage anlegen</div>
+      <div class="field">
+        <label>Titel</label>
+        <input class="input" value="Nächster Großeinsatz — welcher Wochentag?" />
+      </div>
+      <div class="field">
+        <label>Beschreibung (Markdown, optional)</label>
+        <textarea class="textarea">Wir planen die nächste Org-Operation. Wann passt es den meisten?</textarea>
+      </div>
+      <div class="field">
+        <label>Optionen (mind. 2)</label>
+        <div class="optline"><input class="input" value="Freitag Abend" /><button class="del">✕</button></div>
+        <div class="optline"><input class="input" value="Samstag Nachmittag" /><button class="del">✕</button></div>
+        <div class="optline"><input class="input" value="Samstag Abend" /><button class="del">✕</button></div>
+        <button class="btn ghost sm">+ Option hinzufügen</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">Einstellungen</div>
+      <div class="field">
+        <label>Modus</label>
+        <div class="seg">
+          <div class="pill on"><div class="t">◉ Einfachauswahl</div><div class="s">Eine Stimme pro Person</div></div>
+          <div class="pill"><div class="t">☑ Mehrfachauswahl</div><div class="s">Bis max. N Optionen</div></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Sichtbarkeit</label>
+        <div class="seg" style="flex-direction:column">
+          <div class="pill on"><div class="t"><span class="ic" style="color:var(--cyan)">●</span>Privat — Nur dein Server</div><div class="s">Mitglieder deiner Guild</div></div>
+          <div class="pill"><div class="t"><span class="ic" style="color:var(--gold)">●</span>Partner</div><div class="s">Deine Guild + alle aktiven Partner-Server</div></div>
+          <div class="pill"><div class="t"><span class="ic" style="color:var(--purple)">●</span>Öffentlich — Open</div><div class="s">Jeder eingeloggte Nutzer</div></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Optionen</label>
+        <div class="toggle"><span class="lab">Anonyme Abstimmung<small>Wähler-Identitäten im Ergebnis verbergen</small></span><span class="sw"></span></div>
+        <div class="toggle"><span class="lab">Eigene Optionen erlauben<small>Wähler dürfen Optionen vorschlagen</small></span><span class="sw"></span></div>
+        <div class="toggle"><span class="lab">Ergebnis sichtbar<small>immer / nach Schluss / nach eigener Stimme</small></span><span class="tag cyan">immer</span></div>
+        <div class="toggle"><span class="lab">Automatisch schließen<small>Enddatum & Uhrzeit</small></span><span class="sw on"></span></div>
+      </div>
+      <div style="display:flex;gap:.6rem;margin-top:.4rem">
+        <button class="btn primary">Umfrage erstellen</button>
+        <button class="btn ghost">Als Entwurf speichern</button>
+      </div>
+    </div>
+  </div>
+
+  <p style="text-align:center;color:var(--dim3);font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;margin-top:3rem">RDOC FLEETPLANNER · POLLS MODULE MOCKUP · FR-P3-polls · 2026-06-15</p>
+</div>
+</body>
+</html>

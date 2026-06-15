@@ -489,6 +489,35 @@ export function getOrgFleet(guildId: string): Promise<import("./types").OrgFleet
   return get<import("./types").OrgFleetResponse>(`/guilds/${encodeURIComponent(guildId)}/fleet`);
 }
 
+// FR-P3 Polls/Umfragen.
+export function listPolls(): Promise<import("./types").PollListResponse> {
+  return get<import("./types").PollListResponse>("/polls");
+}
+export function getPoll(id: string): Promise<import("./types").PollDetail> {
+  return get<import("./types").PollDetail>(`/polls/${encodeURIComponent(id)}`);
+}
+export function createPoll(
+  csrfToken: string,
+  input: import("./types").CreatePollRequest,
+): Promise<{ ok: true; id: string }> {
+  return mutate("POST", "/polls", csrfToken, input);
+}
+export function votePoll(id: string, csrfToken: string, optionIds: string[]): Promise<{ ok: true }> {
+  return mutate("POST", `/polls/${encodeURIComponent(id)}/vote`, csrfToken, { optionIds });
+}
+export function withdrawPollVote(id: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/polls/${encodeURIComponent(id)}/vote`, csrfToken);
+}
+export function addPollOption(id: string, csrfToken: string, label: string): Promise<{ ok: true; id: string }> {
+  return mutate("POST", `/polls/${encodeURIComponent(id)}/options`, csrfToken, { label });
+}
+export function closePoll(id: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("PATCH", `/polls/${encodeURIComponent(id)}`, csrfToken);
+}
+export function deletePoll(id: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/polls/${encodeURIComponent(id)}`, csrfToken);
+}
+
 // FR-C2: list a guild's text channels + post an op announcement to one.
 export function getGuildChannels(guildId: string): Promise<{ channels: Array<{ id: string; name: string }> }> {
   return get<{ channels: Array<{ id: string; name: string }> }>(`/guilds/${encodeURIComponent(guildId)}/channels`);

@@ -69,6 +69,14 @@ import {
   AssignFormationRequestSchema,
   AssignCarrierRequestSchema,
   AnnounceRequestSchema,
+  PollSummarySchema,
+  PollOptionResultSchema,
+  PollListResponseSchema,
+  PollDetailSchema,
+  CreatePollRequestSchema,
+  CreatePollResponseSchema,
+  VotePollRequestSchema,
+  AddPollOptionRequestSchema,
 } from "./contracts/index.js";
 
 type JsonObject = Record<string, unknown>;
@@ -135,6 +143,14 @@ const SCHEMAS = {
   AssignFormationRequest: AssignFormationRequestSchema,
   AssignCarrierRequest: AssignCarrierRequestSchema,
   AnnounceRequest: AnnounceRequestSchema,
+  PollSummary: PollSummarySchema,
+  PollOptionResult: PollOptionResultSchema,
+  PollListResponse: PollListResponseSchema,
+  PollDetail: PollDetailSchema,
+  CreatePollRequest: CreatePollRequestSchema,
+  CreatePollResponse: CreatePollResponseSchema,
+  VotePollRequest: VotePollRequestSchema,
+  AddPollOptionRequest: AddPollOptionRequestSchema,
 } as const;
 
 function ref(name: keyof typeof SCHEMAS): JsonObject {
@@ -1581,6 +1597,95 @@ export function buildOpenApiDocument(): JsonObject {
             },
             "401": errorResponses["401"],
           },
+        },
+      },
+      "/api/v1/polls": {
+        get: {
+          operationId: "listPolls",
+          summary: "Polls visible to the viewer (own guild + active partners + public)",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("PollListResponse")) } },
+        },
+        post: {
+          operationId: "createPoll",
+          summary: "Create a poll (member; partner/public scope needs fleet operator)",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } }],
+          requestBody: { required: true, ...jsonContent(ref("CreatePollRequest")) },
+          responses: { "201": { description: "Created", ...jsonContent(ref("CreatePollResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/polls/{id}": {
+        get: {
+          operationId: "getPoll",
+          summary: "Poll detail incl. options, viewer's votes and gated results",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("PollDetail")) }, ...errorResponses },
+        },
+        patch: {
+          operationId: "closePoll",
+          summary: "Close a poll (creator / fleet operator / superadmin)",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Closed", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+        delete: {
+          operationId: "deletePoll",
+          summary: "Delete a poll (creator / fleet operator / superadmin)",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Deleted", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/polls/{id}/vote": {
+        post: {
+          operationId: "votePoll",
+          summary: "Cast or replace the viewer's vote(s) (validated against mode/maxChoices)",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("VotePollRequest")) },
+          responses: { "200": { description: "Voted", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+        delete: {
+          operationId: "withdrawVote",
+          summary: "Withdraw the viewer's vote(s) while the poll is open",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: { "200": { description: "Withdrawn", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/polls/{id}/options": {
+        post: {
+          operationId: "addPollOption",
+          summary: "Suggest an option (only when the poll allows it)",
+          tags: ["polls"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("AddPollOptionRequest")) },
+          responses: { "201": { description: "Added", ...jsonContent(ref("CreatePollResponse")) }, ...errorResponses },
         },
       },
     },

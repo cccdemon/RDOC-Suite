@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Polls / Umfragen module (FR-P3, 2026-06-15)
+
+- New **Umfragen** feature (nav item + SPA routes `/polls`, `/polls/new`, `/polls/:id`):
+  standalone polls scoped exactly like operations — **Privat** (host guild), **Partner**
+  (host guild + active `GuildPartnership` partners) or **Öffentlich** (any signed-in user).
+  Supports single- and **multiple-choice** (`maxChoices`), optional anonymous voting,
+  result visibility (always / after-vote / after-close), voter-suggested options, auto-close
+  deadline, and draft/open/closed states.
+- Schema: `Poll` / `PollOption` / `PollVote` (+ `Guild.polls`, `User.createdPolls`/`pollVotes`
+  back-relations); migration `20260615160000_polls_init`. `PollVote` is unique per
+  `(option, user)`; single-choice is enforced server-side to one vote per poll.
+- Backend: `services/polls.ts` (audience gate, vote validation, gated result counts — the
+  total is never hidden, only the per-option breakdown) + `/api/v1/polls*` routes (reads
+  `optionalAuth`, mutations CSRF-gated; creating a partner/public poll needs the fleet-operator
+  role). Documented in OpenAPI (`PollSummary`/`PollDetail`/`CreatePollRequest`/… schemas + paths).
+- Contracts: `PollSummary`, `PollDetail`, `PollOptionResult`, `PollListResponse`,
+  `CreatePollRequest`, `CreatePollResponse`, `VotePollRequest`, `AddPollOptionRequest`,
+  `ClosePollRequest` in `@rdoc-suite/fleetplanner-contracts`.
+- Tests: `__tests__/web/polls.inject.test.ts` (OpenAPI paths/schemas, 400 on bad id, 401 without
+  session, JSON-only list). UI follows the operation design tokens; strings are DE for now
+  (i18n sweep deferred, as with the Org-Flotte page).
+
 ### Changed - Info pages + API docs refreshed to current scope (2026-06-15)
 
 - **"Was ist das?" / "Anleitung":** removed all mention of the voice subsystem (Squad

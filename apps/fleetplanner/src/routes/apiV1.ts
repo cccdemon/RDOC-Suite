@@ -124,6 +124,9 @@ import {
   HangarShipParamSchema,
   HangarShipRequestSchema,
   IdParamSchema,
+  CreatePollRequestSchema,
+  VotePollRequestSchema,
+  AddPollOptionRequestSchema,
   SetMemberRoleRequestSchema,
   UpdateGuildSettingsRequestSchema,
   LeaderParamSchema,
@@ -151,6 +154,16 @@ import {
   presentShip,
 } from "../api/presenters.js";
 import { getOrgFleetRows } from "../services/orgFleet.js";
+import {
+  addPollOption,
+  closePoll,
+  createPoll,
+  deletePoll,
+  getPollForViewer,
+  listPollsForViewer,
+  votePoll,
+  withdrawVote,
+} from "../services/polls.js";
 import { openApiDocument } from "../api/openapi.js";
 import { getDocContent } from "../api/docContent.js";
 import { mutationLimiter, searchLimiter } from "../api/rateLimit.js";
@@ -2426,6 +2439,121 @@ export async function apiV1Routes(app: FastifyInstance) {
       : undefined;
     const rows = await searchLocations(sys, q, 30, true);
     return reply.type("application/json").send({ locations: rows.map((l) => ({ name: l.name, system: l.system })) });
+  });
+
+  // ── polls / Umfragen (FR-P3) ──────────────────────────────────────────
+  // Reads use optionalAuth (public polls visible to anyone; private/partners
+  // gated in the service). Mutations require a CSRF session.
+  app.get("/api/v1/polls", async (req, reply) => {
+    const ctx = await optionalAuth(req);
+    const polls = await listPollsForViewer(ctx ? { id: ctx.user.id, role: ctx.user.role } : null);
+    return reply.type("application/json").send({ polls });
+  });
+
+  app.get<{ Params: { id: string } }>("/api/v1/polls/:id", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid poll id.");
+    const ctx = await optionalAuth(req);
+    const viewer = ctx ? { id: ctx.user.id, role: ctx.user.role } : null;
+    if (!ctx) {
+      // Anonymous may only view public polls — let the service decide; a null
+      // result with no auth means "sign in".
+      const poll = await getPollForViewer(p.data.id, null);
+      if (!poll) return sendError(reply, req, 401, "unauthenticated", "Sign in to view this poll.");
+      return reply.type("application/json").send(poll);
+    }
+    const poll = await getPollForViewer(p.data.id, viewer);
+    if (!poll) return sendError(reply, req, 404, "not_found", "Poll not found.");
+    return reply.type("application/json").send(poll);
+  });
+
+  app.post<{ Body: unknown }>("/api/v1/polls", async (req, reply) => {
+    const body = CreatePollRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    try {
+      const id = await createPoll({ id: ctx.user.id, role: ctx.user.role }, body.data);
+      return reply.code(201).type("application/json").send({ ok: true as const, id });
+    } catch (err) {
+      return mutationError(reply, req, err);
+    }
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/polls/:id/vote",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid poll id.");
+      const body = VotePollRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      try {
+        await votePoll({ id: ctx.user.id, role: ctx.user.role }, p.data.id, body.data.optionIds);
+        return reply.type("application/json").send({ ok: true as const });
+      } catch (err) {
+        return mutationError(reply, req, err);
+      }
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>("/api/v1/polls/:id/vote", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid poll id.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    try {
+      await withdrawVote({ id: ctx.user.id, role: ctx.user.role }, p.data.id);
+      return reply.type("application/json").send({ ok: true as const });
+    } catch (err) {
+      return mutationError(reply, req, err);
+    }
+  });
+
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/polls/:id/options",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid poll id.");
+      const body = AddPollOptionRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      try {
+        const id = await addPollOption({ id: ctx.user.id, role: ctx.user.role }, p.data.id, body.data.label);
+        return reply.code(201).type("application/json").send({ ok: true as const, id });
+      } catch (err) {
+        return mutationError(reply, req, err);
+      }
+    },
+  );
+
+  // Close (PATCH status=closed) or delete a poll — creator / fleet operator.
+  app.patch<{ Params: { id: string } }>("/api/v1/polls/:id", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid poll id.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    try {
+      await closePoll({ id: ctx.user.id, role: ctx.user.role }, p.data.id);
+      return reply.type("application/json").send({ ok: true as const });
+    } catch (err) {
+      return mutationError(reply, req, err);
+    }
+  });
+
+  app.delete<{ Params: { id: string } }>("/api/v1/polls/:id", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid poll id.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    try {
+      await deletePoll({ id: ctx.user.id, role: ctx.user.role }, p.data.id);
+      return reply.type("application/json").send({ ok: true as const });
+    } catch (err) {
+      return mutationError(reply, req, err);
+    }
   });
 
   // ── JSON error envelope for unhandled errors inside /api/v1 ────────

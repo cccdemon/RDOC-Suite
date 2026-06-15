@@ -1,0 +1,133 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { ApiError, listPolls } from "../api/client";
+import type { PollSummary, SessionResponse } from "../api/types";
+import { Ic } from "../components/Icons";
+
+const MONO = "var(--mono)";
+
+export function visibilityTag(v: PollSummary["visibility"]): { label: string; color: string; bg: string; bd: string } {
+  switch (v) {
+    case "partners":
+      return { label: "Partner", color: "var(--gold)", bg: "rgba(240,165,0,0.09)", bd: "rgba(240,165,0,0.42)" };
+    case "public":
+      return { label: "Öffentlich", color: "var(--purple)", bg: "rgba(160,100,255,0.09)", bd: "rgba(160,100,255,0.42)" };
+    default:
+      return { label: "Privat", color: "var(--cyan)", bg: "rgba(0,212,255,0.08)", bd: "rgba(0,212,255,0.38)" };
+  }
+}
+
+function Tag({ label, color, bg, bd }: { label: string; color: string; bg: string; bd: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", padding: "0.16rem 0.45rem", borderRadius: 4, border: `1px solid ${bd}`, background: bg, color, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+      {label}
+    </span>
+  );
+}
+
+function fmtCloses(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+export function PollsPage({ session }: { session: SessionResponse | null }) {
+  const [polls, setPolls] = useState<PollSummary[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
+
+  useEffect(() => {
+    setLoading(true);
+    listPolls()
+      .then((r) => setPolls(r.polls))
+      .catch((e) => setError(e instanceof ApiError ? e.message : "Umfragen nicht ladbar."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const shown = useMemo(
+    () => (filter === "all" ? polls : polls.filter((p) => p.status === filter)),
+    [polls, filter],
+  );
+  const openCount = polls.filter((p) => p.status === "open").length;
+  const closedCount = polls.filter((p) => p.status === "closed").length;
+
+  const seg: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6, padding: "0.42rem 0.8rem", fontFamily: MONO,
+    fontSize: "0.7rem", borderRadius: 7, cursor: "pointer", border: "1px solid transparent", background: "transparent", color: "var(--dim)",
+  };
+  const segOn: React.CSSProperties = { background: "rgba(0,212,255,0.14)", borderColor: "rgba(0,212,255,0.4)", color: "var(--cyan)" };
+
+  return (
+    <div data-testid="polls-page" style={{ width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap", marginBottom: "1.1rem" }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
+            <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={20} /></span>
+            <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Umfragen</h1>
+          </div>
+          <div style={{ color: "#9fb1c2", fontSize: "0.9rem" }}>
+            {openCount} offen · {closedCount} geschlossen
+          </div>
+        </div>
+        {session?.user && (
+          <Link
+            to="/polls/new"
+            className="fpw-btn"
+            style={{ borderColor: "rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.12)", color: "var(--green)" }}
+          >
+            <Ic name="plus" size={14} /> Neue Umfrage
+          </Link>
+        )}
+      </div>
+
+      <div style={{ display: "inline-flex", gap: 6, background: "var(--bg2)", border: "1px solid rgba(255,255,255,0.08)", padding: 4, borderRadius: 10, marginBottom: "1.1rem" }}>
+        {(["all", "open", "closed"] as const).map((f) => (
+          <span key={f} style={filter === f ? { ...seg, ...segOn } : seg} onClick={() => setFilter(f)}>
+            {f === "all" ? "Alle" : f === "open" ? "Offen" : "Geschlossen"}
+          </span>
+        ))}
+      </div>
+
+      {loading ? (
+        <p className="fpw-meta">Lade…</p>
+      ) : error ? (
+        <p className="fpw-meta" style={{ color: "#ff7a7a" }}>{error}</p>
+      ) : shown.length === 0 ? (
+        <p className="fpw-meta">Keine Umfragen. {session?.user ? "Lege mit „Neue Umfrage“ die erste an." : "Melde dich an, um Umfragen zu erstellen."}</p>
+      ) : (
+        <div className="fpw-grid">
+          {shown.map((p) => {
+            const vt = visibilityTag(p.visibility);
+            const closes = fmtCloses(p.closesAt);
+            return (
+              <Link key={p.id} to={`/polls/${p.id}`} className="fpw-card fpw-cardlink" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
+                  {p.status === "open" ? (
+                    <Tag label="Offen" color="var(--green)" bg="rgba(0,255,136,0.08)" bd="rgba(0,255,136,0.4)" />
+                  ) : p.status === "draft" ? (
+                    <Tag label="Entwurf" color="var(--gold)" bg="rgba(240,165,0,0.09)" bd="rgba(240,165,0,0.42)" />
+                  ) : (
+                    <Tag label="Geschlossen" color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
+                  )}
+                  <Tag {...vt} />
+                  <Tag label={p.mode === "multiple" ? `Mehrfach${p.maxChoices ? ` · max ${p.maxChoices}` : ""}` : "Einfach"} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
+                </div>
+                <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#eaf4fb", lineHeight: 1.2 }}>{p.title}</div>
+                {p.description && (
+                  <div style={{ color: "#9fb1c2", fontSize: "0.9rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem 1rem", flexWrap: "wrap", fontFamily: MONO, fontSize: "0.66rem", color: "#7e92a4", letterSpacing: "0.04em", marginTop: "auto" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="users" size={12} /> {p.totalVotes} Stimmen</span>
+                  {closes && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="clock" size={12} /> {p.status === "closed" ? "beendet" : `bis ${closes}`}</span>}
+                  {p.viewerHasVoted && <span style={{ color: "var(--green)" }}>✓ abgestimmt</span>}
+                  <span>von {p.createdBy.username}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

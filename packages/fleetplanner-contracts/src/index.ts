@@ -327,6 +327,104 @@ export const OrgFleetResponseSchema = z
   .meta({ id: "OrgFleetResponse" });
 export type OrgFleetResponse = z.infer<typeof OrgFleetResponseSchema>;
 
+// ── Polls / Umfragen (FR-P3) ──────────────────────────────────────────
+// Scoped like an Operation: private | partners | public. Single or multiple
+// choice; results gated by resultsVisibility.
+export const PollVisibilityEnum = z.enum(["private", "partners", "public"]);
+export const PollModeEnum = z.enum(["single", "multiple"]);
+export const PollStatusEnum = z.enum(["draft", "open", "closed"]);
+export const PollResultsVisibilityEnum = z.enum(["always", "after_vote", "after_close"]);
+
+export const PollSummarySchema = z
+  .object({
+    id: z.string(),
+    title: z.string(),
+    description: z.string().nullable(),
+    visibility: PollVisibilityEnum,
+    mode: PollModeEnum,
+    maxChoices: z.number().int().nullable(),
+    status: PollStatusEnum,
+    anonymous: z.boolean(),
+    resultsVisibility: PollResultsVisibilityEnum,
+    closesAt: z.string().nullable(),
+    createdAt: z.string(),
+    createdBy: z.object({ id: z.string(), username: z.string() }),
+    guild: z.object({ id: z.string(), name: z.string() }),
+    optionCount: z.number().int(),
+    totalVotes: z.number().int(),
+    /** Whether the viewer has already cast at least one vote. */
+    viewerHasVoted: z.boolean(),
+  })
+  .meta({ id: "PollSummary" });
+export type PollSummary = z.infer<typeof PollSummarySchema>;
+
+export const PollListResponseSchema = z
+  .object({ polls: z.array(PollSummarySchema) })
+  .meta({ id: "PollListResponse" });
+export type PollListResponse = z.infer<typeof PollListResponseSchema>;
+
+export const PollOptionResultSchema = z
+  .object({
+    id: z.string(),
+    label: z.string(),
+    /** Vote count. 0 when results are hidden for this viewer (see showResults). */
+    votes: z.number().int(),
+  })
+  .meta({ id: "PollOptionResult" });
+export type PollOptionResult = z.infer<typeof PollOptionResultSchema>;
+
+export const PollDetailSchema = PollSummarySchema.extend({
+  allowAddOptions: z.boolean(),
+  options: z.array(PollOptionResultSchema),
+  /** Whether vote counts in `options` are meaningful for this viewer. */
+  showResults: z.boolean(),
+  /** Option ids the viewer has voted for. */
+  yourOptionIds: z.array(z.string()),
+  /** Viewer may vote (in audience, poll open, not the creator's own closed poll). */
+  canVote: z.boolean(),
+  /** Viewer may close/delete (creator or guild fleet operator / superadmin). */
+  canManage: z.boolean(),
+}).meta({ id: "PollDetail" });
+export type PollDetail = z.infer<typeof PollDetailSchema>;
+
+export const CreatePollRequestSchema = z
+  .object({
+    guildId: z.string().min(1),
+    title: z.string().min(1).max(200),
+    description: z.string().max(4000).optional(),
+    options: z.array(z.string().min(1).max(200)).min(2).max(30),
+    mode: PollModeEnum.default("single"),
+    maxChoices: z.coerce.number().int().min(2).max(30).optional(),
+    visibility: PollVisibilityEnum.default("private"),
+    anonymous: z.boolean().default(false),
+    resultsVisibility: PollResultsVisibilityEnum.default("always"),
+    allowAddOptions: z.boolean().default(false),
+    closesAt: z.iso.datetime().optional(),
+    status: z.enum(["draft", "open"]).default("open"),
+  })
+  .meta({ id: "CreatePollRequest" });
+export type CreatePollRequest = z.infer<typeof CreatePollRequestSchema>;
+
+export const CreatePollResponseSchema = z
+  .object({ ok: z.literal(true), id: z.string() })
+  .meta({ id: "CreatePollResponse" });
+export type CreatePollResponse = z.infer<typeof CreatePollResponseSchema>;
+
+export const VotePollRequestSchema = z
+  .object({ optionIds: z.array(z.string().min(1)).min(1).max(30) })
+  .meta({ id: "VotePollRequest" });
+export type VotePollRequest = z.infer<typeof VotePollRequestSchema>;
+
+export const AddPollOptionRequestSchema = z
+  .object({ label: z.string().min(1).max(200) })
+  .meta({ id: "AddPollOptionRequest" });
+export type AddPollOptionRequest = z.infer<typeof AddPollOptionRequestSchema>;
+
+export const ClosePollRequestSchema = z
+  .object({ status: z.literal("closed") })
+  .meta({ id: "ClosePollRequest" });
+export type ClosePollRequest = z.infer<typeof ClosePollRequestSchema>;
+
 export const CreateOperationRequestSchema = z
   .object({
     guildId: z.string().min(1),

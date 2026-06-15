@@ -1,5 +1,42 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: FR-P3 Polls/Umfragen-Modul implementieren — Branch master
+
+User: "sieht gut aus, bitte implementieren" (nach Design-Mockup-Freigabe, Karte `preview/feature-polls.html`
+im claude.ai/design-System). Setzt [FR-P3-polls.md](FR-P3-polls.md) als MVP um. Voll Full-Stack,
+wiederverwendet das Operations-Sichtbarkeitsmodell.
+- **Schema** (`apps/fleetplanner/prisma/schema.prisma`): `Poll` / `PollOption` / `PollVote` + Back-Relations
+  an `Guild.polls`, `User.createdPolls`/`pollVotes`. Migration `20260615160000_polls_init` (Postgres).
+- **Contracts** (`@rdoc-suite/fleetplanner-contracts`): `PollSummary`, `PollDetail`, `PollOptionResult`,
+  `PollListResponse`, `CreatePollRequest`, `VotePollRequest`, `AddPollOptionRequest`, `ClosePollRequest`,
+  `CreatePollResponse` (+ in openapi SCHEMAS + Pfade).
+- **Backend**: `services/polls.ts` — Audience-Gate (private=Guild, partners=Guild+aktive Partner, public=alle
+  eingeloggt; superadmin überall), Vote-Validierung (single→1 Stimme, multiple→maxChoices), Ergebnis-Sichtbarkeit
+  (always/after_vote/after_close), draft/open/closed. Routen `/api/v1/polls*` in `routes/apiV1.ts`
+  (Reads optionalAuth, Mutationen requireSessionJson/CSRF). Erstellen von `partners`/`public` nur Fleetoperator.
+- **SPA** (`apps/fleetplanner-web`): `client.ts`-Methoden, `types.ts`-Exports, Nav „Umfragen", Routen
+  `/polls`, `/polls/new`, `/polls/:id`; Seiten `PollsPage`, `PollCreatePage`, `PollDetailPage` (Vote single/multi,
+  Ergebnis-Balken, Zurückziehen, Schließen/Löschen für Ersteller/Operator). Optik = Operations-Designtokens.
+  i18n: vorerst DE-Strings (wie OrgFleetPage), Sweep später.
+- **Tests**: `__tests__/web/polls.inject.test.ts` (openapi-Pfade, 401 ohne Auth, 400 bad id, 403 ohne CSRF).
+- Code-first/compile-last: tsc/Build laufen server-seitig in Docker (Regel 5). CHANGELOG unter [Unreleased] gepflegt.
+
+## Queued / Planned Step - 2026-06-15: Composition-Rebuild → archiv + neue FR Umfragen/Polls-Modul — Branch master
+
+User: (1) `docs/composition-rebuild-plan.md` nach `docs/archiv/` verschieben. (2) Neuer Plan —
+ein **Umfragen-/Polls-Modul** (kein Discord-Poll), das wie Operationen guild-/partner-/öffentlich-
+scoped ist, mit Standard-Features (Single-/Mehrfachauswahl etc.).
+- **Move:** `git mv docs/composition-rebuild-plan.md docs/archiv/`. Status-Hinweis: Doc war
+  „teilweise umgesetzt" (Schritte 1+2 im Code, 3–5 offen) — auf User-Wunsch trotzdem archiviert
+  (Rebuild zurückgestellt). Links nachgezogen: root CLAUDE.md (Doc-Tabelle), archiv/README.md
+  (Zeile in archivierte Tabelle, raus aus „Still open").
+- **Neue FR:** `docs/FR-P3-polls.md` (Priority 3, Plan). Wiederverwendet das Operations-Sichtbarkeits-
+  modell (`private | partners | public`) + `GuildPartnership`-Föderation. Datenmodell `Poll` /
+  `PollOption` / `PollVote` (single+multi, optional anonym, Open-/Close-Zeitpunkt, Ergebnis-Sichtbarkeit,
+  optional „eigene Option hinzufügen"). API unter `/api/v1/polls*`, SPA-Seite analog Operationen.
+  In ROADMAP-Planungstabelle + Recommended-Order eingetragen.
+- Nur Docs in diesem Step, kein Code/Schema. Implementierung erst nach Freigabe.
+
 ## Queued / Planned Step - 2026-06-15: Info-Seiten "Was ist das?" + "Anleitung" auf aktuellen Stand (Voice entfernt) — Branch master
 
 Auftrag User: alle docs lesen, Code voll analysieren, Funktionsumfang für Nicht-ITler beschreiben,

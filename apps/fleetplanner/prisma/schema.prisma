@@ -38,6 +38,8 @@ model User {
   hangarShares     OperationHangarShare[]
   resourceLinksAdded  OperationResourceLink[]
   templatesCreated    OperationTemplate[]
+  createdPolls        Poll[]
+  pollVotes           PollVote[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -64,6 +66,7 @@ model Guild {
   partnershipsSent     GuildPartnership[] @relation("PartnershipA")
   partnershipsReceived GuildPartnership[] @relation("PartnershipB")
   operationTemplates   OperationTemplate[]
+  polls                Poll[]
 }
 
 // ── Guild partnerships (tenant federation) ─────────────────────────
@@ -694,4 +697,62 @@ model OperationTemplate {
 
   @@index([visibility, opType])
   @@index([ownerGuildId])
+}
+
+// ── Polls / Umfragen (FR-P3) ───────────────────────────────────────
+// A standalone poll, scoped like an Operation: private (host guild only),
+// partners (host guild + active GuildPartnership partners), or public (any
+// signed-in user). Independent of fleets/ships.
+model Poll {
+  id             String   @id @default(cuid())
+  guildId        String // host guild (tenant); also the origin for public polls
+  creatorUserId  String
+  title          String
+  description    String? // markdown, optional
+  visibility     String   @default("private") // private | partners | public (mirrors Operation.visibility)
+  mode           String   @default("single") // single | multiple
+  maxChoices     Int? // only mode=multiple; null = unbounded
+  status         String   @default("open") // draft | open | closed
+  anonymous      Boolean  @default(false) // hide voter identities from results
+  resultsVisibility String @default("always") // always | after_vote | after_close
+  allowAddOptions Boolean @default(false) // voters may suggest their own options
+  closesAt       DateTime? // auto-close moment; null = close manually
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  guild   Guild        @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creator User         @relation(fields: [creatorUserId], references: [id], onDelete: Cascade)
+  options PollOption[]
+  votes   PollVote[]
+
+  @@index([guildId, status])
+  @@index([visibility, status])
+}
+
+model PollOption {
+  id            String  @id @default(cuid())
+  pollId        String
+  label         String
+  order         Int     @default(0)
+  addedByUserId String? // set when contributed via allowAddOptions
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@index([pollId, order])
+}
+
+model PollVote {
+  id        String   @id @default(cuid())
+  pollId    String
+  optionId  String
+  userId    String
+  createdAt DateTime @default(now())
+
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([optionId, userId]) // one vote per option per user
+  @@index([pollId, userId]) // fast "has this user voted?" lookup
 }

@@ -22,6 +22,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P3 | Language Switch / i18n (Fleetplanner + Companion + MissionCover) | [FR-P3-language-switch.md](FR-P3-language-switch.md) | `User` profile as single source of truth | Plan (large/phased) |
 | P3 | Org Fleet (guild ship roster — who owns what) | [archiv/FR-P3-org-fleet.md](archiv/FR-P3-org-fleet.md) | UserShip + GuildMembership + ship catalog (exists) | ✓ Done (2026-06-15: MVP + Discord tier-1; bot-DM relay deferred) |
 | P3 | Member Last-Seen + 6-month inactivity alert | [FR-P3-inactivity-alert.md](FR-P3-inactivity-alert.md) | Fleetmanager bot **gateway** + GUILD_MEMBERS intent | Plan |
+| P3 | Polls / Umfragen (guild/partner/public scope, single + multi-choice) | [FR-P3-polls.md](FR-P3-polls.md) | Op visibility model (`private/partners/public`) + `GuildPartnership` (exists) | Plan (2026-06-15) |
 | P3 | Mission Resource Links (tutorial/guide links on an op) | [FR-P3-mission-resource-links.md](FR-P3-mission-resource-links.md) | `Operation` + Op-UI (exists) | ✓ Implemented (2026-06-11; tsc+tests green, pending deploy) |
 | P4 | Mission-Cover Microservice (server-render API, op→cover image) | [FR-P4-mission-cover-service.md](FR-P4-mission-cover-service.md) | — (standalone svc; synergy → FR-P1 cross-post) | ✓ Done (incl. Discord-event image); partner cross-post → FR-P1 |
 | P4 | Template Marketplace (share/discover event blueprints) | [FR-P4-template-marketplace.md](FR-P4-template-marketplace.md) | `Operation`+Komposition; FR-P3 resource-links | ✓ Implemented (2026-06-11; publish/browse/apply/delete + visibility scope; tsc+tests green, pending deploy) |
@@ -35,7 +36,8 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 3. **FR-P3 roadmap-tab** — surfaces everything else + feedback intake.
 4. **FR-P3 inactivity-alert** — gateway bot + GUILD_MEMBERS intent.
 5. **FR-P3 language-switch / i18n** — large/phased; cross-app.
-6. **FR-P5 item-database** — blocked on data source.
+6. **FR-P3 polls** — standalone module; reuses op visibility/partnership model.
+7. **FR-P5 item-database** — blocked on data source.
 
 *Rejected:* **FR-P3 federation-voice** (Begründung folgt).
 
