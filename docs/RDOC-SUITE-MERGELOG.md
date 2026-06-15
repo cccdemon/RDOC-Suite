@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Security-Quick-Wins apps/fleetplanner (Findings 1,2,7,8) — Branch master
+
+User-Review (static + pnpm audit). Umgesetzt nur die risikoarmen High-Value-Fixes (User-Wahl):
+- **#1 Error-Leak** ([app.ts](apps/fleetplanner/src/app.ts) setErrorHandler): in Prod generische
+  Body (`statusCode` + generische error/message), keine `err.code/name/message` mehr; voller Fehler
+  weiter geloggt. /api/v1 nutzt ohnehin eigene sanitized Envelope (sendError).
+- **#2 Security-Header** (app.ts onSend-Hook, KEIN helmet-Dep): X-Content-Type-Options nosniff,
+  X-Frame-Options SAMEORIGIN, Referrer-Policy, CSP (style/script 'unsafe-inline' wegen SSR-Inline +
+  SPA liegt eh in eigenem nginx-Service). Strikte CSP/Nonces bewusst NICHT (würde Inline-UI brechen).
+- **#7 Env-URL-Validierung** ([env.ts](apps/fleetplanner/src/config/env.ts)): `httpUrl` = z.url()+http(s)-
+  Refine für WEB_PUBLIC_URL, MISSIONCOVER_PUBLIC_URL/SERVICE_URL, VOICE_CLIENT_DOWNLOAD/CONFIG_URL
+  (lehnt javascript:/data: ab; fail-fast beim Boot).
+- **#8 Cover-Callback** ([cover.ts](apps/fleetplanner/src/routes/cover.ts)): signierte payload.url
+  zusätzlich validiert — https (prod) + Host-Allowlist (MissionCover/WEB public host) + dims≤5000 + Format-Whitelist.
+- **NICHT umgesetzt** (Konflikt/Decision, dokumentiert): #5 `--frozen-lockfile` (bewusste Regel) +
+  non-root USER (deferred), #9 E2E-Hard-Deny (bricht Prod-E2E-Workflow), #6 Session-ID-Rotation
+  (loggt alle aus), #3/#4 metrics-token/trustProxy (Port ist 127.0.0.1+Caddy). Rebuild: nur fleetplanner.
+
 ## Queued / Planned Step - 2026-06-15: Org-Flotte — Opt-in-Consent + Schiff-Links + lokaler Bild-Cache — Branch master
 
 User: (1) Spieler-Schiffe nur in Flotte wenn Erlaubnis gegeben (Opt-in), (2) Schiffe verlinkt zur

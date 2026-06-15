@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+// URLs that get rendered as links or used as redirect targets must be real
+// http(s) URLs — z.url() alone still accepts javascript:/data: schemes.
+const httpUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), "must be an http(s) URL");
+
 const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3200),
@@ -13,7 +20,7 @@ const schema = z.object({
   // Force maintenance mode on regardless of the superadmin toggle (1/true/on).
   // Useful during deploys; leave unset for normal operation.
   MAINTENANCE_MODE: z.string().optional(),
-  WEB_PUBLIC_URL: z.string().default("http://localhost:3200"),
+  WEB_PUBLIC_URL: httpUrl.default("http://localhost:3200"),
   // At least one OAuth provider must be configured. Discord is the
   // original provider; GitHub and Google are alternatives.
   DISCORD_CLIENT_ID: z.string().optional(),
@@ -48,8 +55,8 @@ const schema = z.object({
   // Companion app OAuth — uses the RDOC-RTC Bot (separate from the Fleetmanager Bot)
   DISCORD_COMPANION_BOT_ID: z.string().optional(),
   DISCORD_COMPANION_BOT_KEY: z.string().optional(),
-  FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL: z.string().optional(),
-  FLEETPLANNER_VOICE_CLIENT_CONFIG_URL: z.string().optional(),
+  FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL: httpUrl.optional(),
+  FLEETPLANNER_VOICE_CLIENT_CONFIG_URL: httpUrl.optional(),
   LIVEKIT_URL: z.string().optional(),
   LIVEKIT_API_KEY: z.string().optional(),
   LIVEKIT_API_SECRET: z.string().optional(),
@@ -65,11 +72,11 @@ const schema = z.object({
   // Mission-cover render microservice (FR-P4). Internal docker-network URL +
   // shared M2M secret (matches the service's MISSIONCOVER_SERVICE_SECRET). When
   // the secret is unset, the cover feature is hidden (coverServiceConfigured()).
-  MISSIONCOVER_SERVICE_URL: z.string().url().default("http://mission-cover:3300"),
+  MISSIONCOVER_SERVICE_URL: httpUrl.default("http://mission-cover:3300"),
   MISSIONCOVER_SERVICE_SECRET: z.string().min(32).optional(),
   // Public base URL of the mission-cover service (Caddy /cover) — used to build
   // the editor link the operator's browser is redirected to.
-  MISSIONCOVER_PUBLIC_URL: z.string().default("https://suite.raumdock.org/cover"),
+  MISSIONCOVER_PUBLIC_URL: httpUrl.default("https://suite.raumdock.org/cover"),
 });
 
 export type Env = z.infer<typeof schema>;

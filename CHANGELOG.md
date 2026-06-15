@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security - Fleetplanner hardening quick-wins (2026-06-15)
+
+- **No internal error detail in prod:** the global error handler now returns a
+  generic body in production (status + generic message) instead of `err.code` /
+  `name` / `message`; the full error is still logged server-side. `/api/v1` keeps
+  its own sanitized error envelope.
+- **Baseline security headers** on every backend response (own hook, no new dep):
+  `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, and a CSP (kept
+  `'unsafe-inline'` for style/script because of SSR inline markup).
+- **Strict env URL validation:** `WEB_PUBLIC_URL`, `MISSIONCOVER_*_URL`, and the
+  voice-client URLs must be real `http(s)` URLs (rejects `javascript:`/`data:`).
+- **Cover callback validation:** the signed cover result URL is additionally
+  checked for https + an allowlisted host, with bounded dimensions and a format
+  whitelist before it is stored or sent to Discord.
+
 ### Added - Org-Flotte: opt-in consent, ship source links + cached images (2026-06-15)
 
 - **Opt-in:** a member's ships appear in the Org-Flotte only if they enabled

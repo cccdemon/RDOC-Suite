@@ -25,18 +25,39 @@ export async function buildApp() {
     trustProxy: true,
   });
 
-  // Log unhandled errors and return a clean 5xx — Caddy picks up the status
-  // code and forwards browser requests to the error-page microservice.
+  const isProd = env.NODE_ENV === "production";
+
+  // Log unhandled errors and return a clean status — Caddy picks up the code and
+  // forwards browser requests to the error-page microservice. In production the
+  // body is generic (no err.code/name/message) so Prisma/fetch/service internals
+  // never leak to the client; the full error is always logged server-side.
+  // (Handled /api/v1 errors use their own sanitized envelope via sendError.)
   app.setErrorHandler((err: unknown, request, reply) => {
     const e = err as { statusCode?: number; code?: string; name?: string; message?: string };
     const status = e.statusCode ?? 500;
     app.log.error(err, `Unhandled error on ${request.method} ${request.url}`);
-    return reply.code(status).send({
-      statusCode: status,
-      code: e.code,
-      error: e.name,
-      message: e.message,
-    });
+    if (isProd) {
+      return reply.code(status).send({
+        statusCode: status,
+        error: status >= 500 ? "Internal Server Error" : "Request Error",
+        message: status >= 500 ? "Internal Server Error" : "The request could not be processed.",
+      });
+    }
+    return reply.code(status).send({ statusCode: status, code: e.code, error: e.name, message: e.message });
+  });
+
+  // Baseline security headers on every response (own hook — no helmet dep). CSP
+  // keeps 'unsafe-inline' for styles/scripts because the SSR pages (maintenance,
+  // OG-meta) use inline styling; the React SPA is served by a separate service.
+  app.addHook("onSend", async (_request, reply) => {
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "SAMEORIGIN");
+    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    reply.header(
+      "Content-Security-Policy",
+      "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'; object-src 'none'; form-action 'self'",
+    );
   });
 
   // i18n: set a request-scoped baseline locale from Accept-Language. enterWith

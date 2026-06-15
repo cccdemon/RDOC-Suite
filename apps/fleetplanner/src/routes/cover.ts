@@ -24,6 +24,29 @@ type ResultToken = {
   format: string;
 };
 
+// Cover image URLs may only be https (in prod) and on an allowlisted host —
+// the mission-cover public host or the app's own public host.
+function coverUrlOk(u: unknown): boolean {
+  if (typeof u !== "string") return false;
+  try {
+    const url = new URL(u);
+    const env = getEnv();
+    const prod = env.NODE_ENV === "production";
+    if (prod && url.protocol !== "https:") return false;
+    if (!prod && url.protocol !== "https:" && url.protocol !== "http:") return false;
+    const allowed = new Set([new URL(env.MISSIONCOVER_PUBLIC_URL).host, new URL(env.WEB_PUBLIC_URL).host]);
+    return allowed.has(url.host);
+  } catch {
+    return false;
+  }
+}
+function dimsOk(w: unknown, h: unknown): boolean {
+  return [w, h].every((n) => Number.isInteger(n) && (n as number) > 0 && (n as number) <= 5000);
+}
+function formatOk(f: unknown): boolean {
+  return typeof f === "string" && ["png", "jpg", "jpeg", "webp"].includes(f.toLowerCase());
+}
+
 export async function coverRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Params: { id: string }; Querystring: { ct?: string } }>(
     "/ops/:id/cover/saved",
@@ -41,6 +64,14 @@ export async function coverRoutes(app: FastifyInstance): Promise<void> {
       const payload = secret && req.query.ct ? verifyCoverToken<ResultToken>(req.query.ct, secret) : null;
       if (!payload || payload.opId !== op.id) {
         return reply.redirect(back("error:Invalid+save+token."), 302);
+      }
+
+      // Defense-in-depth: even though the token is HMAC-signed by the cover
+      // service, validate the URL (https + allowlisted host) and shape before we
+      // persist it / hand it to Discord as an event image.
+      if (!coverUrlOk(payload.url) || !dimsOk(payload.width, payload.height) || !formatOk(payload.format)) {
+        req.log.warn({ url: payload.url }, "cover save rejected: invalid url/shape");
+        return reply.redirect(back("error:Invalid+cover+result."), 302);
       }
 
       const data = {
