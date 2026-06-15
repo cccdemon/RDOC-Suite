@@ -25,6 +25,7 @@ type Access = { canView: boolean; canVote: boolean; canManage: boolean };
 // runs server-side; the generated client narrows these at build time).
 type SummaryRow = {
   id: string;
+  guildId: string;
   title: string;
   description: string | null;
   visibility: string;
