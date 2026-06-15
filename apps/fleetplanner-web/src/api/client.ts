@@ -347,9 +347,23 @@ export function editOperation(
     scheduledAt?: string;
     visibility?: string;
     maxParticipants?: number | null;
+    squadLinkVoiceEnabled?: boolean;
   },
 ): Promise<{ ok: true }> {
   return mutate("PATCH", `/operations/${encodeURIComponent(id)}`, csrfToken, input);
+}
+
+/** SquadLink Lite voice deep-link for the op's commanders (CommandNet room).
+ *  `link` is non-null only once the op started and the feature is enabled +
+ *  server-configured. `storeUrl` is the MS Store install link when configured. */
+export function getSquadLink(id: string): Promise<{
+  enabled: boolean;
+  configured: boolean;
+  started: boolean;
+  link: string | null;
+  storeUrl: string | null;
+}> {
+  return get(`/operations/${encodeURIComponent(id)}/squadlink`);
 }
 
 export function setOperationStatus(id: string, csrfToken: string, status: string): Promise<{ ok: true; status: string }> {

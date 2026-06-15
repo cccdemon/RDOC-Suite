@@ -79,6 +79,19 @@ const schema = z.object({
   // Public base URL of the mission-cover service (Caddy /cover) — used to build
   // the editor link the operator's browser is redirected to.
   MISSIONCOVER_PUBLIC_URL: httpUrl.default("https://suite.raumdock.org/cover"),
+
+  // RDOC SquadLink Lite deep-link (FR SquadLink-CommandNet). Operationscommandanten
+  // get a `squadlink://connect` link from the op detail UI that joins the op voice
+  // room without PIN/code. The token is HMAC-SHA256(secret, room) hex and MUST stay
+  // byte-for-byte identical to the init-server's `ROOM_AUTH_SECRET` (RDOC-SACompanion
+  // server/init/src/auth.rs `token_for`). Unset → feature hidden (squadLinkConfigured()).
+  SQUADLINK_ROOM_AUTH_SECRET: z.string().optional(),
+  // Signaling server WebSocket URL the link points at (init-server /ws).
+  SQUADLINK_WS_URL: z.string().default("wss://squadlink.raumdock.org/ws"),
+  // Microsoft Store listing for SquadLink Lite. When set, the op voice panel offers
+  // an "install the app" link next to the join link. Unset → install link hidden
+  // (the Store listing may not be published yet).
+  SQUADLINK_STORE_URL: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

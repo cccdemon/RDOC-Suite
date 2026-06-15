@@ -18,6 +18,7 @@ import type { FleetUnit, OperationDetail, SessionResponse } from "../api/types";
 import { ErrorState } from "../components/ErrorState";
 import { OfferShip } from "../components/OfferShip";
 import { OperatorConsole } from "../components/OperatorConsole";
+import { SquadLinkPanel } from "../components/SquadLinkPanel";
 import { Ic } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { Markdown } from "../components/Markdown";
@@ -989,6 +990,13 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             </div>
           )}
         </section>
+      )}
+
+      {/* SquadLink Lite voice deep-link for commanders (CommandNet). Visible to
+          op managers once the op enables voice; the join link itself only
+          materialises server-side after the op has started. */}
+      {op.canManage && op.squadLinkVoiceEnabled && viewAs === "self" && id && (
+        <SquadLinkPanel opId={id} />
       )}
 
       {/* IA merge D: adaptive operator console — only for leaders of this op,

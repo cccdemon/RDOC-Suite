@@ -20,6 +20,7 @@ export type CreateOperationInput = {
   eventVoiceChannelId?: string;
   minParticipants?: number;
   maxParticipants?: number | null;
+  squadLinkVoiceEnabled?: boolean;
 };
 
 /** Append an audit entry (best-effort; never throws into the caller). */
@@ -229,6 +230,7 @@ export async function updateOperation(id: string, input: Partial<CreateOperation
       ...(input.meetingLocation !== undefined && { meetingLocation: input.meetingLocation }),
       ...(input.scheduledAt !== undefined && { scheduledAt: input.scheduledAt }),
       ...("maxParticipants" in input && { maxParticipants: input.maxParticipants ?? null }),
+      ...(input.squadLinkVoiceEnabled !== undefined && { squadLinkVoiceEnabled: input.squadLinkVoiceEnabled }),
       ...("eventVoiceChannelId" in input && { eventVoiceChannelId: input.eventVoiceChannelId || null }),
     },
   });

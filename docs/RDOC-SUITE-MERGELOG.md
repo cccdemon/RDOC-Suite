@@ -1,5 +1,35 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: SquadLink Lite Deep-Link für Operationscommandanten — Branch master
+
+Status: Done.
+
+Umgesetzt (Dateien):
+- packages/fleetplanner-contracts/src/index.ts: `EditOperationRequest.squadLinkVoiceEnabled` (opt),
+  `OperationDetail.squadLinkVoiceEnabled` (required). → Contracts-Package muss neu gebaut werden
+  (Docker macht das; lokal `pnpm --filter @rdoc-suite/fleetplanner-contracts build` falls dev).
+- apps/fleetplanner: config/env.ts (3 SQUADLINK_* vars), prisma schema + migration
+  20260615160000_op_squadlink_voice, services/squadLink.ts (HMAC-Mint + Link-Builder),
+  services/operations.ts (updateOperation-Feld), routes/apiV1.ts (GET …/squadlink + PATCH-Feld),
+  api/presenters.ts (Feld in OperationDetail), .env.example, __tests__/api/contracts.test.ts (Fixture).
+- apps/fleetplanner-web: api/client.ts (getSquadLink + editOperation-Feld), components/EckdatenForm.tsx
+  (VOICE-Toggle), components/SquadLinkPanel.tsx (neu), pages/OpDetailPage.tsx (Panel-Mount).
+- CHANGELOG.md [Unreleased].
+
+Kern: Room-Join-Token = HMAC-SHA256(ROOM_AUTH_SECRET, room) hex; WS-Connect prüft nur diesen HMAC
+(`main.rs:494 auth.check`), KEIN Session-Store-Lookup → Direktlink läuft nicht ab, kein Sofort-Join-Zwang.
+Weg A (Fleetplanner mintet Token selbst). Scope: EINE CommandNet-Session pro Op (`op-<opId>-command`),
+Commander = op.leaders; Link erst ab Status `starting`/`in_progress`.
+
+Prod (LXC 103, 2026-06-15): SQUADLINK_* in /opt/RDOC-Suite/.env ergänzt — Secret server-seitig aus
+/opt/RDOC-SACompanion/.env kopiert (hash-verifiziert), WS=wss://squadlink.raumdock.org/ws,
+STORE_URL=https://apps.microsoft.com/detail/9N9NR49QFBF4. Backup .env.bak.20260615.
+Kein nginx-Change (Endpoint unter /api/v1/). Frontend → `--build fleetplanner-web`.
+
+(Verlauf: Queued → in progress → Done.)
+
+---
+
 ## Queued / Planned Step - 2026-06-15: Admin „System & Logs"-Panel (Observability) — Branch master
 
 User will einen Admin-Log: was das System macht, wo es klemmt, Dienst-Status, Live-Log der Syncs,

@@ -36,6 +36,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
     meetingSystem: op.meetingSystem || "Stanton",
     meetingLocation: op.meetingLocation ?? "",
     visibility: normalizeVisibility(op.visibility),
+    squadLinkVoiceEnabled: op.squadLinkVoiceEnabled ?? false,
   };
   const [form, setForm] = useState(initial);
   const [saved, setSaved] = useState(initial);
@@ -63,6 +64,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
       meetingSystem: op.meetingSystem || "Stanton",
       meetingLocation: op.meetingLocation ?? "",
       visibility: normalizeVisibility(op.visibility),
+      squadLinkVoiceEnabled: op.squadLinkVoiceEnabled ?? false,
     };
     setForm(next);
     setSaved(next);
@@ -78,6 +80,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
       await editOperation(op.id, csrf, {
         ...coreOpBody(form),
         maxParticipants: form.maxParticipants.trim() === "" ? null : Math.max(0, Number(form.maxParticipants) || 0),
+        squadLinkVoiceEnabled: form.squadLinkVoiceEnabled,
       });
       onNotice("Gespeichert.");
       onSaved();
@@ -178,6 +181,23 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
                 );
               })}
             </div>
+          </section>
+
+          <section style={card}>
+            <CardHead icon="mic" label="VOICE" tone="violet" />
+            <button
+              type="button"
+              data-testid="edit-squadlink-toggle"
+              aria-pressed={form.squadLinkVoiceEnabled}
+              onClick={() => set({ squadLinkVoiceEnabled: !form.squadLinkVoiceEnabled })}
+              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: form.squadLinkVoiceEnabled ? "1px solid rgba(160,100,255,0.45)" : "1px solid rgba(255,255,255,0.08)", background: form.squadLinkVoiceEnabled ? "rgba(160,100,255,0.07)" : "transparent", color: form.squadLinkVoiceEnabled ? "var(--purple)" : "#9fb1c2" }}
+            >
+              <Ic name={form.squadLinkVoiceEnabled ? "check" : "mic"} size={15} sw={1.7} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>SquadLink Voice</span>
+                <span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>Commandanten bekommen ab Op-Start einen Direktlink in den CommandNet-Sprachraum.</span>
+              </span>
+            </button>
           </section>
 
           <div className="danger">

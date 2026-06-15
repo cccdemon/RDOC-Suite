@@ -57,6 +57,7 @@ type OpListRow = {
 type OpDetailRow = OpListRow & {
   description: string;
   maxParticipants: number | null;
+  squadLinkVoiceEnabled?: boolean;
   guild: { id: string; name: string; iconHash: string | null; timezone: string | null; discordInviteUrl?: string | null };
   leaders: Array<{ user: UserRow }>;
   units: UnitRow[];
@@ -200,6 +201,7 @@ export function presentOperationDetail(
     coverUrl: op.cover?.url ?? null,
     viewerRole: viewer.role,
     canManage: viewer.canManage,
+    squadLinkVoiceEnabled: op.squadLinkVoiceEnabled === true,
   };
 }
 

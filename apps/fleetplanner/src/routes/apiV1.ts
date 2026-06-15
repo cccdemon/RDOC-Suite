@@ -55,6 +55,11 @@ import {
 } from "../services/coverService.js";
 import { signCoverToken } from "../services/coverToken.js";
 import {
+  buildCommandNetLink,
+  squadLinkConfigured,
+  squadLinkStoreUrl,
+} from "../services/squadLink.js";
+import {
   approveDistribution,
   declineDistribution,
   deleteDistributedEvents,
@@ -991,6 +996,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       ...(d.meetingLocation !== undefined && { meetingLocation: d.meetingLocation.trim() }),
       ...(d.scheduledAt !== undefined && { scheduledAt: new Date(d.scheduledAt) }),
       ...(d.maxParticipants !== undefined && { maxParticipants: d.maxParticipants }),
+      ...(d.squadLinkVoiceEnabled !== undefined && { squadLinkVoiceEnabled: d.squadLinkVoiceEnabled }),
     });
     if (d.visibility !== undefined) {
       // OpVisibility's TS type predates "guild"; the column/UI accept it.
@@ -1235,6 +1241,34 @@ export async function apiV1Routes(app: FastifyInstance) {
       return reply.type("application/json").send({ editorUrl: `${editorBase}/edit?token=${encodeURIComponent(token)}` });
     },
   );
+
+  // ── SquadLink Lite CommandNet deep-link ──────────────────────────────
+  // Operation commanders (fleetoperator OR op leader) fetch a personalised
+  // `squadlink://connect` link that joins the op's CommandNet voice room without
+  // PIN/code. The link is only produced once the op has started and the feature
+  // is both per-op enabled and server-configured (shared room-auth secret). Same
+  // gate as the cover panel (requireCoverManager = fleetoperator | op leader).
+  app.get<{ Params: { id: string } }>("/api/v1/operations/:id/squadlink", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const g = await requireCoverManager(req, reply, p.data.id, false);
+    if (!g) return;
+    const op = g.op;
+    const enabled = op.squadLinkVoiceEnabled === true;
+    const configured = squadLinkConfigured();
+    const started = op.status === "starting" || op.status === "in_progress";
+    const name = g.ctx.user.username;
+    const link =
+      enabled && configured && started ? buildCommandNetLink(op.id, name, name) : null;
+    return reply.type("application/json").send({
+      enabled,
+      configured,
+      started,
+      link,
+      // Install link offered alongside the join link when the op enables voice.
+      storeUrl: enabled ? (squadLinkStoreUrl() ?? null) : null,
+    });
+  });
 
   // ── operation editor: Bedarfe / needs ────────────────────────────────
   // SSR twins: api.ts /api/ops/:id/needs/{ships,fighters,cqb} + needs/:reqId/{rename,delete}.

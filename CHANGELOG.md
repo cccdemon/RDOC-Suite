@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - SquadLink Lite voice deep-link for commanders (2026-06-15)
+
+- **Per-operation voice toggle ("SquadLink Voice").** When enabled, op commanders
+  (fleetoperator or op leader) get a `squadlink://connect` deep-link in the op detail
+  UI that joins the operation's CommandNet voice room in RDOC SquadLink Lite **without
+  PIN/code**. One shared room per operation (`op-<id>-command`); parallel ops are
+  separate. SquadLink Lite itself is unchanged (it already parses the deep-link).
+- The join token is `HMAC-SHA256(SQUADLINK_ROOM_AUTH_SECRET, room)` (hex), byte-for-byte
+  identical to the init-server's room-auth; the secret stays server-side. The link is
+  produced only once the op has started (`starting`/`in_progress`) and the feature is
+  both per-op enabled and server-configured.
+- New `GET /api/v1/operations/:id/squadlink` (gate: fleetoperator | op leader) returns
+  the personalised link + state; `PATCH /api/v1/operations/:id` accepts
+  `squadLinkVoiceEnabled`. New env: `SQUADLINK_ROOM_AUTH_SECRET`, `SQUADLINK_WS_URL`,
+  `SQUADLINK_STORE_URL` (optional MS Store install link, offered alongside the join link).
+- DB: `Operation.squadLinkVoiceEnabled` (migration `20260615160000_op_squadlink_voice`).
+
 ### Added - Admin "System & Logs" panel (2026-06-15)
 
 - New superadmin page at `/admin/system`: service health (DB, scheduler, both catalog

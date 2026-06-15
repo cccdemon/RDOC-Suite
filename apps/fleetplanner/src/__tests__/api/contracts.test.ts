@@ -89,6 +89,7 @@ describe("contracts", () => {
       canManage: false,
       viewerCqbSignedUp: false,
       viewerHangarShared: true,
+      squadLinkVoiceEnabled: false,
     };
     const parsed = OperationDetailSchema.safeParse(detail);
     expect(parsed.success).toBe(true);

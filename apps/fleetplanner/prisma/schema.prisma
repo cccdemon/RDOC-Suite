@@ -348,6 +348,9 @@ model Operation {
   meetingLocation String   @default("")
   scheduledAt     DateTime
   status          String   @default("draft") // draft | open | locked | starting | in_progress | completed | cancelled
+  // FR SquadLink-CommandNet: when on, the op detail UI offers commanders a
+  // `squadlink://connect` deep-link into the op CommandNet voice room (once started).
+  squadLinkVoiceEnabled Boolean @default(false)
   minParticipants Int      @default(0) // minimum participants the host wants
   maxParticipants Int? // optional cap
   createdById     String

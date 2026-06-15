@@ -255,6 +255,8 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
   viewerCqbSignedUp: z.boolean(),
   /** Caller shares their hangar with the operators for this op. */
   viewerHangarShared: z.boolean(),
+  /** FR SquadLink-CommandNet: op has the SquadLink Lite voice deep-link enabled. */
+  squadLinkVoiceEnabled: z.boolean(),
 }).meta({ id: "OperationDetail" });
 export type OperationDetail = z.infer<typeof OperationDetailSchema>;
 
@@ -957,6 +959,8 @@ export const EditOperationRequestSchema = z
     scheduledAt: z.iso.datetime().optional(),
     visibility: z.enum(["private", "guild", "partners", "public"]).optional(),
     maxParticipants: z.number().int().min(0).max(10000).nullable().optional(),
+    /** FR SquadLink-CommandNet: offer commanders the SquadLink Lite voice deep-link. */
+    squadLinkVoiceEnabled: z.boolean().optional(),
   })
   .meta({ id: "EditOperationRequest" });
 export type EditOperationRequest = z.infer<typeof EditOperationRequestSchema>;
