@@ -218,7 +218,8 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.get("/companion/download", async (_req, reply) => {
     const downloadUrl = env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL;
-    if (downloadUrl) return reply.redirect(downloadUrl, 302);
+    // Only redirect to a real http(s) target (no javascript:/data: from a stale env value).
+    if (downloadUrl && /^https?:\/\//i.test(downloadUrl)) return reply.redirect(downloadUrl, 302);
 
     reply.type("text/html; charset=utf-8").send(`<!doctype html>
 <html lang="en">

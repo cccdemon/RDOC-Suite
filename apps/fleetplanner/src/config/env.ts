@@ -55,8 +55,10 @@ const schema = z.object({
   // Companion app OAuth — uses the RDOC-RTC Bot (separate from the Fleetmanager Bot)
   DISCORD_COMPANION_BOT_ID: z.string().optional(),
   DISCORD_COMPANION_BOT_KEY: z.string().optional(),
-  FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL: httpUrl.optional(),
-  FLEETPLANNER_VOICE_CLIENT_CONFIG_URL: httpUrl.optional(),
+  // Voice/SquadLink stack was removed 2026-06-12; these are leftover (often empty)
+  // env vars. Kept lenient so a stale/empty value doesn't fail-fast the boot.
+  FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL: z.string().optional(),
+  FLEETPLANNER_VOICE_CLIENT_CONFIG_URL: z.string().optional(),
   LIVEKIT_URL: z.string().optional(),
   LIVEKIT_API_KEY: z.string().optional(),
   LIVEKIT_API_SECRET: z.string().optional(),
