@@ -205,7 +205,7 @@ export function presentOperationDetail(
 
 export function presentSession(
   ctx: {
-    user: { id: string; username: string; role: string; locale: string | null };
+    user: { id: string; username: string; role: string; locale: string | null; shareHangarWithOrg?: boolean };
     csrfToken: string;
   } | null,
   memberships: Array<{ guildId: string; guild: { name: string }; role: string }>,
@@ -217,6 +217,7 @@ export function presentSession(
       username: ctx.user.username,
       role: ctx.user.role as "superadmin" | "fleetoperator" | "crew",
       locale: ctx.user.locale,
+      shareHangarWithOrg: ctx.user.shareHangarWithOrg ?? false,
     },
     memberships: memberships.map((m) => ({
       guildId: m.guildId,
@@ -289,6 +290,8 @@ type OrgFleetRowLike = {
   shipClass: string;
   nickname: string | null;
   quantity: number;
+  sourceUrl: string | null;
+  imageUrl: string | null;
 };
 export function presentOrgFleet(rows: OrgFleetRowLike[]): OrgFleetResponse {
   const models = new Set<string>();
@@ -308,6 +311,8 @@ export function presentOrgFleet(rows: OrgFleetRowLike[]): OrgFleetResponse {
       shipClass: r.shipClass,
       nickname: r.nickname,
       quantity: r.quantity,
+      sourceUrl: r.sourceUrl,
+      imageUrl: r.imageUrl,
     })),
     totals: { hulls, models: models.size, membersWithHangar: members.size },
   };

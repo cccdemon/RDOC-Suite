@@ -104,6 +104,9 @@ services:
       # MISSIONCOVER_SERVICE_SECRET comes from .env (shared with mission-cover).
     ports:
       - "127.0.0.1:3200:3200"
+    volumes:
+      # FR-P3 org-fleet: persistent cache for ship images pulled from Fleetyards.
+      - fleetplanner_shipimg:/app/data/ship-images
     depends_on:
       fleetplanner-db:
         condition: service_healthy
@@ -252,6 +255,7 @@ volumes:
   caddy_rdoc_config:
   caddy_rdoc_data:
   fleetplanner_pgdata:
+  fleetplanner_shipimg:
   grafana_data:
   mission_cover_data:
   monitoring_data:

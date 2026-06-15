@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
+import { mkdir, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { normShipName } from "../services/shipSync.js";
 // API-only backend: this router serves ONLY data/file endpoints — mission
 // images and per-op .ics/.csv exports. All UI (incl. info/legal pages) lives in
 // the fleetplanner-web SPA. Do not add HTML/JS routes here.
@@ -15,6 +16,24 @@ import { getOperation } from "../services/operations.js";
 import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../public");
+
+// FR-P3 org-fleet: writable cache for ship images pulled from Fleetyards.
+// Lazy-downloaded on first request, then served from disk (volume-backed in prod).
+const SHIP_IMG_DIR = process.env.SHIP_IMAGE_DIR ?? "/app/data/ship-images";
+const SHIP_IMG_TYPES: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
+
+async function cachedShipImage(id: string): Promise<{ path: string; type: string } | null> {
+  for (const ext of ["jpg", "png", "webp"]) {
+    const p = join(SHIP_IMG_DIR, `${id}.${ext}`);
+    try {
+      await stat(p);
+      return { path: p, type: SHIP_IMG_TYPES[ext] };
+    } catch {
+      /* not this ext */
+    }
+  }
+  return null;
+}
 
 export async function webRoutes(app: FastifyInstance) {
   app.get<{ Params: { file: string } }>("/assets/mission-images/:file", async (req, reply) => {
@@ -29,6 +48,42 @@ export async function webRoutes(app: FastifyInstance) {
     } catch {
       return reply.code(404).send("Not found");
     }
+  });
+
+  // FR-P3: ship image for the Org-Flotte. Serves a locally-cached copy; on a
+  // cache miss it downloads the Fleetyards store image for the ship (matched by
+  // normalized name), writes it to disk, then streams it. Public (no op data).
+  app.get<{ Params: { id: string } }>("/assets/ship-images/:id", async (req, reply) => {
+    const id = req.params.id;
+    if (!/^[a-z0-9]{20,40}$/.test(id)) return reply.code(404).send("Not found");
+
+    let hit = await cachedShipImage(id);
+    if (!hit) {
+      const ship = await prisma.ship.findUnique({ where: { id }, select: { name: true } });
+      if (!ship) return reply.code(404).send("Not found");
+      const fy = await prisma.fleetyardsShip.findFirst({
+        where: { nameKey: normShipName(ship.name), storeImageUrl: { not: null } },
+        select: { storeImageUrl: true },
+      });
+      const url = fy?.storeImageUrl;
+      if (!url) return reply.code(404).send("Not found");
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+        if (!res.ok) return reply.code(404).send("Not found");
+        const ct = res.headers.get("content-type") ?? "";
+        const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+        const buf = Buffer.from(await res.arrayBuffer());
+        if (buf.byteLength === 0 || buf.byteLength > 8_000_000) return reply.code(404).send("Not found");
+        await mkdir(SHIP_IMG_DIR, { recursive: true });
+        const p = join(SHIP_IMG_DIR, `${id}.${ext}`);
+        await writeFile(p, buf);
+        hit = { path: p, type: SHIP_IMG_TYPES[ext] };
+      } catch {
+        return reply.code(502).send("Upstream image fetch failed");
+      }
+    }
+    reply.header("cache-control", "public, max-age=86400");
+    return reply.type(hit.type).send(createReadStream(hit.path));
   });
 
   // ── Link unfurl (OpenGraph) — crawler-only meta document. ──────────────

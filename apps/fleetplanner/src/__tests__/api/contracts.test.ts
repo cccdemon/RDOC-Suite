@@ -121,7 +121,7 @@ describe("contracts", () => {
     ).toBe(true);
     expect(
       SessionResponseSchema.safeParse({
-        user: { id: "u1", username: "Crew", role: "crew", locale: "de" },
+        user: { id: "u1", username: "Crew", role: "crew", locale: "de", shareHangarWithOrg: false },
         memberships: [{ guildId: "g1", guildName: "RDOC", role: "crew" }],
         csrfToken: "tok",
       }).success,

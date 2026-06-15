@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Org-Flotte — Opt-in-Consent + Schiff-Links + lokaler Bild-Cache — Branch master
+
+User: (1) Spieler-Schiffe nur in Flotte wenn Erlaubnis gegeben (Opt-in), (2) Schiffe verlinkt zur
+Quelle, (3) Fleetyards-Bilder lokal auf Platte cachen → klickbares Vorschaubild + Overlay.
+- **Consent:** `User.shareHangarWithOrg Boolean @default(false)` + Migration. Toggle im Konto
+  (PreferencesPanel), PATCH `/api/v1/profile`, in Session exponiert. Org-Flotte-Roster = Orgamember
+  (fleetoperator) UND `shareHangarWithOrg=true` ("auch"-Lesart: zusätzliches Gate).
+- **Link:** OrgFleetEntry.sourceUrl = `https://fleetyards.net/ships/<slug>` (slug aus FleetyardsShip via nameKey).
+- **Bild lokal:** OrgFleetEntry.imageUrl = `/assets/ship-images/<shipId>`; Route in web.ts lädt
+  FleetyardsShip.storeImageUrl **lazy** auf Disk (`/app/data/ship-images`, neues Volume) + serviert.
+  SPA: Thumbnail je Schiff, Klick → Lightbox-Overlay (Pattern wie OpDetail-Cover).
+- Rebuild BEIDE Images. Compose: Volume `fleetplanner_shipimg`.
+
 ## Queued / Planned Step - 2026-06-15: Org-Flotte auf Admiral-Rolle einschränken — Branch master
 
 User-Override zu FR-P3-org-fleet Decision 1: „Guildmember ist nur wer die ADMIRAL-ROLLE hat."

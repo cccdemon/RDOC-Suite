@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ApiError, setProfileLocale } from "../api/client";
+import { ApiError, setProfileLocale, setProfileShareHangar } from "../api/client";
 import type { SessionResponse } from "../api/types";
 import { LOCALE_NAMES, LOCALES, useLocale, useT, type Locale } from "../i18n";
 import { CardHead, card, lbl, segChip } from "./ui";
@@ -14,6 +14,23 @@ export function PreferencesPanel({ session }: { session: SessionResponse | null 
   const csrf = session?.csrfToken ?? null;
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [share, setShare] = useState<boolean>(session?.user?.shareHangarWithOrg ?? false);
+
+  async function toggleShare() {
+    if (!csrf) return;
+    const next = !share;
+    setShare(next); // optimistic
+    setBusy(true);
+    try {
+      await setProfileShareHangar(csrf, next);
+      setNotice(t("prefs.saved"));
+    } catch (e) {
+      setShare(!next); // revert
+      setNotice(e instanceof ApiError ? e.message : t("prefs.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function changeLanguage(l: Locale) {
     setLocale(l); // instant UI switch (optimistic)
@@ -42,6 +59,22 @@ export function PreferencesPanel({ session }: { session: SessionResponse | null 
           </button>
         ))}
       </div>
+
+      {/* FR-P3: Org-Flotte opt-in */}
+      <div style={{ ...lbl, marginTop: "1.4rem" }}>ORG-FLOTTE</div>
+      <p style={{ margin: "0 0 0.7rem", color: "var(--dim)", fontSize: "0.85rem" }}>
+        Wenn aktiv, erscheinen deine Schiffe in der Org-Flotte deines Servers — andere Orgamember sehen,
+        dass du sie hast (zum Ausleihen/Ansehen). Standardmäßig aus.
+      </p>
+      <button
+        type="button"
+        data-testid="prefs-share-hangar"
+        disabled={busy}
+        onClick={toggleShare}
+        style={segChip(share, "var(--cyan)", "0,212,255")}
+      >
+        {share ? "✓ Schiffe in Org-Flotte zeigen" : "Schiffe NICHT in Org-Flotte zeigen"}
+      </button>
     </section>
   );
 }

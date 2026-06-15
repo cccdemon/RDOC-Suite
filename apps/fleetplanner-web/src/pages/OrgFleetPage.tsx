@@ -33,7 +33,7 @@ function DiscordLink({ id, handle }: { id: string | null; handle: string | null 
 
 type ShipGroup = {
   shipId: string; shipName: string; manufacturer: string; shipClass: string;
-  totalQty: number; owners: OrgFleetEntry[];
+  totalQty: number; owners: OrgFleetEntry[]; imageUrl: string | null; sourceUrl: string | null;
 };
 type MemberGroup = {
   userId: string; username: string; discordId: string | null; discordHandle: string | null;
@@ -53,6 +53,7 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
   const [pivot, setPivot] = useState<"ship" | "member">("ship");
   const [q, setQ] = useState("");
   const [openShips, setOpenShips] = useState<Set<string>>(new Set());
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   // Pick guild from ?guild= if a membership, else the first server.
   useEffect(() => {
@@ -79,7 +80,7 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
     for (const e of entries) {
       let g = m.get(e.shipId);
       if (!g) {
-        g = { shipId: e.shipId, shipName: e.shipName, manufacturer: e.manufacturer, shipClass: e.shipClass, totalQty: 0, owners: [] };
+        g = { shipId: e.shipId, shipName: e.shipName, manufacturer: e.manufacturer, shipClass: e.shipClass, totalQty: 0, owners: [], imageUrl: e.imageUrl, sourceUrl: e.sourceUrl };
         m.set(e.shipId, g);
       }
       g.totalQty += e.quantity;
@@ -201,9 +202,26 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
                   onClick={() => toggleShip(g.shipId)}
                   style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, padding: "0.62rem 1rem", alignItems: "center", fontSize: "0.92rem", cursor: "pointer" }}
                 >
-                  <span style={{ color: "var(--text-hi)", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <span style={{ color: "var(--text-hi)", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem", minWidth: 0 }}>
                     <span style={{ display: "inline-flex", transform: open ? "rotate(90deg)" : "none", transition: "transform 0.15s", color: "#5b6b7a" }}><Ic name="arrow" size={13} sw={2} /></span>
-                    {g.shipName}
+                    {g.imageUrl && (
+                      <img
+                        src={g.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        title="Vergrößern"
+                        onClick={(ev) => { ev.stopPropagation(); setLightbox(g.imageUrl); }}
+                        onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        style={{ width: 46, height: 28, objectFit: "cover", borderRadius: 4, border: "1px solid rgba(0,212,255,0.18)", cursor: "zoom-in", flex: "none" }}
+                      />
+                    )}
+                    {g.sourceUrl ? (
+                      <a href={g.sourceUrl} target="_blank" rel="noopener noreferrer" onClick={(ev) => ev.stopPropagation()} title="Auf Fleetyards öffnen" style={{ color: "var(--text-hi)", textDecoration: "none" }}>
+                        {g.shipName} <span style={{ color: "#5b6b7a" }}>↗</span>
+                      </a>
+                    ) : (
+                      g.shipName
+                    )}
                   </span>
                   <span className="fpw-meta">{g.manufacturer || "—"}</span>
                   <span className="fpw-meta">{g.shipClass || "—"}</span>
@@ -240,6 +258,16 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
               <span style={{ textAlign: "right" }}><DiscordLink id={g.discordId} handle={g.discordHandle} /></span>
             </div>
           ))}
+        </div>
+      )}
+
+      {lightbox && (
+        <div
+          data-testid="ship-lightbox"
+          onClick={() => setLightbox(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, cursor: "zoom-out" }}
+        >
+          <img src={lightbox} alt="" style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 8, boxShadow: "0 0 40px rgba(0,0,0,0.6)" }} />
         </div>
       )}
     </div>

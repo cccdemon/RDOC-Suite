@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Org-Flotte: opt-in consent, ship source links + cached images (2026-06-15)
+
+- **Opt-in:** a member's ships appear in the Org-Flotte only if they enabled
+  "Schiffe in Org-Flotte zeigen" (new toggle in Konto → Einstellungen). New
+  `User.shareHangarWithOrg` (default false) + migration; `PATCH /api/v1/profile`
+  accepts it; surfaced on the session. Roster = Orgamember AND opted-in.
+- **Source links:** each ship links to Fleetyards (`fleetyards.net/ships/<slug>`,
+  matched by normalized name).
+- **Images:** ship store image from Fleetyards is lazily downloaded to a local
+  volume on first view (`GET /assets/ship-images/:shipId`) and served from disk;
+  the Org-Flotte shows a clickable thumbnail that opens a full-size lightbox
+  overlay. New compose volume `fleetplanner_shipimg`.
+
 ### Changed - Org-Flotte restricted to Orgamember + role label rename (2026-06-15)
 
 - Org-Flotte (FR-P3) is now **Orgamember-only**: both viewing and the listed roster

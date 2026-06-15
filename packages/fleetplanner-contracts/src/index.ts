@@ -46,6 +46,8 @@ export const SessionUserSchema = z
     username: z.string(),
     role: z.enum(["superadmin", "fleetoperator", "crew"]),
     locale: z.string().nullable(),
+    /** FR-P3: opt-in to list one's owned ships in the guild Org-Flotte. */
+    shareHangarWithOrg: z.boolean(),
   })
   .meta({ id: "SessionUser" });
 export type SessionUser = z.infer<typeof SessionUserSchema>;
@@ -305,6 +307,10 @@ export const OrgFleetEntrySchema = z
     nickname: z.string().nullable(),
     /** Hulls of this model the member owns. */
     quantity: z.number().int(),
+    /** External source link (Fleetyards) for the model; null if unmatched. */
+    sourceUrl: z.string().nullable(),
+    /** Locally-cached ship image (lazy-downloaded); null when none available. */
+    imageUrl: z.string().nullable(),
   })
   .meta({ id: "OrgFleetEntry" });
 export type OrgFleetEntry = z.infer<typeof OrgFleetEntrySchema>;

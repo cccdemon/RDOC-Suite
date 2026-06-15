@@ -132,6 +132,11 @@ export function setProfileLocale(csrfToken: string, locale: "de" | "en"): Promis
   return mutate("PATCH", "/profile", csrfToken, { locale });
 }
 
+// FR-P3: opt in/out of listing one's owned ships in the guild Org-Flotte.
+export function setProfileShareHangar(csrfToken: string, shareHangarWithOrg: boolean): Promise<{ ok: true }> {
+  return mutate("PATCH", "/profile", csrfToken, { shareHangarWithOrg });
+}
+
 export function getAccount(): Promise<import("./types").AccountResponse> {
   return get<import("./types").AccountResponse>("/account");
 }
