@@ -778,9 +778,11 @@ export async function apiV1Routes(app: FastifyInstance) {
   }
 
   // ── superadmin: system health + event log ("System & Logs" panel) ────
+  // GET routes use optionalAuth + role check (no CSRF) — like /admin/settings.
   app.get("/api/v1/admin/system/health", async (req, reply) => {
-    const ctx = await requireSuperadmin(req, reply);
-    if (!ctx) return;
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
     const health = await getSystemHealth();
     return reply.type("application/json").send(health);
   });
@@ -788,8 +790,9 @@ export async function apiV1Routes(app: FastifyInstance) {
   app.get<{ Querystring: { level?: string; category?: string; since?: string; limit?: string } }>(
     "/api/v1/admin/system/events",
     async (req, reply) => {
-      const ctx = await requireSuperadmin(req, reply);
-      if (!ctx) return;
+      const ctx = await optionalAuth(req);
+      if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+      if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
       const lvl = req.query.level;
       const level: EventLevel | undefined = lvl === "info" || lvl === "warn" || lvl === "error" ? lvl : undefined;
       const category = req.query.category ? String(req.query.category).slice(0, 60) : undefined;
