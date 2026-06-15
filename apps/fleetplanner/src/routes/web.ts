@@ -3,7 +3,7 @@ import { createReadStream } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { normShipName } from "../services/shipSync.js";
+import { normShipName } from "../services/fleetyards.js";
 // API-only backend: this router serves ONLY data/file endpoints — mission
 // images and per-op .ics/.csv exports. All UI (incl. info/legal pages) lives in
 // the fleetplanner-web SPA. Do not add HTML/JS routes here.

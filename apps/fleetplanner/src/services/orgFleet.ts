@@ -10,7 +10,7 @@
 //  - AND only those who opted in (`User.shareHangarWithOrg`).
 import { prisma } from "../db.js";
 import { getEnv } from "../config/env.js";
-import { normShipName } from "./shipSync.js";
+import { normShipName } from "./fleetyards.js";
 
 export type OrgFleetRow = {
   userId: string;
