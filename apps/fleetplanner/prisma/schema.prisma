@@ -253,6 +253,22 @@ model LocationSyncState {
   updatedAt     DateTime  @updatedAt
 }
 
+// Admin "System & Logs" panel: persisted system events (sync runs, scheduler
+// ticks, unhandled 5xx, health transitions) so the superadmin can see what the
+// system did and where it stuck. Pruned to a 10-day window on each scheduler tick.
+model SystemEvent {
+  id        String   @id @default(cuid())
+  level     String   @default("info") // info | warn | error
+  category  String // sync.ship | sync.location | scheduler | http.error | health
+  message   String
+  detail    String   @default("") // optional JSON payload / stacktrace
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([category, createdAt])
+  @@index([level, createdAt])
+}
+
 model UserShip {
   id        String   @id @default(cuid())
   userId    String

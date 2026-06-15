@@ -3,6 +3,7 @@
 
 import { prisma } from "../db.js";
 import { syncShipCatalog } from "./scwiki.js";
+import { recordEvent, pruneSystemEvents } from "./systemEvents.js";
 
 const SINGLETON_ID = "singleton";
 // How often the scheduler wakes up to check whether a sync is due. The
@@ -79,6 +80,7 @@ export async function runSync(
     await prisma.shipSyncState.create({ data: { id: SINGLETON_ID, running: true } });
   }
 
+  void recordEvent("info", "sync.ship", `Schiff-Sync gestartet (${trigger})`);
   try {
     const result = await syncShipCatalog();
     const shipCount = await prisma.ship.count();
@@ -91,6 +93,12 @@ export async function runSync(
         lastResult: `${trigger}: ${result.fetched}/${result.total} ships (${result.failed} failed)`,
       },
     });
+    void recordEvent(
+      result.failed > 0 ? "warn" : "info",
+      "sync.ship",
+      `Schiff-Sync fertig: ${result.fetched}/${result.total} (${result.failed} fehlgeschlagen)`,
+      result,
+    );
     return result;
   } catch (err) {
     await prisma.shipSyncState
@@ -103,6 +111,7 @@ export async function runSync(
         },
       })
       .catch(() => null);
+    void recordEvent("error", "sync.ship", `Schiff-Sync fehlgeschlagen (${trigger})`, err instanceof Error ? err.stack ?? err.message : String(err));
     throw err;
   }
 }
@@ -116,6 +125,8 @@ export function startShipSyncScheduler(log?: { info: (msg: string) => void; erro
   if (timer) return;
   const tick = async () => {
     try {
+      // Opportunistic retention sweep for the system-event log (10-day window).
+      void pruneSystemEvents();
       const state = await getSyncState();
       if (!state.enabled || state.running) return;
       if (!isDue(state)) return;

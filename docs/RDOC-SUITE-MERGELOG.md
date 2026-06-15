@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Admin „System & Logs"-Panel (Observability) — Branch master
+
+User will einen Admin-Log: was das System macht, wo es klemmt, Dienst-Status, Live-Log der Syncs,
+welche Fehler passiert sind — **Historie bis 10 Tage zurück**. Entscheidungen (User): Live = Auto-
+Refresh-Polling (~5s, kein SSE); Dienst-Status-Scope = **DB + Scheduler + Syncs** (keine Bridge-/
+LiveKit-/Discord-Pings).
+- **Schema:** neue Tabelle `SystemEvent` (level `info|warn|error`, category, message, detail-JSON,
+  createdAt) + Migration `20260615180000_system_events`. Retention 10 Tage, Pruning bei jedem
+  Scheduler-Tick.
+- **Service:** [systemEvents.ts](apps/fleetplanner/src/services/systemEvents.ts) (`recordEvent`
+  fire-and-forget, `listSystemEvents`, `pruneSystemEvents`) +
+  [systemHealth.ts](apps/fleetplanner/src/services/systemHealth.ts) (`getSystemHealth` → DB-Ping,
+  Scheduler-Zustand, Sync-Status inkl. stale-Erkennung).
+- **Eingehängt:** Ship-/Location-Sync (Start/Erfolg/Fehler-Events), globaler Fastify-Error-Handler
+  (5xx → `http.error`-Event), Scheduler-Ticks (Prune). 
+- **Routen (superadmin):** `GET /api/v1/admin/system/health`, `GET /api/v1/admin/system/events`.
+  Contracts + OpenAPI erweitert.
+- **SPA:** neue Seite `SystemPage` unter `/admin/system` (Nav „System", superadmin-gated): Dienst-
+  Ampeln, Sync-Status + „Sync jetzt", Live-Event-Log mit Level-/Kategorie-Filter + Auto-Refresh.
+- Build: fleetplanner (Backend+Contracts) + fleetplanner-web. **Migration** (läuft via entrypoint
+  `prisma migrate deploy`).
+
 ## Queued / Planned Step - 2026-06-15: Catalog-Sync hängt auf „Läuft" — Stale-Claim-Recovery — Branch master
 
 User: Der Standortkatalog „synced dauernd". Diagnose auf Prod: `LocationSyncState.running=true`

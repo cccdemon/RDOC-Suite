@@ -78,6 +78,8 @@ import {
   UpdatePollRequestSchema,
   VotePollRequestSchema,
   AddPollOptionRequestSchema,
+  SystemHealthResponseSchema,
+  SystemEventsResponseSchema,
 } from "./contracts/index.js";
 
 type JsonObject = Record<string, unknown>;
@@ -95,6 +97,8 @@ const SCHEMAS = {
   OperationListResponse: OperationListResponseSchema,
   OperationDetail: OperationDetailSchema,
   ShipSearchResponse: ShipSearchResponseSchema,
+  SystemHealthResponse: SystemHealthResponseSchema,
+  SystemEventsResponse: SystemEventsResponseSchema,
   MutationOk: MutationOkSchema,
   ClaimSeatResponse: ClaimSeatResponseSchema,
   CqbSignupRequest: CqbSignupRequestSchema,
@@ -800,6 +804,30 @@ export function buildOpenApiDocument(): JsonObject {
           parameters: [{ name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } }],
           requestBody: { required: true, ...jsonContent(ref("CatalogConfigRequest")) },
           responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/admin/system/health": {
+        get: {
+          operationId: "getSystemHealth",
+          summary: "Service health (DB + scheduler + catalog syncs); superadmin only",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          responses: { "200": { description: "OK", ...jsonContent(ref("SystemHealthResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/admin/system/events": {
+        get: {
+          operationId: "getSystemEvents",
+          summary: "System event log, up to 10 days back (superadmin only)",
+          tags: ["admin"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "level", in: "query", required: false, schema: { type: "string", enum: ["info", "warn", "error"] } },
+            { name: "category", in: "query", required: false, schema: { type: "string" } },
+            { name: "since", in: "query", required: false, schema: { type: "string", format: "date-time" } },
+            { name: "limit", in: "query", required: false, schema: { type: "integer" } },
+          ],
+          responses: { "200": { description: "OK", ...jsonContent(ref("SystemEventsResponse")) }, ...errorResponses },
         },
       },
       "/api/v1/admin/users": {

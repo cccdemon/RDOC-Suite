@@ -16,6 +16,7 @@ import { enterLocale, localeFromAcceptLanguage } from "./i18n/index.js";
 import { isMaintenanceOn, loadMaintenance } from "./services/maintenance.js";
 import { loadSession } from "./auth/session.js";
 import { maintenancePage, rawHtml } from "./web/render.js";
+import { recordEvent } from "./services/systemEvents.js";
 
 export async function buildApp() {
   const env = getEnv();
@@ -36,6 +37,11 @@ export async function buildApp() {
     const e = err as { statusCode?: number; code?: string; name?: string; message?: string };
     const status = e.statusCode ?? 500;
     app.log.error(err, `Unhandled error on ${request.method} ${request.url}`);
+    // Surface server faults (5xx) in the admin "System & Logs" panel. 4xx are
+    // client errors and would be noise. Fire-and-forget.
+    if (status >= 500) {
+      void recordEvent("error", "http.error", `${status} ${request.method} ${request.url}`, e.message ?? e.name ?? "unknown");
+    }
     if (isProd) {
       return reply.code(status).send({
         statusCode: status,

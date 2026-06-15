@@ -49,6 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Admin / System",
     items: [
       { to: "/admin", label: "Admin-Konsole", icon: "shield", gate: "superadmin" },
+      { to: "/admin/system", label: "System & Logs", icon: "doc", gate: "superadmin" },
     ],
   },
   {

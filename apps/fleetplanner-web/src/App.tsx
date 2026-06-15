@@ -23,6 +23,7 @@ import { PollCreatePage } from "./pages/PollCreatePage";
 import { PollDetailPage } from "./pages/PollDetailPage";
 import { DiagnosticsPage } from "./pages/DiagnosticsPage";
 import { AdminPage } from "./pages/AdminPage";
+import { SystemPage } from "./pages/SystemPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { ErrorState } from "./components/ErrorState";
@@ -94,6 +95,7 @@ export function App() {
             <Route path="/guilds/settings" element={<GuildSettingsPage session={session} />} />
             <Route path="/guilds/partnerships" element={<PartnershipsPage session={session} />} />
             <Route path="/admin" element={<AdminPage session={session} />} />
+            <Route path="/admin/system" element={<SystemPage session={session} />} />
             <Route path="/ops/:id/edit" element={<EditRedirect />} />
             <Route path="/ops/:id/manage" element={<ManageRedirect />} />
             <Route path="/ops/:id/cover" element={<CoverRedirect />} />

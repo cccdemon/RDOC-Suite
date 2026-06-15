@@ -435,6 +435,17 @@ export function setFeedbackChannel(csrfToken: string, channelId: string): Promis
 export function syncCatalog(csrfToken: string, kind: "ships" | "locations"): Promise<{ ok: true }> {
   return mutate("POST", `/admin/${kind}/sync`, csrfToken);
 }
+export function getSystemHealth(): Promise<import("./types").SystemHealthResponse> {
+  return get<import("./types").SystemHealthResponse>("/admin/system/health");
+}
+export function getSystemEvents(opts?: { level?: string; category?: string; limit?: number }): Promise<import("./types").SystemEventsResponse> {
+  const qs = new URLSearchParams();
+  if (opts?.level) qs.set("level", opts.level);
+  if (opts?.category) qs.set("category", opts.category);
+  if (opts?.limit) qs.set("limit", String(opts.limit));
+  const q = qs.toString();
+  return get<import("./types").SystemEventsResponse>(`/admin/system/events${q ? `?${q}` : ""}`);
+}
 
 export function setCatalogConfig(csrfToken: string, kind: "ships" | "locations", intervalDays: number): Promise<{ ok: true }> {
   return mutate("PUT", `/admin/${kind}/config`, csrfToken, { intervalDays });

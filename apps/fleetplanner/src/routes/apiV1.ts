@@ -28,6 +28,8 @@ import { getSetting, setSetting } from "../services/settings.js";
 import { isMaintenanceForcedByEnv, isMaintenanceOn, setMaintenance } from "../services/maintenance.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
 import { getLocationSyncState, runLocationSync, updateLocationSyncConfig, searchLocations } from "../services/locations.js";
+import { getSystemHealth } from "../services/systemHealth.js";
+import { listSystemEvents, SYSTEM_EVENT_RETENTION_DAYS, type EventLevel } from "../services/systemEvents.js";
 import { ROADMAP } from "../lib/roadmap.js";
 import {
   addLeader,
@@ -774,6 +776,34 @@ export async function apiV1Routes(app: FastifyInstance) {
       return reply.type("application/json").send({ ok: true as const });
     });
   }
+
+  // ── superadmin: system health + event log ("System & Logs" panel) ────
+  app.get("/api/v1/admin/system/health", async (req, reply) => {
+    const ctx = await requireSuperadmin(req, reply);
+    if (!ctx) return;
+    const health = await getSystemHealth();
+    return reply.type("application/json").send(health);
+  });
+
+  app.get<{ Querystring: { level?: string; category?: string; since?: string; limit?: string } }>(
+    "/api/v1/admin/system/events",
+    async (req, reply) => {
+      const ctx = await requireSuperadmin(req, reply);
+      if (!ctx) return;
+      const lvl = req.query.level;
+      const level: EventLevel | undefined = lvl === "info" || lvl === "warn" || lvl === "error" ? lvl : undefined;
+      const category = req.query.category ? String(req.query.category).slice(0, 60) : undefined;
+      const since = req.query.since ? new Date(req.query.since) : undefined;
+      const limitNum = req.query.limit ? Number(req.query.limit) : undefined;
+      const events = await listSystemEvents({
+        level,
+        category,
+        since: since && !Number.isNaN(since.getTime()) ? since : undefined,
+        limit: limitNum && Number.isFinite(limitNum) ? limitNum : undefined,
+      });
+      return reply.type("application/json").send({ events, retentionDays: SYSTEM_EVENT_RETENTION_DAYS });
+    },
+  );
 
   // ── guild partnerships (admiral console) ─────────────────────────────
   // SSR twins: routes/partnerships.ts. Guild-scoped via :id; approve/decline

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Admin "System & Logs" panel (2026-06-15)
+
+- New superadmin page at `/admin/system`: service health (DB, scheduler, both catalog
+  syncs) with status lights, a sync-control section ("Sync jetzt" + last result), and a
+  live event log filterable by level/category. Auto-refreshes every 5s (toggleable).
+- Backend persists a `SystemEvent` log (sync start/finish/error, unhandled 5xx) with a
+  10-day retention, pruned on each scheduler tick. New routes
+  `GET /api/v1/admin/system/health` and `GET /api/v1/admin/system/events` (superadmin).
+
 ### Fixed - Catalog sync stuck on "running" (2026-06-15)
 
 - A ship/location catalog sync that crashed mid-run (container restart, deploy)

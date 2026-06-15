@@ -869,6 +869,65 @@ export const AdminSettingsResponseSchema = z
   .meta({ id: "AdminSettingsResponse" });
 export type AdminSettingsResponse = z.infer<typeof AdminSettingsResponseSchema>;
 
+// ── Admin "System & Logs" panel (superadmin observability) ────────────
+export const HealthStatusSchema = z.enum(["ok", "warn", "error", "down"]);
+
+export const ServiceHealthSchema = z
+  .object({
+    key: z.string(),
+    name: z.string(),
+    status: HealthStatusSchema,
+    detail: z.string(),
+  })
+  .meta({ id: "ServiceHealth" });
+export type ServiceHealth = z.infer<typeof ServiceHealthSchema>;
+
+export const SyncHealthSchema = z
+  .object({
+    key: z.enum(["ship", "location"]),
+    name: z.string(),
+    enabled: z.boolean(),
+    running: z.boolean(),
+    /** running flag set but untouched past the stale threshold → stuck. */
+    stale: z.boolean(),
+    lastRun: z.iso.datetime().nullable(),
+    lastResult: z.string().nullable(),
+    intervalDays: z.number().int(),
+    count: z.number().int(),
+    status: HealthStatusSchema,
+  })
+  .meta({ id: "SyncHealth" });
+export type SyncHealth = z.infer<typeof SyncHealthSchema>;
+
+export const SystemHealthResponseSchema = z
+  .object({
+    checkedAt: z.iso.datetime(),
+    services: z.array(ServiceHealthSchema),
+    syncs: z.array(SyncHealthSchema),
+  })
+  .meta({ id: "SystemHealthResponse" });
+export type SystemHealthResponse = z.infer<typeof SystemHealthResponseSchema>;
+
+export const SystemEventSchema = z
+  .object({
+    id: z.string(),
+    ts: z.iso.datetime(),
+    level: z.enum(["info", "warn", "error"]),
+    category: z.string(),
+    message: z.string(),
+    detail: z.string(),
+  })
+  .meta({ id: "SystemEvent" });
+export type SystemEvent = z.infer<typeof SystemEventSchema>;
+
+export const SystemEventsResponseSchema = z
+  .object({
+    events: z.array(SystemEventSchema),
+    retentionDays: z.number().int(),
+  })
+  .meta({ id: "SystemEventsResponse" });
+export type SystemEventsResponse = z.infer<typeof SystemEventsResponseSchema>;
+
 export const MaintenanceRequestSchema = z
   .object({ enabled: z.boolean() })
   .meta({ id: "MaintenanceRequest" });

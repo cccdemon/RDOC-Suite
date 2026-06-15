@@ -1,5 +1,6 @@
 import { prisma } from "../db.js";
 import type { Location } from "@prisma/client";
+import { recordEvent, pruneSystemEvents } from "./systemEvents.js";
 
 const LOCATIONS_API = "https://api.star-citizen.wiki/api/locations";
 const SINGLETON_ID = "singleton";
@@ -160,6 +161,7 @@ export async function runLocationSync(trigger: "manual" | "scheduled") {
     await prisma.locationSyncState.create({ data: { id: SINGLETON_ID, running: true } });
   }
 
+  void recordEvent("info", "sync.location", `Standort-Sync gestartet (${trigger})`);
   try {
     const result = await syncLocationCatalog();
     const locationCount = await prisma.location.count();
@@ -172,6 +174,12 @@ export async function runLocationSync(trigger: "manual" | "scheduled") {
         lastResult: `${trigger}: ${result.fetched}/${result.total} locations (${result.failed} failed)`,
       },
     });
+    void recordEvent(
+      result.failed > 0 ? "warn" : "info",
+      "sync.location",
+      `Standort-Sync fertig: ${result.fetched}/${result.total} (${result.failed} fehlgeschlagen)`,
+      result,
+    );
     return result;
   } catch (err) {
     await prisma.locationSyncState.update({
@@ -182,6 +190,7 @@ export async function runLocationSync(trigger: "manual" | "scheduled") {
         lastResult: `${trigger}: ERROR ${err instanceof Error ? err.message : String(err)}`,
       },
     }).catch(() => null);
+    void recordEvent("error", "sync.location", `Standort-Sync fehlgeschlagen (${trigger})`, err instanceof Error ? err.stack ?? err.message : String(err));
     throw err;
   }
 }
@@ -190,6 +199,8 @@ export function startLocationSyncScheduler(log?: { info: (msg: string) => void; 
   if (timer) return;
   const tick = async () => {
     try {
+      // Opportunistic retention sweep for the system-event log (10-day window).
+      void pruneSystemEvents();
       const state = await getLocationSyncState();
       if (!state.enabled || state.running || !isDue(state)) return;
       log?.info("[locationSync] catalog refresh due - starting scheduled sync");
