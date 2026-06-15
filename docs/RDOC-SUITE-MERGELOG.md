@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Org-Flotte auf Admiral-Rolle einschränken — Branch master
+
+User-Override zu FR-P3-org-fleet Decision 1: „Guildmember ist nur wer die ADMIRAL-ROLLE hat."
+Roster UND Zugriff auf **fleetoperator** (= admiralRoleId-Mapping) beschränken, nicht alle Mitglieder.
+- `services/orgFleet.ts`: GuildMembership-Filter `role: "fleetoperator"` (nur Admirale + deren Schiffe).
+- `routes/apiV1.ts` `GET /guilds/:id/fleet`: Gate 403 wenn nicht fleetoperator (superadmin ok), wie /settings.
+- SPA `OrgFleetPage`: Server-Pick aus Memberships mit role==="fleetoperator" (wie GuildSettings `manageable`);
+  ohne Admiral-Rolle → Hinweis statt Fetch. Copy „Nur für Admirals".
+- FR-Doc-Decision 1 als überschrieben markiert. Rebuild BEIDE Images (fleetplanner + fleetplanner-web).
+
 ## Queued / Planned Step - 2026-06-15: FR-P3 Org-Flotte (guild ship roster) umsetzen — Branch master
 
 User: "so umsetzen bitte" (nach Design-Preview). Implementiert [archiv/FR-P3-org-fleet.md](archiv/FR-P3-org-fleet.md) (nach Umsetzung dorthin verschoben)

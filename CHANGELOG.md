@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Org-Flotte restricted to Orgamember + role label rename (2026-06-15)
+
+- Org-Flotte (FR-P3) is now **Orgamember-only**: both viewing and the listed roster
+  are limited to members with the configured Discord role (`admiralRoleId` →
+  `fleetoperator`). `GET /api/v1/guilds/:id/fleet` returns 403 to non-orgamembers;
+  the aggregation lists only their ships. Overrides the original "all members"
+  decision.
+- Guild settings: the "Admiral-Rolle (Discord-Rollen-ID)" field is relabelled
+  **"Orgamember-Rolle"** — described as the role that authorizes creating events
+  and includes the member in the Org-Flotte. The underlying `admiralRoleId` field
+  is unchanged.
+
 ### Added - Org-Flotte: guild ship roster (FR-P3, 2026-06-15)
 
 - New **Org-Flotte** tab (Server/Discord nav, route `/guilds/fleet`): a guild-scoped

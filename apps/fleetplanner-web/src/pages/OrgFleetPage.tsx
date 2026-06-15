@@ -42,6 +42,9 @@ type MemberGroup = {
 
 export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
   const memberships = session?.memberships ?? [];
+  // Org-Flotte is Orgamember-only: members with the configured Discord role
+  // (admiralRoleId → fleetoperator), who may create events + are in the fleet.
+  const orgaServers = memberships.filter((m) => m.role === "fleetoperator");
   const [searchParams] = useSearchParams();
   const [guildId, setGuildId] = useState<string | null>(null);
   const [data, setData] = useState<OrgFleetResponse | null>(null);
@@ -53,10 +56,10 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
 
   // Pick guild from ?guild= if a membership, else the first server.
   useEffect(() => {
-    if (guildId !== null || memberships.length === 0) return;
+    if (guildId !== null || orgaServers.length === 0) return;
     const wanted = searchParams.get("guild");
-    setGuildId(memberships.find((m) => m.guildId === wanted)?.guildId ?? memberships[0].guildId);
-  }, [memberships, guildId, searchParams]);
+    setGuildId(orgaServers.find((m) => m.guildId === wanted)?.guildId ?? orgaServers[0].guildId);
+  }, [orgaServers, guildId, searchParams]);
 
   useEffect(() => {
     if (!guildId) return;
@@ -121,7 +124,8 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
   }
 
   if (!session?.user) return <p className="fpw-meta">Bitte einloggen, um die Org-Flotte zu sehen.</p>;
-  if (memberships.length === 0) return <p className="fpw-meta">Du bist auf keinem Server. Tritt einem Discord mit RDOC-Fleetplanner bei.</p>;
+  if (orgaServers.length === 0)
+    return <p className="fpw-meta">Die Org-Flotte ist Orgamembern vorbehalten — Mitgliedern mit der dafür konfigurierten Discord-Rolle (berechtigt zum Anlegen von Events). Du hast diese Rolle auf keinem deiner Server.</p>;
 
   const segOn: React.CSSProperties = { background: "rgba(0,212,255,0.14)", borderColor: "rgba(0,212,255,0.4)", color: "var(--cyan)" };
   const seg: React.CSSProperties = {
@@ -136,17 +140,17 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Org-Flotte</h1>
       </div>
       <div style={{ color: "#9fb1c2", fontSize: "0.9rem", marginBottom: "1.1rem" }}>
-        Wer hat welches Schiff — zum Ausleihen, Ansehen oder Anfragen. Nur für Mitglieder dieses Servers.
+        Schiffe der Orgamember (Mitglieder mit der Org-Rolle) — zum Ausleihen, Ansehen oder Anfragen.
       </div>
 
       {/* server picker (only when on several servers) */}
-      {memberships.length > 1 && (
+      {orgaServers.length > 1 && (
         <select
           value={guildId ?? ""}
           onChange={(e) => setGuildId(e.target.value)}
           style={{ marginBottom: "1rem", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.5rem 0.7rem", borderRadius: 8 }}
         >
-          {memberships.map((m) => <option key={m.guildId} value={m.guildId}>{m.guildName}</option>)}
+          {orgaServers.map((m) => <option key={m.guildId} value={m.guildId}>{m.guildName}</option>)}
         </select>
       )}
 

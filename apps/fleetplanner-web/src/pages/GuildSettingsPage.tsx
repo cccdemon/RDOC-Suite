@@ -171,9 +171,9 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
                 <p className="fpw-meta" style={{ marginTop: "0.35rem", fontSize: "0.8rem" }}>Nur echte discord.gg / discord.com/invite Links — ungültige Eingaben werden verworfen.</p>
               </label>
               <label style={{ display: "block" }}>
-                <span style={label}>ADMIRAL-ROLLE (DISCORD-ROLLEN-ID)</span>
+                <span style={label}>ORGAMEMBER-ROLLE (DISCORD-ROLLEN-ID)</span>
                 <input data-testid="guild-admiralrole" type="text" inputMode="numeric" value={form.admiralRoleId} placeholder="z. B. 123456789012345678" onChange={(e) => setForm((f) => ({ ...f, admiralRoleId: e.target.value }))} style={field} />
-                <p className="fpw-meta" style={{ marginTop: "0.35rem", fontSize: "0.8rem" }}>Mitglieder mit dieser Discord-Rolle werden beim Login automatisch zu Flottenoperatoren.</p>
+                <p className="fpw-meta" style={{ marginTop: "0.35rem", fontSize: "0.8rem" }}>Mitglieder mit dieser Discord-Rolle sind Orgamember: berechtigt zum Anlegen von Events etc. und Teil der Org-Flotte.</p>
               </label>
               <div>
                 <button type="button" data-testid="guild-save" className="fpw-btn" disabled={busy || !csrf} onClick={save}>

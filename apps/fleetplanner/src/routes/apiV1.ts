@@ -444,8 +444,10 @@ export async function apiV1Routes(app: FastifyInstance) {
     });
   });
 
-  // FR-P3: Org Fleet — guild ship roster. Any MEMBER of the guild may read it
-  // (not operator-gated); non-members get 404 (no existence leak). superadmin ok.
+  // FR-P3: Org Fleet — guild ship roster. Restricted to "Orgamember": only members
+  // with the configured Discord role (admiralRoleId → fleetoperator) may view it,
+  // and the roster lists only their ships. superadmin ok. (Overrides the original
+  // "all members" decision per user 2026-06-15.)
   app.get<{ Params: { id: string } }>("/api/v1/guilds/:id/fleet", async (req, reply) => {
     const p = GuildIdParamSchema.safeParse(req.params);
     if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
@@ -453,7 +455,8 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     if (ctx.user.role !== "superadmin") {
       const m = await getMembership(ctx.user.id, p.data.id);
-      if (!m) return sendError(reply, req, 404, "not_found", "Server not found.");
+      if (m?.role !== "fleetoperator")
+        return sendError(reply, req, 403, "forbidden", "Orgamember role in that guild required.");
     }
     const rows = await getOrgFleetRows(p.data.id);
     return reply.type("application/json").send(presentOrgFleet(rows));

@@ -19,8 +19,11 @@ export type OrgFleetRow = {
 };
 
 export async function getOrgFleetRows(guildId: string): Promise<OrgFleetRow[]> {
+  // Org-Flotte is restricted to "Orgamember" — members carrying the configured
+  // Discord role (admiralRoleId → GuildMembership.role "fleetoperator"). Plain
+  // crew are excluded from both the roster and (in the route) viewing it.
   const memberships = await prisma.guildMembership.findMany({
-    where: { guildId },
+    where: { guildId, role: "fleetoperator" },
     select: { userId: true },
   });
   const userIds = memberships.map((m) => m.userId);

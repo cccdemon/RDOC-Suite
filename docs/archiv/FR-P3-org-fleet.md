@@ -57,6 +57,11 @@ Tiered, cheapest first:
 ## Decisions (2026-06-07)
 1. **Visible to fellow guild members by default — no opt-in/opt-out.** A member's owned ships are
    shown to everyone in their guild(s). No privacy toggle.
+   - **OVERRIDE 2026-06-15 (user):** restricted to **Orgamember** only — both viewing and the roster
+     are limited to members carrying the configured Discord role (`admiralRoleId` → `fleetoperator`,
+     i.e. those allowed to create events). Plain crew neither see the tab nor appear in the fleet.
+     Implemented in `services/orgFleet.ts` (role filter) + the `/guilds/:id/fleet` gate (403 for
+     non-orgamembers). The Guild-Settings label was renamed "Admiral-Rolle" → "Orgamember-Rolle".
 2. **MVP contact = Discord profile link only** (handle + `discord://users/<id>`). Bot-DM relay
    deferred to a later phase.
 3. **Show quantity per model.** `UserShip` is unique per (user, model), so a **`quantity` column**
