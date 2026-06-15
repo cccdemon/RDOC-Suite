@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Catalog sync stuck on "running" (2026-06-15)
+
+- A ship/location catalog sync that crashed mid-run (container restart, deploy)
+  left its `running` flag stuck at `true`, blocking every future sync and showing
+  a permanent "running" state in the admin card. The atomic claim now also re-claims
+  a stale lock (`running` set more than 30 min ago), so a crashed run self-heals on
+  the next attempt. Same fix applied to both `runLocationSync` and `runSync` (ships).
+
 ### Added - Schiffsdatenbank ship images (2026-06-15)
 
 - Ship catalog rows now show a thumbnail and are clickable: clicking a ship opens a

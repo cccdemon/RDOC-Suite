@@ -8,6 +8,10 @@ const SINGLETON_ID = "singleton";
 // How often the scheduler wakes up to check whether a sync is due. The
 // actual cadence is driven by ShipSyncState.intervalDays, not this tick.
 const TICK_MS = 60 * 60 * 1000; // hourly
+// A crashed/killed run (container restart, deploy mid-sync) leaves running=true
+// forever and blocks every future sync. Treat a claim older than this as stale
+// and re-claim it. A full catalog sync finishes well under this.
+const STALE_RUN_MS = 30 * 60 * 1000;
 
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -56,13 +60,19 @@ function isDue(state: { lastRunAt: Date | null; intervalDays: number }): boolean
 export async function runSync(
   trigger: "manual" | "scheduled",
 ): Promise<{ fetched: number; failed: number; total: number } | null> {
-  // Atomic claim of the running flag: updateMany with running:false guard.
+  // Atomic claim of the running flag: take it if free OR if an existing claim is
+  // stale (a previous run crashed without releasing it). updatedAt is bumped to
+  // now on claim, so a live run that started < STALE_RUN_MS ago still blocks overlaps.
+  const staleBefore = new Date(Date.now() - STALE_RUN_MS);
   const claimed = await prisma.shipSyncState.updateMany({
-    where: { id: SINGLETON_ID, running: false },
+    where: {
+      id: SINGLETON_ID,
+      OR: [{ running: false }, { running: true, updatedAt: { lt: staleBefore } }],
+    },
     data: { running: true },
   });
   if (claimed.count === 0) {
-    // Either no row yet, or a run is already in flight.
+    // Either no row yet, or a run is genuinely in flight (claimed recently).
     const existing = await prisma.shipSyncState.findUnique({ where: { id: SINGLETON_ID } });
     if (existing?.running) return null;
     // No row yet → create it already-claimed, then proceed.

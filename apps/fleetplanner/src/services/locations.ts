@@ -4,6 +4,10 @@ import type { Location } from "@prisma/client";
 const LOCATIONS_API = "https://api.star-citizen.wiki/api/locations";
 const SINGLETON_ID = "singleton";
 const TICK_MS = 60 * 60 * 1000;
+// A crashed/killed run (container restart, deploy mid-sync) leaves running=true
+// forever and blocks every future sync. Treat a claim older than this as stale
+// and re-claim it. A full catalog sync finishes well under this.
+const STALE_RUN_MS = 30 * 60 * 1000;
 
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -139,13 +143,20 @@ function isDue(state: { lastRunAt: Date | null; intervalDays: number }): boolean
 }
 
 export async function runLocationSync(trigger: "manual" | "scheduled") {
+  // Atomic claim: take the lock if it's free OR if an existing claim is stale
+  // (a previous run crashed without releasing it). updatedAt is bumped to now on
+  // claim, so a live run that started < STALE_RUN_MS ago still blocks overlaps.
+  const staleBefore = new Date(Date.now() - STALE_RUN_MS);
   const claimed = await prisma.locationSyncState.updateMany({
-    where: { id: SINGLETON_ID, running: false },
+    where: {
+      id: SINGLETON_ID,
+      OR: [{ running: false }, { running: true, updatedAt: { lt: staleBefore } }],
+    },
     data: { running: true },
   });
   if (claimed.count === 0) {
     const existing = await prisma.locationSyncState.findUnique({ where: { id: SINGLETON_ID } });
-    if (existing?.running) return null;
+    if (existing?.running) return null; // genuinely in flight (claimed recently)
     await prisma.locationSyncState.create({ data: { id: SINGLETON_ID, running: true } });
   }
 

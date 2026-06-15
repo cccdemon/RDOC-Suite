@@ -1,5 +1,20 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Catalog-Sync hängt auf „Läuft" — Stale-Claim-Recovery — Branch master
+
+User: Der Standortkatalog „synced dauernd". Diagnose auf Prod: `LocationSyncState.running=true`
+seit einem am 2026-06-08 gestarteten, nie abgeschlossenen Lauf (Container-Restart/Deploy mitten im
+Sync). Der atomare Claim (`updateMany where running:false`) hatte **keine Stale-Recovery** → ein
+gecrashter Lauf blockiert jeden weiteren Sync für immer; die UI zeigt dauerhaft „Läuft". Derselbe
+Bug steckte im Ship-Sync.
+- Sofort-Fix auf Prod: `UPDATE "LocationSyncState" SET running=false` (Flag entklemmt; letzter
+  *abgeschlossener* Lauf war erfolgreich, 1955/1955). Ship-Sync war gesund.
+- Code: `runLocationSync` ([locations.ts](apps/fleetplanner/src/services/locations.ts)) +
+  `runSync` ([shipSync.ts](apps/fleetplanner/src/services/shipSync.ts)) claimen jetzt auch einen
+  **stale** Claim (`running:true AND updatedAt < now-30min`). `updatedAt` (`@updatedAt`) wird beim
+  Claim auf now gesetzt, ein laufender Sync < 30 min blockiert Overlaps weiterhin korrekt.
+- Build: nur fleetplanner (Backend). Kein Schema/Migration.
+
 ## Queued / Planned Step - 2026-06-15: Schiffsdatenbank — Bilder + klickbare Schiffe — Branch master
 
 User: In der Schiffsdatenbank (`/ships`, [ShipsPage.tsx](apps/fleetplanner-web/src/pages/ShipsPage.tsx))
