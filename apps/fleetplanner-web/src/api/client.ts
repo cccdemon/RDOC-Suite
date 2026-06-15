@@ -512,7 +512,14 @@ export function addPollOption(id: string, csrfToken: string, label: string): Pro
   return mutate("POST", `/polls/${encodeURIComponent(id)}/options`, csrfToken, { label });
 }
 export function closePoll(id: string, csrfToken: string): Promise<{ ok: true }> {
-  return mutate("PATCH", `/polls/${encodeURIComponent(id)}`, csrfToken);
+  return mutate("PATCH", `/polls/${encodeURIComponent(id)}`, csrfToken, { status: "closed" });
+}
+export function updatePoll(
+  id: string,
+  csrfToken: string,
+  patch: Partial<import("./types").UpdatePollRequest>,
+): Promise<{ ok: true }> {
+  return mutate("PATCH", `/polls/${encodeURIComponent(id)}`, csrfToken, patch);
 }
 export function deletePoll(id: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("DELETE", `/polls/${encodeURIComponent(id)}`, csrfToken);

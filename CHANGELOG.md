@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Polls follow-ups (2026-06-15)
+
+- **Deep-link 404:** a direct link to `/fleetplanner/polls/:id` 404'd — the SPA nginx
+  route allowlist was missing `/polls`. Added it (`try_files … @spa`).
+- **Multiple-choice "max" field:** the number input clamped to its `min` on every
+  keystroke, so the leading `2` couldn't be deleted. It now accepts free input and
+  clamps only on blur/submit (create + edit).
+
+### Added - Edit a poll before the first vote (2026-06-15)
+
+- Poll managers (creator / fleet operator) can now **edit** a poll — title, description,
+  options (add/rename/remove), auto-close time, result visibility, allow-add-options and
+  multiple-choice max — via `PATCH /api/v1/polls/:id` (`UpdatePollRequest`). Editing is
+  **only allowed before the first vote is cast** (server rejects content changes with 409
+  once votes exist); closing and deleting stay available at any time. The detail page shows
+  an "Bearbeiten" form when there are zero votes, otherwise a note.
+
+### Changed - Mission Cover is its own operator tab (2026-06-15)
+
+- The operator console now has a dedicated **Mission Cover** tab (order: Eckdaten · Flotte &
+  Warteliste · Mission Cover · Commanders · Admin). `CoverPanel` moved out of the Admin tab into
+  its own; the legacy `?tab=cover` deep link now resolves to the real tab.
+
 ### Added - Polls / Umfragen module (FR-P3, 2026-06-15)
 
 - New **Umfragen** feature (nav item + SPA routes `/polls`, `/polls/new`, `/polls/:id`):

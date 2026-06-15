@@ -15,6 +15,7 @@ import type {
   PollSummary,
   PollDetail,
   CreatePollRequest,
+  UpdatePollRequest,
 } from "@rdoc-suite/fleetplanner-contracts";
 
 export type PollViewer = { id: string; role: string } | null;
@@ -367,17 +368,71 @@ export async function addPollOption(
   return opt.id;
 }
 
-export async function closePoll(
+export async function updatePoll(
   viewer: NonNullable<PollViewer>,
   pollId: string,
+  patch: UpdatePollRequest,
 ): Promise<void> {
-  const poll = await prisma.poll.findUnique({
+  const poll = (await prisma.poll.findUnique({
     where: { id: pollId },
-    select: { creatorUserId: true, guildId: true },
-  });
+    select: {
+      creatorUserId: true,
+      guildId: true,
+      mode: true,
+      _count: { select: { votes: true } },
+      options: { select: { id: true } },
+    },
+  })) as unknown as
+    | { creatorUserId: string; guildId: string; mode: string; _count: { votes: number }; options: Array<{ id: string }> }
+    | null;
   if (!poll) throw new Error("not found");
   await assertManage(viewer, poll);
-  await prisma.poll.update({ where: { id: pollId }, data: { status: "closed" } });
+
+  // Content may only be edited before the first vote — changing it afterwards
+  // would be unfair to people who already voted. Closing/reopening (status) and
+  // deleting (separate route) stay available at any time.
+  const hasContentEdit =
+    patch.title !== undefined ||
+    patch.description !== undefined ||
+    patch.closesAt !== undefined ||
+    patch.allowAddOptions !== undefined ||
+    patch.resultsVisibility !== undefined ||
+    patch.maxChoices !== undefined ||
+    patch.options !== undefined;
+  if (hasContentEdit && poll._count.votes > 0)
+    throw new Error("conflict: a poll can only be edited before the first vote is cast");
+
+  const data: Record<string, unknown> = {};
+  if (patch.title !== undefined) data.title = patch.title.trim();
+  if (patch.description !== undefined)
+    data.description = patch.description === null ? null : patch.description.trim() || null;
+  if (patch.status !== undefined) data.status = patch.status;
+  if (patch.closesAt !== undefined) data.closesAt = patch.closesAt ? new Date(patch.closesAt) : null;
+  if (patch.allowAddOptions !== undefined) data.allowAddOptions = patch.allowAddOptions;
+  if (patch.resultsVisibility !== undefined) data.resultsVisibility = patch.resultsVisibility;
+  if (patch.maxChoices !== undefined && poll.mode === "multiple") data.maxChoices = patch.maxChoices;
+
+  // Option labels/add/remove (votes==0 already guaranteed by the guard above).
+  if (patch.options) {
+    const labels = patch.options
+      .map((o) => ({ id: o.id, label: o.label.trim() }))
+      .filter((o) => o.label.length > 0);
+    if (labels.length < 2) throw new Error("conflict: a poll needs at least two options");
+    const keepIds = new Set(labels.filter((o) => o.id).map((o) => o.id as string));
+    const toDelete = poll.options.filter((o) => !keepIds.has(o.id)).map((o) => o.id);
+    await prisma.$transaction([
+      ...(toDelete.length ? [prisma.pollOption.deleteMany({ where: { id: { in: toDelete } } })] : []),
+      ...labels.map((o, i) =>
+        o.id
+          ? prisma.pollOption.update({ where: { id: o.id }, data: { label: o.label, order: i } })
+          : prisma.pollOption.create({ data: { pollId, label: o.label, order: i } }),
+      ),
+    ]);
+  }
+
+  if (Object.keys(data).length > 0) {
+    await prisma.poll.update({ where: { id: pollId }, data });
+  }
 }
 
 export async function deletePoll(

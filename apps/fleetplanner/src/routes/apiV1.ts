@@ -125,6 +125,7 @@ import {
   HangarShipRequestSchema,
   IdParamSchema,
   CreatePollRequestSchema,
+  UpdatePollRequestSchema,
   VotePollRequestSchema,
   AddPollOptionRequestSchema,
   SetMemberRoleRequestSchema,
@@ -156,7 +157,7 @@ import {
 import { getOrgFleetRows } from "../services/orgFleet.js";
 import {
   addPollOption,
-  closePoll,
+  updatePoll,
   createPoll,
   deletePoll,
   getPollForViewer,
@@ -2529,14 +2530,18 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
-  // Close (PATCH status=closed) or delete a poll — creator / fleet operator.
-  app.patch<{ Params: { id: string } }>("/api/v1/polls/:id", async (req, reply) => {
+  // Edit a poll (title/description/status/closesAt/options/…) — creator / fleet
+  // operator. Closing is just `{ status: "closed" }`; option edits are rejected
+  // once voting has started (service guard).
+  app.patch<{ Params: { id: string }; Body: unknown }>("/api/v1/polls/:id", async (req, reply) => {
     const p = IdParamSchema.safeParse(req.params);
     if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid poll id.");
+    const body = UpdatePollRequestSchema.safeParse(req.body ?? {});
+    if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
     const ctx = await requireSessionJson(req, reply);
     if (!ctx) return;
     try {
-      await closePoll({ id: ctx.user.id, role: ctx.user.role }, p.data.id);
+      await updatePoll({ id: ctx.user.id, role: ctx.user.role }, p.data.id, body.data);
       return reply.type("application/json").send({ ok: true as const });
     } catch (err) {
       return mutationError(reply, req, err);

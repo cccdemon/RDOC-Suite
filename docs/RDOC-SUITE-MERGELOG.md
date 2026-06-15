@@ -1,5 +1,35 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Polls-Fixes — Deep-Link-404, Bearbeiten (nur vor 1. Stimme), maxChoices-Input — Branch master
+
+User-Feedback nach Erstdeploy:
+1. **Deep-Link 404** auf `/fleetplanner/polls/:id`: der `fleetplanner-web`-nginx hat eine explizite
+   SPA-Route-Allowlist; `/polls` fehlte → `location /polls { try_files $uri @spa; }` ergänzt
+   ([nginx.conf](apps/fleetplanner-web/nginx.conf)). Nur fleetplanner-web neu bauen.
+2. **maxChoices „2 aus Beton"**: das Number-Feld klemmte bei jedem Keystroke auf `min 2`
+   (`Math.max(2, …)` im onChange) → nicht editierbar. PollCreatePage nutzt jetzt String-State,
+   freie Eingabe, Clamp erst onBlur/Submit. Gleiche Lösung im Edit-Form.
+3. **Nachträglich bearbeiten** (war nur schließen/löschen): neuer `PATCH /api/v1/polls/:id` mit
+   `UpdatePollRequest` (title/description/options/closesAt/allowAddOptions/resultsVisibility/maxChoices/status).
+   Service `updatePoll` ersetzt `closePoll`. **Constraint (User): Bearbeiten nur vor der ersten
+   Stimme** — jede inhaltliche Änderung wird bei `votes>0` mit 409 abgelehnt; Schließen (`status`)
+   und Löschen bleiben jederzeit möglich. SPA: `PollEditForm` in der Verwaltungs-Sektion der
+   PollDetailPage, „Bearbeiten"-Button nur wenn `totalVotes===0`, sonst Hinweis.
+- Contracts: `UpdatePollRequest`/`UpdatePollOption` + openapi (SCHEMAS + PATCH-Body). Client:
+  `updatePoll`, `closePoll` sendet jetzt `{status:"closed"}`.
+- Build: fleetplanner (Backend+Contracts) + fleetplanner-web. Kein Schema/Migration.
+
+## Queued / Planned Step - 2026-06-15: Mission Cover als eigener Operator-Tab — Branch master
+
+User: Mission Cover soll ein eigener Reiter im Operator-Menü sein (Reihenfolge: Eckdaten · Flotte &
+Warteliste · Mission Cover · Commanders · Admin). Bisher hing `CoverPanel` im Admin-Tab.
+- [OperatorConsole.tsx](apps/fleetplanner-web/src/components/OperatorConsole.tsx): neuer TAB
+  `{ key: "cover", label: "Mission Cover", icon: "image" }` zwischen `fleet` und `commanders`;
+  `CoverPanel` aus dem Admin-Tab herausgelöst und unter `tab === "cover"` gerendert. Legacy-
+  Deep-Link `?tab=cover` zeigt jetzt auf den echten Tab (resolveTab-Sonderfall `cover→admin` entfernt).
+- Keine Test-/Schema-Änderung (Admin-Tab-Tests nutzen Status/Template/Serie; `manage-status` liegt
+  über den Tabs). Nur fleetplanner-web neu bauen.
+
 ## Queued / Planned Step - 2026-06-15: FR-P3 Polls/Umfragen-Modul implementieren — Branch master
 
 User: "sieht gut aus, bitte implementieren" (nach Design-Mockup-Freigabe, Karte `preview/feature-polls.html`

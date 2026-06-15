@@ -425,6 +425,27 @@ export const ClosePollRequestSchema = z
   .meta({ id: "ClosePollRequest" });
 export type ClosePollRequest = z.infer<typeof ClosePollRequestSchema>;
 
+// Edit an existing poll (manager). All fields optional → partial update. Option
+// edits (labels/add/remove) are only accepted while the poll has no votes.
+export const UpdatePollOptionSchema = z
+  .object({ id: z.string().optional(), label: z.string().min(1).max(200) })
+  .meta({ id: "UpdatePollOption" });
+export type UpdatePollOption = z.infer<typeof UpdatePollOptionSchema>;
+
+export const UpdatePollRequestSchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    description: z.string().max(4000).nullable().optional(),
+    status: PollStatusEnum.optional(),
+    closesAt: z.iso.datetime().nullable().optional(),
+    allowAddOptions: z.boolean().optional(),
+    resultsVisibility: PollResultsVisibilityEnum.optional(),
+    maxChoices: z.coerce.number().int().min(2).max(30).nullable().optional(),
+    options: z.array(UpdatePollOptionSchema).min(2).max(30).optional(),
+  })
+  .meta({ id: "UpdatePollRequest" });
+export type UpdatePollRequest = z.infer<typeof UpdatePollRequestSchema>;
+
 export const CreateOperationRequestSchema = z
   .object({
     guildId: z.string().min(1),

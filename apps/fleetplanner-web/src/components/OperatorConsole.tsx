@@ -22,6 +22,7 @@ const STATUSES: Array<[string, string]> = [
 const TABS = [
   { key: "eckdaten", label: "Eckdaten", icon: "edit" },
   { key: "fleet", label: "Flotte & Warteliste", icon: "ship" },
+  { key: "cover", label: "Mission Cover", icon: "image" },
   { key: "commanders", label: "Commanders", icon: "lead" },
   { key: "admin", label: "Admin", icon: "shield" },
 ] as const;
@@ -31,7 +32,6 @@ function resolveTab(raw: string | null): TabKey {
   if (TABS.some((t) => t.key === raw)) return raw as TabKey;
   if (raw === "overview") return "eckdaten";
   if (raw === "needs") return "fleet";
-  if (raw === "cover") return "admin";
   return "eckdaten";
 }
 
@@ -176,6 +176,8 @@ export function OperatorConsole({
         </>
       )}
 
+      {tab === "cover" && <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />}
+
       {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
 
       {tab === "admin" && (
@@ -204,8 +206,6 @@ export function OperatorConsole({
             </div>
             <button type="button" data-testid="recurrence-stop" style={btnGhost} disabled={busy || !csrf} onClick={stopSeries}>Serie stoppen</button>
           </section>
-
-          <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />
         </div>
       )}
       </div>

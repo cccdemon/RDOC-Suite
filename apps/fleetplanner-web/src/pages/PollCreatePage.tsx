@@ -29,7 +29,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
   const [description, setDescription] = useState("");
   const [options, setOptions] = useState<string[]>(["", ""]);
   const [mode, setMode] = useState<Mode>("single");
-  const [maxChoices, setMaxChoices] = useState<number>(2);
+  const [maxChoices, setMaxChoices] = useState<string>("2");
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [anonymous, setAnonymous] = useState(false);
   const [resultsVisibility, setResultsVisibility] = useState<ResultsVis>("always");
@@ -65,7 +65,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
       description: description.trim() || undefined,
       options: validOptions,
       mode,
-      maxChoices: mode === "multiple" ? maxChoices : undefined,
+      maxChoices: mode === "multiple" ? Math.min(30, Math.max(2, Number(maxChoices) || 2)) : undefined,
       visibility: canPartnerPublic ? visibility : "private",
       anonymous,
       resultsVisibility,
@@ -154,7 +154,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
             {mode === "multiple" && (
               <div style={{ marginTop: "0.7rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
                 <span style={{ color: "#9fb1c2", fontSize: "0.9rem" }}>Max. Auswahl:</span>
-                <input type="number" min={2} max={30} value={maxChoices} onChange={(e) => setMaxChoices(Math.max(2, Number(e.target.value) || 2))} style={{ ...inputStyle, width: 90 }} />
+                <input type="number" min={2} max={30} value={maxChoices} onChange={(e) => setMaxChoices(e.target.value)} onBlur={(e) => setMaxChoices(String(Math.min(30, Math.max(2, Number(e.target.value) || 2))))} style={{ ...inputStyle, width: 90 }} />
               </div>
             )}
           </div>

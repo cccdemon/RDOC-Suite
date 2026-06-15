@@ -75,6 +75,7 @@ import {
   PollDetailSchema,
   CreatePollRequestSchema,
   CreatePollResponseSchema,
+  UpdatePollRequestSchema,
   VotePollRequestSchema,
   AddPollOptionRequestSchema,
 } from "./contracts/index.js";
@@ -149,6 +150,7 @@ const SCHEMAS = {
   PollDetail: PollDetailSchema,
   CreatePollRequest: CreatePollRequestSchema,
   CreatePollResponse: CreatePollResponseSchema,
+  UpdatePollRequest: UpdatePollRequestSchema,
   VotePollRequest: VotePollRequestSchema,
   AddPollOptionRequest: AddPollOptionRequestSchema,
 } as const;
@@ -1627,15 +1629,17 @@ export function buildOpenApiDocument(): JsonObject {
           responses: { "200": { description: "OK", ...jsonContent(ref("PollDetail")) }, ...errorResponses },
         },
         patch: {
-          operationId: "closePoll",
-          summary: "Close a poll (creator / fleet operator / superadmin)",
+          operationId: "updatePoll",
+          summary: "Edit a poll — title/description/status/options/… (creator / fleet operator)",
+          description: "Partial update. Closing is `{status:\"closed\"}`. Option edits are rejected once voting has started.",
           tags: ["polls"],
           security: [{ cookieSession: [] }],
           parameters: [
             { name: "id", in: "path", required: true, schema: { type: "string" } },
             { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
           ],
-          responses: { "200": { description: "Closed", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
+          requestBody: { required: true, ...jsonContent(ref("UpdatePollRequest")) },
+          responses: { "200": { description: "Saved", ...jsonContent(ref("MutationOk")) }, ...errorResponses },
         },
         delete: {
           operationId: "deletePoll",
