@@ -30,6 +30,9 @@ interface WikiVehicleData {
   career?: { name?: string } | string;
   role?: { name?: string } | string;
   crew?: { min?: number; max?: number; weapon?: number; operation?: number };
+  // Current wiki shape: artwork lives under `images`. `media`/`source_url` was
+  // the old field name (now absent) — kept as a fallback for safety.
+  images?: Array<{ thumbnail_url?: string; original_url?: string }>;
   media?: Array<{ source_url?: string }>;
 }
 
@@ -50,7 +53,7 @@ function normalise(d: WikiVehicleData): Omit<Ship, "id" | "syncedAt"> {
     maxCrew:       d.crew?.max       ?? 1,
     weaponCrew:    d.crew?.weapon    ?? 0,
     operationCrew: d.crew?.operation ?? 0,
-    imageUrl:      d.media?.[0]?.source_url ?? null,
+    imageUrl:      d.images?.[0]?.thumbnail_url ?? d.images?.[0]?.original_url ?? d.media?.[0]?.source_url ?? null,
     rawJson:       JSON.stringify(d),
   };
 }

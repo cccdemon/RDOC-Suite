@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   star-citizen.wiki `Ship.imageUrl`, now exposed via `ShipSummary.imageUrl`
   (contract + `presentShip`). Ships without an image keep a placeholder icon and stay
   non-clickable.
+- **Sync fix:** the catalog sync read the artwork from the wiki's old `media[].source_url`
+  field (now absent → 0/288 ships had an image). It now reads `images[].thumbnail_url`
+  (with the old field as fallback). A catalog re-sync is required to populate existing rows.
 
 ### Fixed - Polls follow-ups (2026-06-15)
 

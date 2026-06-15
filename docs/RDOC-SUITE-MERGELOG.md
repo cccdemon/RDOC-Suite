@@ -16,7 +16,12 @@ haben Schiffe keine Bilder und sind nicht klickbar.
 - SPA: ShipsPage zeigt jetzt eine Thumbnail-Spalte; Klick auf eine Zeile öffnet eine Lightbox mit
   dem großen Bild (Pattern aus [OrgFleetPage.tsx](apps/fleetplanner-web/src/pages/OrgFleetPage.tsx)
   wiederverwendet). Zeilen ohne Bild bleiben unverändert (kein 404-Spam, `onError`-Hide).
-- Build: fleetplanner (Backend+Contracts) + fleetplanner-web. Kein Schema/Migration.
+- **Follow-up (Bilder kamen nicht): Sync las falsches Feld.** Prod-DB hatte 288 Schiffe, 0 mit
+  `imageUrl`. Ursache: die SC-Wiki-API liefert Artwork heute unter `images[].thumbnail_url` /
+  `original_url`, nicht mehr unter `media[].source_url`. `normalise()` in
+  [scwiki.ts](apps/fleetplanner/src/services/scwiki.ts) liest jetzt `images` (mit `media`-Fallback).
+  **Nach Deploy einmal Catalog-Sync (force) auslösen**, damit alle 288 Schiffe `imageUrl` bekommen.
+- Build: fleetplanner (Backend+Contracts) + fleetplanner-web. Kein Schema/Migration. Re-Sync nötig.
 
 ## Queued / Planned Step - 2026-06-15: Polls-Fixes — Deep-Link-404, Bearbeiten (nur vor 1. Stimme), maxChoices-Input — Branch master
 
