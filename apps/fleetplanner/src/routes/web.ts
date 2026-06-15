@@ -131,6 +131,61 @@ export async function webRoutes(app: FastifyInstance) {
     return reply.header("Cache-Control", "public, max-age=300").type("text/html; charset=utf-8").send(html);
   });
 
+  // ── Link unfurl (OpenGraph) for polls — crawler-only meta document. ────
+  // Same exception/contract as /ops/:id above: nginx routes only bot UAs here.
+  // Public polls emit a real card; private/partners stay generic (no leak).
+  app.get<{ Params: { id: string } }>("/polls/:id", async (req, reply) => {
+    const esc = (s: unknown) =>
+      String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+    const env = getEnv();
+    const base = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+    const appUrl = `${base}/polls/${encodeURIComponent(req.params.id)}`;
+    const image = `${base}/assets/operation-hero.png`;
+
+    const poll = /^[a-z0-9]{20,32}$/i.test(req.params.id)
+      ? ((await prisma.poll.findUnique({
+          where: { id: req.params.id },
+          select: {
+            title: true,
+            visibility: true,
+            status: true,
+            description: true,
+            closesAt: true,
+            _count: { select: { options: true } },
+          },
+        })) as unknown as
+          | { title: string; visibility: string; status: string; description: string | null; closesAt: Date | null; _count: { options: number } }
+          | null)
+      : null;
+
+    let title = "RDOC Fleetplanner";
+    let description = "Umfragen für Star-Citizen-Orgs.";
+    if (poll) {
+      if (poll.visibility === "public" && poll.status !== "draft") {
+        const closes = poll.closesAt ? ` · offen bis ${poll.closesAt.toISOString().replace("T", " ").slice(0, 16)} UTC` : "";
+        title = poll.title;
+        description =
+          (poll.description?.trim().slice(0, 160)) ||
+          `🗳 Umfrage · ${poll._count.options} Optionen${poll.status === "closed" ? " · geschlossen" : closes}`;
+      } else {
+        title = "Umfrage — RDOC Fleetplanner";
+        description = "Anmeldung erforderlich.";
+      }
+    }
+    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8">`
+      + `<title>${esc(title)} — RDOC Fleetplanner</title>`
+      + `<meta property="og:type" content="website">`
+      + `<meta property="og:site_name" content="RDOC Fleetplanner">`
+      + `<meta property="og:title" content="${esc(title)}">`
+      + `<meta property="og:description" content="${esc(description)}">`
+      + `<meta property="og:image" content="${esc(image)}">`
+      + `<meta property="og:url" content="${esc(appUrl)}">`
+      + `<meta name="twitter:card" content="summary_large_image">`
+      + `<meta http-equiv="refresh" content="0; url=${esc(appUrl)}">`
+      + `</head><body><a href="${esc(appUrl)}">${esc(title)}</a></body></html>`;
+    return reply.header("Cache-Control", "public, max-age=300").type("text/html; charset=utf-8").send(html);
+  });
+
   // ── Calendar download (.ics) — add the op to your calendar after signing up.
   app.get<{ Params: { id: string } }>("/ops/:id/calendar.ics", async (req, reply) => {
     const ctx = await optionalAuth(req);

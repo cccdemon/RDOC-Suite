@@ -17,6 +17,10 @@ User-Feedback nach Erstdeploy:
    PollDetailPage, „Bearbeiten"-Button nur wenn `totalVotes===0`, sonst Hinweis.
 - Contracts: `UpdatePollRequest`/`UpdatePollOption` + openapi (SCHEMAS + PATCH-Body). Client:
   `updatePoll`, `closePoll` sendet jetzt `{status:"closed"}`.
+4. **OG / Link-Vorschau** fehlte bei Poll-Links (Discord etc.): neue Crawler-Meta-Route
+   `GET /polls/:id` in [web.ts](apps/fleetplanner/src/routes/web.ts) (analog `/ops/:id`; public →
+   echtes Card mit Titel/Optionen/Schließzeit, private/partners → generisch, kein Leak) + nginx-
+   Regex-Location `~ ^/polls/[^/]+$` mit Bot-UA-Erkennung → `@ogbot` ([nginx.conf](apps/fleetplanner-web/nginx.conf)).
 - Build: fleetplanner (Backend+Contracts) + fleetplanner-web. Kein Schema/Migration.
 
 ## Queued / Planned Step - 2026-06-15: Mission Cover als eigener Operator-Tab — Branch master

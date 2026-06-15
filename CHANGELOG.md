@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Multiple-choice "max" field:** the number input clamped to its `min` on every
   keystroke, so the leading `2` couldn't be deleted. It now accepts free input and
   clamps only on blur/submit (create + edit).
+- **Link previews (OpenGraph):** shared poll links had no unfurl card. Added a
+  crawler-only meta route `GET /polls/:id` (like `/ops/:id`) + nginx bot routing —
+  public polls show title/options/close-time, private/partner polls stay generic.
 
 ### Added - Edit a poll before the first vote (2026-06-15)
 
