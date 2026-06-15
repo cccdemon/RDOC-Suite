@@ -278,6 +278,8 @@ export const ShipSummarySchema = z
     /** FR-D1: player's custom name from the CCU import (hangar only; null/absent
      *  in the catalog + search where ships have no owner-given nickname). */
     nickname: z.string().nullable().optional(),
+    /** Ship artwork (star-citizen.wiki media); null when the catalog has none. */
+    imageUrl: z.string().nullable().optional(),
   })
   .meta({ id: "ShipSummary" });
 export type ShipSummary = z.infer<typeof ShipSummarySchema>;

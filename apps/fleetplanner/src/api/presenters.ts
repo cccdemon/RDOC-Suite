@@ -327,6 +327,7 @@ export function presentShip(s: {
   role: string;
   minCrew: number;
   maxCrew: number;
+  imageUrl?: string | null;
 }): ShipSummary {
   return {
     id: s.id,
@@ -337,5 +338,6 @@ export function presentShip(s: {
     role: s.role,
     minCrew: s.minCrew,
     maxCrew: s.maxCrew,
+    imageUrl: s.imageUrl ?? null,
   };
 }

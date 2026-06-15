@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Schiffsdatenbank ship images (2026-06-15)
+
+- Ship catalog rows now show a thumbnail and are clickable: clicking a ship opens a
+  lightbox with the full image. The artwork comes from the already-stored
+  star-citizen.wiki `Ship.imageUrl`, now exposed via `ShipSummary.imageUrl`
+  (contract + `presentShip`). Ships without an image keep a placeholder icon and stay
+  non-clickable.
+
 ### Fixed - Polls follow-ups (2026-06-15)
 
 - **Deep-link 404:** a direct link to `/fleetplanner/polls/:id` 404'd — the SPA nginx

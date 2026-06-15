@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-15: Schiffsdatenbank — Bilder + klickbare Schiffe — Branch master
+
+User: In der Schiffsdatenbank (`/ships`, [ShipsPage.tsx](apps/fleetplanner-web/src/pages/ShipsPage.tsx))
+haben Schiffe keine Bilder und sind nicht klickbar.
+- **Bild im Datenmodell vorhanden, aber nicht exponiert:** `Ship.imageUrl` (star-citizen.wiki
+  `media[0].source_url`, [scwiki.ts:53](apps/fleetplanner/src/services/scwiki.ts#L53)) wurde von
+  `presentShip` nicht zurückgegeben.
+- Contract: `ShipSummarySchema` um `imageUrl: string|null|optional` erweitert
+  ([packages/fleetplanner-contracts/src/index.ts](packages/fleetplanner-contracts/src/index.ts)).
+- Presenter: `presentShip` nimmt `imageUrl` aus dem Ship-Row und gibt es durch
+  ([presenters.ts](apps/fleetplanner/src/api/presenters.ts)). `searchLocalShips` liefert bereits
+  das volle Ship-Objekt inkl. `imageUrl`; `/api/v1/hangar`-Select erweitert (nutzt `include: ship`,
+  hat `imageUrl` schon).
+- SPA: ShipsPage zeigt jetzt eine Thumbnail-Spalte; Klick auf eine Zeile öffnet eine Lightbox mit
+  dem großen Bild (Pattern aus [OrgFleetPage.tsx](apps/fleetplanner-web/src/pages/OrgFleetPage.tsx)
+  wiederverwendet). Zeilen ohne Bild bleiben unverändert (kein 404-Spam, `onError`-Hide).
+- Build: fleetplanner (Backend+Contracts) + fleetplanner-web. Kein Schema/Migration.
+
 ## Queued / Planned Step - 2026-06-15: Polls-Fixes — Deep-Link-404, Bearbeiten (nur vor 1. Stimme), maxChoices-Input — Branch master
 
 User-Feedback nach Erstdeploy:
