@@ -1,5 +1,17 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-16: Google Search Console Site-Verification — Branch master
+
+Status: Done.
+
+GSC HTML-File-Verify. Datei muss am Origin-Root erreichbar sein
+(https://suite.raumdock.org/google0c3c1ce4d4ba9739.html). Gleiches 2-Layer-Routing wie robots.txt:
+- apps/fleetplanner-web/public/google0c3c1ce4d4ba9739.html (Inhalt: `google-site-verification: …`)
+- apps/fleetplanner-web/nginx.conf: `location = /google0c3c1ce4d4ba9739.html` (try_files $uri =404)
+- deploy/caddy-rdoc/Caddyfile: `handle /google0c3c1ce4d4ba9739.html` → reverse_proxy 127.0.0.1:3210
+  (vor Catch-all-Redirect).
+Deploy `--build fleetplanner-web` + caddy-rdoc restart.
+
 ## Queued / Planned Step - 2026-06-16: Fleetplanner-Frontpage SEO ("Google ready") — Branch master
 
 Status: Done.

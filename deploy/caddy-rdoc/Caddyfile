@@ -77,6 +77,11 @@ suite.raumdock.org:9443 {
 	handle /sitemap.xml {
 		reverse_proxy 127.0.0.1:3210
 	}
+	# Google Search Console site-verification file — must be reachable at the
+	# origin root, same as robots.txt.
+	handle /google0c3c1ce4d4ba9739.html {
+		reverse_proxy 127.0.0.1:3210
+	}
 
 	# Catch-all: the legacy bridge web UI was removed (voice redesign). Any
 	# unmatched path now goes to the Fleetplanner, the public entry point.
