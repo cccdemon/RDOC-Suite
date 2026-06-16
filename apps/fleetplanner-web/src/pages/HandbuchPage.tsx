@@ -3,6 +3,16 @@ import { DocPage } from "./DocPage";
 import { RoadmapPage } from "./RoadmapPage";
 import { Ic } from "../components/Icons";
 import { MONO } from "../components/ui";
+import { useSeo } from "../seo";
+
+const SECTION_DESC: Record<string, string> = {
+  "was-ist-das": "Was ist der RDOC Fleetplanner? Operationsplanung für Star-Citizen-Organisationen — Events, Flotten-Slots, Crew und Voice.",
+  anleitung: "Anleitung: So planst du Star-Citizen-Operationen, vergibst Flotten-Slots und meldest Crew im RDOC Fleetplanner an.",
+  roadmap: "Roadmap des RDOC Fleetplanner — geplante Features für die Star-Citizen-Operationsplanung.",
+  changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
+  "sc-tools": "Star-Citizen-Tools rund um Flotten- und Operationsplanung im RDOC Fleetplanner.",
+  unsigniert: "Warum die RDOC Squad Link Companion-Binary unsigniert ausgeliefert wird.",
+};
 
 // IA merge B: the 6 help/info docs become sections of one Handbuch hub instead of
 // 6 top-level routes. Content still comes from the same backend endpoints
@@ -31,6 +41,10 @@ function sectionContent(key: string) {
 export function HandbuchPage() {
   const { section } = useParams<{ section: string }>();
   const active = SECTIONS.find((s) => s.key === section);
+  useSeo({
+    title: active ? `${active.label} — Handbuch` : "Handbuch",
+    description: active ? SECTION_DESC[active.key] : undefined,
+  });
   if (!active) return <Navigate to="/handbuch/was-ist-das" replace />;
 
   return (

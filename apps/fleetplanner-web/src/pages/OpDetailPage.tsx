@@ -22,6 +22,7 @@ import { SquadLinkPanel } from "../components/SquadLinkPanel";
 import { Ic } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { Markdown } from "../components/Markdown";
+import { useSeo, metaText } from "../seo";
 
 const MONO = "var(--mono)";
 
@@ -140,6 +141,17 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [lightbox]);
 
+
+  useSeo({
+    title: op?.title ?? "Operation",
+    description: op
+      ? metaText(
+          op.description?.trim()
+            ? op.description
+            : `Star-Citizen-Operation in ${op.meetingSystem} · Treffpunkt ${op.meetingLocation}. Crew anmelden im RDOC Fleetplanner.`,
+        )
+      : undefined,
+  });
 
   const realUser = session?.user ?? null;
   // In "guest" preview the operator sees the page as a logged-out visitor → no

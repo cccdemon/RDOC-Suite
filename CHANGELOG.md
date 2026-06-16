@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - SEO: per-Route Meta + Search Console (2026-06-16)
+
+- Neuer Hook `apps/fleetplanner-web/src/seo.ts` (`useSeo`): setzt pro Route
+  `document.title`, `meta description`, `link[rel=canonical]`, Open-Graph + Twitter-Title/
+  -Description und `robots`. Verdrahtet auf Landing, Op-Detail (Op-Titel + generierte
+  Description), Handbuch (pro Section), Rechtliches, Schiffe und Login (noindex). Vorher
+  teilten sich alle SPA-Routen denselben statischen `<head>`.
+- Google-Search-Console-Verifizierungsdatei am Origin-Root ausgeliefert
+  (`google0c3c1ce4d4ba9739.html` via public/ + nginx + Caddy).
+
 ### Added - Frontpage SEO ("Google ready") (2026-06-16)
 
 - `apps/fleetplanner-web/index.html`: vollständiger `<head>` — Meta description/keywords/

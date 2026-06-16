@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Ic } from "../components/Icons";
 import { MONO } from "../components/ui";
+import { useSeo } from "../seo";
 
 // Login = the existing same-origin OAuth flow; the SPA never sees tokens. The
 // callback sets the HttpOnly cookie and returns to the SPA.
@@ -20,6 +21,7 @@ const PROVIDERS: Array<{ key: string; label: string; border: string; bg: string;
 ];
 
 export function LoginPage() {
+  useSeo({ title: "Anmelden", noindex: true });
   return (
     <div data-testid="login-page" style={{ maxWidth: 420, margin: "3rem auto", textAlign: "center" }}>
       <div style={{ width: 58, height: 58, borderRadius: 15, background: "rgba(0,212,255,0.08)", border: "1px solid rgba(0,212,255,0.25)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "1.2rem" }}><Ic name="shield" size={28} sw={1.5} /></div>

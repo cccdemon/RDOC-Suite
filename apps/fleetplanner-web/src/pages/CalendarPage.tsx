@@ -4,6 +4,7 @@ import { ApiError, listOperations } from "../api/client";
 import type { OperationSummary, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { ErrorState } from "../components/ErrorState";
+import { useSeo } from "../seo";
 
 const MONO = "var(--mono)";
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -62,6 +63,11 @@ const tagStyle = (color: string): React.CSSProperties => ({
 // The view persists in the URL (?view=). The list view is session-aware
 // (signup badges, create/login CTAs); kalender/agenda are month-scoped.
 export function OperationenPage({ session }: { session: SessionResponse | null }) {
+  useSeo({
+    title: "Operationsplanung für Star-Citizen-Flotten",
+    description:
+      "RDOC Fleetplanner: Events anlegen, Flotten-Slots vergeben, Crew anmelden und Voice koordinieren — die Operationsplanung für Star-Citizen-Organisationen.",
+  });
   const now = new Date();
   const [params, setParams] = useSearchParams();
   const viewParam = params.get("view");

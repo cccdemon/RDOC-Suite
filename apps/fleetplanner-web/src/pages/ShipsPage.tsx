@@ -2,10 +2,16 @@ import { useEffect, useState } from "react";
 import { searchShips } from "../api/client";
 import type { ShipSummary } from "../api/types";
 import { Ic } from "../components/Icons";
+import { useSeo } from "../seo";
 
 const MONO = "var(--mono)";
 
 export function ShipsPage() {
+  useSeo({
+    title: "Star-Citizen-Schiffe — Datenbank",
+    description:
+      "Star-Citizen-Schiffsdatenbank im RDOC Fleetplanner: Crew, Rolle und Größe aller Schiffe für die Flottenplanung.",
+  });
   const [query, setQuery] = useState("");
   const [ships, setShips] = useState<ShipSummary[]>([]);
   const [loading, setLoading] = useState(true);

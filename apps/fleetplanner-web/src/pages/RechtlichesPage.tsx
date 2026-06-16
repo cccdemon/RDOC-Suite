@@ -1,6 +1,7 @@
 import { Link, Navigate, useParams } from "react-router-dom";
 import { DocPage } from "./DocPage";
 import { MONO } from "../components/ui";
+import { useSeo } from "../seo";
 
 // IA merge B: license/imprint/privacy move out of the primary nav into a
 // footer-level "Rechtliches" page. Same /api/v1/content/:slug source.
@@ -13,6 +14,7 @@ const SECTIONS = [
 export function RechtlichesPage() {
   const { section } = useParams<{ section: string }>();
   const active = SECTIONS.find((s) => s.key === section);
+  useSeo({ title: active ? `${active.label} — Rechtliches` : "Rechtliches" });
   if (!active) return <Navigate to="/rechtliches/lizenz" replace />;
 
   return (

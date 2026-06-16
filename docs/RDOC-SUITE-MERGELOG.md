@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-16: SEO A1 — per-Route <title>/meta im SPA — Branch master
+
+Status: Done.
+
+Problem: alle SPA-Routen teilten sich den einen statischen index.html-`<head>` → gleicher
+Title/Description/Canonical für jede URL. Schwächt Indexierung der öffentlichen Seiten.
+
+A1 (Quick Win, rein client-seitig): neuer Hook `apps/fleetplanner-web/src/seo.ts`
+`useSeo({ title, description?, canonical?, noindex? })` — setzt beim Routenwechsel
+document.title (+ " — RDOC Fleetplanner" Suffix), meta description, link[rel=canonical]
+(default window.origin+pathname), og:title/og:url/og:description, twitter:title/description,
+robots (noindex für gated). Erstellt/aktualisiert die Tags im Head.
+
+Verdrahtet auf öffentliche/indexierbare Seiten:
+- CalendarPage (Landing /), OpDetailPage (Op-Titel + generierte Description), HandbuchPage
+  (pro Section-Label), RechtlichesPage (pro Section), ShipsPage ("Star-Citizen-Schiffe"),
+  LoginPage (noindex).
+Gated-Seiten (admin/konto/guilds) rufen den Hook nicht → behalten App-Default-Title (noindex
+ohnehin via robots.txt). Folgt A2+C6 (Crawler-SSR-Meta + Event-JSON-LD) als größeres Feature.
+
+Frontend-only → Deploy `--build fleetplanner-web`. CHANGELOG.md [Unreleased].
+
 ## Queued / Planned Step - 2026-06-16: Google Search Console Site-Verification — Branch master
 
 Status: Done.
