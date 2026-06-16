@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Op-Beitritt während laufender Op möglich (2026-06-16)
+
+- Bug: Op „schon gestartet" → niemand konnte sich mehr eintragen, obwohl CQB-Teams/
+  Schiffssitze offene Plätze zeigten („Squad hat 4 Plätze, aber niemand kann beitreten").
+- Registrierung (Schiffssitz-Claim, „Freien Platz nehmen", CQB-Squad-Join) bleibt jetzt
+  während einer laufenden Op offen — erlaubte Status: `open | draft | starting | in_progress`.
+  `locked | completed | cancelled` schließen die Anmeldung weiterhin.
+- `fleetplanner-web OpDetailPage.tsx`: `canJoin` Status-Set erweitert.
+- `fleetplanner apiV1.ts`: CQB-Signup-Status-Gate analog erweitert (Seat-Claim war
+  serverseitig ohnehin nicht status-gegated; Schiff-Neuanmeldung bleibt auf open/draft).
+
 ### Changed - Admin: bot-lose Gilden automatisch aus der Server-Liste ausblenden (2026-06-16)
 
 - Die Admin-Konsole versteckt Discord-Server, deren Bot entfernt wurde, jetzt automatisch

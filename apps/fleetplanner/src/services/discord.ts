@@ -91,6 +91,32 @@ export async function fetchGuildBasic(
   return res.json() as Promise<{ id: string; name: string; icon: string | null }>;
 }
 
+/**
+ * Is the bot still a member of this guild? Distinguishes a definitive removal
+ * from a transient outage — unlike fetchGuildBasic, which collapses every
+ * failure to null.
+ *   - 200            → "present"
+ *   - 403 | 404      → "absent"  (bot kicked / guild gone — safe to deactivate)
+ *   - 429 | 5xx | timeout | network → "unknown"  (do NOT deactivate)
+ */
+export async function checkGuildBotPresence(
+  guildId: string,
+): Promise<"present" | "absent" | "unknown"> {
+  const token = fleetplannerBotToken();
+  if (!token) return "unknown";
+  try {
+    const res = await fetch(`${DISCORD_API}/guilds/${guildId}`, {
+      headers: { Authorization: `Bot ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) return "present";
+    if (res.status === 403 || res.status === 404) return "absent";
+    return "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
 /** Fetch a member's Discord role ids in a guild (for role→fleet-role mapping). */
 export async function fetchGuildMemberRoles(guildId: string, userId: string): Promise<string[] | null> {
   const token = fleetplannerBotToken();

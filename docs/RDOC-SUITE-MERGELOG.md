@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-16: Op-Beitritt während laufender Op (started) erlauben — Branch master
+
+Status: Done.
+
+Problem: Op „schon gestartet" (status `in_progress`/`starting`) → niemand kann sich mehr
+eintragen, obwohl CQB-Teams/Schiffssitze offene Plätze zeigen (Bug-Report: „Squad hat 4
+Plätze, aber niemand kann sich eintragen"). Registrierung war auf `open`/`draft` gegated.
+
+Entscheidung (User 2026-06-16): **Alles** (CQB-Squads + offene Schiffssitze) bleibt während
+einer laufenden Op besetzbar. `locked`/`completed`/`cancelled` weiter gesperrt.
+
+- `fleetplanner-web OpDetailPage.tsx`: `canJoin` Status-Set `open|draft|starting|in_progress`
+  (statt nur `open`). Gilt für Schiffssitz-Claim, „Freien Platz nehmen"-Card, CQB-Join.
+- `fleetplanner apiV1.ts` CQB-Signup-Route: Status-Gate analog erweitert (war `open`/`draft`).
+- Seat-Claim-Route Status-Gate analog geprüft/erweitert.
+
+Frontend + API → Deploy `--build fleetplanner fleetplanner-web`.
+
 ## Queued / Planned Step - 2026-06-16: Admin-Gildenliste — bot-lose Gilden auto-ausblenden — Branch master
 
 Status: Done.

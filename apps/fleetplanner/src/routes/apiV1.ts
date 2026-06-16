@@ -17,6 +17,7 @@ import {
   listAllGuildsForAdmin,
   listUserGuilds,
   setMembershipRole,
+  sweepGuildPresence,
   unbanGuild,
   updateGuildSettings,
 } from "../services/guilds.js";
@@ -607,6 +608,7 @@ export async function apiV1Routes(app: FastifyInstance) {
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
+    await sweepGuildPresence().catch(() => {}); // best-effort: drop guilds whose bot was removed
     const rows = await listAllGuildsForAdmin();
     return reply.type("application/json").send({
       guilds: rows.map((g) => ({
@@ -1594,7 +1596,9 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
       const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
       if (!role) return sendError(reply, req, 403, "forbidden", "No access to this operation.");
-      if (op.status !== "open" && op.status !== "draft")
+      // Registration stays open while the op is live (started) — late ground
+      // troops can still take a CQB seat. Only locked/completed/cancelled close it.
+      if (!["open", "draft", "starting", "in_progress"].includes(op.status))
         return sendError(reply, req, 409, "conflict", "Operation is not open for registration.");
 
       // Direct squad join (self-service slot): validate the team belongs to the op

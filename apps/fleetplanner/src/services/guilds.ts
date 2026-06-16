@@ -3,10 +3,14 @@
 // active guild for a request.
 
 import { prisma } from "../db.js";
-import { discordUserIdForFleetplannerUser, fetchGuildBasic, fetchGuildMemberRoles } from "./discord.js";
+import { checkGuildBotPresence, discordUserIdForFleetplannerUser, fetchGuildBasic, fetchGuildMemberRoles } from "./discord.js";
 import { getActivePartnerGuildIds } from "./partnerships.js";
 
 export type GuildRole = "fleetoperator" | "crew";
+
+// Synthetic E2E test guild (see routes/e2eAuth.ts) — never a real Discord id,
+// so a presence check always 404s. Exclude it from the sweep so it doesn't flap.
+const E2E_GUILD_ID = "100000000000000001";
 
 const ROLE_RANK: Record<GuildRole, number> = { fleetoperator: 3, crew: 1 };
 
@@ -78,6 +82,34 @@ export async function deactivateGuild(guildId: string): Promise<void> {
   await (prisma.guild.update as any)({ where: { id: guildId }, data: { active: false } });
 }
 
+// In-memory throttle: at most one Discord presence sweep per process per window.
+let lastSweepAt = 0;
+const SWEEP_INTERVAL_MS = 5 * 60_000;
+
+/**
+ * Soft-hide guilds whose bot was removed. The Fleetplanner bot is REST-only
+ * (no gateway → no guildDelete event), so presence is polled on demand. Called
+ * before the admin guild list renders; throttled so reloads don't hammer the
+ * Discord API. Only a definitive "absent" (403/404) deactivates a guild —
+ * transient failures are left untouched. Re-adding the bot reactivates it via
+ * installGuild().
+ */
+export async function sweepGuildPresence(force = false): Promise<void> {
+  const now = Date.now();
+  if (!force && now - lastSweepAt < SWEEP_INTERVAL_MS) return;
+  lastSweepAt = now;
+
+  const guilds = await prisma.guild.findMany({
+    where: { active: true, bannedAt: null },
+    select: { id: true },
+  });
+  for (const g of guilds) {
+    if (g.id === E2E_GUILD_ID) continue;
+    const presence = await checkGuildBotPresence(g.id);
+    if (presence === "absent") await deactivateGuild(g.id);
+  }
+}
+
 /** SuperAdmin ban: force inactive + set bannedAt so it cannot be re-added. */
 export async function banGuild(guildId: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -109,6 +141,9 @@ export async function listAllGuildsForAdmin(): Promise<
 > {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (await (prisma.guild.findMany as any)({
+    // Hide soft-removed guilds (bot gone → active=false). Banned guilds stay
+    // visible so a superadmin can unban them.
+    where: { OR: [{ active: true }, { bannedAt: { not: null } }] },
     orderBy: [{ bannedAt: "asc" }, { name: "asc" }],
     select: {
       id: true,

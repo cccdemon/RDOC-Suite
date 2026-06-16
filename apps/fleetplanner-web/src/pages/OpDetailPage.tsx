@@ -246,7 +246,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   });
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const pct = op.minParticipants > 0 ? Math.min(100, Math.round((filled / op.minParticipants) * 100)) : 0;
-  const canJoin = !!me && !!csrf && op.status === "open";
+  // Registration stays open while the op is live (started), not just "open".
+  // Late joiners can still claim open seats / CQB squads mid-op. Only
+  // locked/completed/cancelled close it.
+  const canJoin =
+    !!me && !!csrf && ["open", "draft", "starting", "in_progress"].includes(op.status);
   const heroImg = `${import.meta.env.BASE_URL}assets/operation-hero.png`;
 
   // design tab/link style for the operator action row
