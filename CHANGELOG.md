@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Admin: bot-lose Gilden automatisch aus der Server-Liste ausblenden (2026-06-16)
+
+- Die Admin-Konsole versteckt Discord-Server, deren Bot entfernt wurde, jetzt automatisch
+  statt sie ewig als „INAKTIV" zu listen — Bannen ist dafür zu hart.
+- `services/discord.ts`: `checkGuildBotPresence(guildId)` → `present | absent | unknown`.
+  Nur 403/404 = `absent`; 429/5xx/Timeout = `unknown` (Gilde bleibt). Bewusst nicht
+  `fetchGuildBasic` (das verschmiert alle Fehler zu `null`).
+- `services/guilds.ts`: `sweepGuildPresence()` (gedrosselt max. 1×/5 min/Prozess) setzt
+  `absent`-Gilden via `deactivateGuild` auf inaktiv; E2E-Test-Gilde ausgenommen.
+  `listAllGuildsForAdmin` zeigt nur noch `active` ODER gebannte Gilden.
+- `routes/apiV1.ts` `GET /api/v1/admin/guilds`: Sweep läuft (best-effort) vor dem Listen.
+- Reversibel: Bot erneut hinzufügen reaktiviert die Gilde (`installGuild`).
+
+### Added - SEO: angereicherte Landing-Copy + "Technobabble"-Seite (2026-06-16)
+
+- Landing-Crawler-Render mit keyword-reicheren Intro-Absätzen und H2 „Star-Citizen-
+  Operationen planen" (lesbarer Fließtext, kein Stuffing).
+- Neue Handbuch-Section „Was ist das (Technobabble)" — technische Variante der Erklär-Seite
+  (Stack/Architektur). Voice darin korrekt als RDOC SquadLink Lite (P2P-WebRTC), kein LiveKit.
+
 ### Added - SEO: Crawler-SSR-Meta + Event-Rich-Results (A2+C6) (2026-06-16)
 
 - Suchmaschinen erhalten server-gerendertes, indexierbares HTML pro öffentlicher URL

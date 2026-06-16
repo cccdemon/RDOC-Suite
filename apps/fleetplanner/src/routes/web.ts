@@ -273,10 +273,16 @@ export async function webRoutes(app: FastifyInstance) {
     const body =
       `<h1>RDOC Fleetplanner — Operationsplanung für Star-Citizen-Flotten</h1>` +
       `<p>${esc(description)}</p>` +
-      `<p>Plane Star-Citizen-Operationen: Events mit Datum und Treffpunkt, Flotten-Slots nach Schiff und Rolle, ` +
-      `Crew-Anmeldung und Voice-Koordination für deine Organisation.</p>` +
-      `<h2>Handbuch</h2><ul>` +
+      `<p>Der RDOC Fleetplanner ist das Org-Tool für Star-Citizen-Operationen: Plane Flotten-Einsätze mit ` +
+      `Datum und Treffpunkt, vergib Schiffs- und Sitzplätze nach Rolle, lass deine Crew sich selbst anmelden ` +
+      `und koordiniere alle per Voice. Jede Operation erscheint automatisch als Discord-Event — kein zweites ` +
+      `Tool, keine Tabelle.</p>` +
+      `<p>Egal ob Mining-Run, Combat-Op oder Frachtkonvoi — vom Event mit Anmeldung über das Flotten-Management ` +
+      `bis zur fertigen Teilnehmerliste läuft alles an einem Ort. Befreundete Orgs teilen Einsätze über ` +
+      `Partner-Server.</p>` +
+      `<h2>Star-Citizen-Operationen planen</h2><ul>` +
       `<li><a href="${base}/handbuch/was-ist-das">Was ist der RDOC Fleetplanner?</a></li>` +
+      `<li><a href="${base}/handbuch/technobabble">Was ist das, in Technobabble (technischer Überblick)</a></li>` +
       `<li><a href="${base}/handbuch/anleitung">Anleitung</a></li></ul>` +
       (items ? `<h2>Kommende öffentliche Operationen</h2><ul>${items}</ul>` : "");
     const jsonLd = jsonLdScript({
@@ -315,6 +321,7 @@ export async function webRoutes(app: FastifyInstance) {
   // the SPA's DocPage uses) so crawlers get full indexable text per section.
   const HANDBUCH_SLUG: Record<string, string> = {
     "was-ist-das": "whatis",
+    technobabble: "whatis-tech",
     anleitung: "how-to",
     changelog: "changelog",
     "sc-tools": "sc-tools",
@@ -322,6 +329,7 @@ export async function webRoutes(app: FastifyInstance) {
   };
   const HANDBUCH_DESC: Record<string, string> = {
     "was-ist-das": "Was ist der RDOC Fleetplanner? Operationsplanung für Star-Citizen-Organisationen — Events, Flotten-Slots, Crew und Voice.",
+    technobabble: "RDOC Fleetplanner unter der Haube: React-SPA, Fastify, Prisma, PostgreSQL, Discord-OAuth, P2P-WebRTC-Voice — der technische Überblick.",
     anleitung: "Anleitung: Star-Citizen-Operationen planen, Flotten-Slots vergeben und Crew anmelden im RDOC Fleetplanner.",
     changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
     "sc-tools": "Star-Citizen-Tools rund um Flotten- und Operationsplanung im RDOC Fleetplanner.",

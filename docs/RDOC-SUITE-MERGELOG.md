@@ -1,5 +1,51 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-16: Admin-Gildenliste — bot-lose Gilden auto-ausblenden — Branch master
+
+Status: Done.
+
+Problem: In der Admin-Konsole (Discord-Server-Panel) bleiben Gilden ewig in der Liste,
+auch wenn ihr Bot entfernt wurde. Einzige Aktion war `Bannen` — zu hart für „Bot ist
+einfach weg". `deactivateGuild()` existierte mit 0 Aufrufern; Fleetplanner-Bot ist
+REST-only (kein Gateway → kein `guildDelete`-Event).
+
+Entscheidung (User 2026-06-16): **Auto-Sweep beim Laden + Soft-Hide** (kein Ban,
+kein Hard-Delete).
+
+- `services/discord.ts`: neuer `checkGuildBotPresence(guildId)` → `"present" | "absent"
+  | "unknown"`. NUR 403/404 = `absent`; 429/5xx/Timeout/Netz = `unknown` (NICHT
+  deaktivieren). Bewusst nicht `fetchGuildBasic` wiederverwendet (das konflatiert alle
+  Fehler zu `null` → würde Gilden bei Rate-Limit fälschlich verstecken).
+- `services/guilds.ts`: `sweepGuildPresence()` — in-memory gedrosselt (max 1×/5 min/
+  Prozess), iteriert aktive+nicht-gebannte Gilden, `absent` → `deactivateGuild`. Skippt
+  die synthetische E2E-Gilde (`100000000000000001`). `listAllGuildsForAdmin` Where-Filter:
+  zeigt nur noch `active=true OR bannedAt!=null` (inactive-unbanned = ausgeblendet).
+- `routes/apiV1.ts` `GET /api/v1/admin/guilds`: `await sweepGuildPresence()` vor dem
+  Listen, damit gerade-entfernte Gilden sofort raus sind.
+
+Reversibel: Bot neu hinzufügen → `installGuild` reaktiviert (active=true) → Gilde
+zurück in Liste. Ban-Knopf bleibt unverändert. Backend-only → Deploy `--build fleetplanner`.
+
+## Queued / Planned Step - 2026-06-16: SEO B3 — Landing-Copy + neue "Technobabble"-Doc-Section — Branch master
+
+Status: Done.
+
+- Landing-Body (web.ts GET `/`): Intro-Absätze mit Zielbegriffen angereichert (Org-Tool,
+  Flotten-Einsätze, Schiffs-/Sitzplätze, Crew-Anmeldung, Discord-Event, Mining/Combat/Fracht,
+  Event mit Anmeldung, Flotten-Management, Partner-Server). H2 „Handbuch" → „Star-Citizen-
+  Operationen planen". Kein Keyword-Stuffing, lesbarer Fließtext.
+- Neue Handbuch-Section `technobabble` (Doc-Slug `whatis-tech`): jargon-dichte Technik-Version
+  von „Was ist das". pages.ts `whatIsTechBody()`, docContent.ts Builder + BUILDERS-Slug,
+  SPA HandbuchPage SECTIONS+sectionContent+SECTION_DESC, web.ts Crawler HANDBUCH_SLUG/DESC.
+  Mini-Cross-Link in beiden Richtungen (was-ist-das ⇄ technobabble).
+- "Was ist das" (einfache Sprache) inhaltlich unverändert, nur Link zur Technik-Version.
+
+WICHTIG — Voice-Stack im Technobabble korrekt: KEIN LiveKit (User-Ansage 2026-06-16
+„LiveKit kann raus"). Voice = RDOC SquadLink Lite (serverloses P2P-WebRTC-Mesh,
+squadlink://connect HMAC-Deep-Link). Memory reference_rdoc_voice_modes damit veraltet.
+
+Frontend+Backend → Deploy `--build fleetplanner fleetplanner-web`. CHANGELOG.md.
+
 ## Queued / Planned Step - 2026-06-16: SEO A2 + C6 — Crawler-SSR-Meta + Event-Rich-Results — Branch master
 
 Status: Done.

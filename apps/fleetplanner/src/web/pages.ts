@@ -228,6 +228,7 @@ export function whatIsBody(bp: string, de: boolean): SafeHtml {
   const deBody = html` <div class="page-header">
       <h1 class="page-title">WAS IST DER FLEETMANAGER?</h1>
       <p class="page-subtitle">Kurz erklärt — ohne Technik-Kauderwelsch.</p>
+      <p style="margin-top:.4rem"><a href="${bp}/handbuch/technobabble" class="btn btn-sm">Lieber technisch? → Was ist das, in Technobabble</a></p>
     </div>
 
     <div class="section">
@@ -404,6 +405,100 @@ export function whatIsBody(bp: string, de: boolean): SafeHtml {
     </div>`;
 
   return html`${langToggle}${de ? deBody : enBody}`;
+}
+
+// Technical counterpart to whatIsBody — deliberately jargon-dense, for the
+// tech-savvy reader (and it captures technical long-tail search terms). Keep in
+// sync with the actual stack; voice is RDOC SquadLink Lite (P2P), NOT LiveKit.
+export function whatIsTechBody(bp: string): SafeHtml {
+  const card = "card";
+  return html` <div class="page-header">
+      <h1 class="page-title">WAS IST DAS — IN TECHNOBABBLE</h1>
+      <p class="page-subtitle">Für alle, die's unter der Haube wollen.</p>
+      <p style="margin-top:.4rem"><a href="${bp}/handbuch/was-ist-das" class="btn btn-sm">← Lieber einfach erklärt</a></p>
+    </div>
+
+    <div class="section">
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          Der <strong>RDOC Fleetplanner</strong> ist eine multi-tenant Operations-Orchestrierungs-Plattform
+          für Star-Citizen-Organisationen. Frontend: <strong>React-SPA</strong> (Vite-Build) gegen eine
+          JSON-<code>/api/v1</code>-Schicht. Backend: <strong>Fastify + Prisma</strong> auf
+          <strong>PostgreSQL</strong>, zustandslos hinter einem Reverse-Proxy (Caddy).
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Identität &amp; Rollen</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          Login via <strong>Discord-OAuth2</strong>. Die globale Rolle trägt nur den Superadmin; alles
+          andere ist <strong>per-Guild gescoped</strong> (<code>fleetoperator</code> / <code>captain</code> /
+          <code>crew</code>). Discord-Server-Rollen werden auf Op-Rollen gemappt.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Datenmodell</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          Zentrales Aggregat ist die <strong>Operation</strong>: Schiffe → Einheiten → Sitzplätze
+          (Pilot / Gunner / Engineer …), mit Self-Service-Seat-Claiming und Bedarfs-Matching.
+          Schiffsklassen und Crew-Sollstärke kommen aus dem <strong>SC-Wiki</strong>.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Discord-Integration</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          Jede Op materialisiert ein natives <strong>Discord Scheduled Event</strong>; „Interested"-Klicks
+          ziehen Schatten-Teilnehmer rein. Event-Distribution cross-postet Ops in
+          <strong>Partner-Guilds</strong> (Allowlist + Approval-Inbox).
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Voice</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          Voice läuft über <strong>RDOC SquadLink Lite</strong> — ein serverloses
+          <strong>P2P-WebRTC-Voice-Mesh</strong>. Der Fleetplanner mintet nur einen signierten
+          Deep-Link (<code>squadlink://connect</code>, HMAC-Token) in den CommandNet-Raum der Operation.
+          Kein Discord-Audio-Hook, kein Mithören — ToS-konform.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Mission Cover</div>
+      <div class="${card}" style="padding:1.1rem;max-width:54rem">
+        <p style="margin:0">
+          Ein <strong>Headless-Chromium-Microservice</strong> rendert das Briefing-Poster server-seitig
+          aus den Op-Daten.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="${card}" style="padding:1.1rem;max-width:54rem;border-left:3px solid var(--cyan,#22d3ee)">
+        <p style="margin:0">
+          <strong>Stack-Kurzfassung:</strong> TypeScript · React/Vite · Fastify · Prisma · PostgreSQL ·
+          WebRTC (SquadLink Lite) · Discord.js · Docker-Compose · Caddy. Quelloffen (PolyForm
+          Noncommercial): <a href="https://github.com/cccdemon/RDOC-Suite" target="_blank" rel="noopener">github.com/cccdemon/RDOC-Suite</a>.
+        </p>
+        <p style="margin-top:.6rem"><strong>TL;DR:</strong> Discord-natives Event- und Flotten-Management
+          für Star-Citizen-Ops, mit eigener P2P-Voice-Bridge — ohne im Spiel irgendetwas anzufassen. 🚀</p>
+      </div>
+    </div>
+
+    <div class="section">
+      <a href="${bp}/handbuch/anleitung" class="btn btn-cyan">Weiter zur ausführlichen Anleitung →</a>
+    </div>`;
 }
 
 export function scToolsBody(

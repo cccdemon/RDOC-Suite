@@ -3,7 +3,7 @@
 // fleetplanner-web SPA renders it in its DocPage. No page rendering happens here
 // — this is trusted first-party HTML content returned as a string.
 import { html, rawHtml, type SafeHtml } from "../web/render.js";
-import { whyUnsignedBody, whatIsBody, howToBody, datenschutzBody, changelogBody, scToolsBody } from "../web/pages.js";
+import { whyUnsignedBody, whatIsBody, whatIsTechBody, howToBody, datenschutzBody, changelogBody, scToolsBody } from "../web/pages.js";
 import { setLocale, t } from "../i18n/index.js";
 import { basePath, getEnv } from "../config/env.js";
 import { getScToolCards } from "../services/scTools.js";
@@ -110,6 +110,11 @@ const whatis: Builder = (lang) => ({
   body: whatIsBody(basePath(), lang !== "en"),
 });
 
+const whatisTech: Builder = () => ({
+  title: "Was ist das — in Technobabble",
+  body: whatIsTechBody(basePath()),
+});
+
 const datenschutz: Builder = () => ({ title: "Privacy", body: datenschutzBody(basePath()) });
 
 const changelog: Builder = (lang) => {
@@ -129,6 +134,7 @@ const BUILDERS: Record<string, Builder> = {
   "why-unsigned": whyUnsigned,
   "how-to": howTo,
   whatis,
+  "whatis-tech": whatisTech,
   datenschutz,
   changelog,
   "sc-tools": scTools,
