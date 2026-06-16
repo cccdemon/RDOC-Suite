@@ -1,5 +1,37 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-16: SEO A2 + C6 — Crawler-SSR-Meta + Event-Rich-Results — Branch master
+
+Status: Done.
+
+Decke über A1 (das war client-seitig, JS-abhängig). A2/C6 liefern Suchmaschinen
+server-gerendertes, indexierbares HTML pro öffentlicher URL — JS-unabhängig. Nutzt die
+bestehende API-only-Ausnahme der Unfurl-Routen (apps/fleetplanner/src/routes/web.ts).
+
+A2 — neue Crawler-Routen in web.ts (nur Bot-UAs via nginx, Menschen → SPA):
+- GET `/` (Landing): H1 + Keyword-Intro + Liste kommender öffentlicher Ops (interne Links
+  zur Crawl-Discovery) + WebApplication/Organization-JSON-LD + canonical.
+- GET `/handbuch/:section` + `/handbuch`: rendert echten Doc-Text via getDocContent(slug)
+  (whatis/how-to/changelog/sc-tools/why-unsigned). Unbekannt/roadmap → noindex.
+- GET `/rechtliches/:section` + `/rechtliches`: license/impressum/datenschutz.
+- Gemeinsamer Helper `seoDoc()` (canonical + OG + robots + optional JSON-LD, KEIN
+  meta-refresh) + `jsonLdScript()` (escaped `<`).
+
+C6 — GET `/ops/:id` Unfurl-Doc aufgewertet: canonical, schema.org/Event-JSON-LD für
+ÖFFENTLICHE Ops, meta-refresh entfernt, echter Body-Text. robots: noindex für private ODER
+vergangene Ops (scheduledAt < now) → Index bleibt sauber, nur kommende öffentliche Ops
+erzeugen Event-Rich-Results. Polls-Doc analog auf seoDoc umgestellt.
+
+Routing:
+- apps/fleetplanner-web/nginx.conf: `location = /` + `location ~ ^/(handbuch|rechtliches)(/|$)`
+  bekommen Bot-UA-Check (error_page 420 → @ogbot → backend), wie /ops/:id. Alte prefix-
+  `location /handbuch|/rechtliches` entfernt (vom regex-location verdeckt).
+- public/robots.txt: `Disallow /fleetplanner/ops/` ENTFERNT (sonst crawlt Google die Event-
+  Seiten nie); per-Page robots-meta steuert Index (privat/vergangen = noindex, kein Leak).
+
+Folge-Idee (offen): dynamische sitemap.xml mit kommenden öffentlichen Ops.
+Frontend+Backend → Deploy `--build fleetplanner-web fleetplanner`. CHANGELOG.md.
+
 ## Queued / Planned Step - 2026-06-16: SEO A1 — per-Route <title>/meta im SPA — Branch master
 
 Status: Done.

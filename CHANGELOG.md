@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - SEO: Crawler-SSR-Meta + Event-Rich-Results (A2+C6) (2026-06-16)
+
+- Suchmaschinen erhalten server-gerendertes, indexierbares HTML pro öffentlicher URL
+  (JS-unabhängig) über `apps/fleetplanner/src/routes/web.ts`:
+  - Landing `/`: H1 + Keyword-Intro + Liste kommender öffentlicher Operationen (interne
+    Links) + WebApplication/Organization-JSON-LD.
+  - `/handbuch/:section` + `/rechtliches/:section`: echter Doc-Text (getDocContent) pro
+    Section mit Canonical + Meta.
+  - `/ops/:id`: schema.org/Event-JSON-LD für kommende öffentliche Ops (→ Google Event-Rich-
+    Results), Canonical, kein meta-refresh mehr; private/vergangene Ops `noindex`.
+- `apps/fleetplanner-web/nginx.conf`: `location = /` und `~ ^/(handbuch|rechtliches)`
+  routen Crawler-User-Agents an das Backend-Meta-Render (wie bisher `/ops/:id`).
+- `public/robots.txt`: `Disallow /fleetplanner/ops/` entfernt — Index-Steuerung jetzt per
+  Page-Meta (private/vergangene Ops noindex, kein Datenleck).
+
 ### Added - SEO: per-Route Meta + Search Console (2026-06-16)
 
 - Neuer Hook `apps/fleetplanner-web/src/seo.ts` (`useSeo`): setzt pro Route

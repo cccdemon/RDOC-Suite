@@ -9,6 +9,7 @@ Disallow: /fleetplanner/admin
 Disallow: /fleetplanner/guilds/settings
 Disallow: /fleetplanner/guilds/diagnostics
 Disallow: /fleetplanner/api-docs
-Disallow: /fleetplanner/ops/
+# /fleetplanner/ops/ is crawlable: the per-page meta marks private/past ops
+# noindex, while upcoming public ops emit Event structured data for rich results.
 
 Sitemap: https://suite.raumdock.org/sitemap.xml

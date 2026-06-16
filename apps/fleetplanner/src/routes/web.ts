@@ -1,4 +1,4 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { createReadStream } from "node:fs";
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -14,8 +14,51 @@ import { prisma } from "../db.js";
 import { buildOpIcs } from "../lib/calendar.js";
 import { getOperation } from "../services/operations.js";
 import { getMissionParticipants, participantsToCsv } from "../services/participants.js";
+import { getDocContent } from "../api/docContent.js";
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), "../../public");
+
+// ── SEO helpers (shared by the crawler-only meta routes below). ────────────
+const esc = (s: unknown) =>
+  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+
+// JSON-LD must not break out of the <script> — escape "<" to <.
+function jsonLdScript(obj: unknown): string {
+  return `<script type="application/ld+json">${JSON.stringify(obj).replace(/</g, "\\u003c")}</script>`;
+}
+
+// Indexable crawler HTML doc (unlike the unfurl cards: NO meta-refresh). Carries
+// a real <head> + body text so search engines index the public URL without
+// running the SPA's JS. nginx routes only crawler user-agents here.
+function seoDoc(o: {
+  title: string;
+  description: string;
+  canonical: string;
+  body: string;
+  image?: string;
+  jsonLd?: string;
+  noindex?: boolean;
+  lang?: string;
+}): string {
+  const fullTitle = o.title.includes("RDOC Fleetplanner") ? o.title : `${o.title} — RDOC Fleetplanner`;
+  return (
+    `<!doctype html><html lang="${o.lang ?? "de"}"><head><meta charset="utf-8">` +
+    `<meta name="viewport" content="width=device-width, initial-scale=1">` +
+    `<title>${esc(fullTitle)}</title>` +
+    `<meta name="description" content="${esc(o.description)}">` +
+    `<meta name="robots" content="${o.noindex ? "noindex, nofollow" : "index, follow"}">` +
+    `<link rel="canonical" href="${esc(o.canonical)}">` +
+    `<meta property="og:type" content="website">` +
+    `<meta property="og:site_name" content="RDOC Fleetplanner">` +
+    `<meta property="og:title" content="${esc(fullTitle)}">` +
+    `<meta property="og:description" content="${esc(o.description)}">` +
+    `<meta property="og:url" content="${esc(o.canonical)}">` +
+    (o.image ? `<meta property="og:image" content="${esc(o.image)}">` : "") +
+    `<meta name="twitter:card" content="summary_large_image">` +
+    (o.jsonLd ?? "") +
+    `</head><body>${o.body}</body></html>`
+  );
+}
 
 // FR-P3 org-fleet: writable cache for ship images pulled from Fleetyards.
 // Lazy-downloaded on first request, then served from disk (volume-backed in prod).
@@ -93,8 +136,6 @@ export async function webRoutes(app: FastifyInstance) {
   // UI — just <meta> tags + an immediate redirect to the app for any human that
   // lands here. Private ops emit a generic card (no detail leak).
   app.get<{ Params: { id: string } }>("/ops/:id", async (req, reply) => {
-    const esc = (s: unknown) =>
-      String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
     const env = getEnv();
     const base = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
     const appUrl = `${base}/ops/${encodeURIComponent(req.params.id)}`;
@@ -104,6 +145,9 @@ export async function webRoutes(app: FastifyInstance) {
     let title = "RDOC Fleetplanner";
     let description = "Star-Citizen-Operationen planen.";
     let image = defaultImg;
+    let jsonLd = "";
+    let noindex = true; // nothing indexes unless it's an upcoming public op
+    let body = `<a href="${esc(appUrl)}">${esc(title)}</a>`;
     if (op) {
       const o = op as { title: string; visibility: string; description: string | null; scheduledAt: Date; meetingSystem: string; meetingLocation: string; cover?: { url: string } | null };
       if (o.visibility === "public") {
@@ -112,22 +156,37 @@ export async function webRoutes(app: FastifyInstance) {
         title = o.title;
         description = `🕒 ${when}${where ? ` · 📍 ${where}` : ""}`;
         image = o.cover?.url || defaultImg;
+        // Index only UPCOMING public ops — past ops go stale, keep them out.
+        noindex = o.scheduledAt.getTime() < Date.now();
+        const plain = o.description?.trim()
+          ? o.description.replace(/\s+/g, " ").trim().slice(0, 280)
+          : `Star-Citizen-Operation${where ? ` — ${where}` : ""}. Crew-Anmeldung im RDOC Fleetplanner.`;
+        body =
+          `<h1>${esc(o.title)}</h1><p>${esc(description)}</p>` +
+          (o.description ? `<p>${esc(plain)}</p>` : "") +
+          `<p><a href="${esc(appUrl)}">Operation im RDOC Fleetplanner öffnen</a></p>`;
+        if (!noindex) {
+          jsonLd = jsonLdScript({
+            "@context": "https://schema.org",
+            "@type": "Event",
+            name: o.title,
+            startDate: o.scheduledAt.toISOString(),
+            eventStatus: "https://schema.org/EventScheduled",
+            eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+            location: { "@type": "VirtualLocation", url: appUrl },
+            description: plain,
+            image: [image],
+            url: appUrl,
+            organizer: { "@type": "Organization", name: "RDOC Fleetplanner", url: base },
+          });
+        }
       } else {
         title = "Private Operation — RDOC Fleetplanner";
         description = "Anmeldung erforderlich.";
+        body = `<a href="${esc(appUrl)}">${esc(title)}</a>`;
       }
     }
-    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8">`
-      + `<title>${esc(title)} — RDOC Fleetplanner</title>`
-      + `<meta property="og:type" content="website">`
-      + `<meta property="og:site_name" content="RDOC Fleetplanner">`
-      + `<meta property="og:title" content="${esc(title)}">`
-      + `<meta property="og:description" content="${esc(description)}">`
-      + `<meta property="og:image" content="${esc(image)}">`
-      + `<meta property="og:url" content="${esc(appUrl)}">`
-      + `<meta name="twitter:card" content="summary_large_image">`
-      + `<meta http-equiv="refresh" content="0; url=${esc(appUrl)}">`
-      + `</head><body><a href="${esc(appUrl)}">${esc(title)}</a></body></html>`;
+    const html = seoDoc({ title, description, canonical: appUrl, image, jsonLd, noindex, body });
     return reply.header("Cache-Control", "public, max-age=300").type("text/html; charset=utf-8").send(html);
   });
 
@@ -135,8 +194,6 @@ export async function webRoutes(app: FastifyInstance) {
   // Same exception/contract as /ops/:id above: nginx routes only bot UAs here.
   // Public polls emit a real card; private/partners stay generic (no leak).
   app.get<{ Params: { id: string } }>("/polls/:id", async (req, reply) => {
-    const esc = (s: unknown) =>
-      String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
     const env = getEnv();
     const base = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
     const appUrl = `${base}/polls/${encodeURIComponent(req.params.id)}`;
@@ -160,6 +217,7 @@ export async function webRoutes(app: FastifyInstance) {
 
     let title = "RDOC Fleetplanner";
     let description = "Umfragen für Star-Citizen-Orgs.";
+    let noindex = true;
     if (poll) {
       if (poll.visibility === "public" && poll.status !== "draft") {
         const closes = poll.closesAt ? ` · offen bis ${poll.closesAt.toISOString().replace("T", " ").slice(0, 16)} UTC` : "";
@@ -167,24 +225,142 @@ export async function webRoutes(app: FastifyInstance) {
         description =
           (poll.description?.trim().slice(0, 160)) ||
           `🗳 Umfrage · ${poll._count.options} Optionen${poll.status === "closed" ? " · geschlossen" : closes}`;
+        noindex = false;
       } else {
         title = "Umfrage — RDOC Fleetplanner";
         description = "Anmeldung erforderlich.";
       }
     }
-    const html = `<!doctype html><html lang="de"><head><meta charset="utf-8">`
-      + `<title>${esc(title)} — RDOC Fleetplanner</title>`
-      + `<meta property="og:type" content="website">`
-      + `<meta property="og:site_name" content="RDOC Fleetplanner">`
-      + `<meta property="og:title" content="${esc(title)}">`
-      + `<meta property="og:description" content="${esc(description)}">`
-      + `<meta property="og:image" content="${esc(image)}">`
-      + `<meta property="og:url" content="${esc(appUrl)}">`
-      + `<meta name="twitter:card" content="summary_large_image">`
-      + `<meta http-equiv="refresh" content="0; url=${esc(appUrl)}">`
-      + `</head><body><a href="${esc(appUrl)}">${esc(title)}</a></body></html>`;
+    const html = seoDoc({
+      title,
+      description,
+      canonical: appUrl,
+      image,
+      noindex,
+      body: `<h1>${esc(title)}</h1><p>${esc(description)}</p><p><a href="${esc(appUrl)}">Umfrage im RDOC Fleetplanner öffnen</a></p>`,
+    });
     return reply.header("Cache-Control", "public, max-age=300").type("text/html; charset=utf-8").send(html);
   });
+
+  // ── SEO: indexable crawler HTML for the public marketing/content routes. ──
+  // Same API-only exception as the unfurl docs, but these are INDEXABLE (no
+  // meta-refresh): real text + canonical so Googlebot indexes each public URL
+  // without the SPA's JS. nginx routes only crawler user-agents here.
+
+  // Landing — keyword intro + internal links to upcoming public ops (crawl
+  // discovery) + site-level structured data.
+  app.get("/", async (_req, reply) => {
+    const env = getEnv();
+    const base = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+    const canonical = `${base}/`;
+    const ops = await prisma.operation
+      .findMany({
+        where: { visibility: "public", scheduledAt: { gte: new Date() } },
+        orderBy: { scheduledAt: "asc" },
+        take: 25,
+        select: { id: true, title: true, scheduledAt: true, meetingSystem: true, meetingLocation: true },
+      })
+      .catch(() => [] as Array<{ id: string; title: string; scheduledAt: Date; meetingSystem: string; meetingLocation: string }>);
+    const items = ops
+      .map((o) => {
+        const when = o.scheduledAt.toISOString().replace("T", " ").slice(0, 16) + " UTC";
+        const where = [o.meetingSystem, o.meetingLocation].filter(Boolean).join(" · ");
+        return `<li><a href="${base}/ops/${o.id}">${esc(o.title)}</a> — ${esc(when)}${where ? ` · ${esc(where)}` : ""}</li>`;
+      })
+      .join("");
+    const description =
+      "RDOC Fleetplanner: Events anlegen, Flotten-Slots vergeben, Crew anmelden und Voice koordinieren — die Operationsplanung für Star-Citizen-Organisationen.";
+    const body =
+      `<h1>RDOC Fleetplanner — Operationsplanung für Star-Citizen-Flotten</h1>` +
+      `<p>${esc(description)}</p>` +
+      `<p>Plane Star-Citizen-Operationen: Events mit Datum und Treffpunkt, Flotten-Slots nach Schiff und Rolle, ` +
+      `Crew-Anmeldung und Voice-Koordination für deine Organisation.</p>` +
+      `<h2>Handbuch</h2><ul>` +
+      `<li><a href="${base}/handbuch/was-ist-das">Was ist der RDOC Fleetplanner?</a></li>` +
+      `<li><a href="${base}/handbuch/anleitung">Anleitung</a></li></ul>` +
+      (items ? `<h2>Kommende öffentliche Operationen</h2><ul>${items}</ul>` : "");
+    const jsonLd = jsonLdScript({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebApplication",
+          name: "RDOC Fleetplanner",
+          url: canonical,
+          applicationCategory: "GameApplication",
+          operatingSystem: "Web",
+          inLanguage: "de-DE",
+          description,
+          offers: { "@type": "Offer", price: "0", priceCurrency: "EUR" },
+          publisher: { "@type": "Organization", name: "Raumdock (RDOC)", url: "https://raumdock.org" },
+        },
+        { "@type": "Organization", name: "Raumdock (RDOC)", url: "https://raumdock.org" },
+      ],
+    });
+    return reply
+      .header("Cache-Control", "public, max-age=300")
+      .type("text/html; charset=utf-8")
+      .send(
+        seoDoc({
+          title: "RDOC Fleetplanner — Operationsplanung für Star-Citizen-Flotten",
+          description,
+          canonical,
+          image: `${base}/assets/operation-hero.png`,
+          jsonLd,
+          body,
+        }),
+      );
+  });
+
+  // Handbuch + Rechtliches: render the real first-party doc content (same source
+  // the SPA's DocPage uses) so crawlers get full indexable text per section.
+  const HANDBUCH_SLUG: Record<string, string> = {
+    "was-ist-das": "whatis",
+    anleitung: "how-to",
+    changelog: "changelog",
+    "sc-tools": "sc-tools",
+    unsigniert: "why-unsigned",
+  };
+  const HANDBUCH_DESC: Record<string, string> = {
+    "was-ist-das": "Was ist der RDOC Fleetplanner? Operationsplanung für Star-Citizen-Organisationen — Events, Flotten-Slots, Crew und Voice.",
+    anleitung: "Anleitung: Star-Citizen-Operationen planen, Flotten-Slots vergeben und Crew anmelden im RDOC Fleetplanner.",
+    changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
+    "sc-tools": "Star-Citizen-Tools rund um Flotten- und Operationsplanung im RDOC Fleetplanner.",
+    unsigniert: "Warum die RDOC Squad Link Companion-Binary unsigniert ausgeliefert wird.",
+  };
+  const RECHT_SLUG: Record<string, string> = { lizenz: "license", impressum: "impressum", datenschutz: "datenschutz" };
+
+  async function renderDocPage(
+    reply: FastifyReply,
+    opts: { hub: "handbuch" | "rechtliches"; section: string; slug: string | undefined; description: string },
+  ) {
+    const env = getEnv();
+    const base = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
+    const canonical = `${base}/${opts.hub}/${opts.section}`;
+    const doc = opts.slug ? await getDocContent(opts.slug, "de") : null;
+    const title = doc?.title ?? (opts.hub === "handbuch" ? "Handbuch" : "Rechtliches");
+    const body = doc
+      ? doc.html
+      : `<h1>${esc(title)}</h1><p><a href="${esc(canonical)}">Im RDOC Fleetplanner öffnen</a></p>`;
+    return reply
+      .header("Cache-Control", "public, max-age=600")
+      .type("text/html; charset=utf-8")
+      .send(seoDoc({ title, description: opts.description, canonical, body, noindex: !doc }));
+  }
+
+  app.get<{ Params: { section?: string } }>("/handbuch/:section", (req, reply) => {
+    const section = req.params.section || "was-ist-das";
+    return renderDocPage(reply, { hub: "handbuch", section, slug: HANDBUCH_SLUG[section], description: HANDBUCH_DESC[section] ?? "RDOC Fleetplanner — Handbuch." });
+  });
+  app.get("/handbuch", (_req, reply) =>
+    renderDocPage(reply, { hub: "handbuch", section: "was-ist-das", slug: HANDBUCH_SLUG["was-ist-das"], description: HANDBUCH_DESC["was-ist-das"] }),
+  );
+  app.get<{ Params: { section?: string } }>("/rechtliches/:section", (req, reply) => {
+    const section = req.params.section || "lizenz";
+    return renderDocPage(reply, { hub: "rechtliches", section, slug: RECHT_SLUG[section], description: "Rechtliches zum RDOC Fleetplanner — Lizenz, Impressum und Datenschutz." });
+  });
+  app.get("/rechtliches", (_req, reply) =>
+    renderDocPage(reply, { hub: "rechtliches", section: "lizenz", slug: RECHT_SLUG["lizenz"], description: "Rechtliches zum RDOC Fleetplanner — Lizenz, Impressum und Datenschutz." }),
+  );
 
   // ── Calendar download (.ics) — add the op to your calendar after signing up.
   app.get<{ Params: { id: string } }>("/ops/:id/calendar.ics", async (req, reply) => {
