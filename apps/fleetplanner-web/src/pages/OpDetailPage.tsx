@@ -668,8 +668,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         </div>
 
         {/* right column: ANMELDUNGEN box (left) + banner image (right), same height.
-            The box drives the row height; the image fills it with object-fit cover
-            (cropped, never squished). Wraps to stacked on narrow screens. */}
+            The box drives the row height; the image scales into it with object-fit
+            contain (whole image always visible, letterboxed). Wraps to stacked on narrow screens. */}
         <div style={{ flex: "1 1 420px", minWidth: 0, alignSelf: "stretch", display: "flex", flexDirection: "row", flexWrap: "wrap", gap: "1rem", alignItems: "stretch" }}>
           <div style={{ flex: "1 1 220px", minWidth: 0, border: "1px solid rgba(0,212,255,0.13)", borderRadius: 12, background: "rgba(9,15,24,0.55)", padding: "0.85rem 1rem" }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.5rem" }}>
@@ -719,7 +719,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             )}
           </div>
           <button type="button" data-testid="cover-open" title="Cover vergrößern" onClick={() => setLightbox(true)} style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622", padding: 0, cursor: "zoom-in" }}>
-            <img src={op.coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img src={op.coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
           </button>
         </div>
       </section>

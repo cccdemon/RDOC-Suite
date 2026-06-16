@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Frontpage SEO ("Google ready") (2026-06-16)
+
+- `apps/fleetplanner-web/index.html`: vollständiger `<head>` — Meta description/keywords/
+  author/robots/theme-color, Canonical, Open-Graph + Twitter-Card (summary_large_image,
+  og:image = operation-hero.png) und JSON-LD (WebApplication + Organization).
+- `public/robots.txt` (Crawl erlaubt, gated/dynamische Pfade disallowed, Sitemap-Verweis)
+  und `public/sitemap.xml` (stabile öffentliche Routen: /, /handbuch*, /rechtliches*).
+- Origin-Root-Routing: `deploy/caddy-rdoc/Caddyfile` routet `/robots.txt` + `/sitemap.xml`
+  (vor dem Catch-all-Redirect) an die SPA, und `apps/fleetplanner-web/nginx.conf` serviert
+  sie per Exact-Match-`location` statisch (schlägt den SSR-Catch-all). robots.txt-Sitemap
+  zeigt jetzt auf `https://suite.raumdock.org/sitemap.xml`.
+
+### Fixed - Op-Hero-Cover skalieren (2026-06-16)
+
+- Op-Detailseite Hero-Cover-Box nutzt jetzt `object-fit: contain` statt `cover` — das
+  Bild (inkl. Default `operation-hero.png` Tactical-Mode-Grafik) passt immer komplett in
+  den 16:9-Rahmen statt am Rand abgeschnitten zu werden. Letterbox-Ränder über die
+  vorhandene `#0a1622`-Hintergrundfarbe. Konsistent mit der Lightbox.
+
 ### Added - SquadLink Lite voice deep-link for commanders (2026-06-15)
 
 - **Per-operation voice toggle ("SquadLink Voice").** When enabled, op commanders

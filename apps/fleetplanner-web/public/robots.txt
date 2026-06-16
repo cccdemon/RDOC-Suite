@@ -1,0 +1,14 @@
+# RDOC Fleetplanner — served under https://suite.raumdock.org/fleetplanner/
+User-agent: *
+Allow: /
+
+# Auth-gated / dynamic / non-content routes — no SEO value
+Disallow: /fleetplanner/login
+Disallow: /fleetplanner/konto
+Disallow: /fleetplanner/admin
+Disallow: /fleetplanner/guilds/settings
+Disallow: /fleetplanner/guilds/diagnostics
+Disallow: /fleetplanner/api-docs
+Disallow: /fleetplanner/ops/
+
+Sitemap: https://suite.raumdock.org/sitemap.xml

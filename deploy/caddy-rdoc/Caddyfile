@@ -67,6 +67,17 @@ suite.raumdock.org:9443 {
 		respond 404
 	}
 
+	# SEO: crawlers fetch robots.txt + sitemap.xml from the ORIGIN ROOT, but the
+	# files live in the Fleetplanner SPA container (127.0.0.1:3210). Route them
+	# there explicitly — otherwise the catch-all below 302-redirects them to
+	# /fleetplanner and Google never sees a robots.txt.
+	handle /robots.txt {
+		reverse_proxy 127.0.0.1:3210
+	}
+	handle /sitemap.xml {
+		reverse_proxy 127.0.0.1:3210
+	}
+
 	# Catch-all: the legacy bridge web UI was removed (voice redesign). Any
 	# unmatched path now goes to the Fleetplanner, the public entry point.
 	# Wrapped in a matcher-less `handle` so it is the LEAST-specific handle

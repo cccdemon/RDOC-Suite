@@ -1,5 +1,51 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-16: Fleetplanner-Frontpage SEO ("Google ready") — Branch master
+
+Status: Done.
+
+Frontpage `/` = OperationenPage (öffentliche Ops-Liste), public URL
+https://suite.raumdock.org/fleetplanner/. index.html-`<head>` war bare (nur title + fonts).
+
+Umgesetzt (apps/fleetplanner-web):
+- index.html: meta description/keywords/author/robots/theme-color, canonical, Open-Graph
+  (og:title/description/url/image/type/site_name/locale), Twitter summary_large_image,
+  favicon-Verweise; JSON-LD WebApplication + Organization. og:image =
+  /fleetplanner/assets/operation-hero.png (vorhandenes Asset). Root-relative URLs werden
+  von Vite mit BASE_PATH (/fleetplanner/) umgeschrieben; meta-URLs absolut hartkodiert.
+- public/robots.txt: Allow Crawl, Disallow gated/dynamische Pfade (/konto /admin /guilds/settings
+  /login /api-docs /ops/), Sitemap-Verweis.
+- public/sitemap.xml: nur stabile öffentliche Routen (/, /handbuch*, /rechtliches*).
+
+Frontend-only → Deploy `--build fleetplanner-web`. CHANGELOG.md [Unreleased].
+
+Origin-Root-Routing (gelöst, 2026-06-16): Google sucht robots.txt am Origin-Root
+(suite.raumdock.org/robots.txt), nicht unter /fleetplanner/. Zwei Layer angepasst:
+- deploy/caddy-rdoc/Caddyfile (prod-Proxy, host-network): `handle /robots.txt` +
+  `handle /sitemap.xml` → reverse_proxy 127.0.0.1:3210 (fleetplanner-web), VOR der
+  Catch-all `handle { redir → /fleetplanner }`, die sie sonst 302-redirected hätte.
+- apps/fleetplanner-web/nginx.conf: `location = /robots.txt` + `location = /sitemap.xml`
+  (try_files $uri =404) — exact-match schlägt den Catch-all `location /` (SSR-Proxy), der
+  die statischen dist-Dateien sonst überdeckt. Vite kopiert public/ an den html-Root.
+- robots.txt Sitemap-Zeile → https://suite.raumdock.org/sitemap.xml (Origin-Root).
+Repo-Root RDOC-Suite/Caddyfile ist NICHT prod (compose mountet deploy/caddy-rdoc/Caddyfile)
+— stale, nicht angefasst.
+
+Follow-up offen: per-Route dynamische <title>/meta (SPA) für nicht-Landing-Seiten.
+
+## Queued / Planned Step - 2026-06-16: Op-Hero-Cover skalieren (contain statt cover) — Branch master
+
+Status: Done.
+
+Problem: Op-Detailseite Hero-Cover-Box (16:9) croppt `operation-hero.png` per `objectFit: cover` →
+Radar/Tactical-Mode-Grafik + Text am Rand abgeschnitten. User: "muss immer in den Rahmen passen".
+
+Fix: apps/fleetplanner-web/src/pages/OpDetailPage.tsx:722 `objectFit: "cover"` → `"contain"`.
+Bild skaliert komplett in die Box; Button hat bereits `background: #0a1622` für Letterbox-Ränder.
+Lightbox (Z.1028) nutzt schon `contain` — jetzt konsistent.
+
+Frontend-only → Deploy `--build fleetplanner-web`. CHANGELOG.md [Unreleased].
+
 ## Queued / Planned Step - 2026-06-15: SquadLink Lite Deep-Link für Operationscommandanten — Branch master
 
 Status: Done.
