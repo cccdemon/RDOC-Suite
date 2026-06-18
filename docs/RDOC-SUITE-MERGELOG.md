@@ -2,7 +2,7 @@
 
 ## Queued / Planned Step - 2026-06-18: Suite-wide GitHub Release v1.0.0 — Branch master
 
-Status: In Arbeit.
+Status: Done (commit 162093e, tag v1.0.0, Release https://github.com/cccdemon/RDOC-Suite/releases/tag/v1.0.0).
 
 Ziel (User): erste suite-weite Release-Marke **v1.0.0** auf GitHub (Tag + Release mit Notes,
 kein CI-Build — `companion-build.yml` triggert nur auf `companion-v*`). Companion bewusst
