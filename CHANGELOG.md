@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-18
+
+First suite-wide stable release of RDOC-Suite (Fleetplanner + Mission Cover + Monitoring).
+Voice/companion is excluded from this milestone (redesign in progress). All entries below
+were previously tracked under Unreleased.
+
 ### Fixed - Op-Beitritt während laufender Op möglich (2026-06-16)
 
 - Bug: Op „schon gestartet" → niemand konnte sich mehr eintragen, obwohl CQB-Teams/

@@ -52,6 +52,14 @@ Thumbs.db
 *.swp
 *~
 
+# Marketing / tutorial videos (local-only, never committed)
+videos/
+
+# Local build artifacts / packaged installers (never committed)
+addOns/
+msi/
+nsis/
+
 # Misc
 .cache/
 .tmp/

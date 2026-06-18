@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-18: Suite-wide GitHub Release v1.0.0 — Branch master
+
+Status: In Arbeit.
+
+Ziel (User): erste suite-weite Release-Marke **v1.0.0** auf GitHub (Tag + Release mit Notes,
+kein CI-Build — `companion-build.yml` triggert nur auf `companion-v*`). Companion bewusst
+**ausgeschlossen** aus den 1.0-Notes (apps/companion + Workflow bleiben unangetastet, nichts
+gelöscht).
+
+- `.gitignore`: `addOns/`, `msi/`, `nsis/` ergänzt — lokale Binär-Artefakte (CCO/MissionCover
+  Zips, VoiceMesh-Installer), gehören nicht ins Repo. `videos/` war bereits ergänzt.
+- `CHANGELOG.md`: oberster `## [Unreleased]`-Block → `## [1.0.0] - 2026-06-18` gestempelt,
+  frischer leerer `[Unreleased]` darüber. (Companion-Altblöcke `[1.0.0]`/`[1.0.1]` 2026-06-05
+  sind historisch und bleiben — doppelter Anchor kosmetisch, kein Rewrite der Tiefenhistorie.)
+- Commit: `.gitignore` + `pnpm-lock.yaml` + `CHANGELOG.md` + dieses Mergelog. addOns/msi/nsis
+  bleiben untracked (jetzt ignoriert).
+- Tag `v1.0.0` (annotated) auf HEAD, Push via gh-Credential-Helper, GitHub Release v1.0.0.
+
 ## Queued / Planned Step - 2026-06-16: Op-Beitritt während laufender Op (started) erlauben — Branch master
 
 Status: Done.
