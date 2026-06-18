@@ -5,14 +5,13 @@
 #   /              -> 302 redirect to /fleetplanner (root has no own page)
 #   /fleetplanner  -> http://127.0.0.1:3200  (fleetplanner, public entry point)
 #   /  (other)     -> 302 redirect to /fleetplanner (legacy bridge UI removed)
-# voice.raumdock.org routet:
-#   /      -> http://127.0.0.1:7880  (livekit signaling)
 # Traefik bekommt das Cert via Cloudflare-DNS-01 (siehe /etc/traefik/...).
 #
 # LXC 101 nginx macht weiterhin TCP-SNI-Passthrough auf :443
 # -> 10.10.10.97:8443 (Traefik-websecure).
-# WebRTC-Media (7881/tcp, 7882/udp) wird von LXC 101 direkt via iptables-DNAT
-# auf 10.10.10.97 weitergeleitet.
+#
+# LiveKit (WebRTC SFU) wurde 2026-06-18 entfernt (verwaist seit Voice-Removal
+# 2026-06-12). Restore-Plan: docs/LIVEKIT-ARCHIVE-2026-06.md.
 #
 # Bring up:   docker compose -f docker-compose.prod.yml up -d
 services:
@@ -33,39 +32,8 @@ services:
     depends_on:
       - fleetplanner
       - grafana
-      - livekit
       - mission-cover
       - monitoring
-
-  livekit:
-    image: livekit/livekit-server:latest
-    container_name: rdoc-suite-livekit
-    restart: unless-stopped
-    # --node-ip is load-bearing: without it, LiveKit tries to STUN-detect
-    # its public IP, but inside a double-NAT Proxmox/LXC setup STUN returns
-    # the LXC-internal gateway (e.g. 10.10.10.1) instead of the actual
-    # public IP. LiveKit then advertises that internal address to clients
-    # as an ICE candidate, ICE never establishes, and audio fails with
-    # "could not establish pc connection". Solution: pass the deployer's
-    # real public IP explicitly via env. Same pattern as the dev compose
-    # uses --node-ip 127.0.0.1 for Docker Desktop on Windows.
-    command: --config /etc/livekit.yaml --node-ip ${LIVEKIT_NODE_IP}
-    volumes:
-      - ./livekit.yaml:/etc/livekit.yaml:ro
-    ports:
-      # 7880: nur an Loopback publishen — Traefik (auf demselben Host)
-      # nutzt das als Upstream, von extern unerreichbar.
-      - "127.0.0.1:7880:7880"
-      # WebRTC-Media — extern erreichbar über LXC-101-DNAT.
-      - "7881:7881"
-      - "7882:7882/udp"
-    environment:
-      # LIVEKIT_KEYS is LiveKit's native env-var override for the
-      # `keys:` block in livekit.yaml. Format: "key: secret" (one pair).
-      # docker-compose interpolates the ${...} from .env before the
-      # container ever starts — no envsubst step, no template that
-      # `git pull` can overwrite, no secret in committed YAML.
-      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
 
   fleetplanner-db:
     image: postgres:16-alpine

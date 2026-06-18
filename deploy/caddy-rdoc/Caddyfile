@@ -102,10 +102,6 @@ suite.raumdock.org:9443 {
 	}
 }
 
-voice.raumdock.org:9443 {
-	reverse_proxy 127.0.0.1:7880
-}
-
 monitoring.raumdock.org:9443 {
 	reverse_proxy 127.0.0.1:3001
 }

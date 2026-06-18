@@ -286,7 +286,7 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 ### Naming & URL-Konventionen
 
 - Public-Interface: `https://suite.raumdock.org`
-- LiveKit-Signaling: `wss://voice.raumdock.org`
+- ~~LiveKit-Signaling: `wss://voice.raumdock.org`~~ — LiveKit entfernt 2026-06-18 (Restore: `docs/LIVEKIT-ARCHIVE-2026-06.md`)
 - Docker-Image-Prefix: `rdoc-suite-<part>`
 - `PUBLIC_BASE_PATH` = `""` — kein `/dccc`-Prefix irgendwo.
 - Companion-OAuth deep-link scheme: `dccc://` (kein OS-Level-Register; nur im Webview abgefangen)
@@ -295,12 +295,11 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 
 | Port | Protokoll | Zweck |
 |---|---|---|
-| `443` | TCP | HTTPS Reverse-Proxy (Caddy/Traefik → Bridge, Fleetplanner, Monitoring) |
-| `7880` | TCP | LiveKit Signaling (hinter Proxy als `wss://voice.raumdock.org`) |
-| `7881` | TCP | LiveKit WebRTC TCP Fallback |
-| `7882` | **UDP** | LiveKit WebRTC UDP — entscheidend für gute Voice-Qualität |
+| `443` | TCP | HTTPS Reverse-Proxy (Caddy/Traefik → Fleetplanner, Monitoring) |
 
-UDP 7882 muss in der Firewall explizit offen sein. Docker-Proxy reicht nicht (SNAT/ICE-Problem bei Proxmox/LXC).
+LiveKit (Signaling 7880, WebRTC-Media 7881/tcp + 7882/udp) wurde 2026-06-18 entfernt —
+verwaist seit Voice-Removal 2026-06-12. Restore-Plan inkl. Ports/Firewall-Hinweise:
+`docs/LIVEKIT-ARCHIVE-2026-06.md`.
 
 ---
 

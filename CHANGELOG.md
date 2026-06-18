@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed - LiveKit (WebRTC SFU) + dead voice-stack monitoring (2026-06-18)
+
+- Removed the `livekit` service — orphaned since the voice stack (bridge/bot/relay-bots)
+  was removed 2026-06-12; nothing in the running suite consumed it. Dropped from
+  `docker-compose.prod.yml` (+ `caddy.depends_on`), deleted the dev `docker-compose.yml`
+  (livekit-only) and `livekit.yaml`, removed the `voice.raumdock.org` Caddy route and the
+  `LIVEKIT_*` env block. Fleetplanner lost its unused `livekit-server-sdk` dep, the
+  `LIVEKIT_*`/`RELAY_LIVEKIT_ROOM` env fields and the test-setup LiveKit vars.
+- **Monitoring** brought in line: removed the `rdoc-suite-livekit` Prometheus scrape job and
+  the `rdoc-suite-relay` alert group (its metrics came from the removed bridge/relay-bots),
+  and filtered 19 dead voice-stack panels (LiveKit ×7, Relay/Relay-Bots, Bridge activity/WS)
+  out of the Grafana overview dashboard.
+- Full restore plan (config + wiring + firewall/DNAT) archived in
+  `docs/LIVEKIT-ARCHIVE-2026-06.md`. Current voice direction is RDOC SquadLink Lite (P2P),
+  not a central SFU.
+
 ## [1.0.0] - 2026-06-18
 
 First suite-wide stable release of RDOC-Suite (Fleetplanner + Mission Cover + Monitoring).

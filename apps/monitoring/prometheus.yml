@@ -12,12 +12,6 @@ alerting:
             - alertmanager:9093
 
 scrape_configs:
-  - job_name: rdoc-suite-livekit
-    metrics_path: /metrics
-    static_configs:
-      - targets:
-          - livekit:6789
-
   - job_name: rdoc-suite-fleetplanner
     metrics_path: /metrics
     static_configs:

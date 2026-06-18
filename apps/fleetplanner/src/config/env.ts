@@ -57,12 +57,10 @@ const schema = z.object({
   DISCORD_COMPANION_BOT_KEY: z.string().optional(),
   // Voice/SquadLink stack was removed 2026-06-12; these are leftover (often empty)
   // env vars. Kept lenient so a stale/empty value doesn't fail-fast the boot.
+  // LiveKit (LIVEKIT_*/RELAY_LIVEKIT_ROOM) removed 2026-06-18 — see
+  // docs/LIVEKIT-ARCHIVE-2026-06.md for the restore plan.
   FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL: z.string().optional(),
   FLEETPLANNER_VOICE_CLIENT_CONFIG_URL: z.string().optional(),
-  LIVEKIT_URL: z.string().optional(),
-  LIVEKIT_API_KEY: z.string().optional(),
-  LIVEKIT_API_SECRET: z.string().optional(),
-  RELAY_LIVEKIT_ROOM: z.string().default("voice-relay"),
   RELAY_BOTS_ADMIN_URL: z.string().optional(),
   RELAY_BOTS_ADMIN_SECRET: z.string().optional(),
 

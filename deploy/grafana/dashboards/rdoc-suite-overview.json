@@ -116,531 +116,6 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "dccc_rooms_active",
-          "legendFormat": "rooms",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "dccc_commanders_active",
-          "legendFormat": "commanders",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "dccc_commanders_speaking",
-          "legendFormat": "speaking",
-          "range": true,
-          "refId": "C"
-        }
-      ],
-      "title": "Bridge Activity",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "Bps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 0
-      },
-      "id": 3,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(relay_bytes_received_total[5m])",
-          "legendFormat": "{{instance}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Relay Inbound Audio Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "fps"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 8
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(relay_frames_received_total[5m])",
-          "legendFormat": "{{instance}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Relay Frame Rate",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 8
-      },
-      "id": 5,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "relay_process_rss_bytes",
-          "legendFormat": "rss {{instance}}",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "relay_process_heap_used_bytes",
-          "legendFormat": "heap used {{instance}}",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "relay_process_heap_total_bytes",
-          "legendFormat": "heap total {{instance}}",
-          "range": true,
-          "refId": "C"
-        }
-      ],
-      "title": "Relay Process Memory",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 16,
-        "y": 8
-      },
-      "id": 6,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "time() - relay_last_audio_timestamp_seconds",
-          "legendFormat": "last audio age {{instance}}",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "relay_uptime_seconds",
-          "legendFormat": "uptime {{instance}}",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "Relay Freshness and Uptime",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
             "align": "auto",
             "cellOptions": {
               "type": "auto"
@@ -737,6 +212,19 @@
       "type": "table"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 65
+      },
+      "id": 21,
+      "panels": [],
+      "title": "Host (node-exporter)",
+      "type": "row"
+    },
+    {
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_RDOC_PROMETHEUS}"
@@ -752,201 +240,31 @@
               {
                 "color": "green",
                 "value": null
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 8,
-      "options": {
-        "displayMode": "gradient",
-        "legend": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "maxVizHeight": 300,
-        "minVizHeight": 16,
-        "minVizWidth": 8,
-        "namePlacement": "auto",
-        "orientation": "horizontal",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showUnfilled": true,
-        "sizing": "auto",
-        "valueMode": "color"
-      },
-      "pluginVersion": "13.0.1",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "{__name__=~\"dccc_commanders_active|dccc_commanders_speaking|dccc_rooms_active|relay_bytes_received_total|relay_frames_received_total|relay_last_audio_timestamp_seconds|relay_process_heap_total_bytes|relay_process_heap_used_bytes|relay_process_rss_bytes|relay_uptime_seconds|relay_watchdog_restarts_total\"}",
-          "legendFormat": "{{__name__}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "All RDOC Application Metrics",
-      "type": "bargauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 12,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
+              },
               {
-                "color": "green",
-                "value": null
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
               }
             ]
           },
-          "unit": "Bps"
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 12,
+        "h": 6,
+        "w": 6,
         "x": 0,
-        "y": 25
+        "y": 66
       },
-      "id": 9,
+      "id": 22,
       "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(process_network_receive_bytes_total{job=\"rdoc-suite-livekit\"}[5m])",
-          "legendFormat": "receive",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(process_network_transmit_bytes_total{job=\"rdoc-suite-livekit\"}[5m])",
-          "legendFormat": "transmit",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "LiveKit Bandwidth",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 25
-      },
-      "id": 10,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -955,9 +273,8 @@
           "fields": "",
           "values": false
         },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "pluginVersion": "13.0.1",
       "targets": [
@@ -967,36 +284,14 @@
             "uid": "${DS_RDOC_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "process_network_receive_bytes_total{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "received",
+          "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "cpu",
           "range": true,
           "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "process_network_transmit_bytes_total{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "transmitted",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "process_network_receive_bytes_total{job=\"rdoc-suite-livekit\"} + process_network_transmit_bytes_total{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "total",
-          "range": true,
-          "refId": "C"
         }
       ],
-      "title": "LiveKit Transferred Bytes",
-      "type": "stat"
+      "title": "Host CPU Usage",
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -1006,39 +301,7 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 12,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "mode": "thresholds"
           },
           "thresholds": {
             "mode": "absolute",
@@ -1046,36 +309,43 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "orange",
+                "value": 80
+              },
+              {
+                "color": "red",
+                "value": 90
               }
             ]
           },
-          "unit": "pps"
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 33
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 66
       },
-      "id": 11,
+      "id": 23,
       "options": {
-        "legend": {
+        "orientation": "auto",
+        "reduceOptions": {
           "calcs": [
-            "lastNotNull",
-            "max"
+            "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
+          "fields": "",
+          "values": false
         },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
+      "pluginVersion": "13.0.1",
       "targets": [
         {
           "datasource": {
@@ -1083,14 +353,83 @@
             "uid": "${DS_RDOC_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(livekit_node_packet_total{job=\"rdoc-suite-livekit\"}[5m])",
-          "legendFormat": "{{type}}",
+          "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100",
+          "legendFormat": "mem",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "LiveKit Packets",
-      "type": "timeseries"
+      "title": "Host Memory Usage",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 85
+              },
+              {
+                "color": "red",
+                "value": 95
+              }
+            ]
+          },
+          "max": 100,
+          "min": 0,
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 12,
+        "y": 66
+      },
+      "id": 24,
+      "options": {
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "pluginVersion": "13.0.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}) * 100",
+          "legendFormat": "root",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Host Root Disk Used",
+      "type": "gauge"
     },
     {
       "datasource": {
@@ -1103,35 +442,14 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 12,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
             "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
+            "fillOpacity": 10,
             "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
               "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
             }
           },
           "thresholds": {
@@ -1148,24 +466,22 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 8,
-        "y": 33
+        "h": 6,
+        "w": 6,
+        "x": 18,
+        "y": 66
       },
-      "id": 12,
+      "id": 25,
       "options": {
         "legend": {
           "calcs": [
-            "lastNotNull",
-            "max"
+            "lastNotNull"
           ],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
-          "hideZeros": false,
           "mode": "multi",
           "sort": "none"
         }
@@ -1177,8 +493,8 @@
             "uid": "${DS_RDOC_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "livekit_room_total{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "rooms",
+          "expr": "node_load1",
+          "legendFormat": "load1",
           "range": true,
           "refId": "A"
         },
@@ -1188,13 +504,24 @@
             "uid": "${DS_RDOC_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "livekit_participant_total{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "participants",
+          "expr": "node_load5",
+          "legendFormat": "load5",
           "range": true,
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "node_load15",
+          "legendFormat": "load15",
+          "range": true,
+          "refId": "C"
         }
       ],
-      "title": "LiveKit Rooms and Participants",
+      "title": "Host Load Average",
       "type": "timeseries"
     },
     {
@@ -1208,35 +535,485 @@
             "mode": "palette-classic"
           },
           "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
             "drawStyle": "line",
-            "fillOpacity": 12,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
             "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
+            "fillOpacity": 10,
             "showPoints": "never",
             "spanNulls": false,
             "stacking": {
               "group": "A",
               "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 0,
+        "y": 72
+      },
+      "id": 26,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "min"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}",
+          "legendFormat": "free",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}",
+          "legendFormat": "total",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Host Root Disk Free / Total",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "Bps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 72
+      },
+      "id": 27,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_network_receive_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[5m])",
+          "legendFormat": "rx {{device}}",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[5m])",
+          "legendFormat": "tx {{device}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Host Network Throughput",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
             },
-            "thresholdsStyle": {
-              "mode": "off"
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "severity"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "critical": {
+                        "color": "red",
+                        "index": 0,
+                        "text": "critical"
+                      },
+                      "warning": {
+                        "color": "orange",
+                        "index": 1,
+                        "text": "warning"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 72
+      },
+      "id": 28,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "countRows": false,
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "alertstate",
+            "desc": true
+          }
+        ]
+      },
+      "pluginVersion": "13.0.1",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "ALERTS",
+          "format": "table",
+          "instant": true,
+          "legendFormat": "__auto",
+          "range": false,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Alerts (firing + pending)",
+      "transformations": [
+        {
+          "id": "filterFieldsByName",
+          "options": {
+            "include": {
+              "names": [
+                "alertname",
+                "alertstate",
+                "severity",
+                "job",
+                "instance",
+                "bot"
+              ]
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "Value": true
+            },
+            "indexByName": {}
+          }
+        }
+      ],
+      "type": "table"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 79
+      },
+      "id": 29,
+      "panels": [],
+      "title": "App Services (fleetplanner / postgres)",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 80
+      },
+      "id": 30,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "sum by (status_code) (rate(fleetplanner_http_request_duration_seconds_count[5m]))",
+          "legendFormat": "{{status_code}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Fleetplanner HTTP Request Rate (by status)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 80
+      },
+      "id": 31,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(fleetplanner_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(fleetplanner_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "Fleetplanner HTTP Latency (p50/p95)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
             }
           },
           "thresholds": {
@@ -1256,744 +1033,190 @@
         "h": 8,
         "w": 8,
         "x": 16,
-        "y": 33
+        "y": 80
       },
-      "id": 13,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "go_goroutines{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "goroutines",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "process_open_fds{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "open fds",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "LiveKit Runtime Health",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 12,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 41
-      },
-      "id": 14,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "process_resident_memory_bytes{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "rss",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "go_memstats_heap_alloc_bytes{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "heap alloc",
-          "range": true,
-          "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "go_memstats_sys_bytes{job=\"rdoc-suite-livekit\"}",
-          "legendFormat": "go sys",
-          "range": true,
-          "refId": "C"
-        }
-      ],
-      "title": "LiveKit Memory",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_RDOC_PROMETHEUS}"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 12,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 2,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 41
-      },
-      "id": 15,
-      "options": {
-        "legend": {
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "hideZeros": false,
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(livekit_quality_score_sum{job=\"rdoc-suite-livekit\"}[5m]) / rate(livekit_quality_score_count{job=\"rdoc-suite-livekit\"}[5m])",
-          "legendFormat": "quality score avg",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_RDOC_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "rate(livekit_quality_rating_sum{job=\"rdoc-suite-livekit\"}[5m]) / rate(livekit_quality_rating_count{job=\"rdoc-suite-livekit\"}[5m])",
-          "legendFormat": "quality rating avg",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "LiveKit Quality Score",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "mappings": [
-            { "options": { "0": { "color": "red", "text": "Down" }, "1": { "color": "green", "text": "Connected" } }, "type": "value" }
-          ],
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "max": 1,
-          "min": 0,
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 49 },
-      "id": 16,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "relay_bot_voice_connected", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
-      ],
-      "title": "Relay Bots — Voice Connected (per bot)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 12, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" }, "thresholdsStyle": { "mode": "line" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 76800 }, { "color": "red", "value": 144000 } ] },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 49 },
-      "id": 17,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "relay_bot_buffer_bytes", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
-      ],
-      "title": "Relay Bots — Buffer Backlog (per bot)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.001 } ] },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 49 },
-      "id": 18,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "increase(relay_bot_buffer_overflows_total[5m])", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
-      ],
-      "title": "Relay Bots — Buffer Overflows / 5m (robotic voice)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "bars", "lineWidth": 1, "fillOpacity": 60, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 57 },
-      "id": 19,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "increase(relay_bot_reconnect_count_total[10m])", "legendFormat": "{{bot}}", "range": true, "refId": "A" }
-      ],
-      "title": "Relay Bots — Voice Reconnects / 10m (per bot)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 57 },
-      "id": 20,
-      "options": {
-        "colorMode": "background",
-        "graphMode": "area",
-        "justifyMode": "center",
-        "orientation": "auto",
-        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "13.0.1",
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "increase(relay_watchdog_restarts_total[10m])", "legendFormat": "restarts /10m {{instance}}", "range": true, "refId": "A" }
-      ],
-      "title": "Relay Watchdog Restarts / 10m",
-      "type": "stat"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 },
-      "id": 21,
-      "panels": [],
-      "title": "Host (node-exporter)",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 90 } ] },
-          "max": 100,
-          "min": 0,
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 66 },
-      "id": 22,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "13.0.1",
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)", "legendFormat": "cpu", "range": true, "refId": "A" }
-      ],
-      "title": "Host CPU Usage",
-      "type": "gauge"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 90 } ] },
-          "max": 100,
-          "min": 0,
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 66 },
-      "id": 23,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "13.0.1",
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "(1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100", "legendFormat": "mem", "range": true, "refId": "A" }
-      ],
-      "title": "Host Memory Usage",
-      "type": "gauge"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 85 }, { "color": "red", "value": 95 } ] },
-          "max": 100,
-          "min": 0,
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 66 },
-      "id": 24,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": { "calcs": [ "lastNotNull" ], "fields": "", "values": false },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "13.0.1",
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "(1 - node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}) * 100", "legendFormat": "root", "range": true, "refId": "A" }
-      ],
-      "title": "Host Root Disk Used",
-      "type": "gauge"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 66 },
-      "id": 25,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "node_load1", "legendFormat": "load1", "range": true, "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "node_load5", "legendFormat": "load5", "range": true, "refId": "B" },
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "node_load15", "legendFormat": "load15", "range": true, "refId": "C" }
-      ],
-      "title": "Host Load Average",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "bytes"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 72 },
-      "id": 26,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "min" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "node_filesystem_avail_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}", "legendFormat": "free", "range": true, "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "node_filesystem_size_bytes{mountpoint=\"/\",fstype!~\"tmpfs|overlay\"}", "legendFormat": "total", "range": true, "refId": "B" }
-      ],
-      "title": "Host Root Disk Free / Total",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "Bps"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 72 },
-      "id": 27,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "rate(node_network_receive_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[5m])", "legendFormat": "rx {{device}}", "range": true, "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "rate(node_network_transmit_bytes_total{device!~\"lo|docker.*|veth.*|br-.*\"}[5m])", "legendFormat": "tx {{device}}", "range": true, "refId": "B" }
-      ],
-      "title": "Host Network Throughput",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "thresholds" },
-          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true, "inspect": false },
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] }
-        },
-        "overrides": [
-          {
-            "matcher": { "id": "byName", "options": "severity" },
-            "properties": [
-              { "id": "mappings", "value": [
-                { "type": "value", "options": { "critical": { "color": "red", "index": 0, "text": "critical" }, "warning": { "color": "orange", "index": 1, "text": "warning" } } }
-              ] },
-              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
-            ]
-          }
-        ]
-      },
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 72 },
-      "id": 28,
-      "options": {
-        "cellHeight": "sm",
-        "footer": { "countRows": false, "fields": "", "reducer": [ "sum" ], "show": false },
-        "showHeader": true,
-        "sortBy": [ { "displayName": "alertstate", "desc": true } ]
-      },
-      "pluginVersion": "13.0.1",
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "ALERTS", "format": "table", "instant": true, "legendFormat": "__auto", "range": false, "refId": "A" }
-      ],
-      "title": "Active Alerts (firing + pending)",
-      "transformations": [
-        { "id": "filterFieldsByName", "options": { "include": { "names": [ "alertname", "alertstate", "severity", "job", "instance", "bot" ] } } },
-        { "id": "organize", "options": { "excludeByName": { "Time": true, "Value": true }, "indexByName": {} } }
-      ],
-      "type": "table"
-    },
-    {
-      "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 79 },
-      "id": 29,
-      "panels": [],
-      "title": "App Services (fleetplanner / bridge / postgres)",
-      "type": "row"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "reqps"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 80 },
-      "id": 30,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "sum by (status_code) (rate(fleetplanner_http_request_duration_seconds_count[5m]))", "legendFormat": "{{status_code}}", "range": true, "refId": "A" }
-      ],
-      "title": "Fleetplanner HTTP Request Rate (by status)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 80 },
-      "id": 31,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
-      },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le) (rate(fleetplanner_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p95", "range": true, "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "histogram_quantile(0.50, sum by (le) (rate(fleetplanner_http_request_duration_seconds_bucket[5m])))", "legendFormat": "p50", "range": true, "refId": "B" }
-      ],
-      "title": "Fleetplanner HTTP Latency (p50/p95)",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "normal" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 80 },
       "id": 32,
       "options": {
-        "legend": { "calcs": [ "lastNotNull" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "fleetplanner_operations", "legendFormat": "{{status}}", "range": true, "refId": "A" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "fleetplanner_operations",
+          "legendFormat": "{{status}}",
+          "range": true,
+          "refId": "A"
+        }
       ],
       "title": "Fleetplanner Operations (by status)",
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 15, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "short"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 88 },
-      "id": 33,
-      "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 88
       },
-      "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "bridge_ws_connections", "legendFormat": "ws connections", "range": true, "refId": "A" }
-      ],
-      "title": "Bridge WebSocket Connections",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 88 },
       "id": 34,
       "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "pg_stat_database_numbackends{datname=\"fleetplanner\"}", "legendFormat": "connections", "range": true, "refId": "A" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "pg_stat_database_numbackends{datname=\"fleetplanner\"}",
+          "legendFormat": "connections",
+          "range": true,
+          "refId": "A"
+        }
       ],
       "title": "Postgres Connections (fleetplanner)",
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_RDOC_PROMETHEUS}"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": { "drawStyle": "line", "lineWidth": 2, "fillOpacity": 10, "showPoints": "never", "spanNulls": false, "stacking": { "group": "A", "mode": "none" } },
-          "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null } ] },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
           "unit": "ops"
         },
         "overrides": []
       },
-      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 88 },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 88
+      },
       "id": 35,
       "options": {
-        "legend": { "calcs": [ "lastNotNull", "max" ], "displayMode": "table", "placement": "bottom", "showLegend": true },
-        "tooltip": { "mode": "multi", "sort": "none" }
+        "legend": {
+          "calcs": [
+            "lastNotNull",
+            "max"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
       },
       "targets": [
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "rate(pg_stat_database_xact_commit{datname=\"fleetplanner\"}[5m])", "legendFormat": "commits/s", "range": true, "refId": "A" },
-        { "datasource": { "type": "prometheus", "uid": "${DS_RDOC_PROMETHEUS}" }, "editorMode": "code", "expr": "rate(pg_stat_database_xact_rollback{datname=\"fleetplanner\"}[5m])", "legendFormat": "rollbacks/s", "range": true, "refId": "B" }
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_xact_commit{datname=\"fleetplanner\"}[5m])",
+          "legendFormat": "commits/s",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_RDOC_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "expr": "rate(pg_stat_database_xact_rollback{datname=\"fleetplanner\"}[5m])",
+          "legendFormat": "rollbacks/s",
+          "range": true,
+          "refId": "B"
+        }
       ],
       "title": "Postgres Transactions (fleetplanner)",
       "type": "timeseries"
@@ -2033,6 +1256,6 @@
   "timezone": "browser",
   "title": "RDOC Suite Overview",
   "uid": "rdoc-suite-overview",
-  "version": 5,
+  "version": 6,
   "weekStart": ""
 }

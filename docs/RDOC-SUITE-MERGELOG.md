@@ -1,5 +1,56 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-18: LiveKit (WebRTC SFU) entfernen — orphaned seit Voice-Removal — Branch master
+
+Status: Done (ausgeführt 2026-06-18). Restore-Plan archiviert in `docs/LIVEKIT-ARCHIVE-2026-06.md`.
+
+Ausgeführt:
+- Service raus aus `docker-compose.prod.yml` (+ `caddy.depends_on`), `docker-compose.yml`
+  (dev, war livekit-only) gelöscht, `livekit.yaml` gelöscht.
+- `deploy/caddy-rdoc/Caddyfile`: `voice.raumdock.org`-Block raus.
+- `.env.prod.template`: `LIVEKIT_*`-Block + recreate-livekit-Kommentar raus.
+- `apps/fleetplanner/src/config/env.ts`: `LIVEKIT_URL/API_KEY/API_SECRET` + `RELAY_LIVEKIT_ROOM`
+  raus; `package.json`: ungenutzte Dep `livekit-server-sdk` raus; Test-Setups bereinigt
+  (`__tests__/setup.ts`, `__tests__/db/setup-env.ts`). `openapi.test.ts` Banned-List unverändert
+  (negative Assertion, harmlos).
+- **Monitoring** (User-Wunsch „entsprechend anpassen"): `prometheus.yml` `rdoc-suite-livekit`
+  Scrape-Job raus; `alerts.yml` `rdoc-suite-relay`-Gruppe raus (Metriken kamen von
+  bridge/relay-bots, weg seit 2026-06-12); Grafana-Dashboard `rdoc-suite-overview.json` —
+  19 tote Voice-Stack-Panels gefiltert (7 LiveKit, Relay/Relay-Bots, Bridge-Activity/WS),
+  App-Services-Row-Titel `/ bridge` entfernt. Dashboard via Node neu serialisiert (2-space),
+  JSON validiert.
+- `CLAUDE.md`: Ports-Tabelle + Naming-Konvention auf LiveKit-Removal aktualisiert (Verweis aufs Archiv).
+
+Hinweis: README-Architektur-Diagramm + Mermaid nennen LiveKit noch (historischer
+Voice-Narrativ-Block, schon vor diesem Schritt teils veraltet) — bewusst nicht angefasst.
+
+Geplant war (Original-Befund):
+
+Befund: `livekit`-Service (Container `rdoc-suite-livekit`, Media 7881/tcp+7882/udp) ist seit
+Voice-Stack-Removal 2026-06-12 (bridge/bot/relay-bots weg) verwaist. Kein laufender Suite-Service
+konsumiert ihn mehr:
+- `apps/fleetplanner`: deklariert `livekit-server-sdk` (package.json:25), aber **0 Imports** in
+  `src/`. `LIVEKIT_*`-Env nur in Tests gesetzt. Kein Runtime-Use.
+- `mission-cover` / `error-page` / `monitoring`: kein LiveKit.
+- `apps/companion`: nutzt `livekit-client`, aber separater `companion-v*`-Track, nicht in
+  Prod-Compose; sein LiveKit-Pfad lief über die gelöschte Bridge → ebenfalls tot. Aktuelle
+  Voice-Richtung = RDOC SquadLink Lite (P2P-WebRTC, eigener init-server), NICHT LiveKit.
+
+Cleanup-Schritte (wenn ausgeführt):
+- `docker-compose.prod.yml`: `livekit`-Service + Ports 7881/7882 + `livekit.yaml`-Mount + evtl.
+  `depends_on`-Refs entfernen. `livekit.yaml` im Repo löschen.
+- `.env.prod.template`: `LIVEKIT_URL` / `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` /
+  `LIVEKIT_NODE_IP` + Recreate-Kommentar entfernen.
+- `apps/fleetplanner/package.json`: ungenutzte Dep `livekit-server-sdk` entfernen.
+- `apps/fleetplanner/src/config/env.ts`: `LIVEKIT_URL/API_KEY/API_SECRET` + `RELAY_LIVEKIT_ROOM`
+  Zod-Felder entfernen; Test-Setups (`__tests__/setup.ts`, `__tests__/db/setup-env.ts`,
+  `__tests__/api/openapi.test.ts`) entsprechend bereinigen.
+- Infra (User, außerhalb Repo): LXC-101-DNAT-Regel 7881/7882 → 10.10.10.97 zurückbauen.
+
+Offene Entscheidung vor Ausführung: Voice-Redesign soll laut Memory auf SquadLink-Lite-P2P
+gehen → LiveKit kommt voraussichtlich nicht zurück. **User bestätigen lassen, dass das
+Redesign LiveKit nicht wiederverwendet, bevor gelöscht wird.**
+
 ## Queued / Planned Step - 2026-06-18: Suite-wide GitHub Release v1.0.0 — Branch master
 
 Status: Done (commit 162093e, tag v1.0.0, Release https://github.com/cccdemon/RDOC-Suite/releases/tag/v1.0.0).
