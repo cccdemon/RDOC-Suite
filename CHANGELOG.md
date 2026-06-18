@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Calendar "currently running ops" + crew re-pool on ship withdrawal (2026-06-18)
+
+- **Calendar:** a new "Aktuell laufende Operationen" section is pinned at the very top of the
+  operations calendar (`apps/fleetplanner-web/src/pages/CalendarPage.tsx`), listing every op
+  with status `starting` or `in_progress`. It is month-independent (running ops show no matter
+  which month is selected) and links straight into each op.
+- **Ship withdrawal frees its crew for redistribution:** when a captain withdraws his ship
+  (or an operator removes/rejects a unit), the players seated in it are no longer silently lost.
+  The crew is re-pooled into the operation's crew-assignment pool ("freie Zuteilung") as
+  `CrewAssignmentRequest` entries — crew of carried vehicles included; the withdrawing captain
+  is not (he pulled his own ship) — so the fleet operator can redistribute them onto remaining
+  ships, ground squads and vehicles.
+  Backend: `apps/fleetplanner/src/services/units.ts` (`deleteUnit` + `setUnitStatus` reject).
+
 ### Removed - LiveKit (WebRTC SFU) + dead voice-stack monitoring (2026-06-18)
 
 - Removed the `livekit` service — orphaned since the voice stack (bridge/bot/relay-bots)

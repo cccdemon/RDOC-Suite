@@ -147,6 +147,14 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   // reach them — surfaced via a quick-access pill into the (draft-aware) list view.
   const draftCount = (ops ?? []).filter((o) => o.status === "draft").length;
 
+  // Currently-running ops (status starting | in_progress) are surfaced at the
+  // very top, month-independent — they happen "now", regardless of the visible
+  // month. Sorted by start time.
+  const runningOps = (ops ?? [])
+    .filter((o) => o.status === "starting" || o.status === "in_progress")
+    .slice()
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+
   const statusOf = (e: Ev) => {
     if (e.ts < now.getTime()) return { key: "done", label: "ABGESCHLOSSEN", color: "#5b6b7a" };
     if (e.cap > 0 && e.signed >= e.cap) return { key: "voll", label: "VOLL", color: "#00d4ff" };
@@ -272,6 +280,56 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
 
   return (
     <div data-testid="calendar-page">
+      {/* AKTUELL LAUFENDE OPERATIONEN — month-independent, top of page */}
+      {runningOps.length > 0 && (
+        <section
+          data-testid="running-ops"
+          style={{ border: "1px solid rgba(0,255,136,0.32)", borderRadius: 14, background: "linear-gradient(180deg,rgba(0,255,136,0.06),#090f18)", padding: "1rem 1.1rem", marginBottom: "1.5rem" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem" }}>
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#00ff88", boxShadow: "0 0 0 0 rgba(0,255,136,0.6)", animation: "fpw-live-pulse 1.8s ease-out infinite", flexShrink: 0 }} />
+            <span style={{ fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.14em", color: "#00ff88" }}>AKTUELL LAUFENDE OPERATIONEN</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{runningOps.length}</span>
+            <style>{"@keyframes fpw-live-pulse{0%{box-shadow:0 0 0 0 rgba(0,255,136,0.55)}70%{box-shadow:0 0 0 7px rgba(0,255,136,0)}100%{box-shadow:0 0 0 0 rgba(0,255,136,0)}}"}</style>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(280px,1fr))", gap: "0.7rem" }}>
+            {runningOps.map((op) => {
+              const ty = typeOf(op.opType);
+              const cap = op.totalSeats || op.minParticipants || 0;
+              const pct = cap > 0 ? Math.min(100, Math.round((op.filledSeats / cap) * 100)) : 0;
+              const live = op.status === "in_progress";
+              return (
+                <Link
+                  key={op.id}
+                  to={`/ops/${op.id}`}
+                  data-testid={`running-open-${op.id}`}
+                  style={{ display: "block", textDecoration: "none", border: `1px solid rgba(${ty.rgb},0.2)`, borderLeft: "3px solid #00ff88", borderRadius: 10, background: "#0a1018", padding: "0.7rem 0.8rem" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
+                    <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `rgba(${ty.rgb},0.12)`, border: `1px solid rgba(${ty.rgb},0.3)`, color: ty.color }}>
+                      <Ic name={ty.icon} size={14} sw={1.6} />
+                    </span>
+                    <span style={{ flex: 1 }} />
+                    <span style={tagStyle("#00ff88")}>{live ? "LÄUFT" : "STARTET"}</span>
+                  </div>
+                  <strong style={{ display: "block", fontWeight: 600, fontSize: "1.02rem", color: "#eaf4fb", lineHeight: 1.2 }}>{op.title}</strong>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap", marginTop: "0.5rem" }}>
+                    <span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2" }}>{new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(op.scheduledAt))}</span>
+                    <span style={{ color: "#7e92a4", fontSize: "0.8rem" }}>{op.guild.name}</span>
+                    <div style={{ flex: 1, minWidth: 90, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <div style={{ flex: 1, height: 5, borderRadius: 4, background: "#0e1926", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${pct}%`, borderRadius: 4, background: "#00ff88" }} />
+                      </div>
+                      <span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2", whiteSpace: "nowrap" }}>{op.filledSeats}/{cap}</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* PAGE HEADER */}
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "1rem 1.4rem", marginBottom: "1.5rem" }}>
         <div style={{ minWidth: 0 }}>

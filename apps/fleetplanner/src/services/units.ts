@@ -91,12 +91,68 @@ export async function registerUnit(
   });
 }
 
+/**
+ * Re-pool the seated CREW of the given units back into the operation's
+ * crew-assignment pool (CrewAssignmentRequest). When a captain withdraws his
+ * ship (or it gets rejected), the crew sitting in it must NOT silently vanish —
+ * they go back to "freie Zuteilung" so the fleet operator can redistribute them
+ * onto the remaining ships, ground squads and vehicles. Existing flex requests
+ * are kept untouched (upsert no-op on conflict).
+ *
+ * `excludeUserId` is the withdrawing/offering captain: he pulled his own ship
+ * (or it was turned down) and is NOT auto-pooled — only his crew is.
+ */
+async function repoolSeatedUsers(
+  tx: Prisma.TransactionClient,
+  operationId: string,
+  unitIds: string[],
+  note: string,
+  excludeUserId?: string,
+) {
+  const seated = await tx.seatAssignment.findMany({
+    where: { unitId: { in: unitIds }, userId: { not: null } },
+    select: { userId: true },
+  });
+  const userIds = [
+    ...new Set(seated.map((s) => s.userId).filter((x): x is string => !!x && x !== excludeUserId)),
+  ];
+  for (const userId of userIds) {
+    await tx.crewAssignmentRequest.upsert({
+      where: { operationId_userId: { operationId, userId } },
+      update: {}, // keep an already-pending flex request as-is
+      create: { operationId, userId, note },
+    });
+  }
+}
+
 export async function deleteUnit(unitId: string, userId: string, userRole: string) {
-  const unit = await prisma.fleetUnit.findUnique({ where: { id: unitId } });
+  const unit = await prisma.fleetUnit.findUnique({
+    where: { id: unitId },
+    include: { ship: { select: { name: true } } },
+  });
   if (!unit) throw new Error("Unit not found");
   const canForce = userRole === "superadmin" || userRole === "fleetoperator";
   if (unit.captainId !== userId && !canForce) throw new Error("Forbidden");
-  await prisma.fleetUnit.delete({ where: { id: unitId } });
+
+  // Carried vehicles cascade-delete with the ship — collect them so their crew
+  // is re-pooled too, not just the ship's own seats.
+  const vehicleIds = (
+    await prisma.fleetUnit.findMany({ where: { carrierUnitId: unitId }, select: { id: true } })
+  ).map((v) => v.id);
+  const unitName = unit.squadName || unit.ship?.name || "Einheit";
+
+  await prisma.$transaction(async (tx) => {
+    // Free the crew (NOT the withdrawing captain; carried-vehicle crew included)
+    // back into the pool BEFORE the cascade delete removes their seats.
+    await repoolSeatedUsers(
+      tx,
+      unit.operationId,
+      [unitId, ...vehicleIds],
+      `Aus zurückgezogener Einheit „${unitName}"`,
+      unit.captainId,
+    );
+    await tx.fleetUnit.delete({ where: { id: unitId } });
+  });
 }
 
 export async function setUnitStatus(
@@ -110,12 +166,30 @@ export async function setUnitStatus(
     await prisma.fleetUnit.findMany({ where: { carrierUnitId: unitId }, select: { id: true } })
   ).map((v) => v.id);
   // A rejected unit (and its vehicles) holds nobody — free their seats so no
-  // one keeps a phantom "claimed seat" in something that was turned down.
+  // one keeps a phantom "claimed seat" in something that was turned down. The
+  // freed crew is re-pooled into "freie Zuteilung" first, so they reappear for
+  // redistribution instead of vanishing from the op.
   if (status === "rejected") {
-    await prisma.seatAssignment.updateMany({
-      where: { unitId: { in: [unitId, ...vehicleIds] }, userId: { not: null } },
-      data: { userId: null },
+    const unit = await prisma.fleetUnit.findUnique({
+      where: { id: unitId },
+      include: { ship: { select: { name: true } } },
     });
+    if (unit) {
+      const unitName = unit.squadName || unit.ship?.name || "Einheit";
+      await prisma.$transaction(async (tx) => {
+        await repoolSeatedUsers(
+          tx,
+          unit.operationId,
+          [unitId, ...vehicleIds],
+          `Aus abgelehnter Einheit „${unitName}"`,
+          unit.captainId,
+        );
+        await tx.seatAssignment.updateMany({
+          where: { unitId: { in: [unitId, ...vehicleIds] }, userId: { not: null } },
+          data: { userId: null },
+        });
+      });
+    }
   }
   if (vehicleIds.length) {
     await prisma.fleetUnit.updateMany({ where: { id: { in: vehicleIds } }, data: { status } });

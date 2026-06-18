@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-18: Kalender „Aktuell laufende Operationen" + Schiff-Rückzug entlässt Crew in Zuteilungspool — Branch master
+
+Status: Queued.
+
+Zwei Features (Fleetplanner):
+
+1. **Kalender — „Aktuell laufende Operationen" ganz oben.** In `apps/fleetplanner-web/src/pages/CalendarPage.tsx`
+   eine prominente Sektion über dem Page-Header rendern, die alle Ops mit Status `starting`
+   oder `in_progress` zeigt — monatsübergreifend (nicht an die sichtbare Monatsauswahl gebunden),
+   da „läuft jetzt". Datenquelle ist das bereits geladene `ops` (`listOperations(true)`).
+
+2. **Schiff-Rückzug entlässt besetzte Crew in den Zuteilungspool.** Wenn ein Captain sein Schiff
+   zurückzieht (`deleteUnit`, OpDetail „Mein Schiff zurückziehen" / Operator „Einheit entfernen")
+   gehen die in den Sitzen sitzenden Spieler bisher still verloren (Cascade-Delete der Seats).
+   Künftig: vor dem Löschen die besetzte Crew (NICHT der zurückziehende Captain — der zog
+   sein Schiff selbst raus; Crew getragener Vehicles inkl.) als `CrewAssignmentRequest` in
+   den Op-Pool zurückstellen → erscheinen wieder in `view.crewRequests` zur Neuverteilung.
+   Gleiche Re-Pool-Logik beim `reject` (setUnitStatus),
+   damit abgelehnte Schiffe ihre Crew nicht still verlieren. Backend: `apps/fleetplanner/src/services/units.ts`.
+
 ## Queued / Planned Step - 2026-06-18: LiveKit (WebRTC SFU) entfernen — orphaned seit Voice-Removal — Branch master
 
 Status: Done (ausgeführt 2026-06-18). Restore-Plan archiviert in `docs/LIVEKIT-ARCHIVE-2026-06.md`.

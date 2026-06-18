@@ -19,6 +19,7 @@ vi.mock("../../db.js", () => ({
       updateMany: vi.fn(),
     },
     user: { findUnique: vi.fn() },
+    crewAssignmentRequest: { upsert: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -179,6 +180,12 @@ describe("registerUnit", () => {
 // ── deleteUnit ────────────────────────────────────────────────────────────────
 
 describe("deleteUnit", () => {
+  beforeEach(() => {
+    db.fleetUnit.findMany.mockResolvedValue([]); // no carried vehicles
+    db.seatAssignment.findMany.mockResolvedValue([]); // no seated crew by default
+    db.crewAssignmentRequest.upsert.mockResolvedValue({});
+  });
+
   it("throws when unit not found", async () => {
     db.fleetUnit.findUnique.mockResolvedValue(null);
     await expect(deleteUnit("unit-1", "user-1", "crew")).rejects.toThrow("Unit not found");
@@ -190,24 +197,48 @@ describe("deleteUnit", () => {
   });
 
   it("captain can delete own unit", async () => {
-    db.fleetUnit.findUnique.mockResolvedValue({ id: "unit-1", captainId: "cap-1" });
+    db.fleetUnit.findUnique.mockResolvedValue({ id: "unit-1", operationId: "op-1", captainId: "cap-1" });
     db.fleetUnit.delete.mockResolvedValue({});
     await deleteUnit("unit-1", "cap-1", "crew");
     expect(db.fleetUnit.delete).toHaveBeenCalledWith({ where: { id: "unit-1" } });
   });
 
   it("fleetoperator can delete any unit", async () => {
-    db.fleetUnit.findUnique.mockResolvedValue({ id: "unit-1", captainId: "other-cap" });
+    db.fleetUnit.findUnique.mockResolvedValue({ id: "unit-1", operationId: "op-1", captainId: "other-cap" });
     db.fleetUnit.delete.mockResolvedValue({});
     await deleteUnit("unit-1", "op-user", "fleetoperator");
     expect(db.fleetUnit.delete).toHaveBeenCalled();
   });
 
   it("superadmin can delete any unit", async () => {
-    db.fleetUnit.findUnique.mockResolvedValue({ id: "unit-1", captainId: "other-cap" });
+    db.fleetUnit.findUnique.mockResolvedValue({ id: "unit-1", operationId: "op-1", captainId: "other-cap" });
     db.fleetUnit.delete.mockResolvedValue({});
     await deleteUnit("unit-1", "admin-user", "superadmin");
     expect(db.fleetUnit.delete).toHaveBeenCalled();
+  });
+
+  it("re-pools seated crew (but NOT the withdrawing captain) before deleting", async () => {
+    db.fleetUnit.findUnique.mockResolvedValue({
+      id: "unit-1",
+      operationId: "op-1",
+      captainId: "cap-1",
+      squadName: null,
+      ship: { name: "Carrack" },
+    });
+    db.seatAssignment.findMany.mockResolvedValue([{ userId: "cap-1" }, { userId: "crew-2" }]);
+    db.fleetUnit.delete.mockResolvedValue({});
+
+    await deleteUnit("unit-1", "cap-1", "crew");
+
+    // captain cap-1 is excluded; only crew-2 is re-pooled
+    expect(db.crewAssignmentRequest.upsert).toHaveBeenCalledTimes(1);
+    expect(db.crewAssignmentRequest.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { operationId_userId: { operationId: "op-1", userId: "crew-2" } },
+        create: expect.objectContaining({ operationId: "op-1", userId: "crew-2" }),
+      }),
+    );
+    expect(db.fleetUnit.delete).toHaveBeenCalledWith({ where: { id: "unit-1" } });
   });
 });
 
@@ -238,6 +269,31 @@ describe("setUnitStatus", () => {
     await setUnitStatus("unit-1", "accepted");
     const { data } = db.fleetUnit.update.mock.calls[0][0];
     expect("leaderNote" in data).toBe(false);
+  });
+
+  it("re-pools crew and frees seats when a unit is rejected", async () => {
+    db.fleetUnit.findUnique.mockResolvedValue({
+      id: "unit-1",
+      operationId: "op-1",
+      captainId: "cap-1",
+      squadName: null,
+      ship: { name: "Cutlass" },
+    });
+    db.seatAssignment.findMany.mockResolvedValue([{ userId: "crew-2" }]);
+    db.crewAssignmentRequest.upsert.mockResolvedValue({});
+    db.seatAssignment.updateMany.mockResolvedValue({ count: 1 });
+    db.fleetUnit.update.mockResolvedValue({});
+
+    await setUnitStatus("unit-1", "rejected");
+
+    expect(db.crewAssignmentRequest.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { operationId_userId: { operationId: "op-1", userId: "crew-2" } },
+      }),
+    );
+    expect(db.seatAssignment.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { userId: null } }),
+    );
   });
 });
 
