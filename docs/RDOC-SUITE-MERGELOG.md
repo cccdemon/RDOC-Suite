@@ -1,8 +1,11 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-18: Kalender „Aktuell laufende Operationen" + Schiff-Rückzug entlässt Crew in Zuteilungspool — Branch master
+## Completed - 2026-06-18: Kalender „Aktuell laufende Operationen" + Schiff-Rückzug entlässt Crew in Zuteilungspool — Branch master
 
-Status: Queued.
+Status: Done — deployed 2026-06-18. Commit `86fd062` (Feature) + `5c9207e` (Compose-Fix:
+`monitoring.depends_on.livekit` war nach LiveKit-Removal verwaist → „depends on undefined
+service", blockierte den Build). Beide Images (`fleetplanner` + `fleetplanner-web`) auf
+LXC 103 gebaut, livekit-Orphan-Container entfernt, beide Container Up + healthy.
 
 Zwei Features (Fleetplanner):
 
