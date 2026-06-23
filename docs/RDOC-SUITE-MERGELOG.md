@@ -1,8 +1,10 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-23: Voice-Empfänger persistieren + Pending-Drop-Fix (Operator-Konsole Follow-up)
+## Completed - 2026-06-23: Voice-Empfänger persistieren + Pending-Drop-Fix (Operator-Konsole Follow-up)
 
-Status: In Arbeit (2026-06-23).
+Status: ✓ Deployed (2026-06-23), Commit `be259bb`, master. Prod-Build `fleetplanner` +
+`fleetplanner-web` grün; Migration `20260623120000_op_voice_recipients` applied,
+Tabelle `OperationVoiceRecipient` vorhanden, Server listening.
 
 Follow-up zum Operator-Konsole-Redesign (`dbd436c`).
 
