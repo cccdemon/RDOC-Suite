@@ -24,8 +24,6 @@ const schema = z.object({
   // At least one OAuth provider must be configured. Discord is the
   // original provider; GitHub and Google are alternatives.
   DISCORD_CLIENT_ID: z.string().optional(),
-  DISCORD_RDOCRTC_CLIENT_ID: z.string().optional(),
-  DISCORD_RDOCRTC_BOT_TOKEN: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
   SUPERADMIN_DISCORD_ID: z.string().optional(),
   // Free-text contact shown to users who need to reach the instance SuperAdmin
@@ -52,9 +50,6 @@ const schema = z.object({
   // incoming HTTP interactions (FR-P1 event-distribution approval buttons).
   // Set the app's "Interactions Endpoint URL" to <WEB_PUBLIC_URL>/discord/interactions.
   DISCORD_FLEETPLANNER_PUBLIC_KEY: z.string().optional(),
-  // Companion app OAuth — uses the RDOC-RTC Bot (separate from the Fleetmanager Bot)
-  DISCORD_COMPANION_BOT_ID: z.string().optional(),
-  DISCORD_COMPANION_BOT_KEY: z.string().optional(),
   // Voice/SquadLink stack was removed 2026-06-12; these are leftover (often empty)
   // env vars. Kept lenient so a stale/empty value doesn't fail-fast the boot.
   // LiveKit (LIVEKIT_*/RELAY_LIVEKIT_ROOM) removed 2026-06-18 — see

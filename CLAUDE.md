@@ -43,33 +43,21 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 
 ## Discord Bots — NIE verwechseln
 
+> **RDOC-RTC Bot entfernt (2026-06-23).** Der Voice-Bridge-Bot (Prod App
+> `1507722962919227452`, Slash-Commands `/cc`, Bridge-OAuth, Strategy-Channels) +
+> die darauf zeigende Companion-OAuth-App sind raus — Voice-Stack (`apps/bot`,
+> `apps/bridge`, `apps/relay-bots`) entfernt seit 2026-06-12, LiveKit seit 2026-06-18.
+> Keine Env-Vars (`DISCORD_RDOCRTC_*`, `DISCORD_COMPANION_BOT_*`) mehr im Code.
+
 | Bot | Env-Vars | Container | Zweck |
 |---|---|---|---|
-| **RDOC-RTC Bot** (Prod App `1507722962919227452`, Developer-Portal-Name `RDOC-RTC`) | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY` | `rdoc-suite-bot`, `rdoc-suite-bridge` | Slash-Commands (`/cc`), Bridge-OAuth, Guild-/Role-Checks, Strategy-Channels, Companion OAuth |
 | **RDOC-Fleetplanner Bot** (Prod App `1509191397264064689`, Developer-Portal-Name `RDOC-Fleetplanner`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | — (im fleetplanner) | Discord-Events, Feedback-Tickets, DMs, Event-Rollen |
-| **Companion OAuth App** | `DISCORD_COMPANION_BOT_ID`, `DISCORD_COMPANION_BOT_KEY` | — (im fleetplanner) | Muss auf die RDOC-RTC App `1507722962919227452` zeigen. |
-| **Relay role-check Bot** | `DISCORD_RELAY_BOT_TOKEN` | `rdoc-suite-bridge` | Optionaler Bot-Token nur für `/relay/token` Rollenprüfung. Nicht der Audio-Relay-Worker. |
-| **Voice Bots (Funkrelais)** | verschlüsselt in DB (`GuildVoiceBot`) | `rdoc-suite-relay-bots` | 6 Bots für Crew-Voice-Channels pro Operation + Audio-Relay |
 
 ### Erforderliche Bot-Permissions
-
-**RDOC-RTC Bot** — Scopes: `bot applications.commands`
-- Intents: `Guilds`, `GuildVoiceStates` (non-privileged, kein Portal-Toggle nötig)
-- Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_CHANNELS`, `MOVE_MEMBERS`
-- `MANAGE_CHANNELS` + `MOVE_MEMBERS` nötig für Strategy-Channels (bridge Admin-UI)
-- Muss auf jedem Discord Server installiert sein, auf dem `/cc` und Bridge-Funktionen genutzt werden.
 
 **Fleetmanager Bot** — Scopes: `bot applications.commands`
 - Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_ROLES`, `MANAGE_EVENTS`
 - Intents: `Guilds`, `GuildVoiceStates`
-- **NICHT** `MANAGE_CHANNELS` / `MOVE_MEMBERS` — das machen die Voice Relay Bots
-
-**Relay role-check Bot** — Scopes: `bot`
-- Permissions: Rollen/Members des Guilds lesen können. Kann derselbe Bot wie RDOC-RTC sein.
-
-**Voice Bots (Funkrelais)** — Scopes: `bot`
-- Permissions: `MANAGE_CHANNELS`, `VIEW_CHANNEL`, `CONNECT`, `SPEAK`, `MOVE_MEMBERS`
-- Jeder Bot erstellt seinen eigenen Channel, benennt ihn um, zieht Crew rein
 
 **Token 401 → immer:** Discord Developer Portal → richtige App → Bot → Reset Token → `.env` updaten → Container neu starten.
 
@@ -214,9 +202,9 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 
 10. **`apps/relay-bots` (Step 6) = importierter VoiceRelayBots-Worker** (`@rdoc-suite/relay-bots`). Liest Config von der Bridge, subscribed LiveKit-Track, relayed Audio in Discord Voice Channels via `@discordjs/voice`. `@discordjs/opus` ist ein nativer Addon — `pnpm approve-builds` nötig beim Deploy.
 
-11. **`apps/fleetplanner` = Fastify + Prisma + SSR** (`@rdoc-suite/fleetplanner`). Eigene **PostgreSQL**-DB (`fleetplanner-db` Container); Production-Route unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate` Skripte pro Workspace. Companion-OAuth via RDOC-RTC Bot (`DISCORD_COMPANION_BOT_ID`/`KEY`), fleet voice via LiveKit unit rooms + global voice.
+11. **`apps/fleetplanner` = Fastify + Prisma + SSR** (`@rdoc-suite/fleetplanner`). Eigene **PostgreSQL**-DB (`fleetplanner-db` Container); Production-Route unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate` Skripte pro Workspace. (Companion-OAuth via RDOC-RTC Bot + fleet voice via LiveKit — beide mit dem Voice-Stack 2026-06-12/06-18 entfernt.)
     - **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Per-Guild-Rollen (`fleetoperator | captain | crew`) leben in `GuildMembership.role`. Middleware: `requireSuperAdmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role` für die aktive Guild. Discord-Mapping: `admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain` (aus Guild-Settings). Default bei neuem Member: `crew`.
-    - **Fleetplanner bots:** drei separate Discord-Bots — (a) **Fleetplanner Bot** (`DISCORD_FLEETPLANNER_BOT_TOKEN`): Events, DMs, Rollen-Zuweisung; (b) **Companion OAuth App** (`DISCORD_COMPANION_BOT_ID`/`KEY`): Fleet-Auth-Flow; (c) **Funkrelais Bots** (6×, in `GuildVoiceBot`-Tabelle): für "Launch Voice Channels" — jeder Bot joined einen Channel per eigenem Token.
+    - **Fleetplanner bots:** (a) **Fleetplanner Bot** (`DISCORD_FLEETPLANNER_BOT_TOKEN`): Events, DMs, Rollen-Zuweisung; (b) **Funkrelais Bots** (6×, in `GuildVoiceBot`-Tabelle): für "Launch Voice Channels" — jeder Bot joined einen Channel per eigenem Token. (Die frühere Companion-OAuth-App via RDOC-RTC Bot wurde mit dem Voice-Stack entfernt.)
     - **Funkrelais-Token-Verschlüsselung:** `apps/fleetplanner/src/services/secrets.ts` nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
 
 12. **`apps/monitoring` = Prometheus-Image.** Keine eigene TypeScript-Quelle; `apps/monitoring/Dockerfile` wraps das offizielle Prometheus-Image mit `apps/monitoring/prometheus.yml`. Route: `suite.raumdock.org/monitoring`.
@@ -251,8 +239,6 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 | [docs/MERGELOG-archive-pre-2026-06-02.md](docs/MERGELOG-archive-pre-2026-06-02.md) | Archiv (nicht pflegen): topic-basierte Früh-Historie inkl. Tenant-Overhaul + erster Fleetplanner-Feature-Dump. |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | **Roadmap-Übersicht** — alle FR-P* mit Prio/Deps/Reihenfolge + Bug-/Feedback-Liste + „needs sighting". Forward-looking (Changelog = Vergangenheit). |
 | [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md) | Feature-Backlog Fleetplanner — was done, was fehlt. |
-| [docs/admin-guide.md](docs/admin-guide.md) | Slash-Commands, Bot-Invite, Credential-Flow |
-| [docs/commander-guide.md](docs/commander-guide.md) | Companion-Install, Hotkey, Audio |
 | [docs/privacy.md](docs/privacy.md) | Daten-Inventar |
 | [README.md](README.md) | Quickstart, Architektur-Diagramm, Repository-Layout |
 | [security-plan.md](security-plan.md) | Threat-Model und geplante Härtungen |

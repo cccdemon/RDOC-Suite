@@ -184,23 +184,11 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` before starting the services. At minimum, local bridge/bot login requires:
+Edit `.env` before starting the services. Fleetplanner needs a Discord login
+provider. At minimum, configure:
 
 ```text
 SESSION_SECRET=32_or_more_random_characters
-DISCORD_RDOCRTC_BOT_TOKEN=...
-DISCORD_RDOCRTC_CLIENT_ID=...
-DISCORD_CLIENT_SECRET=...
-OAUTH_REDIRECT_URI=http://localhost:8787/auth/callback
-COMPANION_REDIRECT_URI=dccc://auth
-LIVEKIT_URL=ws://localhost:7880
-LIVEKIT_API_KEY=devkey
-LIVEKIT_API_SECRET=secret
-```
-
-Fleetplanner also needs a login provider. For Discord login, configure:
-
-```text
 DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
 DISCORD_FLEETPLANNER_BOT_TOKEN=...
@@ -296,9 +284,6 @@ Bridge migrations and Fleetplanner migrations are applied by their container ent
 | Group                       | Variables                                                                                                             |
 | --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | Shared                      | `SESSION_SECRET`, `DATABASE_URL`, `LOG_LEVEL`                                                                         |
-| Bridge public URLs          | `BRIDGE_SERVER_URL`, `BRIDGE_HOST`, `BRIDGE_PORT`, `OAUTH_REDIRECT_URI`, `COMPANION_REDIRECT_URI`, `PUBLIC_BASE_PATH` |
-| RDOC-RTC Discord app        | `DISCORD_RDOCRTC_BOT_TOKEN`, `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_PUBLIC_KEY`, `DISCORD_CLIENT_SECRET`       |
-| LiveKit                     | `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`, `LIVEKIT_NODE_IP`                                             |
 | Fleetplanner                | `FLEETPLANNER_DB_PASSWORD`, `FLEETPLANNER_PUBLIC_URL`, `WEB_PUBLIC_URL`, `SUPERADMIN_DISCORD_ID`                      |
 | Fleetplanner Discord bot    | `DISCORD_FLEETPLANNER_CLIENT_ID`, `DISCORD_FLEETPLANNER_BOT_TOKEN`                                                    |
 | Relay bots                  | `RELAY_LIVEKIT_ROOM`, `RELAY_BOTS_SECRET`, `RELAY_BOTS_ADMIN_URL`, `RELAY_BOTS_ADMIN_SECRET`                          |
@@ -351,8 +336,6 @@ See `.env.example` for the full list and comments.
 
 ## Documentation
 
-- Admin walkthrough: [docs/admin-guide.md](docs/admin-guide.md)
-- Commander walkthrough: [docs/commander-guide.md](docs/commander-guide.md)
 - Privacy/data inventory: [docs/privacy.md](docs/privacy.md)
 - Design and implementation notes: [CLAUDE.md](CLAUDE.md)
 - Fleetplanner backlog: [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md)

@@ -43,14 +43,6 @@ export type DiscordInstallDiagnostics = {
 
 type RequiredPermission = { key: string; label: string; bit: bigint };
 
-const RDOC_RTC_PERMS: RequiredPermission[] = [
-  { key: "VIEW_CHANNEL", label: "View Channels", bit: VIEW_CHANNEL },
-  { key: "SEND_MESSAGES", label: "Send Messages", bit: SEND_MESSAGES },
-  { key: "READ_MESSAGE_HISTORY", label: "Read Message History", bit: READ_MESSAGE_HISTORY },
-  { key: "MANAGE_CHANNELS", label: "Manage Channels", bit: MANAGE_CHANNELS },
-  { key: "MOVE_MEMBERS", label: "Move Members", bit: MOVE_MEMBERS },
-];
-
 const FLEETPLANNER_PERMS: RequiredPermission[] = [
   { key: "VIEW_CHANNEL", label: "View Channels", bit: VIEW_CHANNEL },
   { key: "SEND_MESSAGES", label: "Send Messages", bit: SEND_MESSAGES },
@@ -191,18 +183,6 @@ export async function runDiscordInstallDiagnostics(guildId: string): Promise<Dis
   const roles = await fetchGuildRolesByBot(guildId).catch(() => null);
 
   const checks: BotDiagnostic[] = [];
-  checks.push(await checkBot({
-    guildId,
-    key: "rdoc-rtc",
-    name: "RDOC-RTC",
-    appId: env.DISCORD_RDOCRTC_CLIENT_ID ?? env.DISCORD_COMPANION_BOT_ID ?? null,
-    token: env.DISCORD_RDOCRTC_BOT_TOKEN ?? null,
-    required: RDOC_RTC_PERMS,
-    roles,
-    applicationsCommands: true,
-    note: "Required for /cc, Bridge voice state tracking, role checks, and Strategy Channels.",
-  }));
-
   checks.push(await checkBot({
     guildId,
     key: "rdoc-fleetplanner",

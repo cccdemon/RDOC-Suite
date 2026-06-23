@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Calendar ignored operation status (2026-06-23)
+
+- The operations calendar (`apps/fleetplanner-web/src/pages/CalendarPage.tsx`) derived an event's
+  status badge purely from time + capacity, and only filtered `draft` ops out of the grid. An op
+  switched to `cancelled` (or `locked`/`completed`) therefore still showed as **OFFEN**. The
+  explicit `op.status` is now carried into each event and wins over the heuristic:
+  `cancelled` → "ABGESAGT" (red), `completed` → "ABGESCHLOSSEN", `locked` → "GESPERRT". Cancelled
+  ops are dimmed in op cards and struck-through with a red accent in the month grid.
+
+### Removed - RDOC-RTC bot + Companion OAuth app fully decommissioned (2026-06-23)
+
+- The RDOC-RTC voice-bridge bot and the Companion OAuth app that pointed at it are no longer
+  used — the voice stack was removed 2026-06-12 and LiveKit 2026-06-18. Removed all live
+  references and dead code:
+  - The per-server Discord diagnostics ("Server → Discord-Diagnose",
+    `apps/fleetplanner/src/services/discordDiagnostics.ts`) probed the **RDOC-RTC** bot (`/cc`,
+    bridge voice-state tracking, role checks, Strategy Channels). The check + its `RDOC_RTC_PERMS`
+    were removed; only the RDOC-Fleetplanner bot is now diagnosed.
+  - Dead env vars dropped: `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_BOT_TOKEN`,
+    `DISCORD_RDOCRTC_PUBLIC_KEY`, `DISCORD_COMPANION_BOT_ID`, `DISCORD_COMPANION_BOT_KEY`
+    (`config/env.ts`, root + fleetplanner `.env.example`). No runtime consumer remained — the
+    `/auth/discord/companion/*` OAuth flow does not exist.
+  - Stale comments + tests cleaned (`providers.ts`, `providers.test.ts`, `openapi.test.ts`).
+  - Docs: CLAUDE.md bot table/permissions/architecture, README quickstart + env groups + doc
+    links; the dead voice-stack guides `docs/admin-guide.md` + `docs/commander-guide.md` were
+    deleted.
+
 ### Added - Calendar "currently running ops" + crew re-pool on ship withdrawal (2026-06-18)
 
 - **Calendar:** a new "Aktuell laufende Operationen" section is pinned at the very top of the

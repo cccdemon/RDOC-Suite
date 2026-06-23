@@ -45,7 +45,6 @@ describe("openapi document", () => {
   it("leaks no secret env names or token examples (FR-P2 docs hygiene)", () => {
     const json = JSON.stringify(doc);
     for (const banned of [
-      "DISCORD_RDOCRTC_BOT_TOKEN",
       "DISCORD_FLEETPLANNER_BOT_TOKEN",
       "FLEETPLANNER_DB_PASSWORD",
       "LIVEKIT_API_SECRET",

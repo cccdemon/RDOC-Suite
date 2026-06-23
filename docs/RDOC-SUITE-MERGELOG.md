@@ -1,5 +1,39 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-23: Kalender-Status-Bug + RDOC-RTC-Bot aus Discord-Diagnose entfernen — Branch master
+
+Status: In Arbeit (2026-06-23).
+
+Zwei Fixes (Fleetplanner):
+
+1. **Kalender ignorierte Op-Status.** `apps/fleetplanner-web/src/pages/CalendarPage.tsx` leitete
+   das Status-Label rein aus Zeit/Kapazität ab (`statusOf`) und filterte beim Event-Mapping nur
+   `draft` raus. Eine auf `cancelled` (oder `locked`/`completed`) gesetzte Op zeigte im Kalender
+   weiterhin „OFFEN". Fix: `op.status` ins `Ev`-Objekt durchreichen; `statusOf` wertet expliziten
+   Status (cancelled→„ABGESAGT" rot, completed→„ABGESCHLOSSEN", locked→„GESPERRT") vor der
+   Zeit/Kapazitäts-Heuristik aus. Abgesagte Ops in Monatskacheln gedimmt + durchgestrichen +
+   roter Akzent; opCard dimmt cancelled wie done.
+
+2. **RDOC-RTC-Bot + Companion-OAuth-App vollständig dekommissioniert** (Voice-Bridge-Bot,
+   nicht mehr genutzt — Voice-Stack raus seit 2026-06-12, LiveKit seit 2026-06-18). Umfang:
+   - `runDiscordInstallDiagnostics` (`apps/fleetplanner/src/services/discordDiagnostics.ts`):
+     RDOC-RTC-Bot-Check (`/cc`, Bridge-Voice, Strategy-Channels) + `RDOC_RTC_PERMS` entfernt;
+     unter „Server → Discord-Diagnose" bleibt nur der RDOC-Fleetplanner-Bot.
+   - Dead env vars entfernt: `DISCORD_RDOCRTC_CLIENT_ID`, `DISCORD_RDOCRTC_BOT_TOKEN`,
+     `DISCORD_RDOCRTC_PUBLIC_KEY`, `DISCORD_COMPANION_BOT_ID`, `DISCORD_COMPANION_BOT_KEY`
+     aus `apps/fleetplanner/src/config/env.ts`, `.env.example` (root + fleetplanner). Die
+     Companion-OAuth-App zeigte auf die RDOC-RTC-App und hatte keinen Code-Consumer mehr
+     (der `/auth/discord/companion/*`-Flow existiert nicht).
+   - Stale Kommentare in `providers.ts` + Tests (`providers.test.ts`, `openapi.test.ts`)
+     bereinigt.
+   - Docs: `CLAUDE.md` Bot-Tabelle/Permissions/Architektur-Pickup; `README.md` Quickstart +
+     Env-Gruppen + Doc-Links; tote Voice-Stack-Guides `docs/admin-guide.md` +
+     `docs/commander-guide.md` gelöscht (Historie im Mergelog/CHANGELOG).
+   - Historische Docs (CHANGELOG-Historie, ältere MERGELOG-Einträge, `docs/security-review.md`,
+     `docs/archiv/*`) absichtlich NICHT umgeschrieben — Snapshots.
+   - Hinweis: Bot ggf. zusätzlich im Discord-Server kicken / Developer-Portal-App löschen —
+     reine Discord-Aktion, nicht im Code.
+
 ## Completed - 2026-06-18: Kalender „Aktuell laufende Operationen" + Schiff-Rückzug entlässt Crew in Zuteilungspool — Branch master
 
 Status: Done — deployed 2026-06-18. Commit `86fd062` (Feature) + `5c9207e` (Compose-Fix:

@@ -42,6 +42,7 @@ type Ev = {
   signed: number;
   cap: number;
   ts: number;
+  status: string;
 };
 
 const tagStyle = (color: string): React.CSSProperties => ({
@@ -137,6 +138,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         signed: op.filledSeats,
         cap: op.totalSeats || op.minParticipants || 0,
         ts: d.getTime(),
+        status: op.status,
       });
     }
     return out;
@@ -156,6 +158,11 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
   const statusOf = (e: Ev) => {
+    // Explicit operation status wins over the time/capacity heuristic — a
+    // cancelled/locked/completed op must never read as "OFFEN".
+    if (e.status === "cancelled") return { key: "cancelled", label: "ABGESAGT", color: "#ff4444" };
+    if (e.status === "completed") return { key: "done", label: "ABGESCHLOSSEN", color: "#5b6b7a" };
+    if (e.status === "locked") return { key: "locked", label: "GESPERRT", color: "#f0a500" };
     if (e.ts < now.getTime()) return { key: "done", label: "ABGESCHLOSSEN", color: "#5b6b7a" };
     if (e.cap > 0 && e.signed >= e.cap) return { key: "voll", label: "VOLL", color: "#00d4ff" };
     if (e.cap > 0 && e.signed / e.cap >= 0.8) return { key: "fast", label: "FAST VOLL", color: "#f0a500" };
@@ -218,7 +225,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
     const ty = typeOf(e.typeKey);
     const st = statusOf(e);
     const pct = e.cap > 0 ? Math.min(100, Math.round((e.signed / e.cap) * 100)) : 0;
-    const dim = st.key === "done";
+    const dim = st.key === "done" || st.key === "cancelled";
     return (
       <Link key={e.id} to={`/ops/${e.id}`} data-testid={`cal-open-${e.id}`} style={{ display: "block", textDecoration: "none", border: `1px solid rgba(${ty.rgb},0.18)`, borderLeft: `3px solid ${ty.color}`, borderRadius: 10, background: "#0a1018", padding: "0.75rem 0.85rem", opacity: dim ? 0.6 : 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
@@ -523,11 +530,12 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                       {shown.map((e) => {
                         const ty = typeOf(e.typeKey);
-                        const dim = (isCurrentMonth && d < T.d) || monthBeforeToday;
+                        const cancelled = e.status === "cancelled";
+                        const dim = (isCurrentMonth && d < T.d) || monthBeforeToday || cancelled;
                         return (
-                          <div key={e.id} style={{ display: "flex", flexDirection: "column", gap: 1, padding: "4px 7px", borderRadius: 6, background: `rgba(${ty.rgb},0.13)`, borderLeft: `3px solid ${ty.color}`, overflow: "hidden", opacity: dim ? 0.5 : 1 }}>
-                            <span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.02em", color: ty.color, flexShrink: 0 }}>{e.time}</span>
-                            <span style={{ fontSize: "0.8rem", lineHeight: 1.16, color: "#dbe7f0", fontWeight: 500, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.title}</span>
+                          <div key={e.id} style={{ display: "flex", flexDirection: "column", gap: 1, padding: "4px 7px", borderRadius: 6, background: `rgba(${ty.rgb},0.13)`, borderLeft: `3px solid ${cancelled ? "#ff4444" : ty.color}`, overflow: "hidden", opacity: dim ? 0.5 : 1 }}>
+                            <span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.02em", color: cancelled ? "#ff4444" : ty.color, flexShrink: 0 }}>{e.time}</span>
+                            <span style={{ fontSize: "0.8rem", lineHeight: 1.16, color: "#dbe7f0", fontWeight: 500, textDecoration: cancelled ? "line-through" : "none", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.title}</span>
                           </div>
                         );
                       })}

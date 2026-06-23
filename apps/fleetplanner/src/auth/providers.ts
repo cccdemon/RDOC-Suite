@@ -46,9 +46,6 @@ export function discordEnabled(): boolean {
 export function discordOAuthClientId(): string | undefined {
   const env = getEnv();
   // Fleetplanner web login + Discord linking use the RDOC-Fleetplanner app.
-  // NEVER fall back to the Companion/RDOC-RTC client (DISCORD_COMPANION_BOT_ID /
-  // DISCORD_RDOCRTC_CLIENT_ID) — that client is reserved for the Companion
-  // app OAuth flow (/auth/discord/companion/*).
   return env.DISCORD_FLEETPLANNER_CLIENT_ID ?? env.DISCORD_CLIENT_ID;
 }
 

@@ -1,17 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
-// RDOC-Fleetplanner app (web login) vs. Companion/RDOC-RTC app (companion OAuth).
+// Fleetplanner web login uses the RDOC-Fleetplanner app (with a legacy
+// DISCORD_CLIENT_ID alias as fallback).
 const FLEETPLANNER_ID = "1509191397264064689";
-const COMPANION_ID = "1507722962919227452";
 
 const DISCORD_KEYS = [
   "DISCORD_FLEETPLANNER_CLIENT_ID",
   "DISCORD_FLEETPLANNER_CLIENT_SECRET",
   "DISCORD_CLIENT_ID",
   "DISCORD_CLIENT_SECRET",
-  "DISCORD_COMPANION_BOT_ID",
-  "DISCORD_COMPANION_BOT_KEY",
-  "DISCORD_RDOCRTC_CLIENT_ID",
 ] as const;
 
 function clearDiscordEnv(): void {
@@ -30,23 +27,19 @@ beforeEach(() => {
 });
 
 describe("discordOAuthClientId — Fleetplanner web login", () => {
-  it("uses the Fleetplanner client, never the Companion/RDOC-RTC client", async () => {
+  it("uses the Fleetplanner client", async () => {
     process.env.DISCORD_FLEETPLANNER_CLIENT_ID = FLEETPLANNER_ID;
-    process.env.DISCORD_COMPANION_BOT_ID = COMPANION_ID;
     const { discordOAuthClientId } = await loadProviders();
     expect(discordOAuthClientId()).toBe(FLEETPLANNER_ID);
   });
 
   it("falls back to the DISCORD_CLIENT_ID legacy alias when no Fleetplanner id", async () => {
     process.env.DISCORD_CLIENT_ID = FLEETPLANNER_ID;
-    process.env.DISCORD_COMPANION_BOT_ID = COMPANION_ID;
     const { discordOAuthClientId } = await loadProviders();
     expect(discordOAuthClientId()).toBe(FLEETPLANNER_ID);
   });
 
-  it("does NOT fall back to the Companion/RDOC-RTC client id", async () => {
-    process.env.DISCORD_COMPANION_BOT_ID = COMPANION_ID;
-    process.env.DISCORD_RDOCRTC_CLIENT_ID = COMPANION_ID;
+  it("is undefined when no Fleetplanner/legacy client id is set", async () => {
     const { discordOAuthClientId } = await loadProviders();
     expect(discordOAuthClientId()).toBeUndefined();
   });
@@ -69,9 +62,7 @@ describe("discordEnabled", () => {
     expect(discordEnabled()).toBe(true);
   });
 
-  it("is false when only the Companion client is configured", async () => {
-    process.env.DISCORD_COMPANION_BOT_ID = COMPANION_ID;
-    process.env.DISCORD_COMPANION_BOT_KEY = "companion-secret";
+  it("is false when nothing is configured", async () => {
     const { discordEnabled } = await loadProviders();
     expect(discordEnabled()).toBe(false);
   });
