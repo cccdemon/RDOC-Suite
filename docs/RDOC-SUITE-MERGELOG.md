@@ -1,10 +1,10 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-06-23: Operator-Konsole Redesign (Variante A „Tabs + Live") — fleetplanner-web
+## Completed - 2026-06-23: Operator-Konsole Redesign (Variante A „Tabs + Live") — fleetplanner-web
 
-Status: In Arbeit (2026-06-23) — Code geschrieben, Typecheck/Tests laufen auf dem Server.
+Status: ✓ Deployed (2026-06-23), Commit `dbd436c`, master. Prod-Build `fleetplanner-web` grün.
 
-Backend-offen (README): individueller Voice-Empfänger-Endpunkt + Pending→Sitz-Owner-Mapping
+Backend-offen (README, Follow-up): individueller Voice-Empfänger-Endpunkt + Pending→Sitz-Owner-Mapping
 beim Drop — vorerst Local-State bzw. README-literal (accept + assignSeat captain).
 
 Design-Handoff (`START_HERE.md` + `IMPLEMENTATION_PLAN.md` + Prototyp `Operator-Konsole
