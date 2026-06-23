@@ -339,7 +339,7 @@ describe("Op detail — operator panel", () => {
     expect(await findByTestId("operator-panel")).toBeInTheDocument();
     expect(await findByText("Hammerhead")).toBeInTheDocument();
     expect(await findByText("Flexi")).toBeInTheDocument();
-    expect(await findByText("Treffpunkt?")).toBeInTheDocument();
+    // questions now live in their own "Fragen" tab (redesign IA)
     // hangar shares live in the collapsible tools drawer (design)
     (await findByText("Werkzeuge / Aktivität")).click();
     expect(await findByText("Hangar Guy")).toBeInTheDocument();
@@ -393,7 +393,7 @@ describe("Op detail — operator panel", () => {
       }),
     ]);
     const { findByTestId } = renderAt("/ops/op_1");
-    await openFleetTab(findByTestId);
+    (await findByTestId("manage-tab-qa")).click(); // questions are their own tab now
     const input = (await findByTestId("answer-input-q1")) as HTMLTextAreaElement;
     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Everus Harbor, 19:00");
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -753,7 +753,7 @@ describe("Feedback", () => {
 describe("Op editor (lifecycle)", () => {
   const opEditable = { ...opDetailFixture, canManage: true };
 
-  it("operator edits meta and saves (PATCH)", async () => {
+  it("operator edits meta — autosaves per field (PATCH, debounced)", async () => {
     let patched: Record<string, unknown> | null = null;
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
@@ -768,12 +768,12 @@ describe("Op editor (lifecycle)", () => {
     expect(title.value).toBe("Xenothreat Logistics");
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(title, "Renamed Op");
     title.dispatchEvent(new Event("input", { bubbles: true }));
-    (await findByTestId("edit-save")).click();
-    expect(await findByTestId("manage-notice")).toHaveTextContent("Gespeichert");
-    expect(patched).toMatchObject({ title: "Renamed Op", opType: "combat" });
+    // No save button — the field autosaves after a 600ms debounce.
+    await new Promise((r) => setTimeout(r, 800));
+    expect(patched).toMatchObject({ title: "Renamed Op" });
   });
 
-  it("operator changes status (POST status, Admin tab)", async () => {
+  it("operator changes status inline in the header (POST status)", async () => {
     let statusBody: Record<string, unknown> | null = null;
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
@@ -784,12 +784,9 @@ describe("Op editor (lifecycle)", () => {
       }),
     );
     const { findByTestId } = renderAt("/ops/op_1/edit");
-    (await findByTestId("manage-tab-admin")).click();
-    const sel = (await findByTestId("manage-status")) as HTMLSelectElement;
-    Object.getOwnPropertyDescriptor(window.HTMLSelectElement.prototype, "value")!.set!.call(sel, "open");
-    sel.dispatchEvent(new Event("change", { bubbles: true }));
-    (await findByTestId("manage-status-apply")).click();
-    await findByTestId("manage-notice");
+    // Status is a segmented control in the always-visible header (no Apply button).
+    (await findByTestId("status-seg-open")).click();
+    await new Promise((r) => setTimeout(r, 50));
     expect(statusBody).toMatchObject({ status: "open" });
   });
 

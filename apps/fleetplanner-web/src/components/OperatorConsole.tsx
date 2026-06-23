@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ApiError, createRecurrence, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
+import { useEffect, useMemo, useState } from "react";
+import { ApiError, createRecurrence, editOperation, getOperatorView, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
 import { NeedsEditor } from "./NeedsEditor";
@@ -7,22 +7,29 @@ import { OperatorPanel } from "./OperatorPanel";
 import { CoverPanel } from "./CoverPanel";
 import { CommandersPanel } from "./CommandersPanel";
 import { EckdatenForm } from "./EckdatenForm";
+import { VoicePanel } from "./VoicePanel";
 import { ResourceLinksPanel } from "./ResourceLinksPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
+import { FieldSaveProvider, GlobalSaveBadge, SaveDot, useFieldSave } from "./fieldSave";
 
-// IA merge D: the operator console (previously the standalone /ops/:id/manage page)
-// is now an adaptive section of the op-detail screen — rendered only when the viewer
-// is a leader of THIS op (op.canManage from the role-aware payload). One screen,
-// no separate manage URL or layout toggle.
-const STATUSES: Array<[string, string]> = [
-  ["draft", "Entwurf"], ["open", "Offen"], ["locked", "Gesperrt"], ["starting", "Startet"],
-  ["in_progress", "Läuft"], ["completed", "Abgeschlossen"], ["cancelled", "Abgesagt"],
+// IA merge D + Operator-Console redesign (Variante A "Tabs + Live"): one screen,
+// adaptive section of the op-detail page (op.canManage). Persistent status header
+// over the tabs; everything autosaves with per-field status; no full reload on
+// each action.
+const STATUSES: Array<[string, string, string]> = [
+  ["draft", "Entwurf", "var(--dim2)"], ["open", "Offen", "var(--green)"], ["locked", "Gesperrt", "var(--gold)"],
+  ["starting", "Startet", "var(--cyan)"], ["in_progress", "Läuft", "var(--cyan)"],
+  ["completed", "Abgeschlossen", "var(--dim)"], ["cancelled", "Abgesagt", "var(--red2)"],
 ];
 
 const TABS = [
+  { key: "fleet", label: "Flotte & Board", icon: "ship" },
   { key: "eckdaten", label: "Eckdaten", icon: "edit" },
-  { key: "fleet", label: "Flotte & Warteliste", icon: "ship" },
-  { key: "cover", label: "Mission Cover", icon: "image" },
+  { key: "voice", label: "Voice", icon: "mic" },
+  { key: "cqb", label: "CQB", icon: "fps" },
+  { key: "formations", label: "Verbände", icon: "board" },
+  { key: "qa", label: "Fragen", icon: "chat" },
+  { key: "cover", label: "Cover", icon: "image" },
   { key: "commanders", label: "Commanders", icon: "lead" },
   { key: "admin", label: "Admin", icon: "shield" },
 ] as const;
@@ -32,7 +39,7 @@ function resolveTab(raw: string | null): TabKey {
   if (TABS.some((t) => t.key === raw)) return raw as TabKey;
   if (raw === "overview") return "eckdaten";
   if (raw === "needs") return "fleet";
-  return "eckdaten";
+  return "fleet";
 }
 
 function decodeFlash(raw: string | null): string | null {
@@ -46,20 +53,22 @@ function decodeFlash(raw: string | null): string | null {
   }
 }
 
-function StatTile({ label, value, sub, color, icon }: { label: string; value: number | string; sub: string; color: string; icon: string }) {
+export function OperatorConsole(props: {
+  op: OperationDetail;
+  opId: string;
+  csrf: string | null;
+  reload: () => void;
+  initialTab: string | null;
+  initialFlash: string | null;
+}) {
   return (
-    <div className="kpi" style={{ borderLeftColor: color }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.4rem" }}>
-        <span className="kpi-label">{label}</span>
-        <span style={{ color, display: "inline-flex" }}><Ic name={icon} size={14} sw={1.6} /></span>
-      </div>
-      <div className="kpi-value">{value}</div>
-      <div className="kpi-sub">{sub}</div>
-    </div>
+    <FieldSaveProvider>
+      <OperatorConsoleInner {...props} />
+    </FieldSaveProvider>
   );
 }
 
-export function OperatorConsole({
+function OperatorConsoleInner({
   op,
   opId,
   csrf,
@@ -74,13 +83,23 @@ export function OperatorConsole({
   initialTab: string | null;
   initialFlash: string | null;
 }) {
+  const { touch, fail } = useFieldSave();
   const [tab, setTab] = useState<TabKey>(resolveTab(initialTab));
   const [status, setStatusValue] = useState(op.status);
+  const [voiceEnabled, setVoiceEnabled] = useState(op.squadLinkVoiceEnabled);
   const [notice, setNotice] = useState<string | null>(() => decodeFlash(initialFlash));
   const [busy, setBusy] = useState(false);
   const [tpl, setTpl] = useState({ name: "", summary: "", visibility: "guild" });
   const [recur, setRecur] = useState({ freq: "weekly", seriesCount: "", seriesEnd: "" });
+  const [flex, setFlex] = useState<number | null>(null);
 
+  // Re-seed status/voice when navigating to another op.
+  useEffect(() => { setStatusValue(op.status); setVoiceEnabled(op.squadLinkVoiceEnabled); }, [op.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Header KPI: flexible-waitlist count lives in the operator view only.
+  useEffect(() => { getOperatorView(opId).then((v) => setFlex(v.crewRequests.length)).catch(() => setFlex(null)); }, [opId]);
+
+  // Deliberate create/destroy actions keep an explicit button + reload (not autosave):
+  // publishing a template / creating a series each materialize new objects.
   async function run(action: () => Promise<unknown>, msg: string) {
     if (!csrf) return;
     setBusy(true); setNotice(null);
@@ -88,26 +107,102 @@ export function OperatorConsole({
     catch (e) { setNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen."); }
     finally { setBusy(false); }
   }
-  const changeStatus = (next: string) => run(() => setOperationStatus(opId, csrf!, next), `Status: ${next}.`);
   const publish = () => run(() => publishTemplate(opId, csrf!, { name: tpl.name.trim() || undefined, summary: tpl.summary.trim() || undefined, visibility: tpl.visibility }), "Als Vorlage veröffentlicht.");
   const makeSeries = () => run(() => createRecurrence(opId, csrf!, { freq: recur.freq, seriesCount: recur.seriesCount ? Number(recur.seriesCount) : undefined, seriesEnd: recur.seriesEnd ? new Date(recur.seriesEnd).toISOString() : undefined }), "Serie erstellt.");
   async function stopSeries() {
     if (!csrf) return;
+    if (!window.confirm("Wiederkehrende Serie wirklich stoppen?")) return;
     setBusy(true); setNotice(null);
     try { const r = await stopRecurrence(opId, csrf); setNotice(r.stopped ? "Serie gestoppt." : "Diese Operation ist keine Serie."); }
     catch (e) { setNotice(e instanceof ApiError ? e.message : "Stoppen fehlgeschlagen."); } finally { setBusy(false); }
   }
 
-  const accepted = op.units.filter((u) => u.status === "accepted");
-  const ships = accepted.filter((u) => u.unitType === "ship").length;
-  const tiles = {
-    flotte: accepted.length, ships, fighters: accepted.length - ships,
-    crew: op.filledSeats, free: Math.max(0, op.totalSeats - op.filledSeats),
-    total: op.totalSeats, pending: op.units.filter((u) => u.status !== "accepted").length,
-  };
+  // Inline status: optimistic + immediate save; confirm only for the destructive cancel.
+  async function changeStatus(next: string) {
+    if (!csrf || next === status) return;
+    if (next === "cancelled" && !window.confirm("Operation auf „Abgesagt“ setzen?")) return;
+    const prev = status;
+    setStatusValue(next); setNotice(null);
+    try { await setOperationStatus(opId, csrf, next); touch("op-status"); }
+    catch (e) { setStatusValue(prev); fail("op-status"); setNotice(e instanceof ApiError ? e.message : "Status fehlgeschlagen."); }
+  }
+  // Voice quick-switch — shared field with Eckdaten + the Voice tab.
+  async function toggleVoice() {
+    if (!csrf) return;
+    const next = !voiceEnabled;
+    setVoiceEnabled(next); setNotice(null);
+    try { await editOperation(opId, csrf, { squadLinkVoiceEnabled: next }); touch("op-voice"); }
+    catch (e) { setVoiceEnabled(!next); fail("op-voice"); setNotice(e instanceof ApiError ? e.message : "Speichern fehlgeschlagen."); }
+  }
 
-  const tabBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.1rem", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.04em", borderRadius: 9, cursor: "pointer", whiteSpace: "nowrap", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.02)", color: "#9fb1c2" };
-  const tabActive: React.CSSProperties = { ...tabBase, color: "#04060a", fontWeight: 700, border: "1px solid var(--cyan)", background: "var(--cyan)", boxShadow: "0 0 14px rgba(0,212,255,0.4)" };
+  // ── derived header metrics (from op; flex from the view) ──
+  const filled = op.filledSeats;
+  const total = op.totalSeats;
+  const free = Math.max(0, total - filled);
+  const pct = total ? Math.round((filled / total) * 100) : 0;
+  const openQ = op.questions.filter((q) => !q.answer).length;
+  const recipientCount = useMemo(() => {
+    const s = new Set(op.leaders.map((l) => l.id));
+    op.units.forEach((u) => { if (u.status === "accepted") u.seats.forEach((se) => { if (se.claimedBy) s.add(se.claimedBy.id); }); });
+    return s.size;
+  }, [op]);
+
+  // ── status header (always above the tabs) ──
+  const kpiTile = (label: string, value: number | string, color: string) => (
+    <div key={label} style={{ flex: "1 1 110px", border: `1px solid ${color === "var(--cyan)" ? "rgba(0,212,255,0.22)" : "rgba(255,255,255,0.08)"}`, borderLeft: `2px solid ${color}`, borderRadius: 9, background: "rgba(255,255,255,0.012)", padding: "0.55rem 0.75rem" }}>
+      <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: "var(--dim2)", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontFamily: MONO, fontSize: "1.2rem", color, lineHeight: 1 }}>{value}</div>
+    </div>
+  );
+
+  const statusHeader = (
+    <div style={{ border: "1px solid rgba(0,212,255,0.3)", borderRadius: 14, background: "linear-gradient(180deg, rgba(0,212,255,0.05), rgba(0,212,255,0.01))", padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.8rem" }}>
+        <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(0,212,255,0.14)", border: "1px solid rgba(0,212,255,0.4)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="board" size={17} /></span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATOR-KONSOLE · NUR EINSATZLEITUNG</div>
+          <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{op.title}</div>
+        </div>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+          <button type="button" data-testid="voice-quickswitch" title="SquadLink Voice" onClick={toggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.36rem 0.65rem", borderRadius: 8, cursor: "pointer", border: voiceEnabled ? "1px solid rgba(160,100,255,0.5)" : "1px solid rgba(255,255,255,0.14)", background: voiceEnabled ? "rgba(160,100,255,0.1)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim2)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em" }}>
+            <Ic name="mic" size={13} /> {voiceEnabled ? "VOICE AN" : "VOICE AUS"}
+          </button>
+          <SaveDot id="op-voice" />
+        </div>
+        <GlobalSaveBadge />
+      </div>
+      <div style={{ display: "flex", gap: "0.9rem", flexWrap: "wrap", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.1em", color: "var(--dim2)" }}>STATUS</span>
+          <div data-testid="manage-status" style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(0,212,255,0.14)", flexWrap: "wrap" }}>
+            {STATUSES.map(([v, l, col]) => {
+              const on = status === v;
+              return (
+                <button key={v} type="button" data-testid={`status-seg-${v}`} onClick={() => changeStatus(v)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.32rem 0.7rem", borderRadius: 7, cursor: "pointer", border: on ? `1px solid ${col}` : "1px solid transparent", background: on ? "rgba(255,255,255,0.04)" : "transparent", color: on ? col : "var(--dim2)", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
+                  {on && <span style={{ width: 6, height: 6, borderRadius: "50%", background: col, boxShadow: `0 0 6px ${col}` }} />}{l}
+                </button>
+              );
+            })}
+          </div>
+          <SaveDot id="op-status" />
+        </div>
+        <div style={{ flex: 1, minWidth: 220, display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          {kpiTile("FÜLLGRAD", `${pct}%`, "var(--green)")}
+          {kpiTile("SITZE FREI", free, "var(--gold)")}
+          {kpiTile("FLEXIBEL", flex ?? "–", "var(--cyan)")}
+          {kpiTile("OFFENE FRAGEN", openQ, "var(--purple)")}
+        </div>
+      </div>
+    </div>
+  );
+
+  const tabBadge = (k: TabKey): { n: number; color: string } | null => {
+    if (k === "fleet" && free > 0) return { n: free, color: "var(--cyan)" };
+    if (k === "voice" && voiceEnabled && recipientCount > 0) return { n: recipientCount, color: "var(--purple)" };
+    if (k === "qa" && openQ > 0) return { n: openQ, color: "var(--gold)" };
+    return null;
+  };
+  const accentOf = (k: TabKey) => (k === "voice" ? "var(--purple)" : k === "qa" ? "var(--gold)" : "var(--cyan)");
 
   return (
     <section
@@ -122,92 +217,84 @@ export function OperatorConsole({
         overflow: "hidden",
       }}
     >
-      {/* Header bar — clearly marks the operator-only zone. */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.9rem 1.3rem", background: "linear-gradient(90deg, rgba(0,212,255,0.16), rgba(0,212,255,0.03))", borderBottom: "1px solid rgba(0,212,255,0.3)" }}>
-        <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(0,212,255,0.16)", border: "1px solid rgba(0,212,255,0.4)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="board" size={17} sw={1.8} /></span>
-        <span style={{ fontFamily: MONO, fontSize: "0.82rem", letterSpacing: "0.16em", color: "#eaf4fb", fontWeight: 700 }}>OPERATOR-KONSOLE</span>
-        <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.1em", color: "var(--cyan)", border: "1px solid rgba(0,212,255,0.35)", borderRadius: 5, padding: "0.18rem 0.5rem" }}>NUR EINSATZLEITUNG</span>
-      </div>
-      <div style={{ padding: "1.3rem 1.3rem 1.5rem" }}>
+      <div style={{ padding: "1.2rem 1.3rem 1.5rem" }}>
+        {statusHeader}
 
-      {/* KPI strip — always visible above the tabs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: "0.8rem", marginBottom: "1.1rem" }}>
-        <StatTile label="FLOTTENSTÄRKE" value={tiles.flotte} sub={`${tiles.ships} Schiffe · ${tiles.fighters} Jäger`} color="var(--cyan)" icon="ship" />
-        <StatTile label="CREW" value={tiles.crew} sub="angemeldet" color="var(--green)" icon="users" />
-        <StatTile label="SITZE FREI" value={tiles.free} sub={`von ${tiles.total}`} color="var(--gold)" icon="lead" />
-        <StatTile label="WARTELISTE" value={tiles.pending} sub="offene Anfragen" color="var(--purple)" icon="clock" />
-      </div>
-
-      {/* STATUS — always visible on the event main page (not buried in a tab) */}
-      <section style={{ ...card, marginBottom: "1.1rem" }}>
-        <CardHead icon="bolt" label={`STATUS · AKTUELL ${op.status.toUpperCase()}`} tone="green" />
-        <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}>
-          <select data-testid="manage-status" value={status} onChange={(e) => setStatusValue(e.target.value)} style={{ ...inp, width: "auto", minWidth: 180 }}>
-            {STATUSES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-          <button type="button" data-testid="manage-status-apply" style={btnPrimary} disabled={busy || !csrf || status === op.status} onClick={() => changeStatus(status)}>Status setzen</button>
+        {/* tab navigation — prominent pills + counter badges */}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+          <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cyan)" }} />
+          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>ARBEITSBEREICH</span>
         </div>
-      </section>
-
-      {/* tabs — pill segmented control in its own bar */}
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", padding: "0.7rem 0.8rem", marginBottom: "1.2rem", borderRadius: 11, background: "rgba(0,0,0,0.25)", border: "1px solid rgba(0,212,255,0.16)" }}>
-        {TABS.map((t) => (
-          <button key={t.key} type="button" data-testid={`manage-tab-${t.key}`} onClick={() => setTab(t.key)} style={tab === t.key ? tabActive : tabBase}>
-            <Ic name={t.icon} size={15} sw={1.8} />{t.label}
-          </button>
-        ))}
-      </div>
-
-      {notice && <p className="tag tag-gold" role="alert" data-testid="manage-notice" style={{ marginBottom: "1rem" }}>{notice}</p>}
-
-      {tab === "eckdaten" && (
-        <>
-          <EckdatenForm op={op} csrf={csrf} onSaved={reload} onNotice={setNotice} />
-          <ResourceLinksPanel op={op} opId={opId} csrf={csrf} onChanged={reload} onNotice={setNotice} />
-        </>
-      )}
-
-      {tab === "fleet" && (
-        <>
-          {csrf ? <OperatorPanel op={op} csrf={csrf} embedded onChanged={reload} onError={(m) => setNotice(m)} /> : <p style={lbl}>ANMELDUNG ERFORDERLICH</p>}
-          <div style={{ marginTop: "1.6rem" }}>
-            <NeedsEditor opId={opId} csrf={csrf} />
-          </div>
-        </>
-      )}
-
-      {tab === "cover" && <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />}
-
-      {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
-
-      {tab === "admin" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-          <section style={card}>
-            <CardHead icon="shield" label="VORLAGE & SERIE" tone="gold" />
-            <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>ALS VORLAGE VERÖFFENTLICHEN</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.2rem" }}>
-              <input data-testid="tpl-name" type="text" maxLength={120} value={tpl.name} placeholder={`Name (Standard: ${op.title})`} onChange={(e) => setTpl((t) => ({ ...t, name: e.target.value }))} style={inp} />
-              <input data-testid="tpl-summary" type="text" maxLength={500} value={tpl.summary} placeholder="Kurzbeschreibung" onChange={(e) => setTpl((t) => ({ ...t, summary: e.target.value }))} style={inp} />
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                <select data-testid="tpl-visibility" value={tpl.visibility} onChange={(e) => setTpl((t) => ({ ...t, visibility: e.target.value }))} style={{ ...inp, width: "auto", minWidth: 160 }}>
-                  <option value="guild">Guild</option><option value="partners">Partner-Guilds</option><option value="public">Öffentlich</option>
-                </select>
-                <button type="button" data-testid="tpl-publish" style={btnPrimary} disabled={busy || !csrf} onClick={publish}><Ic name="board" size={13} sw={2} /> Veröffentlichen</button>
-              </div>
-            </div>
-            <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>WIEDERKEHRENDE SERIE</div>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.6rem" }}>
-              <select data-testid="recur-freq" value={recur.freq} onChange={(e) => setRecur((r) => ({ ...r, freq: e.target.value }))} style={{ ...inp, width: "auto", minWidth: 150 }}>
-                <option value="weekly">Wöchentlich</option><option value="biweekly">Zweiwöchentlich</option><option value="monthly_nth">Monatlich</option><option value="yearly">Jährlich</option>
-              </select>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>Anzahl<input data-testid="recur-count" type="number" min={1} max={365} value={recur.seriesCount} placeholder="∞" onChange={(e) => setRecur((r) => ({ ...r, seriesCount: e.target.value }))} style={{ ...inp, width: 80 }} /></label>
-              <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>bis<input data-testid="recur-until" type="date" value={recur.seriesEnd} onChange={(e) => setRecur((r) => ({ ...r, seriesEnd: e.target.value }))} style={{ ...inp, width: 160 }} /></label>
-              <button type="button" data-testid="recur-create" style={btnPrimary} disabled={busy || !csrf} onClick={makeSeries}>Serie erstellen</button>
-            </div>
-            <button type="button" data-testid="recurrence-stop" style={btnGhost} disabled={busy || !csrf} onClick={stopSeries}>Serie stoppen</button>
-          </section>
+        <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "1.2rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid rgba(0,212,255,0.2)" }}>
+          {TABS.map((t) => {
+            const on = tab === t.key;
+            const badge = tabBadge(t.key);
+            const acc = accentOf(t.key);
+            return (
+              <button key={t.key} type="button" data-testid={`manage-tab-${t.key}`} onClick={() => setTab(t.key)} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 9, padding: "0.6rem 1rem", borderRadius: 10, cursor: "pointer", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid rgba(255,255,255,0.08)", background: on ? "var(--cyan)" : "rgba(255,255,255,0.02)", color: on ? "#04060a" : "var(--dim)", boxShadow: on ? "0 0 16px rgba(0,212,255,0.45)" : "none", transition: "all .12s" }}>
+                <span style={{ display: "inline-flex", color: on ? "#04060a" : acc }}><Ic name={t.icon} size={16} /></span>{t.label}
+                {badge && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 19, height: 19, padding: "0 5px", borderRadius: 10, fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700, background: on ? "rgba(4,6,10,0.22)" : badge.color, color: "#04060a" }}>{badge.n}</span>}
+              </button>
+            );
+          })}
         </div>
-      )}
+
+        {notice && <p className="tag tag-gold" role="alert" data-testid="manage-notice" style={{ marginBottom: "1rem" }}>{notice}</p>}
+
+        <div className="fpw-popin">
+          {tab === "eckdaten" && (
+            <>
+              <EckdatenForm op={op} csrf={csrf} onNotice={setNotice} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} />
+              <ResourceLinksPanel op={op} opId={opId} csrf={csrf} onChanged={reload} onNotice={setNotice} />
+            </>
+          )}
+
+          {(tab === "fleet" || tab === "cqb" || tab === "formations" || tab === "qa") && (
+            csrf
+              ? <OperatorPanel op={op} csrf={csrf} embedded section={tab} onChanged={reload} onError={(m) => setNotice(m)} />
+              : <p style={lbl}>ANMELDUNG ERFORDERLICH</p>
+          )}
+          {tab === "fleet" && (
+            <div style={{ marginTop: "1.6rem" }}>
+              <NeedsEditor opId={opId} csrf={csrf} />
+            </div>
+          )}
+
+          {tab === "voice" && <VoicePanel op={op} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} />}
+
+          {tab === "cover" && <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />}
+
+          {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
+
+          {tab === "admin" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+              <section style={card}>
+                <CardHead icon="shield" label="VORLAGE & SERIE" tone="gold" />
+                <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>ALS VORLAGE VERÖFFENTLICHEN</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.2rem" }}>
+                  <input data-testid="tpl-name" type="text" maxLength={120} value={tpl.name} placeholder={`Name (Standard: ${op.title})`} onChange={(e) => setTpl((t) => ({ ...t, name: e.target.value }))} style={inp} />
+                  <input data-testid="tpl-summary" type="text" maxLength={500} value={tpl.summary} placeholder="Kurzbeschreibung" onChange={(e) => setTpl((t) => ({ ...t, summary: e.target.value }))} style={inp} />
+                  <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                    <select data-testid="tpl-visibility" value={tpl.visibility} onChange={(e) => setTpl((t) => ({ ...t, visibility: e.target.value }))} style={{ ...inp, width: "auto", minWidth: 160 }}>
+                      <option value="guild">Guild</option><option value="partners">Partner-Guilds</option><option value="public">Öffentlich</option>
+                    </select>
+                    <button type="button" data-testid="tpl-publish" style={btnPrimary} disabled={busy || !csrf} onClick={publish}><Ic name="board" size={13} sw={2} /> Veröffentlichen</button>
+                  </div>
+                </div>
+                <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>WIEDERKEHRENDE SERIE</div>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.6rem" }}>
+                  <select data-testid="recur-freq" value={recur.freq} onChange={(e) => setRecur((r) => ({ ...r, freq: e.target.value }))} style={{ ...inp, width: "auto", minWidth: 150 }}>
+                    <option value="weekly">Wöchentlich</option><option value="biweekly">Zweiwöchentlich</option><option value="monthly_nth">Monatlich</option><option value="yearly">Jährlich</option>
+                  </select>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>Anzahl<input data-testid="recur-count" type="number" min={1} max={365} value={recur.seriesCount} placeholder="∞" onChange={(e) => setRecur((r) => ({ ...r, seriesCount: e.target.value }))} style={{ ...inp, width: 80 }} /></label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>bis<input data-testid="recur-until" type="date" value={recur.seriesEnd} onChange={(e) => setRecur((r) => ({ ...r, seriesEnd: e.target.value }))} style={{ ...inp, width: 160 }} /></label>
+                  <button type="button" data-testid="recur-create" style={btnPrimary} disabled={busy || !csrf} onClick={makeSeries}>Serie erstellen</button>
+                </div>
+                <button type="button" data-testid="recurrence-stop" style={btnGhost} disabled={busy || !csrf} onClick={stopSeries}>Serie stoppen</button>
+              </section>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

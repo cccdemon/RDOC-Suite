@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Operator-Konsole redesign: live autosave + field status (2026-06-23)
+
+Variante A („Tabs + Live") aus dem Design-Handoff. Ziel: einheitliches Speicher-Modell,
+sichtbares Feld-Feedback, kein Vollreload-Flackern. Alles in `apps/fleetplanner-web`,
+API unverändert.
+
+- **Neu `components/fieldSave.tsx`**: `FieldSaveProvider` + `useFieldSave` + `<SaveDot>`
+  (idle/saving/saved/error) + `GlobalSaveBadge` + `useDebouncer`. Ein globaler Save-State
+  über alle Tabs. Text-Felder debounced 600 ms, Toggles/Selects/Status sofort.
+- **`OperatorConsole`**: persistenter Status-Header über den Tabs (Op-Titel, Voice-Schnell-
+  schalter, Live-Speicher-Badge; Zeile 2 inline Segmented-Status-Control + KPI-Streifen).
+  Status speichert sofort beim Klick (Bestätigung nur für `cancelled`). Prominentere Tab-
+  Navigation mit Zähler-Badges (freie Sitze/Voice-Empfänger/offene Fragen). Neue Tab-IA:
+  Flotte&Board · Eckdaten · Voice · CQB · Verbände · Fragen · Cover · Commanders · Admin.
+- **`EckdatenForm`**: `dirty`-State + „Änderungen speichern"-Bar entfernt → Autosave pro Feld
+  mit `<SaveDot>`. SquadLink-Voice-Toggle teilt das Feld mit Header + Voice-Tab.
+- **Neu `components/VoicePanel.tsx`** (Voice-Tab): Master-Toggle, CommandNet-Raum-Link +
+  Kopieren, Empfänger-Liste (besetzte Sitze + Leiter, dedupe, Rolle) mit Link-Toggle (lokal,
+  bis ein Backend-Empfänger-Endpunkt steht).
+- **`OperatorPanel`**: optimistischer lokaler `units`-State für das Board (kein Parent-Reload
+  je Sitz-Aktion, Picker/Scroll bleiben), Drag-and-Drop anstehender Einheiten auf offene Sitze
+  (accept + Owner→Sitz), Verband-Zuordnung für ALLE Einheitstypen (Board-Select + editierbare
+  Zusammensetzung), `<SaveDot>` an allen Inline-Edits; `section`-Prop teilt die Fleet-Familie
+  auf eigene Konsolen-Tabs.
+- `Icons.tsx`: `copy` + `grip`; `styles.css`: `@keyframes fpwPulseDot`/`fpwPopIn`.
+
 ### Fixed - Calendar ignored operation status (2026-06-23)
 
 - The operations calendar (`apps/fleetplanner-web/src/pages/CalendarPage.tsx`) derived an event's

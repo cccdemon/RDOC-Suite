@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, deleteOperation, editOperation, searchLocations, type LocationHit } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
-import { CardHead, MONO, actionBar, btnGhost, btnPrimary, card, inp, lbl, segChip, ta } from "./ui";
-import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, normalizeVisibility, coreOpBody } from "./opForm";
+import { CardHead, MONO, card, inp, lbl, segChip, ta } from "./ui";
+import { SaveDot, useDebouncer, useFieldSave } from "./fieldSave";
+import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, normalizeVisibility } from "./opForm";
 
 function isoToLocalInput(iso: string): string {
   const d = new Date(iso);
@@ -22,12 +23,29 @@ function tzAbbr(tz: string | null): string {
   }
 }
 
-// The "Eckdaten" tab of Op-Management = the full op edit form (fused; the
-// standalone edit screen is gone). Title/date/max/type/meeting/briefing/
-// visibility + danger zone + sticky save bar.
-export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDetail; csrf: string | null; onSaved: () => void; onNotice: (m: string) => void }) {
+// The "Eckdaten" tab of the Operator console = the full op edit form. Redesign
+// (Variante A): NO dirty-state, NO "Änderungen speichern" bar. Every field
+// autosaves — text debounced 600 ms, toggles/selects immediately — and shows a
+// per-field <SaveDot>. SquadLink-Voice is controlled by the console (shared with
+// the header quick-switch + Voice tab) so the three stay in sync.
+export function EckdatenForm({
+  op,
+  csrf,
+  onNotice,
+  voiceEnabled,
+  onToggleVoice,
+}: {
+  op: OperationDetail;
+  csrf: string | null;
+  onNotice: (m: string) => void;
+  voiceEnabled: boolean;
+  onToggleVoice: () => void;
+}) {
   const navigate = useNavigate();
-  const initial = {
+  const { touch, fail } = useFieldSave();
+  const debounce = useDebouncer(600);
+
+  const seed = () => ({
     title: op.title,
     description: op.description ?? "",
     opType: op.opType,
@@ -36,10 +54,8 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
     meetingSystem: op.meetingSystem || "Stanton",
     meetingLocation: op.meetingLocation ?? "",
     visibility: normalizeVisibility(op.visibility),
-    squadLinkVoiceEnabled: op.squadLinkVoiceEnabled ?? false,
-  };
-  const [form, setForm] = useState(initial);
-  const [saved, setSaved] = useState(initial);
+  });
+  const [form, setForm] = useState(seed);
   const [busy, setBusy] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [locHits, setLocHits] = useState<LocationHit[]>([]);
@@ -53,43 +69,30 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
     return () => clearTimeout(t);
   }, [form.meetingLocation, form.meetingSystem]);
 
-  // Re-seed when the op reloads (e.g. after save).
-  useEffect(() => {
-    const next = {
-      title: op.title,
-      description: op.description ?? "",
-      opType: op.opType,
-      scheduledAt: isoToLocalInput(op.scheduledAt),
-      maxParticipants: op.maxParticipants != null ? String(op.maxParticipants) : "",
-      meetingSystem: op.meetingSystem || "Stanton",
-      meetingLocation: op.meetingLocation ?? "",
-      visibility: normalizeVisibility(op.visibility),
-      squadLinkVoiceEnabled: op.squadLinkVoiceEnabled ?? false,
-    };
-    setForm(next);
-    setSaved(next);
-  }, [op]);
+  // Re-seed if the op identity changes (navigated to another op).
+  useEffect(() => { setForm(seed()); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [op.id]);
 
-  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
-  const dirty = JSON.stringify(form) !== JSON.stringify(saved);
-
-  async function save() {
+  // ── autosave: optimistic local state, then PATCH; no parent reload (no flicker).
+  async function persist(fieldId: string, patch: Parameters<typeof editOperation>[2]) {
     if (!csrf) return;
-    setBusy(true);
     try {
-      await editOperation(op.id, csrf, {
-        ...coreOpBody(form),
-        maxParticipants: form.maxParticipants.trim() === "" ? null : Math.max(0, Number(form.maxParticipants) || 0),
-        squadLinkVoiceEnabled: form.squadLinkVoiceEnabled,
-      });
-      onNotice("Gespeichert.");
-      onSaved();
+      await editOperation(op.id, csrf, patch);
+      touch(fieldId);
     } catch (e) {
+      fail(fieldId);
       onNotice(e instanceof ApiError ? e.message : "Speichern fehlgeschlagen.");
-    } finally {
-      setBusy(false);
     }
   }
+  // Text fields: update local state, then save debounced (touch fires on save).
+  const setText = (fieldId: string, patch: Partial<typeof form>, body: Parameters<typeof editOperation>[2]) => {
+    setForm((f) => ({ ...f, ...patch }));
+    debounce(fieldId, () => persist(fieldId, body));
+  };
+  // Toggles/selects: update local state + save immediately.
+  const setNow = (fieldId: string, patch: Partial<typeof form>, body: Parameters<typeof editOperation>[2]) => {
+    setForm((f) => ({ ...f, ...patch }));
+    persist(fieldId, body);
+  };
 
   async function remove() {
     if (!csrf) return;
@@ -105,36 +108,40 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
 
   const zone = tzAbbr(op.guild.timezone);
   const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" };
+  // label + inline SaveDot
+  const L = ({ children, id }: { children: React.ReactNode; id: string }) => (
+    <label style={{ ...lbl, display: "flex", alignItems: "center", gap: "0.5rem", justifyContent: "space-between" }}>
+      <span>{children}</span>
+      <SaveDot id={id} />
+    </label>
+  );
 
   return (
     <div data-testid="edit-op-page">
-      {dirty && (
-        <span data-testid="edit-dirty" className="tag tag-green" style={{ marginBottom: "1rem" }}>GEÄNDERT</span>
-      )}
       <div className="fpw-edit-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0,1.7fr) minmax(0,1fr)", gap: "1rem", alignItems: "start" }}>
         {/* main column */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
           <section style={card}>
-            <CardHead icon="bolt" label="ECKDATEN" tone="cyan" />
+            <CardHead icon="bolt" label="ECKDATEN · AUTOSAVE" tone="cyan" />
             <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
               <div>
-                <label style={lbl}>Operationstitel <span style={{ color: "var(--gold)" }}>*</span></label>
-                <input data-testid="edit-title" type="text" maxLength={160} value={form.title} onChange={(e) => set({ title: e.target.value })} style={inp} />
+                <L id="op-title">Operationstitel <span style={{ color: "var(--gold)" }}>*</span></L>
+                <input data-testid="edit-title" type="text" maxLength={160} value={form.title} onChange={(e) => setText("op-title", { title: e.target.value }, { title: e.target.value.trim() })} style={inp} />
               </div>
               <div className="fpw-two" style={twoCol}>
                 <div>
-                  <label style={lbl}>Datum &amp; Zeit{zone ? ` (${zone})` : ""} <span style={{ color: "var(--gold)" }}>*</span></label>
-                  <input data-testid="edit-scheduled" type="datetime-local" value={form.scheduledAt} onChange={(e) => set({ scheduledAt: e.target.value })} style={inp} />
+                  <L id="op-date">Datum &amp; Zeit{zone ? ` (${zone})` : ""} <span style={{ color: "var(--gold)" }}>*</span></L>
+                  <input data-testid="edit-scheduled" type="datetime-local" value={form.scheduledAt} onChange={(e) => setNow("op-date", { scheduledAt: e.target.value }, { scheduledAt: e.target.value ? new Date(e.target.value).toISOString() : undefined })} style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Max. Teilnehmer</label>
-                  <input data-testid="edit-maxparticipants" type="number" min={0} value={form.maxParticipants} placeholder="∞" onChange={(e) => set({ maxParticipants: e.target.value })} style={inp} />
+                  <L id="op-max">Max. Teilnehmer</L>
+                  <input data-testid="edit-maxparticipants" type="number" min={0} value={form.maxParticipants} placeholder="∞" onChange={(e) => setText("op-max", { maxParticipants: e.target.value }, { maxParticipants: e.target.value.trim() === "" ? null : Math.max(0, Number(e.target.value) || 0) })} style={inp} />
                 </div>
               </div>
               <div>
-                <label style={lbl}>Operationstyp</label>
+                <L id="op-type">Operationstyp</L>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                  {OP_TYPES.map((t) => <button key={t.key} type="button" data-testid={`edit-type-${t.key}`} onClick={() => set({ opType: t.key })} style={segChip(form.opType === t.key, t.color, t.rgb)}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>)}
+                  {OP_TYPES.map((t) => <button key={t.key} type="button" data-testid={`edit-type-${t.key}`} onClick={() => setNow("op-type", { opType: t.key }, { opType: t.key })} style={segChip(form.opType === t.key, t.color, t.rgb)}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>)}
                 </div>
               </div>
             </div>
@@ -144,14 +151,14 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
             <CardHead icon="pin" label="TREFFPUNKT" tone="violet" />
             <div className="fpw-two" style={twoCol}>
               <div>
-                <label style={lbl}>System</label>
+                <L id="op-system">System</L>
                 <div style={{ display: "flex", gap: "0.4rem" }}>
-                  {SYSTEMS.map((s) => <button key={s} type="button" data-testid={`edit-system-${s}`} onClick={() => set({ meetingSystem: s })} style={{ ...segChip(form.meetingSystem === s, "var(--cyan)", "0,212,255"), flex: 1, justifyContent: "center" }}>{s}</button>)}
+                  {SYSTEMS.map((s) => <button key={s} type="button" data-testid={`edit-system-${s}`} onClick={() => setNow("op-system", { meetingSystem: s }, { meetingSystem: s })} style={{ ...segChip(form.meetingSystem === s, "var(--cyan)", "0,212,255"), flex: 1, justifyContent: "center" }}>{s}</button>)}
                 </div>
               </div>
               <div>
-                <label style={lbl}>Ort / Rendezvous</label>
-                <input data-testid="edit-location" type="text" list="edit-loc-list" maxLength={160} value={form.meetingLocation} onChange={(e) => set({ meetingLocation: e.target.value })} placeholder="z. B. HUR-L1" style={inp} />
+                <L id="op-loc">Ort / Rendezvous</L>
+                <input data-testid="edit-location" type="text" list="edit-loc-list" maxLength={160} value={form.meetingLocation} onChange={(e) => setText("op-loc", { meetingLocation: e.target.value }, { meetingLocation: e.target.value.trim() })} placeholder="z. B. HUR-L1" style={inp} />
                 <datalist id="edit-loc-list">
                   {locHits.map((h) => <option key={`${h.system}/${h.name}`} value={h.name}>{h.system}</option>)}
                 </datalist>
@@ -160,20 +167,20 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
           </section>
 
           <section style={card}>
-            <CardHead icon="doc" label="BRIEFING" tone="cyan" right={<span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim2)" }}>Markdown</span>} />
-            <textarea data-testid="edit-description" value={form.description} maxLength={4000} onChange={(e) => set({ description: e.target.value })} placeholder={"## Missionsziel\n…\n\n## Einsatzregeln\n…"} style={ta} />
+            <CardHead icon="doc" label="BRIEFING" tone="cyan" right={<span style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}><SaveDot id="op-brief" /><span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim2)" }}>Markdown</span></span>} />
+            <textarea data-testid="edit-description" value={form.description} maxLength={4000} onChange={(e) => setText("op-brief", { description: e.target.value }, { description: e.target.value.trim() })} placeholder={"## Missionsziel\n…\n\n## Einsatzregeln\n…"} style={ta} />
           </section>
         </div>
 
         {/* side column */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem", minWidth: 0 }}>
           <section style={card}>
-            <CardHead icon="eye" label="SICHTBARKEIT" tone="green" />
+            <CardHead icon="eye" label="SICHTBARKEIT" tone="green" right={<SaveDot id="op-vis" />} />
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
               {VIS.map((v) => {
                 const active = form.visibility === v.key;
                 return (
-                  <button key={v.key} type="button" data-testid={`edit-vis-${v.key}`} onClick={() => set({ visibility: v.key })} style={{ display: "flex", alignItems: "center", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: active ? "1px solid rgba(0,212,255,0.45)" : "1px solid rgba(255,255,255,0.08)", background: active ? "rgba(0,212,255,0.07)" : "transparent", color: active ? "var(--cyan)" : "#9fb1c2" }}>
+                  <button key={v.key} type="button" data-testid={`edit-vis-${v.key}`} onClick={() => setNow("op-vis", { visibility: v.key }, { visibility: normalizeVisibility(v.key) })} style={{ display: "flex", alignItems: "center", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: active ? "1px solid rgba(0,212,255,0.45)" : "1px solid rgba(255,255,255,0.08)", background: active ? "rgba(0,212,255,0.07)" : "transparent", color: active ? "var(--cyan)" : "#9fb1c2" }}>
                     <Ic name={v.icon} size={15} sw={1.6} />
                     <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>{v.label}</span><span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>{v.desc}</span></span>
                     {active && <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={15} sw={2} /></span>}
@@ -184,15 +191,15 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
           </section>
 
           <section style={card}>
-            <CardHead icon="mic" label="VOICE" tone="violet" />
+            <CardHead icon="mic" label="VOICE" tone="violet" right={<SaveDot id="op-voice" />} />
             <button
               type="button"
               data-testid="edit-squadlink-toggle"
-              aria-pressed={form.squadLinkVoiceEnabled}
-              onClick={() => set({ squadLinkVoiceEnabled: !form.squadLinkVoiceEnabled })}
-              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: form.squadLinkVoiceEnabled ? "1px solid rgba(160,100,255,0.45)" : "1px solid rgba(255,255,255,0.08)", background: form.squadLinkVoiceEnabled ? "rgba(160,100,255,0.07)" : "transparent", color: form.squadLinkVoiceEnabled ? "var(--purple)" : "#9fb1c2" }}
+              aria-pressed={voiceEnabled}
+              onClick={onToggleVoice}
+              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: voiceEnabled ? "1px solid rgba(160,100,255,0.45)" : "1px solid rgba(255,255,255,0.08)", background: voiceEnabled ? "rgba(160,100,255,0.07)" : "transparent", color: voiceEnabled ? "var(--purple)" : "#9fb1c2" }}
             >
-              <Ic name={form.squadLinkVoiceEnabled ? "check" : "mic"} size={15} sw={1.7} />
+              <Ic name={voiceEnabled ? "check" : "mic"} size={15} sw={1.7} />
               <span style={{ flex: 1 }}>
                 <span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>SquadLink Voice</span>
                 <span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>Commandanten bekommen ab Op-Start einen Direktlink in den CommandNet-Sprachraum.</span>
@@ -207,7 +214,7 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
                 <span style={{ color: "var(--text)", fontSize: "0.85rem" }}>Operation unwiderruflich löschen?</span>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <button type="button" data-testid="edit-delete-confirm" disabled={busy || !csrf} onClick={remove} style={{ flex: 1, padding: "0.5rem", border: "1px solid rgba(255,68,68,0.5)", background: "rgba(255,68,68,0.12)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Endgültig löschen</button>
-                  <button type="button" style={btnGhost} disabled={busy} onClick={() => setConfirmDel(false)}>Abbrechen</button>
+                  <button type="button" disabled={busy} onClick={() => setConfirmDel(false)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1.1rem", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Abbrechen</button>
                 </div>
               </div>
             ) : (
@@ -215,12 +222,6 @@ export function EckdatenForm({ op, csrf, onSaved, onNotice }: { op: OperationDet
             )}
           </div>
         </div>
-      </div>
-
-      <div style={actionBar}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--dim)", fontSize: "0.78rem" }}><span style={{ color: "var(--gold)" }}><Ic name="alert" size={14} sw={1.7} /></span><span style={{ color: "var(--gold)" }}>*</span> Pflichtfeld</div>
-        <div style={{ flex: 1 }} />
-        <button type="button" data-testid="edit-save" style={{ ...btnPrimary, opacity: dirty ? 1 : 0.7 }} disabled={busy || !csrf} onClick={save}><Ic name="save" size={15} sw={1.8} /> Änderungen speichern</button>
       </div>
 
       <style>{`@media (max-width: 860px){.fpw-edit-grid{display:flex !important;flex-direction:column}.fpw-two{grid-template-columns:1fr !important}}`}</style>

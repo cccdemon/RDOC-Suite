@@ -26,6 +26,7 @@ import {
 import type { FleetUnit, GuildSettingsMember, OperationDetail, OperatorView } from "../api/types";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
+import { SaveDot, useFieldSave } from "./fieldSave";
 
 const MONO = "var(--mono)";
 
@@ -66,6 +67,7 @@ export function OperatorPanel({
   onChanged,
   onError,
   embedded = false,
+  section = "fleet",
 }: {
   op: OperationDetail;
   csrf: string;
@@ -76,13 +78,23 @@ export function OperatorPanel({
   // manage already has a Commanders tab. Default layout = Triage (board + right
   // waitlist) to match the design's Flotte-tab.
   embedded?: boolean;
+  // Redesign (Variante A): the fleet family is split across console tabs. Each
+  // section renders only its block(s); "fleet" is the board + right rail.
+  section?: "fleet" | "cqb" | "formations" | "qa";
 }) {
+  const { touch, fail } = useFieldSave();
   const [view, setView] = useState<OperatorView | null>(null);
+  // Optimistic board copy: the board reads units from here so seat/unit actions
+  // update instantly without a parent reload (no flicker, picker/scroll preserved).
+  // Re-seeded from the server prop whenever the op reloads; rolled back on error.
+  const [units, setUnits] = useState<FleetUnit[]>(op.units);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [placing, setPlacing] = useState<{ userId: string; name: string } | null>(null);
   const [picker, setPicker] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [dragUserId, setDragUserId] = useState<string | null>(null);
+  // Drag payload when dragging a PENDING unit onto a seat (accept + seat its owner).
+  const [pendingDrag, setPendingDrag] = useState<{ unitId: string; captainId: string | null; captainName: string; reqId: string } | null>(null);
   const [leaderPick, setLeaderPick] = useState(false);
 
   const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
@@ -97,27 +109,87 @@ export function OperatorPanel({
       .catch((e) => onError(e instanceof ApiError ? e.message : "Operator-Daten nicht ladbar."));
   }
   useEffect(reload, [op.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Keep the optimistic board copy in sync with server reloads.
+  useEffect(() => { setUnits(op.units); }, [op]);
 
   // Guild members for the seat picker (assign anyone, not just flex signups).
   useEffect(() => {
     getGuildSettings(op.guild.id).then((r) => setMembers(r.members)).catch(() => setMembers([]));
   }, [op.guild.id]);
 
+  // ── action helpers ──────────────────────────────────────────────
+  // View-scoped action (cqb teams / formations list / questions / flex): optimistic
+  // local `view` mutation, then API; field-status feedback; no parent reload. On
+  // error, refetch the view to restore truth.
+  function viewAct(fieldId: string, apiCall: () => Promise<unknown>, optimistic?: (v: OperatorView) => OperatorView) {
+    setPlacing(null); setPicker(null); setDragUserId(null);
+    if (optimistic) setView((v) => (v ? optimistic(v) : v));
+    apiCall().then(() => touch(fieldId)).catch((e) => {
+      fail(fieldId);
+      onError(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+      reload();
+    });
+  }
+  // Board action (seats / units): optimistic local `units` mutation, then API.
+  // No parent onChanged() on success (kills flicker); on error roll back to the
+  // server truth via onChanged() + local re-seed.
+  function boardAct(fieldId: string, mutate: (units: FleetUnit[]) => FleetUnit[], apiCall: () => Promise<unknown>) {
+    setPlacing(null); setPicker(null); setDragUserId(null);
+    setUnits((prev) => mutate(prev));
+    apiCall().then(() => touch(fieldId)).catch((e) => {
+      fail(fieldId);
+      onError(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+      setUnits(op.units);
+      onChanged();
+    });
+  }
+  // Legacy deliberate action (still reloads): used where a server-side reshuffle is
+  // expected (withdraw / reject) and a clean refetch is preferable to optimism.
   async function run(action: () => Promise<unknown>) {
     try {
       await action();
-      setPlacing(null);
-      setPicker(null);
-      setDragUserId(null);
+      setPlacing(null); setPicker(null); setDragUserId(null);
       reload();
       onChanged();
     } catch (e) {
       onError(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
     }
   }
+  // Helper: map a single seat across the local units tree.
+  const mapSeat = (units: FleetUnit[], seatId: string, fn: (s: FleetUnit["seats"][number]) => FleetUnit["seats"][number]) =>
+    units.map((u) => ({ ...u, seats: u.seats.map((s) => (s.id === seatId ? fn(s) : s)) }));
 
-  const accepted = op.units.filter((u) => u.status === "accepted");
-  const pendingUnits = op.units.filter((u) => u.status === "pending");
+  // Assign a user to a seat, optimistically (board action).
+  const assignSeatOptimistic = (seatId: string, userId: string, username: string) =>
+    boardAct(`seat-${seatId}`, (us) => mapSeat(us, seatId, (x) => ({ ...x, claimedBy: { id: userId, username } })), () => assignSeat(op.id, seatId, userId, csrf));
+
+  // Drop a PENDING unit on an open seat: accept the unit (at its suggested Bedarf)
+  // AND bind its owner to the target seat. Optimistic; rolls back on error.
+  function dropPendingOnSeat(seatId: string, pd: { unitId: string; captainId: string | null; captainName: string; reqId: string }) {
+    setPlacing(null); setPicker(null); setDragUserId(null); setPendingDrag(null);
+    setUnits((prev) => {
+      const accepted = prev.map((u) => (u.id === pd.unitId ? { ...u, status: "accepted" } : u));
+      return pd.captainId ? mapSeat(accepted, seatId, (x) => ({ ...x, claimedBy: { id: pd.captainId!, username: pd.captainName } })) : accepted;
+    });
+    (async () => {
+      try {
+        await decideUnit(op.id, pd.unitId, "accept", csrf, pd.reqId || undefined);
+        if (pd.captainId) await assignSeat(op.id, seatId, pd.captainId, csrf);
+        touch(`seat-${seatId}`);
+        // a freshly-accepted unit brings its own seats — pull server truth in (no flash).
+        reload();
+        onChanged();
+      } catch (e) {
+        fail(`seat-${seatId}`);
+        onError(e instanceof ApiError ? e.message : "Annehmen fehlgeschlagen.");
+        setUnits(op.units);
+        onChanged();
+      }
+    })();
+  }
+
+  const accepted = units.filter((u) => u.status === "accepted");
+  const pendingUnits = units.filter((u) => u.status === "pending");
   // Roster = optimal lineup: open needs show as empty "unerfüllt" slots so every
   // category column appears even before a ship is offered (ship + fighter needs;
   // CQB lives in its own block). A lane shows when it has units OR open needs.
@@ -189,37 +261,32 @@ export function OperatorPanel({
     </select>
   );
 
-  const kpi = (val: number, lab: string, color: string, border: string) => (
-    <div key={lab} style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.42rem 0.7rem", border: `1px solid ${border}`, background: "rgba(255,255,255,0.01)", borderRadius: 8 }}>
-      <span style={{ fontFamily: MONO, fontSize: "1.02rem", color, lineHeight: 1 }}>{val}</span>
-      <span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>{lab}</span>
-    </div>
-  );
-
   // ── operator seat row (board): place-mode target / picker / drop target ──
   const opSeatRow = (u: FleetUnit, s: FleetUnit["seats"][number]) => {
-    const isTarget = (!!placing || !!dragUserId) && !s.claimedBy && s.active;
+    const isTarget = (!!placing || !!dragUserId || !!pendingDrag) && !s.claimedBy && s.active;
     return (
-      <div key={s.id} style={{ border: "1px solid rgba(0,212,255,0.06)", borderRadius: 9, overflow: "hidden", opacity: s.active ? 1 : 0.55 }}>
+      <div key={s.id} style={{ border: isTarget ? "1px solid rgba(0,255,136,0.55)" : "1px solid rgba(0,212,255,0.06)", borderRadius: 9, overflow: "hidden", opacity: s.active ? 1 : 0.55, transition: "border-color .12s" }}>
         <div
           data-testid={!s.claimedBy && s.active ? `op-target-${s.id}` : undefined}
           onClick={() => {
             if (s.claimedBy || !s.active) return;
-            if (placing) run(() => assignSeat(op.id, s.id, placing.userId, csrf));
+            if (placing) assignSeatOptimistic(s.id, placing.userId, placing.name);
             else setPicker(picker === s.id ? null : s.id);
           }}
           onDragOver={(e) => {
-            if (!s.claimedBy && s.active && dragUserId) e.preventDefault();
+            if (!s.claimedBy && s.active && (dragUserId || pendingDrag)) e.preventDefault();
           }}
           onDrop={(e) => {
             if (s.claimedBy || !s.active) return;
+            e.preventDefault();
+            if (pendingDrag) { dropPendingOnSeat(s.id, pendingDrag); return; }
             // state update from dragstart can lag a synchronous drop; fall back
             // to the dataTransfer payload (same as the design prototype).
             let uid = dragUserId;
             if (!uid) { try { uid = e.dataTransfer.getData("text/plain") || null; } catch { uid = null; } }
             if (!uid) return;
-            e.preventDefault();
-            run(() => assignSeat(op.id, s.id, uid!, csrf));
+            const name = view?.crewRequests.find((r) => r.userId === uid)?.username ?? "—";
+            assignSeatOptimistic(s.id, uid, name);
           }}
           style={{
             display: "flex",
@@ -243,17 +310,18 @@ export function OperatorPanel({
             title="Sitz umbenennen (Enter)"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-            onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== s.label) run(() => patchSeat(op.id, s.id, csrf, { label: v })); }}
+            onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== s.label) boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, label: v })), () => patchSeat(op.id, s.id, csrf, { label: v })); }}
           />
+          <span onClick={(e) => e.stopPropagation()}><SaveDot id={`seat-${s.id}`} /></span>
           {!s.claimedBy && (
-            <button type="button" data-testid={`op-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} onClick={(e) => { e.stopPropagation(); run(() => patchSeat(op.id, s.id, csrf, { active: !s.active })); }} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "AUS" : "AN"}</button>
+            <button type="button" data-testid={`op-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, active: !x.active })), () => patchSeat(op.id, s.id, csrf, { active: !s.active })); }} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "AUS" : "AN"}</button>
           )}
           {s.claimedBy ? (
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
               <Avatar name={s.claimedBy.username} />
               <span style={{ fontSize: "0.8rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "6.5rem" }}>{s.claimedBy.username}</span>
               {s.order !== 0 && (
-                <button type="button" data-testid={`op-free-${s.id}`} title="Platz freigeben" onClick={(e) => { e.stopPropagation(); run(() => unassignSeat(op.id, s.id, csrf)); }} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#7e92a4", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button type="button" data-testid={`op-free-${s.id}`} title="Platz freigeben" onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, claimedBy: null })), () => unassignSeat(op.id, s.id, csrf)); }} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#7e92a4", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={11} sw={2} />
                 </button>
               )}
@@ -269,7 +337,7 @@ export function OperatorPanel({
             <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>WER SOLL HIER REIN?</div>
             {view.crewRequests.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.78rem" }}>Keine flexiblen Anmeldungen.</div>}
             {view.crewRequests.map((r) => (
-              <button key={r.userId} type="button" data-testid={`op-pick-${r.userId}`} onClick={(e) => { e.stopPropagation(); run(() => assignSeat(op.id, s.id, r.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.28)", background: "rgba(240,165,0,0.05)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+              <button key={r.userId} type="button" data-testid={`op-pick-${r.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, r.userId, r.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.28)", background: "rgba(240,165,0,0.05)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
                 <Avatar name={r.username} />
                 <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{r.username}</span>
                 <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#f0a500" }}>FLEX</span>
@@ -290,7 +358,7 @@ export function OperatorPanel({
                 .filter((m) => m.username.toLowerCase().includes(memberFilter.trim().toLowerCase()))
                 .slice(0, 8)
                 .map((m) => (
-                  <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); run(() => assignSeat(op.id, s.id, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
+                  <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, m.userId, m.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
                     <Avatar name={m.username} />
                     <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
                     <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#00d4ff" }}>MITGLIED</span>
@@ -517,14 +585,29 @@ export function OperatorPanel({
     </section>
   );
 
+  // Redesign: pending units are DRAGGED onto an open seat (or use the Bedarf to pick
+  // the slot they fill on accept) instead of an "Annehmen" button. Reject stays as ✕.
   const pendingBlock = pendingUnits.length > 0 && (
-    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }}>
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="pending-block">
       <div style={railLabel}>ANSTEHENDE EINHEITEN ({pendingUnits.length})</div>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem", padding: "0.4rem 0.6rem", borderRadius: 8, background: "rgba(240,165,0,0.05)", border: "1px solid rgba(240,165,0,0.14)" }}>
+        <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="grip" size={13} /></span>
+        <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.03em", color: "#9fb1c2", lineHeight: 1.4 }}>Karte auf einen offenen Sitz ziehen — direkt eingeteilt, kein Annehmen nötig.</span>
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {pendingUnits.map((u) => {
           const sel = acceptReq[u.id] ?? suggestReqId(u);
+          const dz = pendingDrag?.unitId === u.id;
           return (
-          <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap", padding: "0.6rem 0.7rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(240,165,0,0.14)", borderRadius: 9 }}>
+          <div
+            key={u.id}
+            draggable
+            data-testid={`pending-${u.id}`}
+            onDragStart={(e) => { setPendingDrag({ unitId: u.id, captainId: u.captain?.id ?? null, captainName: u.captain?.username ?? u.name, reqId: sel }); setDragUserId(null); setPlacing(null); setPicker(null); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", u.id); } catch { /* noop */ } }}
+            onDragEnd={() => setPendingDrag(null)}
+            style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", padding: "0.6rem 0.7rem", cursor: "grab", opacity: dz ? 0.45 : 1, background: dz ? "rgba(240,165,0,0.08)" : "rgba(255,255,255,0.013)", border: "1px solid rgba(240,165,0,0.16)", borderRadius: 9 }}
+          >
+            <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="grip" size={14} /></span>
             <span style={{ flex: "1 1 160px", minWidth: 0, color: "#eaf4fb", fontWeight: 600 }}>{u.name} <span style={{ color: "#7e92a4", fontWeight: 400, fontSize: "0.84rem" }}>· {u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</span></span>
             {requirements.length > 0 && (
               <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
@@ -532,8 +615,9 @@ export function OperatorPanel({
                 {reqSelect(u, sel, (id) => setAcceptReq((m) => ({ ...m, [u.id]: id })), `accept-req-${u.id}`)}
               </label>
             )}
-            <button type="button" data-testid={`accept-${u.id}`} onClick={() => run(() => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ padding: "0.38rem 0.7rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, cursor: "pointer" }}>Annehmen</button>
-            <button type="button" data-testid={`reject-${u.id}`} onClick={() => run(() => decideUnit(op.id, u.id, "reject", csrf))} style={{ padding: "0.38rem 0.7rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, cursor: "pointer" }}>Ablehnen</button>
+            <button type="button" data-testid={`accept-${u.id}`} title="Ohne Sitz annehmen" onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.6rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
+            <button type="button" data-testid={`reject-${u.id}`} title="Ablehnen" onClick={() => run(() => decideUnit(op.id, u.id, "reject", csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
+            <SaveDot id={`pending-${u.id}`} />
           </div>
           );
         })}
@@ -560,14 +644,15 @@ export function OperatorPanel({
                 defaultValue={tm.name}
                 title="Squad umbenennen (Enter)"
                 onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== tm.name) run(() => renameCqbTeam(op.id, tm.id, csrf, v)); }}
+                onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== tm.name) viewAct(`team-${tm.id}`, () => renameCqbTeam(op.id, tm.id, csrf, v), (vw) => ({ ...vw, cqbTeams: vw.cqbTeams.map((x) => (x.id === tm.id ? { ...x, name: v } : x)) })); }}
                 style={{ flex: 1, minWidth: 0, fontSize: "0.82rem" }}
               />
+              <SaveDot id={`team-${tm.id}`} />
               <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>FÄHRT IN</span>
               <select
                 data-testid={`cqb-team-carrier-${tm.id}`}
                 value={tm.carrierUnitId ?? ""}
-                onChange={(e) => run(() => assignCqbTeamCarrier(op.id, tm.id, csrf, e.target.value || null))}
+                onChange={(e) => { const cu = e.target.value || null; viewAct(`team-${tm.id}`, () => assignCqbTeamCarrier(op.id, tm.id, csrf, cu), (vw) => ({ ...vw, cqbTeams: vw.cqbTeams.map((x) => (x.id === tm.id ? { ...x, carrierUnitId: cu } : x)) })); }}
                 style={{ flexShrink: 0, maxWidth: "55%", background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
               >
                 <option value="">— eigenständig —</option>
@@ -590,10 +675,11 @@ export function OperatorPanel({
                   <strong style={{ fontSize: "0.86rem", color: "#eaf4fb" }}>{s.username}</strong>
                   {s.note && <div style={{ color: "#7e92a4", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.note}</div>}
                 </div>
+                <SaveDot id={`cqb-${s.id}`} />
                 <select
                   data-testid={`cqb-assign-${s.id}`}
                   value={s.assignedGroupId ?? ""}
-                  onChange={(e) => run(() => assignCqbSoldier(op.id, s.id, csrf, e.target.value || null))}
+                  onChange={(e) => { const g = e.target.value || null; viewAct(`cqb-${s.id}`, () => assignCqbSoldier(op.id, s.id, csrf, g), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, assignedGroupId: g } : x)) })); }}
                   style={{ flexShrink: 0, maxWidth: "50%", background: "#0e1926", border: "1px solid rgba(240,165,0,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                 >
                   <option value="">— kein Team —</option>
@@ -617,16 +703,33 @@ export function OperatorPanel({
   // loaded vehicles). Ships without a formation list under "Ohne Verband".
   const carriedTeams = (shipId: string) => view.cqbTeams.filter((tm) => tm.carrierUnitId === shipId);
   const carriedVehicles = (shipId: string) => accepted.filter((u) => u.unitType === "vehicle" && u.carrierUnitId === shipId);
-  const formationShips = (fid: string) => accepted.filter((u) => u.unitType === "ship" && u.formationId === fid);
-  const ungroupedShips = accepted.filter((u) => u.unitType === "ship" && !u.formationId);
-  const compShipNode = (ship: FleetUnit) => {
-    const teams = carriedTeams(ship.id);
-    const vehicles = carriedVehicles(ship.id);
+  // Verband-Zuordnung für ALLE Einheitstypen: group every accepted unit, not just ships.
+  const formationUnits = (fid: string) => accepted.filter((u) => u.formationId === fid);
+  const ungroupedUnits = accepted.filter((u) => !u.formationId);
+  const unitMeta = (u: FleetUnit): [string, string] =>
+    u.unitType === "ship" ? (u.shipClass === "Fighter" ? ["#a78bfa", "fighter"] : ["#00d4ff", "ship"])
+      : u.unitType === "squad" ? ["#f0a500", "fps"]
+        : u.unitType === "vehicle" ? ["#ff7a45", "vehicle"] : ["#9fb1c2", "board"];
+  // Editable composition row: type icon + name + a formation (Verband) select.
+  const compUnitRow = (u: FleetUnit) => {
+    const [color, icon] = unitMeta(u);
+    const teams = u.unitType === "ship" ? carriedTeams(u.id) : [];
+    const vehicles = u.unitType === "ship" ? carriedVehicles(u.id) : [];
     return (
-      <div key={ship.id} style={{ marginBottom: "0.3rem" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", fontSize: "0.82rem", color: "#dce8f0" }}>
-          <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name={ship.shipClass === "Fighter" ? "fighter" : "ship"} size={13} sw={1.7} /></span>
-          {ship.name}{ship.shipClass ? <span style={{ color: "#5b6b7a", fontFamily: MONO, fontSize: "0.62rem" }}> · {ship.shipClass}</span> : null}
+      <div key={u.id} style={{ marginBottom: "0.3rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0.5rem", borderRadius: 7, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.012)" }}>
+          <span style={{ color, display: "inline-flex", flexShrink: 0 }}><Ic name={icon} size={13} sw={1.7} /></span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", color: "#dce8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}{u.shipClass ? <span style={{ color: "#5b6b7a", fontFamily: MONO, fontSize: "0.6rem" }}> · {u.shipClass}</span> : null}</span>
+          <SaveDot id={`unitfm-${u.id}`} />
+          <select
+            data-testid={`comp-formation-${u.id}`}
+            value={u.formationId ?? ""}
+            onChange={(e) => { const fid = e.target.value || null; boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, formationId: fid } : x)), () => assignUnitFormation(op.id, u.id, csrf, fid)); }}
+            style={{ flexShrink: 0, maxWidth: "9.5rem", background: "#0e1926", border: "1px solid rgba(167,139,250,0.3)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.62rem", padding: "0.2rem 0.4rem", borderRadius: 6, outline: "none" }}
+          >
+            <option value="">— ohne Verband —</option>
+            {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
         </div>
         {(teams.length > 0 || vehicles.length > 0) && (
           <div style={{ marginLeft: "1.3rem", marginTop: "0.2rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
@@ -663,40 +766,43 @@ export function OperatorPanel({
                   defaultValue={f.name}
                   title="Verband umbenennen (Enter)"
                   onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                  onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== f.name) run(() => renameFormation(op.id, f.id, csrf, v)); }}
+                  onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== f.name) viewAct(`fm-${f.id}`, () => renameFormation(op.id, f.id, csrf, v), (vw) => ({ ...vw, formations: vw.formations.map((x) => (x.id === f.id ? { ...x, name: v } : x)) })); }}
                   style={{ flex: 1, minWidth: 0, fontSize: "0.86rem" }}
                 />
-                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#9fb1c2" }}>{count} Schiff{count === 1 ? "" : "e"}</span>
-                <button type="button" data-testid={`formation-del-${f.id}`} title="Verband löschen" onClick={() => run(() => deleteFormation(op.id, f.id, csrf))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
+                <SaveDot id={`fm-${f.id}`} />
+                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#9fb1c2" }}>{count} Einheit{count === 1 ? "" : "en"}</span>
+                <button type="button" data-testid={`formation-del-${f.id}`} title="Verband löschen" onClick={() => { setUnits((us) => us.map((x) => (x.formationId === f.id ? { ...x, formationId: null } : x))); viewAct(`fm-${f.id}`, () => deleteFormation(op.id, f.id, csrf), (vw) => ({ ...vw, formations: vw.formations.filter((x) => x.id !== f.id) })); }} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
               </div>
             );
           })}
         </div>
       )}
-      {/* ZUSAMMENSETZUNG — read-only preview of the final assembly */}
-      {accepted.some((u) => u.unitType === "ship") && (
+      {/* ZUSAMMENSETZUNG — assign EVERY unit type (ship/fighter/squad/vehicle) to a Verband. */}
+      {accepted.length > 0 && (
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.8rem", marginBottom: "0.9rem" }}>
-          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2", marginBottom: "0.6rem" }}>ZUSAMMENSETZUNG</div>
+          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2", marginBottom: "0.2rem" }}>ZUSAMMENSETZUNG — EINHEITEN ZUORDNEN</div>
+          <div style={{ fontSize: "0.72rem", color: "#5b6b7a", marginBottom: "0.6rem" }}>Schiffe, Jäger, Fahrzeuge und Bodentruppen einem Verband zuordnen — sofort gespeichert.</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
             {view.formations.map((f) => (
               <div key={f.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}>
                   <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="board" size={13} /></span>
                   <strong style={{ fontSize: "0.8rem", color: "#c9b8ff" }}>{f.name}</strong>
+                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a" }}>{formationUnits(f.id).length} Einheit{formationUnits(f.id).length === 1 ? "" : "en"}</span>
                 </div>
                 <div style={{ marginLeft: "0.4rem" }}>
-                  {formationShips(f.id).length > 0
-                    ? formationShips(f.id).map(compShipNode)
-                    : <div style={{ fontSize: "0.74rem", color: "#5b6b7a", fontStyle: "italic" }}>noch keine Schiffe zugeordnet</div>}
+                  {formationUnits(f.id).length > 0
+                    ? formationUnits(f.id).map(compUnitRow)
+                    : <div style={{ fontSize: "0.74rem", color: "#5b6b7a", fontStyle: "italic" }}>keine Einheiten</div>}
                 </div>
               </div>
             ))}
-            {ungroupedShips.length > 0 && (
+            {ungroupedUnits.length > 0 && (
               <div>
                 {view.formations.length > 0 && (
                   <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", marginBottom: "0.3rem" }}>OHNE VERBAND</div>
                 )}
-                <div style={{ marginLeft: "0.4rem" }}>{ungroupedShips.map(compShipNode)}</div>
+                <div style={{ marginLeft: "0.4rem" }}>{ungroupedUnits.map(compUnitRow)}</div>
               </div>
             )}
           </div>
@@ -743,27 +849,29 @@ export function OperatorPanel({
                     <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
                     <button type="button" data-testid={`unit-remove-${u.id}`} title="Einheit entfernen" onClick={() => { if (window.confirm(`„${u.name}" aus der Operation entfernen?`)) run(() => withdrawUnit(op.id, u.id, csrf)); }} style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
                   </div>
-                  {(requirements.length > 0 || (u.unitType === "ship" && view.formations.length > 0) || u.unitType === "vehicle") && (
+                  {(requirements.length > 0 || view.formations.length > 0 || u.unitType === "vehicle") && (
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
                       {requirements.length > 0 && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
                           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>BEDARF</span>
-                          {reqSelect(u, u.requirementId ?? "", (id) => run(() => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
+                          {reqSelect(u, u.requirementId ?? "", (id) => boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, requirementId: id || null } : x)), () => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
                         </span>
                       )}
-                      {u.unitType === "ship" && view.formations.length > 0 && (
+                      {/* Verband-Zuordnung für ALLE Einheitstypen (Schiffe/Jäger/Bodentruppen/Fahrzeuge). */}
+                      {view.formations.length > 0 && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
                           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>VERBAND</span>
                           <select
                             data-testid={`unit-formation-${u.id}`}
                             value={u.formationId ?? ""}
                             onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => run(() => assignUnitFormation(op.id, u.id, csrf, e.target.value || null))}
+                            onChange={(e) => { const fid = e.target.value || null; boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, formationId: fid } : x)), () => assignUnitFormation(op.id, u.id, csrf, fid)); }}
                             style={{ background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— kein —</option>
                             {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                           </select>
+                          <SaveDot id={`unitfm-${u.id}`} />
                         </span>
                       )}
                       {u.unitType === "vehicle" && (
@@ -888,21 +996,19 @@ export function OperatorPanel({
     </div>
   );
 
+  // Redesign: each console tab renders one section. "fleet" = board + right rail;
+  // the rest are their own tabs (CQB / Verbände / Fragen).
+  if (section === "cqb")
+    return <div data-testid="operator-panel">{placeBanner}{pendingBlock}{cqbBlock || <section style={card}><div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div></section>}</div>;
+  if (section === "formations")
+    return <div data-testid="operator-panel">{formationBlock}</div>;
+  if (section === "qa")
+    return <div data-testid="operator-panel">{qaPanel}</div>;
+
+  // section === "fleet"
   return (
     <div data-testid="operator-panel">
       {placeBanner}
-
-      {/* KPI STRIP (no layout toggle — a single Flotte & Warteliste view, IA merge D) */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end", gap: "0.9rem 1.4rem", marginBottom: "1.4rem" }}>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          {kpi(filled, "BESETZT", "#00ff88", "rgba(0,255,136,0.25)")}
-          {kpi(open, "OFFEN", "#f0a500", "rgba(240,165,0,0.28)")}
-          {kpi(flexWaiting, "FLEX", "#f0a500", "rgba(240,165,0,0.28)")}
-          {kpi(openQ, "FRAGEN", "#00d4ff", "rgba(0,212,255,0.2)")}
-        </div>
-      </div>
-
-      {/* Single layout: board-first main + right action-queue rail */}
       <div style={{ display: "flex", gap: "1.3rem", alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 420px", minWidth: 0 }}>
           <section style={{ ...card, marginBottom: "1.3rem", padding: "1rem 1.2rem" }}>
@@ -920,15 +1026,12 @@ export function OperatorPanel({
           </section>
           {pendingBlock}
           {boardBlock}
-          {formationBlock}
-          {cqbBlock}
           {toolsBlock}
         </div>
         <aside style={{ flex: "0 0 332px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start", display: "flex", flexDirection: "column", gap: "1rem" }}>
           {flexPanel}
           {interestPanel}
           {needsPanel}
-          {qaPanel}
           {!embedded && actionsPanel}
         </aside>
       </div>

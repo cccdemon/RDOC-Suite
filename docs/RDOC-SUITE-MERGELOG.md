@@ -1,5 +1,48 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-23: Operator-Konsole Redesign (Variante A „Tabs + Live") — fleetplanner-web
+
+Status: In Arbeit (2026-06-23) — Code geschrieben, Typecheck/Tests laufen auf dem Server.
+
+Backend-offen (README): individueller Voice-Empfänger-Endpunkt + Pending→Sitz-Owner-Mapping
+beim Drop — vorerst Local-State bzw. README-literal (accept + assignSeat captain).
+
+Design-Handoff (`START_HERE.md` + `IMPLEMENTATION_PLAN.md` + Prototyp `Operator-Konsole
+Redesign.dc.html`, Variante A). Ziel: einheitliches Autosave + Feld-Status + weniger
+Vollreload-Flackern in der Operator-Konsole. SPA-only (`apps/fleetplanner-web`), API
+unverändert (vorhandene Endpunkte). Kein neuer Backend-Endpunkt (Voice-Empfänger-Token
+bleibt Prototyp-/Local-State, README-Backend-Klärung offen).
+
+Betroffen: `components/OperatorConsole.tsx`, `OperatorPanel.tsx`, `EckdatenForm.tsx`,
+neu `components/fieldSave.tsx` (Provider + `useFieldSave` + `<SaveDot>` + `GlobalSaveBadge`
++ `debounce`), neu `components/VoicePanel.tsx`, `Icons.tsx` (+`copy`,+`grip`),
+`styles.css` (+`@keyframes pulseDot`/`popIn`), `test/app.test.tsx`.
+
+Umsetzung:
+- **Feld-Status-Modell** (`idle|saving|saved|error`), Provider in OperatorConsole → ein
+  globaler Save-State über alle Tabs; `<SaveDot id>` pro Feld, `GlobalSaveBadge` im Header.
+  Text debounced 600 ms, Toggles/Selects/Status sofort.
+- **Status-Header** (sticky, immer über den Tabs): Titel + Voice-Schnellschalter +
+  GlobalSaveBadge; Zeile 2 inline Segmented-Status-Control (sofort, Bestätigung nur
+  `cancelled`) + KPI-Streifen.
+- **Tabs** prominenter (Pills 11px/17px, aktiv cyan+Glow) + Zähler-Badges; neue Tab-IA:
+  Flotte&Board · Eckdaten · Voice · CQB · Verbände · Fragen · Admin. OperatorPanel bekommt
+  `section`-Prop, damit die Fleet-Familie auf eigene Tabs aufgeteilt wird (Blöcke existieren
+  bereits als Konstanten).
+- **EckdatenForm**: `dirty`/Save-Bar entfernt → Autosave + SaveDot je Feld.
+- **OperatorConsole Admin**: „Veröffentlichen" Submit → Autosave; Serie-erstellen/-stoppen
+  behalten Bestätigung (destruktiv/erzeugt viele Objekte).
+- **OperatorPanel**: lokaler optimistischer `units`-State (kein Parent-`onChanged()`-Vollreload
+  je Board-Aktion mehr; Rollback per Server-Resync bei Fehler), Drag-and-Drop für anstehende
+  Einheiten auf offene Sitze (accept + Owner→Sitz), Verband-Zuordnung für ALLE Einheitstypen
+  (Board-Select + Composition-Tree), SaveDot an Inline-Edits.
+- **Voice-Tab**: Master-Toggle (`squadLinkVoiceEnabled`), Raum-Link (read-only + Kopieren),
+  Empfänger-Liste (besetzte Sitze + Leiter, dedupe, Rolle) mit Link-Toggle (Local-State bis
+  Backend-Endpunkt steht).
+
+Tests: `manage-status-apply`/`tpl-publish`-Submit-Flows auf Autosave/inline umstellen,
+`edit-save`→Autosave, `accept-*` ggf. auf Drop. CHANGELOG-Eintrag folgt.
+
 ## Queued / Planned Step - 2026-06-23: Kalender-Status-Bug + RDOC-RTC-Bot aus Discord-Diagnose entfernen — Branch master
 
 Status: In Arbeit (2026-06-23).
