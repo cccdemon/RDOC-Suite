@@ -1,5 +1,31 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-06-23: Voice-Empfänger persistieren + Pending-Drop-Fix (Operator-Konsole Follow-up)
+
+Status: In Arbeit (2026-06-23).
+
+Follow-up zum Operator-Konsole-Redesign (`dbd436c`).
+
+**#1 Per-Recipient Voice (backend + frontend):** SquadLink = EIN geteilter Raum-Token je Op
+(HMAC(secret, `op-<id>-command`)) — kein Per-User-Token. „Empfänger" = Grant-Liste von userIds
+(wer den Link bekommen darf). Heute holen nur Leiter/Operatoren den Link (`requireCoverManager`).
+- Prisma: neues Model `OperationVoiceRecipient` (operationId, userId, @@unique) + Migration
+  `20260623120000_op_voice_recipients`.
+- Routes `apiV1.ts`: `GET /operations/:id/voice/recipients` (operator-gated) → `{userIds}`;
+  `PUT /operations/:id/voice/recipients` (operator-gated, write) Body `{userIds:string[]}` =
+  ganze Menge ersetzen. `GET /squadlink`-Gate erweitert: gewährter Empfänger ODER Cover-Manager
+  bekommt den Link (vorher nur Manager).
+- Frontend `client.ts` + `VoicePanel.tsx`: Local-State → echte API (Laden beim Mount, PUT bei
+  Toggle/ALLE ZUWEISEN), csrf-Prop von der Konsole.
+
+**#2 Pending-Drop entfernt (Domänen-Fehler):** Eine anstehende Einheit ist ein SCHIFF/SQUAD,
+dessen Captain bei `accept` automatisch auf Sitz 0 der EIGENEN Einheit gesetzt wird
+(`services/units.ts`). Drop auf einen fremden Sitz → Captain doppelt besetzt. „Person auf Sitz
+ziehen" wird bereits korrekt durch Flex-Personen-Drag bedient. Daher Pending-Drag-to-Seat
+zurückgebaut → nur „Annehmen"-Button (+ Ablehnen-✕) bleibt; Flex-Drag unverändert.
+
+
+
 ## Completed - 2026-06-23: Operator-Konsole Redesign (Variante A „Tabs + Live") — fleetplanner-web
 
 Status: ✓ Deployed (2026-06-23), Commit `dbd436c`, master. Prod-Build `fleetplanner-web` grün.

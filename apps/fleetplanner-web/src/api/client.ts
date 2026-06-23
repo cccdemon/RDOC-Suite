@@ -370,6 +370,15 @@ export function setOperationStatus(id: string, csrfToken: string, status: string
   return mutate("POST", `/operations/${encodeURIComponent(id)}/status`, csrfToken, { status });
 }
 
+// SquadLink voice recipients — the operator-curated grant list of userIds who
+// receive the op's (shared) CommandNet deep-link. Replace-whole-set semantics.
+export function getVoiceRecipients(id: string): Promise<{ userIds: string[] }> {
+  return get<{ userIds: string[] }>(`/operations/${encodeURIComponent(id)}/voice/recipients`);
+}
+export function setVoiceRecipients(id: string, csrfToken: string, userIds: string[]): Promise<{ ok: true; userIds: string[] }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(id)}/voice/recipients`, csrfToken, { userIds });
+}
+
 export function deleteOperation(id: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("DELETE", `/operations/${encodeURIComponent(id)}`, csrfToken);
 }

@@ -27,11 +27,24 @@ API unverändert.
   Kopieren, Empfänger-Liste (besetzte Sitze + Leiter, dedupe, Rolle) mit Link-Toggle (lokal,
   bis ein Backend-Empfänger-Endpunkt steht).
 - **`OperatorPanel`**: optimistischer lokaler `units`-State für das Board (kein Parent-Reload
-  je Sitz-Aktion, Picker/Scroll bleiben), Drag-and-Drop anstehender Einheiten auf offene Sitze
-  (accept + Owner→Sitz), Verband-Zuordnung für ALLE Einheitstypen (Board-Select + editierbare
-  Zusammensetzung), `<SaveDot>` an allen Inline-Edits; `section`-Prop teilt die Fleet-Familie
-  auf eigene Konsolen-Tabs.
+  je Sitz-Aktion, Picker/Scroll bleiben), Verband-Zuordnung für ALLE Einheitstypen
+  (Board-Select + editierbare Zusammensetzung), `<SaveDot>` an allen Inline-Edits; `section`-Prop
+  teilt die Fleet-Familie auf eigene Konsolen-Tabs. Flex-Personen-Drag auf Sitze bleibt.
 - `Icons.tsx`: `copy` + `grip`; `styles.css`: `@keyframes fpwPulseDot`/`fpwPopIn`.
+
+### Added/Fixed - SquadLink-Empfänger persistiert + Pending-Drop-Fix (2026-06-23)
+
+Follow-up zum Konsole-Redesign.
+
+- **Voice-Empfänger jetzt serverseitig** (`apps/fleetplanner`): neues Model
+  `OperationVoiceRecipient` (+ Migration), `GET`/`PUT /operations/:id/voice/recipients`
+  (operator-gated, Grant-Liste von userIds). `GET /squadlink` gibt den (geteilten) CommandNet-
+  Link nun auch gewährten Empfängern, nicht nur Op-Leitern. `VoicePanel` lädt/speichert die
+  Liste statt Local-State (optimistisch, Rollback bei Fehler).
+- **Pending-Drag-to-Seat entfernt** (Domänen-Fehler): eine anstehende Einheit ist ein
+  Schiff/Squad, dessen Captain bei `accept` automatisch auf den eigenen Sitz 0 kommt — ein
+  Drop auf einen fremden Sitz hätte doppelt besetzt. Pending nutzt wieder „Annehmen"/„✕";
+  „Person auf Sitz ziehen" bleibt über Flex-Personen.
 
 ### Fixed - Calendar ignored operation status (2026-06-23)
 

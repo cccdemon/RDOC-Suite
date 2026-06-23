@@ -260,7 +260,7 @@ function OperatorConsoleInner({
             </div>
           )}
 
-          {tab === "voice" && <VoicePanel op={op} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} />}
+          {tab === "voice" && <VoicePanel op={op} csrf={csrf} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} onNotice={setNotice} />}
 
           {tab === "cover" && <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />}
 

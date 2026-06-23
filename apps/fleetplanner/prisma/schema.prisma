@@ -40,6 +40,7 @@ model User {
   templatesCreated    OperationTemplate[]
   createdPolls        Poll[]
   pollVotes           PollVote[]
+  voiceRecipients     OperationVoiceRecipient[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -378,8 +379,27 @@ model Operation {
   cqbSignups               CqbSignup[]
   hangarShares             OperationHangarShare[]
   resourceLinks            OperationResourceLink[]
+  voiceRecipients          OperationVoiceRecipient[]
 
   @@index([recurrenceId])
+}
+
+// FR SquadLink-CommandNet: operator-curated grant list of who receives the op's
+// CommandNet voice deep-link. The room token is shared per op (HMAC over the room
+// name) — this table only records WHICH users the operator granted the link to,
+// so they can fetch it from GET /squadlink even when they're not op leaders.
+model OperationVoiceRecipient {
+  id          String   @id @default(cuid())
+  operationId String
+  userId      String
+  createdAt   DateTime @default(now())
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([operationId, userId])
+  @@index([operationId])
+  @@index([userId])
 }
 
 // A player can optionally let the operators of a specific operation see their

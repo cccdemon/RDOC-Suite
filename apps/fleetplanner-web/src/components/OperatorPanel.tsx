@@ -93,8 +93,6 @@ export function OperatorPanel({
   const [picker, setPicker] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [dragUserId, setDragUserId] = useState<string | null>(null);
-  // Drag payload when dragging a PENDING unit onto a seat (accept + seat its owner).
-  const [pendingDrag, setPendingDrag] = useState<{ unitId: string; captainId: string | null; captainName: string; reqId: string } | null>(null);
   const [leaderPick, setLeaderPick] = useState(false);
 
   const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
@@ -163,30 +161,6 @@ export function OperatorPanel({
   const assignSeatOptimistic = (seatId: string, userId: string, username: string) =>
     boardAct(`seat-${seatId}`, (us) => mapSeat(us, seatId, (x) => ({ ...x, claimedBy: { id: userId, username } })), () => assignSeat(op.id, seatId, userId, csrf));
 
-  // Drop a PENDING unit on an open seat: accept the unit (at its suggested Bedarf)
-  // AND bind its owner to the target seat. Optimistic; rolls back on error.
-  function dropPendingOnSeat(seatId: string, pd: { unitId: string; captainId: string | null; captainName: string; reqId: string }) {
-    setPlacing(null); setPicker(null); setDragUserId(null); setPendingDrag(null);
-    setUnits((prev) => {
-      const accepted = prev.map((u) => (u.id === pd.unitId ? { ...u, status: "accepted" } : u));
-      return pd.captainId ? mapSeat(accepted, seatId, (x) => ({ ...x, claimedBy: { id: pd.captainId!, username: pd.captainName } })) : accepted;
-    });
-    (async () => {
-      try {
-        await decideUnit(op.id, pd.unitId, "accept", csrf, pd.reqId || undefined);
-        if (pd.captainId) await assignSeat(op.id, seatId, pd.captainId, csrf);
-        touch(`seat-${seatId}`);
-        // a freshly-accepted unit brings its own seats — pull server truth in (no flash).
-        reload();
-        onChanged();
-      } catch (e) {
-        fail(`seat-${seatId}`);
-        onError(e instanceof ApiError ? e.message : "Annehmen fehlgeschlagen.");
-        setUnits(op.units);
-        onChanged();
-      }
-    })();
-  }
 
   const accepted = units.filter((u) => u.status === "accepted");
   const pendingUnits = units.filter((u) => u.status === "pending");
@@ -263,7 +237,7 @@ export function OperatorPanel({
 
   // ── operator seat row (board): place-mode target / picker / drop target ──
   const opSeatRow = (u: FleetUnit, s: FleetUnit["seats"][number]) => {
-    const isTarget = (!!placing || !!dragUserId || !!pendingDrag) && !s.claimedBy && s.active;
+    const isTarget = (!!placing || !!dragUserId) && !s.claimedBy && s.active;
     return (
       <div key={s.id} style={{ border: isTarget ? "1px solid rgba(0,255,136,0.55)" : "1px solid rgba(0,212,255,0.06)", borderRadius: 9, overflow: "hidden", opacity: s.active ? 1 : 0.55, transition: "border-color .12s" }}>
         <div
@@ -274,14 +248,14 @@ export function OperatorPanel({
             else setPicker(picker === s.id ? null : s.id);
           }}
           onDragOver={(e) => {
-            if (!s.claimedBy && s.active && (dragUserId || pendingDrag)) e.preventDefault();
+            if (!s.claimedBy && s.active && dragUserId) e.preventDefault();
           }}
           onDrop={(e) => {
             if (s.claimedBy || !s.active) return;
             e.preventDefault();
-            if (pendingDrag) { dropPendingOnSeat(s.id, pendingDrag); return; }
-            // state update from dragstart can lag a synchronous drop; fall back
-            // to the dataTransfer payload (same as the design prototype).
+            // Only flex persons (CrewAssignmentRequest) drop onto seats. A pending
+            // UNIT is a ship/squad whose captain auto-seats in its own seat on accept,
+            // so it has no meaningful single-seat target — use "Annehmen" instead.
             let uid = dragUserId;
             if (!uid) { try { uid = e.dataTransfer.getData("text/plain") || null; } catch { uid = null; } }
             if (!uid) return;
@@ -585,29 +559,17 @@ export function OperatorPanel({
     </section>
   );
 
-  // Redesign: pending units are DRAGGED onto an open seat (or use the Bedarf to pick
-  // the slot they fill on accept) instead of an "Annehmen" button. Reject stays as ✕.
+  // A pending unit is a ship/squad: "Annehmen" accepts it (its captain auto-seats
+  // in its own seat 0) at the chosen Bedarf; "✕" rejects. (Dropping a unit onto a
+  // single seat is meaningless here — flex persons cover seat drag-and-drop.)
   const pendingBlock = pendingUnits.length > 0 && (
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="pending-block">
       <div style={railLabel}>ANSTEHENDE EINHEITEN ({pendingUnits.length})</div>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem", padding: "0.4rem 0.6rem", borderRadius: 8, background: "rgba(240,165,0,0.05)", border: "1px solid rgba(240,165,0,0.14)" }}>
-        <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="grip" size={13} /></span>
-        <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.03em", color: "#9fb1c2", lineHeight: 1.4 }}>Karte auf einen offenen Sitz ziehen — direkt eingeteilt, kein Annehmen nötig.</span>
-      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {pendingUnits.map((u) => {
           const sel = acceptReq[u.id] ?? suggestReqId(u);
-          const dz = pendingDrag?.unitId === u.id;
           return (
-          <div
-            key={u.id}
-            draggable
-            data-testid={`pending-${u.id}`}
-            onDragStart={(e) => { setPendingDrag({ unitId: u.id, captainId: u.captain?.id ?? null, captainName: u.captain?.username ?? u.name, reqId: sel }); setDragUserId(null); setPlacing(null); setPicker(null); try { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", u.id); } catch { /* noop */ } }}
-            onDragEnd={() => setPendingDrag(null)}
-            style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", padding: "0.6rem 0.7rem", cursor: "grab", opacity: dz ? 0.45 : 1, background: dz ? "rgba(240,165,0,0.08)" : "rgba(255,255,255,0.013)", border: "1px solid rgba(240,165,0,0.16)", borderRadius: 9 }}
-          >
-            <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="grip" size={14} /></span>
+          <div key={u.id} data-testid={`pending-${u.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", padding: "0.6rem 0.7rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(240,165,0,0.16)", borderRadius: 9 }}>
             <span style={{ flex: "1 1 160px", minWidth: 0, color: "#eaf4fb", fontWeight: 600 }}>{u.name} <span style={{ color: "#7e92a4", fontWeight: 400, fontSize: "0.84rem" }}>· {u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</span></span>
             {requirements.length > 0 && (
               <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
@@ -615,7 +577,7 @@ export function OperatorPanel({
                 {reqSelect(u, sel, (id) => setAcceptReq((m) => ({ ...m, [u.id]: id })), `accept-req-${u.id}`)}
               </label>
             )}
-            <button type="button" data-testid={`accept-${u.id}`} title="Ohne Sitz annehmen" onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.6rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
+            <button type="button" data-testid={`accept-${u.id}`} onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.7rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
             <button type="button" data-testid={`reject-${u.id}`} title="Ablehnen" onClick={() => run(() => decideUnit(op.id, u.id, "reject", csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
             <SaveDot id={`pending-${u.id}`} />
           </div>

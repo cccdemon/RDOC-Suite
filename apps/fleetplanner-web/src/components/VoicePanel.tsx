@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { getSquadLink } from "../api/client";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ApiError, getSquadLink, getVoiceRecipients, setVoiceRecipients } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
@@ -12,24 +12,50 @@ type Recipient = { id: string; name: string; role: string };
 
 // Voice tab (SquadLink): the operator hands the CommandNet room link to assigned
 // participants. Master toggle is shared with the header quick-switch + Eckdaten
-// (op.squadLinkVoiceEnabled). Per-recipient "Link vergeben" is local state until a
-// backend recipient endpoint exists (see README — backend coordination pending).
+// (op.squadLinkVoiceEnabled). The per-recipient grant list is persisted server-side
+// (OperationVoiceRecipient) — granted users can fetch the link from /squadlink.
 export function VoicePanel({
   op,
+  csrf,
   voiceEnabled,
   onToggleVoice,
+  onNotice,
 }: {
   op: OperationDetail;
+  csrf: string | null;
   voiceEnabled: boolean;
   onToggleVoice: () => void;
+  onNotice?: (m: string) => void;
 }) {
-  const { touch } = useFieldSave();
+  const { touch, fail } = useFieldSave();
   const [links, setLinks] = useState<Record<string, boolean>>({});
   const [room, setRoom] = useState<string>("commandnet://rdoc/op/…?key=••••-••••");
+  // Last server-confirmed grant set, for optimistic rollback on PUT failure.
+  const confirmed = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     getSquadLink(op.id).then((r) => { if (r.link) setRoom(r.link); }).catch(() => undefined);
   }, [op.id]);
+
+  // Load the persisted recipient grant list.
+  useEffect(() => {
+    getVoiceRecipients(op.id)
+      .then((r) => { const m: Record<string, boolean> = {}; r.userIds.forEach((id) => { m[id] = true; }); setLinks(m); confirmed.current = m; })
+      .catch(() => undefined);
+  }, [op.id]);
+
+  // Persist the whole grant set (replace semantics); optimistic with rollback.
+  function persist(next: Record<string, boolean>, fieldIds: string[]) {
+    if (!csrf) return;
+    const userIds = Object.keys(next).filter((id) => next[id]);
+    setVoiceRecipients(op.id, csrf, userIds)
+      .then(() => { confirmed.current = next; fieldIds.forEach((f) => touch(f)); })
+      .catch((e) => {
+        setLinks(confirmed.current);
+        fieldIds.forEach((f) => fail(f));
+        onNotice?.(e instanceof ApiError ? e.message : "Empfänger speichern fehlgeschlagen.");
+      });
+  }
 
   // Candidates = everyone holding a seat + the op leaders, deduped, with a role.
   const recipients = useMemo<Recipient[]>(() => {
@@ -48,8 +74,8 @@ export function VoicePanel({
   }, [op.leaders, op.units]);
 
   const assigned = recipients.filter((r) => links[r.id]).length;
-  const toggle = (id: string) => { setLinks((m) => ({ ...m, [id]: !m[id] })); touch("voice-" + id); };
-  const assignAll = () => { const all: Record<string, boolean> = {}; recipients.forEach((r) => { all[r.id] = true; touch("voice-" + r.id); }); setLinks((m) => ({ ...m, ...all })); };
+  const toggle = (id: string) => { const next = { ...links, [id]: !links[id] }; setLinks(next); persist(next, ["voice-" + id]); };
+  const assignAll = () => { const next = { ...links }; recipients.forEach((r) => { next[r.id] = true; }); setLinks(next); persist(next, recipients.map((r) => "voice-" + r.id)); };
   const copy = () => { try { navigator.clipboard?.writeText(room); } catch { /* noop */ } touch("voice-copy"); };
 
   const head = (icon: string, color: string, label: string, right?: React.ReactNode) => (

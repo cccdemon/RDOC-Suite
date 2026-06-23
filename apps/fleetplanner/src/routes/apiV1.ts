@@ -1253,13 +1253,25 @@ export async function apiV1Routes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>("/api/v1/operations/:id/squadlink", async (req, reply) => {
     const p = IdParamSchema.safeParse(req.params);
     if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
-    const g = await requireCoverManager(req, reply, p.data.id, false);
-    if (!g) return;
-    const op = g.op;
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
+    const op = await getOperation(p.data.id);
+    if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+    // Eligible = op manager (fleetoperator | op leader) OR a user the operator
+    // granted the link to (OperationVoiceRecipient). The room token is shared per
+    // op, so this is purely a distribution grant, not a per-user credential.
+    const role = await effectiveOpRole(ctx.user.id, ctx.user.role, op.id);
+    const isManager = role === "fleetoperator" || op.leaders.some((l) => l.user.id === ctx.user.id);
+    const isRecipient =
+      !isManager &&
+      (await prisma.operationVoiceRecipient.findUnique({
+        where: { operationId_userId: { operationId: op.id, userId: ctx.user.id } },
+      })) != null;
+    if (!isManager && !isRecipient) return sendError(reply, req, 403, "forbidden", "Kein Zugriff auf den Sprachraum-Link.");
     const enabled = op.squadLinkVoiceEnabled === true;
     const configured = squadLinkConfigured();
     const started = op.status === "starting" || op.status === "in_progress";
-    const name = g.ctx.user.username;
+    const name = ctx.user.username;
     const link =
       enabled && configured && started ? buildCommandNetLink(op.id, name, name) : null;
     return reply.type("application/json").send({
@@ -1271,6 +1283,48 @@ export async function apiV1Routes(app: FastifyInstance) {
       storeUrl: enabled ? (squadLinkStoreUrl() ?? null) : null,
     });
   });
+
+  // ── SquadLink recipients (operator-curated grant list) ───────────────
+  // The operator picks which assigned participants receive the CommandNet link.
+  // Stored as a userId set per op; the link itself stays shared (one room token).
+  app.get<{ Params: { id: string } }>("/api/v1/operations/:id/voice/recipients", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const g = await requireCoverManager(req, reply, p.data.id, false);
+    if (!g) return;
+    const rows = await prisma.operationVoiceRecipient.findMany({ where: { operationId: g.op.id }, select: { userId: true } });
+    return reply.type("application/json").send({ userIds: rows.map((r) => r.userId) });
+  });
+
+  app.put<{ Params: { id: string }; Body: { userIds?: unknown } }>(
+    "/api/v1/operations/:id/voice/recipients",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const g = await requireCoverManager(req, reply, p.data.id, true);
+      if (!g) return;
+      const raw = Array.isArray(req.body?.userIds) ? (req.body!.userIds as unknown[]) : null;
+      if (!raw) return sendError(reply, req, 400, "bad_request", "userIds[] erforderlich.");
+      const ids = [...new Set(raw.filter((x): x is string => typeof x === "string" && x.length > 0 && x.length <= 64))].slice(0, 200);
+      try {
+        // Replace the whole set: drop anyone not in the new list, upsert the rest.
+        await prisma.$transaction([
+          prisma.operationVoiceRecipient.deleteMany({ where: { operationId: g.op.id, userId: { notIn: ids.length ? ids : ["__none__"] } } }),
+          ...ids.map((uid) =>
+            prisma.operationVoiceRecipient.upsert({
+              where: { operationId_userId: { operationId: g.op.id, userId: uid } },
+              create: { operationId: g.op.id, userId: uid },
+              update: {},
+            }),
+          ),
+        ]);
+      } catch (err) {
+        req.log.warn(err, "voice recipients update failed");
+        return sendError(reply, req, 400, "bad_request", "Empfänger konnten nicht gespeichert werden.");
+      }
+      return reply.type("application/json").send({ ok: true as const, userIds: ids });
+    },
+  );
 
   // ── operation editor: Bedarfe / needs ────────────────────────────────
   // SSR twins: api.ts /api/ops/:id/needs/{ships,fighters,cqb} + needs/:reqId/{rename,delete}.
