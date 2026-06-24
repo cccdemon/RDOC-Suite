@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createHash } from "node:crypto";
 
 vi.mock("../../db.js", () => ({
   prisma: {
@@ -76,6 +77,32 @@ describe("createSession", () => {
     const a = await createSession("user-1");
     const b = await createSession("user-1");
     expect(a.csrfToken).not.toBe(b.csrfToken);
+  });
+
+  it("returns a 64-hex bearer token and stores ONLY its sha256 hash (not the token, not the PK)", async () => {
+    let stored: { tokenHash?: string } = {};
+    db.userSession.create.mockImplementation(({ data }: { data: { csrfToken: string; expiresAt: Date; tokenHash: string } }) => {
+      stored = data;
+      return Promise.resolve({ id: "sess-1", csrfToken: data.csrfToken, expiresAt: data.expiresAt });
+    });
+
+    const result = await createSession("user-1");
+
+    // Cookie value: 32 random bytes as hex.
+    expect(result.token).toMatch(/^[0-9a-f]{64}$/);
+    // The raw token is never persisted; only its sha256 hash is.
+    const expectedHash = createHash("sha256").update(result.token).digest("hex");
+    expect(stored.tokenHash).toBe(expectedHash);
+    expect(stored.tokenHash).not.toBe(result.token);
+  });
+
+  it("generates unique bearer tokens across calls", async () => {
+    db.userSession.create.mockImplementation(({ data }: { data: { csrfToken: string; expiresAt: Date } }) =>
+      Promise.resolve({ id: "sess-x", csrfToken: data.csrfToken, expiresAt: data.expiresAt }),
+    );
+    const a = await createSession("user-1");
+    const b = await createSession("user-1");
+    expect(a.token).not.toBe(b.token);
   });
 });
 

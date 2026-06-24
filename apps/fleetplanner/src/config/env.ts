@@ -11,6 +11,12 @@ const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   PORT: z.coerce.number().default(3200),
   HOST: z.string().default("0.0.0.0"),
+  // Fastify trustProxy. Comma-separated list of trusted proxy IPs/CIDRs (or the
+  // literal "true"/"false"). Defaults to loopback + RFC1918 — the app only ever
+  // sees X-Forwarded-* from the co-located Caddy→nginx hops on the docker network.
+  // Avoids the blanket `trustProxy: true` (which would trust a forged XFF from any
+  // client able to reach the port). See app.ts.
+  TRUST_PROXY: z.string().default("127.0.0.1/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"),
   DATABASE_URL: z.string().default("file:./data/fleetplanner.db"),
   SESSION_SECRET: z.string().min(32),
   // Dedicated encryption key for GuildVoiceBot tokens. Set this once and keep it stable.
@@ -63,6 +69,14 @@ const schema = z.object({
   // /e2e/login + /e2e/cleanup backdoor for synthetic e2e-* test players ONLY.
   // Unset in normal prod — the routes do not exist without it.
   E2E_TEST_LOGIN_SECRET: z.string().min(32).optional(),
+  // Hard prod guard: in NODE_ENV=production the seam stays DISABLED even when the
+  // secret is set, UNLESS this is explicitly "1"/"true". Forces a deliberate,
+  // auditable opt-in to expose the test backdoor in prod (and a leaked secret in
+  // a prod env can't silently activate it).
+  E2E_ALLOW_IN_PROD: z.string().optional(),
+  // Optional ISO-8601 deadline. Once passed, the seam self-disables (routes 404)
+  // even with the secret set — time-box a prod E2E run so it can't linger.
+  E2E_TEST_LOGIN_EXPIRES: z.string().datetime().optional(),
 
   // Mission-cover render microservice (FR-P4). Internal docker-network URL +
   // shared M2M secret (matches the service's MISSIONCOVER_SERVICE_SECRET). When

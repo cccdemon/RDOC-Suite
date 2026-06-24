@@ -10,7 +10,7 @@
 # `playwright` dependency pinned to the SAME version as this image tag.
 
 # ─── engine build (MissionCover SPA → single-file dist/index.html) ────────────
-FROM mcr.microsoft.com/playwright:v1.49.1-noble AS engine
+FROM mcr.microsoft.com/playwright:v1.55.1-noble AS engine
 WORKDIR /engine
 COPY apps/mission-cover/engine/package.json apps/mission-cover/engine/package-lock.json ./
 RUN npm ci
@@ -18,7 +18,7 @@ COPY apps/mission-cover/engine ./
 RUN npm run build   # vite build + postbuild.js → /engine/dist/index.html
 
 # ─── service build (TypeScript → dist) ───────────────────────────────────────
-FROM mcr.microsoft.com/playwright:v1.49.1-noble AS builder
+FROM mcr.microsoft.com/playwright:v1.55.1-noble AS builder
 ENV CI=true
 # Browsers already in the base image — don't let `playwright` re-download them.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
@@ -30,7 +30,7 @@ WORKDIR /app
 # Manifests first for layer cache.
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 COPY apps/mission-cover/package.json apps/mission-cover/
-RUN pnpm install --no-frozen-lockfile --filter @rdoc-suite/mission-cover
+RUN pnpm install --frozen-lockfile --filter @rdoc-suite/mission-cover
 
 # Service source (engine/ excluded by tsconfig; its built dist is copied in runtime).
 COPY apps/mission-cover/tsconfig.json apps/mission-cover/
@@ -38,10 +38,10 @@ COPY apps/mission-cover/src apps/mission-cover/src
 RUN pnpm --filter @rdoc-suite/mission-cover run build
 
 # Drop devDeps.
-RUN pnpm install --no-frozen-lockfile --filter @rdoc-suite/mission-cover --prod
+RUN pnpm install --frozen-lockfile --filter @rdoc-suite/mission-cover --prod
 
 # ─── runtime ─────────────────────────────────────────────────────────────────
-FROM mcr.microsoft.com/playwright:v1.49.1-noble AS runtime
+FROM mcr.microsoft.com/playwright:v1.55.1-noble AS runtime
 ENV NODE_ENV=production
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app

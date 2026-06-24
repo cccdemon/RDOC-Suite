@@ -33,10 +33,32 @@ function secretOk(provided: unknown, expected: string): boolean {
 }
 
 export async function e2eAuthRoutes(app: FastifyInstance) {
-  const secret = getEnv().E2E_TEST_LOGIN_SECRET;
+  const env = getEnv();
+  const secret = env.E2E_TEST_LOGIN_SECRET;
   if (!secret) return; // seam disabled
 
-  app.log.warn("E2E test-login seam ENABLED (E2E_TEST_LOGIN_SECRET set) — disable in normal prod by unsetting it.");
+  // Hard prod guard: never register the backdoor in production without an
+  // explicit, auditable opt-in — even if the secret leaked into a prod env.
+  const allowInProd = /^(1|true)$/i.test(env.E2E_ALLOW_IN_PROD ?? "");
+  if (env.NODE_ENV === "production" && !allowInProd) {
+    app.log.warn("E2E_TEST_LOGIN_SECRET is set in production but E2E_ALLOW_IN_PROD is not — E2E seam stays DISABLED.");
+    return;
+  }
+
+  // Optional time-box: after the deadline the seam self-disables. Checked at
+  // registration AND per request, so a long-lived instance closes the window
+  // without a redeploy.
+  const expiresAt = env.E2E_TEST_LOGIN_EXPIRES ? new Date(env.E2E_TEST_LOGIN_EXPIRES) : null;
+  const seamExpired = (): boolean => expiresAt !== null && Date.now() > expiresAt.getTime();
+  if (seamExpired()) {
+    app.log.warn(`E2E seam past E2E_TEST_LOGIN_EXPIRES (${env.E2E_TEST_LOGIN_EXPIRES}) — staying DISABLED.`);
+    return;
+  }
+
+  app.log.warn(
+    `E2E test-login seam ENABLED (synthetic e2e-* users only). Disable by unsetting E2E_TEST_LOGIN_SECRET` +
+      `${expiresAt ? `; auto-disables at ${expiresAt.toISOString()}` : ""}.`,
+  );
 
   async function ensureE2eGuild(): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,7 +71,7 @@ export async function e2eAuthRoutes(app: FastifyInstance) {
 
   // ── Mint a session for a synthetic test player ──────────────────────
   app.post<{ Body: Record<string, unknown> }>("/e2e/login", async (req, reply) => {
-    if (!secretOk(req.headers["x-e2e-secret"], secret)) return reply.code(404).send();
+    if (seamExpired() || !secretOk(req.headers["x-e2e-secret"], secret)) return reply.code(404).send();
     const body = req.body ?? {};
     const username = typeof body.username === "string" ? body.username : "";
     if (!USERNAME_RE.test(username)) return reply.code(400).send({ error: "username must match e2e-*" });
@@ -84,13 +106,13 @@ export async function e2eAuthRoutes(app: FastifyInstance) {
     });
 
     const session = await createSession(userId);
-    setSessionCookie(reply, session.id, session.expiresAt);
+    setSessionCookie(reply, session.token, session.expiresAt);
     return reply.send({ ok: true, userId, guildId: E2E_GUILD_ID, csrfToken: session.csrfToken });
   });
 
   // ── Wipe E2E test operations (scoped to the synthetic guild only) ───
   app.post("/e2e/cleanup", async (req, reply) => {
-    if (!secretOk(req.headers["x-e2e-secret"], secret)) return reply.code(404).send();
+    if (seamExpired() || !secretOk(req.headers["x-e2e-secret"], secret)) return reply.code(404).send();
     const ops = await prisma.operation.findMany({ where: { guildId: E2E_GUILD_ID }, select: { id: true } });
     let deleted = 0;
     for (const o of ops) {

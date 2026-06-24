@@ -7,7 +7,8 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* tsconfig.base.json ./
 COPY apps/fleetplanner-web/package.json apps/fleetplanner-web/
 COPY packages/fleetplanner-contracts/package.json packages/fleetplanner-contracts/
 # `...` pulls the shared contracts package (type-only dep — for the tsc check).
-RUN pnpm install --no-frozen-lockfile --filter @rdoc-suite/fleetplanner-web...
+# Frozen lockfile so prod image builds are reproducible (fail on lockfile drift).
+RUN pnpm install --frozen-lockfile --filter @rdoc-suite/fleetplanner-web...
 COPY apps/fleetplanner-web apps/fleetplanner-web
 COPY packages/fleetplanner-contracts packages/fleetplanner-contracts
 # Phase 4 serves the SPA under the shadow path; assets must resolve there.

@@ -1,5 +1,45 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-06-24: Security-Review-Härtung (6 Befunde)
+
+Status: ⏳ In Arbeit. Betroffen: `apps/fleetplanner` (app.ts, session.ts, env.ts, e2eAuth.ts,
+prisma schema + neue Migration, auth.ts, Dockerfile), `apps/fleetplanner-web` (nginx.conf,
+Dockerfile), `apps/mission-cover` (package.json, Dockerfile), root `pnpm-lock.yaml`.
+
+Externer Security-Review listete 6 Befunde; alle adressiert:
+
+1. **Doppelte/konfliktäre Security-Header.** nginx `add_header` lag auf Server-Ebene und wurde
+   vom Proxy-`location /` geerbt → API/SSR-Antworten trugen NGINX-Header (`X-Frame-Options: DENY`,
+   `frame-ancestors 'none'`) UND die Backend-`onSend`-Header (`SAMEORIGIN`/`'self'`) doppelt+
+   widersprüchlich. Fix: nginx-Header nur noch dort, wo nginx selbst Inhalt ausliefert
+   (`@spa`, Static-Assets) via `include security-headers.conf`; Server-Ebene entfernt →
+   proxied Backend-Antworten tragen NUR die Backend-Header (kanonisch). Backend-Frame-Policy
+   auf `DENY`/`frame-ancestors 'none'` vereinheitlicht (eine Policy app-weit).
+2. **E2E-Login-Seam.** Bereits secret-gated + nur `e2e-*`. Zusätzlich: in `NODE_ENV=production`
+   bleibt der Seam AUS, außer `E2E_ALLOW_IN_PROD=1` ist explizit gesetzt; optionales
+   `E2E_TEST_LOGIN_EXPIRES` (ISO) → nach Ablauf 404. Lauter Startup-Warn bleibt.
+3. **Session-IDs als Bearer.** `UserSession.id` (cuid) war direkt der Cookie-Wert. Jetzt:
+   Cookie = `crypto.randomBytes(32)` hex (64 Zeichen), DB speichert nur `sha256(token)` in
+   neuem Feld `tokenHash @unique`; Lookup per Hash. PK `id` bleibt intern. Migration
+   `20260624120000_session_token_hash` (nullable Spalte → Alt-Sessions werden ungültig =
+   einmaliger Logout-all, akzeptiert).
+4. **`trustProxy: true`.** Ersetzt durch explizite CIDR-Allowlist (Loopback + RFC1918),
+   env-konfigurierbar via `TRUST_PROXY`. Defense-in-depth hinter Caddy→nginx.
+5. **Dockerfile.** `--no-frozen-lockfile` → `--frozen-lockfile` (Lockfile vorher regeneriert,
+   sonst Build-Fail); fleetplanner-Runtime läuft als non-root (`USER node`, `chown` data+app).
+6. **Dependency-Audit.** Echte deployte High: `playwright` 1.49.1 → 1.55.1 in mission-cover
+   (npm-Pin + 3× Docker-Image-Tag `mcr.microsoft.com/playwright:v1.55.1-noble` synchron).
+   Übrige Highs sind Phantome aus dem veralteten Lockfile (`apps/relay-bots`, `apps/bot` —
+   beide beim Voice-Removal 2026-06-12 gelöscht, aber im Lockfile verblieben) bzw. Prisma-
+   Dev-Tooling (`@prisma/dev>hono`, nicht Runtime). `pnpm install --lockfile-only` entfernt die
+   Phantome.
+
+Deploy: Rebuild `fleetplanner` (Backend-Header/Session/trustProxy/Dockerfile) UND
+`fleetplanner-web` (nginx-Header) UND `mission-cover` (playwright). Migration läuft via
+entrypoint. ENV neu in prod: ggf. `TRUST_PROXY` (sonst Default RFC1918), KEIN
+`E2E_ALLOW_IN_PROD` setzen.
+
+
 ## Completed - 2026-06-24: Caddy /vod route entfernt — TWITCH-Generator auf eigene LXC
 
 Status: ⏳ PR. Nur `deploy/caddy-rdoc/Caddyfile` betroffen.

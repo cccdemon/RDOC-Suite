@@ -42,7 +42,7 @@ describe.skipIf(!dbReady)("operation lifecycle (real DB)", () => {
       data: { guildId, userId, role: "fleetoperator" },
     });
     const sess = await createSession(userId);
-    cookie = `fp_sid=${sess.id}`;
+    cookie = `fp_sid=${sess.token}`;
     csrf = sess.csrfToken;
 
     app = (await buildApp()) as unknown as FastifyInstance;
