@@ -17,8 +17,14 @@ import { prisma } from "../db.js";
 import { getEnv } from "../config/env.js";
 import { createSession, setSessionCookie } from "../auth/session.js";
 
-const E2E_GUILD_ID = "100000000000000001"; // synthetic, never a real Discord id
-const E2E_GUILD_NAME = "E2E-Testserver";
+const E2E_GUILD_ID = "100000000000000001"; // synthetic primary, never a real Discord id
+const E2E_GUILD_ID_2 = "100000000000000002"; // synthetic secondary (cross-guild tests, e.g. partnerships)
+// Allow-list of synthetic guilds the seam may mint into. A login may request the
+// secondary by passing `guildId`; anything else falls back to the primary.
+const E2E_GUILDS: Record<string, string> = {
+  [E2E_GUILD_ID]: "E2E-Testserver",
+  [E2E_GUILD_ID_2]: "E2E-Testserver-2",
+};
 const USERNAME_RE = /^e2e-[a-z0-9-]{1,40}$/;
 const INSTANCE_ROLES = new Set(["crew", "fleetoperator", "superadmin"]);
 const GUILD_ROLES = new Set(["crew", "fleetoperator"]);
@@ -60,11 +66,11 @@ export async function e2eAuthRoutes(app: FastifyInstance) {
       `${expiresAt ? `; auto-disables at ${expiresAt.toISOString()}` : ""}.`,
   );
 
-  async function ensureE2eGuild(): Promise<void> {
+  async function ensureE2eGuild(guildId: string): Promise<void> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (prisma.guild.upsert as any)({
-      where: { id: E2E_GUILD_ID },
-      create: { id: E2E_GUILD_ID, name: E2E_GUILD_NAME, active: true, botInstalledAt: new Date() },
+      where: { id: guildId },
+      create: { id: guildId, name: E2E_GUILDS[guildId] ?? "E2E-Testserver", active: true, botInstalledAt: new Date() },
       update: { active: true },
     });
   }
@@ -77,8 +83,10 @@ export async function e2eAuthRoutes(app: FastifyInstance) {
     if (!USERNAME_RE.test(username)) return reply.code(400).send({ error: "username must match e2e-*" });
     const role = INSTANCE_ROLES.has(String(body.role)) ? String(body.role) : "crew";
     const guildRole = GUILD_ROLES.has(String(body.guildRole)) ? String(body.guildRole) : "crew";
+    // Optional secondary guild for cross-guild flows; only allow-listed ids.
+    const guildId = typeof body.guildId === "string" && E2E_GUILDS[body.guildId] ? body.guildId : E2E_GUILD_ID;
 
-    await ensureE2eGuild();
+    await ensureE2eGuild(guildId);
 
     const identity = await prisma.userIdentity.findUnique({
       where: { provider_providerId: { provider: "e2e", providerId: username } },
@@ -100,24 +108,24 @@ export async function e2eAuthRoutes(app: FastifyInstance) {
     }
 
     await prisma.guildMembership.upsert({
-      where: { guildId_userId: { guildId: E2E_GUILD_ID, userId } },
-      create: { guildId: E2E_GUILD_ID, userId, role: guildRole },
+      where: { guildId_userId: { guildId, userId } },
+      create: { guildId, userId, role: guildRole },
       update: { role: guildRole },
     });
 
     const session = await createSession(userId);
     setSessionCookie(reply, session.token, session.expiresAt);
-    return reply.send({ ok: true, userId, guildId: E2E_GUILD_ID, csrfToken: session.csrfToken });
+    return reply.send({ ok: true, userId, guildId, csrfToken: session.csrfToken });
   });
 
-  // ── Wipe E2E test operations (scoped to the synthetic guild only) ───
+  // ── Wipe E2E test operations (scoped to the synthetic guilds only) ──
   app.post("/e2e/cleanup", async (req, reply) => {
     if (seamExpired() || !secretOk(req.headers["x-e2e-secret"], secret)) return reply.code(404).send();
-    const ops = await prisma.operation.findMany({ where: { guildId: E2E_GUILD_ID }, select: { id: true } });
+    const ops = await prisma.operation.findMany({ where: { guildId: { in: Object.keys(E2E_GUILDS) } }, select: { id: true } });
     let deleted = 0;
     for (const o of ops) {
       await prisma.operation.delete({ where: { id: o.id } }).then(() => { deleted++; }).catch(() => {});
     }
-    return reply.send({ ok: true, deletedOperations: deleted, guildId: E2E_GUILD_ID });
+    return reply.send({ ok: true, deletedOperations: deleted, guilds: Object.keys(E2E_GUILDS) });
   });
 }

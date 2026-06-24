@@ -15,12 +15,18 @@ export interface TestActor {
   sid: string;
 }
 
-/** Mint a session for a synthetic e2e-* test player via the env-gated seam. */
-export async function login(username: string, role: InstanceRole = "crew", guildRole: GuildRole = "crew"): Promise<TestActor> {
+/** Mint a session for a synthetic e2e-* test player via the env-gated seam.
+ * Pass `guildId` to target the secondary synthetic guild (cross-guild flows). */
+export async function login(
+  username: string,
+  role: InstanceRole = "crew",
+  guildRole: GuildRole = "crew",
+  guildId?: string,
+): Promise<TestActor> {
   const ctx = await request.newContext({ baseURL: BASE, ignoreHTTPSErrors: true });
   const res = await ctx.post("/fleetplanner/e2e/login", {
     headers: { "x-e2e-secret": SECRET, "content-type": "application/json" },
-    data: { username, role, guildRole },
+    data: { username, role, guildRole, ...(guildId ? { guildId } : {}) },
   });
   if (!res.ok()) throw new Error(`e2e login failed for ${username}: ${res.status()} ${await res.text()}`);
   const body = (await res.json()) as { userId: string; guildId: string; csrfToken: string };
@@ -52,3 +58,7 @@ export async function cleanup(): Promise<number> {
 /** Raw API base for direct JSON calls (mirrors what the SPA client uses). */
 export const API = `${BASE}/fleetplanner/api/v1`;
 export const SPA = `${BASE}/fleetplanner`;
+
+/** Synthetic guild ids the seam mints into (primary + secondary for cross-guild). */
+export const E2E_GUILD_ID = "100000000000000001";
+export const E2E_GUILD_ID_2 = "100000000000000002";
