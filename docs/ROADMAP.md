@@ -9,7 +9,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | Prio | Feature | Doc | Depends on | Status |
 |---|---|---|---|---|
 | P1 | Event Distribution (cross-post to partner Discords) | [FR-P1-event-distribution.md](FR-P1-event-distribution.md) | live partnerships only | ✓ Done (2026-06-07: Phase 1 auto-share + Phase 2 approval inbox + DM buttons). Recipients = all target-guild fleetoperators |
-| P1 | Event Creation Simplification (Mobile join + Admin wizard) | [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) | — (sight "Vi5E Tools") | ✓ Core done (guided wizard + dedicated join view live); pending: sight "Vi5E Tools" |
+| P1 | Event Creation Simplification (Mobile join + Admin wizard) | [FR-P1-eventcreation-simplification.md](FR-P1-eventcreation-simplification.md) | — | ✓ Done (guided wizard + dedicated join view live). "Vi5E Tools" = Mission-Cover (FR-P4, done+deployed) — Sichtung aufgelöst 2026-06-24 |
 | P1 | Fleetplanner GUI UX (Join view + Fleet Requirements wording) | [archiv/FR-P1-fleetplanner-gui-ux-implementation.md](archiv/FR-P1-fleetplanner-gui-ux-implementation.md) | existing Fleetplanner SSR + Composition/FleetUnit models | ✓ Done (2026-06-06) |
 | P1 | Fleet-Needs-Redesign + geführter Anmelde-Wizard (Hull vs Role-Need, Person→Squad, Wizard B, Sitz-/Turm-Karte) | [FR-P1-fleet-needs-and-guided-join.md](FR-P1-fleet-needs-and-guided-join.md) | Composition/FleetUnit/Seat + ship catalog; evolves FR-P1-eventcreation join view | ✗ **Verworfen** (User 2026-06-24) |
 | P1 | Security & Implementation Review (CVEs, API hardening, dead code, dependency hygiene) | [FR-P1-SecurityAndImplenetationReview.md](FR-P1-SecurityAndImplenetationReview.md) | current Fleetplanner/Mission-Cover/Companion/Deploy inventory | ✓ Done (2026-06-24: 6 Findings gefixt+deployt — Header-Layer, Session-Token-Hash, E2E-Seam-Härtung, trustProxy-CIDR, Docker non-root/frozen, Deps) |
@@ -34,13 +34,12 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 1. **FR-P3 language-switch / i18n** — voll mehrsprachig, groß/phasiert; Locale-Switch-Teil existiert.
 2. **FR-P3 inactivity-alert** — Member Last-Seen + 6-Mon-Warnung; braucht Gateway-Bot + GUILD_MEMBERS-Intent.
 3. **FR-P2 microservice-api-split (weiter)** — Rest-Trennung Backend/FE (Großteil schon erfolgt).
-4. **Dead-Code-Cleanup** — SSR+Voice-Reste (~15-20 Exports + 2 Files) löschen + knip.json CI-Gate.
-5. **Vi5E Tools** — Sichtung; braucht Klärung von User was das genau ist.
+4. **Dead-Code-Cleanup** — Phase 1 done (2026-06-24: SSR/Voice-Reste + knip-Gate); Rest = 61 Exports/28 Types per-Symbol-Review.
 
 **Verworfen 2026-06-24:** FR-P1 fleet-needs-redesign, FR-P3 roadmap-tab, FR-P5 item-database, FR-P3 federation-voice (bereits abgelehnt).
-**Frisch fertig:** Polls, Security-Review (6 Fixes).
+**Frisch fertig:** Polls, Security-Review (6 Fixes), Mission-Cover (= "Vi5E Tools", Sichtung aufgelöst).
 
-Also pending (no FR doc): sight **"Vi5E Tools"** to finalize the eventcreation wizard scope.
+~~Also pending: sight "Vi5E Tools"~~ — resolved 2026-06-24: "Vi5E Tools" = the Mission-Cover service (FR-P4, done + deployed).
 
 ## Bugs / improvements (tracked in [FLEETPLANNER-BACKLOG.md](FLEETPLANNER-BACKLOG.md))
 | Item | Source | Status |
@@ -52,5 +51,5 @@ Also pending (no FR doc): sight **"Vi5E Tools"** to finalize the eventcreation w
 | Bug Reporter: attach screenshots | Feature request (HEADWiG) | ✓ Done 2026-06-07 — `/feedback` accepts up to 4 images (≤8 MB), forwarded as Discord attachments |
 
 ## Needs sighting / clarification (no doc yet)
-- **"Vi5E Tools"** — tools to be reviewed before locking the eventcreation admin wizard scope.
+- ~~**"Vi5E Tools"**~~ — ✓ resolved 2026-06-24: = the Mission-Cover service (FR-P4, done + deployed).
 - **"silentknight: Paul Content nachliefern"** — unclear; needs clarification before it can be triaged.
