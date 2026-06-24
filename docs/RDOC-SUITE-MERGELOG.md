@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-06-24: Caddy /vod route entfernt — TWITCH-Generator auf eigene LXC
+
+Status: ⏳ PR. Nur `deploy/caddy-rdoc/Caddyfile` betroffen.
+
+TWITCH-Generator zog von co-hosted (`suite.raumdock.org/vod`, loopback 9444 auf LXC 103) auf
+eine **dedizierte LXC 105 `vod`** (10.10.10.3, eigener Caddy, `vod.raumdock.org`) um, weil 103
+überlastet war. Damit entfällt die `handle_path /vod*`-Route (+ `/vod`→`/vod/` Redirect) im
+`suite.raumdock.org:9443`-Block. nginx-101 SNI-Route `vod.raumdock.org → 10.10.10.3:443` und
+DNS-A-Record existieren bereits. Nach Merge: 103 `git pull` + `caddy validate` + `docker compose
+restart caddy-rdoc` (admin off → kein reload, Restart nötig, kurzer suite-weiter TLS-blip).
+Anschließend TWITCH-Generator-Stack auf 103 abgeräumt (compose down + Verzeichnis/Image entfernt).
+
+
 ## Queued / Planned - 2026-06-24: Caddy-Route /vod → TWITCH-Generator (co-hosted, separates Repo)
 
 Status: ⏳ Queued. Nur eine Datei in DIESEM Repo betroffen: `deploy/caddy-rdoc/Caddyfile`.
