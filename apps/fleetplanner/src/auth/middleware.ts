@@ -23,11 +23,6 @@ const ROLE_RANK: Record<UserRole, number> = {
 
 const ACTIVE_GUILD_COOKIE = "fp_guild";
 
-export function hasRole(user: User, minRole: UserRole): boolean {
-  const rank = ROLE_RANK[user.role as UserRole] ?? 0;
-  return rank >= ROLE_RANK[minRole];
-}
-
 export function activeGuildCookie(request: FastifyRequest): string | undefined {
   return (request.cookies as Record<string, string | undefined>)[ACTIVE_GUILD_COOKIE];
 }
@@ -39,20 +34,6 @@ export async function requireAuth(
   const ctx = await loadSession(request);
   if (!ctx) {
     reply.redirect(basePath("/login"), 302);
-    return null;
-  }
-  return ctx;
-}
-
-export async function requireRole(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  minRole: UserRole,
-): Promise<AuthContext | null> {
-  const ctx = await requireAuth(request, reply);
-  if (!ctx) return null;
-  if (!hasRole(ctx.user, minRole)) {
-    reply.code(403).send({ error: "forbidden" });
     return null;
   }
   return ctx;
@@ -123,11 +104,3 @@ export async function requireOpRole(
   return ctx;
 }
 
-/** Optional variant: resolves active guild but never redirects. */
-export async function optionalGuild(request: FastifyRequest): Promise<GuildContext | null> {
-  const ctx = await loadSession(request);
-  if (!ctx) return null;
-  const active = await resolveActiveGuild(ctx.user.id, activeGuildCookie(request));
-  if (!active) return null;
-  return { ...ctx, guildId: active.guildId, guildName: active.guildName, guildRole: active.role };
-}

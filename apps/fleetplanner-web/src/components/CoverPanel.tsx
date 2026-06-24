@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ApiError, coverEditLink, deleteOpCover, generateOpCover, getOpCover, type OpCover } from "../api/client";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 import { Ic } from "./Icons";
+import { useT } from "../i18n";
 
 const FORMATS = ["16:9", "1:1", "9:16", "4:3"];
 const PRESETS: Array<[string, string]> = [
@@ -21,6 +22,7 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
   const [busy, setBusy] = useState(false);
   const [format, setFormat] = useState("16:9");
   const [preset, setPreset] = useState("fleet-ops");
+  const t = useT();
 
   function reload() {
     getOpCover(opId)
@@ -45,16 +47,16 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
       onNotice(msg);
       reload();
     } catch (e) {
-      onNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+      onNotice(e instanceof ApiError ? e.message : t("cover.actionFailed"));
     } finally {
       setBusy(false);
     }
   }
 
-  const generate = () => run(() => generateOpCover(opId, csrf!, { format, preset }), "Cover erstellt.");
+  const generate = () => run(() => generateOpCover(opId, csrf!, { format, preset }), t("cover.genDone"));
   const remove = () => {
-    if (!window.confirm("Cover wirklich entfernen?")) return;
-    run(() => deleteOpCover(opId, csrf!), "Cover entfernt.");
+    if (!window.confirm(t("cover.removeConfirm"))) return;
+    run(() => deleteOpCover(opId, csrf!), t("cover.removed"));
   };
   async function openEditor() {
     if (!csrf) return;
@@ -63,20 +65,19 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
       const { editorUrl } = await coverEditLink(opId, csrf, { format, preset });
       window.location.href = editorUrl;
     } catch (e) {
-      onNotice(e instanceof ApiError ? e.message : "Editor konnte nicht geöffnet werden.");
+      onNotice(e instanceof ApiError ? e.message : t("cover.editorFailed"));
       setBusy(false);
     }
   }
 
-  if (!loaded) return <p style={lbl}>LADE…</p>;
+  if (!loaded) return <p style={lbl}>{t("common.loading")}</p>;
 
   if (!serviceConfigured)
     return (
       <section style={card} data-testid="cover-panel">
-        <CardHead icon="image" label="MISSION-COVER" tone="cyan" />
+        <CardHead icon="image" label={t("cover.label")} tone="cyan" />
         <p style={{ margin: 0, color: "#7e92a4", fontSize: "0.86rem" }}>
-          Der Cover-Service ist nicht konfiguriert. Sobald er aktiv ist, kannst du hier ein
-          Missions-Cover generieren und im Editor anpassen.
+          {t("cover.notConfigured")}
         </p>
       </section>
     );
@@ -85,7 +86,7 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
 
   return (
     <section style={card} data-testid="cover-panel">
-      <CardHead icon="image" label="MISSION-COVER" tone="cyan" />
+      <CardHead icon="image" label={t("cover.label")} tone="cyan" />
 
       {cover ? (
         <div style={{ marginBottom: "1.1rem" }}>
@@ -101,19 +102,19 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
         </div>
       ) : (
         <p style={{ margin: "0 0 1.1rem", color: "#7e92a4", fontSize: "0.86rem" }} data-testid="cover-empty">
-          Noch kein Cover. Generiere eins aus den Op-Daten oder öffne den Editor.
+          {t("cover.empty")}
         </p>
       )}
 
       <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.9rem" }}>
         <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>
-          Format
+          {t("cover.format")}
           <select data-testid="cover-format" value={format} onChange={(e) => setFormat(e.target.value)} style={{ ...inp, width: "auto", minWidth: 90 }}>
             {FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
         </label>
         <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>
-          Stil
+          {t("cover.style")}
           <select data-testid="cover-preset" value={preset} onChange={(e) => setPreset(e.target.value)} style={{ ...inp, width: "auto", minWidth: 160 }}>
             {PRESETS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
@@ -122,14 +123,14 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
 
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
         <button type="button" data-testid="cover-generate" style={btnPrimary} disabled={busy || !csrf} onClick={generate}>
-          <Ic name="bolt" size={13} sw={2} /> {cover ? "Neu generieren" : "Cover generieren"}
+          <Ic name="bolt" size={13} sw={2} /> {cover ? t("cover.regenerate") : t("cover.generate")}
         </button>
         <button type="button" data-testid="cover-edit" style={btnGhost} disabled={busy || !csrf} onClick={openEditor}>
-          <Ic name="edit" size={13} sw={1.8} /> Editor öffnen
+          <Ic name="edit" size={13} sw={1.8} /> {t("cover.openEditor")}
         </button>
         {cover && (
           <button type="button" data-testid="cover-delete" style={danger} disabled={busy || !csrf} onClick={remove}>
-            <Ic name="x" size={13} sw={1.8} /> Entfernen
+            <Ic name="x" size={13} sw={1.8} /> {t("common.remove")}
           </button>
         )}
       </div>

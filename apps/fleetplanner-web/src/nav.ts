@@ -5,60 +5,55 @@ export type Perspective = "crew" | "fleetoperator" | "superadmin";
 
 export type NavItem = {
   to: string;
-  label: string;
+  labelKey: string;
   icon: string;
   gate?: Perspective;
   auth?: boolean;
 };
 
 export type NavGroup = {
-  label: string;
+  labelKey: string;
   items: NavItem[];
 };
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Operationen",
+    labelKey: "nav.group.ops",
     items: [
-      { to: "/", label: "Operationen", icon: "board" },
-      { to: "/ops/new", label: "Neue Operation", icon: "plus", auth: true },
-      { to: "/polls", label: "Umfragen", icon: "check" },
-      { to: "/ships", label: "Schiffe", icon: "ship" },
-      // IA merge F: templates live in the op-editor ("Aus Vorlage starten" in the
-      // wizard + "Als Vorlage sichern" in the Admin tab) — no top-level marketplace.
+      { to: "/", labelKey: "nav.ops", icon: "board" },
+      { to: "/ops/new", labelKey: "nav.opsNew", icon: "plus", auth: true },
+      { to: "/polls", labelKey: "nav.polls", icon: "check" },
+      { to: "/ships", labelKey: "nav.ships", icon: "ship" },
     ],
   },
   {
-    label: "Server / Discord",
+    labelKey: "nav.group.server",
     items: [
-      { to: "/guilds", label: "Server", icon: "server", auth: true },
-      { to: "/guilds/fleet", label: "Org-Flotte", icon: "ship", auth: true },
-      { to: "/guilds/settings", label: "Einstellungen", icon: "wrench", auth: true },
-      { to: "/guilds/diagnostics", label: "Diagnose", icon: "refresh", auth: true },
-      { to: "/guilds/partnerships", label: "Partnerschaften", icon: "link", auth: true },
+      { to: "/guilds", labelKey: "nav.servers", icon: "server", auth: true },
+      { to: "/guilds/fleet", labelKey: "nav.orgFleet", icon: "ship", auth: true },
+      { to: "/guilds/settings", labelKey: "nav.settings", icon: "wrench", auth: true },
+      { to: "/guilds/diagnostics", labelKey: "nav.diagnostics", icon: "refresh", auth: true },
+      { to: "/guilds/partnerships", labelKey: "nav.partnerships", icon: "link", auth: true },
     ],
   },
   {
-    // IA merge C: Profil & Hangar + Logins + Feedback are tabs of one Konto screen.
-    label: "Konto",
+    labelKey: "nav.group.konto",
     items: [
-      { to: "/konto", label: "Konto", icon: "users", auth: true },
+      { to: "/konto", labelKey: "nav.konto", icon: "users", auth: true },
     ],
   },
   {
-    label: "Admin / System",
+    labelKey: "nav.group.admin",
     items: [
-      { to: "/admin", label: "Admin-Konsole", icon: "shield", gate: "superadmin" },
-      { to: "/admin/system", label: "System & Logs", icon: "doc", gate: "superadmin" },
+      { to: "/admin", labelKey: "nav.admin", icon: "shield", gate: "superadmin" },
+      { to: "/admin/system", labelKey: "nav.system", icon: "doc", gate: "superadmin" },
     ],
   },
   {
-    // IA merge B: the 6 help docs are now sections of the Handbuch hub; the 3 legal
-    // pages moved to a footer-level Rechtliches page (out of the primary nav).
-    label: "Info",
+    labelKey: "nav.group.info",
     items: [
-      { to: "/handbuch", label: "Handbuch", icon: "doc" },
-      { to: "/api-docs", label: "API-Doku", icon: "doc" },
+      { to: "/handbuch", labelKey: "nav.handbuch", icon: "doc" },
+      { to: "/api-docs", labelKey: "nav.apiDocs", icon: "doc" },
     ],
   },
 ];
