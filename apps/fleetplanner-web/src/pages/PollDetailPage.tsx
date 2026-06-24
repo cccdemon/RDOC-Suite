@@ -171,7 +171,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
           {poll.anonymous && <Tag label="anonym" color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />}
         </div>
 
-        <h1 style={{ fontWeight: 700, fontSize: "1.45rem", color: "#eaf4fb", margin: "0 0 0.5rem" }}>{poll.title}</h1>
+        <h1 data-testid="poll-title-display" style={{ fontWeight: 700, fontSize: "1.45rem", color: "#eaf4fb", margin: "0 0 0.5rem" }}>{poll.title}</h1>
         {poll.description && <p style={{ color: "#9fb1c2", fontSize: "0.95rem", whiteSpace: "pre-wrap", margin: "0 0 1rem" }}>{poll.description}</p>}
 
         {/* ── voting / options ── */}
@@ -185,6 +185,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
               <div key={o.id} style={{ marginBottom: "0.6rem" }}>
                 {poll.canVote ? (
                   <div
+                    data-testid={`poll-option-${o.id}`}
                     onClick={() => !busy && toggle(o.id)}
                     style={{ display: "flex", alignItems: "center", gap: "0.8rem", padding: "0.7rem 0.8rem", border: `1px solid ${sel ? "rgba(0,255,136,0.5)" : "rgba(0,212,255,0.12)"}`, borderRadius: 10, background: sel ? "rgba(0,255,136,0.06)" : "rgba(255,255,255,0.013)", cursor: "pointer" }}
                   >
@@ -226,6 +227,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
         {poll.canVote && (
           <div style={{ display: "flex", gap: "0.6rem", marginTop: "1rem", flexWrap: "wrap" }}>
             <button
+              data-testid="poll-vote-submit"
               onClick={() => void run(() => votePoll(poll.id, csrf!, [...selected]))}
               disabled={busy || selected.size === 0}
               className="fpw-btn"
@@ -234,7 +236,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
               {poll.viewerHasVoted ? "Auswahl aktualisieren" : "Stimme abgeben"}
             </button>
             {poll.viewerHasVoted && (
-              <button onClick={() => void run(() => withdrawPollVote(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(159,182,201,0.3)", color: "var(--dim)", background: "transparent" }}>
+              <button data-testid="poll-vote-withdraw" onClick={() => void run(() => withdrawPollVote(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(159,182,201,0.3)", color: "var(--dim)", background: "transparent" }}>
                 Stimme zurückziehen
               </button>
             )}
@@ -284,11 +286,12 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
                   <button onClick={openEdit} disabled={busy} className="fpw-btn"><Ic name="edit" size={13} /> Bearbeiten</button>
                 )}
                 {poll.status === "open" && (
-                  <button onClick={() => void run(() => closePoll(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(240,165,0,0.5)", background: "rgba(240,165,0,0.1)", color: "var(--gold)" }}>
+                  <button data-testid="poll-close" onClick={() => void run(() => closePoll(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(240,165,0,0.5)", background: "rgba(240,165,0,0.1)", color: "var(--gold)" }}>
                     <Ic name="lock" size={13} /> Umfrage schließen
                   </button>
                 )}
                 <button
+                  data-testid="poll-delete"
                   onClick={() => { if (window.confirm("Umfrage wirklich löschen? Das kann nicht rückgängig gemacht werden.")) void run(async () => { await deletePoll(poll.id, csrf!); nav("/polls"); }); }}
                   disabled={busy}
                   className="fpw-btn"
