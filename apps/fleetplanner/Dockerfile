@@ -21,7 +21,9 @@ COPY apps/fleetplanner/package.json apps/fleetplanner/
 COPY packages/fleetplanner-contracts/package.json packages/fleetplanner-contracts/
 
 # `...` pulls workspace dependencies (the shared contracts package).
-RUN pnpm install --no-frozen-lockfile --filter @rdoc-suite/fleetplanner...
+# Frozen lockfile: prod builds must be reproducible — fail loudly if pnpm-lock.yaml
+# is out of sync with the manifests instead of silently resolving new versions.
+RUN pnpm install --frozen-lockfile --filter @rdoc-suite/fleetplanner...
 
 COPY apps/fleetplanner apps/fleetplanner
 COPY packages/fleetplanner-contracts packages/fleetplanner-contracts
@@ -34,7 +36,7 @@ RUN pnpm --filter @rdoc-suite/fleetplanner-contracts run build \
  && pnpm --filter @rdoc-suite/fleetplanner run build
 
 # Drop devDeps
-RUN pnpm install --no-frozen-lockfile --filter @rdoc-suite/fleetplanner... --prod
+RUN pnpm install --frozen-lockfile --filter @rdoc-suite/fleetplanner... --prod
 
 # ─── runtime ────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
@@ -61,6 +63,13 @@ RUN mkdir -p /app/data
 
 COPY apps/fleetplanner/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Run as the unprivileged `node` user the base image ships (uid 1000), not root.
+# The data dir is the only writable path the app touches; app code/node_modules
+# stay root-owned and world-readable. The entrypoint only runs prisma migrate +
+# node (no root ops) and binds port 3200 (>1024), so no privileges are needed.
+RUN chown -R node:node /app/data
+USER node
 
 EXPOSE 3200
 ENTRYPOINT ["/sbin/tini", "--", "/usr/local/bin/docker-entrypoint.sh"]

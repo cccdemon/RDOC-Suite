@@ -15,11 +15,12 @@ test.beforeAll(async ({ browser }) => {
 });
 test.afterAll(async () => { await ctx?.close(); });
 
-test("overview renders + nav CRT toggle works", async () => {
+test("overview renders + theme switch works", async () => {
   await page.goto("./");
-  await expect(page.getByTestId("session-state")).toContainText("e2e-surfer");
-  await page.getByTestId("crt-toggle").click();
-  await page.getByTestId("crt-toggle").click();
+  await expect(page.getByTestId("profile-link").filter({ hasText: "e2e-surfer" }).first()).toContainText("e2e-surfer");
+  const theme = page.getByTestId("theme-select").first();
+  await theme.selectOption("terminal");
+  await theme.selectOption("raumdock");
 });
 
 test("calendar: agenda toggle, past toggle, type filter, day select", async () => {
@@ -42,11 +43,12 @@ test("ships catalog search", async () => {
 
 test("roadmap renders", async () => {
   await page.goto("roadmap");
-  await expect(page.getByTestId("roadmap-page")).toBeVisible();
+  await expect(page.getByTestId("handbuch-page")).toBeVisible();
+  await expect(page).toHaveURL(/\/handbuch\/roadmap/);
 });
 
 test("profile: hangar add + remove + fleet import", async () => {
-  await page.goto("profile");
+  await page.goto("konto/profil");
   await expect(page.getByTestId("profile-page")).toBeVisible();
   // add a ship from the catalog search
   await page.getByTestId("profile-search").fill("aurora");
@@ -65,7 +67,7 @@ test("profile: hangar add + remove + fleet import", async () => {
 });
 
 test("feedback form is fillable (NOT submitted — posts to real Discord)", async () => {
-  await page.goto("feedback");
+  await page.goto("konto/feedback");
   await expect(page.getByTestId("feedback-page")).toBeVisible();
   await page.getByTestId("feedback-subject").fill("E2E-TEST (nicht senden)");
   await page.getByTestId("feedback-message").fill("E2E smoke — form fillable.");
@@ -77,4 +79,32 @@ test("guild settings + partnerships reachable", async () => {
   // correct guarded behavior we assert.
   await page.goto("guilds/settings");
   await expect(page.getByTestId("guild-settings-page").or(page.getByTestId("guild-none"))).toBeVisible();
+});
+
+test("konto tabs: linked logins and preferences are reachable", async () => {
+  await page.goto("konto/logins");
+  await expect(page.getByTestId("konto-page")).toBeVisible();
+  await expect(page.getByTestId("account-page")).toBeVisible();
+  await expect(page.getByTestId("identity-e2e")).toBeVisible();
+
+  await page.getByTestId("konto-tab-prefs").click();
+  await expect(page.getByTestId("prefs-panel")).toBeVisible();
+  await page.getByTestId("prefs-lang-de").click();
+  await expect(page.getByTestId("prefs-share-hangar")).toBeVisible();
+});
+
+test("docs, legal and API docs surfaces render", async () => {
+  await page.goto("handbuch");
+  await expect(page.getByTestId("handbuch-page")).toBeVisible();
+  await page.getByTestId("handbuch-sec-anleitung").click();
+  await expect(page).toHaveURL(/\/handbuch\/anleitung/);
+
+  await page.goto("rechtliches");
+  await expect(page.getByTestId("rechtliches-page")).toBeVisible();
+  await page.getByTestId("rechtliches-sec-datenschutz").click();
+  await expect(page).toHaveURL(/\/rechtliches\/datenschutz/);
+
+  await page.goto("api-docs");
+  await expect(page.getByTestId("api-docs")).toBeVisible();
+  await expect(page.locator(".swagger-ui")).toBeVisible({ timeout: 20_000 });
 });

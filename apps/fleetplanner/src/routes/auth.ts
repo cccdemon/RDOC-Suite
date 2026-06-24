@@ -93,7 +93,7 @@ export async function authRoutes(app: FastifyInstance) {
       }
 
       const session = await createSession(result.userId);
-      setSessionCookie(reply, session.id, session.expiresAt);
+      setSessionCookie(reply, session.token, session.expiresAt);
       return reply.redirect(basePath("/?flash=ok:Welcome+back."), 302);
     } catch (err) {
       app.log.error(err, "OAuth callback error");

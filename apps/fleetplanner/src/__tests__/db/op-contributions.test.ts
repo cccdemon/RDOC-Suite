@@ -40,7 +40,7 @@ describe.skipIf(!dbReady)("operation contributions (real DB)", () => {
     await prisma.guildMembership.create({ data: { guildId, userId: user.id, role: "fleetoperator" } });
     await prisma.guildMembership.create({ data: { guildId, userId: otherId, role: "crew" } });
     const sess = await createSession(user.id);
-    cookie = `fp_sid=${sess.id}`;
+    cookie = `fp_sid=${sess.token}`;
     csrf = sess.csrfToken;
 
     app = (await buildApp()) as unknown as FastifyInstance;

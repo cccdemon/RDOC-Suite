@@ -21,9 +21,18 @@ import { recordEvent } from "./services/systemEvents.js";
 export async function buildApp() {
   const env = getEnv();
 
+  // trustProxy: trust only the configured proxy hops, not every client. Caddy →
+  // fleetplanner-web nginx → this backend all sit on the docker network, so the
+  // default (loopback + RFC1918) is the only source that should be able to set
+  // X-Forwarded-For. "true"/"false" are honored verbatim; anything else is a
+  // comma-separated IP/CIDR allowlist. See config/env.ts TRUST_PROXY.
+  const tp = env.TRUST_PROXY.trim();
+  const trustProxy: boolean | string[] =
+    tp === "true" ? true : tp === "false" ? false : tp.split(",").map((s) => s.trim()).filter(Boolean);
+
   const app = Fastify({
     logger: { level: env.NODE_ENV === "production" ? "info" : "debug" },
-    trustProxy: true,
+    trustProxy,
   });
 
   const isProd = env.NODE_ENV === "production";
@@ -52,19 +61,13 @@ export async function buildApp() {
     return reply.code(status).send({ statusCode: status, code: e.code, error: e.name, message: e.message });
   });
 
-  // Baseline security headers on every response (own hook — no helmet dep). CSP
-  // keeps 'unsafe-inline' for styles/scripts because the SSR pages (maintenance,
-  // OG-meta) use inline styling; the React SPA is served by a separate service.
-  app.addHook("onSend", async (_request, reply) => {
-    reply.header("X-Content-Type-Options", "nosniff");
-    reply.header("X-Frame-Options", "SAMEORIGIN");
-    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
-    reply.header(
-      "Content-Security-Policy",
-      "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; " +
-        "script-src 'self' 'unsafe-inline'; frame-ancestors 'self'; base-uri 'none'; object-src 'none'; form-action 'self'",
-    );
-  });
+  // Security headers are owned by ONE canonical layer: the fleetplanner-web nginx
+  // front door (apps/fleetplanner-web/nginx.conf), which fronts every request to
+  // this backend (Caddy → nginx → fleetplanner:3200; the backend is not exposed
+  // publicly). Setting them here too produced duplicate + conflicting headers on
+  // proxied responses (backend SAMEORIGIN/frame-ancestors 'self' vs nginx
+  // DENY/'none'). nginx now emits the single authoritative set and strips any
+  // stray upstream copy via proxy_hide_header. Do not re-add a header hook here.
 
   // i18n: set a request-scoped baseline locale from Accept-Language. enterWith
   // makes it stick for the rest of the request's async context; loadSession()

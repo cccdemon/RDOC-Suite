@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security - Externe Security-Review-Härtung, 6 Befunde (2026-06-24)
+
+- **Security-Header konsolidiert (eine kanonische Schicht).** Das Backend setzte
+  Security-Header (`onSend`-Hook) zusätzlich zur fleetplanner-web-nginx-Schicht; auf
+  proxied API/SSR-Antworten ergab das doppelte + widersprüchliche Header
+  (`X-Frame-Options: SAMEORIGIN`/`frame-ancestors 'self'` vs nginx `DENY`/`'none'`).
+  nginx ist jetzt die einzige Quelle: Backend-Hook entfernt (`apps/fleetplanner/src/app.ts`),
+  nginx-CSP um `base-uri/object-src/form-action` ergänzt, `proxy_hide_header` als
+  Defense-in-depth, Security-Header zusätzlich auf `/assets/` gesetzt
+  (`apps/fleetplanner-web/nginx.conf`).
+- **Session-Token statt cuid-Bearer.** Cookie trägt nun `crypto.randomBytes(32)` (64-hex);
+  die DB speichert ausschließlich `sha256(token)` (neues `UserSession.tokenHash @unique`,
+  Migration `20260624120000_session_token_hash`). PK bleibt interner Handle. Alt-Sessions
+  werden einmalig ungültig.
+- **E2E-Login-Seam gehärtet.** In `NODE_ENV=production` bleibt der Seam aus, außer
+  `E2E_ALLOW_IN_PROD=1`; optionales `E2E_TEST_LOGIN_EXPIRES` (ISO) → Selbstabschaltung
+  nach Ablauf (registrierungs- und requestseitig geprüft).
+- **`trustProxy` eingegrenzt.** Statt `true` jetzt explizite CIDR-Allowlist (Loopback +
+  RFC1918), env-konfigurierbar via `TRUST_PROXY`.
+- **Dockerfiles gehärtet.** `--frozen-lockfile` (reproduzierbare Prod-Builds);
+  fleetplanner-Runtime läuft als non-root `node`-User.
+- **Dependency-Audit bereinigt.** `playwright` 1.49.1 → 1.55.1 in mission-cover (npm +
+  Docker-Image-Tag). Veraltetes Lockfile mit Phantom-High-Advisories aus den 2026-06-12
+  entfernten `apps/relay-bots`/`apps/bot` regeneriert (`pnpm install --lockfile-only`,
+  −1308 Zeilen). Rest-Highs (`hono` via `@prisma/dev`) sind Prisma-Dev-CLI-Tooling, nicht
+  Runtime-erreichbar.
+
 ### Changed - Operator-Konsole redesign: live autosave + field status (2026-06-23)
 
 Variante A („Tabs + Live") aus dem Design-Handoff. Ziel: einheitliches Speicher-Modell,
