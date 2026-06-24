@@ -4,6 +4,7 @@ import { RoadmapPage } from "./RoadmapPage";
 import { Ic } from "../components/Icons";
 import { MONO } from "../components/ui";
 import { useSeo } from "../seo";
+import { useT } from "../i18n";
 
 const SECTION_DESC: Record<string, string> = {
   "was-ist-das": "Was ist der RDOC Fleetplanner? Operationsplanung für Star-Citizen-Organisationen — Events, Flotten-Slots, Crew und Voice.",
@@ -42,10 +43,11 @@ function sectionContent(key: string) {
 }
 
 export function HandbuchPage() {
+  const t = useT();
   const { section } = useParams<{ section: string }>();
   const active = SECTIONS.find((s) => s.key === section);
   useSeo({
-    title: active ? `${active.label} — Handbuch` : "Handbuch",
+    title: active ? `${t(`handbuch.sec.${active.key}`)} — ${t("handbuch.title")}` : t("handbuch.title"),
     description: active ? SECTION_DESC[active.key] : undefined,
   });
   if (!active) return <Navigate to="/handbuch/was-ist-das" replace />;
@@ -53,7 +55,7 @@ export function HandbuchPage() {
   return (
     <div data-testid="handbuch-page" style={{ display: "flex", gap: "1.5rem", alignItems: "flex-start", flexWrap: "wrap" }}>
       <aside className="handbuch-nav" style={{ flex: "0 0 220px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start" }}>
-        <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)", textTransform: "uppercase", padding: "0 0.55rem 0.5rem" }}>Handbuch</div>
+        <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)", textTransform: "uppercase", padding: "0 0.55rem 0.5rem" }}>{t("handbuch.title")}</div>
         <nav style={{ display: "flex", flexDirection: "column", gap: "0.12rem" }}>
           {SECTIONS.map((s) => (
             <Link
@@ -63,7 +65,7 @@ export function HandbuchPage() {
               className={`nav-item${s.key === active.key ? " is-active" : ""}`}
             >
               <span className="nav-icon"><Ic name={s.icon} size={15} sw={1.6} /></span>
-              <span className="nav-label">{s.label}</span>
+              <span className="nav-label">{t(`handbuch.sec.${s.key}`)}</span>
             </Link>
           ))}
         </nav>

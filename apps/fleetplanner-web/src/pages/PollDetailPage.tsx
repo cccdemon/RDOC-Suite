@@ -13,6 +13,7 @@ import {
 import type { PollDetail, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { visibilityTag } from "./PollsPage";
+import { useT } from "../i18n";
 
 const MONO = "var(--mono)";
 type ResultsVis = "always" | "after_vote" | "after_close";
@@ -42,6 +43,7 @@ function Tag({ label, color, bg, bd }: { label: string; color: string; bg: strin
 }
 
 export function PollDetailPage({ session }: { session: SessionResponse | null }) {
+  const t = useT();
   const { id = "" } = useParams();
   const nav = useNavigate();
   const csrf = session?.csrfToken ?? null;
@@ -166,7 +168,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
           ) : (
             <Tag label="Geschlossen" color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
           )}
-          <Tag {...vt} />
+          <Tag label={t(vt.labelKey)} color={vt.color} bg={vt.bg} bd={vt.bd} />
           <Tag label={poll.mode === "multiple" ? `Mehrfach${poll.maxChoices ? ` · max ${poll.maxChoices}` : ""}` : "Einfach"} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
           {poll.anonymous && <Tag label="anonym" color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />}
         </div>

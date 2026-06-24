@@ -4,14 +4,16 @@ import { ApiError, getDiagnostics } from "../api/client";
 import type { DiagnosticsResponse, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { MONO, card, lbl } from "../components/ui";
+import { useT } from "../i18n";
 
-const SEV: Record<string, { label: string; color: string; rgb: string }> = {
-  ok: { label: "OK", color: "var(--green)", rgb: "0,255,136" },
-  warn: { label: "AKTION", color: "var(--gold)", rgb: "240,165,0" },
-  error: { label: "FEHLT", color: "#ff6b6b", rgb: "255,68,68" },
+const SEV: Record<string, { labelKey: string; color: string; rgb: string }> = {
+  ok: { labelKey: "diag.sev.ok", color: "var(--green)", rgb: "0,255,136" },
+  warn: { labelKey: "diag.sev.warn", color: "var(--gold)", rgb: "240,165,0" },
+  error: { labelKey: "diag.sev.error", color: "#ff6b6b", rgb: "255,68,68" },
 };
 
 export function DiagnosticsPage({ session }: { session: SessionResponse | null }) {
+  const t = useT();
   const me = session?.user ?? null;
   const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator" || me?.role === "superadmin");
   const [guildId, setGuildId] = useState<string | null>(null);
@@ -25,14 +27,14 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
     setBusy(true); setNotice(null); setDiag(null);
     getDiagnostics(id)
       .then(setDiag)
-      .catch((e) => setNotice(e instanceof ApiError ? e.message : "Diagnose nicht ladbar."))
+      .catch((e) => setNotice(e instanceof ApiError ? e.message : t("diag.notLoadable")))
       .finally(() => setBusy(false));
   }
   useEffect(() => { if (guildId) reload(guildId); }, [guildId]);
 
-  if (session === null) return <div className="fpw-state"><span style={lbl}>LADE…</span></div>;
-  if (!me) return <div className="fpw-state" data-testid="diag-anon"><span style={lbl}>ANMELDUNG ERFORDERLICH</span><Link className="fpw-btn" to="/login">Anmelden</Link></div>;
-  if (manageable.length === 0) return <div className="fpw-state" data-testid="diag-none"><span style={lbl}>KEINE SERVER-RECHTE</span><p className="fpw-meta">Diagnose ist Flottenoperatoren vorbehalten.</p></div>;
+  if (session === null) return <div className="fpw-state"><span style={lbl}>{t("common.loading")}</span></div>;
+  if (!me) return <div className="fpw-state" data-testid="diag-anon"><span style={lbl}>{t("common.authRequired")}</span><Link className="fpw-btn" to="/login">{t("common.login")}</Link></div>;
+  if (manageable.length === 0) return <div className="fpw-state" data-testid="diag-none"><span style={lbl}>{t("diag.noRights")}</span><p className="fpw-meta">{t("diag.noRightsHint")}</p></div>;
 
   return (
     <div data-testid="diagnostics-page" style={{ width: "100%" }}>
@@ -40,11 +42,11 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
             <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={17} sw={1.7} /></span>
-            <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>DISCORD // DIAGNOSE</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>{t("diag.label")}</span>
           </div>
-          <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: 0 }}>Installations-Test{diag ? ` · ${diag.guild.name}` : ""}</h1>
+          <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: 0 }}>{t("diag.title")}{diag ? ` · ${diag.guild.name}` : ""}</h1>
         </div>
-        <button type="button" data-testid="diag-retest" disabled={busy || !guildId} onClick={() => guildId && reload(guildId)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid rgba(0,212,255,0.45)", background: "rgba(0,212,255,0.12)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}><Ic name="refresh" size={14} sw={1.8} /> Erneut testen</button>
+        <button type="button" data-testid="diag-retest" disabled={busy || !guildId} onClick={() => guildId && reload(guildId)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid rgba(0,212,255,0.45)", background: "rgba(0,212,255,0.12)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}><Ic name="refresh" size={14} sw={1.8} /> {t("diag.retest")}</button>
       </div>
 
       {manageable.length > 1 && (
@@ -56,16 +58,16 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
       {notice && <p className="fpw-tag gold" role="alert" data-testid="diag-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
 
       {busy && !diag ? (
-        <p className="fpw-meta">Teste Installation…</p>
+        <p className="fpw-meta">{t("diag.testing")}</p>
       ) : diag ? (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem", marginBottom: "1.1rem" }}>
             {(["ok", "warn", "error"] as const).map((s) => {
               const sv = SEV[s];
-              return <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: MONO, fontSize: "0.7rem", padding: "4px 10px", borderRadius: 7, border: `1px solid rgba(${sv.rgb},0.4)`, background: `rgba(${sv.rgb},0.08)`, color: sv.color }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: sv.color }} />{diag.summary[s]} {sv.label}</span>;
+              return <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontFamily: MONO, fontSize: "0.7rem", padding: "4px 10px", borderRadius: 7, border: `1px solid rgba(${sv.rgb},0.4)`, background: `rgba(${sv.rgb},0.08)`, color: sv.color }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: sv.color }} />{diag.summary[s]} {t(sv.labelKey)}</span>;
             })}
             <span style={{ flex: 1 }} />
-            <span style={{ fontFamily: MONO, fontSize: "0.68rem", color: "var(--dim2)" }}>Guild {diag.guild.id}</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.68rem", color: "var(--dim2)" }}>{t("diag.guild")} {diag.guild.id}</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
@@ -78,7 +80,7 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
                     <div style={{ flex: 1, minWidth: 180 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.3rem" }}>
                         <strong style={{ fontFamily: "var(--body)", fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)" }}>{b.name}{b.username ? ` · @${b.username}` : ""}</strong>
-                        <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", padding: "2px 7px", borderRadius: 5, border: `1px solid rgba(${sv.rgb},0.4)`, background: `rgba(${sv.rgb},0.1)`, color: sv.color }}>{sv.label}</span>
+                        <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", padding: "2px 7px", borderRadius: 5, border: `1px solid rgba(${sv.rgb},0.4)`, background: `rgba(${sv.rgb},0.1)`, color: sv.color }}>{t(sv.labelKey)}</span>
                       </div>
                       <div style={{ fontSize: "0.82rem", color: "#9fb1c2", lineHeight: 1.45, marginBottom: "0.55rem" }}>{b.note}</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
@@ -91,7 +93,7 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
                       </div>
                     </div>
                     {b.inviteUrl && (
-                      <a href={b.inviteUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(0,212,255,0.4)", background: "rgba(0,212,255,0.08)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none", whiteSpace: "nowrap" }}>{b.installed ? "Neu einladen" : "Installieren"}</a>
+                      <a href={b.inviteUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(0,212,255,0.4)", background: "rgba(0,212,255,0.08)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none", whiteSpace: "nowrap" }}>{b.installed ? t("diag.reinvite") : t("diag.install")}</a>
                     )}
                   </div>
                 </section>

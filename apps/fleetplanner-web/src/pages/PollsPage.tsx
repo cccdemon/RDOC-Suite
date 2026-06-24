@@ -3,17 +3,18 @@ import { Link } from "react-router-dom";
 import { ApiError, listPolls } from "../api/client";
 import type { PollSummary, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { useT } from "../i18n";
 
 const MONO = "var(--mono)";
 
-export function visibilityTag(v: PollSummary["visibility"]): { label: string; color: string; bg: string; bd: string } {
+export function visibilityTag(v: PollSummary["visibility"]): { labelKey: string; color: string; bg: string; bd: string } {
   switch (v) {
     case "partners":
-      return { label: "Partner", color: "var(--gold)", bg: "rgba(240,165,0,0.09)", bd: "rgba(240,165,0,0.42)" };
+      return { labelKey: "poll.vis.partners", color: "var(--gold)", bg: "rgba(240,165,0,0.09)", bd: "rgba(240,165,0,0.42)" };
     case "public":
-      return { label: "Öffentlich", color: "var(--purple)", bg: "rgba(160,100,255,0.09)", bd: "rgba(160,100,255,0.42)" };
+      return { labelKey: "poll.vis.public", color: "var(--purple)", bg: "rgba(160,100,255,0.09)", bd: "rgba(160,100,255,0.42)" };
     default:
-      return { label: "Privat", color: "var(--cyan)", bg: "rgba(0,212,255,0.08)", bd: "rgba(0,212,255,0.38)" };
+      return { labelKey: "poll.vis.private", color: "var(--cyan)", bg: "rgba(0,212,255,0.08)", bd: "rgba(0,212,255,0.38)" };
   }
 }
 
@@ -32,6 +33,7 @@ function fmtCloses(iso: string | null): string | null {
 }
 
 export function PollsPage({ session }: { session: SessionResponse | null }) {
+  const t = useT();
   const [polls, setPolls] = useState<PollSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
     setLoading(true);
     listPolls()
       .then((r) => setPolls(r.polls))
-      .catch((e) => setError(e instanceof ApiError ? e.message : "Umfragen nicht ladbar."))
+      .catch((e) => setError(e instanceof ApiError ? e.message : t("polls.notLoadable")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -64,10 +66,10 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
             <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={20} /></span>
-            <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Umfragen</h1>
+            <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>{t("polls.title")}</h1>
           </div>
           <div style={{ color: "#9fb1c2", fontSize: "0.9rem" }}>
-            {openCount} offen · {closedCount} geschlossen
+            {t("polls.count", { open: openCount, closed: closedCount })}
           </div>
         </div>
         {session?.user && (
@@ -77,7 +79,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
             className="fpw-btn"
             style={{ borderColor: "rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.12)", color: "var(--green)" }}
           >
-            <Ic name="plus" size={14} /> Neue Umfrage
+            <Ic name="plus" size={14} /> {t("polls.new")}
           </Link>
         )}
       </div>
@@ -85,17 +87,17 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
       <div style={{ display: "inline-flex", gap: 6, background: "var(--bg2)", border: "1px solid rgba(255,255,255,0.08)", padding: 4, borderRadius: 10, marginBottom: "1.1rem" }}>
         {(["all", "open", "closed"] as const).map((f) => (
           <span key={f} data-testid={`poll-filter-${f}`} style={filter === f ? { ...seg, ...segOn } : seg} onClick={() => setFilter(f)}>
-            {f === "all" ? "Alle" : f === "open" ? "Offen" : "Geschlossen"}
+            {t(`polls.filter.${f}`)}
           </span>
         ))}
       </div>
 
       {loading ? (
-        <p className="fpw-meta">Lade…</p>
+        <p className="fpw-meta">{t("common.loading")}</p>
       ) : error ? (
         <p className="fpw-meta" style={{ color: "#ff7a7a" }}>{error}</p>
       ) : shown.length === 0 ? (
-        <p className="fpw-meta">Keine Umfragen. {session?.user ? "Lege mit „Neue Umfrage“ die erste an." : "Melde dich an, um Umfragen zu erstellen."}</p>
+        <p className="fpw-meta">{t("polls.empty")} {session?.user ? t("polls.emptyHint") : t("polls.emptyAnon")}</p>
       ) : (
         <div className="fpw-grid">
           {shown.map((p) => {
@@ -105,24 +107,24 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
               <Link key={p.id} data-testid={`poll-card-${p.id}`} to={`/polls/${p.id}`} className="fpw-card fpw-cardlink" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
                   {p.status === "open" ? (
-                    <Tag label="Offen" color="var(--green)" bg="rgba(0,255,136,0.08)" bd="rgba(0,255,136,0.4)" />
+                    <Tag label={t("poll.status.open")} color="var(--green)" bg="rgba(0,255,136,0.08)" bd="rgba(0,255,136,0.4)" />
                   ) : p.status === "draft" ? (
-                    <Tag label="Entwurf" color="var(--gold)" bg="rgba(240,165,0,0.09)" bd="rgba(240,165,0,0.42)" />
+                    <Tag label={t("poll.status.draft")} color="var(--gold)" bg="rgba(240,165,0,0.09)" bd="rgba(240,165,0,0.42)" />
                   ) : (
-                    <Tag label="Geschlossen" color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
+                    <Tag label={t("poll.status.closed")} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
                   )}
-                  <Tag {...vt} />
-                  <Tag label={p.mode === "multiple" ? `Mehrfach${p.maxChoices ? ` · max ${p.maxChoices}` : ""}` : "Einfach"} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
+                  <Tag label={t(vt.labelKey)} color={vt.color} bg={vt.bg} bd={vt.bd} />
+                  <Tag label={p.mode === "multiple" ? t("poll.mode.multi") + (p.maxChoices ? t("poll.maxChoices", { n: p.maxChoices }) : "") : t("poll.mode.single")} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#eaf4fb", lineHeight: 1.2 }}>{p.title}</div>
                 {p.description && (
                   <div style={{ color: "#9fb1c2", fontSize: "0.9rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: "0.3rem 1rem", flexWrap: "wrap", fontFamily: MONO, fontSize: "0.66rem", color: "#7e92a4", letterSpacing: "0.04em", marginTop: "auto" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="users" size={12} /> {p.totalVotes} Stimmen</span>
-                  {closes && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="clock" size={12} /> {p.status === "closed" ? "beendet" : `bis ${closes}`}</span>}
-                  {p.viewerHasVoted && <span style={{ color: "var(--green)" }}>✓ abgestimmt</span>}
-                  <span>von {p.createdBy.username}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="users" size={12} /> {t("poll.votes", { n: p.totalVotes })}</span>
+                  {closes && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="clock" size={12} /> {p.status === "closed" ? t("poll.ended") : t("poll.until", { when: closes })}</span>}
+                  {p.viewerHasVoted && <span style={{ color: "var(--green)" }}>{t("poll.youVoted")}</span>}
+                  <span>{t("poll.by", { who: p.createdBy.username })}</span>
                 </div>
               </Link>
             );
