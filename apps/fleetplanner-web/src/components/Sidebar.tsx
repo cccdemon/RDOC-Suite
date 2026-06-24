@@ -5,6 +5,7 @@ import { NAV_GROUPS, isVisible, visibleItems, type NavItem, type Perspective } f
 import { THEMES, type Theme } from "../theme";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
+import { useT } from "../i18n";
 
 // The active nav item = the longest `to` that equals the path or is a path
 // prefix. This keeps deep routes like /handbuch/roadmap highlighting "Handbuch"
@@ -26,6 +27,7 @@ function perspectiveOf(session: SessionResponse | null): Perspective | null {
 }
 
 function ThemePicker({ theme, setThemeId }: { theme: Theme; setThemeId: (id: string) => void }) {
+  const t = useT();
   return (
     <div className="theme-pick">
       <span className="theme-dot" style={{ color: theme.dot, background: theme.dot }} />
@@ -34,7 +36,7 @@ function ThemePicker({ theme, setThemeId }: { theme: Theme; setThemeId: (id: str
         data-testid="theme-select"
         value={theme.id}
         onChange={(e) => setThemeId(e.target.value)}
-        aria-label="Hersteller-Theme"
+        aria-label={t("sidebar.themeAria")}
         style={{ fontSize: "0.72rem", padding: "0.4rem 0.5rem" }}
       >
         {THEMES.map((t) => (
@@ -46,12 +48,13 @@ function ThemePicker({ theme, setThemeId }: { theme: Theme; setThemeId: (id: str
 }
 
 function UserChip({ session }: { session: SessionResponse | null }) {
+  const t = useT();
   const user = session?.user ?? null;
   if (!user) {
     return (
       <Link to="/login" className="foot-user" style={{ textDecoration: "none" }} data-testid="login-link">
-        <Avatar name="Gast" size={26} />
-        <span className="uname">Anmelden</span>
+        <Avatar name={t("sidebar.guest")} size={26} />
+        <span className="uname">{t("common.login")}</span>
       </Link>
     );
   }
@@ -66,8 +69,8 @@ function UserChip({ session }: { session: SessionResponse | null }) {
         type="button"
         className="nav-icon"
         data-testid="logout-btn"
-        title="Abmelden"
-        aria-label="Abmelden"
+        title={t("common.logout")}
+        aria-label={t("common.logout")}
         onClick={() => void logout()}
         style={{ border: "1px solid var(--border)", background: "transparent", borderRadius: 7, padding: "0.35rem", cursor: "pointer", flexShrink: 0, color: "var(--dim)" }}
       >
@@ -90,6 +93,7 @@ function Brand() {
 }
 
 export function Sidebar({ session, theme, setThemeId }: { session: SessionResponse | null; theme: Theme; setThemeId: (id: string) => void }) {
+  const t = useT();
   const { pathname } = useLocation();
   const perspective = perspectiveOf(session);
   const best = bestMatch(pathname);
@@ -102,8 +106,8 @@ export function Sidebar({ session, theme, setThemeId }: { session: SessionRespon
           const items = g.items.filter((it) => isVisible(it, perspective));
           if (items.length === 0) return null;
           return (
-            <div className="nav-group" key={g.label}>
-              <div className="nav-group-label">{g.label}</div>
+            <div className="nav-group" key={g.labelKey}>
+              <div className="nav-group-label">{t(g.labelKey)}</div>
               {items.map((it) => (
                 <NavLinkItem key={it.to} item={it} active={it.to === best} />
               ))}
@@ -114,7 +118,7 @@ export function Sidebar({ session, theme, setThemeId }: { session: SessionRespon
       <div className="sidebar-foot">
         <ThemePicker theme={theme} setThemeId={setThemeId} />
         <Link to="/rechtliches" data-testid="footer-legal" style={{ fontFamily: "var(--mono)", fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim2)", textDecoration: "none", padding: "0 0.25rem" }}>
-          Rechtliches · Impressum · Datenschutz
+          {t("sidebar.legal")}
         </Link>
         <UserChip session={session} />
       </div>
@@ -123,10 +127,11 @@ export function Sidebar({ session, theme, setThemeId }: { session: SessionRespon
 }
 
 function NavLinkItem({ item, active }: { item: NavItem; active: boolean }) {
+  const t = useT();
   return (
     <Link to={item.to} className={`nav-item${active ? " is-active" : ""}`} data-testid={`nav-${item.to}`}>
       <span className="nav-icon"><Ic name={item.icon} size={15} sw={1.6} /></span>
-      <span className="nav-label">{item.label}</span>
+      <span className="nav-label">{t(item.labelKey)}</span>
     </Link>
   );
 }
@@ -134,6 +139,7 @@ function NavLinkItem({ item, active }: { item: NavItem; active: boolean }) {
 // Shown < 880px instead of the sidebar: brand + theme + avatar, plus a full-width
 // screen <select> to jump between top-level views.
 export function MobileNav({ session, theme, setThemeId }: { session: SessionResponse | null; theme: Theme; setThemeId: (id: string) => void }) {
+  const t = useT();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const items = visibleItems(perspectiveOf(session));
@@ -153,11 +159,11 @@ export function MobileNav({ session, theme, setThemeId }: { session: SessionResp
         data-testid="mobile-screen-select"
         value={current}
         onChange={(e) => navigate(e.target.value)}
-        aria-label="Screen wechseln"
+        aria-label={t("sidebar.screenAria")}
       >
-        {!current && <option value="">— Ansicht —</option>}
+        {!current && <option value="">{t("sidebar.viewPlaceholder")}</option>}
         {items.map((it) => (
-          <option key={it.to} value={it.to}>{it.label}</option>
+          <option key={it.to} value={it.to}>{t(it.labelKey)}</option>
         ))}
       </select>
     </>
