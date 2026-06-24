@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "e2e/**",
+    "tests/**",
+    "apps/mission-cover/engine/**"
+  ],
+  "ignoreBinaries": ["vitest"],
+  "ignoreDependencies": ["@prisma/client"]
+}
