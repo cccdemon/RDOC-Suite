@@ -1,5 +1,26 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned - 2026-06-24: Caddy-Route /vod → TWITCH-Generator (co-hosted, separates Repo)
+
+Status: ⏳ Queued. Nur eine Datei in DIESEM Repo betroffen: `deploy/caddy-rdoc/Caddyfile`.
+
+TWITCH-Generator (separates Projekt/Repo, Pattern wie RDOC-LRC / SquadLink) wird auf LXC 103
+unter `/opt/TWITCH-Generator` als EIGENES Compose-Projekt deployt (eigene
+`docker-compose.prod.yml`, Loopback-Bind `127.0.0.1:9444:9443`, Login + Whisper/LLM-Pipeline).
+Es terminiert kein TLS — der bestehende `caddy-rdoc` (host network, `:9443`) frontet es.
+
+Änderung hier: neuer `handle_path /vod*`-Block im `suite.raumdock.org:9443`-Site-Block, der auf
+`127.0.0.1:9444` reverse-proxyt. `handle_path` strippt `/vod`, daher läuft die App mit
+`ROOT_PATH=/vod` (baut ihre Links mit Prefix). Auth/Session liegt in der App selbst
+(USERS + Session-Cookie), nicht in Caddy. Block muss VOR dem Catch-all-`handle {}` stehen
+(Caddy ordnet `handle_path` path-spezifisch vor dem matcher-losen `handle`, Reihenfolge im
+File egal — aber zur Lesbarkeit zwischen /downloads und /metrics einsortiert).
+
+Kein neuer Service im `docker-compose.prod.yml` dieses Repos — TWITCH-Generator bleibt
+getrennt. Deploy-Reihenfolge: erst TWITCH-Generator hochfahren (Port 9444 lauscht), dann
+Caddy neu laden (`docker compose -f docker-compose.prod.yml up -d caddy-rdoc`).
+
+
 ## Completed - 2026-06-23: Voice-Empfänger persistieren + Pending-Drop-Fix (Operator-Konsole Follow-up)
 
 Status: ✓ Deployed (2026-06-23), Commit `be259bb`, master. Prod-Build `fleetplanner` +

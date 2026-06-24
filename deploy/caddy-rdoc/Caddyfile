@@ -54,6 +54,18 @@ suite.raumdock.org:9443 {
 		}
 	}
 
+	# TWITCH-Generator (separate repo /opt/TWITCH-Generator, own compose project).
+	# Twitch VOD -> Whisper -> LLM -> short-form clips -> upload, with its own login
+	# (USERS + session cookie). handle_path strips /vod, so the app runs with
+	# ROOT_PATH=/vod and emits prefixed links. Loopback-only upstream (host 9444).
+	# Exact "/vod" (no slash) would strip to "" and 404 — redirect it to "/vod/".
+	handle /vod {
+		redir * /vod/ 308
+	}
+	handle_path /vod* {
+		reverse_proxy 127.0.0.1:9444
+	}
+
 	# Prometheus scrape endpoints must never be reachable from the public
 	# internet. The fleetplanner serves /metrics under /fleetplanner/metrics
 	# (handle_path strips the prefix to /metrics). Prometheus scrapes
