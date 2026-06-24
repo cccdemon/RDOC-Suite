@@ -72,6 +72,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
         </div>
         {session?.user && (
           <Link
+            data-testid="poll-new-link"
             to="/polls/new"
             className="fpw-btn"
             style={{ borderColor: "rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.12)", color: "var(--green)" }}
@@ -83,7 +84,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
 
       <div style={{ display: "inline-flex", gap: 6, background: "var(--bg2)", border: "1px solid rgba(255,255,255,0.08)", padding: 4, borderRadius: 10, marginBottom: "1.1rem" }}>
         {(["all", "open", "closed"] as const).map((f) => (
-          <span key={f} style={filter === f ? { ...seg, ...segOn } : seg} onClick={() => setFilter(f)}>
+          <span key={f} data-testid={`poll-filter-${f}`} style={filter === f ? { ...seg, ...segOn } : seg} onClick={() => setFilter(f)}>
             {f === "all" ? "Alle" : f === "open" ? "Offen" : "Geschlossen"}
           </span>
         ))}
@@ -101,7 +102,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
             const vt = visibilityTag(p.visibility);
             const closes = fmtCloses(p.closesAt);
             return (
-              <Link key={p.id} to={`/polls/${p.id}`} className="fpw-card fpw-cardlink" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              <Link key={p.id} data-testid={`poll-card-${p.id}`} to={`/polls/${p.id}`} className="fpw-card fpw-cardlink" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
                   {p.status === "open" ? (
                     <Tag label="Offen" color="var(--green)" bg="rgba(0,255,136,0.08)" bd="rgba(0,255,136,0.4)" />
