@@ -574,7 +574,7 @@ export function OperatorPanel({
             {requirements.length > 0 && (
               <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
                 BEDARF
-                {reqSelect(u, sel, (id) => setAcceptReq((m) => ({ ...m, [u.id]: id })), `accept-req-${u.id}`)}
+                {reqSelect(u, sel, (id) => setAcceptReq((m) => ({ ...m, [u.id]: id })), `unit-bedarf-${u.id}`)}
               </label>
             )}
             <button type="button" data-testid={`accept-${u.id}`} onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.7rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
