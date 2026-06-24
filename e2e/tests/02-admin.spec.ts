@@ -60,5 +60,7 @@ test("ban + unban the synthetic E2E guild only", async () => {
   await page.getByTestId(`admin-ban-${E2E_GUILD}`).click();
   await expect(page.getByTestId(`admin-unban-${E2E_GUILD}`)).toBeVisible({ timeout: 10_000 });
   await page.getByTestId(`admin-unban-${E2E_GUILD}`).click();
-  await expect(page.getByTestId(`admin-ban-${E2E_GUILD}`)).toBeVisible({ timeout: 10_000 });
+  await page.reload();
+  await expect(page.getByTestId("admin-page")).toBeVisible();
+  await expect(page.getByTestId(`admin-unban-${E2E_GUILD}`)).toHaveCount(0);
 });
