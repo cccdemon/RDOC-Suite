@@ -1,8 +1,12 @@
 # RDOC Suite Merge Log
 
-## Queued / In Progress - 2026-06-28: Monitoring + Ops-Metriken, Feedback-Anhänge, Token-Kopierbutton
+## Completed - 2026-06-28: Monitoring + Ops-Metriken, Feedback-Anhänge, Token-Kopierbutton — `ff8cda6` + `fd829dd`
 
-Status: ⏳ In Arbeit (Folge-Session). Betroffen: `apps/fleetplanner` (services/metrics.ts,
+Status: ✅ Deployed (LXC 103: fleetplanner + fleetplanner-web + monitoring rebuilt, grafana
+restart). Datenfund: es gibt eine Legacy-Sichtbarkeit `guild` (neben private/partners/public,
+~7 Ops in prod) — `OP_VISIBILITIES` kennt sie nicht. Ops-Total nutzt daher `count()` (alle),
+die benannten Buckets bleiben private/partners/public; Summe der Buckets < Total ist erwartet
+(Fix `fd829dd`). Falls `guild` konsolidiert werden soll → separater Task. Betroffen: `apps/fleetplanner` (services/metrics.ts,
 services/systemHealth.ts, routes/apiV1.ts), `packages/fleetplanner-contracts` (SystemHealthResponse
 + OperationsMetric), `apps/fleetplanner-web` (SystemPage, FeedbackPage, PartnershipsPage, api/client,
 api/types, i18n), `apps/monitoring/alerts.yml`, `deploy/grafana/dashboards/rdoc-suite-overview.json`.
