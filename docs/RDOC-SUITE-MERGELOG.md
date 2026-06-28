@@ -1,8 +1,8 @@
 # RDOC Suite Merge Log
 
-## Queued / In Progress - 2026-06-28: Superadmin Cross-Guild-Bypass entfernen (außer Admin-Console)
+## Completed - 2026-06-28: Superadmin Cross-Guild-Bypass entfernen (außer Admin-Console) — `9ebd221`
 
-Status: ⏳ In Arbeit. Betroffen: `apps/fleetplanner` (auth/middleware.ts, services/guilds.ts,
+Status: ✅ Deployed (LXC 103, fleetplanner + fleetplanner-web rebuilt, keine Migration). Betroffen: `apps/fleetplanner` (auth/middleware.ts, services/guilds.ts,
 routes/apiV1.ts, routes/api.ts), `apps/fleetplanner-web` (WizardPage, CalendarPage,
 DiagnosticsPage, PartnershipsPage, TemplatesPage). Tests: guilds.test.ts u.a.
 
