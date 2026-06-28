@@ -117,12 +117,20 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   // Operations metric: total + per-visibility breakdown (private/partners/public).
   let operations: OperationsMetric = { total: 0, private: 0, partners: 0, public: 0 };
   try {
-    const grouped = await prisma.operation.groupBy({ by: ["visibility"], _count: { _all: true } });
+    // total = ALL operations (count). The named buckets cover the current
+    // visibilities; legacy values (e.g. "guild") are part of total but not
+    // shown as their own tile, so the buckets may sum to less than total.
+    const [total, grouped] = await Promise.all([
+      prisma.operation.count(),
+      prisma.operation.groupBy({ by: ["visibility"], _count: { _all: true } }),
+    ]);
     const by = new Map(grouped.map((g) => [g.visibility, g._count._all]));
-    const priv = by.get("private") ?? 0;
-    const partners = by.get("partners") ?? 0;
-    const pub = by.get("public") ?? 0;
-    operations = { total: priv + partners + pub, private: priv, partners, public: pub };
+    operations = {
+      total,
+      private: by.get("private") ?? 0,
+      partners: by.get("partners") ?? 0,
+      public: by.get("public") ?? 0,
+    };
   } catch {
     // DB hiccup — report zeros rather than failing the whole health payload
   }
