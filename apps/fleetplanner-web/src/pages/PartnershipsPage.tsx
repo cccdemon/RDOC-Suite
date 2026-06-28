@@ -192,7 +192,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
             <div style={{ display: "flex", gap: "0.5rem", alignItems: "stretch", flexWrap: "wrap" }}>
               <code style={{ flex: "1 1 200px", wordBreak: "break-all", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.2)", borderRadius: 8, padding: "0.5rem 0.7rem", color: "#00d4ff", fontSize: "0.85rem" }}>{mintedToken}</code>
               <button type="button" data-testid="invite-copy" onClick={copyToken} aria-label="Token kopieren" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: `1px solid ${tokenCopied ? "#00ff8866" : "rgba(0,212,255,0.3)"}`, background: tokenCopied ? "rgba(0,255,136,0.1)" : "rgba(0,212,255,0.06)", color: tokenCopied ? "#00ff88" : "#00d4ff", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
-                <Ic name={tokenCopied ? "check" : "doc"} size={13} sw={1.8} /> {tokenCopied ? "Kopiert" : "Kopieren"}
+                <Ic name={tokenCopied ? "check" : "copy"} size={13} sw={1.8} /> {tokenCopied ? "Kopiert" : "Kopieren"}
               </button>
             </div>
           </div>

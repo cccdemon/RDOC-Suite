@@ -355,7 +355,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
               </button>
               <button type="button" data-testid="cal-today" onClick={() => { setYear(T.y); setMonth(T.m); setSelDay(T.d); }} style={{ padding: "0 0.9rem", height: 36, border: "none", borderLeft: "1px solid rgba(0,212,255,0.12)", borderRight: "1px solid rgba(0,212,255,0.12)", background: "transparent", color: "#00d4ff", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.04em", cursor: "pointer", whiteSpace: "nowrap" }}>HEUTE</button>
               <button type="button" data-testid="cal-next" onClick={() => setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; })} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "#9fb1c2", cursor: "pointer" }}>
-                <Ic name="chevron" size={16} sw={1.9} />
+                <Ic name="arrow" size={16} sw={1.9} />
               </button>
             </div>
           )}
