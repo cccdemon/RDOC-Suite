@@ -13,7 +13,7 @@ const TYPE_LABEL: Record<string, string> = {
 export function TemplatesPage({ session }: { session: SessionResponse | null }) {
   const nav = useNavigate();
   const operatorGuilds = (session?.memberships ?? []).filter(
-    (m) => m.role === "fleetoperator" || session?.user?.role === "superadmin",
+    (m) => m.role === "fleetoperator",
   );
   const [guildId, setGuildId] = useState("");
   const [query, setQuery] = useState("");

@@ -369,7 +369,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
               <Ic name="edit" size={13} sw={1.7} /> {draftCount} {draftCount === 1 ? "Entwurf" : "Entwürfe"}
             </button>
           )}
-          {((session?.memberships ?? []).some((m) => m.role === "fleetoperator") || session?.user?.role === "superadmin") && (
+          {(session?.memberships ?? []).some((m) => m.role === "fleetoperator") && (
             <Link to="/ops/new" data-testid="create-link" className="btn btn-green" style={{ textDecoration: "none" }}><Ic name="plus" size={14} sw={1.9} /> Neue Op</Link>
           )}
           {!session?.user && (

@@ -35,7 +35,7 @@ const lbl: React.CSSProperties = { fontFamily: MONO, fontSize: "0.62rem", letter
 export function WizardPage({ session }: { session: SessionResponse | null }) {
   const nav = useNavigate();
   const t = useT();
-  const operatorGuilds = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator" || session?.user?.role === "superadmin");
+  const operatorGuilds = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
   const csrf = session?.csrfToken ?? null;
 
   const [guildId, setGuildId] = useState(operatorGuilds[0]?.guildId ?? "");

@@ -66,7 +66,9 @@ export async function requireGuild(
 
 /**
  * Like requireGuild, but also enforces a minimum role WITHIN the active
- * guild. Instance superadmins bypass the guild-role check.
+ * guild. A superadmin is NOT auto-granted here — outside the admin console
+ * they act on their real GuildMembership.role. Cross-guild powers live in
+ * the admin console (requireSuperadmin + instance-management endpoints).
  */
 export async function requireGuildRole(
   request: FastifyRequest,
@@ -75,7 +77,6 @@ export async function requireGuildRole(
 ): Promise<GuildContext | null> {
   const gctx = await requireGuild(request, reply);
   if (!gctx) return null;
-  if (gctx.user.role === "superadmin") return gctx; // instance owner bypass
   if (!guildRoleAtLeast(gctx.guildRole, minRole)) {
     reply.code(403).send({ error: "forbidden" });
     return null;

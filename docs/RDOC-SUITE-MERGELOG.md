@@ -1,5 +1,38 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-06-28: Superadmin Cross-Guild-Bypass entfernen (außer Admin-Console)
+
+Status: ⏳ In Arbeit. Betroffen: `apps/fleetplanner` (auth/middleware.ts, services/guilds.ts,
+routes/apiV1.ts, routes/api.ts), `apps/fleetplanner-web` (WizardPage, CalendarPage,
+DiagnosticsPage, PartnershipsPage, TemplatesPage). Tests: guilds.test.ts u.a.
+
+**Problem:** Superadmin (`User.role`) wurde überall operativ als `fleetoperator` jeder Guild
+behandelt (`effectiveOpRole`, `requireGuildRole`, `requireGuildOperator`, Inline-Checks in
+apiV1 + Frontend `|| superadmin`). Dadurch konnte ein Superadmin in Guilds, in denen er nur
+`crew` ist (z.B. per Login-Auto-Sync frisch angelegte Membership nach Bot-Install), Events
+erstellen/verwalten und alle seine Guilds als Operator-Guilds sehen.
+
+**Entscheidung (User, strikt):** Superadmin verhält sich außerhalb der Admin-Console wie ein
+normaler User mit seiner echten `GuildMembership.role`. In der normalen UI sieht er NUR Guilds,
+in denen er echter `fleetoperator` ist (crew-Memberships werden ausgeblendet). God-Mode /
+Cross-Guild-Sicht bleibt ausschließlich in der Admin-Console (`/admin`, instance-management
+Endpunkte, `requireSuperadmin`).
+
+**Änderungen:**
+- Backend-Authz Bypass raus: `effectiveOpRole` (guilds.ts), `requireGuildRole` (middleware),
+  `requireGuildOperator` + Inline `ctx.user.role === "superadmin"`-Klauseln in apiV1
+  (guild settings GET/PATCH, fleet, diagnostics, channels, member-role, op-create,
+  templates list/apply). `canApproveUnits` (api.ts) korrigiert automatisch via effectiveOpRole.
+- Neue Visibility-Filterung: `listVisibleGuilds(userId, instanceRole)` in guilds.ts — für
+  superadmin nur `fleetoperator`-Memberships; an den 3 normalen-UI-Call-Sites (session,
+  operations-list, /api/v1/guilds) statt rohem `listUserGuilds`.
+- Frontend `|| superadmin` aus operativen Guild-Filtern entfernt.
+- BEHALTEN superadmin: `requireSuperadmin` + alle instance-management Endpunkte, maintenance-
+  Bypass (app.ts), nav `/admin`/`/admin/system`, AdminPage/SystemPage/ProfilePage-Badge.
+
+Deploy: Rebuild `fleetplanner` (Backend-Authz) + `fleetplanner-web` (UI-Filter). Keine Migration,
+keine neuen ENV. Daten unverändert (crew-Rows bleiben, nur Sicht+Authz ändert sich).
+
 ## Queued / In Progress - 2026-06-24: Security-Review-Härtung (6 Befunde)
 
 Status: ⏳ In Arbeit. Betroffen: `apps/fleetplanner` (app.ts, session.ts, env.ts, e2eAuth.ts,

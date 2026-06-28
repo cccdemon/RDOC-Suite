@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Superadmin: kein Cross-Guild-Bypass außerhalb der Admin-Console (2026-06-28)
+
+- **Superadmin verhält sich operativ wie ein normaler User mit seiner echten
+  `GuildMembership.role`.** Bisher wurde ein Instanz-Superadmin überall als
+  `fleetoperator` jeder Guild behandelt (auch in Guilds, in denen er nur per
+  Login-Auto-Sync als `crew` gelandet ist) → er konnte dort Events erstellen/verwalten
+  und sah alle seine Guilds als Operator-Guilds. Jetzt: God-Mode/Cross-Guild nur noch in
+  der Admin-Console (`/admin`, `requireSuperadmin`, instance-management Endpunkte).
+  - Authz-Bypass entfernt: `effectiveOpRole` (services/guilds.ts), `requireGuildRole`
+    (auth/middleware.ts), `requireGuildOperator` + Inline-`superadmin`-Klauseln in
+    `routes/apiV1.ts` (guild settings GET/PATCH, fleet, diagnostics, op-create,
+    templates list/apply).
+  - Normale-UI-Guild-Sicht: neuer `listVisibleGuilds(userId, role)` blendet für
+    Superadmins crew-Memberships aus (nur echte `fleetoperator`-Guilds in session,
+    Op-Liste, `/api/v1/guilds`). Frontend `|| superadmin` aus den operativen
+    Guild-Filtern entfernt (Wizard, Kalender, Diagnostics, Partnerships, Templates).
+  - `deleteUnit`/`unclaimSeat`-Routes übergeben jetzt die **effektive Guild-Rolle**
+    (`effectiveOpRole`) statt der globalen Instanz-Rolle. Behebt zusätzlich einen
+    latenten Bug: echte Guild-Fleetoperators (`User.role="crew"`) konnten Units nicht
+    force-löschen, weil die rohe Instanz-Rolle übergeben wurde.
+
 ### Security - Externe Security-Review-Härtung, 6 Befunde (2026-06-24)
 
 - **Security-Header konsolidiert (eine kanonische Schicht).** Das Backend setzte

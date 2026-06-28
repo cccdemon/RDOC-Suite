@@ -186,8 +186,10 @@ export async function assertUniqueSquadName(
 
 
 // Per-operation management gate. All op-level roles share the SAME rights
-// (user requirement): the guild's fleet operators + superadmin, the op CREATOR
+// (user requirement): the guild's fleet operators, the op CREATOR
 // (Event Manager), and any appointed op LEADER (Raid Leiter / Wing Commander).
+// A superadmin is NOT auto-granted — effectiveOpRole resolves their real
+// guild membership; cross-guild powers live in the admin console.
 export async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
   const opRole = await effectiveOpRole(userId, instanceRole, operationId);
   if (opRole === "fleetoperator") return true;
@@ -478,7 +480,8 @@ export async function apiRoutes(app: FastifyInstance) {
           select: { id: true },
         });
         if (!unit) return reply.code(404).send({ error: "Unit not found" });
-        await deleteUnit(req.params.unitId, ctx.user.id, ctx.user.role);
+        const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, req.params.id);
+        await deleteUnit(req.params.unitId, ctx.user.id, opRole ?? "");
         return reply.redirect(
           opReturnUrl(req.params.id, req.body, "ok:Unit+removed.", "fleet"),
           302,
@@ -1258,8 +1261,9 @@ export async function apiRoutes(app: FastifyInstance) {
       const opId = seat?.fleetUnit.operationId;
       if (!opId) return reply.code(404).send({ error: "Seat not found" });
 
+      const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, opId);
       try {
-        await unclaimSeat(req.params.seatId, ctx.user.id, ctx.user.role);
+        await unclaimSeat(req.params.seatId, ctx.user.id, opRole ?? "");
         return reply.redirect(opReturnUrl(opId, req.body, "ok:Seat+released.", "fleet"), 302);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Failed";

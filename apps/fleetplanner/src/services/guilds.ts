@@ -231,6 +231,19 @@ export async function listUserGuilds(userId: string) {
   });
 }
 
+/**
+ * Guilds a user sees in the NORMAL UI (session, server list, calendar,
+ * wizard). For a superadmin this hides crew-only memberships and returns
+ * only guilds where they are an actual fleetoperator — their full
+ * cross-guild view lives in the admin console (listAllGuildsForAdmin).
+ * Everyone else sees all their active memberships unchanged.
+ */
+export async function listVisibleGuilds(userId: string, instanceRole: string) {
+  const all = await listUserGuilds(userId);
+  if (instanceRole === "superadmin") return all.filter((m) => m.role === "fleetoperator");
+  return all;
+}
+
 /** Non-voice guild settings + member list for the admiral console (API v1). */
 export async function getGuildSettingsData(guildId: string): Promise<{
   guild: {
@@ -321,12 +334,15 @@ export async function getMembership(userId: string, guildId: string) {
  * Effective guild role of a user FOR a specific operation's guild.
  *
  * Resolution order:
- *   1. superadmin → fleetoperator everywhere.
- *   2. Member of the op's guild → their membership role.
- *   3. Op visibility "public" → any authenticated user gets "crew".
- *   4. Op visibility "partners" → member of an active partner guild gets
+ *   1. Member of the op's guild → their membership role.
+ *   2. Op visibility "public" → any authenticated user gets "crew".
+ *   3. Op visibility "partners" → member of an active partner guild gets
  *      "crew".
- *   5. Otherwise null (no access).
+ *   4. Otherwise null (no access).
+ *
+ * NOTE: a superadmin is NOT auto-granted operator here. Outside the admin
+ * console they act on their real GuildMembership.role (or fall through to
+ * visibility, like any user). Cross-guild management lives in /admin.
  *
  * Cross-guild participants never exceed "crew" — they can register units
  * and claim seats but cannot manage the op. Used by op-scoped API routes
@@ -334,7 +350,7 @@ export async function getMembership(userId: string, guildId: string) {
  */
 export async function effectiveOpRole(
   userId: string,
-  instanceRole: string,
+  _instanceRole: string,
   operationId: string,
 ): Promise<GuildRole | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -343,7 +359,6 @@ export async function effectiveOpRole(
     select: { guildId: true, visibility: true },
   })) as { guildId: string; visibility: string } | null;
   if (!op) return null;
-  if (instanceRole === "superadmin") return "fleetoperator";
 
   const m = await prisma.guildMembership.findUnique({
     where: { guildId_userId: { guildId: op.guildId, userId } },

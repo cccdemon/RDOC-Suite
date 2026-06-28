@@ -22,7 +22,7 @@ const field: React.CSSProperties = {
 export function PartnershipsPage({ session }: { session: SessionResponse | null }) {
   const me = session?.user ?? null;
   const csrf = session?.csrfToken ?? null;
-  const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator" || me?.role === "superadmin");
+  const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
 
   const [guildId, setGuildId] = useState<string | null>(null);
   const [partnerships, setPartnerships] = useState<Partnership[]>([]);

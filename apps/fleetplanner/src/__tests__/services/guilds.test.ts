@@ -72,11 +72,18 @@ describe("effectiveOpRole", () => {
     expect(await effectiveOpRole("user-1", "crew", "op-999")).toBeNull();
   });
 
-  it("superadmin bypasses membership check and returns fleetoperator", async () => {
+  it("superadmin is NOT auto-granted — resolves their real membership role", async () => {
     db.operation.findUnique.mockResolvedValue({ guildId: "guild-1" });
+    db.guildMembership.findUnique.mockResolvedValue({ role: "crew" });
     const role = await effectiveOpRole("user-1", "superadmin", "op-1");
-    expect(role).toBe("fleetoperator");
-    expect(db.guildMembership.findUnique).not.toHaveBeenCalled();
+    expect(role).toBe("crew");
+    expect(db.guildMembership.findUnique).toHaveBeenCalled();
+  });
+
+  it("superadmin with no membership in a private op's guild gets null", async () => {
+    db.operation.findUnique.mockResolvedValue({ guildId: "guild-1", visibility: "private" });
+    db.guildMembership.findUnique.mockResolvedValue(null);
+    expect(await effectiveOpRole("user-1", "superadmin", "op-1")).toBeNull();
   });
 
   it("returns null when user has no membership in the op's guild", async () => {

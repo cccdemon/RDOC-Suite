@@ -15,7 +15,7 @@ const SEV: Record<string, { labelKey: string; color: string; rgb: string }> = {
 export function DiagnosticsPage({ session }: { session: SessionResponse | null }) {
   const t = useT();
   const me = session?.user ?? null;
-  const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator" || me?.role === "superadmin");
+  const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
   const [guildId, setGuildId] = useState<string | null>(null);
   const [diag, setDiag] = useState<DiagnosticsResponse | null>(null);
   const [notice, setNotice] = useState<string | null>(null);

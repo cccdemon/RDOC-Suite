@@ -15,7 +15,7 @@ import {
   getGuildSettingsData,
   getMembership,
   listAllGuildsForAdmin,
-  listUserGuilds,
+  listVisibleGuilds,
   setMembershipRole,
   sweepGuildPresence,
   unbanGuild,
@@ -278,7 +278,7 @@ export async function apiV1Routes(app: FastifyInstance) {
   // ── session ─────────────────────────────────────────────────────────
   app.get("/api/v1/session", async (req, reply) => {
     const ctx = await optionalAuth(req);
-    const memberships = ctx ? await listUserGuilds(ctx.user.id) : [];
+    const memberships = ctx ? await listVisibleGuilds(ctx.user.id, ctx.user.role) : [];
     return reply.type("application/json").send(presentSession(ctx, memberships));
   });
 
@@ -296,7 +296,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         .send({ operations: ops.map((op: Parameters<typeof presentOperationSummary>[0]) => presentOperationSummary(op)) });
     }
 
-    const memberships = await listUserGuilds(ctx.user.id);
+    const memberships = await listVisibleGuilds(ctx.user.id, ctx.user.role);
     const guildIds = memberships.map((m) => m.guildId);
     const [ownOps, partnerOpLists, publicOps] = await Promise.all([
       guildIds.length ? listAllUserOperations(guildIds, includePast) : Promise.resolve([]),
@@ -397,7 +397,7 @@ export async function apiV1Routes(app: FastifyInstance) {
   app.get("/api/v1/guilds", async (req, reply) => {
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
-    const memberships = await listUserGuilds(ctx.user.id);
+    const memberships = await listVisibleGuilds(ctx.user.id, ctx.user.role);
     return reply.type("application/json").send({ guilds: memberships.map(presentGuild) });
   });
 
@@ -433,8 +433,9 @@ export async function apiV1Routes(app: FastifyInstance) {
     return reply.type("application/json").send({ ok: true as const });
   });
 
-  // Guild-scoped operator gate: member with fleetoperator role in THIS guild,
-  // or instance superadmin. Mirrors the SSR requireGuildRole("fleetoperator").
+  // Guild-scoped operator gate: member with fleetoperator role in THIS guild.
+  // A superadmin is NOT auto-granted — outside the admin console they need a
+  // real fleetoperator membership in the guild they act on.
   async function requireGuildOperator(
     req: FastifyRequest,
     reply: FastifyReply,
@@ -442,12 +443,10 @@ export async function apiV1Routes(app: FastifyInstance) {
   ): Promise<AuthContext | null> {
     const ctx = await requireSessionJson(req, reply);
     if (!ctx) return null;
-    if (ctx.user.role !== "superadmin") {
-      const m = await getMembership(ctx.user.id, guildId);
-      if (m?.role !== "fleetoperator") {
-        await sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
-        return null;
-      }
+    const m = await getMembership(ctx.user.id, guildId);
+    if (m?.role !== "fleetoperator") {
+      await sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
+      return null;
     }
     return ctx;
   }
@@ -459,14 +458,14 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
-    if (ctx.user.role !== "superadmin") {
+    {
       const m = await getMembership(ctx.user.id, p.data.id);
       if (m?.role !== "fleetoperator")
         return sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
     }
     const data = await getGuildSettingsData(p.data.id);
     if (!data) return sendError(reply, req, 404, "not_found", "Server not found.");
-    const canRemove = data.guild.ownerUserId === ctx.user.id || ctx.user.role === "superadmin";
+    const canRemove = data.guild.ownerUserId === ctx.user.id;
     return reply.type("application/json").send({
       guild: presentGuildSettings({ ...data.guild, canRemove }),
       members: data.members.map(presentGuildSettingsMember),
@@ -482,7 +481,7 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
-    if (ctx.user.role !== "superadmin") {
+    {
       const m = await getMembership(ctx.user.id, p.data.id);
       if (m?.role !== "fleetoperator")
         return sendError(reply, req, 403, "forbidden", "Orgamember role in that guild required.");
@@ -511,7 +510,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       const ctx = await requireGuildOperator(req, reply, p.data.id);
       if (!ctx) return;
       const exists = await getMembership(ctx.user.id, p.data.id);
-      if (!exists && ctx.user.role !== "superadmin")
+      if (!exists)
         return sendError(reply, req, 404, "not_found", "Server not found.");
 
       // Validate every field exactly like the SSR POST /guilds/settings handler.
@@ -567,7 +566,7 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid guild id.");
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
-    if (ctx.user.role !== "superadmin") {
+    {
       const m = await getMembership(ctx.user.id, p.data.id);
       if (m?.role !== "fleetoperator") return sendError(reply, req, 403, "forbidden", "Fleet operator role required.");
     }
@@ -949,7 +948,8 @@ export async function apiV1Routes(app: FastifyInstance) {
   }
 
   // ── create operation ────────────────────────────────────────────────
-  // Fleet operators (or superadmins) create draft ops in a guild they manage.
+  // Fleet operators create draft ops in a guild they manage. A superadmin is
+  // NOT auto-granted — they need a real fleetoperator membership in that guild.
   app.post<{ Body: unknown }>("/api/v1/operations", async (req, reply) => {
     const body = CreateOperationRequestSchema.safeParse(req.body);
     if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
@@ -957,8 +957,8 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!ctx) return;
 
     const membership = await getMembership(ctx.user.id, body.data.guildId);
-    const allowed = ctx.user.role === "superadmin" || membership?.role === "fleetoperator";
-    if (!allowed) return sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
+    if (membership?.role !== "fleetoperator")
+      return sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
 
     const op = await createOperation(ctx.user.id, {
       guildId: body.data.guildId,
@@ -1491,7 +1491,7 @@ export async function apiV1Routes(app: FastifyInstance) {
     const guildId = (req.query.guildId ?? "").trim();
     if (!guildId) return sendError(reply, req, 400, "bad_request", "guildId required.");
     // Must be a member of the guild whose marketplace scope is requested.
-    if (!(await getMembership(ctx.user.id, guildId)) && ctx.user.role !== "superadmin")
+    if (!(await getMembership(ctx.user.id, guildId)))
       return sendError(reply, req, 403, "forbidden", "Not a member of that guild.");
     const rows = await listTemplatesForGuild(guildId, {
       opType: req.query.opType,
@@ -1520,7 +1520,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       const ctx = await requireSessionJson(req, reply);
       if (!ctx) return;
       const membership = await getMembership(ctx.user.id, body.data.guildId);
-      if (!(ctx.user.role === "superadmin" || membership?.role === "fleetoperator"))
+      if (membership?.role !== "fleetoperator")
         return sendError(reply, req, 403, "forbidden", "Fleet operator role in that guild required.");
 
       const op = await applyTemplate(p.data.id, {
@@ -1623,8 +1623,9 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!seat || seat.fleetUnit.operationId !== p.data.id)
         return sendError(reply, req, 404, "not_found", "Seat not found.");
 
+      const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
       try {
-        await unclaimSeat(p.data.seatId, ctx.user.id, ctx.user.role);
+        await unclaimSeat(p.data.seatId, ctx.user.id, opRole ?? "");
         await logAudit(p.data.id, ctx.user.id, ctx.user.username, "seat:unclaim", "");
         return reply.type("application/json").send({ ok: true as const });
       } catch (err) {
@@ -2067,8 +2068,11 @@ export async function apiV1Routes(app: FastifyInstance) {
       });
       if (!unit) return sendError(reply, req, 404, "not_found", "Unit not found.");
 
+      // Effective guild role for THIS op (not the global instance role): a guild
+      // fleetoperator can force-delete; a superadmin only if operator of this guild.
+      const opRole = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
       try {
-        await deleteUnit(p.data.unitId, ctx.user.id, ctx.user.role);
+        await deleteUnit(p.data.unitId, ctx.user.id, opRole ?? "");
         await logAudit(p.data.id, ctx.user.id, ctx.user.username, "unit:delete", "");
         return reply.type("application/json").send({ ok: true as const });
       } catch (err) {
