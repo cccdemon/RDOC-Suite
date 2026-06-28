@@ -1,6 +1,7 @@
 import { Registry, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
 import type { FastifyInstance } from "fastify";
 import { prisma } from "../db.js";
+import { OP_VISIBILITIES } from "./operations.js";
 
 /**
  * Prometheus registry for the fleetplanner. Exposes:
@@ -58,6 +59,46 @@ new Gauge({
       }
     } catch {
       // leave previous values in place on error
+    }
+  },
+});
+
+// Operations grouped by visibility (private | partners | public) plus a grand
+// total. Same async-collect + swallow-on-error pattern as the status gauge.
+new Gauge({
+  name: "fleetplanner_operations_visibility",
+  help: "Number of operations by visibility (private/partners/public)",
+  labelNames: ["visibility"],
+  registers: [registry],
+  async collect() {
+    try {
+      const grouped = await prisma.operation.groupBy({
+        by: ["visibility"],
+        _count: { _all: true },
+      });
+      const counts = new Map(grouped.map((g) => [g.visibility, g._count._all]));
+      for (const visibility of OP_VISIBILITIES) {
+        this.set({ visibility }, counts.get(visibility) ?? 0);
+      }
+      for (const [visibility, count] of counts) {
+        if (!(OP_VISIBILITIES as readonly string[]).includes(visibility))
+          this.set({ visibility }, count);
+      }
+    } catch {
+      // leave previous values in place on error
+    }
+  },
+});
+
+new Gauge({
+  name: "fleetplanner_operations_total",
+  help: "Total number of operations (all visibilities and statuses)",
+  registers: [registry],
+  async collect() {
+    try {
+      this.set(await prisma.operation.count());
+    } catch {
+      // leave previous value in place on error
     }
   },
 });

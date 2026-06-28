@@ -10,11 +10,6 @@ groups:
           summary: "Scrape target {{ $labels.job }} is down"
           description: "Prometheus has been unable to scrape {{ $labels.job }} ({{ $labels.instance }}) for more than 2 minutes."
 
-  # NOTE: the `rdoc-suite-relay` alert group (relay watchdog / no-audio / buffer
-  # overflow) was removed 2026-06-18 together with LiveKit. Its metrics came from
-  # the bridge/relay-bots, removed 2026-06-12 — no scrape target produces them
-  # anymore. Restore alongside a new voice stack; see docs/LIVEKIT-ARCHIVE-2026-06.md.
-
   - name: rdoc-suite-postgres
     rules:
       - alert: PostgresDown

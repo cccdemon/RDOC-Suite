@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added / Changed - Monitoring + Ops-Metriken, Feedback-Anhänge, Token-Kopierbutton (2026-06-28)
+
+- **Operationen als Metrik.** Neue Prometheus-Gauges in `apps/fleetplanner/src/services/metrics.ts`:
+  `fleetplanner_operations_total` (Gesamtzahl) und `fleetplanner_operations_visibility{visibility}`
+  (private/partners/public). Grafana-Dashboard (`deploy/grafana/dashboards/rdoc-suite-overview.json`)
+  um zwei Panels erweitert: „Operationen gesamt" (stat) + „Operationen nach Sichtbarkeit" (timeseries).
+- **Admin-Konsole „System & Logs".** `getSystemHealth()` liefert jetzt `operations`
+  (total + private/partners/public); neue Kachel-Sektion OPERATIONEN in der SystemPage.
+  Contract `SystemHealthResponse` um `operations` (OperationsMetric) erweitert.
+- **Monitoring aufgeräumt.** Toten `rdoc-suite-relay`-Alert-Kommentar (LiveKit/Voice-Stack,
+  2026-06 entfernt) aus `apps/monitoring/alerts.yml` entfernt. Restliche Scrape-Jobs/Alerts/
+  Dashboards referenzieren nur noch Live-Services (fleetplanner, postgres, node).
+- **Feedback-Formular: Bild-Anhänge wiederhergestellt.** Beim SSR→SPA-Umbau war der
+  Screenshot-Upload verloren gegangen. `POST /api/v1/feedback` akzeptiert wieder
+  multipart/form-data mit `screenshots` (bis 4 Bilder, je 8 MB, PNG/JPG/GIF/WebP) und hängt
+  sie an die Discord-Nachricht; JSON-Pfad (ohne Bilder) bleibt. SPA-FeedbackPage hat wieder
+  eine Bildauswahl mit Vorschau-Liste.
+- **Partnerschaften: Kopieren-Button.** Beim Erzeugen eines Partner-Discord-Tokens kann der
+  Einmal-Token jetzt per Button in die Zwischenablage kopiert werden.
+
 ### Changed - Superadmin: kein Cross-Guild-Bypass außerhalb der Admin-Console (2026-06-28)
 
 - **Superadmin verhält sich operativ wie ein normaler User mit seiner echten

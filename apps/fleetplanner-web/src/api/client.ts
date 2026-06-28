@@ -299,8 +299,53 @@ export function importFleet(csrfToken: string, fleetJson: string): Promise<impor
   return mutate("POST", "/hangar/import", csrfToken, { fleetJson });
 }
 
-export function sendFeedback(subject: string, message: string, csrfToken: string): Promise<{ ok: true }> {
-  return mutate("POST", "/feedback", csrfToken, { subject, message });
+export async function sendFeedback(
+  subject: string,
+  message: string,
+  csrfToken: string,
+  files: File[] = [],
+): Promise<{ ok: true }> {
+  // No screenshots → plain JSON (keeps the CSRF-retry in mutate()).
+  if (files.length === 0) {
+    return mutate("POST", "/feedback", csrfToken, { subject, message });
+  }
+  // With screenshots → multipart/form-data. CSRF travels in the header, so the
+  // same stale-token retry as mutate() applies; rebuild the body each attempt
+  // because a FormData stream can only be sent once.
+  const build = () => {
+    const fd = new FormData();
+    fd.append("subject", subject);
+    fd.append("message", message);
+    for (const f of files) fd.append("screenshots", f, f.name);
+    return fd;
+  };
+  const send = (token: string) =>
+    fetch(`${API_BASE}/feedback`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { accept: "application/json", "x-csrf-token": token },
+      body: build(),
+    });
+
+  let res = await send(csrfOverride ?? csrfToken);
+  if (res.status === 403) {
+    const fresh = await get<SessionResponse>("/session").catch(() => null);
+    const freshCsrf = fresh?.csrfToken ?? null;
+    if (freshCsrf && freshCsrf !== (csrfOverride ?? csrfToken)) {
+      csrfOverride = freshCsrf;
+      res = await send(freshCsrf);
+    }
+  }
+  if (!res.ok) {
+    let errBody: ApiErrorBody | null = null;
+    try {
+      errBody = (await res.json()) as ApiErrorBody;
+    } catch {
+      errBody = null;
+    }
+    throw new ApiError(res.status, errBody);
+  }
+  return (await res.json()) as { ok: true };
 }
 
 export function listTemplates(guildId: string, q?: string): Promise<{ templates: import("./types").TemplateSummary[] }> {

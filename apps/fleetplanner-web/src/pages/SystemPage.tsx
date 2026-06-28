@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, getSystemEvents, getSystemHealth, syncCatalog } from "../api/client";
-import type { ServiceHealth, SessionResponse, SyncHealth, SystemEvent } from "../api/types";
+import type { OperationsMetric, ServiceHealth, SessionResponse, SyncHealth, SystemEvent } from "../api/types";
 import { Ic } from "../components/Icons";
 
 const MONO = "'Share Tech Mono',ui-monospace,monospace";
@@ -42,6 +42,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
 
   const [services, setServices] = useState<ServiceHealth[]>([]);
   const [syncs, setSyncs] = useState<SyncHealth[]>([]);
+  const [ops, setOps] = useState<OperationsMetric | null>(null);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [events, setEvents] = useState<SystemEvent[]>([]);
   const [retentionDays, setRetentionDays] = useState(10);
@@ -70,6 +71,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
       ]);
       setServices(h.services);
       setSyncs(h.syncs);
+      setOps(h.operations);
       setCheckedAt(h.checkedAt);
       setEvents(e.events);
       setRetentionDays(e.retentionDays);
@@ -176,6 +178,26 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
             s.key === "ship" ? "ship" : "pin",
           ),
         )}
+      </div>
+
+      {/* OPERATIONS METRICS */}
+      <div style={{ ...label, marginBottom: "0.6rem" }}>OPERATIONEN</div>
+      <div data-testid="system-operations" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: "0.8rem", marginBottom: "1.3rem" }}>
+        {([
+          { key: "total", name: "Operationen gesamt", value: ops?.total, color: "#00d4ff", icon: "board" },
+          { key: "private", name: "Privat", value: ops?.private, color: "#9fb1c2", icon: "shield" },
+          { key: "public", name: "Öffentlich", value: ops?.public, color: "#00ff88", icon: "globe" },
+          { key: "partners", name: "Partner", value: ops?.partners, color: "#f0a500", icon: "users" },
+        ] as const).map((m) => (
+          <div key={m.key} data-testid={`ops-metric-${m.key}`} style={{ border: "1px solid rgba(0,212,255,0.14)", borderLeft: `3px solid ${m.color}`, borderRadius: 12, background: "#090f18", padding: "0.85rem 0.95rem", minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#c2d2de", marginBottom: "0.45rem" }}>
+              <span style={{ color: m.color, display: "inline-flex" }}><Ic name={m.icon} size={14} sw={1.6} /></span>{m.name}
+            </div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#eaf4fb", lineHeight: 1, fontFamily: MONO }}>
+              {ops ? (m.value ?? 0).toLocaleString("de-DE") : "—"}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* SYNC CONTROL */}

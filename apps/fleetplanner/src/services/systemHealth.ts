@@ -32,10 +32,18 @@ export type SyncHealth = {
   status: HealthStatus;
 };
 
+export type OperationsMetric = {
+  total: number;
+  private: number;
+  partners: number;
+  public: number;
+};
+
 export type SystemHealth = {
   checkedAt: string;
   services: ServiceHealth[];
   syncs: SyncHealth[];
+  operations: OperationsMetric;
 };
 
 type SyncRow = {
@@ -106,5 +114,18 @@ export async function getSystemHealth(): Promise<SystemHealth> {
         : "Stündlicher Tick aktiv",
   });
 
-  return { checkedAt: new Date().toISOString(), services, syncs };
+  // Operations metric: total + per-visibility breakdown (private/partners/public).
+  let operations: OperationsMetric = { total: 0, private: 0, partners: 0, public: 0 };
+  try {
+    const grouped = await prisma.operation.groupBy({ by: ["visibility"], _count: { _all: true } });
+    const by = new Map(grouped.map((g) => [g.visibility, g._count._all]));
+    const priv = by.get("private") ?? 0;
+    const partners = by.get("partners") ?? 0;
+    const pub = by.get("public") ?? 0;
+    operations = { total: priv + partners + pub, private: priv, partners, public: pub };
+  } catch {
+    // DB hiccup — report zeros rather than failing the whole health payload
+  }
+
+  return { checkedAt: new Date().toISOString(), services, syncs, operations };
 }

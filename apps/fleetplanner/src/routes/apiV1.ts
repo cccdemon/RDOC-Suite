@@ -24,7 +24,7 @@ import {
 import { isValidTimezone, DEFAULT_TIMEZONE } from "../lib/timezone.js";
 import { createOperation } from "../services/operations.js";
 import { applyTemplate, listTemplatesForGuild, publishTemplate } from "../services/operationTemplates.js";
-import { sendDiscordChannelMessage } from "../services/discord.js";
+import { sendDiscordChannelMessage, type DiscordAttachment } from "../services/discord.js";
 import { getSetting, setSetting } from "../services/settings.js";
 import { isMaintenanceForcedByEnv, isMaintenanceOn, setMaintenance } from "../services/maintenance.js";
 import { getSyncState, runSync, updateSyncConfig } from "../services/shipSync.js";
@@ -2527,23 +2527,65 @@ export async function apiV1Routes(app: FastifyInstance) {
   });
 
   // ── feedback ────────────────────────────────────────────────────────
-  // Signed-in users send a subject + message to the configured Discord
-  // feedback channel (SSR parity, minus image attachments).
+  // Signed-in users send a subject + message (plus optional image screenshots)
+  // to the configured Discord feedback channel. Accepts either JSON (no files)
+  // or multipart/form-data with `screenshots` file parts. CSRF is the
+  // x-csrf-token header (requireSessionJson), so it works for both encodings.
   app.post<{ Body: unknown }>("/api/v1/feedback", async (req, reply) => {
-    const body = FeedbackRequestSchema.safeParse(req.body);
-    if (!body.success) return sendError(reply, req, 400, "bad_request", "Subject and message required.");
     const ctx = await requireSessionJson(req, reply);
     if (!ctx) return;
+
+    const ALLOWED_IMAGE = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+    let subject = "";
+    let message = "";
+    const attachments: DiscordAttachment[] = [];
+
+    if (req.isMultipart()) {
+      try {
+        for await (const part of req.parts()) {
+          if (part.type === "file") {
+            if (part.fieldname !== "screenshots") {
+              part.file.resume(); // drain unknown file parts
+              continue;
+            }
+            const buf = await part.toBuffer(); // throws if over the plugin fileSize limit
+            if (buf.length === 0) continue; // empty file input
+            if (!ALLOWED_IMAGE.has(part.mimetype))
+              return sendError(reply, req, 400, "bad_request", "Only PNG, JPG, GIF or WebP images are allowed.");
+            const safeName = (part.filename || `screenshot-${attachments.length + 1}`)
+              .replace(/[^A-Za-z0-9._-]/g, "_")
+              .slice(0, 80);
+            attachments.push({ filename: safeName, contentType: part.mimetype, data: buf });
+          } else if (part.fieldname === "subject") {
+            subject = typeof part.value === "string" ? part.value : "";
+          } else if (part.fieldname === "message") {
+            message = typeof part.value === "string" ? part.value : "";
+          }
+        }
+      } catch {
+        return sendError(reply, req, 400, "bad_request", "An image was too large (max 8 MB each).");
+      }
+    } else {
+      const body = FeedbackRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Subject and message required.");
+      subject = body.data.subject;
+      message = body.data.message;
+    }
+
+    subject = subject.trim().slice(0, 120);
+    message = message.trim().slice(0, 1800);
+    if (!subject || !message) return sendError(reply, req, 400, "bad_request", "Subject and message required.");
+
     const channelId = await getSetting("feedback.discordChannelId");
     const content = [
       "**Fleetplanner Feedback**",
       `From: ${ctx.user.username} (${ctx.user.id})`,
-      `Subject: ${body.data.subject.trim()}`,
+      `Subject: ${subject}`,
       "",
-      body.data.message.trim(),
+      message,
     ].join("\n");
     try {
-      await sendDiscordChannelMessage(channelId, content);
+      await sendDiscordChannelMessage(channelId, content, attachments);
       return reply.type("application/json").send({ ok: true as const });
     } catch (err) {
       return sendError(reply, req, 409, "conflict", err instanceof Error ? err.message : "Feedback could not be sent.");

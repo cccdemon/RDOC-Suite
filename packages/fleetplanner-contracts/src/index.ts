@@ -901,11 +901,22 @@ export const SyncHealthSchema = z
   .meta({ id: "SyncHealth" });
 export type SyncHealth = z.infer<typeof SyncHealthSchema>;
 
+export const OperationsMetricSchema = z
+  .object({
+    total: z.number().int(),
+    private: z.number().int(),
+    partners: z.number().int(),
+    public: z.number().int(),
+  })
+  .meta({ id: "OperationsMetric" });
+export type OperationsMetric = z.infer<typeof OperationsMetricSchema>;
+
 export const SystemHealthResponseSchema = z
   .object({
     checkedAt: z.iso.datetime(),
     services: z.array(ServiceHealthSchema),
     syncs: z.array(SyncHealthSchema),
+    operations: OperationsMetricSchema,
   })
   .meta({ id: "SystemHealthResponse" });
 export type SystemHealthResponse = z.infer<typeof SystemHealthResponseSchema>;

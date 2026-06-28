@@ -33,6 +33,7 @@ export type {
   SystemHealthResponse,
   ServiceHealth,
   SyncHealth,
+  OperationsMetric,
   SystemEvent,
   SystemEventsResponse,
   AccountResponse,

@@ -1,5 +1,31 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-06-28: Monitoring + Ops-Metriken, Feedback-Anhänge, Token-Kopierbutton
+
+Status: ⏳ In Arbeit (Folge-Session). Betroffen: `apps/fleetplanner` (services/metrics.ts,
+services/systemHealth.ts, routes/apiV1.ts), `packages/fleetplanner-contracts` (SystemHealthResponse
++ OperationsMetric), `apps/fleetplanner-web` (SystemPage, FeedbackPage, PartnershipsPage, api/client,
+api/types, i18n), `apps/monitoring/alerts.yml`, `deploy/grafana/dashboards/rdoc-suite-overview.json`.
+
+Vier Aufgaben (User):
+1. **Monitoring an neue Gegebenheiten.** Analyse: Stack war nach Voice-Removal bereits sauber
+   (keine toten Scrape-Jobs/Dashboards) — nur der `rdoc-suite-relay`-Alert-Kommentar war Altlast →
+   entfernt. „Anpassen" = neue Ops-Metriken (Punkt 3) ergänzt.
+2. **Ops-Metriken.** `fleetplanner_operations_total` + `fleetplanner_operations_visibility{visibility}`
+   Gauges; 2 Grafana-Panels. In der Admin-Konsole (SystemPage) neue OPERATIONEN-Kachelsektion,
+   gespeist aus `getSystemHealth().operations` (total/private/partners/public).
+3. **Feedback-Bild-Anhänge** wiederhergestellt (SSR→SPA-Parität-Verlust): `POST /api/v1/feedback`
+   multipart (`screenshots`, ≤4×8MB, image/*) → Discord-Attachments; SPA-Bildauswahl. Multipart-Plugin
+   + `sendDiscordChannelMessage(…, attachments)` waren schon da, nur Route+UI fehlten.
+4. **Partner-Token Kopieren-Button** in PartnershipsPage (navigator.clipboard).
+
+Hinweis: Parallel existieren überlappende Änderungen im Branch `test/spa-coverage-final` (eigener
+Worktree) — Kopierbutton + Operationen-Page. Auf User-Wunsch trotzdem alles auf master gebaut.
+
+Deploy: Rebuild `fleetplanner` (Metriken/Health/Feedback/Contracts) + `fleetplanner-web` (UI) +
+`monitoring` (alerts.yml gebacken). Grafana liest Dashboards per Bind-Mount → restart genügt.
+Keine Migration, keine neuen ENV.
+
 ## Completed - 2026-06-28: Superadmin Cross-Guild-Bypass entfernen (außer Admin-Console) — `9ebd221`
 
 Status: ✅ Deployed (LXC 103, fleetplanner + fleetplanner-web rebuilt, keine Migration). Betroffen: `apps/fleetplanner` (auth/middleware.ts, services/guilds.ts,
