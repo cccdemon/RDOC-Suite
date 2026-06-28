@@ -15,7 +15,7 @@ import {
   getGuildSettingsData,
   getMembership,
   listAllGuildsForAdmin,
-  listVisibleGuilds,
+  listUserGuilds,
   setMembershipRole,
   sweepGuildPresence,
   unbanGuild,
@@ -278,7 +278,7 @@ export async function apiV1Routes(app: FastifyInstance) {
   // ── session ─────────────────────────────────────────────────────────
   app.get("/api/v1/session", async (req, reply) => {
     const ctx = await optionalAuth(req);
-    const memberships = ctx ? await listVisibleGuilds(ctx.user.id, ctx.user.role) : [];
+    const memberships = ctx ? await listUserGuilds(ctx.user.id) : [];
     return reply.type("application/json").send(presentSession(ctx, memberships));
   });
 
@@ -296,7 +296,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         .send({ operations: ops.map((op: Parameters<typeof presentOperationSummary>[0]) => presentOperationSummary(op)) });
     }
 
-    const memberships = await listVisibleGuilds(ctx.user.id, ctx.user.role);
+    const memberships = await listUserGuilds(ctx.user.id);
     const guildIds = memberships.map((m) => m.guildId);
     const [ownOps, partnerOpLists, publicOps] = await Promise.all([
       guildIds.length ? listAllUserOperations(guildIds, includePast) : Promise.resolve([]),
@@ -397,7 +397,7 @@ export async function apiV1Routes(app: FastifyInstance) {
   app.get("/api/v1/guilds", async (req, reply) => {
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
-    const memberships = await listVisibleGuilds(ctx.user.id, ctx.user.role);
+    const memberships = await listUserGuilds(ctx.user.id);
     return reply.type("application/json").send({ guilds: memberships.map(presentGuild) });
   });
 

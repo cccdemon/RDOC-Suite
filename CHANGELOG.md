@@ -19,10 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     (auth/middleware.ts), `requireGuildOperator` + Inline-`superadmin`-Klauseln in
     `routes/apiV1.ts` (guild settings GET/PATCH, fleet, diagnostics, op-create,
     templates list/apply).
-  - Normale-UI-Guild-Sicht: neuer `listVisibleGuilds(userId, role)` blendet für
-    Superadmins crew-Memberships aus (nur echte `fleetoperator`-Guilds in session,
-    Op-Liste, `/api/v1/guilds`). Frontend `|| superadmin` aus den operativen
-    Guild-Filtern entfernt (Wizard, Kalender, Diagnostics, Partnerships, Templates).
+  - Operative Guild-Filter: Frontend `|| superadmin` aus Wizard/Kalender/Diagnostics/
+    Partnerships/Templates entfernt — diese Seiten zeigen nur Guilds, in denen der User
+    echter `fleetoperator` ist (gilt jetzt auch für Superadmins).
+  - Serverübersicht/Guild-Sicht bleibt unverändert membership-basiert: JEDER User
+    (inkl. Superadmin) sieht genau die Discords, in denen er eine Rolle (>= crew) hat;
+    keine Rolle → nicht gelistet. Sichtbarkeit ≠ Befugnis: Operieren erfordert weiter
+    eine echte `fleetoperator`-Membership in der Guild.
   - `deleteUnit`/`unclaimSeat`-Routes übergeben jetzt die **effektive Guild-Rolle**
     (`effectiveOpRole`) statt der globalen Instanz-Rolle. Behebt zusätzlich einen
     latenten Bug: echte Guild-Fleetoperators (`User.role="crew"`) konnten Units nicht

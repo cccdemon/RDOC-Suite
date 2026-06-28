@@ -223,25 +223,17 @@ export async function syncUserGuildMemberships(userId: string, discordGuildIds: 
   }
 }
 
+// Every logged-in user — including a superadmin — sees exactly the guilds
+// where they hold a role (>= crew). No role in a guild → it is not listed.
+// A superadmin's full cross-guild view lives in the admin console
+// (listAllGuildsForAdmin). Operating in a guild still requires a real
+// fleetoperator membership there; visibility ≠ authority.
 export async function listUserGuilds(userId: string) {
   return prisma.guildMembership.findMany({
     where: { userId, guild: { active: true } },
     include: { guild: true },
     orderBy: { guild: { name: "asc" } },
   });
-}
-
-/**
- * Guilds a user sees in the NORMAL UI (session, server list, calendar,
- * wizard). For a superadmin this hides crew-only memberships and returns
- * only guilds where they are an actual fleetoperator — their full
- * cross-guild view lives in the admin console (listAllGuildsForAdmin).
- * Everyone else sees all their active memberships unchanged.
- */
-export async function listVisibleGuilds(userId: string, instanceRole: string) {
-  const all = await listUserGuilds(userId);
-  if (instanceRole === "superadmin") return all.filter((m) => m.role === "fleetoperator");
-  return all;
 }
 
 /** Non-voice guild settings + member list for the admiral console (API v1). */

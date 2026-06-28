@@ -12,26 +12,31 @@ apiV1 + Frontend `|| superadmin`). Dadurch konnte ein Superadmin in Guilds, in d
 `crew` ist (z.B. per Login-Auto-Sync frisch angelegte Membership nach Bot-Install), Events
 erstellen/verwalten und alle seine Guilds als Operator-Guilds sehen.
 
-**Entscheidung (User, strikt):** Superadmin verhält sich außerhalb der Admin-Console wie ein
-normaler User mit seiner echten `GuildMembership.role`. In der normalen UI sieht er NUR Guilds,
-in denen er echter `fleetoperator` ist (crew-Memberships werden ausgeblendet). God-Mode /
-Cross-Guild-Sicht bleibt ausschließlich in der Admin-Console (`/admin`, instance-management
-Endpunkte, `requireSuperadmin`).
+**Entscheidung (User):** Superadmin verhält sich außerhalb der Admin-Console wie ein
+normaler User mit seiner echten `GuildMembership.role`. Sichtbarkeit ≠ Befugnis:
+- **Serverübersicht / Guild-Sicht** ist membership-basiert — JEDER User (inkl. Superadmin)
+  sieht genau die Discords, in denen er eine Rolle (>= crew) hat; keine Rolle → nicht gelistet.
+- **Operieren** (Op erstellen/verwalten, Settings, force-delete) erfordert eine echte
+  `fleetoperator`-Membership in der jeweiligen Guild. God-Mode/Cross-Guild bleibt
+  ausschließlich in der Admin-Console (`/admin`, `requireSuperadmin`, instance-management).
 
 **Änderungen:**
 - Backend-Authz Bypass raus: `effectiveOpRole` (guilds.ts), `requireGuildRole` (middleware),
   `requireGuildOperator` + Inline `ctx.user.role === "superadmin"`-Klauseln in apiV1
   (guild settings GET/PATCH, fleet, diagnostics, channels, member-role, op-create,
   templates list/apply). `canApproveUnits` (api.ts) korrigiert automatisch via effectiveOpRole.
-- Neue Visibility-Filterung: `listVisibleGuilds(userId, instanceRole)` in guilds.ts — für
-  superadmin nur `fleetoperator`-Memberships; an den 3 normalen-UI-Call-Sites (session,
-  operations-list, /api/v1/guilds) statt rohem `listUserGuilds`.
-- Frontend `|| superadmin` aus operativen Guild-Filtern entfernt.
+- Frontend `|| superadmin` aus den operativen Guild-Filtern entfernt (Wizard/Kalender/
+  Diagnostics/Partnerships/Templates → nur echte `fleetoperator`-Guilds).
+- `deleteUnit`/`unclaimSeat`-Routes übergeben effektive Guild-Rolle (`effectiveOpRole`)
+  statt roher Instanz-Rolle (behebt auch latenten Bug für echte Guild-fleetoperators).
+- Guild-Listen (session, op-liste, /api/v1/guilds) bleiben bei rohem `listUserGuilds`
+  (membership-basiert für alle). KEIN superadmin-Spezialfilter — der zwischenzeitlich
+  eingebaute `listVisibleGuilds` wurde nach User-Klarstellung wieder entfernt (Folge-Commit).
 - BEHALTEN superadmin: `requireSuperadmin` + alle instance-management Endpunkte, maintenance-
   Bypass (app.ts), nav `/admin`/`/admin/system`, AdminPage/SystemPage/ProfilePage-Badge.
 
-Deploy: Rebuild `fleetplanner` (Backend-Authz) + `fleetplanner-web` (UI-Filter). Keine Migration,
-keine neuen ENV. Daten unverändert (crew-Rows bleiben, nur Sicht+Authz ändert sich).
+Deploy: `9ebd221` (Backend+UI) + Folge-Commit (listVisibleGuilds-Revert, nur `fleetplanner`).
+Keine Migration, keine neuen ENV. Daten unverändert (crew-Rows bleiben, nur Authz ändert sich).
 
 ## Queued / In Progress - 2026-06-24: Security-Review-Härtung (6 Befunde)
 
