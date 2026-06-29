@@ -18,7 +18,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Op-Detail „STREAMS"-Sektion** mit Plattform-Icons (twitch/youtube), Ansehen-Link + Inline-Form.
   Contracts `OperationStream` + `OperationDetail.streams` + `AddStreamRequest`, Service `streams.ts`,
   API `POST`/`DELETE /operations/:id/streams`.
-- B2 (Live-Status Twitch/YT API) + B3 (Streamer-Links im Discord-Embed) verschoben.
+- B3 (Streamer-Links im Discord-Embed) verschoben.
+- **Stream-Event-Markierung in Twitch-Lila** (#9146ff) statt Rot — Badges in Liste/Kalender/Detail,
+  Wizard/Eckdaten-Toggle, Filter; Discord-Event-Prefix 🟣.
+
+### Added - Stream-Event Phase B2: Twitch Live-Status (2026-06-29)
+
+- **LIVE-Badge** an Twitch-Stream-Links im Op-Detail, wenn der Kanal gerade live ist.
+  Service `twitchLive.ts` (Helix `/streams` via client_credentials-App-Token, Login aus URL,
+  60s-Cache), Endpoint `GET /operations/:id/streams/live`, SPA-Poll (60s).
+- **Env (optional):** `TWITCH_CLIENT_ID` + `TWITCH_CLIENT_SECRET`. Beide leer → Feature aus
+  (keine Badges), kein Fehler. Twitch-App: https://dev.twitch.tv/console/apps.
+- YouTube/vdo.ninja Live-Status nicht enthalten (kein simpler „is live"-Check).
 
 ### Added / Changed - Admin-Konsole: Operationen-Split + Events-pro-Discord + E2E-Ausblendung (2026-06-29)
 

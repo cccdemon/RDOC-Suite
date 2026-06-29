@@ -9,6 +9,7 @@ import {
   cqbWithdraw,
   getNeeds,
   getOperation,
+  getStreamLive,
   patchSeat,
   removeStream,
   setHangarShare,
@@ -646,9 +647,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 6,
-                  border: "1px solid rgba(255,68,68,0.45)",
-                  color: "#ff6b6b",
-                  background: "rgba(255,68,68,0.09)",
+                  border: "1px solid rgba(145,70,255,0.45)",
+                  color: "#b98bff",
+                  background: "rgba(145,70,255,0.1)",
                   fontFamily: MONO,
                   fontSize: "0.66rem",
                   letterSpacing: "0.08em",
@@ -1109,8 +1110,28 @@ function StreamsSection({
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [liveMap, setLiveMap] = useState<Record<string, boolean>>({});
 
   const streams = op.streams ?? [];
+  const hasTwitch = streams.some((s) => s.platform === "twitch");
+
+  // FR-P3 B2: poll Twitch live-status for this op's streams (best-effort, every 60s).
+  useEffect(() => {
+    if (!hasTwitch) {
+      setLiveMap({});
+      return;
+    }
+    let alive = true;
+    const tick = () => {
+      getStreamLive(op.id)
+        .then((r) => { if (alive && r.configured) setLiveMap(r.live); })
+        .catch(() => { /* best-effort */ });
+    };
+    tick();
+    const t = window.setInterval(tick, 60_000);
+    return () => { alive = false; window.clearInterval(t); };
+  }, [op.id, hasTwitch, streams.length]);
+
   // Show for stream-events or when streams already exist; the add form needs a login.
   if (!op.isStreamEvent && streams.length === 0 && !meId) return null;
 
@@ -1146,7 +1167,7 @@ function StreamsSection({
     <div data-testid="op-streams" style={{ marginTop: "1.1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0 0 0.55rem" }}>
         <span style={monoLabel({ fontSize: "0.7rem" })}>STREAMS</span>
-        <span style={{ color: "#ff6b6b", display: "inline-flex" }}><Ic name="stream" size={13} sw={1.7} /></span>
+        <span style={{ color: "#9146ff", display: "inline-flex" }}><Ic name="stream" size={13} sw={1.7} /></span>
         {streams.length > 0 && <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{streams.length}</span>}
       </div>
 
@@ -1160,6 +1181,11 @@ function StreamsSection({
             return (
               <div key={s.id} data-testid={`op-stream-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
                 <span style={{ color: m.color, display: "inline-flex", flexShrink: 0 }}><Ic name={m.icon} size={15} sw={1.7} /></span>
+                {liveMap[s.id] && (
+                  <span data-testid={`op-stream-live-${s.id}`} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "1px 6px", borderRadius: 3, border: "1px solid rgba(255,68,68,0.5)", background: "rgba(255,68,68,0.12)", color: "#ff5b5b", fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#ff3b3b", boxShadow: "0 0 6px #ff3b3b" }} /> LIVE
+                  </span>
+                )}
                 <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "#eaf4fb", textDecoration: "none", fontSize: "0.9rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {s.label || m.label}{s.username ? <span style={{ color: "#5b6b7a" }}> · {s.username}</span> : null} <span style={{ color: "#00d4ff" }}>↗</span>
                 </a>

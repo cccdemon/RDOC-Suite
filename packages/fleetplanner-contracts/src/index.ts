@@ -656,6 +656,11 @@ export const AddStreamRequestSchema = z
 export const StreamResponseSchema = z
   .object({ ok: z.literal(true), stream: OperationStreamSchema })
   .meta({ id: "StreamResponse" });
+/** FR-P3 B2: per-stream live state. `configured` is false when Twitch creds are unset. */
+export const StreamLiveResponseSchema = z
+  .object({ configured: z.boolean(), live: z.record(z.string(), z.boolean()) })
+  .meta({ id: "StreamLiveResponse" });
+export type StreamLiveResponse = z.infer<typeof StreamLiveResponseSchema>;
 
 export const UnitParamSchema = z.object({ id: cuid, unitId: cuid });
 export const LinkParamSchema = z.object({ id: cuid, linkId: cuid });

@@ -215,7 +215,7 @@ export function EckdatenForm({
               data-testid="edit-stream-toggle"
               aria-pressed={form.isStreamEvent}
               onClick={() => setNow("op-stream", { isStreamEvent: !form.isStreamEvent }, { isStreamEvent: !form.isStreamEvent })}
-              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: form.isStreamEvent ? "1px solid rgba(255,68,68,0.45)" : "1px solid rgba(255,255,255,0.08)", background: form.isStreamEvent ? "rgba(255,68,68,0.07)" : "transparent", color: form.isStreamEvent ? "var(--red)" : "#9fb1c2" }}
+              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: form.isStreamEvent ? "1px solid rgba(145,70,255,0.45)" : "1px solid rgba(255,255,255,0.08)", background: form.isStreamEvent ? "rgba(145,70,255,0.1)" : "transparent", color: form.isStreamEvent ? "#b98bff" : "#9fb1c2" }}
             >
               <Ic name={form.isStreamEvent ? "check" : "stream"} size={15} sw={1.7} />
               <span style={{ flex: 1 }}>

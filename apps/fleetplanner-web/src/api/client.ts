@@ -270,6 +270,9 @@ export function addStream(opId: string, csrfToken: string, input: { platform: st
 export function removeStream(opId: string, streamId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/streams/${encodeURIComponent(streamId)}`, csrfToken);
 }
+export function getStreamLive(opId: string): Promise<{ configured: boolean; live: Record<string, boolean> }> {
+  return get<{ configured: boolean; live: Record<string, boolean> }>(`/operations/${encodeURIComponent(opId)}/streams/live`);
+}
 
 export function addLeader(opId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/leaders`, csrfToken, { userId });

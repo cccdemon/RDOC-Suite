@@ -241,7 +241,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
           </span>
           <span style={{ flex: 1 }} />
           {e.stream && (
-            <span data-testid={`cal-stream-${e.id}`} style={{ ...tagStyle("#ff6b6b"), gap: 4 }}>
+            <span data-testid={`cal-stream-${e.id}`} style={{ ...tagStyle("#9146ff"), gap: 4 }}>
               <Ic name="stream" size={11} sw={1.7} /> STREAM
             </span>
           )}
@@ -414,7 +414,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
           onClick={() => setStreamFilter((s) => (s === "all" ? "only" : s === "only" ? "off" : "all"))}
           style={streamFilter === "all"
             ? { ...chipBase, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#9fb1c2" }
-            : { ...chipBase, border: "1px solid #ff6b6b", background: "rgba(255,68,68,0.13)", color: "#ff6b6b" }}
+            : { ...chipBase, border: "1px solid #9146ff", background: "rgba(145,70,255,0.15)", color: "#b98bff" }}
         >
           <Ic name="stream" size={13} sw={1.7} />
           {streamFilter === "only" ? "Nur Stream" : streamFilter === "off" ? "Ohne Stream" : "Stream"}
@@ -458,7 +458,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                     <span className="fpw-tag green"><span className="fpw-dot" />{op.status}</span>
                     <span className="fpw-tag cyan">{op.visibility}</span>
                     {op.isStreamEvent && (
-                      <span className="fpw-tag" data-testid="op-card-stream" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#ff6b6b", borderColor: "rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)" }}>
+                      <span className="fpw-tag" data-testid="op-card-stream" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#b98bff", borderColor: "rgba(145,70,255,0.4)", background: "rgba(145,70,255,0.1)" }}>
                         <Ic name="stream" size={11} sw={1.7} /> STREAM
                       </span>
                     )}

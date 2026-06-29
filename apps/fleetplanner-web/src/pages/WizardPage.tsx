@@ -176,7 +176,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                     data-testid="wiz-stream"
                     aria-pressed={isStreamEvent}
                     onClick={() => setIsStreamEvent((v) => !v)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: isStreamEvent ? "1px solid rgba(255,68,68,0.55)" : "1px solid rgba(255,255,255,0.12)", background: isStreamEvent ? "rgba(255,68,68,0.13)" : "transparent", color: isStreamEvent ? "#ff6b6b" : "#9fb1c2" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: isStreamEvent ? "1px solid rgba(145,70,255,0.55)" : "1px solid rgba(255,255,255,0.12)", background: isStreamEvent ? "rgba(145,70,255,0.15)" : "transparent", color: isStreamEvent ? "#b98bff" : "#9fb1c2" }}
                   >
                     <Ic name="stream" size={14} sw={1.7} />{isStreamEvent ? "Als Stream-Event markiert" : "Kein Stream-Event"}
                   </button>

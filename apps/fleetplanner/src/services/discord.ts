@@ -223,7 +223,7 @@ export async function updateScheduledEventImage(
 
 // FR-P3 stream-event: prefix the Discord event name so a streamed op is visibly
 // marked in the Discord events list (Discord has no per-event custom icon).
-const STREAM_EVENT_PREFIX = "🔴 ";
+const STREAM_EVENT_PREFIX = "🟣 ";
 function eventName(title: string, isStreamEvent?: boolean): string {
   return isStreamEvent ? `${STREAM_EVENT_PREFIX}${title}` : title;
 }
