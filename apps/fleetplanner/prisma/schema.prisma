@@ -41,6 +41,7 @@ model User {
   createdPolls        Poll[]
   pollVotes           PollVote[]
   voiceRecipients     OperationVoiceRecipient[]
+  operationStreams    OperationStream[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -388,8 +389,28 @@ model Operation {
   hangarShares             OperationHangarShare[]
   resourceLinks            OperationResourceLink[]
   voiceRecipients          OperationVoiceRecipient[]
+  streams                  OperationStream[]
 
   @@index([recurrenceId])
+}
+
+// FR-P3 Stream-Event Phase B: streamer links on an op (self-service). Each row is
+// one stream by one participant (userId) or an external streamer (userId null).
+// vdo_ninja covers multi-stream / co-streamer rooms.
+model OperationStream {
+  id          String   @id @default(cuid())
+  operationId String
+  userId      String? // fleetplanner user who added it (their own stream); null = external
+  platform    String   @default("twitch") // twitch | youtube | vdo_ninja | other
+  url         String
+  label       String   @default("")
+  createdAt   DateTime @default(now())
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([operationId])
+  @@index([userId])
 }
 
 // FR SquadLink-CommandNet: operator-curated grant list of who receives the op's

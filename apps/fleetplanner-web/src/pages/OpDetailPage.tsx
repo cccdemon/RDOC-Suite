@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   ApiError,
+  addStream,
   askQuestion,
   claimSeat,
   cqbSignup,
@@ -9,6 +10,7 @@ import {
   getNeeds,
   getOperation,
   patchSeat,
+  removeStream,
   setHangarShare,
   unclaimSeat,
   withdrawUnit,
@@ -701,6 +703,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 </div>
               </>
             )}
+            <StreamsSection op={op} csrf={csrf} meId={me?.id ?? null} canManage={op.canManage} onChanged={load} />
           </div>
         </div>
 
@@ -1075,5 +1078,123 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         </div>
       )}
     </article>
+  );
+}
+
+// FR-P3 Phase B: streamer links on an op (self-service). Any logged-in viewer
+// adds their own stream; the owner or an operator can remove it.
+const STREAM_META: Record<string, { icon: string; label: string; color: string }> = {
+  twitch: { icon: "twitch", label: "Twitch", color: "#a064ff" },
+  youtube: { icon: "youtube", label: "YouTube", color: "#ff4444" },
+  vdo_ninja: { icon: "stream", label: "VDO.Ninja", color: "#00d4ff" },
+  other: { icon: "stream", label: "Stream", color: "#9fb1c2" },
+};
+
+function StreamsSection({
+  op,
+  csrf,
+  meId,
+  canManage,
+  onChanged,
+}: {
+  op: OperationDetail;
+  csrf: string | null;
+  meId: string | null;
+  canManage: boolean;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [platform, setPlatform] = useState<"twitch" | "youtube" | "vdo_ninja" | "other">("twitch");
+  const [url, setUrl] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const streams = op.streams ?? [];
+  // Show for stream-events or when streams already exist; the add form needs a login.
+  if (!op.isStreamEvent && streams.length === 0 && !meId) return null;
+
+  async function add() {
+    if (!csrf || !url.trim() || busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await addStream(op.id, csrf, { platform, url: url.trim(), label: label.trim() || undefined });
+      setUrl("");
+      setLabel("");
+      setOpen(false);
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : "Hinzufügen fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function del(id: string) {
+    if (!csrf) return;
+    try {
+      await removeStream(op.id, id, csrf);
+      onChanged();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const inp: React.CSSProperties = { boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.16)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.88rem", padding: "0.45rem 0.6rem", borderRadius: 7, outline: "none" };
+
+  return (
+    <div data-testid="op-streams" style={{ marginTop: "1.1rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0 0 0.55rem" }}>
+        <span style={monoLabel({ fontSize: "0.7rem" })}>STREAMS</span>
+        <span style={{ color: "#ff6b6b", display: "inline-flex" }}><Ic name="stream" size={13} sw={1.7} /></span>
+        {streams.length > 0 && <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{streams.length}</span>}
+      </div>
+
+      {streams.length === 0 ? (
+        <p style={{ margin: "0 0 0.5rem", color: "#7e92a4", fontSize: "0.86rem" }}>Noch keine Streams. Streamst du diese Operation?</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.5rem" }}>
+          {streams.map((s) => {
+            const m = STREAM_META[s.platform] ?? STREAM_META.other;
+            const canDelete = (s.userId !== null && s.userId === meId) || canManage;
+            return (
+              <div key={s.id} data-testid={`op-stream-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
+                <span style={{ color: m.color, display: "inline-flex", flexShrink: 0 }}><Ic name={m.icon} size={15} sw={1.7} /></span>
+                <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "#eaf4fb", textDecoration: "none", fontSize: "0.9rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {s.label || m.label}{s.username ? <span style={{ color: "#5b6b7a" }}> · {s.username}</span> : null} <span style={{ color: "#00d4ff" }}>↗</span>
+                </a>
+                {canDelete && (
+                  <button type="button" data-testid={`op-stream-del-${s.id}`} title="Entfernen" onClick={() => del(s.id)} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                    <Ic name="x" size={12} sw={2} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {meId && (open ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", alignItems: "center" }}>
+          <select data-testid="op-stream-platform" value={platform} onChange={(e) => setPlatform(e.target.value as typeof platform)} style={{ ...inp, flex: "0 0 auto" }}>
+            <option value="twitch">Twitch</option>
+            <option value="youtube">YouTube</option>
+            <option value="vdo_ninja">VDO.Ninja</option>
+            <option value="other">Andere</option>
+          </select>
+          <input data-testid="op-stream-url" type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://twitch.tv/…" style={{ ...inp, flex: "1 1 200px" }} />
+          <input data-testid="op-stream-label" type="text" maxLength={80} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label (optional)" style={{ ...inp, flex: "1 1 130px" }} />
+          <button type="button" data-testid="op-stream-add" disabled={busy || !url.trim()} onClick={add} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.12)", color: "#00ff88", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>
+            <Ic name="check" size={13} sw={1.8} /> Hinzufügen
+          </button>
+          <button type="button" onClick={() => { setOpen(false); setErr(null); }} style={{ flexShrink: 0, padding: "0.45rem 0.7rem", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
+          {err && <span style={{ flexBasis: "100%", color: "#ff7a7a", fontSize: "0.78rem" }}>{err}</span>}
+        </div>
+      ) : (
+        <button type="button" data-testid="op-stream-open" onClick={() => setOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: "1px solid rgba(0,212,255,0.35)", background: "rgba(0,212,255,0.06)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>
+          <Ic name="stream" size={13} sw={1.7} /> Ich streame das
+        </button>
+      ))}
+    </div>
   );
 }

@@ -81,6 +81,7 @@ describe("contracts", () => {
       resourceLinks: [
         { id: "link_1", title: "Briefing", url: "https://example.com/briefing", kind: "link", sortOrder: 0 },
       ],
+      streams: [],
       questions: [
         { id: "q_1", asker: "Mira", body: "Treffpunkt?", answer: null, answeredBy: null },
       ],

@@ -22,12 +22,31 @@ Stream-Event ist aktuell nicht von normalen Operations unterscheidbar.
   Event-Namen).
 - **Filter** in der Operationen-Übersicht: Alle / nur Stream-Events / Stream-Events ausblenden.
 
-## Phase B (verschoben) — nicht in diesem Change
+## Phase B — Streamer-Links (Design, Entscheidungen gelockt 2026-06-29)
 
-- Direkte Twitch-/YouTube-Verlinkung der Streamer in der Operation.
-- Multi-Stream: vdo.ninja-URLs der Co-Streamer hinterlegen.
-- Eigene Tabelle/Relation `OperationStream` (userId + Plattform + URL) statt nur Boolean.
+Neues Model `OperationStream { id, operationId, userId?, platform (twitch|youtube|vdo_ninja|
+other), url, label, createdAt }` (eigene Tabelle, nicht `OperationResourceLink`, wegen
+userId + Plattform + späterem Live-Status). vdo.ninja = Multi-Stream/Co-Streamer.
+
+**Entscheidungen (User):**
+- **Self-Service:** jeder Teilnehmer mit Op-Zugriff trägt seinen eigenen Stream ein
+  („Ich streame das" → Plattform + URL). Löschen: Eintrags-Owner **oder** Operator (Moderation).
+- **B1 = nur Links** (kein Live-Status). Twitch/YT-Live-Check (B2) später, braucht Creds/Polling.
+- **Discord-Embed-Verlinkung** = B3, später (B1 nur Web-Op).
+
+**B1 Umsetzung:**
+- Schema: `OperationStream` + Migration; Relationen auf `Operation` + `User`.
+- Contracts: `OperationStreamSchema`, `OperationDetail.streams`, `AddStreamRequest{platform,url,label?}`
+  (URL pro Plattform zod-validiert; other = https).
+- API: `POST /operations/:id/streams` (requireOpRole crew = jeder mit Zugriff),
+  `DELETE /operations/:id/streams/:streamId` (Owner oder fleetoperator). Erster Stream setzt
+  optional `isStreamEvent=true`. Service `streams.ts` (Muster: `resourceLinks.ts`).
+- SPA: `OpDetailPage` Sektion „STREAMS" (Plattform-Icon + Name + Ansehen-Button; „Ich streame
+  das"-Form; eigenen Eintrag löschbar; Operator alle). Icons twitch/youtube/vdo.
+
+**B2 (offen):** Live-Status via Twitch/YouTube API. **B3 (offen):** Streamer-Links im Discord-Embed.
 
 ## Status
 
-⏳ Phase A in Arbeit (branch `feat/stream-event`, 2026-06-29). Phase B Plan, kein Code.
+✅ Phase A umgesetzt + deployed (2026-06-29). Phase B: Design gelockt, B1 bereit zum Bauen;
+B2/B3 offen.

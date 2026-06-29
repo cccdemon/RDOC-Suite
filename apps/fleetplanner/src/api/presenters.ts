@@ -69,6 +69,7 @@ type OpDetailRow = OpListRow & {
     kind: string;
     sortOrder: number;
   }>;
+  streams?: Array<{ id: string; platform: string; url: string; label: string; userId: string | null; user: { id: string; username: string } | null }>;
   questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
   groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null }>;
   cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; user: { id: string; username: string } }>;
@@ -181,6 +182,15 @@ export function presentOperationDetail(
       url: l.url,
       kind: l.kind,
       sortOrder: l.sortOrder,
+    })),
+    streams: (op.streams ?? []).map((s) => ({
+      id: s.id,
+      platform: s.platform as "twitch" | "youtube" | "vdo_ninja" | "other",
+      url: s.url,
+      label: s.label,
+      // Anonymous viewers never see who added a stream.
+      userId: redact ? null : s.userId,
+      username: redact ? null : (s.user?.username ?? null),
     })),
     questions: (op.questions ?? []).map((q) => ({
       id: q.id,

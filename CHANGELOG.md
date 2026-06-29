@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Stream-Event Phase B1: Streamer-Links (self-service) (2026-06-29)
+
+- **Pro-Streamer-Links auf einer Operation.** Neues Model `OperationStream` (userId?, platform
+  twitch|youtube|vdo_ninja|other, url, label) + Migration `20260629140000_op_streams`.
+- **Self-Service:** jeder Teilnehmer mit Op-Zugriff trägt seinen eigenen Stream ein („Ich streame
+  das" → Plattform + URL); Löschen = Eintrags-Owner **oder** fleetoperator. Erster Stream setzt
+  `isStreamEvent=true`. URL pro Plattform host-validiert (twitch.tv / youtube.com|youtu.be /
+  vdo.ninja); „andere" = beliebige https-URL.
+- **Op-Detail „STREAMS"-Sektion** mit Plattform-Icons (twitch/youtube), Ansehen-Link + Inline-Form.
+  Contracts `OperationStream` + `OperationDetail.streams` + `AddStreamRequest`, Service `streams.ts`,
+  API `POST`/`DELETE /operations/:id/streams`.
+- B2 (Live-Status Twitch/YT API) + B3 (Streamer-Links im Discord-Embed) verschoben.
+
 ### Added / Changed - Admin-Konsole: Operationen-Split + Events-pro-Discord + E2E-Ausblendung (2026-06-29)
 
 Beide Metriken leben auf der **Admin-Konsole** (`AdminPage`), nicht in System & Logs:

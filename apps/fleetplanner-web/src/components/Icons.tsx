@@ -43,6 +43,8 @@ export function IconSprite() {
         <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2" /><path d="M5 15V5a2 2 0 0 1 2-2h8" /></symbol>
         <symbol id="i-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="9" cy="18" r="1" /><circle cx="15" cy="6" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="18" r="1" /></symbol>
         <symbol id="i-stream" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2" /><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M6 6a8.5 8.5 0 0 0 0 12M18 6a8.5 8.5 0 0 1 0 12" /></symbol>
+        <symbol id="i-youtube" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3" /><path d="M11 9.5l4 2.5-4 2.5z" /></symbol>
+        <symbol id="i-twitch" viewBox="0 0 24 24"><path d="M5 4h14v9l-4 4h-3l-2 2H8v-2H5z" /><path d="M10 8.5v3.5M14 8.5v3.5" /></symbol>
       </defs>
     </svg>
   );

@@ -132,6 +132,8 @@ export async function getOperation(id: string) {
       },
       // FR-P3: operator-curated tutorial/resource links.
       resourceLinks: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+      // FR-P3 Phase B: self-service streamer links.
+      streams: { include: { user: { select: { id: true, username: true } } }, orderBy: { createdAt: "asc" } },
     },
   });
 }

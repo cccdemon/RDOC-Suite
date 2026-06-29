@@ -11,6 +11,7 @@ export type {
   Seat,
   FleetUnit,
   ResourceLink,
+  OperationStream,
   OperationDetail,
   ShipSummary,
   OperatorView,

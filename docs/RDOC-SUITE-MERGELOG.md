@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-06-29: Stream-Event Phase B1 — Streamer-Links (self-service)
+
+Status: ⏳ In Arbeit. `OperationStream`-Model (userId?, platform twitch|youtube|vdo_ninja|other,
+url, label) + Migration. Self-service: jeder mit Op-Zugriff trägt eigenen Stream ein; Löschen =
+Owner oder fleetoperator. Erster Stream setzt `isStreamEvent=true`. Contracts (OperationStream +
+OperationDetail.streams + AddStreamRequest), Service `streams.ts` (Muster resourceLinks), API
+POST/DELETE `/operations/:id/streams`, SPA OpDetail „STREAMS"-Sektion + Icons twitch/youtube.
+B2 (Live-Status) + B3 (Discord-Embed) später. Deploy: rebuild fleetplanner + fleetplanner-web + Migration.
+
 ## Queued / In Progress - 2026-06-29: Admin-Console Operationen-Metriken verfeinern
 
 Status: ⏳ In Arbeit. SuperAdmin system-health/metrics erweitern:

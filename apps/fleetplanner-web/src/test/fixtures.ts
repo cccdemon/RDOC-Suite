@@ -56,6 +56,7 @@ export const opDetailFixture: OperationDetail = {
   resourceLinks: [
     { id: "link_1", title: "Briefing", url: "https://example.com/briefing", kind: "link", sortOrder: 0 },
   ],
+  streams: [],
   questions: [],
   cqbTeams: [],
   coverUrl: null,

@@ -95,6 +95,7 @@ import { createSignup as createCqbSignup, renameSquad as renameCqbSquad, withdra
 import { assignUnitToFormation, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
+import { addStream, removeStream, streamOwner } from "../services/streams.js";
 import { sendDiscordDm } from "../services/discord.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import { assertRequirementFitsUnit, assertUniqueSquadName, canApproveUnits } from "./api.js";
@@ -144,6 +145,7 @@ import {
   OperationListQuerySchema,
   PatchUnitRequestSchema,
   QuestionParamSchema,
+  AddStreamRequestSchema,
   RegisterUnitRequestSchema,
   ResourceLinkRequestSchema,
   SeatParamSchema,
@@ -2137,6 +2139,64 @@ export async function apiV1Routes(app: FastifyInstance) {
         return sendError(reply, req, 403, "forbidden", "Operator, creator or commander role required.");
       await removeResourceLink(p.data.id, p.data.linkId);
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "resource_link:remove", p.data.linkId);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // ── FR-P3 Phase B: streamer links (self-service) ───────────────────
+  // Add: any user with op access (member / partner / public viewer). The entry is
+  // attributed to them. Remove: the entry owner OR an op manager (moderation).
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/streams",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = AddStreamRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      // Any viewer with access to the op may add their own stream.
+      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
+      if (!role) return sendError(reply, req, 403, "forbidden", "No access to this operation.");
+
+      const stream = await addStream(p.data.id, ctx.user.id, {
+        platform: body.data.platform,
+        url: body.data.url,
+        label: body.data.label ?? null,
+      });
+      if (!stream)
+        return sendError(reply, req, 409, "conflict", "Invalid URL for the platform or stream limit reached.");
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "stream:add", stream.url);
+      return reply.type("application/json").send({
+        ok: true as const,
+        stream: {
+          id: stream.id,
+          platform: stream.platform as "twitch" | "youtube" | "vdo_ninja" | "other",
+          url: stream.url,
+          label: stream.label,
+          userId: stream.userId,
+          username: stream.user?.username ?? null,
+        },
+      });
+    },
+  );
+
+  app.delete<{ Params: { id: string; streamId: string } }>(
+    "/api/v1/operations/:id/streams/:streamId",
+    async (req, reply) => {
+      const id = req.params.id;
+      const streamId = req.params.streamId;
+      if (!id || !streamId) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const owner = await streamOwner(id, streamId);
+      if (owner === undefined) return reply.type("application/json").send({ ok: true as const }); // already gone
+      const isOwner = owner !== null && owner === ctx.user.id;
+      const canModerate = await canApproveUnits(ctx.user.id, ctx.user.role, id);
+      if (!isOwner && !canModerate)
+        return sendError(reply, req, 403, "forbidden", "Only the owner or an operator can remove this stream.");
+      await removeStream(id, streamId);
+      await logAudit(id, ctx.user.id, ctx.user.username, "stream:remove", streamId);
       return reply.type("application/json").send({ ok: true as const });
     },
   );

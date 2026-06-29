@@ -212,6 +212,21 @@ export const ResourceLinkSchema = z
   .meta({ id: "ResourceLink" });
 export type ResourceLink = z.infer<typeof ResourceLinkSchema>;
 
+/** FR-P3 Phase B: a streamer link on an op (self-service). */
+export const STREAM_PLATFORMS = ["twitch", "youtube", "vdo_ninja", "other"] as const;
+export const OperationStreamSchema = z
+  .object({
+    id: z.string(),
+    platform: z.enum(STREAM_PLATFORMS),
+    url: z.string(),
+    label: z.string(),
+    /** Adder's user id + name (null when external / redacted). */
+    userId: z.string().nullable(),
+    username: z.string().nullable(),
+  })
+  .meta({ id: "OperationStream" });
+export type OperationStream = z.infer<typeof OperationStreamSchema>;
+
 export const OperationDetailSchema = OperationSummarySchema.extend({
   description: z.string(),
   /** Optional participant cap (null = no cap). */
@@ -227,6 +242,8 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
   leaders: z.array(z.object({ id: z.string(), username: z.string() })),
   units: z.array(FleetUnitSchema),
   resourceLinks: z.array(ResourceLinkSchema),
+  /** FR-P3 Phase B: streamer links (self-service). */
+  streams: z.array(OperationStreamSchema),
   /** Q&A thread — askers see answers; operators answer in the console. */
   questions: z.array(
     z.object({
@@ -628,6 +645,17 @@ export const ResourceLinkRequestSchema = z
 export const ResourceLinkResponseSchema = z
   .object({ ok: z.literal(true), link: ResourceLinkSchema })
   .meta({ id: "ResourceLinkResponse" });
+
+export const AddStreamRequestSchema = z
+  .object({
+    platform: z.enum(STREAM_PLATFORMS),
+    url: z.string().min(1).max(500),
+    label: z.string().max(80).optional(),
+  })
+  .meta({ id: "AddStreamRequest" });
+export const StreamResponseSchema = z
+  .object({ ok: z.literal(true), stream: OperationStreamSchema })
+  .meta({ id: "StreamResponse" });
 
 export const UnitParamSchema = z.object({ id: cuid, unitId: cuid });
 export const LinkParamSchema = z.object({ id: cuid, linkId: cuid });

@@ -263,6 +263,14 @@ export function removeResourceLink(opId: string, linkId: string, csrfToken: stri
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/resource-links/${encodeURIComponent(linkId)}`, csrfToken);
 }
 
+export type OperationStream = { id: string; platform: "twitch" | "youtube" | "vdo_ninja" | "other"; url: string; label: string; userId: string | null; username: string | null };
+export function addStream(opId: string, csrfToken: string, input: { platform: string; url: string; label?: string }): Promise<{ ok: true; stream: OperationStream }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/streams`, csrfToken, input);
+}
+export function removeStream(opId: string, streamId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/streams/${encodeURIComponent(streamId)}`, csrfToken);
+}
+
 export function addLeader(opId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/leaders`, csrfToken, { userId });
 }
