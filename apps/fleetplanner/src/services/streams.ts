@@ -67,19 +67,12 @@ export async function addStream(
   if (count >= MAX_STREAMS) return null;
   const label = (input.label ?? "").trim().slice(0, 80) || fallbackLabel(url);
 
-  const stream = await prisma.operationStream.create({
+  // The isStreamEvent flag is set manually via the wizard / operator console —
+  // adding a stream link does NOT auto-flag the op (kept fully optional).
+  return prisma.operationStream.create({
     data: { operationId, userId, platform, url, label },
     include: { user: { select: { id: true, username: true } } },
   });
-  // First stream → mark the op as a stream event (best-effort).
-  if (count === 0) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (prisma.operation.update as any)({
-      where: { id: operationId },
-      data: { isStreamEvent: true },
-    }).catch(() => { /* non-fatal */ });
-  }
-  return stream;
 }
 
 /** The user id that owns a stream entry (for the self-delete check), or null. */

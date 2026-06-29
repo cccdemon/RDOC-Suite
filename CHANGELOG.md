@@ -12,8 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Pro-Streamer-Links auf einer Operation.** Neues Model `OperationStream` (userId?, platform
   twitch|youtube|vdo_ninja|other, url, label) + Migration `20260629140000_op_streams`.
 - **Self-Service:** jeder Teilnehmer mit Op-Zugriff trägt seinen eigenen Stream ein („Ich streame
-  das" → Plattform + URL); Löschen = Eintrags-Owner **oder** fleetoperator. Erster Stream setzt
-  `isStreamEvent=true`. URL pro Plattform host-validiert (twitch.tv / youtube.com|youtu.be /
+  das" → Plattform + URL); Löschen = Eintrags-Owner **oder** fleetoperator. Das `isStreamEvent`-Flag
+  ist ein **manueller, optionaler** Toggle (Wizard/Eckdaten) — Links setzen es NICHT automatisch.
+  URL pro Plattform host-validiert (twitch.tv / youtube.com|youtu.be /
   vdo.ninja); „andere" = beliebige https-URL.
 - **Op-Detail „STREAMS"-Sektion** mit Plattform-Icons (twitch/youtube), Ansehen-Link + Inline-Form.
   Contracts `OperationStream` + `OperationDetail.streams` + `AddStreamRequest`, Service `streams.ts`,
