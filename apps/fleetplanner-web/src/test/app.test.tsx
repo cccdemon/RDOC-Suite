@@ -1003,8 +1003,8 @@ describe("Admin guild management", () => {
   };
   const adminGuilds = {
     guilds: [
-      { id: "111111111111111111", name: "Active Org", active: true, bannedAt: null, ownerUserId: "u1", memberCount: 12 },
-      { id: "222222222222222222", name: "Bad Org", active: false, bannedAt: "2026-06-01T10:00:00.000Z", ownerUserId: "u2", memberCount: 3 },
+      { id: "111111111111111111", name: "Active Org", active: true, bannedAt: null, ownerUserId: "u1", memberCount: 12, eventCount: 7 },
+      { id: "222222222222222222", name: "Bad Org", active: false, bannedAt: "2026-06-01T10:00:00.000Z", ownerUserId: "u2", memberCount: 3, eventCount: 0 },
     ],
   };
 

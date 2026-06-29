@@ -618,6 +618,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         bannedAt: g.bannedAt ? g.bannedAt.toISOString() : null,
         ownerUserId: g.ownerUserId,
         memberCount: g.memberCount,
+        eventCount: g.eventCount,
       })),
     });
   });

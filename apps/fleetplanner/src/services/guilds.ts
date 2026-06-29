@@ -138,6 +138,7 @@ export async function listAllGuildsForAdmin(): Promise<
     bannedAt: Date | null;
     ownerUserId: string | null;
     memberCount: number;
+    eventCount: number;
   }>
 > {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -152,7 +153,7 @@ export async function listAllGuildsForAdmin(): Promise<
       active: true,
       bannedAt: true,
       ownerUserId: true,
-      _count: { select: { memberships: true } },
+      _count: { select: { memberships: true, operations: true } },
     },
   })) as Array<{
     id: string;
@@ -160,7 +161,7 @@ export async function listAllGuildsForAdmin(): Promise<
     active: boolean;
     bannedAt: Date | null;
     ownerUserId: string | null;
-    _count: { memberships: number };
+    _count: { memberships: number; operations: number };
   }>;
   return rows.map((r) => ({
     id: r.id,
@@ -169,6 +170,7 @@ export async function listAllGuildsForAdmin(): Promise<
     bannedAt: r.bannedAt,
     ownerUserId: r.ownerUserId,
     memberCount: r._count.memberships,
+    eventCount: r._count.operations,
   }));
 }
 

@@ -344,14 +344,21 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
         <section style={{ border: "1px solid rgba(0,212,255,0.14)", borderRadius: 13, background: "#090f18", overflow: "hidden", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.9rem 1.15rem", borderBottom: "1px solid rgba(0,212,255,0.14)" }}><span style={{ color: "#00ff88", display: "inline-flex" }}><Ic name="server" size={16} sw={1.6} /></span><span style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.08em", color: "#eaf4fb" }}>DISCORD-SERVER</span><span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{guilds.length} gesamt</span></div>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            {guilds.map((s) => {
+            {[...guilds].sort((a, b) => b.eventCount - a.eventCount || a.name.localeCompare(b.name)).map((s, gi) => {
               const banned = !!s.bannedAt;
               const c = banned ? "#ff4444" : s.active ? "#00ff88" : "#7e92a4";
+              const mostActive = gi === 0 && s.eventCount > 0;
               return (
                 <div key={s.id} data-testid={`admin-guild-${s.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", rowGap: "0.5rem", flexWrap: mobile ? "wrap" : "nowrap", padding: "0.7rem 1.1rem", borderBottom: "1px solid rgba(0,212,255,0.08)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0, flex: 1 }}>
                     <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: `${c}18`, border: `1px solid ${c}55`, color: c, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.64rem", fontWeight: 700 }}>{initialsOf(s.name)}</span>
-                    <div style={{ minWidth: 0 }}><div style={{ fontSize: "0.88rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</div><div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{fmtNum(s.memberCount)} Mitglieder</div></div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
+                        <span style={{ fontSize: "0.88rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
+                        {mostActive && <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.06em", color: "#00ff88", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase" }}>Aktivster</span>}
+                      </div>
+                      <div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{fmtNum(s.memberCount)} Mitglieder · <span style={{ color: s.eventCount > 0 ? "#00d4ff" : "#5b6b7a" }}>{fmtNum(s.eventCount)} Events</span></div>
+                    </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexShrink: 0 }}>
                     <span style={statusChip(!banned && s.active)}>{banned ? "GEBANNT" : s.active ? "AKTIV" : "INAKTIV"}</span>

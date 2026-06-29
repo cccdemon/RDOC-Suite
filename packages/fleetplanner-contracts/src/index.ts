@@ -818,6 +818,8 @@ export const AdminGuildSchema = z
     bannedAt: z.iso.datetime().nullable(),
     ownerUserId: z.string().nullable(),
     memberCount: z.number(),
+    /** Operations (events) hosted by this guild — for the "events per Discord" view. */
+    eventCount: z.number(),
   })
   .meta({ id: "AdminGuild" });
 export type AdminGuild = z.infer<typeof AdminGuildSchema>;
@@ -938,9 +940,6 @@ export const SystemHealthResponseSchema = z
     checkedAt: z.iso.datetime(),
     services: z.array(ServiceHealthSchema),
     syncs: z.array(SyncHealthSchema),
-    operations: OperationsMetricSchema,
-    /** Per-guild event counts (E2E guilds excluded), sorted most-active first. */
-    guildEvents: z.array(GuildEventsMetricSchema),
   })
   .meta({ id: "SystemHealthResponse" });
 export type SystemHealthResponse = z.infer<typeof SystemHealthResponseSchema>;

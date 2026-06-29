@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, getSystemEvents, getSystemHealth, syncCatalog } from "../api/client";
-import type { GuildEventsMetric, OperationsMetric, ServiceHealth, SessionResponse, SyncHealth, SystemEvent } from "../api/types";
+import type { ServiceHealth, SessionResponse, SyncHealth, SystemEvent } from "../api/types";
 import { Ic } from "../components/Icons";
 
 const MONO = "'Share Tech Mono',ui-monospace,monospace";
@@ -42,8 +42,6 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
 
   const [services, setServices] = useState<ServiceHealth[]>([]);
   const [syncs, setSyncs] = useState<SyncHealth[]>([]);
-  const [ops, setOps] = useState<OperationsMetric | null>(null);
-  const [guildEvents, setGuildEvents] = useState<GuildEventsMetric[]>([]);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [events, setEvents] = useState<SystemEvent[]>([]);
   const [retentionDays, setRetentionDays] = useState(10);
@@ -72,8 +70,6 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
       ]);
       setServices(h.services);
       setSyncs(h.syncs);
-      setOps(h.operations);
-      setGuildEvents(h.guildEvents);
       setCheckedAt(h.checkedAt);
       setEvents(e.events);
       setRetentionDays(e.retentionDays);
@@ -179,58 +175,6 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
             s.running ? (s.stale ? "Hängt — stale lock" : "Läuft gerade…") : `${s.count.toLocaleString("de-DE")} gecacht · Lauf ${fmtRel(s.lastRun)}`,
             s.key === "ship" ? "ship" : "pin",
           ),
-        )}
-      </div>
-
-      {/* OPERATIONS METRICS */}
-      <div style={{ ...label, marginBottom: "0.6rem" }}>OPERATIONEN</div>
-      <div data-testid="system-operations" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: "0.8rem", marginBottom: "1.3rem" }}>
-        {([
-          { key: "total", name: "Operationen gesamt", value: ops?.total, color: "#00d4ff", icon: "board" },
-          { key: "private", name: "Privat", value: ops?.private, color: "#9fb1c2", icon: "shield" },
-          { key: "public", name: "Öffentlich", value: ops?.public, color: "#00ff88", icon: "globe" },
-          { key: "partners", name: "Partner", value: ops?.partners, color: "#f0a500", icon: "users" },
-        ] as const).map((m) => (
-          <div key={m.key} data-testid={`ops-metric-${m.key}`} style={{ border: "1px solid rgba(0,212,255,0.14)", borderLeft: `3px solid ${m.color}`, borderRadius: 12, background: "#090f18", padding: "0.85rem 0.95rem", minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#c2d2de", marginBottom: "0.45rem" }}>
-              <span style={{ color: m.color, display: "inline-flex" }}><Ic name={m.icon} size={14} sw={1.6} /></span>{m.name}
-            </div>
-            <div style={{ fontSize: "1.5rem", fontWeight: 700, color: "#eaf4fb", lineHeight: 1, fontFamily: MONO }}>
-              {ops ? (m.value ?? 0).toLocaleString("de-DE") : "—"}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* EVENTS PER DISCORD */}
-      <div style={{ ...label, marginBottom: "0.6rem" }}>EVENTS PRO DISCORD</div>
-      <div data-testid="system-guild-events" style={{ ...card, marginBottom: "1.3rem", padding: "0.9rem 1rem" }}>
-        {guildEvents.length === 0 ? (
-          <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Keine Discords.</div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-            {(() => {
-              const max = Math.max(1, ...guildEvents.map((g) => g.events));
-              return guildEvents.map((g, i) => {
-                const top = i === 0 && g.events > 0;
-                const dim = g.events === 0;
-                const c = top ? "#00ff88" : dim ? "#5b6b7a" : "#00d4ff";
-                return (
-                  <div key={g.guildId} data-testid={`guild-events-${g.guildId}`} style={{ display: "flex", alignItems: "center", gap: "0.7rem", opacity: dim ? 0.6 : 1 }}>
-                    <span style={{ flex: "0 0 40%", minWidth: 0, display: "flex", alignItems: "center", gap: "0.45rem", overflow: "hidden" }}>
-                      <span style={{ color: c, display: "inline-flex", flexShrink: 0 }}><Ic name="server" size={13} sw={1.6} /></span>
-                      <span style={{ color: "#eaf4fb", fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
-                      {top && <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.06em", color: "#00ff88", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase" }}>Aktivster</span>}
-                    </span>
-                    <span style={{ flex: 1, height: 6, borderRadius: 4, background: "#0e1926", overflow: "hidden" }}>
-                      <span style={{ display: "block", height: "100%", width: `${Math.round((g.events / max) * 100)}%`, background: c, borderRadius: 4 }} />
-                    </span>
-                    <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.9rem", color: dim ? "#7e92a4" : "#eaf4fb", minWidth: 28, textAlign: "right" }}>{g.events.toLocaleString("de-DE")}</span>
-                  </div>
-                );
-              });
-            })()}
-          </div>
         )}
       </div>
 
