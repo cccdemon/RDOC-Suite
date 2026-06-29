@@ -5,6 +5,7 @@
 import { prisma } from "../db.js";
 import { getSyncState } from "./shipSync.js";
 import { getLocationSyncState } from "./locations.js";
+import { E2E_GUILD_IDS } from "./guilds.js";
 
 export type HealthStatus = "ok" | "warn" | "error" | "down";
 
@@ -39,11 +40,18 @@ export type OperationsMetric = {
   public: number;
 };
 
+export type GuildEventsMetric = {
+  guildId: string;
+  name: string;
+  events: number;
+};
+
 export type SystemHealth = {
   checkedAt: string;
   services: ServiceHealth[];
   syncs: SyncHealth[];
   operations: OperationsMetric;
+  guildEvents: GuildEventsMetric[];
 };
 
 type SyncRow = {
@@ -115,14 +123,17 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   });
 
   // Operations metric: total + per-visibility breakdown (private/partners/public).
+  // E2E test guilds are excluded everywhere so synthetic data never inflates the
+  // real numbers a superadmin reads.
+  const realOps = { guildId: { notIn: E2E_GUILD_IDS } };
   let operations: OperationsMetric = { total: 0, private: 0, partners: 0, public: 0 };
   try {
-    // total = ALL operations (count). The named buckets cover the current
+    // total = ALL real operations (count). The named buckets cover the current
     // visibilities; legacy values (e.g. "guild") are part of total but not
     // shown as their own tile, so the buckets may sum to less than total.
     const [total, grouped] = await Promise.all([
-      prisma.operation.count(),
-      prisma.operation.groupBy({ by: ["visibility"], _count: { _all: true } }),
+      prisma.operation.count({ where: realOps }),
+      prisma.operation.groupBy({ by: ["visibility"], where: realOps, _count: { _all: true } }),
     ]);
     const by = new Map(grouped.map((g) => [g.visibility, g._count._all]));
     operations = {
@@ -135,5 +146,25 @@ export async function getSystemHealth(): Promise<SystemHealth> {
     // DB hiccup — report zeros rather than failing the whole health payload
   }
 
-  return { checkedAt: new Date().toISOString(), services, syncs, operations };
+  // Events per Discord: op count per active guild (E2E excluded). Guilds with 0
+  // ops are kept (count 0) so a superadmin can spot inactive Discords; sorted
+  // most-active first → first entry = "most active Discord for events".
+  let guildEvents: GuildEventsMetric[] = [];
+  try {
+    const [guilds, grouped] = await Promise.all([
+      prisma.guild.findMany({
+        where: { active: true, id: { notIn: E2E_GUILD_IDS } },
+        select: { id: true, name: true },
+      }),
+      prisma.operation.groupBy({ by: ["guildId"], where: realOps, _count: { _all: true } }),
+    ]);
+    const counts = new Map(grouped.map((g) => [g.guildId, g._count._all]));
+    guildEvents = guilds
+      .map((g) => ({ guildId: g.id, name: g.name, events: counts.get(g.id) ?? 0 }))
+      .sort((a, b) => b.events - a.events || a.name.localeCompare(b.name));
+  } catch {
+    guildEvents = [];
+  }
+
+  return { checkedAt: new Date().toISOString(), services, syncs, operations, guildEvents };
 }

@@ -11,6 +11,7 @@ import { getEnv } from "../config/env.js";
 import { optionalAuth, type AuthContext } from "../auth/middleware.js";
 import {
   banGuild,
+  E2E_GUILD_IDS,
   effectiveOpRole,
   getGuildSettingsData,
   getMembership,
@@ -637,6 +638,8 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
     const rows = await prisma.user.findMany({
+      // Hide synthetic E2E test players (e2e-* usernames) from the superadmin list.
+      where: { username: { not: { startsWith: "e2e-" } } },
       orderBy: { joinedAt: "asc" },
       select: {
         id: true, username: true, role: true, active: true, lastSeenAt: true,
@@ -719,7 +722,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       getSetting("feedback.discordChannelId"),
       getSyncState(),
       getLocationSyncState(),
-      prisma.operation.count(),
+      prisma.operation.count({ where: { guildId: { notIn: E2E_GUILD_IDS } } }),
     ]);
     return reply.type("application/json").send({
       maintenanceOn: isMaintenanceOn(),

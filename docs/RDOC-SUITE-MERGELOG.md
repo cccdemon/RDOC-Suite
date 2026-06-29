@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-06-29: Admin-Console Operationen-Metriken verfeinern
+
+Status: ⏳ In Arbeit. SuperAdmin system-health/metrics erweitern:
+- **Operationen-Aufschlüsselung** nach Visibility: statt nur Gesamtzahl ("31 live") →
+  `private / partners / public` einzeln (z.B. 11 Private, 4 Partner, 20 Public).
+- **Neue Metrik "Aktivster Discord für Events"** + Events-pro-Discord-Aufstellung
+  (Operation→guildId→Guild.name, count), damit inaktive Discords erkennbar sind.
+- **E2E-User/-Guild ausblenden** aus allen Zählungen (E2E_GUILD_ID `100000000000000001`
+  + zugehörige Test-User). Betrifft system-health-Endpoint + ops-metrics-Service.
+
+Betroffen: `apps/fleetplanner` (metrics/system-health service + route), `apps/fleetplanner-web`
+(Admin/System-Page). Deploy: rebuild fleetplanner + fleetplanner-web. Keine Migration.
+
+## Queued / Planned - 2026-06-29: "Fleetplanner Light" — Design-Doc (FR-P2, kein Code)
+
+Status: 📝 Nur Planungs-Dokument. `docs/FR-P2-fleetplanner-light.md` + Roadmap-Zeile.
+Feature: jeder Guild-Member darf "Light"-Ops anlegen (Deep-Link, ohne Discord-Bot);
+fleetoperator = "Org-Operator" (voller Discord-Flow); Op-Tier `personal|org` + Upgrade.
+Kein Code in diesem Schritt — Implementierung nur auf explizite Freigabe.
+
 ## Queued / In Progress - 2026-06-29: Stream-Event-Markierung + Filter (FR-P3, Feedback exrelax)
 
 Status: ⏳ In Arbeit (branch `feat/stream-event`, basiert auf master `c258ca8`). Phase A (MVP).

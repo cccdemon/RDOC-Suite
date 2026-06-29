@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added / Changed - Admin-Console: Events-pro-Discord + E2E-Ausblendung (2026-06-29)
+
+- **Neue Metrik „Events pro Discord"** im SuperAdmin System-Panel: Op-Anzahl pro aktivem
+  Discord (E2E ausgeschlossen), absteigend sortiert, inaktive Discords (0) sichtbar zum
+  Aussortieren; oberster Eintrag als „Aktivster" markiert. Contract `GuildEventsMetric` +
+  `SystemHealthResponse.guildEvents`, Service `systemHealth.ts`, SPA `SystemPage`.
+- **E2E-Testdaten aus allen SuperAdmin-Zählungen entfernt:** Operationen-Metrik (total +
+  Visibility-Split), Events-pro-Discord, Server-Liste (`/admin/guilds`), Settings-Op-Count und
+  die User-Liste (`/admin/users`, `e2e-*`-User ausgeblendet). Shared `E2E_GUILD_IDS` in
+  `services/guilds.ts`.
+- (Die Operationen-Aufschlüsselung private/partner/public war bereits in `ff8cda6` enthalten.)
+
 ### Added - Stream-Event-Markierung + Filter (FR-P3, 2026-06-29)
 
 - **Operationen als Stream-Event markierbar** (`Operation.isStreamEvent`, Migration

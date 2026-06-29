@@ -915,12 +915,25 @@ export const OperationsMetricSchema = z
   .meta({ id: "OperationsMetric" });
 export type OperationsMetric = z.infer<typeof OperationsMetricSchema>;
 
+/** FR admin-metrics: operations (events) per Discord guild, so superadmins can
+ *  see the most active Discord and spot inactive ones (count 0). Sorted desc. */
+export const GuildEventsMetricSchema = z
+  .object({
+    guildId: z.string(),
+    name: z.string(),
+    events: z.number().int(),
+  })
+  .meta({ id: "GuildEventsMetric" });
+export type GuildEventsMetric = z.infer<typeof GuildEventsMetricSchema>;
+
 export const SystemHealthResponseSchema = z
   .object({
     checkedAt: z.iso.datetime(),
     services: z.array(ServiceHealthSchema),
     syncs: z.array(SyncHealthSchema),
     operations: OperationsMetricSchema,
+    /** Per-guild event counts (E2E guilds excluded), sorted most-active first. */
+    guildEvents: z.array(GuildEventsMetricSchema),
   })
   .meta({ id: "SystemHealthResponse" });
 export type SystemHealthResponse = z.infer<typeof SystemHealthResponseSchema>;

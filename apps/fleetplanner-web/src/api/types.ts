@@ -34,6 +34,7 @@ export type {
   ServiceHealth,
   SyncHealth,
   OperationsMetric,
+  GuildEventsMetric,
   SystemEvent,
   SystemEventsResponse,
   AccountResponse,

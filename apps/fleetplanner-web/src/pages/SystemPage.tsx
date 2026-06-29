@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ApiError, getSystemEvents, getSystemHealth, syncCatalog } from "../api/client";
-import type { OperationsMetric, ServiceHealth, SessionResponse, SyncHealth, SystemEvent } from "../api/types";
+import type { GuildEventsMetric, OperationsMetric, ServiceHealth, SessionResponse, SyncHealth, SystemEvent } from "../api/types";
 import { Ic } from "../components/Icons";
 
 const MONO = "'Share Tech Mono',ui-monospace,monospace";
@@ -43,6 +43,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
   const [services, setServices] = useState<ServiceHealth[]>([]);
   const [syncs, setSyncs] = useState<SyncHealth[]>([]);
   const [ops, setOps] = useState<OperationsMetric | null>(null);
+  const [guildEvents, setGuildEvents] = useState<GuildEventsMetric[]>([]);
   const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const [events, setEvents] = useState<SystemEvent[]>([]);
   const [retentionDays, setRetentionDays] = useState(10);
@@ -72,6 +73,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
       setServices(h.services);
       setSyncs(h.syncs);
       setOps(h.operations);
+      setGuildEvents(h.guildEvents);
       setCheckedAt(h.checkedAt);
       setEvents(e.events);
       setRetentionDays(e.retentionDays);
@@ -198,6 +200,38 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* EVENTS PER DISCORD */}
+      <div style={{ ...label, marginBottom: "0.6rem" }}>EVENTS PRO DISCORD</div>
+      <div data-testid="system-guild-events" style={{ ...card, marginBottom: "1.3rem", padding: "0.9rem 1rem" }}>
+        {guildEvents.length === 0 ? (
+          <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Keine Discords.</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+            {(() => {
+              const max = Math.max(1, ...guildEvents.map((g) => g.events));
+              return guildEvents.map((g, i) => {
+                const top = i === 0 && g.events > 0;
+                const dim = g.events === 0;
+                const c = top ? "#00ff88" : dim ? "#5b6b7a" : "#00d4ff";
+                return (
+                  <div key={g.guildId} data-testid={`guild-events-${g.guildId}`} style={{ display: "flex", alignItems: "center", gap: "0.7rem", opacity: dim ? 0.6 : 1 }}>
+                    <span style={{ flex: "0 0 40%", minWidth: 0, display: "flex", alignItems: "center", gap: "0.45rem", overflow: "hidden" }}>
+                      <span style={{ color: c, display: "inline-flex", flexShrink: 0 }}><Ic name="server" size={13} sw={1.6} /></span>
+                      <span style={{ color: "#eaf4fb", fontSize: "0.85rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
+                      {top && <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.06em", color: "#00ff88", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase" }}>Aktivster</span>}
+                    </span>
+                    <span style={{ flex: 1, height: 6, borderRadius: 4, background: "#0e1926", overflow: "hidden" }}>
+                      <span style={{ display: "block", height: "100%", width: `${Math.round((g.events / max) * 100)}%`, background: c, borderRadius: 4 }} />
+                    </span>
+                    <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.9rem", color: dim ? "#7e92a4" : "#eaf4fb", minWidth: 28, textAlign: "right" }}>{g.events.toLocaleString("de-DE")}</span>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        )}
       </div>
 
       {/* SYNC CONTROL */}

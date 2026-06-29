@@ -8,9 +8,10 @@ import { getActivePartnerGuildIds } from "./partnerships.js";
 
 export type GuildRole = "fleetoperator" | "crew";
 
-// Synthetic E2E test guild (see routes/e2eAuth.ts) — never a real Discord id,
-// so a presence check always 404s. Exclude it from the sweep so it doesn't flap.
-const E2E_GUILD_ID = "100000000000000001";
+// Synthetic E2E test guilds (see routes/e2eAuth.ts) — never real Discord ids,
+// so a presence check always 404s. Excluded from the sweep (so they don't flap)
+// and from superadmin metrics/lists (so test data never inflates real numbers).
+export const E2E_GUILD_IDS = ["100000000000000001", "100000000000000002"];
 
 const ROLE_RANK: Record<GuildRole, number> = { fleetoperator: 3, crew: 1 };
 
@@ -104,7 +105,7 @@ export async function sweepGuildPresence(force = false): Promise<void> {
     select: { id: true },
   });
   for (const g of guilds) {
-    if (g.id === E2E_GUILD_ID) continue;
+    if (E2E_GUILD_IDS.includes(g.id)) continue;
     const presence = await checkGuildBotPresence(g.id);
     if (presence === "absent") await deactivateGuild(g.id);
   }
@@ -142,8 +143,8 @@ export async function listAllGuildsForAdmin(): Promise<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows = (await (prisma.guild.findMany as any)({
     // Hide soft-removed guilds (bot gone → active=false). Banned guilds stay
-    // visible so a superadmin can unban them.
-    where: { OR: [{ active: true }, { bannedAt: { not: null } }] },
+    // visible so a superadmin can unban them. E2E test guilds never show.
+    where: { id: { notIn: E2E_GUILD_IDS }, OR: [{ active: true }, { bannedAt: { not: null } }] },
     orderBy: [{ bannedAt: "asc" }, { name: "asc" }],
     select: {
       id: true,
