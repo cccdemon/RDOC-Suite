@@ -16,6 +16,7 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | P2 | Fleet Import via JSON (CCU-Game) | [FR-P2-fleet-import-json.md](FR-P2-fleet-import-json.md) | UserShip + ship catalog (= Backlog #1) | ✓ Done |
 | P2 | Discord-event "Interested" → auto needs-assignment | [FR-P2-discord-event-interest.md](FR-P2-discord-event-interest.md) | per-op Discord event (live); bot REST poll, no privileged intent | ✓ Done (2026-06-07) |
 | P2 | Microservice API/Frontend Split (Backend API-only, FE API-only) | [FR-P2-microservice-api-split-opus-plan.md](FR-P2-microservice-api-split-opus-plan.md) | Fleetplanner services + Prisma; expands FR-P3 frontend split | Plan |
+| P2 | Fleetplanner Light (Org-Operator vs Operator-Light; jeder legt Light-Ops an, Op-Tier personal/org + Upgrade) | [FR-P2-fleetplanner-light.md](FR-P2-fleetplanner-light.md) | role/tenant model + op ownership (createdById/leaders) + Discord-event flow | Plan (kein Code; Approach A = Op-Tier statt neuer Rolle) |
 | ~~P3~~ | Federation Voice (homeoffice party, multi-event) | [FR-P3-federation-voice.md](FR-P3-federation-voice.md) | — | ✗ **Abgelehnt** (Begründung folgt) |
 | P3 | Recurring Events (RRULE) | [FR-P3-recurring-events.md](FR-P3-recurring-events.md) | core standalone; series-distribution soft → FR-P1 | ✓ Done (2026-06-06; series-distribution deferred → FR-P1) |
 | P3 | Roadmap Tab (+ Discord feedback auto-ingest) | [FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) | existing feedback channel/settings | ✗ **Verworfen** (User 2026-06-24) |
