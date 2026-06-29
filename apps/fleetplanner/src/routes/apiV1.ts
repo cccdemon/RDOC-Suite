@@ -718,12 +718,15 @@ export async function apiV1Routes(app: FastifyInstance) {
     const ctx = await optionalAuth(req);
     if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     if (ctx.user.role !== "superadmin") return sendError(reply, req, 403, "forbidden", "Superadmin only.");
-    const [feedbackChannelId, ship, loc, operationCount] = await Promise.all([
+    const realOps = { guildId: { notIn: E2E_GUILD_IDS } };
+    const [feedbackChannelId, ship, loc, operationCount, opsByVis] = await Promise.all([
       getSetting("feedback.discordChannelId"),
       getSyncState(),
       getLocationSyncState(),
-      prisma.operation.count({ where: { guildId: { notIn: E2E_GUILD_IDS } } }),
+      prisma.operation.count({ where: realOps }),
+      prisma.operation.groupBy({ by: ["visibility"], where: realOps, _count: { _all: true } }),
     ]);
+    const visMap = new Map(opsByVis.map((g) => [g.visibility, g._count._all]));
     return reply.type("application/json").send({
       maintenanceOn: isMaintenanceOn(),
       maintenanceForcedByEnv: isMaintenanceForcedByEnv(),
@@ -741,6 +744,12 @@ export async function apiV1Routes(app: FastifyInstance) {
         running: loc.running,
       },
       operationCount,
+      operations: {
+        total: operationCount,
+        private: visMap.get("private") ?? 0,
+        partners: visMap.get("partners") ?? 0,
+        public: visMap.get("public") ?? 0,
+      },
     });
   });
 

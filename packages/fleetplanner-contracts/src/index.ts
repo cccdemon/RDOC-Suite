@@ -871,6 +871,13 @@ export const AdminSettingsResponseSchema = z
     shipCatalog: CatalogStateSchema,
     locationCatalog: CatalogStateSchema,
     operationCount: z.number(),
+    /** Operations split by visibility (E2E guilds excluded). total == operationCount. */
+    operations: z.object({
+      total: z.number().int(),
+      private: z.number().int(),
+      partners: z.number().int(),
+      public: z.number().int(),
+    }),
   })
   .meta({ id: "AdminSettingsResponse" });
 export type AdminSettingsResponse = z.infer<typeof AdminSettingsResponseSchema>;

@@ -17,7 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Visibility-Split), Events-pro-Discord, Server-Liste (`/admin/guilds`), Settings-Op-Count und
   die User-Liste (`/admin/users`, `e2e-*`-User ausgeblendet). Shared `E2E_GUILD_IDS` in
   `services/guilds.ts`.
-- (Die Operationen-Aufschlüsselung private/partner/public war bereits in `ff8cda6` enthalten.)
+- (Die Operationen-Aufschlüsselung private/partner/public im **System & Logs**-Panel war bereits
+  in `ff8cda6` enthalten.)
+- **Admin-Konsole OPERATIONEN-Karte** zeigt jetzt ebenfalls die Visibility-Aufteilung
+  (`X Privat · Y Partner · Z Öffentl.`) statt nur „live": `AdminSettingsResponse.operations`
+  (E2E ausgeschlossen), `/admin/settings`-Handler + `AdminPage`.
 
 ### Added - Stream-Event-Markierung + Filter (FR-P3, 2026-06-29)
 

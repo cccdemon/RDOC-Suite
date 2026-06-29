@@ -1021,6 +1021,7 @@ describe("Admin guild management", () => {
     shipCatalog: { count: 247, lastRun: "2026-06-10T10:00:00.000Z", intervalDays: 7, running: false },
     locationCatalog: { count: 1842, lastRun: "2026-06-10T10:00:00.000Z", intervalDays: 7, running: false },
     operationCount: 19,
+    operations: { total: 19, private: 8, partners: 3, public: 8 },
   };
   const adminBaseHandlers = () => [
     http.get(`${API}/admin/guilds`, () => HttpResponse.json(adminGuilds)),

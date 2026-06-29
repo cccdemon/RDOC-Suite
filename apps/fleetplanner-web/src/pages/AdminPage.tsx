@@ -142,7 +142,7 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
     { label: "DISCORD-SERVER", value: String(guilds.length), sub: `${activeServers} aktiv · ${bannedServers} gebannt`, color: "#00ff88", icon: "server" },
     { label: "SCHIFFE", value: fmtNum(settings?.shipCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.shipCatalog.lastRun ?? null)}`, color: "#f0a500", icon: "ship" },
     { label: "STANDORTE", value: fmtNum(settings?.locationCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.locationCatalog.lastRun ?? null)}`, color: "#a064ff", icon: "pin" },
-    { label: "OPERATIONEN", value: String(settings?.operationCount ?? 0), sub: "live", color: "#ff70c8", icon: "cal" },
+    { label: "OPERATIONEN", value: String(settings?.operations.total ?? settings?.operationCount ?? 0), sub: settings ? `${settings.operations.private} Privat · ${settings.operations.partners} Partner · ${settings.operations.public} Öffentl.` : "live", color: "#ff70c8", icon: "cal" },
     { label: "WARTUNG", value: maintOn ? "AN" : "AUS", sub: maintOn ? "Instanz gesperrt" : "Betrieb normal", color: maintColor, icon: "wrench" },
   ];
   const statCols = mobile ? "repeat(2,1fr)" : narrow ? "repeat(3,1fr)" : "repeat(6,1fr)";
