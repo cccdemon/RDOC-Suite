@@ -44,9 +44,11 @@ userId + Plattform + späterem Live-Status). vdo.ninja = Multi-Stream/Co-Streame
 - SPA: `OpDetailPage` Sektion „STREAMS" (Plattform-Icon + Name + Ansehen-Button; „Ich streame
   das"-Form; eigenen Eintrag löschbar; Operator alle). Icons twitch/youtube/vdo.
 
-**B2 (offen):** Live-Status via Twitch/YouTube API. **B3 (offen):** Streamer-Links im Discord-Embed.
+**B2 — verworfen (User 2026-06-29):** Live-Status (Twitch Helix) bringt keinen Mehrwert; das
+Feature ist nur „Flag dass gestreamt wird + optional Twitch-Link einpflegen + anzeigen" — das
+deckt B1 ab. Code wurde wieder entfernt. **B3 (offen, bei Bedarf):** Streamer-Links im Discord-Embed.
 
 ## Status
 
-✅ Phase A umgesetzt + deployed (2026-06-29). Phase B: Design gelockt, B1 bereit zum Bauen;
-B2/B3 offen.
+✅ Phase A + B1 umgesetzt + deployed (2026-06-29): isStreamEvent-Flag (Twitch-Lila-Markierung)
++ optionale Streamer-Links (self-service) im Op-Detail. B2 (Live-Status) verworfen. B3 offen.

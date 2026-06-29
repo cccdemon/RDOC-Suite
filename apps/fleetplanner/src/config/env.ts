@@ -99,12 +99,6 @@ const schema = z.object({
   // an "install the app" link next to the join link. Unset → install link hidden
   // (the Store listing may not be published yet).
   SQUADLINK_STORE_URL: z.string().optional(),
-
-  // FR-P3 Stream-Event Phase B2: Twitch live-status. App credentials (client_credentials
-  // flow → app access token) used to query Helix /streams for the live state of the
-  // twitch.tv stream links on an op. Both unset → live-status feature off (no LIVE badges).
-  TWITCH_CLIENT_ID: z.string().optional(),
-  TWITCH_CLIENT_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;

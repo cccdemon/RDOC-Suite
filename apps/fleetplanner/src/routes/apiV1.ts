@@ -95,8 +95,7 @@ import { createSignup as createCqbSignup, renameSquad as renameCqbSquad, withdra
 import { assignUnitToFormation, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
-import { addStream, listStreams, removeStream, streamOwner } from "../services/streams.js";
-import { liveLogins, twitchLiveConfigured, twitchLoginFromUrl } from "../services/twitchLive.js";
+import { addStream, removeStream, streamOwner } from "../services/streams.js";
 import { sendDiscordDm } from "../services/discord.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import { assertRequirementFitsUnit, assertUniqueSquadName, canApproveUnits } from "./api.js";
@@ -2202,33 +2201,6 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
-  // FR-P3 B2: per-stream Twitch live-status (best-effort, cached). Empty when the
-  // Twitch creds are unset (configured=false → SPA hides LIVE badges).
-  app.get<{ Params: { id: string } }>(
-    "/api/v1/operations/:id/streams/live",
-    async (req, reply) => {
-      const p = IdParamSchema.safeParse(req.params);
-      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
-      const ctx = await requireSessionJson(req, reply);
-      if (!ctx) return;
-      const role = await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id);
-      if (!role) return sendError(reply, req, 403, "forbidden", "No access to this operation.");
-
-      const live: Record<string, boolean> = {};
-      if (twitchLiveConfigured()) {
-        const streams = await listStreams(p.data.id);
-        const twitch = streams
-          .filter((s) => s.platform === "twitch")
-          .map((s) => ({ id: s.id, login: twitchLoginFromUrl(s.url) }))
-          .filter((s): s is { id: string; login: string } => !!s.login);
-        if (twitch.length > 0) {
-          const liveSet = await liveLogins(twitch.map((t) => t.login));
-          for (const t of twitch) live[t.id] = liveSet.has(t.login);
-        }
-      }
-      return reply.type("application/json").send({ configured: twitchLiveConfigured(), live });
-    },
-  );
 
   // ── operator (read model + mutations; canManage-gated) ─────────────
 
