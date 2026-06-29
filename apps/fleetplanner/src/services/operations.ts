@@ -21,6 +21,7 @@ export type CreateOperationInput = {
   minParticipants?: number;
   maxParticipants?: number | null;
   squadLinkVoiceEnabled?: boolean;
+  isStreamEvent?: boolean;
 };
 
 /** Append an audit entry (best-effort; never throws into the caller). */
@@ -57,6 +58,7 @@ export async function createOperation(createdById: string, input: CreateOperatio
     eventVoiceChannelId: input.eventVoiceChannelId || null,
     minParticipants: input.minParticipants ?? 0,
     maxParticipants: input.maxParticipants ?? null,
+    isStreamEvent: input.isStreamEvent ?? false,
   };
   return prisma.operation.create({ data });
 }
@@ -231,6 +233,7 @@ export async function updateOperation(id: string, input: Partial<CreateOperation
       ...(input.scheduledAt !== undefined && { scheduledAt: input.scheduledAt }),
       ...("maxParticipants" in input && { maxParticipants: input.maxParticipants ?? null }),
       ...(input.squadLinkVoiceEnabled !== undefined && { squadLinkVoiceEnabled: input.squadLinkVoiceEnabled }),
+      ...(input.isStreamEvent !== undefined && { isStreamEvent: input.isStreamEvent }),
       ...("eventVoiceChannelId" in input && { eventVoiceChannelId: input.eventVoiceChannelId || null }),
     },
   });

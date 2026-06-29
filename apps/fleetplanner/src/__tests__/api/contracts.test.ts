@@ -26,6 +26,7 @@ const summaryFixture = {
   acceptedUnitCount: 2,
   filledSeats: 3,
   totalSeats: 8,
+  isStreamEvent: false,
 };
 
 describe("contracts", () => {

@@ -39,6 +39,7 @@ export type OpCoreForm = {
   meetingSystem: string;
   meetingLocation: string;
   visibility: string;
+  isStreamEvent: boolean;
 };
 
 export function coreValid(f: Pick<OpCoreForm, "title" | "scheduledAt">): boolean {
@@ -58,5 +59,6 @@ export function coreOpBody(f: OpCoreForm) {
     meetingLocation: f.meetingLocation.trim(),
     scheduledAt: f.scheduledAt ? new Date(f.scheduledAt).toISOString() : undefined,
     visibility: normalizeVisibility(f.visibility),
+    isStreamEvent: f.isStreamEvent,
   };
 }

@@ -637,6 +637,27 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             >
               {op.visibility}
             </span>
+            {op.isStreamEvent && (
+              <span
+                data-testid="op-stream-badge"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  border: "1px solid rgba(255,68,68,0.45)",
+                  color: "#ff6b6b",
+                  background: "rgba(255,68,68,0.09)",
+                  fontFamily: MONO,
+                  fontSize: "0.66rem",
+                  letterSpacing: "0.08em",
+                  padding: "0.2rem 0.55rem",
+                  borderRadius: 4,
+                  textTransform: "uppercase",
+                }}
+              >
+                <Ic name="stream" size={13} sw={1.7} /> Stream
+              </span>
+            )}
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#9fb1c2", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", padding: "0.2rem" }}>
               <Ic name="clock" size={13} />
               {fmtDate(op.scheduledAt, op.guild.timezone).toUpperCase()}

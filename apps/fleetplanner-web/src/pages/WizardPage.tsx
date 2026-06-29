@@ -48,6 +48,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const [meetingSystem, setMeetingSystem] = useState("Stanton");
   const [meetingLocation, setMeetingLocation] = useState("");
   const [visibility, setVisibility] = useState("private");
+  const [isStreamEvent, setIsStreamEvent] = useState(false);
   const [ships, setShips] = useState<string[]>([]);
   const [fighters, setFighters] = useState(0);
   const [cqb, setCqb] = useState(0);
@@ -80,7 +81,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
     try {
       const r = await createOperation(csrf, {
         guildId,
-        ...coreOpBody({ title, scheduledAt, opType, description, meetingSystem, meetingLocation, visibility }),
+        ...coreOpBody({ title, scheduledAt, opType, description, meetingSystem, meetingLocation, visibility, isStreamEvent }),
         scheduledAt: new Date(scheduledAt).toISOString(),
       });
       // Apply fleet needs + recurrence to the fresh op (best-effort, non-fatal).
@@ -113,6 +114,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
     ["Wiederholung", RECUR.find((r) => r.key === freq)?.label ?? "Nie"],
     ["Treffpunkt", `${meetingSystem}${meetingLocation ? " · " + meetingLocation : ""}`],
     ["Sichtbarkeit", VIS.find((v) => v.key === visibility)?.label ?? visibility],
+    ["Stream-Event", isStreamEvent ? "Ja" : "Nein"],
     ["Bedarfe", `${ships.length} Schiff(e) · ${fighters} Jäger · ${cqb} CQB`],
   ];
 
@@ -166,6 +168,18 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                       return <button key={t.key} type="button" data-testid={`wiz-type-${t.key}`} onClick={() => setOpType(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? `1px solid rgb(${t.rgb})` : "1px solid rgba(255,255,255,0.12)", background: on ? `rgba(${t.rgb},0.13)` : "transparent", color: on ? `rgb(${t.rgb})` : "#9fb1c2" }}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>;
                     })}
                   </div>
+                </div>
+                <div>
+                  <label style={lbl}>Stream-Event</label>
+                  <button
+                    type="button"
+                    data-testid="wiz-stream"
+                    aria-pressed={isStreamEvent}
+                    onClick={() => setIsStreamEvent((v) => !v)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: isStreamEvent ? "1px solid rgba(255,68,68,0.55)" : "1px solid rgba(255,255,255,0.12)", background: isStreamEvent ? "rgba(255,68,68,0.13)" : "transparent", color: isStreamEvent ? "#ff6b6b" : "#9fb1c2" }}
+                  >
+                    <Ic name="stream" size={14} sw={1.7} />{isStreamEvent ? "Als Stream-Event markiert" : "Kein Stream-Event"}
+                  </button>
                 </div>
               </div>
             )}

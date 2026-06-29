@@ -51,6 +51,7 @@ type OpListRow = {
   meetingSystem: string;
   meetingLocation: string;
   minParticipants: number;
+  isStreamEvent?: boolean;
   guild: { id: string; name: string; iconHash: string | null; discordInviteUrl?: string | null };
   units?: Array<{ id?: string; status: string; seats?: Array<{ userId: string | null }> }>;
 };
@@ -143,6 +144,7 @@ export function presentOperationSummary(
     acceptedUnitCount: acceptedUnits.length,
     filledSeats,
     totalSeats,
+    isStreamEvent: op.isStreamEvent ?? false,
   };
 }
 

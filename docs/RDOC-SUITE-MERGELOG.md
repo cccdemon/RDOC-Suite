@@ -1,5 +1,28 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-06-29: Stream-Event-Markierung + Filter (FR-P3, Feedback exrelax)
+
+Status: ⏳ In Arbeit (branch `feat/stream-event`, basiert auf master `c258ca8`). Phase A (MVP).
+Feedback exrelax: Operation als Stream-Event markieren → eigenes Icon in Liste/Detail/Discord
++ Filter (nur Stream / Stream ausblenden). Phase B (Twitch/YT/vdo.ninja-Streamer-Links) verschoben.
+
+**Änderungen:**
+- Schema: `Operation.isStreamEvent Boolean @default(false)` + Migration `*_op_stream_event`
+  (ALTER TABLE ADD COLUMN, Postgres-Prod). Vorbild: `squadLinkVoiceEnabled`.
+- Contracts (`packages/fleetplanner-contracts`): `isStreamEvent` in `OperationSummarySchema`
+  (→ Detail erbt), `CreateOperationRequestSchema` (default false), `EditOperationRequestSchema` (optional).
+- API: `operations.ts` (CreateOperationInput + create/update), `apiV1.ts` (create + patch
+  durchreichen), `presenters.ts` (OpListRow + presentOperationSummary).
+- Discord: `discord.ts` `createScheduledEvent` + `updateScheduledEvent` Event-Name mit
+  🔴-Präfix bei Stream-Events (sichtbares Icon im Discord-Event).
+- SPA (`fleetplanner-web`): `opForm.ts` (shared form-feld), `client.ts` (create+edit body),
+  `WizardPage` (Toggle Schritt 1 + Review), `EckdatenForm` (Autosave-Toggle-Karte),
+  `Icons.tsx` (`i-stream` Broadcast-Symbol), `OpDetailPage` (Hero-Badge),
+  `CalendarPage` (Badge in Liste+Agenda-Card + Filter-Toggle Alle/Nur/Aus).
+
+Deploy: Rebuild `fleetplanner` (Schema/Migration/API/Discord) + `fleetplanner-web` (SPA).
+Migration läuft automatisch beim Container-Start. Keine neue ENV.
+
 ## Completed - 2026-06-28: Monitoring + Ops-Metriken, Feedback-Anhänge, Token-Kopierbutton — `ff8cda6` + `fd829dd`
 
 Status: ✅ Deployed (LXC 103: fleetplanner + fleetplanner-web + monitoring rebuilt, grafana

@@ -971,6 +971,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       minParticipants: body.data.minParticipants,
       // OpVisibility's TS type predates "guild"; the column/UI accept it.
       visibility: body.data.visibility as "private" | "partners" | "public",
+      isStreamEvent: body.data.isStreamEvent,
     });
     await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "");
     return reply.type("application/json").send({ ok: true as const, id: op.id });
@@ -999,6 +1000,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       ...(d.scheduledAt !== undefined && { scheduledAt: new Date(d.scheduledAt) }),
       ...(d.maxParticipants !== undefined && { maxParticipants: d.maxParticipants }),
       ...(d.squadLinkVoiceEnabled !== undefined && { squadLinkVoiceEnabled: d.squadLinkVoiceEnabled }),
+      ...(d.isStreamEvent !== undefined && { isStreamEvent: d.isStreamEvent }),
     });
     if (d.visibility !== undefined) {
       // OpVisibility's TS type predates "guild"; the column/UI accept it.
@@ -1019,6 +1021,7 @@ export async function apiV1Routes(app: FastifyInstance) {
           eventVoiceChannelId: updated.eventVoiceChannelId,
           discordEventId: updated.discordEventId,
           opType: updated.opType,
+          isStreamEvent: updated.isStreamEvent,
         }).catch((err) => req.log.warn(err, "Discord event update failed after op edit (v1)"));
       }
       if (updated.visibility === "partners" || updated.visibility === "public") {

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Stream-Event-Markierung + Filter (FR-P3, 2026-06-29)
+
+- **Operationen als Stream-Event markierbar** (`Operation.isStreamEvent`, Migration
+  `20260629120000_op_stream_event`). Toggle im Erstellungs-Assistenten (Schritt 1) und in der
+  Operator-Konsole (Eckdaten, Autosave).
+- **Eigenes Icon/Badge** in der Operationen-Liste, der Kalender-/Agenda-Card und der
+  Detailansicht (neues `i-stream`-Symbol). Im Discord-Event wird der Name mit 🔴 markiert.
+- **Filter** in der Übersicht: Toggle Alle → Nur Stream → Ohne Stream (`cal-filter-stream`).
+- Contracts (`OperationSummary`/`Create`/`Edit`), API (`apiV1`, `operations.ts`,
+  `presenters.ts`) und Discord-Event-Builder (`discord.ts`) durchgereicht.
+- Phase B (direkte Twitch-/YouTube-/vdo.ninja-Streamer-Links) verschoben — `docs/FR-P3-stream-event.md`.
+
 ### Added / Changed - Monitoring + Ops-Metriken, Feedback-Anhänge, Token-Kopierbutton (2026-06-28)
 
 - **Operationen als Metrik.** Neue Prometheus-Gauges in `apps/fleetplanner/src/services/metrics.ts`:

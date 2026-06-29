@@ -54,6 +54,7 @@ export function EckdatenForm({
     meetingSystem: op.meetingSystem || "Stanton",
     meetingLocation: op.meetingLocation ?? "",
     visibility: normalizeVisibility(op.visibility),
+    isStreamEvent: op.isStreamEvent,
   });
   const [form, setForm] = useState(seed);
   const [busy, setBusy] = useState(false);
@@ -203,6 +204,23 @@ export function EckdatenForm({
               <span style={{ flex: 1 }}>
                 <span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>SquadLink Voice</span>
                 <span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>Commandanten bekommen ab Op-Start einen Direktlink in den CommandNet-Sprachraum.</span>
+              </span>
+            </button>
+          </section>
+
+          <section style={card}>
+            <CardHead icon="stream" label="STREAM-EVENT" tone="cyan" right={<SaveDot id="op-stream" />} />
+            <button
+              type="button"
+              data-testid="edit-stream-toggle"
+              aria-pressed={form.isStreamEvent}
+              onClick={() => setNow("op-stream", { isStreamEvent: !form.isStreamEvent }, { isStreamEvent: !form.isStreamEvent })}
+              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: form.isStreamEvent ? "1px solid rgba(255,68,68,0.45)" : "1px solid rgba(255,255,255,0.08)", background: form.isStreamEvent ? "rgba(255,68,68,0.07)" : "transparent", color: form.isStreamEvent ? "var(--red)" : "#9fb1c2" }}
+            >
+              <Ic name={form.isStreamEvent ? "check" : "stream"} size={15} sw={1.7} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>Stream-Event</span>
+                <span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>Markiert die Operation als Stream — eigenes Icon in Liste, Detail und Discord.</span>
               </span>
             </button>
           </section>

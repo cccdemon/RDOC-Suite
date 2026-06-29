@@ -24,6 +24,7 @@ export const opSummaryFixture: OperationSummary = {
   acceptedUnitCount: 1,
   filledSeats: 1,
   totalSeats: 2,
+  isStreamEvent: false,
 };
 
 export const opDetailFixture: OperationDetail = {

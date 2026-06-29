@@ -393,6 +393,7 @@ export function editOperation(
     visibility?: string;
     maxParticipants?: number | null;
     squadLinkVoiceEnabled?: boolean;
+    isStreamEvent?: boolean;
   },
 ): Promise<{ ok: true }> {
   return mutate("PATCH", `/operations/${encodeURIComponent(id)}`, csrfToken, input);
@@ -651,6 +652,7 @@ export function createOperation(
     scheduledAt: string;
     minParticipants?: number;
     visibility?: string;
+    isStreamEvent?: boolean;
   },
 ): Promise<{ ok: true; id: string }> {
   return mutate("POST", "/operations", csrfToken, input);

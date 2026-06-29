@@ -221,6 +221,13 @@ export async function updateScheduledEventImage(
   }).catch(() => {});
 }
 
+// FR-P3 stream-event: prefix the Discord event name so a streamed op is visibly
+// marked in the Discord events list (Discord has no per-event custom icon).
+const STREAM_EVENT_PREFIX = "🔴 ";
+function eventName(title: string, isStreamEvent?: boolean): string {
+  return isStreamEvent ? `${STREAM_EVENT_PREFIX}${title}` : title;
+}
+
 export async function createScheduledEvent(op: {
   id: string;
   guildId: string;
@@ -229,6 +236,7 @@ export async function createScheduledEvent(op: {
   scheduledAt: Date;
   eventVoiceChannelId?: string | null;
   opType?: string | null;
+  isStreamEvent?: boolean;
   cover?: { url: string } | null;
   recurrence?: RecurrenceLike | null;
 }): Promise<DiscordEventResult> {
@@ -252,7 +260,7 @@ export async function createScheduledEvent(op: {
 
   const body = voiceChannelId
     ? {
-        name: op.title,
+        name: eventName(op.title, op.isStreamEvent),
         description: op.description || undefined,
         privacy_level: 2,
         scheduled_start_time: startTime,
@@ -262,7 +270,7 @@ export async function createScheduledEvent(op: {
         ...(recurrenceRule ? { recurrence_rule: recurrenceRule } : {}),
       }
     : {
-        name: op.title,
+        name: eventName(op.title, op.isStreamEvent),
         description: op.description || undefined,
         privacy_level: 2,
         scheduled_start_time: startTime,
@@ -329,6 +337,7 @@ export async function updateScheduledEvent(op: {
   eventVoiceChannelId?: string | null;
   discordEventId: string;
   opType?: string | null;
+  isStreamEvent?: boolean;
 }): Promise<void> {
   const env = getEnv();
   const token = fleetplannerBotToken();
@@ -342,7 +351,7 @@ export async function updateScheduledEvent(op: {
 
   const body = voiceChannelId
     ? {
-        name: op.title,
+        name: eventName(op.title, op.isStreamEvent),
         description: updatedDescription,
         privacy_level: 2,
         scheduled_start_time: startTime,
@@ -351,7 +360,7 @@ export async function updateScheduledEvent(op: {
         ...(image ? { image } : {}),
       }
     : {
-        name: op.title,
+        name: eventName(op.title, op.isStreamEvent),
         description: updatedDescription,
         privacy_level: 2,
         scheduled_start_time: startTime,

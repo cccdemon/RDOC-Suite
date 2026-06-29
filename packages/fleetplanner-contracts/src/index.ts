@@ -156,6 +156,8 @@ export const OperationSummarySchema = z
     filledSeats: z.number().int(),
     /** Total seats across accepted units. */
     totalSeats: z.number().int(),
+    /** FR-P3: op is a streamed event → own icon in list/detail/Discord + list filter. */
+    isStreamEvent: z.boolean(),
   })
   .meta({ id: "OperationSummary" });
 export type OperationSummary = z.infer<typeof OperationSummarySchema>;
@@ -461,6 +463,8 @@ export const CreateOperationRequestSchema = z
     scheduledAt: z.iso.datetime(),
     minParticipants: z.coerce.number().int().min(0).max(1000).default(0),
     visibility: z.enum(["private", "guild", "partners", "public"]).default("guild"),
+    /** FR-P3: mark the new op as a streamed event. */
+    isStreamEvent: z.boolean().default(false),
   })
   .meta({ id: "CreateOperationRequest" });
 export type CreateOperationRequest = z.infer<typeof CreateOperationRequestSchema>;
@@ -972,6 +976,8 @@ export const EditOperationRequestSchema = z
     maxParticipants: z.number().int().min(0).max(10000).nullable().optional(),
     /** FR SquadLink-CommandNet: offer commanders the SquadLink Lite voice deep-link. */
     squadLinkVoiceEnabled: z.boolean().optional(),
+    /** FR-P3: mark/unmark the op as a streamed event. */
+    isStreamEvent: z.boolean().optional(),
   })
   .meta({ id: "EditOperationRequest" });
 export type EditOperationRequest = z.infer<typeof EditOperationRequestSchema>;

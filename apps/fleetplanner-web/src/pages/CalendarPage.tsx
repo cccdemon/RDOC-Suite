@@ -43,6 +43,7 @@ type Ev = {
   cap: number;
   ts: number;
   status: string;
+  stream: boolean;
 };
 
 const tagStyle = (color: string): React.CSSProperties => ({
@@ -88,6 +89,8 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
   const [filter, setFilter] = useState("alle");
+  // FR-P3 stream filter: all → show everything, only → stream events, off → hide stream events.
+  const [streamFilter, setStreamFilter] = useState<"all" | "only" | "off">("all");
   const [showPast, setShowPast] = useState(false);
   const [selDay, setSelDay] = useState(now.getDate());
   const [vw, setVw] = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
@@ -139,12 +142,15 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         cap: op.totalSeats || op.minParticipants || 0,
         ts: d.getTime(),
         status: op.status,
+        stream: op.isStreamEvent ?? false,
       });
     }
     return out;
   }, [ops, year, month]);
 
-  const visible = events.filter((e) => filter === "alle" || e.typeKey === filter);
+  const passStream = (isStream: boolean) =>
+    streamFilter === "all" || (streamFilter === "only" ? isStream : !isStream);
+  const visible = events.filter((e) => (filter === "alle" || e.typeKey === filter) && passStream(e.stream));
   // Drafts are hidden from the calendar grid/agenda, but the operator must still
   // reach them — surfaced via a quick-access pill into the (draft-aware) list view.
   const draftCount = (ops ?? []).filter((o) => o.status === "draft").length;
@@ -234,6 +240,11 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             <Ic name={ty.icon} size={15} sw={1.6} />
           </span>
           <span style={{ flex: 1 }} />
+          {e.stream && (
+            <span data-testid={`cal-stream-${e.id}`} style={{ ...tagStyle("#ff6b6b"), gap: 4 }}>
+              <Ic name="stream" size={11} sw={1.7} /> STREAM
+            </span>
+          )}
           <span style={tagStyle(st.color)}>{st.label}</span>
         </div>
         <strong style={{ display: "block", fontWeight: compact ? 700 : 600, fontSize: compact ? "1.1rem" : "1.08rem", color: "#eaf4fb", lineHeight: 1.2, margin: "0.5rem 0 0.2rem" }}>{e.title}</strong>
@@ -396,6 +407,18 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             </button>
           );
         })}
+        <button
+          type="button"
+          data-testid="cal-filter-stream"
+          title="Stream-Events: Alle → nur Stream → ohne Stream"
+          onClick={() => setStreamFilter((s) => (s === "all" ? "only" : s === "only" ? "off" : "all"))}
+          style={streamFilter === "all"
+            ? { ...chipBase, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#9fb1c2" }
+            : { ...chipBase, border: "1px solid #ff6b6b", background: "rgba(255,68,68,0.13)", color: "#ff6b6b" }}
+        >
+          <Ic name="stream" size={13} sw={1.7} />
+          {streamFilter === "only" ? "Nur Stream" : streamFilter === "off" ? "Ohne Stream" : "Stream"}
+        </button>
         {!isMonat && (
           <button
             type="button"
@@ -421,6 +444,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         (() => {
           const list = ops
             .filter((o) => filter === "alle" || typeOf(o.opType).key === filter)
+            .filter((o) => passStream(o.isStreamEvent ?? false))
             .filter((o) => showPast || new Date(o.scheduledAt).getTime() >= now.getTime())
             .slice()
             .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
@@ -433,6 +457,11 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                   <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
                     <span className="fpw-tag green"><span className="fpw-dot" />{op.status}</span>
                     <span className="fpw-tag cyan">{op.visibility}</span>
+                    {op.isStreamEvent && (
+                      <span className="fpw-tag" data-testid="op-card-stream" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#ff6b6b", borderColor: "rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)" }}>
+                        <Ic name="stream" size={11} sw={1.7} /> STREAM
+                      </span>
+                    )}
                     {op.signupState === "joined" && <span className="fpw-tag green">DABEI</span>}
                     {op.signupState === "waitlist" && <span className="fpw-tag gold">WARTELISTE</span>}
                   </div>

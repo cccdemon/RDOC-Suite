@@ -357,6 +357,9 @@ model Operation {
   // FR SquadLink-CommandNet: when on, the op detail UI offers commanders a
   // `squadlink://connect` deep-link into the op CommandNet voice room (once started).
   squadLinkVoiceEnabled Boolean @default(false)
+  // FR-P3 stream-event: marks an op as a streamed event → own icon in list/detail/Discord
+  // + a list filter (show-only / hide). Phase B (streamer links) builds on this flag.
+  isStreamEvent   Boolean  @default(false)
   minParticipants Int      @default(0) // minimum participants the host wants
   maxParticipants Int? // optional cap
   createdById     String
