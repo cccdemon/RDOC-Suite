@@ -1,5 +1,14 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-03: SC-Tools in Top-Seitennavigation + mining.doesi.wtf
+
+Status: ⏳ In Arbeit. (1) SC-Tools raus aus Handbuch-Submenu → eigener Top-Level-Sidebar-Eintrag.
+Nav-Item `/sc-tools` (info-Gruppe), eigene `ScToolsPage` (SEO + DocPage slug=sc-tools),
+`/handbuch/sc-tools` → Redirect auf `/sc-tools`; sc-tools aus `HandbuchPage`-SECTIONS entfernt.
+(2) Neuer Tool-Link `https://mining.doesi.wtf/` in `scTools.ts` TOOLS.
+Betroffen: `apps/fleetplanner-web` (nav.ts, App.tsx, Sidebar unverändert, ScToolsPage, i18n de/en),
+`apps/fleetplanner` (services/scTools.ts). Deploy: rebuild fleetplanner + fleetplanner-web. Keine Migration.
+
 ## Queued / In Progress - 2026-06-29: Stream-Event Phase B1 — Streamer-Links (self-service)
 
 Status: ⏳ In Arbeit. `OperationStream`-Model (userId?, platform twitch|youtube|vdo_ninja|other,

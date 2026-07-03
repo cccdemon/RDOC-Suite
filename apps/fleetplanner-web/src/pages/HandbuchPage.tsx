@@ -12,7 +12,6 @@ const SECTION_DESC: Record<string, string> = {
   anleitung: "Anleitung: So planst du Star-Citizen-Operationen, vergibst Flotten-Slots und meldest Crew im RDOC Fleetplanner an.",
   roadmap: "Roadmap des RDOC Fleetplanner — geplante Features für die Star-Citizen-Operationsplanung.",
   changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
-  "sc-tools": "Star-Citizen-Tools rund um Flotten- und Operationsplanung im RDOC Fleetplanner.",
   unsigniert: "Warum die RDOC Squad Link Companion-Binary unsigniert ausgeliefert wird.",
 };
 
@@ -25,7 +24,6 @@ const SECTIONS = [
   { key: "anleitung", label: "Anleitung", icon: "doc" },
   { key: "roadmap", label: "Roadmap", icon: "board" },
   { key: "changelog", label: "Changelog", icon: "doc" },
-  { key: "sc-tools", label: "SC-Tools", icon: "wrench" },
   { key: "unsigniert", label: "Unsignierte Binary", icon: "alert" },
 ] as const;
 
@@ -36,7 +34,6 @@ function sectionContent(key: string) {
     case "anleitung": return <DocPage slug="how-to" />;
     case "roadmap": return <RoadmapPage />;
     case "changelog": return <DocPage slug="changelog" />;
-    case "sc-tools": return <DocPage slug="sc-tools" />;
     case "unsigniert": return <DocPage slug="why-unsigned" />;
     default: return null;
   }

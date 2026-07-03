@@ -53,6 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.group.info",
     items: [
       { to: "/handbuch", labelKey: "nav.handbuch", icon: "doc" },
+      { to: "/sc-tools", labelKey: "nav.scTools", icon: "wrench" },
       { to: "/api-docs", labelKey: "nav.apiDocs", icon: "doc" },
     ],
   },

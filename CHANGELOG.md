@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - SC-Tools als Top-Level-Navigation + neue Tool-Links (2026-07-03)
+
+- **SC-Tools aus dem Handbuch-Submenu in die Top-Seitennavigation verschoben.** Eigener
+  Sidebar-Eintrag (`/sc-tools`, info-Gruppe) statt Handbuch-Sektion; neue `ScToolsPage`
+  (SEO + `DocPage slug=sc-tools`). `/handbuch/sc-tools` redirectet jetzt deep-link-safe auf
+  `/sc-tools`. i18n `nav.scTools` (de/en).
+- **Zwei neue Tool-Links** in `scTools.ts`: `https://mining.doesi.wtf/` (Mining-Rechner) und
+  `https://squadlink.raumdock.org/` (RDOC Squad Link).
+
 ### Added - Stream-Event Phase B1: Streamer-Links (self-service) (2026-06-29)
 
 - **Pro-Streamer-Links auf einer Operation.** Neues Model `OperationStream` (userId?, platform

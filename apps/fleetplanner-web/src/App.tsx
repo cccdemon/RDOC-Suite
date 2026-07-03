@@ -13,6 +13,7 @@ import { KontoPage } from "./pages/KontoPage";
 import { ShipsPage } from "./pages/ShipsPage";
 import { TemplatesPage } from "./pages/TemplatesPage";
 import { HandbuchPage } from "./pages/HandbuchPage";
+import { ScToolsPage } from "./pages/ScToolsPage";
 import { RechtlichesPage } from "./pages/RechtlichesPage";
 import { GuildSettingsPage } from "./pages/GuildSettingsPage";
 import { PartnershipsPage } from "./pages/PartnershipsPage";
@@ -103,7 +104,9 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             {/* IA merge B: docs hub + footer-level legal */}
             <Route path="/handbuch" element={<HandbuchPage />} />
+            <Route path="/handbuch/sc-tools" element={<Navigate to="/sc-tools" replace />} />
             <Route path="/handbuch/:section" element={<HandbuchPage />} />
+            <Route path="/sc-tools" element={<ScToolsPage />} />
             <Route path="/rechtliches" element={<RechtlichesPage />} />
             <Route path="/rechtliches/:section" element={<RechtlichesPage />} />
             {/* legacy doc routes → handbuch / rechtliches sections (deep-link safe) */}
@@ -112,7 +115,6 @@ export function App() {
             <Route path="/how-to" element={<Navigate to="/handbuch/anleitung" replace />} />
             <Route path="/roadmap" element={<Navigate to="/handbuch/roadmap" replace />} />
             <Route path="/changelog" element={<Navigate to="/handbuch/changelog" replace />} />
-            <Route path="/sc-tools" element={<Navigate to="/handbuch/sc-tools" replace />} />
             <Route path="/why-unsigned" element={<Navigate to="/handbuch/unsigniert" replace />} />
             <Route path="/license" element={<Navigate to="/rechtliches/lizenz" replace />} />
             <Route path="/impressum" element={<Navigate to="/rechtliches/impressum" replace />} />

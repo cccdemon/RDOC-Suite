@@ -51,6 +51,10 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | Fleet naming: non-capital lead = "Pilot" not "Captain" | Feedback (Mimosenherkules) | ✓ Done (unitLeadTitle) |
 | Mission cover editor: edits/positions persist, style-switch keeps inputs, cancel fix, save-bar overlap | Bug (HEADWiG) | ✓ Done 2026-06-06 |
 | Bug Reporter: attach screenshots | Feature request (HEADWiG) | ✓ Done 2026-06-07 — `/feedback` accepts up to 4 images (≤8 MB), forwarded as Discord attachments |
+| Partner-Token Copy-Button + Kalender „nächster Monat"-Pfeil | Feedback (Hevcon42) | ✓ Done (war bereits master `ff8cda6` / arrow fix) |
+| Stream-Event-Markierung + Filter + optionale Streamer-Links | Feedback (exrelax) | ✓ Done 2026-06-29 (Phase A + B1; Live-Status verworfen) |
+| Spieler-Verfügbarkeiten im Profil + Operator-Heatmap | Feedback (exrelax) | ✗ **Abgelehnt** (User 2026-06-29) |
+| Org-Operator vs Operator-Light (jeder legt Light-Ops an) | Feedback (exrelax) | Plan — [FR-P2-fleetplanner-light.md](FR-P2-fleetplanner-light.md) (kein Code) |
 
 ## Needs sighting / clarification (no doc yet)
 - ~~**"Vi5E Tools"**~~ — ✓ resolved 2026-06-24: = the Mission-Cover service (FR-P4, done + deployed).

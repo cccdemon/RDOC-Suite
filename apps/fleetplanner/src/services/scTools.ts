@@ -19,6 +19,8 @@ const TOOLS: Array<{ url: string; name: string; desc: string }> = [
   { url: "https://finder.cstone.space/", name: "Cornerstone Finder", desc: "Item- & Komponenten-Finder." },
   { url: "https://sc-cargo.space/#/v1/viewer", name: "SC Cargo Viewer", desc: "Cargo-Deck- / Grid-Viewer." },
   { url: "https://www.sc-deutsch-launcher.de/", name: "SC Deutsch Launcher", desc: "Launcher für die deutsche Übersetzung." },
+  { url: "https://mining.doesi.wtf/", name: "Doesi Mining", desc: "Mining-Rechner & Refinery-Optimierung." },
+  { url: "https://squadlink.raumdock.org/", name: "Squad Link", desc: "RDOC Squad Link — channelübergreifendes Commander-Voice." },
 ];
 
 const cache = new Map<string, { card: ToolCard; at: number }>();
