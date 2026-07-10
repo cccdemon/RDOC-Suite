@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Fleetplanner UX-Feedback (Jericho Ramirez) (2026-07-10)
+
+- **Schiff aus der Schiffsliste direkt in den Hangar.** `/ships` bekommt pro Zeile einen
+  „In Hangar"-Button (nur eingeloggt); bereits vorhandene Schiffe zeigen „Im Hangar". Nutzt
+  `addHangarShip`; Session in `ShipsPage` durchgereicht.
+- **Hinzufügen-Button näher am Schiffsnamen** im Profil-Hangar (Suchergebnis): Button sitzt jetzt
+  direkt hinter dem Namen, Hersteller/Crew rutschen nach rechts.
+- **Sitz/Turret-Toggle eindeutiger.** Statt `AN`/`AUS` (las sich als Status) jetzt verb-basiert
+  `Aktivieren`/`Deaktivieren` mit erklärendem Tooltip.
+
 ### Changed - Feedback in der Hauptnavigation sichtbar (2026-07-09)
 
 - **Feedback als eigener Nav-Eintrag** im SPA-Sidebar-Rail (`/konto/feedback`, Konto-Gruppe,

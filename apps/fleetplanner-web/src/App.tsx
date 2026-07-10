@@ -79,7 +79,7 @@ export function App() {
             <Route path="/operationen" element={<OperationenPage session={session} />} />
             <Route path="/calendar" element={<Navigate to="/?view=kalender" replace />} />
             <Route path="/ops/new" element={<WizardPage session={session} />} />
-            <Route path="/ships" element={<ShipsPage />} />
+            <Route path="/ships" element={<ShipsPage session={session} />} />
             <Route path="/polls" element={<PollsPage session={session} />} />
             <Route path="/polls/new" element={<PollCreatePage session={session} />} />
             <Route path="/polls/:id" element={<PollDetailPage session={session} />} />

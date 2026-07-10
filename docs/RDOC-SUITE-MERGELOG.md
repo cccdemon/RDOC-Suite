@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-10: Fleetplanner UX-Feedback (Jericho Ramirez)
+
+Status: ⏳ In Arbeit. 4 Punkte aus Feedback-Ticket:
+1. **Feedback-Button auffindbar** — bereits erledigt (2026-07-09 Nav-Eintrag `nav.feedback`).
+2. **Schiff aus Schiffsliste → Hangar** — `/ships` (ShipsPage) war read-only; pro-Zeile
+   „In Hangar"-Button (`addHangarShip`), `IM HANGAR`-Tag für vorhandene. Session in ShipsPage
+   durchgereicht (App.tsx Route), Hangar-Set beim Login geladen.
+3. **Hinzufügen-Button näher an Schiffsname** — ProfilePage Hangar-Suchergebnis: Button direkt
+   hinter den Namen gerückt (Meta nach rechts).
+4. **Turret AN/AUS eindeutiger** — OpDetailPage Sitz-Toggle (`s.active ? "AUS":"AN"`) las sich als
+   Status statt Aktion; auf verb-basiertes/status-klares Label umgestellt.
+Betroffen: `apps/fleetplanner-web` (ShipsPage, ProfilePage, OpDetailPage, App.tsx, i18n).
+Deploy: rebuild fleetplanner-web. Keine Migration.
+
 ## Queued / In Progress - 2026-07-09: Feedback in Hauptnavigation (SPA)
 
 Status: ⏳ In Arbeit. Feedback war seit IA-merge-C nur noch als Tab in `/konto` erreichbar

@@ -410,7 +410,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           <span style={{ fontSize: "0.82rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "8rem" }}>{s.claimedBy.username}</span>
         </div>
       ) : (
-        <button type="button" data-testid={`cap-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} disabled={busySeat === s.id} onClick={() => run(() => patchSeat(id!, s.id, csrf!, { active: !s.active }))} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "AUS" : "AN"}</button>
+        <button type="button" data-testid={`cap-seat-toggle-${s.id}`} title={s.active ? "Sitz/Turret deaktivieren — zählt dann nicht mehr zur Crew" : "Sitz/Turret aktivieren — zählt dann zur Crew"} disabled={busySeat === s.id} onClick={() => run(() => patchSeat(id!, s.id, csrf!, { active: !s.active }))} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.5rem", borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "Deaktivieren" : "Aktivieren"}</button>
       )}
     </div>
   );

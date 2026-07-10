@@ -170,8 +170,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
           <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.6rem" }}>
             {results.map((s) => (
               <div key={s.id} className="fpw-seat">
-                <span style={{ flex: 1, color: "var(--text-hi)" }}>{s.name}</span>
-                <span className="fpw-meta">{s.manufacturer} · {s.maxCrew} Crew</span>
+                <span style={{ color: "var(--text-hi)" }}>{s.name}</span>
                 {owned.has(s.id) ? (
                   <span className="fpw-tag green" style={{ display: "inline-flex" }}>IM HANGAR</span>
                 ) : (
@@ -179,6 +178,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                     <Ic name="plus" size={12} sw={2} /> Hinzufügen
                   </button>
                 )}
+                <span className="fpw-meta" style={{ flex: 1, textAlign: "right" }}>{s.manufacturer} · {s.maxCrew} Crew</span>
               </div>
             ))}
           </div>

@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { searchShips } from "../api/client";
-import type { ShipSummary } from "../api/types";
+import { addHangarShip, getHangar, searchShips } from "../api/client";
+import type { SessionResponse, ShipSummary } from "../api/types";
 import { Ic } from "../components/Icons";
 import { useSeo } from "../seo";
 import { useT } from "../i18n";
 
 const MONO = "var(--mono)";
 
-export function ShipsPage() {
+export function ShipsPage({ session }: { session: SessionResponse | null }) {
   const tr = useT();
   useSeo({
     title: "Star-Citizen-Schiffe — Datenbank",
@@ -18,8 +18,33 @@ export function ShipsPage() {
   const [ships, setShips] = useState<ShipSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  // Hangar quick-add: only for logged-in users; track owned ids + in-flight add.
+  const [owned, setOwned] = useState<Set<string>>(new Set());
+  const [addingId, setAddingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
-  const COLS = "44px 2fr 1.2fr 1fr 1fr 0.8fr";
+  const csrf = session?.csrfToken ?? null;
+  const canAdd = !!session?.user;
+  const COLS = canAdd ? "44px 2fr 1.2fr 1fr 1fr 0.8fr 108px" : "44px 2fr 1.2fr 1fr 1fr 0.8fr";
+
+  useEffect(() => {
+    if (!canAdd) return;
+    getHangar().then((r) => setOwned(new Set(r.ships.map((s) => s.id)))).catch(() => {});
+  }, [canAdd]);
+
+  async function addToHangar(shipId: string) {
+    if (!csrf) return;
+    setAddingId(shipId);
+    setNotice(null);
+    try {
+      await addHangarShip(shipId, csrf);
+      setOwned((prev) => new Set(prev).add(shipId));
+    } catch {
+      setNotice(tr("ships.addFailed"));
+    } finally {
+      setAddingId(null);
+    }
+  }
 
   useEffect(() => {
     setLoading(true);
@@ -40,6 +65,8 @@ export function ShipsPage() {
       </div>
       <div style={{ color: "#9fb1c2", fontSize: "0.9rem", marginBottom: "1.2rem" }}>{tr("ships.source")}</div>
 
+      {notice && <p className="fpw-tag gold" role="alert" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
+
       <input
         type="search"
         data-testid="ships-search"
@@ -56,7 +83,7 @@ export function ShipsPage() {
       ) : (
         <div className="fpw-card" style={{ padding: 0, overflow: "hidden" }}>
           <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a", padding: "0.7rem 1rem", borderBottom: "1px solid rgba(0,212,255,0.12)" }}>
-            <span /><span>{tr("ships.col.name")}</span><span>{tr("ships.col.manufacturer")}</span><span>{tr("ships.col.size")}</span><span>{tr("ships.col.role")}</span><span style={{ textAlign: "right" }}>{tr("ships.col.crew")}</span>
+            <span /><span>{tr("ships.col.name")}</span><span>{tr("ships.col.manufacturer")}</span><span>{tr("ships.col.size")}</span><span>{tr("ships.col.role")}</span><span style={{ textAlign: "right" }}>{tr("ships.col.crew")}</span>{canAdd && <span />}
           </div>
           {ships.map((s) => (
             <div
@@ -84,6 +111,17 @@ export function ShipsPage() {
               <span className="fpw-meta">{s.size || "—"}</span>
               <span className="fpw-meta">{s.role || "—"}</span>
               <span style={{ fontFamily: MONO, fontSize: "0.82rem", color: "#9fb1c2", textAlign: "right" }}>{s.minCrew}–{s.maxCrew}</span>
+              {canAdd && (
+                <span style={{ display: "inline-flex", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
+                  {owned.has(s.id) ? (
+                    <span className="fpw-tag green" style={{ display: "inline-flex", whiteSpace: "nowrap" }}>{tr("ships.inHangar")}</span>
+                  ) : (
+                    <button type="button" data-testid={`ship-add-${s.id}`} disabled={addingId === s.id} onClick={() => addToHangar(s.id)} className="fpw-btn" style={{ padding: "0.25rem 0.5rem", fontSize: "0.66rem", whiteSpace: "nowrap" }}>
+                      <Ic name="plus" size={12} sw={2} /> {tr("ships.addToHangar")}
+                    </button>
+                  )}
+                </span>
+              )}
             </div>
           ))}
         </div>
