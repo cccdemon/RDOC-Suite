@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Feedback in der Hauptnavigation sichtbar (2026-07-09)
+
+- **Feedback als eigener Nav-Eintrag** im SPA-Sidebar-Rail (`/konto/feedback`, Konto-Gruppe,
+  Icon `chat`, login-gated). War seit IA-merge-C nur als versteckter Tab in `/konto` erreichbar
+  und im Profil zu wenig sichtbar. i18n `nav.feedback` (de/en).
+
 ### Changed - SC-Tools als Top-Level-Navigation + neue Tool-Links (2026-07-03)
 
 - **SC-Tools aus dem Handbuch-Submenu in die Top-Seitennavigation verschoben.** Eigener

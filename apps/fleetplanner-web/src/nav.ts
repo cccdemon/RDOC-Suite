@@ -40,6 +40,7 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.group.konto",
     items: [
       { to: "/konto", labelKey: "nav.konto", icon: "users", auth: true },
+      { to: "/konto/feedback", labelKey: "nav.feedback", icon: "chat", auth: true },
     ],
   },
   {

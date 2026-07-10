@@ -1,5 +1,13 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-09: Feedback in Hauptnavigation (SPA)
+
+Status: ⏳ In Arbeit. Feedback war seit IA-merge-C nur noch als Tab in `/konto` erreichbar
+(`/feedback` → Redirect `/konto/feedback`) — im SPA-Nav-Rail nicht sichtbar genug (User-Report).
+Fix: neuer NavItem `nav.feedback` → `/konto/feedback` (icon `chat`, `auth:true`) in `NAV_GROUPS`
+(konto-Gruppe) in `apps/fleetplanner-web/src/nav.ts`; i18n-Key `nav.feedback` (de/en).
+Deploy: rebuild fleetplanner-web. Keine Migration.
+
 ## Queued / In Progress - 2026-07-03: SC-Tools in Top-Seitennavigation + mining.doesi.wtf
 
 Status: ⏳ In Arbeit. (1) SC-Tools raus aus Handbuch-Submenu → eigener Top-Level-Sidebar-Eintrag.
