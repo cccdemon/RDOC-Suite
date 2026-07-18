@@ -36,6 +36,7 @@ git pull
 docker compose -f docker-compose.prod.yml up -d --build          # alle Services
 docker compose -f docker-compose.prod.yml up -d --build bridge    # einzeln
 docker compose -f docker-compose.prod.yml up -d --build fleetplanner
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner-web   # SPA-Frontend (Nav/UX)
 docker compose -f docker-compose.prod.yml logs -f fleetplanner
 ```
 
@@ -118,6 +119,8 @@ pnpm --filter @rdoc-suite/companion tauri:dev    # Vite + Rust Shell (Hotkeys, D
 # winget install Rustlang.Rustup
 # winget install Microsoft.VisualStudio.2022.BuildTools
 pnpm --filter @rdoc-suite/fleetplanner dev
+pnpm --filter @rdoc-suite/fleetplanner-web dev   # React/Vite SPA (Fleetplanner-Frontend)
+pnpm --filter @rdoc-suite/fleetplanner-contracts build  # nach Contract-Änderung, vor SPA-Typecheck
 pnpm --filter @rdoc-suite/relay-bots dev
 
 # Bot / Bridge starten (nach `build`)
@@ -140,7 +143,8 @@ Zugang **immer** über Proxmox-Host (siehe Regel 3): `ssh -i ~/.ssh/claude_deplo
 cd /opt/RDOC-Suite
 git pull
 docker compose -f docker-compose.prod.yml up -d --build             # alle Services
-docker compose -f docker-compose.prod.yml up -d --build fleetplanner  # einzeln
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner  # einzeln (Backend/API)
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner-web  # SPA-Frontend (Nav/UX)
 docker compose -f docker-compose.prod.yml logs -f fleetplanner
 docker compose -f docker-compose.prod.yml logs -f bridge
 ```
@@ -155,10 +159,14 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 | [apps/bridge/](apps/bridge/) | `@rdoc-suite/bridge` | `rdoc-suite-bridge` |
 | [apps/companion/](apps/companion/) | `@rdoc-suite/companion` | — (lokaler Windows-Build) |
 | [apps/fleetplanner/](apps/fleetplanner/) | `@rdoc-suite/fleetplanner` | `rdoc-suite-fleetplanner` |
+| [apps/fleetplanner-web/](apps/fleetplanner-web/) | `@rdoc-suite/fleetplanner-web` | `rdoc-suite-fleetplanner-web` |
 | [apps/relay-bots/](apps/relay-bots/) | `@rdoc-suite/relay-bots` | `rdoc-suite-relay-bots` (noch nicht in Prod-Compose) |
 | [apps/monitoring/](apps/monitoring/) | — (Prometheus-Image) | `rdoc-suite-monitoring` |
+| [apps/error-page/](apps/error-page/) | — (nginx static) | `rdoc-suite-error-page` |
+| [apps/mission-cover/](apps/mission-cover/) | — | `rdoc-suite-mission-cover` |
 | [packages/shared/](packages/shared/) | `@rdoc-suite/shared` | — |
 | [packages/db/](packages/db/) | `@rdoc-suite/db` | — |
+| [packages/fleetplanner-contracts/](packages/fleetplanner-contracts/) | `@rdoc-suite/fleetplanner-contracts` | — |
 
 ### Architektur-Pickup
 
@@ -213,6 +221,10 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 
 14. **`/suite/capabilities`-Route** gibt Companion-JWT-gesichert zurück, ob der User `canManageSessions` (= Admin in `AdminUser` für die Guild), `canUseRelay`, `canUseFleetTools`. Companion rendert Admiral-Tools nur wenn granted.
 
+15. **Fleetplanner-Frontend = SPA `fleetplanner-web` (React + Vite), nicht mehr SSR.** Die reale Benutzeroberfläche ist die Single-Page-App in [apps/fleetplanner-web/](apps/fleetplanner-web/); ihr **nginx** ([apps/fleetplanner-web/nginx.conf](apps/fleetplanner-web/nginx.conf)) ist die **Front Door** vor `suite.raumdock.org/fleetplanner`, proxied jeden API-Request an das `fleetplanner`-Backend und ist die **eine kanonische Security-Header-Schicht** ([apps/fleetplanner/src/app.ts:64](apps/fleetplanner/src/app.ts#L64)). Nav-Rail-Modell in [apps/fleetplanner-web/src/nav.ts](apps/fleetplanner-web/src/nav.ts) (`NAV_GROUPS` + `gate`/`auth`). Das SSR in [apps/fleetplanner/src/web/](apps/fleetplanner/src/web/) (`render.ts`/`pages.ts`) existiert noch, ist aber **sekundär** — Nav-/UX-Änderungen fast immer im SPA. Deploy: `docker compose … up -d --build fleetplanner-web` (zusätzlich zu `fleetplanner`).
+
+16. **API-Typen: `@rdoc-suite/fleetplanner-contracts` ist Single Source of Truth.** Zod-Schemas in [packages/fleetplanner-contracts/src/index.ts](packages/fleetplanner-contracts/src/index.ts); Backend (`fleetplanner`) und SPA (`fleetplanner-web`) importieren dieselben Typen (SPA type-only via [apps/fleetplanner-web/src/api/types.ts](apps/fleetplanner-web/src/api/types.ts), damit zod nicht ins Bundle wandert). Neue/erweiterte API-Felder → **zuerst hier**, dann Consumer.
+
 ### Quirks, die schon Zeit gekostet haben
 
 - **`pnpm db:generate` muss nach jedem frischen Clone laufen, bevor gebaut werden kann.** `packages/db/generated/client` ist in `.gitignore`. Ohne es löst TypeScript `getPrisma()` als `any` auf → Kaskade von `TS7006`-Fehlern in jedem Prisma-Callback.
@@ -221,6 +233,7 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 - **Discord-IDs immer als String**, nie Number — Snowflakes überschreiten `Number.MAX_SAFE_INTEGER`.
 - **SQLite-Pfad auf Prod ist `/app/data/prod.db`, NICHT `/app/prisma/prod.db`.** Volume mountet auf `/app/data`; `/app/prisma` darf NICHT vom Volume überdeckt werden (hatten wir 2026-05-23 mit einem Parallel-Branch). Filename `prod.db`, nicht `dev.db`, weil Docker nicht-existente Bind-Mount-Sources als Directory anlegt → Prisma `P1013`.
 - **`pnpm install` im Bridge-Dockerfile braucht `--no-frozen-lockfile` und `ENV CI=true`** — bewusst kein gefrorener Lockfile-Workflow.
+- **Lokales `tsc --noEmit` in `fleetplanner-web` schlägt fehl, wenn `packages/fleetplanner-contracts/dist` veraltet ist.** Die SPA importiert Typen aus dem gebauten `dist`, nicht aus `src` — neue Contract-Felder (z.B. `isStreamEvent`, `streams`) fehlen dann mit `TS2305`/`TS2339`, obwohl der Code korrekt ist. Docker baut Contracts vor der SPA neu → Prod-Build ist grün. Lokal vor Typecheck erst `pnpm --filter @rdoc-suite/fleetplanner-contracts build` laufen lassen (oder die Fehler ignorieren, wenn sie nur Contract-Felder betreffen).
 - **pnpm-Workspaces im Runtime-Image: jedes** Workspace-`node_modules/` muss mit-kopiert werden. Vorlage: [apps/bridge/Dockerfile](apps/bridge/Dockerfile).
 - **Alter systemd-Service `dccc-bridge.service` kann Port 8787 belegen.** Vor Prod-Deploy prüfen: `systemctl is-enabled dccc-bridge`. Falls aktiv → `systemctl disable --now dccc-bridge`.
 - **`GuildVoiceStates` ist nicht-privileged** — kein Toggle im Discord Developer Portal nötig. Wenn trotzdem keine Events: Intent fehlt im `new Client({intents: […]})`.
