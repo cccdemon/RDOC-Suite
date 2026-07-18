@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Teilnahme-Status + pending Schiffe im Op-Board (2026-07-18)
+
+- **„Dein Status · Bereits angemeldet"-Karte** auf der Op-Detailseite: zeigt nach der Anmeldung
+  dynamisch die eingebrachten Schiffe mit Bestätigungsstatus (pending/accepted/rejected,
+  farbcodiert), belegte Sitze und Flex-Anmeldung. Vorher gab ein pending Ship-Offer
+  (`signupState="waitlist"`) gar kein Feedback → wirkte wie „nicht angemeldet".
+- **Pending eingebrachte Schiffe erscheinen jetzt im Board** (SCHIFFE/JÄGER/FAHRZEUGE), ausgegraut +
+  Tag „WARTET AUF BESTÄTIGUNG". Nicht-Captains sehen einen Hinweis statt Claim-Buttons; die
+  Lane-/Gesamt-Zähler bleiben accepted-only. Vorher waren pending Schiffe nur im Operator-Panel
+  sichtbar → „Schiff verschwunden nach dem Einbringen".
+
 ### Changed - Fleetplanner UX-Feedback (Jericho Ramirez) (2026-07-10)
 
 - **Schiff aus der Schiffsliste direkt in den Hangar.** `/ships` bekommt pro Zeile einen

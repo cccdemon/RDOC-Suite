@@ -12,6 +12,11 @@ bestätigt" gelb / accepted=„bestätigt" grün / rejected=„abgelehnt" rot), 
 Flex-Anmeldung; generischer Waitlist-Fallback für `crewAssignmentRequest`. Keine API-/Contract-Änderung.
 Deploy: rebuild fleetplanner-web. Keine Migration.
 
+Follow-up (gleicher Tag): pending eingebrachte Schiffe waren im Board unsichtbar (Lanes rendern nur
+`accepted`) → wirkte wie „Schiff verschwunden". Jetzt werden pending Units im passenden Lane
+mitgerendert (ausgegraut, Tag „WARTET AUF BESTÄTIGUNG"); Nicht-Captains sehen statt Claim-Buttons
+einen Hinweis; Header-Count + `filled` bleiben accepted-only. User-Entscheidung: „alle pending" sichtbar.
+
 ## Queued / In Progress - 2026-07-18: CLAUDE.md re-init (stale Workspace-/Architektur-Doku)
 
 Status: ⏳ In Arbeit (nur Doku). `/init`-Refresh: Workspace-Tabelle um `fleetplanner-web`,

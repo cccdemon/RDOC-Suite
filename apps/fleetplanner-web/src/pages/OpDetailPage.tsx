@@ -238,8 +238,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const fighterEmpty = Math.max(0, (needs?.fighterSquads ?? 0) - fighterUnitsCount);
   // Every category column is always shown (Schiffe / Jäger / CQB / Fahrzeuge);
   // an empty one (no units, no open needs) reads "Kein Bedarf".
+  // Offered-but-not-yet-accepted units (status "pending"). They render in their
+  // lane greyed out + a "wartet auf Bestätigung" tag so an offered ship no longer
+  // seems to vanish until the operator accepts it. They never count toward
+  // `accepted` (filled seats / need coverage) — only the visual list includes them.
+  const pending = op.units.filter((u) => u.status === "pending");
   const lanes = LANES.filter((l) => l.type !== "squad").map((l) => {
-    const units = accepted.filter((u) => laneOf(u) === l.type);
+    // Accepted first, then pending, so confirmed units stay on top.
+    const units = [...accepted, ...pending].filter((u) => laneOf(u) === l.type);
     const placeholders: string[] =
       l.type === "ship" ? shipReqUnfilled.map((r) => r.label || r.category || "Schiff")
       : l.type === "fighter" ? Array.from({ length: fighterEmpty }, () => "Jäger")
@@ -471,11 +477,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     const uFilled = u.seats.filter((s) => s.claimedBy).length;
     const expanded = !collapsed[u.id];
     const full = u.seats.length > 0 && uFilled === u.seats.length;
+    const isPending = u.status === "pending";
+    const isMine = !!me && u.captain?.id === me.id;
     return (
       <article
         key={u.id}
         data-testid="unit-card"
-        style={{ width: "100%", minWidth: 0, border: `1px solid rgba(${lane.rgb},0.16)`, borderTop: `2px solid rgba(${lane.rgb},0.5)`, borderRadius: 13, background: "#0a1018", padding: "1.15rem 1.2rem" }}
+        data-pending={isPending ? "1" : undefined}
+        style={{ width: "100%", minWidth: 0, border: `1px solid rgba(${lane.rgb},0.16)`, borderTop: `2px solid rgba(${lane.rgb},${isPending ? 0.28 : 0.5})`, borderRadius: 13, background: "#0a1018", padding: "1.15rem 1.2rem", opacity: isPending ? 0.72 : 1 }}
       >
         <div onClick={() => setCollapsed((c) => ({ ...c, [u.id]: !c[u.id] }))} style={{ display: "flex", alignItems: "flex-start", gap: "0.8rem", cursor: "pointer" }}>
           <span style={{ width: 42, height: 42, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: `rgba(${lane.rgb},0.13)`, border: `1px solid rgba(${lane.rgb},0.28)`, color: lane.accent }}>
@@ -484,7 +493,12 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
               <strong style={{ fontWeight: 700, fontSize: "1.12rem", color: "#eaf4fb", lineHeight: 1.2 }}>{u.name}</strong>
-              {full && (
+              {isPending && (
+                <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "#f0a500", borderColor: "rgba(240,165,0,0.4)", background: "rgba(240,165,0,0.08)", gap: 4, padding: "2px 8px" }}>
+                  <Ic name="bolt" size={12} sw={2} /> WARTET AUF BESTÄTIGUNG
+                </span>
+              )}
+              {full && !isPending && (
                 <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "#00ff88", borderColor: "rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", gap: 4, padding: "2px 8px" }}>
                   <Ic name="check" size={12} sw={2} /> VOLL
                 </span>
@@ -515,11 +529,16 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 <span style={{ fontStyle: "italic" }}>{u.captainNote}</span>
               </div>
             )}
-            {me && csrf && u.captain?.id === me.id ? (
+            {me && csrf && isMine ? (
               <>
                 <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#5b6b7a", marginBottom: "0.5rem" }}>DEINE SITZE · UMBENENNEN / AKTIVIEREN</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.map((s) => captainSeatRow(u, s))}</div>
               </>
+            ) : isPending ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#9fb1c2", fontSize: "0.84rem", fontStyle: "italic" }}>
+                <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={14} /></span>
+                Sitze buchbar, sobald der Operator dieses Schiff annimmt.
+              </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.filter((s) => s.active).map((s) => seatRow(u, s, lane))}</div>
             )}
@@ -946,8 +965,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           <div ref={fleetRef} style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(500px, 1fr))", gap: "1.3rem", alignItems: "start" }}>
             {lanes.length === 0 && op.cqbTeams.length === 0 && <p style={{ color: "#7e92a4" }}>Noch keine Einheiten.</p>}
             {lanes.map((lane) => {
-              const laneFilled = lane.units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
-              const laneTotal = lane.units.reduce((a, u) => a + u.seats.length, 0);
+              // Header count reflects CONFIRMED capacity only — pending units are
+              // shown in the lane but must not inflate the "besetzt/total" tally.
+              const confirmed = lane.units.filter((u) => u.status === "accepted");
+              const laneFilled = confirmed.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
+              const laneTotal = confirmed.reduce((a, u) => a + u.seats.length, 0);
               return (
                 <section key={lane.type} style={{ flex: "1 1 290px", minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "1rem" }}>
