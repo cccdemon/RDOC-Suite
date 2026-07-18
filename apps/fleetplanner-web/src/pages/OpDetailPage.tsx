@@ -804,23 +804,61 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       )}
 
 
-      {me && (
-        <div style={{ marginBottom: "1.8rem", display: "flex", alignItems: "center", gap: "1.2rem", flexWrap: "wrap" }}>
-          {op.signupState === "joined" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", color: "#00ff88", fontSize: "0.88rem" }}>
-              <Ic name="check" size={15} /> Du bist Teilnehmer.
-            </span>
-          )}
-          {/* Calendar export (.ics) — backend route, proxied by nginx. */}
-          <a
-            href={`${import.meta.env.BASE_URL}ops/${id}/calendar.ics`}
-            data-testid="calendar-export"
-            style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#00d4ff", textDecoration: "none", fontFamily: MONO, fontSize: "0.74rem", border: "1px solid rgba(0,212,255,0.3)", borderRadius: 8, padding: "0.4rem 0.75rem" }}
-          >
-            <Ic name="cal" size={14} sw={1.7} /> Im Kalender speichern
-          </a>
-        </div>
-      )}
+      {me && (() => {
+        // FR: after signing up (esp. offering a ship) the player must SEE their status.
+        // A pending ship-offer sets signupState="waitlist", which previously rendered
+        // nothing — so the op looked like the user hadn't joined at all. Build a
+        // "Dein Status" summary purely from data already in the payload.
+        const myShips = op.units.filter((u) => u.captain?.id === me.id);
+        const mySeats = op.units
+          .filter((u) => u.captain?.id !== me.id) // seats on my OWN ship are covered by the ship row
+          .flatMap((u) => u.seats.filter((s) => s.claimedBy?.id === me.id).map((s) => ({ seat: s, unit: u })));
+        const shipTone = (status: string) => (status === "accepted" ? "#00ff88" : status === "rejected" ? "#ff6b6b" : "#f0a500");
+        const shipStatus = (status: string) => (status === "accepted" ? "bestätigt" : status === "rejected" ? "abgelehnt" : "noch nicht bestätigt");
+        const items: { key: string; icon: string; tone: string; text: React.ReactNode }[] = [];
+        for (const u of myShips)
+          items.push({ key: `ship-${u.id}`, icon: "ship", tone: shipTone(u.status), text: <>Schiff <strong>{u.shipName ?? u.name}</strong> — {shipStatus(u.status)}</> });
+        for (const { seat, unit } of mySeats)
+          items.push({ key: `seat-${seat.id}`, icon: "pilot", tone: "#00ff88", text: <>Platz <strong>{seat.label}</strong> auf {unit.shipName ?? unit.name} — bestätigt</> });
+        if (op.viewerCqbSignedUp)
+          items.push({ key: "cqb", icon: "swap", tone: "#f0a500", text: <>Flexibel angemeldet — der Operator teilt dich passend ein</> });
+        // Any other waitlist reason (e.g. a pending crew-assignment request) still gets ack'd.
+        if (items.length === 0 && op.signupState)
+          items.push({
+            key: "generic",
+            icon: "check",
+            tone: op.signupState === "joined" ? "#00ff88" : "#f0a500",
+            text: op.signupState === "joined" ? <>Du bist Teilnehmer</> : <>Angemeldet — wird vom Operator bestätigt</>,
+          });
+        const signedUp = items.length > 0;
+        return (
+          <div style={{ marginBottom: "1.8rem" }}>
+            {signedUp && (
+              <section data-testid="my-status" style={{ border: "1px solid rgba(0,255,136,0.25)", background: "rgba(0,255,136,0.04)", borderRadius: 12, padding: "0.9rem 1.1rem", marginBottom: "0.9rem" }}>
+                <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.12em", color: "#7e92a4", marginBottom: "0.6rem" }}>DEIN STATUS · BEREITS ANGEMELDET</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
+                  {items.map((it) => (
+                    <div key={it.key} style={{ display: "flex", alignItems: "center", gap: "0.55rem", fontSize: "0.9rem", color: "#dce8f0" }}>
+                      <span style={{ color: it.tone, display: "inline-flex", flexShrink: 0 }}><Ic name={it.icon} size={15} sw={1.7} /></span>
+                      <span>{it.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: "1.2rem", flexWrap: "wrap" }}>
+              {/* Calendar export (.ics) — backend route, proxied by nginx. */}
+              <a
+                href={`${import.meta.env.BASE_URL}ops/${id}/calendar.ics`}
+                data-testid="calendar-export"
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#00d4ff", textDecoration: "none", fontFamily: MONO, fontSize: "0.74rem", border: "1px solid rgba(0,212,255,0.3)", borderRadius: 8, padding: "0.4rem 0.75rem" }}
+              >
+                <Ic name="cal" size={14} sw={1.7} /> Im Kalender speichern
+              </a>
+            </div>
+          </div>
+        );
+      })()}
 
       {(
         <>

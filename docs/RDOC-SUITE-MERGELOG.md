@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-18: Teilnahme-Status-Feedback nach Anmeldung (OpDetail)
+
+Status: ⏳ In Arbeit. FR: nach Anmeldung (v.a. eigenes Schiff einbringen) bekommt der Spieler
+kein Statusfeedback — `signupState==="waitlist"` (pending Ship-Offer) rendert im SPA nichts, nur
+`"joined"` zeigt „Du bist Teilnehmer". Fühlt sich an wie „nicht angemeldet".
+Fix (nur SPA, client-side aus vorhandenen Daten): neue „DEIN STATUS · BEREITS ANGEMELDET"-Karte in
+[apps/fleetplanner-web/src/pages/OpDetailPage.tsx](apps/fleetplanner-web/src/pages/OpDetailPage.tsx)
+— listet meine eingebrachten Schiffe (`units.captain.id===me.id`) mit Status (pending=„noch nicht
+bestätigt" gelb / accepted=„bestätigt" grün / rejected=„abgelehnt" rot), meine belegten Sitze und
+Flex-Anmeldung; generischer Waitlist-Fallback für `crewAssignmentRequest`. Keine API-/Contract-Änderung.
+Deploy: rebuild fleetplanner-web. Keine Migration.
+
+## Queued / In Progress - 2026-07-18: CLAUDE.md re-init (stale Workspace-/Architektur-Doku)
+
+Status: ⏳ In Arbeit (nur Doku). `/init`-Refresh: Workspace-Tabelle um `fleetplanner-web`,
+`fleetplanner-contracts`, `error-page`, `mission-cover` ergänzt; neue Architektur-Punkte 15
+(SPA `fleetplanner-web` + nginx-Front-Door + SSR jetzt sekundär) & 16 (`fleetplanner-contracts`
+= Single Source of Truth für API-Typen); Quirk „stale contracts/dist bricht lokalen SPA-Typecheck";
+Deploy-/Dev-Command-Beispiele um `fleetplanner-web` erweitert. Kein Code, kein Deploy.
+
 ## Queued / In Progress - 2026-07-10: Fleetplanner UX-Feedback (Jericho Ramirez)
 
 Status: ⏳ In Arbeit. 4 Punkte aus Feedback-Ticket:
