@@ -91,7 +91,7 @@ import {
 import { listSharedHangars } from "../services/hangarShare.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
-import { createSignup as createCqbSignup, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
+import { createSignup as createCqbSignup, placeInSquad as placeCqbMember, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
 import { assignUnitToFormation, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
@@ -105,6 +105,7 @@ import {
   AssignSeatRequestSchema,
   AnnounceRequestSchema,
   AssignCarrierRequestSchema,
+  AddCqbMemberRequestSchema,
   AssignCqbRequestSchema,
   AssignFormationRequestSchema,
   CqbSignupRequestSchema,
@@ -1738,6 +1739,32 @@ export async function apiV1Routes(app: FastifyInstance) {
         data: { assignedGroupId: body.data.groupId, status: "accepted" },
       });
       await logAudit(pid.data.id, ctx.user.id, ctx.user.username, "cqb:assign", body.data.groupId ?? "unassigned");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // #5: operator adds ANY person (guild member or ship-seat occupant) to a CQB
+  // team — creates their CQB signup if none exists. No capacity gate; a person
+  // can be both a ship's crew AND a member of the team that ship carries.
+  app.post<{ Params: { id: string; groupId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/cqb-teams/:groupId/members",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse({ id: req.params.id });
+      if (!p.success || !/^[a-z0-9]{20,32}$/i.test(req.params.groupId))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = AddCqbMemberRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const group = await prisma.compositionGroup.findFirst({
+        where: { id: req.params.groupId, operationId: p.data.id, kind: "squad" },
+        select: { id: true },
+      });
+      if (!group) return sendError(reply, req, 404, "not_found", "CQB team not found.");
+      const user = await prisma.user.findUnique({ where: { id: body.data.userId }, select: { id: true } });
+      if (!user) return sendError(reply, req, 404, "not_found", "User not found.");
+      await placeCqbMember(p.data.id, body.data.userId, req.params.groupId);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:add-member", req.params.groupId);
       return reply.type("application/json").send({ ok: true as const });
     },
   );

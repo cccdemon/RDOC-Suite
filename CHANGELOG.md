@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Operator kann jede Person einem CQB-Team zuweisen (2026-07-19)
+
+- **Admin/Operator fügt beliebige Personen einem CQB-Team hinzu** — auch Ship-Seat-Insassen (die
+  bisher keinen CQB-Signup hatten). Pro Team ein „+ Person"-Picker (Guild-Mitglieder-Suche); legt bei
+  Bedarf den CQB-Signup an (`status=accepted`, kein Kapazitäts-Limit). Damit kann eine Person zugleich
+  Schiffs-Crew **und** Mitglied des CQB-Teams sein, das ihr Schiff transportiert. Neuer Endpoint
+  `POST /operations/:id/cqb-teams/:groupId/members` (nutzt bestehendes `placeInSquad`).
+
 ### Changed - Jäger-Staffeln aufgeräumt: sichtbar + zuweisbar (2026-07-19)
 
 - **Jäger-Staffeln erscheinen als joinbare Karten im Roster** (wie CQB-Teams). Fighter werden per

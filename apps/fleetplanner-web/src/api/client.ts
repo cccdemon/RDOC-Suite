@@ -169,6 +169,11 @@ export function assignCqbSoldier(opId: string, signupId: string, csrfToken: stri
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb/${encodeURIComponent(signupId)}/assign`, csrfToken, { groupId });
 }
 
+// #5: operator adds any person (guild member / seat occupant) to a CQB team.
+export function addCqbTeamMember(opId: string, groupId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}/members`, csrfToken, { userId });
+}
+
 // FR-B3: embed a CQB team into a carrier ship (carrierUnitId null = standalone).
 export function assignCqbTeamCarrier(opId: string, groupId: string, csrfToken: string, carrierUnitId: string | null): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}/carrier`, csrfToken, { carrierUnitId });

@@ -3,6 +3,7 @@ import {
   addLeader,
   ApiError,
   answerQuestion,
+  addCqbTeamMember,
   assignCqbSoldier,
   assignCqbTeamCarrier,
   assignSeat,
@@ -97,6 +98,9 @@ export function OperatorPanel({
 
   const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
   const [memberFilter, setMemberFilter] = useState("");
+  // #5: per-CQB-team "add any person" picker — teamId whose picker is open + search.
+  const [addMemberTeam, setAddMemberTeam] = useState<string | null>(null);
+  const [addMemberFilter, setAddMemberFilter] = useState("");
   // Per-pending-unit chosen Bedarf at accept time (defaults to a suggested slot).
   const [acceptReq, setAcceptReq] = useState<Record<string, string>>({});
   const [newFormation, setNewFormation] = useState(""); // FR-B2 create-formation input
@@ -597,31 +601,64 @@ export function OperatorPanel({
       {/* FR-B6 rename + FR-B3 carrier: list teams (carrier dropdown when ships exist). */}
       {cqbTeams.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.9rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-          {cqbTeams.map((tm) => (
-            <div key={tm.id} data-testid={`cqb-team-${tm.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <input
-                className="fpw-inline-edit"
-                data-testid={`cqb-team-name-${tm.id}`}
-                key={`tmname:${tm.id}:${tm.name}`}
-                defaultValue={tm.name}
-                title="Squad umbenennen (Enter)"
-                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== tm.name) viewAct(`team-${tm.id}`, () => renameCqbTeam(op.id, tm.id, csrf, v), (vw) => ({ ...vw, cqbTeams: vw.cqbTeams.map((x) => (x.id === tm.id ? { ...x, name: v } : x)) })); }}
-                style={{ flex: 1, minWidth: 0, fontSize: "0.82rem" }}
-              />
-              <SaveDot id={`team-${tm.id}`} />
-              <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>FÄHRT IN</span>
-              <select
-                data-testid={`cqb-team-carrier-${tm.id}`}
-                value={tm.carrierUnitId ?? ""}
-                onChange={(e) => { const cu = e.target.value || null; viewAct(`team-${tm.id}`, () => assignCqbTeamCarrier(op.id, tm.id, csrf, cu), (vw) => ({ ...vw, cqbTeams: vw.cqbTeams.map((x) => (x.id === tm.id ? { ...x, carrierUnitId: cu } : x)) })); }}
-                style={{ flexShrink: 0, maxWidth: "55%", background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
-              >
-                <option value="">— eigenständig —</option>
-                {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+          {cqbTeams.map((tm) => {
+            const alreadyIn = new Set(cqbSoldiers.filter((s) => s.assignedGroupId === tm.id).map((s) => s.username.toLowerCase()));
+            const pickOpen = addMemberTeam === tm.id;
+            return (
+            <div key={tm.id} style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              <div data-testid={`cqb-team-${tm.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <input
+                  className="fpw-inline-edit"
+                  data-testid={`cqb-team-name-${tm.id}`}
+                  key={`tmname:${tm.id}:${tm.name}`}
+                  defaultValue={tm.name}
+                  title="Squad umbenennen (Enter)"
+                  onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                  onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== tm.name) viewAct(`team-${tm.id}`, () => renameCqbTeam(op.id, tm.id, csrf, v), (vw) => ({ ...vw, cqbTeams: vw.cqbTeams.map((x) => (x.id === tm.id ? { ...x, name: v } : x)) })); }}
+                  style={{ flex: 1, minWidth: 0, fontSize: "0.82rem" }}
+                />
+                <SaveDot id={`team-${tm.id}`} />
+                <button type="button" data-testid={`cqb-add-member-${tm.id}`} title="Person diesem Team zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : tm.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(240,165,0,0.6)" : "rgba(240,165,0,0.35)"}`, background: "rgba(240,165,0,0.08)", color: "#f0a500", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Person</button>
+                <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>FÄHRT IN</span>
+                <select
+                  data-testid={`cqb-team-carrier-${tm.id}`}
+                  value={tm.carrierUnitId ?? ""}
+                  onChange={(e) => { const cu = e.target.value || null; viewAct(`team-${tm.id}`, () => assignCqbTeamCarrier(op.id, tm.id, csrf, cu), (vw) => ({ ...vw, cqbTeams: vw.cqbTeams.map((x) => (x.id === tm.id ? { ...x, carrierUnitId: cu } : x)) })); }}
+                  style={{ flexShrink: 0, maxWidth: "40%", background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
+                >
+                  <option value="">— eigenständig —</option>
+                  {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              {pickOpen && (
+                <div style={{ padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.25)", borderRadius: 8, background: "rgba(240,165,0,0.03)" }}>
+                  <input
+                    type="search"
+                    autoFocus
+                    data-testid={`cqb-add-search-${tm.id}`}
+                    value={addMemberFilter}
+                    onChange={(e) => setAddMemberFilter(e.target.value)}
+                    placeholder="Person suchen (z.B. Sitz-Insasse einer Trägerin)…"
+                    style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
+                  />
+                  {addMemberFilter.trim() && (members ?? [])
+                    .filter((m) => m.username.toLowerCase().includes(addMemberFilter.trim().toLowerCase()))
+                    .slice(0, 8)
+                    .map((m) => {
+                      const inTeam = alreadyIn.has(m.username.toLowerCase());
+                      return (
+                        <button key={m.userId} type="button" data-testid={`cqb-add-pick-${tm.id}-${m.userId}`} disabled={inTeam} onClick={() => { setAddMemberTeam(null); setAddMemberFilter(""); run(() => addCqbTeamMember(op.id, tm.id, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(240,165,0,0.22)", background: inTeam ? "transparent" : "rgba(240,165,0,0.05)", borderRadius: 7, cursor: inTeam ? "default" : "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem", opacity: inTeam ? 0.5 : 1 }}>
+                          <Avatar name={m.username} />
+                          <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
+                          <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: inTeam ? "#5b6b7a" : "#f0a500" }}>{inTeam ? "IM TEAM" : "HINZUFÜGEN"}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
       {cqbSoldiers.length === 0 ? (

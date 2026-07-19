@@ -19,7 +19,13 @@ Umgesetzt (2026-07-19, no-migration): Jäger-Staffeln = joinbare Karten im Roste
 für Rest (#2). Fighter-Lane rendert keine „Jäger"-Platzhalter mehr → Bedarf konsistent aus einer
 Quelle (#3). Operator-Dropdown listet Staffeln+Verbände. Betroffen: contracts, presenters.ts,
 formations.ts, apiV1.ts (operator view), OpDetailPage, OperatorPanel + Test-Fixtures. Backend-tsc grün
-nach `db:generate` (stale Prisma-Client). OFFEN als nächstes: #5 CQB (jeden zuteilen) + #1 Late-Arrival.
+nach `db:generate` (stale Prisma-Client).
+
+#5 umgesetzt (2026-07-19): Operator fügt jede Person einem CQB-Team zu. Neuer Endpoint
+`POST /operations/:id/cqb-teams/:groupId/members {userId}` (requireOperator) → bestehendes
+`placeInSquad` (upsert CqbSignup accepted, no cap, löscht crewRequest). Contract `AddCqbMemberRequest`.
+Client `addCqbTeamMember`. OperatorPanel: pro CQB-Team „+ Person"-Picker (Guild-Members-Suche).
+OFFEN als nächstes: #1 Late-Arrival (HH:MM) + evtl. Operator-direkt-Fighter-Platzierung (User-Frage).
 
 ## Queued / In Progress - 2026-07-18: Teilnahme-Status-Feedback nach Anmeldung (OpDetail)
 

@@ -768,6 +768,12 @@ export const AssignCqbRequestSchema = z
   .object({ groupId: cuid.nullable() })
   .meta({ id: "AssignCqbRequest" });
 
+/** Operator adds ANY person (guild member or ship-seat occupant) to a CQB team —
+ *  creates their CQB signup if none exists. No capacity gate (operator override). */
+export const AddCqbMemberRequestSchema = z
+  .object({ userId: cuid })
+  .meta({ id: "AddCqbMemberRequest" });
+
 /** FR-B2: create a formation. */
 export const FormationRequestSchema = z
   .object({ name: z.string().min(1).max(80) })
