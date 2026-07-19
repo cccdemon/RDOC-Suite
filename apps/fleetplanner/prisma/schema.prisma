@@ -615,6 +615,8 @@ model CqbSignup {
   note            String?
   status          String   @default("pending") // pending | accepted | rejected
   assignedGroupId String? // → CompositionGroup(kind=squad), set by the operator
+  // Late-arrival ("nachkommen") for this soldier/pilot: HH:MM (null = on time).
+  lateEta         String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -667,6 +669,8 @@ model FleetUnit {
   status        String   @default("pending") // pending | accepted | rejected
   captainNote   String?
   leaderNote    String?
+  // Late-arrival ("nachkommen"): estimated arrival clock time HH:MM (null = on time).
+  lateEta       String?
   createdAt     DateTime @default(now())
 
   operation    Operation               @relation(fields: [operationId], references: [id], onDelete: Cascade)
@@ -713,6 +717,8 @@ model SeatAssignment {
   order    Int
   active   Boolean @default(true)
   userId   String?
+  // Late-arrival ("nachkommen") for the seated player: HH:MM (null = on time).
+  lateEta  String?
 
   fleetUnit FleetUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
   user      User?     @relation(fields: [userId], references: [id])

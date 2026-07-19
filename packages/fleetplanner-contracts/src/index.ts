@@ -174,6 +174,8 @@ export const SeatSchema = z
     order: z.number().int(),
     active: z.boolean(),
     claimedBy: z.object({ id: z.string(), username: z.string() }).nullable(),
+    /** Late-arrival ("nachkommen") ETA HH:MM for the seated player (null = on time). */
+    lateEta: z.string().nullable(),
   })
   .meta({ id: "Seat" });
 export type Seat = z.infer<typeof SeatSchema>;
@@ -196,6 +198,8 @@ export const FleetUnitSchema = z
     requirementId: z.string().nullable(),
     /** FR-B2: formation (Verband) this ship belongs to, if any. */
     formationId: z.string().nullable(),
+    /** Late-arrival ("nachkommen") ETA HH:MM for this unit (null = on time). */
+    lateEta: z.string().nullable(),
     seats: z.array(SeatSchema),
   })
   .meta({ id: "FleetUnit" });
@@ -261,17 +265,19 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
       id: z.string(),
       name: z.string(),
       targetSize: z.number().int().nullable(),
-      members: z.array(z.object({ id: z.string(), username: z.string() })),
+      members: z.array(z.object({ id: z.string(), username: z.string(), lateEta: z.string().nullable() })),
     }),
   ),
-  /** Fighter squads (Jäger-Staffeln) as joinable slot groups — like cqbTeams, but
-   *  members are fighter FleetUnits bound via `FleetUnit.formationId`. Rendered in
-   *  the roster fighter lane so squad assignment is visible. targetSize = pilots. */
+  /** Fighter squads (Jäger-Staffeln) as joinable slot groups — like cqbTeams.
+   *  `members` are pilots (person signups the operator placed directly, no ship
+   *  needed); fighter FleetUnits also bind via `FleetUnit.formationId` and are
+   *  grouped client-side. Rendered in the roster fighter lane. targetSize = pilots. */
   fighterSquads: z.array(
     z.object({
       id: z.string(),
       name: z.string(),
       targetSize: z.number().int().nullable(),
+      members: z.array(z.object({ id: z.string(), username: z.string(), lateEta: z.string().nullable() })),
     }),
   ),
   /** Operator formations (Verbände) — higher-level grouping of ships, shown in the
@@ -753,6 +759,7 @@ export const OperatorViewSchema = z
         username: z.string(),
         assignedGroupId: z.string().nullable(),
         note: z.string().nullable(),
+        lateEta: z.string().nullable(),
       }),
     ),
     /** FR-B2: operator formations (Verbände) — ships group into these. */
@@ -773,6 +780,12 @@ export const AssignCqbRequestSchema = z
 export const AddCqbMemberRequestSchema = z
   .object({ userId: cuid })
   .meta({ id: "AddCqbMemberRequest" });
+
+/** Late-arrival ("nachkommen"): set/clear an ETA clock time HH:MM (null = on time,
+ *  clears the flag). Applies to a unit, a seat, or a CQB/pilot signup. */
+export const SetLateArrivalRequestSchema = z
+  .object({ eta: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "HH:MM").nullable() })
+  .meta({ id: "SetLateArrivalRequest" });
 
 /** FR-B2: create a formation. */
 export const FormationRequestSchema = z

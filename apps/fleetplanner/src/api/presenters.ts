@@ -27,6 +27,7 @@ type SeatRow = {
   active: boolean;
   userId: string | null;
   user?: UserRow | null;
+  lateEta?: string | null;
 };
 type UnitRow = {
   id: string;
@@ -40,6 +41,7 @@ type UnitRow = {
   ship?: { name: string; size?: string | null; career?: string | null; role?: string | null } | null;
   captain?: UserRow | null;
   seats: SeatRow[];
+  lateEta?: string | null;
 };
 type OpListRow = {
   id: string;
@@ -72,7 +74,7 @@ type OpDetailRow = OpListRow & {
   streams?: Array<{ id: string; platform: string; url: string; label: string; userId: string | null; user: { id: string; username: string } | null }>;
   questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
   groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null }>;
-  cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; user: { id: string; username: string } }>;
+  cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; lateEta?: string | null; user: { id: string; username: string } }>;
   cover?: { url: string } | null;
 };
 
@@ -86,6 +88,7 @@ export function presentSeat(s: SeatRow, redact = false): Seat {
     order: s.order,
     active: s.active,
     claimedBy: claimed ? (redact ? { id: "", username: "Belegt" } : { id: s.user!.id, username: s.user!.username }) : null,
+    lateEta: s.lateEta ?? null,
   };
 }
 
@@ -105,6 +108,7 @@ export function presentUnit(u: UnitRow, redact = false): FleetUnit {
     carrierUnitId: u.carrierUnitId,
     requirementId: u.requirementId ?? null,
     formationId: u.formationId ?? null,
+    lateEta: u.lateEta ?? null,
     // FR-B1: include inactive seats too (with the active flag) so the operator can
     // re-activate them; the player board filters to active client-side.
     seats: u.seats.map((s) => presentSeat(s, redact)),
@@ -208,13 +212,21 @@ export function presentOperationDetail(
         targetSize: g.targetSize,
         members: (op.cqbSignups ?? [])
           .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
-          .map((s) => (redact ? { id: "", username: "Belegt" } : { id: s.user.id, username: s.user.username })),
+          .map((s) => (redact ? { id: "", username: "Belegt", lateEta: null } : { id: s.user.id, username: s.user.username, lateEta: s.lateEta ?? null })),
       })),
-    // Fighter squads (Jäger-Staffeln) — members are fighter units bound via
-    // formationId, grouped client-side; here we expose the squad groups + slots.
+    // Fighter squads (Jäger-Staffeln) — `members` are pilots (person signups the
+    // operator placed directly); fighter units bind via formationId, grouped
+    // client-side. Here we expose the squad groups + slots + person-members.
     fighterSquads: (op.groups ?? [])
       .filter((g) => g.kind === "fighter_squad")
-      .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize })),
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        targetSize: g.targetSize,
+        members: (op.cqbSignups ?? [])
+          .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
+          .map((s) => (redact ? { id: "", username: "Belegt", lateEta: null } : { id: s.user.id, username: s.user.username, lateEta: s.lateEta ?? null })),
+      })),
     formations: (op.groups ?? [])
       .filter((g) => g.kind === "formation")
       .map((g) => ({ id: g.id, name: g.name })),

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - „Nachkommen" (Late-Arrival) + Operator-Pilot-Platzierung in Jäger-Staffeln (2026-07-19)
+
+- **Late-Arrival „nachkommen" mit ETA:** Schiffe/Fighter/Fahrzeuge (Unit), Sitz-Spieler und
+  CQB-/Piloten-Anmeldungen können als Nachzügler mit Ankunftszeit (HH:MM) markiert werden — gelbe
+  Markierung „⏱ EST 21:00" im Roster/Board. Setzbar von der Person selbst **oder** einem Operator.
+  Neues `lateEta`-Feld (Migration) + 3 PATCH-Endpoints (`/units|seats|cqb/.../late-arrival`).
+- **Operator platziert Piloten direkt in Jäger-Staffeln** (ohne dass jemand ein Fighter-Schiff
+  einbringt): eigener „Jäger-Staffeln · Piloten einteilen"-Block in der Operator-Konsole mit
+  „+ Pilot"-Picker (Guild-Suche). Die Piloten erscheinen in der Roster-Staffel-Karte. Nutzt die
+  CQB-Personen-Infra (`fighter_squad`-Groups jetzt in add-member/assign akzeptiert).
+
 ### Added - Operator kann jede Person einem CQB-Team zuweisen (2026-07-19)
 
 - **Admin/Operator fügt beliebige Personen einem CQB-Team hinzu** — auch Ship-Seat-Insassen (die

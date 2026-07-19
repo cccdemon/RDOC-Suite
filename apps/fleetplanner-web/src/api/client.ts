@@ -174,6 +174,17 @@ export function addCqbTeamMember(opId: string, groupId: string, userId: string, 
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}/members`, csrfToken, { userId });
 }
 
+// #1 late-arrival ("nachkommen"): set/clear ETA (HH:MM, null clears) on a unit/seat/signup.
+export function setUnitLateArrival(opId: string, unitId: string, eta: string | null, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/late-arrival`, csrfToken, { eta });
+}
+export function setSeatLateArrival(opId: string, seatId: string, eta: string | null, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/late-arrival`, csrfToken, { eta });
+}
+export function setCqbLateArrival(opId: string, signupId: string, eta: string | null, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/cqb/${encodeURIComponent(signupId)}/late-arrival`, csrfToken, { eta });
+}
+
 // FR-B3: embed a CQB team into a carrier ship (carrierUnitId null = standalone).
 export function assignCqbTeamCarrier(opId: string, groupId: string, csrfToken: string, carrierUnitId: string | null): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}/carrier`, csrfToken, { carrierUnitId });

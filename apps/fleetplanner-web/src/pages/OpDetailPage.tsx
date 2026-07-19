@@ -12,6 +12,8 @@ import {
   patchSeat,
   removeStream,
   setHangarShare,
+  setSeatLateArrival,
+  setUnitLateArrival,
   unclaimSeat,
   withdrawUnit,
 } from "../api/client";
@@ -23,6 +25,7 @@ import { OperatorConsole } from "../components/OperatorConsole";
 import { SquadLinkPanel } from "../components/SquadLinkPanel";
 import { Ic } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
+import { LateArrival } from "../components/LateArrival";
 import { Markdown } from "../components/Markdown";
 import { useSeo, metaText } from "../seo";
 
@@ -252,6 +255,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       : [];
     return { ...l, units, placeholders };
   });
+  const canManage = op.canManage;
   const filled = accepted.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0);
   const pct = op.minParticipants > 0 ? Math.min(100, Math.round((filled / op.minParticipants) * 100)) : 0;
   // Registration stays open while the op is live (started), not just "open".
@@ -347,6 +351,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             <span style={{ fontSize: "0.86rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "11rem" }}>
               {s.claimedBy.username}
             </span>
+            <LateArrival eta={s.lateEta} canEdit={!!csrf && ((!!me && s.claimedBy.id === me.id) || canManage)} testid={`seat-late-${s.id}`} onSet={(eta) => run(() => setSeatLateArrival(id!, s.id, eta, csrf!))} />
             {me && s.claimedBy.id === me.id && (
               <button
                 type="button"
@@ -504,8 +509,13 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 </span>
               )}
             </div>
-            <div style={{ color: "#9fb1c2", fontSize: "0.86rem", marginTop: "0.15rem" }}>
-              {u.unitType}{u.captain ? ` · Captain: ${u.captain.username}` : ""}
+            <div style={{ color: "#9fb1c2", fontSize: "0.86rem", marginTop: "0.15rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+              <span>{u.unitType}{u.captain ? ` · Captain: ${u.captain.username}` : ""}</span>
+              {csrf && (isMine || canManage) ? (
+                <LateArrival eta={u.lateEta} canEdit testid={`unit-late-${u.id}`} onSet={(eta) => run(() => setUnitLateArrival(id!, u.id, eta, csrf!))} />
+              ) : (
+                <LateArrival eta={u.lateEta} canEdit={false} onSet={() => {}} />
+              )}
             </div>
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -995,20 +1005,30 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                         <>
                           {squads.map((sq) => {
                             const fs = lane.units.filter((u) => u.formationId === sq.id);
-                            const filledF = fs.filter((u) => u.status === "accepted").length;
+                            const mem = sq.members ?? [];
+                            const filledF = fs.filter((u) => u.status === "accepted").length + mem.length;
                             const over = sq.targetSize != null && filledF > sq.targetSize;
                             const met = sq.targetSize != null && filledF >= sq.targetSize;
+                            const empty = fs.length === 0 && mem.length === 0;
                             return (
                               <div key={sq.id} data-testid={`fighter-squad-${sq.id}`} style={{ border: "1px solid rgba(167,139,250,0.22)", borderTop: "2px solid rgba(167,139,250,0.5)", borderRadius: 13, background: "rgba(167,139,250,0.03)", padding: "0.8rem 0.85rem" }}>
-                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: fs.length ? "0.7rem" : 0 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: empty ? 0 : "0.7rem" }}>
                                   <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={15} sw={1.7} /></span>
                                   <strong style={{ fontSize: "0.95rem", color: "#eaf4fb" }}>{sq.name}</strong>
                                   <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "#00ff88" : "#9fb1c2" }}>{filledF}/{sq.targetSize ?? "∞"}{over ? " (über)" : ""}</span>
                                 </div>
-                                {fs.length === 0 ? (
+                                {empty ? (
                                   <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.06em", color: "#5b6b7a" }}>Noch kein Jäger zugewiesen.</div>
                                 ) : (
-                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>{fs.map((u) => unitCard(u, lane))}</div>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
+                                    {fs.map((u) => unitCard(u, lane))}
+                                    {mem.map((m) => (
+                                      <div key={m.id} data-testid={`fighter-pilot-${m.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8", padding: "0.35rem 0.4rem", border: "1px solid rgba(167,139,250,0.15)", borderRadius: 8 }}>
+                                        <Avatar name={m.username} /> <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null} <span style={{ color: "#7e92a4", fontFamily: MONO, fontSize: "0.58rem" }}>Pilot</span></span>
+                                        <LateArrival eta={m.lateEta} canEdit={false} onSet={() => {}} />
+                                      </div>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             );
@@ -1076,7 +1096,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                           {tm.members.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Noch keine Soldaten.</div>}
                           {tm.members.map((m) => (
                             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8" }}>
-                              <Avatar name={m.username} /> {m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}
+                              <Avatar name={m.username} /> <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}</span>
+                              <LateArrival eta={m.lateEta} canEdit={false} onSet={() => {}} />
                             </div>
                           ))}
                         </div>

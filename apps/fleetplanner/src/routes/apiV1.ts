@@ -92,6 +92,7 @@ import { listSharedHangars } from "../services/hangarShare.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, placeInSquad as placeCqbMember, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
+import { cqbOwner, seatOwner, setCqbLateEta, setSeatLateEta, setUnitLateEta, unitOwner } from "../services/lateArrival.js";
 import { assignUnitToFormation, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
@@ -107,6 +108,7 @@ import {
   AssignCarrierRequestSchema,
   AddCqbMemberRequestSchema,
   AssignCqbRequestSchema,
+  SetLateArrivalRequestSchema,
   AssignFormationRequestSchema,
   CqbSignupRequestSchema,
   FormationRequestSchema,
@@ -1729,10 +1731,10 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!signup) return sendError(reply, req, 404, "not_found", "CQB signup not found.");
       if (body.data.groupId) {
         const group = await prisma.compositionGroup.findFirst({
-          where: { id: body.data.groupId, operationId: pid.data.id, kind: "squad" },
+          where: { id: body.data.groupId, operationId: pid.data.id, kind: { in: ["squad", "fighter_squad"] } },
           select: { id: true },
         });
-        if (!group) return sendError(reply, req, 404, "not_found", "CQB team not found.");
+        if (!group) return sendError(reply, req, 404, "not_found", "Team not found.");
       }
       await prisma.cqbSignup.update({
         where: { id: sid },
@@ -1757,14 +1759,74 @@ export async function apiV1Routes(app: FastifyInstance) {
       const ctx = await requireOperator(req, reply, p.data.id);
       if (!ctx) return;
       const group = await prisma.compositionGroup.findFirst({
-        where: { id: req.params.groupId, operationId: p.data.id, kind: "squad" },
+        where: { id: req.params.groupId, operationId: p.data.id, kind: { in: ["squad", "fighter_squad"] } },
         select: { id: true },
       });
-      if (!group) return sendError(reply, req, 404, "not_found", "CQB team not found.");
+      if (!group) return sendError(reply, req, 404, "not_found", "Team not found.");
       const user = await prisma.user.findUnique({ where: { id: body.data.userId }, select: { id: true } });
       if (!user) return sendError(reply, req, 404, "not_found", "User not found.");
       await placeCqbMember(p.data.id, body.data.userId, req.params.groupId);
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:add-member", req.params.groupId);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // #1 Late-arrival ("nachkommen"): set/clear an ETA on a unit, a seat, or a CQB/
+  // pilot signup. Editable by the person themselves OR an operator. eta=null clears.
+  app.patch<{ Params: { id: string; unitId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/units/:unitId/late-arrival",
+    async (req, reply) => {
+      const p = UnitParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = SetLateArrivalRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid time (HH:MM).");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const owner = await unitOwner(p.data.id, p.data.unitId);
+      if (owner === null) return sendError(reply, req, 404, "not_found", "Unit not found.");
+      const isOp = await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id);
+      if (owner !== ctx.user.id && !isOp) return sendError(reply, req, 403, "forbidden", "Nur der Captain oder ein Operator.");
+      await setUnitLateEta(p.data.unitId, body.data.eta);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "late:unit", body.data.eta ?? "clear");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.patch<{ Params: { id: string; seatId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/seats/:seatId/late-arrival",
+    async (req, reply) => {
+      const p = SeatParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = SetLateArrivalRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid time (HH:MM).");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const owner = await seatOwner(p.data.id, p.data.seatId);
+      if (owner === undefined) return sendError(reply, req, 404, "not_found", "Seat not found.");
+      const isOp = await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id);
+      if (owner !== ctx.user.id && !isOp) return sendError(reply, req, 403, "forbidden", "Nur der Sitz-Inhaber oder ein Operator.");
+      await setSeatLateEta(p.data.seatId, body.data.eta);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "late:seat", body.data.eta ?? "clear");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  app.patch<{ Params: { id: string; signupId: string }; Body: unknown }>(
+    "/api/v1/operations/:id/cqb/:signupId/late-arrival",
+    async (req, reply) => {
+      const pid = IdParamSchema.safeParse({ id: req.params.id });
+      if (!pid.success || !/^[a-z0-9]{20,32}$/i.test(req.params.signupId))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = SetLateArrivalRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid time (HH:MM).");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const owner = await cqbOwner(pid.data.id, req.params.signupId);
+      if (owner === null) return sendError(reply, req, 404, "not_found", "Signup not found.");
+      const isOp = await canApproveUnits(ctx.user.id, ctx.user.role, pid.data.id);
+      if (owner !== ctx.user.id && !isOp) return sendError(reply, req, 403, "forbidden", "Nur die Person selbst oder ein Operator.");
+      await setCqbLateEta(req.params.signupId, body.data.eta);
+      await logAudit(pid.data.id, ctx.user.id, ctx.user.username, "late:cqb", body.data.eta ?? "clear");
       return reply.type("application/json").send({ ok: true as const });
     },
   );
@@ -2272,7 +2334,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       eventInterests: Array<{ id: string; displayName: string; userId: string | null }>;
       units: Array<{ seats: Array<{ userId: string | null }> }>;
       groups: Array<{ id: string; name: string; kind: string; targetSize: number | null; carrierUnitId: string | null }>;
-      cqbSignups: Array<{ id: string; userId: string; status: string; note: string | null; assignedGroupId: string | null; user: { username: string } }>;
+      cqbSignups: Array<{ id: string; userId: string; status: string; note: string | null; assignedGroupId: string | null; lateEta: string | null; user: { username: string } }>;
     };
     // userIds already holding a seat in this op → mark interested users "seated".
     const seatedUserIds = new Set(
@@ -2324,7 +2386,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize, carrierUnitId: g.carrierUnitId })),
       cqbSoldiers: o.cqbSignups
         .filter((s) => s.status !== "rejected")
-        .map((s) => ({ id: s.id, username: s.user.username, assignedGroupId: s.assignedGroupId, note: s.note })),
+        .map((s) => ({ id: s.id, username: s.user.username, assignedGroupId: s.assignedGroupId, note: s.note, lateEta: s.lateEta })),
       formations: o.groups
         .filter((g) => g.kind === "formation")
         .map((g) => ({ id: g.id, name: g.name })),

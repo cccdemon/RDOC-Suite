@@ -5,6 +5,7 @@ import {
   answerQuestion,
   addCqbTeamMember,
   assignCqbSoldier,
+  setCqbLateArrival,
   assignCqbTeamCarrier,
   assignSeat,
   assignUnitCarrier,
@@ -27,6 +28,7 @@ import {
 import type { FleetUnit, GuildSettingsMember, OperationDetail, OperatorView } from "../api/types";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
+import { LateArrival } from "./LateArrival";
 import { SaveDot, useFieldSave } from "./fieldSave";
 
 const MONO = "var(--mono)";
@@ -595,6 +597,37 @@ export function OperatorPanel({
   // (squad groups); the operator assigns/moves each via a team dropdown.
   const cqbTeams = view.cqbTeams;
   const cqbSoldiers = view.cqbSoldiers;
+  const fighterSquads = view.fighterSquads;
+  // Reusable "add any person" picker for a group (CQB team OR fighter squad).
+  const memberPicker = (groupId: string) => {
+    const alreadyIn = new Set(cqbSoldiers.filter((s) => s.assignedGroupId === groupId).map((s) => s.username.toLowerCase()));
+    return (
+      <div style={{ padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.25)", borderRadius: 8, background: "rgba(240,165,0,0.03)" }}>
+        <input
+          type="search"
+          autoFocus
+          data-testid={`add-member-search-${groupId}`}
+          value={addMemberFilter}
+          onChange={(e) => setAddMemberFilter(e.target.value)}
+          placeholder="Person suchen (z.B. Sitz-Insasse einer Trägerin)…"
+          style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
+        />
+        {addMemberFilter.trim() && (members ?? [])
+          .filter((m) => m.username.toLowerCase().includes(addMemberFilter.trim().toLowerCase()))
+          .slice(0, 8)
+          .map((m) => {
+            const inTeam = alreadyIn.has(m.username.toLowerCase());
+            return (
+              <button key={m.userId} type="button" data-testid={`add-member-pick-${groupId}-${m.userId}`} disabled={inTeam} onClick={() => { setAddMemberTeam(null); setAddMemberFilter(""); run(() => addCqbTeamMember(op.id, groupId, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(240,165,0,0.22)", background: inTeam ? "transparent" : "rgba(240,165,0,0.05)", borderRadius: 7, cursor: inTeam ? "default" : "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem", opacity: inTeam ? 0.5 : 1 }}>
+                <Avatar name={m.username} />
+                <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
+                <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: inTeam ? "#5b6b7a" : "#f0a500" }}>{inTeam ? "DABEI" : "HINZUFÜGEN"}</span>
+              </button>
+            );
+          })}
+      </div>
+    );
+  };
   const cqbBlock = (cqbTeams.length > 0 || cqbSoldiers.length > 0) && (
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="cqb-block">
       {panelHead("fps", "#f0a500", "CQB-TEAMS · SOLDATEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>)}
@@ -602,7 +635,6 @@ export function OperatorPanel({
       {cqbTeams.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.9rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           {cqbTeams.map((tm) => {
-            const alreadyIn = new Set(cqbSoldiers.filter((s) => s.assignedGroupId === tm.id).map((s) => s.username.toLowerCase()));
             const pickOpen = addMemberTeam === tm.id;
             return (
             <div key={tm.id} style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
@@ -630,32 +662,7 @@ export function OperatorPanel({
                   {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
-              {pickOpen && (
-                <div style={{ padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.25)", borderRadius: 8, background: "rgba(240,165,0,0.03)" }}>
-                  <input
-                    type="search"
-                    autoFocus
-                    data-testid={`cqb-add-search-${tm.id}`}
-                    value={addMemberFilter}
-                    onChange={(e) => setAddMemberFilter(e.target.value)}
-                    placeholder="Person suchen (z.B. Sitz-Insasse einer Trägerin)…"
-                    style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
-                  />
-                  {addMemberFilter.trim() && (members ?? [])
-                    .filter((m) => m.username.toLowerCase().includes(addMemberFilter.trim().toLowerCase()))
-                    .slice(0, 8)
-                    .map((m) => {
-                      const inTeam = alreadyIn.has(m.username.toLowerCase());
-                      return (
-                        <button key={m.userId} type="button" data-testid={`cqb-add-pick-${tm.id}-${m.userId}`} disabled={inTeam} onClick={() => { setAddMemberTeam(null); setAddMemberFilter(""); run(() => addCqbTeamMember(op.id, tm.id, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(240,165,0,0.22)", background: inTeam ? "transparent" : "rgba(240,165,0,0.05)", borderRadius: 7, cursor: inTeam ? "default" : "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem", opacity: inTeam ? 0.5 : 1 }}>
-                          <Avatar name={m.username} />
-                          <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
-                          <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: inTeam ? "#5b6b7a" : "#f0a500" }}>{inTeam ? "IM TEAM" : "HINZUFÜGEN"}</span>
-                        </button>
-                      );
-                    })}
-                </div>
-              )}
+              {pickOpen && memberPicker(tm.id)}
             </div>
             );
           })}
@@ -674,6 +681,7 @@ export function OperatorPanel({
                   <strong style={{ fontSize: "0.86rem", color: "#eaf4fb" }}>{s.username}</strong>
                   {s.note && <div style={{ color: "#7e92a4", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.note}</div>}
                 </div>
+                <LateArrival eta={s.lateEta} canEdit testid={`cqb-late-${s.id}`} onSet={(eta) => viewAct(`cqblate-${s.id}`, () => setCqbLateArrival(op.id, s.id, eta, csrf), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, lateEta: eta } : x)) }))} />
                 <SaveDot id={`cqb-${s.id}`} />
                 <select
                   data-testid={`cqb-assign-${s.id}`}
@@ -692,6 +700,43 @@ export function OperatorPanel({
       {cqbTeams.length === 0 && cqbSoldiers.length > 0 && (
         <p style={{ margin: "0.7rem 0 0", color: "#7e92a4", fontSize: "0.78rem" }}>Keine CQB-Teams definiert — lege unter „Bedarfe" CQB-Teams an, um Soldaten einzuteilen.</p>
       )}
+    </section>
+  );
+
+  // Jäger-Staffeln: operator places pilots (persons, no ship needed) directly into
+  // a fighter squad — mirrors CQB. Fighters with a ship bind via the board dropdown;
+  // this manages the pilot roster + late-arrival.
+  const fighterBlock = fighterSquads.length > 0 && (
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(167,139,250,0.22)" }} data-testid="fighter-block">
+      {panelHead("fighter", "#a78bfa", "JÄGER-STAFFELN · PILOTEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{fighterSquads.length} Staffeln</span>)}
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
+        {fighterSquads.map((sq) => {
+          const mem = cqbSoldiers.filter((s) => s.assignedGroupId === sq.id);
+          const pickOpen = addMemberTeam === sq.id;
+          const shipPilots = accepted.filter((u) => u.formationId === sq.id).length;
+          const filledF = shipPilots + mem.length;
+          return (
+            <div key={sq.id} data-testid={`fighter-squad-op-${sq.id}`} style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={14} sw={1.7} /></span>
+                <strong style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: "#eaf4fb" }}>{sq.name}</strong>
+                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a", flexShrink: 0 }}>{filledF}/{sq.targetSize ?? "∞"}</span>
+                <button type="button" data-testid={`fighter-add-member-${sq.id}`} title="Pilot dieser Staffel zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : sq.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(167,139,250,0.6)" : "rgba(167,139,250,0.35)"}`, background: "rgba(167,139,250,0.08)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Pilot</button>
+              </div>
+              {mem.map((s) => (
+                <div key={s.id} data-testid={`fighter-pilot-op-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid rgba(167,139,250,0.16)", background: "rgba(167,139,250,0.03)" }}>
+                  <Avatar name={s.username} />
+                  <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "#dce8f0" }}>{s.username}</span>
+                  <LateArrival eta={s.lateEta} canEdit testid={`fighter-late-${s.id}`} onSet={(eta) => viewAct(`cqblate-${s.id}`, () => setCqbLateArrival(op.id, s.id, eta, csrf), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, lateEta: eta } : x)) }))} />
+                  <SaveDot id={`cqb-${s.id}`} />
+                  <button type="button" title="Aus Staffel entfernen" onClick={() => viewAct(`cqb-${s.id}`, () => assignCqbSoldier(op.id, s.id, csrf, null), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, assignedGroupId: null } : x)) }))} style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: "1px solid rgba(255,68,68,0.35)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={10} sw={2} /></button>
+                </div>
+              ))}
+              {pickOpen && memberPicker(sq.id)}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 
@@ -1007,7 +1052,7 @@ export function OperatorPanel({
   // Redesign: each console tab renders one section. "fleet" = board + right rail;
   // the rest are their own tabs (CQB / Verbände / Fragen).
   if (section === "cqb")
-    return <div data-testid="operator-panel">{placeBanner}{pendingBlock}{cqbBlock || <section style={card}><div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div></section>}</div>;
+    return <div data-testid="operator-panel">{placeBanner}{pendingBlock}{fighterBlock}{cqbBlock || <section style={card}><div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div></section>}</div>;
   if (section === "formations")
     return <div data-testid="operator-panel">{formationBlock}</div>;
   if (section === "qa")

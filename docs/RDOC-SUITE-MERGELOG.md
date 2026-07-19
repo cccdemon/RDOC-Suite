@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-19: Late-Arrival (nachkommen +ETA) + Operator-direkt-Fighter-Platzierung
+
+Status: ⏳ In Arbeit. Zwei Features in einem Deploy.
+(A) **Operator platziert Piloten direkt in Jäger-Staffeln** (ohne eingebrachtes Fighter-Schiff): reuse
+CQB-Personen-Infra — `placeInSquad`/`reassignSignup` akzeptieren bereits kind `fighter_squad`; neuen
+Endpoint `POST /cqb-teams/:groupId/members` + `/assign` auf `fighter_squad` relaxen. `OperationDetail.
+fighterSquads` bekommt `members` (Personen-Signups); Roster-Staffel-Karte zeigt Piloten; OperatorPanel
+Fighter-Block mit „+ Person".
+(B) **Late-Arrival „nachkommen" +ETA (HH:MM)**: `lateEta String?` auf FleetUnit, SeatAssignment,
+CqbSignup (+Migration). Contracts (FleetUnit/Seat/members lateEta + `SetLateArrivalRequest`). 3 PATCH-
+Endpoints (owner oder operator). SPA: gelbe Markierung „⏱ EST 21:00" auf Unit-Karten/Sitzen/CQB-Members
++ Setz-Control. Deploy: rebuild fleetplanner + fleetplanner-web + Migration.
+
+Umgesetzt (2026-07-19): (A) OperatorPanel „JÄGER-STAFFELN · PILOTEN EINTEILEN"-Block (+Pilot-Picker,
+reuse `memberPicker`/`addCqbTeamMember`; assign/add-member akzeptieren jetzt `fighter_squad`).
+`OperationDetail.fighterSquads.members` + Roster-Staffel-Karte zeigt Piloten. (B) `lateEta` auf 3
+Modellen (Migration `20260719120000_late_arrival`), Contracts (Seat/FleetUnit/members lateEta +
+`SetLateArrivalRequest`), 3 PATCH-Endpoints (owner-or-operator), `LateArrival`-Komponente (gelbe
+„⏱ EST HH:MM" + `<input type=time>`-Control), verdrahtet in Unit-Card/Sitz/CQB-Member/Fighter-Pilot +
+OperatorPanel-Soldaten. Backend+Web tsc grün. 6 vorbestehende app.test-Failures (login/overview/
+recurrence) unabhängig — auf clean master identisch. OFFEN: ggf. self-service CQB/Pilot-Late im Roster.
+
 ## Queued / In Progress - 2026-07-19: Fighter-Domäne aufräumen (#3 Bedarf, #4 Überfüll-Zuteilung, #2 Staffel im Roster)
 
 Status: ⏳ In Arbeit. Aus Live-Event cmrqu6mpp006snz07go27aeil: Fighter/Staffel/Bedarf-Logik verworren.
