@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added - Jäger Auto-Fill in die erste freie Staffel (2026-07-19)
+### Changed - Jäger-Staffel = Verband (Formation) + Auto-Fill (2026-07-19)
 
-- **Neu akzeptierte Jäger landen automatisch in der ersten Jäger-Staffel mit freiem Platz** (belegt =
-  Fighter + Piloten, bis `targetSize`, nach Reihenfolge). Sind alle Staffeln voll → bleibt „Ohne
-  Staffel". Es werden **keine** neuen Staffeln erzeugt (Staffelzahl bleibt der Bedarf). Manuelles
-  Umverteilen per Dropdown bleibt möglich.
+- **Die Jäger-Staffel im Roster + Auto-Fill sind jetzt die Verbände (Formations), die du selbst
+  anlegst** (z.B. „Staffel 1/2") — nicht mehr die separaten `fighter_squad`-Bedarf-Groups. Fighter
+  gruppieren im Roster nach ihrem Verband; „Ohne Staffel" sammelt den Rest. Behebt, dass Fighter in
+  selbst-benannten „Staffel"-Verbänden fälschlich als „Ohne Staffel" erschienen.
+- **Auto-Fill (neu akzeptierte + Bestand per Button):** ein Jäger ohne Staffel landet in der ersten
+  Formation mit freiem Platz (Kapazität = „à N Jäger" aus dem Bedarf, default 2). Alle voll → „Ohne
+  Staffel". Der „Auto-Fill"-Button in der Operator-Konsole verteilt auch bereits akzeptierte Jäger.
+- **Operator „+ Pilot" platziert Piloten (ohne Schiff) direkt in einen Verband;** Personen-Zuweisung
+  akzeptiert jetzt auch `formation`-Groups.
 
 ### Added - „Nachkommen" (Late-Arrival) + Operator-Pilot-Platzierung in Jäger-Staffeln (2026-07-19)
 

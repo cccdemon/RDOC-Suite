@@ -5,6 +5,7 @@ import {
   answerQuestion,
   addCqbTeamMember,
   assignCqbSoldier,
+  autoFillFighters,
   setCqbLateArrival,
   assignCqbTeamCarrier,
   assignSeat,
@@ -597,7 +598,7 @@ export function OperatorPanel({
   // (squad groups); the operator assigns/moves each via a team dropdown.
   const cqbTeams = view.cqbTeams;
   const cqbSoldiers = view.cqbSoldiers;
-  const fighterSquads = view.fighterSquads;
+  const fighterFormations = view.formations;
   // Reusable "add any person" picker for a group (CQB team OR fighter squad).
   const memberPicker = (groupId: string) => {
     const alreadyIn = new Set(cqbSoldiers.filter((s) => s.assignedGroupId === groupId).map((s) => s.username.toLowerCase()));
@@ -706,21 +707,21 @@ export function OperatorPanel({
   // Jäger-Staffeln: operator places pilots (persons, no ship needed) directly into
   // a fighter squad — mirrors CQB. Fighters with a ship bind via the board dropdown;
   // this manages the pilot roster + late-arrival.
-  const fighterBlock = fighterSquads.length > 0 && (
+  const fighterBlock = fighterFormations.length > 0 && (
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(167,139,250,0.22)" }} data-testid="fighter-block">
-      {panelHead("fighter", "#a78bfa", "JÄGER-STAFFELN · PILOTEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{fighterSquads.length} Staffeln</span>)}
+      {panelHead("fighter", "#a78bfa", "JÄGER-STAFFELN · PILOTEN EINTEILEN", <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.6rem" }}><button type="button" data-testid="fighter-autofill" title="Alle noch nicht zugeteilten Jäger in die erste Staffel mit freiem Platz füllen" onClick={() => run(() => autoFillFighters(op.id, csrf))} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid rgba(167,139,250,0.4)", background: "rgba(167,139,250,0.1)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.6rem", borderRadius: 6, cursor: "pointer" }}><Ic name="swap" size={11} sw={2} /> Auto-Fill</button><span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{fighterFormations.length} Staffeln</span></span>)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-        {fighterSquads.map((sq) => {
+        {fighterFormations.map((sq) => {
           const mem = cqbSoldiers.filter((s) => s.assignedGroupId === sq.id);
           const pickOpen = addMemberTeam === sq.id;
-          const shipPilots = accepted.filter((u) => u.formationId === sq.id).length;
+          const shipPilots = accepted.filter((u) => u.formationId === sq.id && u.shipClass === "Fighter").length;
           const filledF = shipPilots + mem.length;
           return (
             <div key={sq.id} data-testid={`fighter-squad-op-${sq.id}`} style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={14} sw={1.7} /></span>
                 <strong style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: "#eaf4fb" }}>{sq.name}</strong>
-                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a", flexShrink: 0 }}>{filledF}/{sq.targetSize ?? "∞"}</span>
+                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a", flexShrink: 0 }}>{filledF} Jäger</span>
                 <button type="button" data-testid={`fighter-add-member-${sq.id}`} title="Pilot dieser Staffel zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : sq.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(167,139,250,0.6)" : "rgba(167,139,250,0.35)"}`, background: "rgba(167,139,250,0.08)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Pilot</button>
               </div>
               {mem.map((s) => (
@@ -771,17 +772,8 @@ export function OperatorPanel({
             onChange={(e) => { const fid = e.target.value || null; boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, formationId: fid } : x)), () => assignUnitFormation(op.id, u.id, csrf, fid)); }}
             style={{ flexShrink: 0, maxWidth: "9.5rem", background: "#0e1926", border: "1px solid rgba(167,139,250,0.3)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.62rem", padding: "0.2rem 0.4rem", borderRadius: 6, outline: "none" }}
           >
-            <option value="">— ohne Zuordnung —</option>
-            {view.fighterSquads.length > 0 && (
-              <optgroup label="Jäger-Staffeln">
-                {view.fighterSquads.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </optgroup>
-            )}
-            {view.formations.length > 0 && (
-              <optgroup label="Verbände">
-                {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-              </optgroup>
-            )}
+            <option value="">— ohne Staffel/Verband —</option>
+            {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
         </div>
         {(teams.length > 0 || vehicles.length > 0) && (

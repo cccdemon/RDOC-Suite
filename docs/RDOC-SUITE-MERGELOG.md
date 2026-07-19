@@ -1,5 +1,21 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-19: Jäger Auto-Fill auch für Bestand (Button)
+
+Status: ⏳ In Arbeit. Auto-Fill soll auch bereits akzeptierte, staffellose Jäger treffen. Operator-
+Button „Auto-Fill" im Fighter-Block: `autoFillAllFighters(operationId)` iteriert alle accepted Fighter
+ohne `formationId` (nach createdAt) durch dieselbe erste-freie-Slot-Logik. Endpoint
+`POST /operations/:id/fighter-squads/auto-fill` (operator), Client `autoFillFighters`. Nur Backend+SPA.
+Deploy: rebuild fleetplanner + fleetplanner-web.
+
+PIVOT (2026-07-19, User-Entscheidung): Jäger-Staffel = **Verband (Formation)**, nicht fighter_squad-Group
+(User legt „Staffel 1/2" als Formations an + weist Fighter dort zu). Umbau: Auto-Fill zielt auf
+Formations (Kapazität = fighter_squad-Requirement squadSize, default 2); `placeInSquad`/`reassignSignup`/
+add-member/assign akzeptieren jetzt kind `formation`; `OperationDetail.formations` trägt `members`
+(Piloten); Roster-Fighter-Lane gruppiert nach Formation (Cap aus needs.fighterSquadSize); OperatorPanel
+Fighter-Block iteriert `view.formations` (+Pilot → Formation, Auto-Fill, Late); Kompositions-Dropdown
+listet nur noch Verbände. `fighterSquads` (Contract/Operator-View) bleibt, im SPA ungenutzt. tsc grün.
+
 ## Queued / In Progress - 2026-07-19: Jäger Auto-Fill in erste freie Staffel
 
 Status: ⏳ In Arbeit. Beim Akzeptieren eines Fighters (ohne Staffel) automatisch der ERSTEN

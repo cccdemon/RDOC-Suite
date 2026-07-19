@@ -280,9 +280,14 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
       members: z.array(z.object({ id: z.string(), username: z.string(), lateEta: z.string().nullable() })),
     }),
   ),
-  /** Operator formations (Verbände) — higher-level grouping of ships, shown in the
-   *  roster so Staffel/Verband assignment is visible to everyone. */
-  formations: z.array(z.object({ id: z.string(), name: z.string() })),
+  /** Operator formations (Verbände) — the fighter "Staffeln". Fighter units bind
+   *  via `FleetUnit.formationId`; `members` are person-pilots the operator placed
+   *  (no ship). Rendered as the roster fighter-lane grouping. */
+  formations: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    members: z.array(z.object({ id: z.string(), username: z.string(), lateEta: z.string().nullable() })),
+  })),
   /** Mission-cover image URL (banner) if generated; null → client uses the
    *  default asset. Visible to all viewers of the op (not operator-gated). */
   coverUrl: z.string().nullable(),

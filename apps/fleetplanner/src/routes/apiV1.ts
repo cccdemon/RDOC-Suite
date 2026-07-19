@@ -93,7 +93,7 @@ import { importUserFleet } from "../services/fleetImport.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, placeInSquad as placeCqbMember, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
 import { cqbOwner, seatOwner, setCqbLateEta, setSeatLateEta, setUnitLateEta, unitOwner } from "../services/lateArrival.js";
-import { assignUnitToFormation, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
+import { assignUnitToFormation, autoFillAllFighters, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
 import { addStream, removeStream, streamOwner } from "../services/streams.js";
@@ -1731,7 +1731,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       if (!signup) return sendError(reply, req, 404, "not_found", "CQB signup not found.");
       if (body.data.groupId) {
         const group = await prisma.compositionGroup.findFirst({
-          where: { id: body.data.groupId, operationId: pid.data.id, kind: { in: ["squad", "fighter_squad"] } },
+          where: { id: body.data.groupId, operationId: pid.data.id, kind: { in: ["squad", "fighter_squad", "formation"] } },
           select: { id: true },
         });
         if (!group) return sendError(reply, req, 404, "not_found", "Team not found.");
@@ -1759,7 +1759,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       const ctx = await requireOperator(req, reply, p.data.id);
       if (!ctx) return;
       const group = await prisma.compositionGroup.findFirst({
-        where: { id: req.params.groupId, operationId: p.data.id, kind: { in: ["squad", "fighter_squad"] } },
+        where: { id: req.params.groupId, operationId: p.data.id, kind: { in: ["squad", "fighter_squad", "formation"] } },
         select: { id: true },
       });
       if (!group) return sendError(reply, req, 404, "not_found", "Team not found.");
@@ -1946,6 +1946,21 @@ export async function apiV1Routes(app: FastifyInstance) {
       }
       await logAudit(p.data.id, ctx.user.id, ctx.user.username, "formation:assign", body.data.formationId ?? "detach");
       return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // Operator backfill: distribute all already-accepted, squad-less fighters into
+  // the first squad with a free slot (same rule as accept-time auto-fill).
+  app.post<{ Params: { id: string } }>(
+    "/api/v1/operations/:id/fighter-squads/auto-fill",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const placed = await autoFillAllFighters(p.data.id);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "fighter:auto-fill", String(placed));
+      return reply.type("application/json").send({ ok: true as const, placed });
     },
   );
 

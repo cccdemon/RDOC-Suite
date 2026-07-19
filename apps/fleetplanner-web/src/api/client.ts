@@ -174,6 +174,11 @@ export function addCqbTeamMember(opId: string, groupId: string, userId: string, 
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}/members`, csrfToken, { userId });
 }
 
+// Operator backfill: auto-fill all squad-less accepted fighters into the first open squad.
+export function autoFillFighters(opId: string, csrfToken: string): Promise<{ ok: true; placed: number }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/fighter-squads/auto-fill`, csrfToken) as Promise<{ ok: true; placed: number }>;
+}
+
 // #1 late-arrival ("nachkommen"): set/clear ETA (HH:MM, null clears) on a unit/seat/signup.
 export function setUnitLateArrival(opId: string, unitId: string, eta: string | null, csrfToken: string): Promise<{ ok: true }> {
   return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/late-arrival`, csrfToken, { eta });

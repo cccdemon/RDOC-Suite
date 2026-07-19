@@ -997,8 +997,12 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                       // Jäger-Staffeln (fighter squads) as CQB-style cards: fighters bind
                       // via formationId. Grouped fighters sit in their squad card, the
                       // rest under "Ohne Staffel". Slots show N/target, over-fill allowed.
-                      const squads = op.fighterSquads ?? [];
+                      // A Jäger-Staffel is a Verband (formation); fighters bind via
+                      // formationId, pilots via formation.members. Capacity = the
+                      // "à N Jäger" from the Bedarf. Rest → "Ohne Staffel".
+                      const squads = op.formations ?? [];
                       const squadIds = new Set(squads.map((s) => s.id));
+                      const cap = needs?.fighterSquadSize ?? 2;
                       const ungrouped = lane.units.filter((u) => !u.formationId || !squadIds.has(u.formationId));
                       const nothing = lane.units.length === 0 && squads.length === 0;
                       return (
@@ -1007,15 +1011,15 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                             const fs = lane.units.filter((u) => u.formationId === sq.id);
                             const mem = sq.members ?? [];
                             const filledF = fs.filter((u) => u.status === "accepted").length + mem.length;
-                            const over = sq.targetSize != null && filledF > sq.targetSize;
-                            const met = sq.targetSize != null && filledF >= sq.targetSize;
+                            const over = filledF > cap;
+                            const met = filledF >= cap;
                             const empty = fs.length === 0 && mem.length === 0;
                             return (
                               <div key={sq.id} data-testid={`fighter-squad-${sq.id}`} style={{ border: "1px solid rgba(167,139,250,0.22)", borderTop: "2px solid rgba(167,139,250,0.5)", borderRadius: 13, background: "rgba(167,139,250,0.03)", padding: "0.8rem 0.85rem" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: empty ? 0 : "0.7rem" }}>
                                   <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={15} sw={1.7} /></span>
                                   <strong style={{ fontSize: "0.95rem", color: "#eaf4fb" }}>{sq.name}</strong>
-                                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "#00ff88" : "#9fb1c2" }}>{filledF}/{sq.targetSize ?? "∞"}{over ? " (über)" : ""}</span>
+                                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "#00ff88" : "#9fb1c2" }}>{filledF}/{cap}{over ? " (über)" : ""}</span>
                                 </div>
                                 {empty ? (
                                   <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.06em", color: "#5b6b7a" }}>Noch kein Jäger zugewiesen.</div>

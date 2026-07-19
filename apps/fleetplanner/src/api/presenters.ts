@@ -229,7 +229,13 @@ export function presentOperationDetail(
       })),
     formations: (op.groups ?? [])
       .filter((g) => g.kind === "formation")
-      .map((g) => ({ id: g.id, name: g.name })),
+      .map((g) => ({
+        id: g.id,
+        name: g.name,
+        members: (op.cqbSignups ?? [])
+          .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
+          .map((s) => (redact ? { id: "", username: "Belegt", lateEta: null } : { id: s.user.id, username: s.user.username, lateEta: s.lateEta ?? null })),
+      })),
     coverUrl: op.cover?.url ?? null,
     viewerRole: viewer.role,
     canManage: viewer.canManage,
