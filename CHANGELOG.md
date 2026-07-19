@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Jäger-Staffeln aufgeräumt: sichtbar + zuweisbar (2026-07-19)
+
+- **Jäger-Staffeln erscheinen als joinbare Karten im Roster** (wie CQB-Teams). Fighter werden per
+  `formationId` einer Staffel zugeordnet; die Staffel-Karte zeigt zugewiesene Jäger + Slots
+  (`N/Ziel`, `(über)` bei Überfüllung). Nicht zugewiesene Jäger stehen unter „Ohne Staffel".
+  Vorher waren die materialisierten `fighter_squad`-Groups tote Daten (nirgends gerendert) → der
+  Fighter-Bedarf war unsichtbar und nicht zuteilbar.
+- **Operator kann Jäger jeder Staffel zuweisen — auch über den Bedarf hinaus.** Das Per-Unit-Dropdown
+  im Kompositions-Baum listet jetzt „Jäger-Staffeln" (+ weiterhin „Verbände"); die Zuweisung ist nie
+  durch die Ziel-Größe gedeckelt.
+- **Staffel-/Verband-Zuteilung im Roster sichtbar:** `OperationDetail` liefert jetzt `fighterSquads`
+  + `formations`; `assignUnitToFormation` akzeptiert Staffel- **und** Verband-Groups (kein Schema-/
+  Migrations-Bedarf — Bindung über das bestehende `FleetUnit.formationId`).
+
 ### Added - Teilnahme-Status + pending Schiffe im Op-Board (2026-07-18)
 
 - **„Dein Status · Bereits angemeldet"-Karte** auf der Op-Detailseite: zeigt nach der Anmeldung

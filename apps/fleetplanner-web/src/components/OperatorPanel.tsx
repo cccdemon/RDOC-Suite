@@ -689,8 +689,17 @@ export function OperatorPanel({
             onChange={(e) => { const fid = e.target.value || null; boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, formationId: fid } : x)), () => assignUnitFormation(op.id, u.id, csrf, fid)); }}
             style={{ flexShrink: 0, maxWidth: "9.5rem", background: "#0e1926", border: "1px solid rgba(167,139,250,0.3)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.62rem", padding: "0.2rem 0.4rem", borderRadius: 6, outline: "none" }}
           >
-            <option value="">— ohne Verband —</option>
-            {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            <option value="">— ohne Zuordnung —</option>
+            {view.fighterSquads.length > 0 && (
+              <optgroup label="Jäger-Staffeln">
+                {view.fighterSquads.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </optgroup>
+            )}
+            {view.formations.length > 0 && (
+              <optgroup label="Verbände">
+                {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </optgroup>
+            )}
           </select>
         </div>
         {(teams.length > 0 || vehicles.length > 0) && (

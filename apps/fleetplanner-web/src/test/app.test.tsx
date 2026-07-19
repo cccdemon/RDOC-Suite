@@ -301,6 +301,7 @@ describe("Op detail — operator panel", () => {
     cqbTeams: [],
     cqbSoldiers: [],
     formations: [],
+    fighterSquads: [],
   };
   const opAsOperator = {
     ...opDetailFixture,
@@ -900,7 +901,7 @@ describe("Op needs editor (Bedarfe)", () => {
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
-      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json({ crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [], eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [] })),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json({ crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [], eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [], fighterSquads: [] })),
       http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(needs)),
       http.post(`${API}/operations/op_1/needs/ships`, async ({ request }) => {
         added = (await request.json()) as Record<string, unknown>;
@@ -923,7 +924,7 @@ describe("Op needs editor (Bedarfe)", () => {
     server.use(
       http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json(opEditable)),
-      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json({ crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [], eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [] })),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json({ crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [], eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [], fighterSquads: [] })),
       http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(needs)),
       http.put(`${API}/operations/op_1/needs/fighters`, async ({ request }) => {
         put = (await request.json()) as Record<string, unknown>;

@@ -37,7 +37,11 @@ export async function deleteFormation(operationId: string, formationId: string):
   });
 }
 
-/** Assign a ship unit to a formation, or detach it (formationId = null). */
+/** Assign a ship unit to a group, or detach it (formationId = null). The target
+ *  group may be a Verband (kind="formation") OR a Jäger-Staffel
+ *  (kind="fighter_squad") — both are stored in the same `FleetUnit.formationId`
+ *  ref. Assignment is never gated by the squad's target size, so an operator can
+ *  over-fill a squad. */
 export async function assignUnitToFormation(
   operationId: string,
   unitId: string,
@@ -51,7 +55,7 @@ export async function assignUnitToFormation(
   if (unit.unitType !== "ship") return { ok: false, reason: "only_ships" };
   if (formationId) {
     const f = await prisma.compositionGroup.findFirst({
-      where: { id: formationId, operationId, kind: "formation" },
+      where: { id: formationId, operationId, kind: { in: ["formation", "fighter_squad"] } },
       select: { id: true },
     });
     if (!f) return { ok: false, reason: "formation_not_found" };

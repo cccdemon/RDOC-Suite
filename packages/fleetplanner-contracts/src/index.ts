@@ -264,6 +264,19 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
       members: z.array(z.object({ id: z.string(), username: z.string() })),
     }),
   ),
+  /** Fighter squads (Jäger-Staffeln) as joinable slot groups — like cqbTeams, but
+   *  members are fighter FleetUnits bound via `FleetUnit.formationId`. Rendered in
+   *  the roster fighter lane so squad assignment is visible. targetSize = pilots. */
+  fighterSquads: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      targetSize: z.number().int().nullable(),
+    }),
+  ),
+  /** Operator formations (Verbände) — higher-level grouping of ships, shown in the
+   *  roster so Staffel/Verband assignment is visible to everyone. */
+  formations: z.array(z.object({ id: z.string(), name: z.string() })),
   /** Mission-cover image URL (banner) if generated; null → client uses the
    *  default asset. Visible to all viewers of the op (not operator-gated). */
   coverUrl: z.string().nullable(),
@@ -744,6 +757,9 @@ export const OperatorViewSchema = z
     ),
     /** FR-B2: operator formations (Verbände) — ships group into these. */
     formations: z.array(z.object({ id: z.string(), name: z.string() })),
+    /** Fighter squads (Jäger-Staffeln) — fighters group into these (targetSize =
+     *  pilots). Operator assigns fighters via the same per-unit dropdown. */
+    fighterSquads: z.array(z.object({ id: z.string(), name: z.string(), targetSize: z.number().int().nullable() })),
   })
   .meta({ id: "OperatorView" });
 

@@ -1,5 +1,26 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-19: Fighter-Domäne aufräumen (#3 Bedarf, #4 Überfüll-Zuteilung, #2 Staffel im Roster)
+
+Status: ⏳ In Arbeit. Aus Live-Event cmrqu6mpp006snz07go27aeil: Fighter/Staffel/Bedarf-Logik verworren.
+Ziele: (a) Jäger-Bedarfsanzeige konsistent (Requirement `fighter_squad` count/squadSize — parallele
+materialisierte `fighter_squad`-Groups vs `formation`-Groups entwirren), (b) Operator kann Jäger
+auch bei erfülltem/überfülltem Bedarf platzieren/zuteilen (aktuell `fighterEmptyO = max(0,count-filled)`
+→ 0 Slots blockiert), (c) Staffel-/Formation-Zuteilung (`FleetUnit.formationId`) im Roster/Board sichtbar
+gruppieren. Danach separat: #5 CQB (Operator kann JEDE Person — auch Ship-Seat-Insassen — einem
+CQB-Team zuweisen) + #1 Late-Arrival (HH:MM). Betroffen: `apps/fleetplanner-web` (OperatorPanel,
+OpDetailPage), evtl. `apps/fleetplanner` (needs.ts/presenters), evtl. Contracts. Deploy: rebuild
+fleetplanner-web (+fleetplanner falls Backend). Migration nur falls Schema.
+
+Umgesetzt (2026-07-19, no-migration): Jäger-Staffeln = joinbare Karten im Roster (Fighter binden via
+`formationId` an `fighter_squad`-Group). `assignUnitToFormation` akzeptiert jetzt kind `formation`+
+`fighter_squad` (nie durch Ziel-Größe gedeckelt → #4). `OperationDetail`+`OperatorView` liefern
+`fighterSquads` (+ Detail `formations`) → Roster gruppiert Fighter-Lane nach Staffel, „Ohne Staffel"
+für Rest (#2). Fighter-Lane rendert keine „Jäger"-Platzhalter mehr → Bedarf konsistent aus einer
+Quelle (#3). Operator-Dropdown listet Staffeln+Verbände. Betroffen: contracts, presenters.ts,
+formations.ts, apiV1.ts (operator view), OpDetailPage, OperatorPanel + Test-Fixtures. Backend-tsc grün
+nach `db:generate` (stale Prisma-Client). OFFEN als nächstes: #5 CQB (jeden zuteilen) + #1 Late-Arrival.
+
 ## Queued / In Progress - 2026-07-18: Teilnahme-Status-Feedback nach Anmeldung (OpDetail)
 
 Status: ⏳ In Arbeit. FR: nach Anmeldung (v.a. eigenes Schiff einbringen) bekommt der Spieler

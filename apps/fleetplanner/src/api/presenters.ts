@@ -210,6 +210,14 @@ export function presentOperationDetail(
           .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
           .map((s) => (redact ? { id: "", username: "Belegt" } : { id: s.user.id, username: s.user.username })),
       })),
+    // Fighter squads (Jäger-Staffeln) — members are fighter units bound via
+    // formationId, grouped client-side; here we expose the squad groups + slots.
+    fighterSquads: (op.groups ?? [])
+      .filter((g) => g.kind === "fighter_squad")
+      .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize })),
+    formations: (op.groups ?? [])
+      .filter((g) => g.kind === "formation")
+      .map((g) => ({ id: g.id, name: g.name })),
     coverUrl: op.cover?.url ?? null,
     viewerRole: viewer.role,
     canManage: viewer.canManage,

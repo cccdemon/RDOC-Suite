@@ -983,10 +983,55 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                     </span>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-                    {lane.units.map((u) => unitCard(u, lane))}
-                    {lane.placeholders.map((label, i) => emptyNeedCard(label, lane, `ph-${lane.type}-${i}`))}
-                    {lane.units.length === 0 && lane.placeholders.length === 0 && (
-                      <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                    {lane.type === "fighter" ? (() => {
+                      // Jäger-Staffeln (fighter squads) as CQB-style cards: fighters bind
+                      // via formationId. Grouped fighters sit in their squad card, the
+                      // rest under "Ohne Staffel". Slots show N/target, over-fill allowed.
+                      const squads = op.fighterSquads ?? [];
+                      const squadIds = new Set(squads.map((s) => s.id));
+                      const ungrouped = lane.units.filter((u) => !u.formationId || !squadIds.has(u.formationId));
+                      const nothing = lane.units.length === 0 && squads.length === 0;
+                      return (
+                        <>
+                          {squads.map((sq) => {
+                            const fs = lane.units.filter((u) => u.formationId === sq.id);
+                            const filledF = fs.filter((u) => u.status === "accepted").length;
+                            const over = sq.targetSize != null && filledF > sq.targetSize;
+                            const met = sq.targetSize != null && filledF >= sq.targetSize;
+                            return (
+                              <div key={sq.id} data-testid={`fighter-squad-${sq.id}`} style={{ border: "1px solid rgba(167,139,250,0.22)", borderTop: "2px solid rgba(167,139,250,0.5)", borderRadius: 13, background: "rgba(167,139,250,0.03)", padding: "0.8rem 0.85rem" }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: fs.length ? "0.7rem" : 0 }}>
+                                  <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={15} sw={1.7} /></span>
+                                  <strong style={{ fontSize: "0.95rem", color: "#eaf4fb" }}>{sq.name}</strong>
+                                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "#00ff88" : "#9fb1c2" }}>{filledF}/{sq.targetSize ?? "∞"}{over ? " (über)" : ""}</span>
+                                </div>
+                                {fs.length === 0 ? (
+                                  <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.06em", color: "#5b6b7a" }}>Noch kein Jäger zugewiesen.</div>
+                                ) : (
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>{fs.map((u) => unitCard(u, lane))}</div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {ungrouped.length > 0 && (
+                            <>
+                              {squads.length > 0 && <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>OHNE STAFFEL</div>}
+                              {ungrouped.map((u) => unitCard(u, lane))}
+                            </>
+                          )}
+                          {nothing && (
+                            <div data-testid="lane-empty-fighter" style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                          )}
+                        </>
+                      );
+                    })() : (
+                      <>
+                        {lane.units.map((u) => unitCard(u, lane))}
+                        {lane.placeholders.map((label, i) => emptyNeedCard(label, lane, `ph-${lane.type}-${i}`))}
+                        {lane.units.length === 0 && lane.placeholders.length === 0 && (
+                          <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                        )}
+                      </>
                     )}
                   </div>
                 </section>

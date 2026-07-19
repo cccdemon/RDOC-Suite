@@ -2301,6 +2301,9 @@ export async function apiV1Routes(app: FastifyInstance) {
       formations: o.groups
         .filter((g) => g.kind === "formation")
         .map((g) => ({ id: g.id, name: g.name })),
+      fighterSquads: o.groups
+        .filter((g) => g.kind === "fighter_squad")
+        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize })),
     };
     return reply.type("application/json").send(view);
   });
