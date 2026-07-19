@@ -1,4 +1,5 @@
 import { prisma } from "../db.js";
+import { autoAssignFighterToSquad } from "./formations.js";
 import { specForShip, specForSquad } from "./seats.js";
 import type { Prisma, Ship } from "@prisma/client";
 
@@ -194,10 +195,14 @@ export async function setUnitStatus(
   if (vehicleIds.length) {
     await prisma.fleetUnit.updateMany({ where: { id: { in: vehicleIds } }, data: { status } });
   }
-  return prisma.fleetUnit.update({
+  const result = await prisma.fleetUnit.update({
     where: { id: unitId },
     data: { status, ...(note !== undefined && { leaderNote: note }) },
   });
+  // Auto-fill: a freshly accepted fighter drops into the first squad with a free
+  // slot (rest stays "Ohne Staffel"). No-op for non-fighters / already-squadded.
+  if (status === "accepted") await autoAssignFighterToSquad(result.operationId, unitId);
+  return result;
 }
 
 // Ground-domain + support categories that may stack with a primary (ship) seat.

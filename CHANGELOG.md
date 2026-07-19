@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Jäger Auto-Fill in die erste freie Staffel (2026-07-19)
+
+- **Neu akzeptierte Jäger landen automatisch in der ersten Jäger-Staffel mit freiem Platz** (belegt =
+  Fighter + Piloten, bis `targetSize`, nach Reihenfolge). Sind alle Staffeln voll → bleibt „Ohne
+  Staffel". Es werden **keine** neuen Staffeln erzeugt (Staffelzahl bleibt der Bedarf). Manuelles
+  Umverteilen per Dropdown bleibt möglich.
+
 ### Added - „Nachkommen" (Late-Arrival) + Operator-Pilot-Platzierung in Jäger-Staffeln (2026-07-19)
 
 - **Late-Arrival „nachkommen" mit ETA:** Schiffe/Fighter/Fahrzeuge (Unit), Sitz-Spieler und

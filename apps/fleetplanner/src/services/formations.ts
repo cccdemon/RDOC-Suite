@@ -3,6 +3,40 @@
 // Pure DB ops, operator-only (gated in the routes).
 
 import { prisma } from "../db.js";
+import { shipClass } from "./composition.js";
+
+/**
+ * Auto-fill: when a fighter unit is accepted without a squad, drop it into the
+ * FIRST Jäger-Staffel (fighter_squad group, by order) that still has a free slot
+ * — occupancy = bound fighter units + person-pilots, capped at targetSize. If all
+ * squads are full it stays "Ohne Staffel". Never creates squads (squad count is
+ * fixed by the Bedarf). No-op for non-fighter units or ones already in a squad.
+ */
+export async function autoAssignFighterToSquad(operationId: string, unitId: string): Promise<void> {
+  const unit = await prisma.fleetUnit.findFirst({
+    where: { id: unitId, operationId },
+    select: { id: true, unitType: true, formationId: true, ship: { select: { size: true, career: true, role: true } } },
+  });
+  if (!unit || unit.unitType !== "ship" || unit.formationId) return;
+  if (shipClass(unit.ship) !== "Fighter") return;
+  const squads = await prisma.compositionGroup.findMany({
+    where: { operationId, kind: "fighter_squad" },
+    orderBy: { order: "asc" },
+    select: { id: true, targetSize: true },
+  });
+  for (const sq of squads) {
+    if (sq.targetSize != null) {
+      const [units, persons] = await Promise.all([
+        prisma.fleetUnit.count({ where: { operationId, formationId: sq.id, status: { not: "rejected" } } }),
+        prisma.cqbSignup.count({ where: { operationId, assignedGroupId: sq.id, status: { not: "rejected" } } }),
+      ]);
+      if (units + persons >= sq.targetSize) continue; // full → try next squad
+    }
+    await prisma.fleetUnit.update({ where: { id: unitId }, data: { formationId: sq.id } });
+    return;
+  }
+  // All squads full (or none defined) → leave the fighter "Ohne Staffel".
+}
 
 /** Create a named formation for an op. */
 export async function createFormation(operationId: string, name: string) {

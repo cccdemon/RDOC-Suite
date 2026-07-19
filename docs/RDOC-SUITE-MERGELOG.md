@@ -1,5 +1,13 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-19: Jäger Auto-Fill in erste freie Staffel
+
+Status: ⏳ In Arbeit. Beim Akzeptieren eines Fighters (ohne Staffel) automatisch der ERSTEN
+`fighter_squad`-Group mit freiem Platz zuweisen (belegt = Fighter-Units + Personen-Piloten < targetSize,
+nach `order`). Alle voll → bleibt OHNE STAFFEL. KEINE neuen Staffeln erzeugen (Staffelzahl = Bedarf, fix).
+Helper `autoAssignFighterToSquad` in formations.ts, aufgerufen aus `setUnitStatus` (accepted).
+Nur Backend. Deploy: rebuild fleetplanner. Keine Migration.
+
 ## Queued / In Progress - 2026-07-19: Late-Arrival (nachkommen +ETA) + Operator-direkt-Fighter-Platzierung
 
 Status: ⏳ In Arbeit. Zwei Features in einem Deploy.
