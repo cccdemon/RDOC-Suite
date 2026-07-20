@@ -1,5 +1,25 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: Fix — CQB-Bedarf lässt sich auf dem CQB-Tab nicht setzen
+
+Status: ⏳ In Arbeit. User meldete „wenn ich 2 CQB Teams anfordere sehe ich diese nicht".
+Diagnose an `cmrqu6mpp006snz07go27aeil` (Status `open`, liegt in der Vergangenheit — die Edit-Sperre
+greift nur bei `completed`/`cancelled`, war also nicht die Ursache):
+
+Das Auditlog zeigt als letzte CQB-Änderung `needs:cqb 1x4` vom 2026-07-18 und **keinen** Eintrag, der
+auf 2 setzt. Der Bedarf stand also nie auf 2 — die eine angezeigte Gruppe ist korrekt. Der
+Speichern-Request kam nie an.
+
+Ursache: `NeedsEditor` wird in `OperatorConsole.tsx:257` **nur für `tab === "fleet"`** gemountet. Auf
+dem CQB-Tab — wo man CQB-Teams verwaltet — gibt es kein Bedienelement, um welche anzufordern.
+`reconcileTeams`/`setCqbTeams` und die Roster-Anzeigelogik sind korrekt (für count=2 mit 1 besetzten
++ 1 leeren Team durchgerechnet: beide würden angezeigt).
+
+Fix: `NeedsEditor` zusätzlich auf dem CQB-Tab rendern. Zuteilen war nie das Problem — der CQB-Tab
+rendert `cqbBlock` inkl. „+ Person"-Picker pro Team.
+
+Nur SPA. Keine Migration. Deploy: rebuild `fleetplanner-web`.
+
 ## Queued / In Progress - 2026-07-20: Fix — „Flexibel angemeldet" erscheint nicht im Operator-Panel
 
 Status: ⏳ In Arbeit. Live gemeldet. Zwei verschiedene Tabellen heißen beide „flexibel":

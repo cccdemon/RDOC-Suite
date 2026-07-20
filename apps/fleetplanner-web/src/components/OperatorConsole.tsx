@@ -254,7 +254,10 @@ function OperatorConsoleInner({
               ? <OperatorPanel op={op} csrf={csrf} embedded section={tab} onChanged={reload} onError={(m) => setNotice(m)} />
               : <p style={lbl}>ANMELDUNG ERFORDERLICH</p>
           )}
-          {tab === "fleet" && (
+          {/* Also on the CQB tab: that is where CQB teams are managed, and without
+              the editor there is no way to REQUEST any — the count control lived
+              on the fleet tab only, so "I asked for 2 teams" never reached the server. */}
+          {(tab === "fleet" || tab === "cqb") && (
             <div style={{ marginTop: "1.6rem" }}>
               <NeedsEditor opId={opId} csrf={csrf} />
             </div>

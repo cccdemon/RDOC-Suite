@@ -18,6 +18,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Signing up with \"just place me somewhere\" now actually shows up in the fleet operator's Flexible list, so you get assigned instead of sitting unseen. Previously that button wrote to a different place than the operator's panel was reading.",
       "Fighters assigned to a squadron no longer show up as \"no squadron\" on the board when the operation uses both requirement squadrons and hand-built formations.",
       "Fleet operators can now move a fighter into a requirement squadron — the dropdown only offered hand-built formations before.",
+      "The needs editor now also appears on the CQB tab, so ground troops can be requested from the same place where they are managed. It used to live on the Fleet tab only, which made \"request 2 CQB teams\" impossible to do from where you would expect it.",
     ],
   },
   {

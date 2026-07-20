@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - CQB-Bedarf war auf dem CQB-Tab nicht setzbar (2026-07-20)
+
+`NeedsEditor` wurde nur für `tab === "fleet"` gemountet. Auf dem CQB-Tab — wo man CQB-Teams verwaltet
+— gab es kein Feld, um welche anzufordern; „ich fordere 2 Teams an" erreichte den Server nie (im
+Auditlog des betroffenen Events steht als letzte Änderung `needs:cqb 1x4`, kein Eintrag auf 2). Der
+Editor rendert jetzt auch auf dem CQB-Tab. `reconcileTeams` und die Roster-Anzeige waren korrekt.
+
 ### Fixed - „Flexibel angemeldet" erschien nicht im Operator-Panel (2026-07-20)
 
 Zwei verschiedene Tabellen hießen beide „flexibel": der Roster-Button „Flexibel anmelden" schreibt
