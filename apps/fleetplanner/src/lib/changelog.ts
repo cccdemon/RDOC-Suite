@@ -13,43 +13,42 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-20",
-    title: "Flexible signups reach the fleet operator again",
+    title: "Squadrons, ground troops and captains",
     changes: [
-      "Signing up with \"just place me somewhere\" now actually shows up in the fleet operator's Flexible list, so you get assigned instead of sitting unseen. Previously that button wrote to a different place than the operator's panel was reading.",
-      "Fighters assigned to a squadron no longer show up as \"no squadron\" on the board when the operation uses both requirement squadrons and hand-built formations.",
-      "Fleet operators can now move a fighter into a requirement squadron — the dropdown only offered hand-built formations before.",
-      "The needs editor now also appears on the CQB tab, so ground troops can be requested from the same place where they are managed. It used to live on the Fleet tab only, which made \"request 2 CQB teams\" impossible to do from where you would expect it.",
-    ],
-  },
-  {
-    date: "2026-07-20",
-    title: "You decide what your ship is here for",
-    changes: [
-      "When you offer a ship you can now say what role it plays in this operation — fighter, transport, support, mining, salvage, exploration or capital. The ship catalog only supplies the suggestion.",
-      "This matters for hybrids: the catalog calls the Cutlass Black a \"Light Freight / Medium Fighter\", so it used to land in the fighter lane whether you brought it as one or not. Now you say, and the fleet operator can change it.",
-      "Fleet operators have a role dropdown on every ship on the board. Changing it moves the ship to the right lane and is recorded in the mission log.",
-      "Fixed ship classification generally: around 40 freighters and all mining ships were falling through into no category at all, so they never matched a transport or mining requirement. Bombers and interceptors now count as fighters.",
+      "Squadrons and ground troops can be grouped under a larger formation — \"Squadron 1 and Squadron 2 form a wing\".",
+      "The first place in a troop or squadron is always the Captain, and it is marked on the roster. Your fleet operator can hand the role to someone else; the two simply swap places.",
+      "Ground troops are shown as a tile with real places. Ask for 2 troops of 4 and you get two tiles with four slots, free ones marked FREE.",
+      "Fighters can be carried by a ship, the same way ground vehicles already could.",
+      "For operations shared with partner Discords, the fleet operator can assign members of those orgs too. As always, only people who have signed in at least once can be assigned.",
     ],
   },
   {
     date: "2026-07-20",
     title: "See where you were placed",
     changes: [
-      "Every ship, vehicle and fighter on the board now shows which squadron or formation it belongs to — previously only the fleet operator could see that.",
-      "\"Your status\" now spells out your placement: your formation, the ship carrying you, your slot number in a ground troop and whether you're its Captain.",
-      "Vehicles and fighters loaded into a ship show \"RIDING IN: <ship>\", and the carrying ship lists what it has aboard.",
-      "New Mission Log on the operation page: every roster change is recorded, so you can check when you were put into a formation or moved to another slot. Not shown to visitors who aren't signed in.",
+      "Every ship, vehicle and fighter on the board shows the squadron or formation it belongs to — until now only the fleet operator could see that.",
+      "\"Your status\" spells out where you ended up: your formation, the ship carrying you, your place in a ground troop and whether you are its Captain.",
+      "Anything loaded into a ship says which ship it rides in, and the carrying ship lists what it has aboard.",
+      "New mission log on the operation page records every roster change, so you can see when you were placed or moved. Visitors who are not signed in do not see it.",
     ],
   },
   {
     date: "2026-07-20",
-    title: "Squadrons, ground troops and captains",
+    title: "You decide what your ship is here for",
     changes: [
-      "Fighter squadrons and CQB troops can now be grouped under a larger formation (Verband) — \"Squadron 1 + Squadron 2 form a wing\". The formation is shown on the roster tile, so everyone can see which formation they were put into, not just the fleet operator.",
-      "The first place in a troop or squadron is always the Captain, and it's marked as such on the roster. The fleet operator can promote anyone else to Captain; the previous one simply trades places.",
-      "Ground troops now show as a tile with real slots — \"2 troops of 4\" looks like two tiles with four places, with free ones marked FREE, instead of a plain name list.",
-      "Fighters can be carried by a ship, the same way ground vehicles already could.",
-      "When an operation is shared with partner Discords, the fleet operator can now also assign members of those partner orgs (shown with their org name). As before, only people who have logged in at least once can be assigned.",
+      "When you offer a ship you say what it is here to do — fighter, transport, support, mining, salvage, exploration or capital. The ship catalogue only makes the suggestion.",
+      "This settles the hybrids. The catalogue calls the Cutlass Black a \"Light Freight / Medium Fighter\", so it used to land among the fighters whether you brought it as one or not.",
+      "Fleet operators can change the role of any ship on the board. It moves to the matching group and the change is recorded in the mission log.",
+      "Ship classification was overhauled: freighters and industrial ships used to fall into no category at all and never matched a transport or mining need. Bombers and interceptors now count as fighters.",
+    ],
+  },
+  {
+    date: "2026-07-20",
+    title: "Fixes",
+    changes: [
+      "Signing up as \"place me anywhere\" now reaches your fleet operator's flexible list, so you actually get assigned.",
+      "Fighters that were assigned to a squadron no longer appear as having none.",
+      "CQB teams can be requested from the CQB tab, where they are managed — the setting was only on the fleet tab.",
     ],
   },
   {

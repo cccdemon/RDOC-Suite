@@ -1,5 +1,22 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: Spieler-Changelog überarbeiten
+
+Status: ⏳ In Arbeit. Die vier 2026-07-20-Einträge in `apps/fleetplanner/src/lib/changelog.ts` waren
+zu entwicklernah (Ursachenbeschreibungen wie „wrote to a different place than the operator's panel
+was reading", Interna wie „requirement squadrons" / „hand-built formations") und verstoßen damit
+gegen den Datei-Kommentar „Keep entries short and player-readable — this is not the git log."
+Vier Einträge am selben Tag sind für Spieler außerdem Rauschen.
+
+Umbau: auf drei Feature-Einträge konsolidieren (Struktur/Captains, Sichtbarkeit, Schiffsrolle) plus
+einen kurzen Fixes-Eintrag ohne Interna. Reine Textänderung, kein Verhalten.
+Deploy: rebuild `fleetplanner`.
+
+Umgesetzt (2026-07-20): 4 → 4 Einträge, aber neu geschnitten: „Squadrons, ground troops and captains" /
+„See where you were placed" / „You decide what your ship is here for" / „Fixes". Ursachen- und
+Interna-Sprache raus („wrote to a different place…", „requirement squadrons", „hand-built formations",
+„needs editor", „dropdown"), Wirkung statt Diagnose. tsc grün.
+
 ## Queued / In Progress - 2026-07-20: Fix — CQB-Bedarf lässt sich auf dem CQB-Tab nicht setzen
 
 Status: ⏳ In Arbeit. User meldete „wenn ich 2 CQB Teams anfordere sehe ich diese nicht".
