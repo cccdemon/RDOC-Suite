@@ -111,6 +111,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [busySeat, setBusySeat] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [logOpen, setLogOpen] = useState(false); // mission log, collapsed by default
   const [offerOpen, setOfferOpen] = useState(false);
   // FR-A5: operators preview the page as a guest / crew member / themselves. Pure
   // UI — changes no rights; just suppresses operator + me-based controls.
@@ -511,6 +512,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             </div>
             <div style={{ color: "#9fb1c2", fontSize: "0.86rem", marginTop: "0.15rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
               <span>{u.unitType}{u.captain ? ` · Captain: ${u.captain.username}` : ""}</span>
+              {u.formationSlot === 0 && captainTag}
+              {unitChips(u)}
               {csrf && (isMine || canManage) ? (
                 <LateArrival eta={u.lateEta} canEdit testid={`unit-late-${u.id}`} onSet={(eta) => run(() => setUnitLateArrival(id!, u.id, eta, csrf!))} />
               ) : (
@@ -606,6 +609,43 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     return n ? (
       <span data-testid="verband-chip" style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.3)", background: "rgba(0,212,255,0.07)", borderRadius: 4, padding: "0.05rem 0.3rem", flexShrink: 0 }}>VERBAND: {n.toUpperCase()}</span>
     ) : null;
+  };
+
+  const chip = (label: string, color: string, rgb: string, testid?: string) => (
+    <span data-testid={testid} style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color, border: `1px solid rgba(${rgb},0.3)`, background: `rgba(${rgb},0.07)`, borderRadius: 4, padding: "0.05rem 0.3rem", flexShrink: 0 }}>{label}</span>
+  );
+
+  // Which group a unit sits in — a Staffel for a fighter, a Verband for a ship.
+  // Returns the Verband above it too, so a fighter shows both levels.
+  const groupOfUnit = (u: FleetUnit) => {
+    if (!u.formationId) return null;
+    const st = (op.fighterSquads ?? []).find((s) => s.id === u.formationId);
+    if (st) return { name: st.name, kind: "STAFFEL", parentId: st.parentId };
+    const f = (op.formations ?? []).find((x) => x.id === u.formationId);
+    return f ? { name: f.name, kind: "VERBAND", parentId: null } : null;
+  };
+
+  const unitById = (unitId: string | null | undefined) =>
+    unitId ? op.units.find((x) => x.id === unitId) ?? null : null;
+  const unitLabel = (u: FleetUnit) => u.shipName ?? u.name;
+
+  // Group + transport chips for a unit card. This is the whole point of the
+  // transparency pass: a participant seated on a ship must see which Verband it
+  // belongs to and what it carries, without opening the operator console.
+  const unitChips = (u: FleetUnit) => {
+    const g = groupOfUnit(u);
+    const carrier = unitById(u.carrierUnitId);
+    const carried = op.units.filter((x) => x.carrierUnitId === u.id && x.status !== "rejected");
+    if (!g && !carrier && carried.length === 0) return null;
+    return (
+      <>
+        {g && g.kind === "STAFFEL" && chip(`STAFFEL: ${g.name.toUpperCase()}`, "#a78bfa", "167,139,250", `unit-squad-chip-${u.id}`)}
+        {g && g.kind === "VERBAND" && chip(`VERBAND: ${g.name.toUpperCase()}`, "#00d4ff", "0,212,255", `unit-verband-chip-${u.id}`)}
+        {g?.parentId && verbandChip(g.parentId)}
+        {carrier && chip(`FÄHRT IN: ${unitLabel(carrier).toUpperCase()}`, "#ff7a45", "255,122,69", `unit-carrier-chip-${u.id}`)}
+        {carried.length > 0 && chip(`AN BORD: ${carried.map(unitLabel).join(", ").toUpperCase()}`, "#ff7a45", "255,122,69", `unit-carried-chip-${u.id}`)}
+      </>
+    );
   };
 
   return (
@@ -864,11 +904,49 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         const shipTone = (status: string) => (status === "accepted" ? "#00ff88" : status === "rejected" ? "#ff6b6b" : "#f0a500");
         const shipStatus = (status: string) => (status === "accepted" ? "bestätigt" : status === "rejected" ? "abgelehnt" : "noch nicht bestätigt");
         const items: { key: string; icon: string; tone: string; text: React.ReactNode }[] = [];
+        // Where a unit sits in the hierarchy, as a readable suffix: the group it
+        // belongs to, the Verband above it, and the ship carrying it. Without this
+        // a participant has no way to learn they were put into a formation.
+        const placement = (u: FleetUnit) => {
+          const g = groupOfUnit(u);
+          const carrier = unitById(u.carrierUnitId);
+          const parts: string[] = [];
+          if (g) parts.push(`${g.kind === "STAFFEL" ? "Staffel" : "Verband"} ${g.name}`);
+          const vb = verbandName(g?.parentId);
+          if (vb) parts.push(`Verband ${vb}`);
+          if (carrier) parts.push(`an Bord der ${unitLabel(carrier)}`);
+          return parts.length ? <> · {parts.join(" · ")}</> : null;
+        };
         for (const u of myShips)
-          items.push({ key: `ship-${u.id}`, icon: "ship", tone: shipTone(u.status), text: <>Schiff <strong>{u.shipName ?? u.name}</strong> — {shipStatus(u.status)}</> });
+          items.push({ key: `ship-${u.id}`, icon: "ship", tone: shipTone(u.status), text: <>Schiff <strong>{u.shipName ?? u.name}</strong> — {shipStatus(u.status)}{placement(u)}{u.formationSlot === 0 ? <> · <strong>Captain</strong></> : null}</> });
         for (const { seat, unit } of mySeats)
-          items.push({ key: `seat-${seat.id}`, icon: "pilot", tone: "#00ff88", text: <>Platz <strong>{seat.label}</strong> auf {unit.shipName ?? unit.name} — bestätigt</> });
-        if (op.viewerCqbSignedUp)
+          items.push({ key: `seat-${seat.id}`, icon: "pilot", tone: "#00ff88", text: <>Platz <strong>{seat.label}</strong> auf {unit.shipName ?? unit.name} — bestätigt{placement(unit)}</> });
+        // Placement into a ground troop / squadron — the operator may have put the
+        // player there without them ever offering a ship.
+        for (const tm of op.cqbTeams) {
+          const m = tm.members.find((x) => x.id === me.id);
+          if (!m) continue;
+          const vb = verbandName(tm.parentId);
+          const carrier = unitById(tm.carrierUnitId);
+          items.push({
+            key: `cqb-${tm.id}`,
+            icon: "fps",
+            tone: "#00ff88",
+            text: <>Bodentruppe <strong>{tm.name}</strong> — Platz {(m.slotIndex ?? 0) + 1}{m.slotIndex === 0 ? <> (<strong>Captain</strong>)</> : null}{vb ? ` · Verband ${vb}` : ""}{carrier ? ` · fährt in ${unitLabel(carrier)}` : ""}</>,
+          });
+        }
+        for (const sq of op.fighterSquads ?? []) {
+          const m = sq.members.find((x) => x.id === me.id);
+          if (!m) continue;
+          const vb = verbandName(sq.parentId);
+          items.push({
+            key: `sq-${sq.id}`,
+            icon: "fighter",
+            tone: "#00ff88",
+            text: <>Staffel <strong>{sq.name}</strong> — Pilot{m.slotIndex === 0 ? <> (<strong>Staffel-Captain</strong>)</> : null}{vb ? ` · Verband ${vb}` : ""}</>,
+          });
+        }
+        if (op.viewerCqbSignedUp && !items.some((i) => i.key.startsWith("cqb-") || i.key.startsWith("sq-")))
           items.push({ key: "cqb", icon: "swap", tone: "#f0a500", text: <>Flexibel angemeldet — der Operator teilt dich passend ein</> });
         // Any other waitlist reason (e.g. a pending crew-assignment request) still gets ack'd.
         if (items.length === 0 && op.signupState)
@@ -1179,6 +1257,36 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             )}
           </div>
         </>
+      )}
+
+      {/* Mission log — deliberately NOT operator-gated. Every roster change is
+          recorded, so a participant can check when they were put into a Verband,
+          moved to another slot or had their ship accepted. Collapsed by default. */}
+      {op.auditLogs.length > 0 && (
+        <section data-testid="mission-log" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, background: "#090f18", padding: "1.1rem 1.3rem", marginTop: "1.6rem" }}>
+          <button
+            type="button"
+            data-testid="mission-log-toggle"
+            onClick={() => setLogOpen((v) => !v)}
+            style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}
+          >
+            <span style={{ ...monoLabel(), color: "#7e92a4" }}>MISSIONS-LOG</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a" }}>{op.auditLogs.length}</span>
+            <span style={{ marginLeft: "auto", display: "inline-flex", transform: logOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "#5b6b7a" }}><Ic name="chevron" size={15} sw={2} /></span>
+          </button>
+          {logOpen && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginTop: "0.8rem" }}>
+              {op.auditLogs.map((a, i) => (
+                <div key={`${a.createdAt}-${i}`} style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", fontSize: "0.8rem", color: "#9fb1c2", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingBottom: "0.25rem" }}>
+                  <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a", flexShrink: 0 }}>{new Date(a.createdAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ color: "#dce8f0", flexShrink: 0 }}>{a.actor}</span>
+                  <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#00d4ff", flexShrink: 0 }}>{a.action}</span>
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.detail}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {/* FR-B7: Q&A — any logged-in viewer asks; operators answer in the console */}

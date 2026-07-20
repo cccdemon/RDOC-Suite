@@ -76,6 +76,7 @@ type OpDetailRow = OpListRow & {
   questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
   groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null; parentId?: string | null; carrierUnitId?: string | null }>;
   cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; slotIndex?: number | null; lateEta?: string | null; user: { id: string; username: string } }>;
+  auditLogs?: Array<{ actor: string; action: string; detail: string; createdAt: Date }>;
   cover?: { url: string } | null;
 };
 
@@ -248,6 +249,18 @@ export function presentOperationDetail(
         name: g.name,
         members: groupMembers(op, g.id, redact),
       })),
+    // Mission log. Participants must be able to see that they were put into a
+    // Verband or moved to another slot, so this is no longer operator-only — but
+    // it names people and is therefore withheld from anonymous public viewers
+    // entirely (empty, not redacted), same boundary as captain/leader identities.
+    auditLogs: redact
+      ? []
+      : (op.auditLogs ?? []).map((a) => ({
+          actor: a.actor,
+          action: a.action,
+          detail: a.detail,
+          createdAt: a.createdAt.toISOString(),
+        })),
     coverUrl: op.cover?.url ?? null,
     viewerRole: viewer.role,
     canManage: viewer.canManage,

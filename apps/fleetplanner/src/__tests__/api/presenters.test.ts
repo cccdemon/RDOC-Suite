@@ -93,11 +93,15 @@ describe("presenters", () => {
   it("emits no HTML-ish or secret-ish fields", () => {
     const out = presentOperationDetail(opRow, { role: null, canManage: false, signupState: null });
     const json = JSON.stringify(out);
-    // NB: `questions` IS a legit op-detail field (FR-B7, public Q&A thread); the
-    // operator-only `auditLogs`/`hangarShares` stay out of the player payload.
-    for (const banned of ["tokenCiphertext", "rawJson", "auditLogs", "hangarShares", "<div", "style="]) {
+    // NB: `questions` IS a legit op-detail field (FR-B7, public Q&A thread);
+    // `hangarShares` stays out of the player payload entirely.
+    for (const banned of ["tokenCiphertext", "rawJson", "hangarShares", "<div", "style="]) {
       expect(json).not.toContain(banned);
     }
+    // The mission log became participant-visible (roster transparency), but it
+    // names people — anonymous viewers get an empty list, never entries.
+    expect(out.auditLogs).toEqual([]);
+    expect(json).not.toContain("Cap");
   });
 
   it("unit name falls back ship → squad → Unit", () => {

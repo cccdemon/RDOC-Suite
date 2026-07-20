@@ -310,6 +310,18 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
     name: z.string(),
     members: z.array(GroupMemberSchema),
   })),
+  /** Mission log — every roster change on this op, newest first. Shown to
+   *  participants too, not just operators: if someone was put into a Verband or
+   *  moved to another slot, they must be able to see it. `actor` is redacted for
+   *  anonymous public viewers, same rule as seats and members. */
+  auditLogs: z.array(
+    z.object({
+      actor: z.string(),
+      action: z.string(),
+      detail: z.string(),
+      createdAt: z.string(),
+    }),
+  ),
   /** Mission-cover image URL (banner) if generated; null → client uses the
    *  default asset. Visible to all viewers of the op (not operator-gated). */
   coverUrl: z.string().nullable(),

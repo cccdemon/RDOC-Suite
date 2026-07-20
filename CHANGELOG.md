@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Roster-Transparenz: Verband sichtbar, Missions-Log, Carrier-Baum (2026-07-20)
+
+Zweiter Teil des Konzept-Audits (Gap 7+8). Leitsatz: was zugeteilt wurde, muss der Teilnehmer sehen.
+
+- **Verband/Staffel auf jeder Einheit.** Schiff-, Fahrzeug- und Jäger-Karten tragen jetzt Chips für
+  ihre Gruppe („STAFFEL: …"/„VERBAND: …") plus den übergeordneten Verband. Vorher rendete `unitCard`
+  `formationId` nirgends — wer auf einem Schiff eines Verbands saß, konnte das im Roster nicht sehen.
+- **„Dein Status" zeigt die Einordnung**: Verband/Staffel, Trägerschiff („an Bord der …"), Slot-Nummer
+  im Trupp und ob man Captain ist. Bodentruppen- und Staffel-Platzierungen erscheinen dort jetzt auch,
+  wenn man nie ein Schiff angeboten hat.
+- **Missions-Log für Teilnehmer** (`OperationDetail.auditLogs`, einklappbar im Roster). Das
+  `AuditLog`-Modell existierte mit ~50 Call-Sites, war aber nur im Operator-Panel sichtbar.
+- **Carrier-Baum im Roster**: „FÄHRT IN: <Schiff>" auf der geladenen Einheit, „AN BORD: …" auf der
+  Trägerkachel. Bisher nur im Operator-Panel.
+- **Website-Changelog** (`apps/fleetplanner/src/lib/changelog.ts`, sichtbar unter
+  `/handbuch/changelog`) stand auf 2026-06-07 und wurde um die Roster-Einträge nachgezogen.
+  CLAUDE.md Regel 8 verlangt jetzt explizit BEIDE Changelogs.
+
+### Security
+
+- Das Missions-Log nennt Personen. Anonyme Public-Viewer bekommen es **leer** — nicht nur mit
+  redigiertem Actor. Der Guard-Test in `presenters.test.ts` verbot `auditLogs` bisher komplett in
+  der Player-Payload; die Regel ist jetzt „nicht für Anonyme" statt „nicht für Spieler", der Test
+  prüft entsprechend auf eine leere Liste.
+
 ### Added - Roster-Fundament: Verband/Staffel-Hierarchie, Captain-Slots, Jäger-Carrier (2026-07-20)
 
 Ergebnis eines Konzept-Audits (Soll-Modell vs. Code). Umgesetzt wurden die Struktur-Lücken:

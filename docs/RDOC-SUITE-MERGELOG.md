@@ -1,5 +1,51 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: Roster-Transparenz — Verband sichtbar, Auditlog für Teilnehmer, Carrier-Baum
+
+Status: ⏳ In Arbeit. Zweiter Teil des Konzept-Audits (Gap 7+8), Fundament ist mit `bd5c19a` drin.
+Leitsatz des Users: „Es muss alles transparent sein — wenn etwas einem Verband hinzugefügt worden ist,
+muss das in der GUI auch für den Teilnehmer sichtbar sein."
+
+(7a) **Verband auf JEDER Einheit sichtbar.** Bisher rendert `unitCard` `formationId` nicht — wer auf
+einem Schiff sitzt, das zu „Task Force Alpha" gehört, sieht das im Roster nirgends. Verband-Chip auf
+Schiff-/Fahrzeug-/Jäger-Karten + Zeile im „Dein Status"-Panel („Platz X auf Schiff Y · Verband Z").
+
+(7b) **Auditlog für Teilnehmer.** `AuditLog` existiert (~50 Call-Sites) und wird bereits in
+`getOperation` geladen (take 50), ist aber nur im Operator-Panel eingeklappt sichtbar. Neu:
+`OperationDetail.auditLogs` (Contract) + einklappbare „Aktivität"-Sektion im Roster für eingeloggte
+Teilnehmer. Anonyme Public-Viewer bekommen die Liste redigiert (kein Actor-Name) — gleiche
+`redact`-Regel wie bei Sitzen/Membern.
+
+(8) **Carrier-Baum im Roster.** `carrierUnitId` wird auf der Detailseite nie gerendert; ein Fahrzeug
+im Schiff erscheint als eigenständige Kachel in FAHRZEUGE. Neu: „FÄHRT IN: <Schiff>"-Chip auf der
+geladenen Einheit (Fahrzeug + Jäger) und „AN BORD"-Liste auf der Trägerkachel. CQB-Trupp-Chip
+existiert seit `bd5c19a`.
+
+(Website-Changelog) **`apps/fleetplanner/src/lib/changelog.ts` ist der SPIELER-sichtbare Changelog**
+unter `/handbuch/changelog` — separat von `CHANGELOG.md` (Entwickler). Stand war 2026-06-07, also
+um die Roster-Einträge (07-18/07-19/07-20) nachgezogen. **Regel: bei jedem user-sichtbaren Feature
+BEIDE pflegen.**
+
+Betroffen: `packages/fleetplanner-contracts` (auditLogs), `apps/fleetplanner` (presenters,
+lib/changelog.ts), `apps/fleetplanner-web` (OpDetailPage). Keine Migration. Deploy: rebuild
+`fleetplanner` + `fleetplanner-web`.
+
+Umgesetzt (2026-07-20): `OperationDetail.auditLogs` im Contract + Presenter. **Security-Entscheidung
+geändert:** `presenters.test.ts` verbot `auditLogs` bisher komplett in der Player-Payload
+(„operator-only"). Das kollidiert mit der Transparenz-Anforderung. Neue Grenze: eingeloggte Viewer
+sehen das Log, **anonyme bekommen eine leere Liste** (nicht nur redigierter Actor) — dieselbe Linie
+wie bei Captain-/Leader-Identitäten. Guard-Test entsprechend umgestellt (prüft jetzt
+`out.auditLogs === []` für `role: null`), `hangarShares` bleibt komplett verboten.
+SPA: `unitChips()` (Staffel-/Verband-/FÄHRT-IN-/AN-BORD-Chips) auf jeder Unit-Karte, `groupOfUnit()`
+löst Staffel→Verband auf, `placement()` erweitert „Dein Status" um Verband/Träger/Slot/Captain +
+neue Einträge für CQB-Trupp- und Staffel-Platzierung, einklappbares „MISSIONS-LOG" (`logOpen`).
+Website-Changelog um 3 Einträge (07-18/07-19/07-20) nachgezogen + CLAUDE.md Regel 8 auf ZWEI
+Changelogs erweitert (Entwickler `CHANGELOG.md` + Spieler `lib/changelog.ts`).
+tsc grün (Backend + Web). Backend 13 Failures = Baseline, **null neue**; Web 6 vorbestehende.
+Damit sind alle 9 Audit-Gaps geschlossen bis auf: Jäger-Typ ist weiterhin abgeleitet
+(`shipClass` aus Katalogdaten, kein eigener `unitType`) — bewusst offen gelassen, wäre ein
+Katalog-/Migrationsthema.
+
 ## Queued / In Progress - 2026-07-20: Roster-Fundament — Verband/Staffel-Hierarchie, Gruppen-Captain, CQB-Slots, Jäger-Carrier
 
 Status: ⏳ In Arbeit. Ergebnis eines Konzept-Audits (User-Vorgabe vs. Ist-Stand). Bestätigte Lücken:

@@ -82,7 +82,9 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 
 7. **Docs nur in `docs/`.** Kein STAND.md. Infra-Wahrheit liegt in `docs/RDOC-SUITE-MERGELOG.md` (Code = Ground Truth). Erledigte Handover-/Plan-/Implementation-Log-Docs löschen statt veralten lassen — Historie bleibt im Mergelog.
 
-8. **CHANGELOG.md nach jeder Coding-Session** unter `## [Unreleased]` pflegen — Einträge für alle Änderungen.
+8. **Zwei Changelogs — immer beide pflegen.**
+   - `CHANGELOG.md` (Entwickler) unter `## [Unreleased]` nach jeder Coding-Session — Einträge für alle Änderungen.
+   - [`apps/fleetplanner/src/lib/changelog.ts`](apps/fleetplanner/src/lib/changelog.ts) (**Spieler**, sichtbar unter `/handbuch/changelog`) bei jedem user-sichtbaren Feature — kurz, spielerlesbar, EN, neueste zuerst. Kein Git-Log, keine Schema-/Service-Namen.
 
 9. **FeatureRequest-/Plan-Docs:** ein Feature pro File, Dateiname `docs/FR-P<n>-<feature>.md` (n = Prio, 1 höchste … 5 niedrigste). Header: FR-Marker + Prio + **Dependency-Block** (Abhängigkeiten sichtbar machen). In die Planungstabelle unten eintragen.
 

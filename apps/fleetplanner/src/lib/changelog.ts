@@ -12,6 +12,46 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-07-20",
+    title: "See where you were placed",
+    changes: [
+      "Every ship, vehicle and fighter on the board now shows which squadron or formation it belongs to — previously only the fleet operator could see that.",
+      "\"Your status\" now spells out your placement: your formation, the ship carrying you, your slot number in a ground troop and whether you're its Captain.",
+      "Vehicles and fighters loaded into a ship show \"RIDING IN: <ship>\", and the carrying ship lists what it has aboard.",
+      "New Mission Log on the operation page: every roster change is recorded, so you can check when you were put into a formation or moved to another slot. Not shown to visitors who aren't signed in.",
+    ],
+  },
+  {
+    date: "2026-07-20",
+    title: "Squadrons, ground troops and captains",
+    changes: [
+      "Fighter squadrons and CQB troops can now be grouped under a larger formation (Verband) — \"Squadron 1 + Squadron 2 form a wing\". The formation is shown on the roster tile, so everyone can see which formation they were put into, not just the fleet operator.",
+      "The first place in a troop or squadron is always the Captain, and it's marked as such on the roster. The fleet operator can promote anyone else to Captain; the previous one simply trades places.",
+      "Ground troops now show as a tile with real slots — \"2 troops of 4\" looks like two tiles with four places, with free ones marked FREE, instead of a plain name list.",
+      "Fighters can be carried by a ship, the same way ground vehicles already could.",
+      "When an operation is shared with partner Discords, the fleet operator can now also assign members of those partner orgs (shown with their org name). As before, only people who have logged in at least once can be assigned.",
+    ],
+  },
+  {
+    date: "2026-07-19",
+    title: "Late arrivals and squadron auto-fill",
+    changes: [
+      "Coming late? You (or your fleet operator) can set an arrival time on your ship, your seat or your ground-troop slot. It shows up as an amber \"EST 21:00\" marker so the operator can plan around it.",
+      "Fighters that get accepted without a squadron are now dropped into the first squadron with a free place automatically. There's also an Auto-Fill button that does the same for fighters that were already accepted.",
+      "Fleet operators can place a pilot into a squadron directly, even if that pilot didn't bring a ship.",
+    ],
+  },
+  {
+    date: "2026-07-18",
+    title: "See your signup status",
+    changes: [
+      "After signing up — especially when you offered a ship — the operation page now shows what you signed up with and whether it's been confirmed yet, instead of looking as if you never signed up at all.",
+      "Ships you offered that are still awaiting a decision now stay visible on the board, greyed out and tagged \"awaiting confirmation\".",
+      "Feedback is now its own entry in the main navigation instead of being buried in your profile.",
+      "Ships from the ship list can be added straight to your hangar, and the add button sits next to the ship name.",
+    ],
+  },
+  {
     date: "2026-06-07",
     title: "Share a public operation",
     changes: [

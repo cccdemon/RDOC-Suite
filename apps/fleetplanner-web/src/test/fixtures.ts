@@ -60,6 +60,7 @@ export const opDetailFixture: OperationDetail = {
   ],
   streams: [],
   questions: [],
+  auditLogs: [],
   cqbTeams: [],
   fighterSquads: [],
   formations: [],
