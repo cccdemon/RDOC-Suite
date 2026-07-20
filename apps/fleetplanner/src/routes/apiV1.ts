@@ -94,7 +94,7 @@ import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, placeInSquad as placeCqbMember, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
 import { cqbOwner, seatOwner, setCqbLateEta, setSeatLateEta, setUnitLateEta, unitOwner } from "../services/lateArrival.js";
 import { assignUnitToFormation, autoFillAllFighters, createFormation, deleteFormation, renameFormation, setGroupParent, setMemberSlot } from "../services/formations.js";
-import { shipClass } from "../services/composition.js";
+import { effectiveShipClass } from "../services/composition.js";
 import { assignablePeople } from "../services/people.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
@@ -2036,23 +2036,23 @@ export async function apiV1Routes(app: FastifyInstance) {
 
       const unit = await prisma.fleetUnit.findFirst({
         where: { id: p.data.unitId, operationId: p.data.id, unitType: { in: ["vehicle", "ship"] } },
-        select: { id: true, unitType: true, ship: { select: { size: true, career: true, role: true } } },
+        select: { id: true, unitType: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },
       });
       if (!unit) return sendError(reply, req, 404, "not_found", "Unit not found.");
       if (body.data.carrierUnitId === p.data.unitId)
         return sendError(reply, req, 409, "conflict", "A unit can't carry itself.");
       // Only vehicles and Jäger are loadable. Without this a capital ship could be
       // stuffed into another ship — registerUnit already forbids that at creation.
-      if (unit.unitType === "ship" && shipClass(unit.ship) !== "Fighter")
+      if (unit.unitType === "ship" && effectiveShipClass(unit) !== "Fighter")
         return sendError(reply, req, 409, "conflict", "Only vehicles and fighters can be loaded into a ship.");
 
       if (body.data.carrierUnitId) {
         const carrier = await prisma.fleetUnit.findFirst({
           where: { id: body.data.carrierUnitId, operationId: p.data.id, unitType: "ship" },
-          select: { status: true, ship: { select: { size: true, career: true, role: true } } },
+          select: { status: true, unitType: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },
         });
         if (!carrier) return sendError(reply, req, 404, "not_found", "Carrier ship not found.");
-        if (shipClass(carrier.ship) === "Fighter")
+        if (effectiveShipClass(carrier) === "Fighter")
           return sendError(reply, req, 409, "conflict", "A fighter can't carry anything.");
         await prisma.fleetUnit.update({
           where: { id: p.data.unitId },
@@ -2173,6 +2173,7 @@ export async function apiV1Routes(app: FastifyInstance) {
           requirementId: d.requirementId,
           captainNote: d.captainNote,
           carrierUnitId: d.unitType === "vehicle" ? d.carrierUnitId : undefined,
+          roleOverride: d.roleOverride,
         });
         await logAudit(p.data.id, ctx.user.id, ctx.user.username, "unit:register", d.unitType);
         return reply
@@ -2228,8 +2229,14 @@ export async function apiV1Routes(app: FastifyInstance) {
               : {}),
             ...(body.data.squadName !== undefined ? { squadName: body.data.squadName } : {}),
             ...(body.data.requirementId !== undefined ? { requirementId: body.data.requirementId } : {}),
+            ...(body.data.roleOverride !== undefined ? { roleOverride: body.data.roleOverride } : {}),
           },
         });
+        // A role change moves the unit between board lanes and changes what it can
+        // do (squadron slot, carrier), so it gets its own audit line.
+        if (body.data.roleOverride !== undefined && body.data.roleOverride !== unit.roleOverride) {
+          await logAudit(p.data.id, ctx.user.id, ctx.user.username, "unit:role", body.data.roleOverride ?? "Katalog-Vorgabe");
+        }
         await logAudit(p.data.id, ctx.user.id, ctx.user.username, "unit:edit", "");
         return reply.type("application/json").send({ ok: true as const });
       } catch (err) {

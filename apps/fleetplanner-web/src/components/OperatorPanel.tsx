@@ -27,7 +27,8 @@ import {
   unassignSeat,
   withdrawUnit,
 } from "../api/client";
-import type { FleetUnit, OperationDetail, OperatorView } from "../api/types";
+import type { FleetUnit, OperationDetail, OperatorView, ShipClass } from "../api/types";
+import { OFFERABLE_ROLES, ROLE_LABEL, roleLabel } from "../shipRoles";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
 import { LateArrival } from "./LateArrival";
@@ -955,6 +956,24 @@ export function OperatorPanel({
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
                           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>BEDARF</span>
                           {reqSelect(u, u.requirementId ?? "", (id) => boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, requirementId: id || null } : x)), () => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
+                        </span>
+                      )}
+                      {/* Rolle in dieser Op. Überschreibt die Katalog-Ableitung und
+                          verschiebt die Einheit damit auch zwischen den Board-Lanes. */}
+                      {u.unitType === "ship" && (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>ROLLE</span>
+                          <select
+                            data-testid={`unit-role-${u.id}`}
+                            value={u.roleOverride ?? ""}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => { const r = (e.target.value || null) as ShipClass | null; boardAct(`unitrole-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, roleOverride: r, shipClass: r ?? x.shipClass } : x)), () => patchUnit(op.id, u.id, csrf, { roleOverride: r })); }}
+                            style={{ background: "#0e1926", border: "1px solid rgba(0,212,255,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                          >
+                            <option value="">— Katalog: {roleLabel(u.shipClass) || "unbekannt"} —</option>
+                            {OFFERABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                          </select>
+                          <SaveDot id={`unitrole-${u.id}`} />
                         </span>
                       )}
                       {/* Verband-Zuordnung für ALLE Einheitstypen (Schiffe/Jäger/Bodentruppen/Fahrzeuge). */}

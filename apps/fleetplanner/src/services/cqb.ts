@@ -3,7 +3,7 @@
 // bundles signups into squads (CompositionGroup.kind = "squad"). Pure DB ops.
 
 import { prisma } from "../db.js";
-import { shipClass } from "./composition.js";
+import { effectiveShipClass } from "./composition.js";
 import { nextFreeSlot } from "./formations.js";
 
 /** Groups a person can be slotted into. Slot 0 of any of them is the Captain. */
@@ -245,10 +245,10 @@ export async function setSquadCarrier(
   if (carrierUnitId) {
     const carrier = await prisma.fleetUnit.findFirst({
       where: { id: carrierUnitId, operationId, unitType: "ship" },
-      select: { id: true, ship: { select: { size: true, career: true, role: true } } },
+      select: { id: true, unitType: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },
     });
     if (!carrier) return { ok: false, reason: "ship_not_found" };
-    if (shipClass(carrier.ship) === "Fighter") return { ok: false, reason: "fighter" };
+    if (effectiveShipClass(carrier) === "Fighter") return { ok: false, reason: "fighter" };
   }
   await prisma.compositionGroup.updateMany({
     where: { id: groupId, operationId, kind: "squad" },

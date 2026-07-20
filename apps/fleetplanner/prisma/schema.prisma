@@ -682,6 +682,14 @@ model FleetUnit {
   // group Captain (Staffel-Captain for a Jäger-Staffel). Null = unpinned (legacy).
   formationSlot Int?
 
+  // Roster-Fundament 2026-07-20: the role this ship plays IN THIS OPERATION.
+  // Null = derive it from the catalog (shipClass). A ship's role is a tactical
+  // decision, not a catalog property — the same Cutlass Black is a dropship in
+  // one op and a fighter escort in the next, and the catalog literally calls it
+  // "Light Freight / Medium Fighter". Declared by the offering player,
+  // overridable by the operator. See services/composition.ts SHIP_CLASSES.
+  roleOverride  String?
+
   captainId     String
   requirementId String?
   status        String   @default("pending") // pending | accepted | rejected

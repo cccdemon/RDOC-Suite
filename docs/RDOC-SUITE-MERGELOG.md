@@ -1,5 +1,61 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: Schiffsrolle wird deklariert statt geraten (Gap 1)
+
+Status: ⏳ In Arbeit. Letzte offene Lücke des Konzept-Audits. Bisher wird „ist das ein Jäger?" zur
+Laufzeit aus `Ship.role/size/career` geraten (`shipClass()` in `services/composition.ts`).
+
+**Beleg gegen jede Heuristik** (Prod-Katalog, 298 Schiffe, 48 Rollen):
+- `size=small` + `maxCrew 1–2` fängt MISC Prospector (Mining), Vulture (Salvage), Pisces Rescue
+  (Medical), Hull A + Avenger Titan (Freight), 7× Racing, 8× Pathfinder mit ein.
+- Verliert gleichzeitig echte Jäger: Vanguard Warden ist `medium`/`maxCrew 5`.
+- Hybriden sind im Katalog wörtlich doppeldeutig: Cutlass Black = `Light Freight / Medium Fighter`,
+  Constellation Andromeda = `Medium Freight / Gun Ship`, Vanguard Harbinger = `Heavy Fighter / Bomber`.
+  Freelancer MIS ist `Gunship`/`maxCrew 9`, wird aber als schwerer Jäger geflogen.
+- Falsch-Positive der aktuellen Regel (`role.includes("fighter")`): Cutlass Black (Frachter!) landet
+  in der Jäger-Lane; ebenso Dropship/Interdiction/Pathfinder mit `small`+`Combat`.
+
+Schlussfolgerung (User-Entscheidung): **die Rolle ist keine Schiffs-Eigenschaft, sondern eine
+taktische Entscheidung pro Op** — dieselbe Cutlass ist heute Dropship, morgen Escort. Also
+deklarieren statt raten: `FleetUnit.roleOverride String?` (null = abgeleitet). Effektive Klasse =
+`roleOverride ?? shipClass(ship)`; der Presenter liefert die effektive Klasse in `shipClass`, damit
+Lane-Zuordnung, Staffel-Fähigkeit und Bedarf-Matching automatisch folgen. Teilnehmer wählt beim
+Anbieten (Katalogwert vorbelegt), Operator überschreibt per Dropdown; Änderung → Audit `unit:role`.
+Vokabular (User: volle Klassenliste): Fighter | Transport | Support | Mining | Salvage | Exploration
+| Capital | Sub-capital | Ground vehicle.
+
+**Zusätzlich zwei echte String-Bugs** (im selben Commit): `matchesCategory`/`shipClass` prüfen
+`career === "transport"` (matcht **1** Schiff — echter Wert ist `Transporter`, 42×) und
+`career === "mining"` (matcht **0** — echter Wert ist `Industrial`, 19×). Die Rollen heißen
+`Medium/Light/Heavy Freight`, enthalten also weder „transport" noch „cargo" — ~40 Frachter fielen
+durch alle Zweige und bekamen ihre Größe als Klasse.
+
+Betroffen: `apps/fleetplanner` (schema+Migration, composition.ts, units.ts, apiV1.ts, presenters),
+`packages/fleetplanner-contracts`, `apps/fleetplanner-web` (OfferShip, OperatorPanel, OpDetailPage).
+Migration additiv. Beide Changelogs. Deploy: rebuild `fleetplanner` + `fleetplanner-web`.
+
+Umgesetzt (2026-07-20): Migration `20260720140000_unit_role_override`. `SHIP_CLASSES` liegt in den
+**Contracts** (Regel 16), `composition.ts` importiert sie; neu `effectiveShipClass(unit)`
+(= `roleOverride ?? shipClass(ship)`, ungültige Overrides fallen auf die Ableitung zurück).
+Presenter liefert die effektive Klasse in `shipClass` + `roleOverride` separat → alle Consumer
+(Lane, Staffel-Auto-Fill, Carrier-Regeln, Bedarf) folgen ohne Einzelanpassung; alle bisherigen
+`shipClass(x.ship)`-Aufrufe in formations/cqb/units/apiV1 auf `effectiveShipClass(unit)` umgestellt
+(+ `roleOverride` in den jeweiligen Prisma-`select`s).
+`matchesCategory` leitet jetzt aus derselben Klasse ab (`CLASS_BY_CATEGORY`) statt eigener
+OR-Bedingungen — dadurch verschwindet ein alter Selbstwiderspruch: Large-Frachter war Klasse
+„Sub-capital", matchte aber Kategorie „transport". **Reihenfolge in `shipClass` geändert: Zweck vor
+Hüllengröße**, sonst fällt jeder große Frachter durch den Transport-Bedarf. Capital/Sub-capital ist
+jetzt Fallback für große Hüllen ohne klaren Zweck (Idris, Heavy Gunship). Bomber/Interceptor zählen
+als Fighter. Karriere-Strings auf die echten Katalogwerte gezogen (`Transporter`, `Industrial`,
+Rollen `… Freight`); „Industrial" allein entscheidet nichts (deckt Mining, Salvage UND Freight ab) —
+die Rolle diskriminiert.
+SPA: `src/shipRoles.ts` (OFFERABLE_ROLES + deutsche Labels, „Ground vehicle" bewusst nicht wählbar —
+Fahrzeuge sind ein eigener unitType), Rollen-Select in `OfferShip` (Modus „ship"), Operator-Dropdown
+pro Schiff im Board, „ROLLE: …"-Chip im Roster **nur wenn deklariert** (sonst Rauschen auf jeder Karte).
+`PatchUnitRequest`/`RegisterUnitRequest` um `roleOverride` erweitert.
+tsc grün. Backend 13 Failures = Baseline, **null neue** (+2 neue Tests grün: Katalog-Vokabular und
+Override-Vorrang). Web 6 vorbestehende. Damit sind **alle 9 Gaps des Konzept-Audits geschlossen.**
+
 ## Queued / In Progress - 2026-07-20: Roster-Transparenz — Verband sichtbar, Auditlog für Teilnehmer, Carrier-Baum
 
 Status: ⏳ In Arbeit. Zweiter Teil des Konzept-Audits (Gap 7+8), Fundament ist mit `bd5c19a` drin.

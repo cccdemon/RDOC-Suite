@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Schiffsrolle wird deklariert statt geraten (2026-07-20)
+
+Letzte offene Lücke des Konzept-Audits. Bisher wurde „ist das ein Jäger?" aus `Ship.role/size/career`
+geraten. Am Prod-Katalog (298 Schiffe, 48 Rollen) belegt, dass keine Heuristik trägt:
+
+- `size=small` + `maxCrew 1–2` zieht MISC Prospector (Mining), Vulture (Salvage), Pisces Rescue
+  (Medical), Hull A, 7× Racing und 8× Pathfinder mit rein — und verliert gleichzeitig echte Jäger
+  (Vanguard Warden ist `medium`/`maxCrew 5`).
+- Die Hybriden sind im Katalog wörtlich doppeldeutig: Cutlass Black = `Light Freight / Medium Fighter`,
+  Constellation Andromeda = `Medium Freight / Gun Ship`, Vanguard Harbinger = `Heavy Fighter / Bomber`.
+- Die alte Regel (`role.includes("fighter")`) warf dadurch die Cutlass Black — einen Frachter — in die
+  Jäger-Lane, ebenso Dropship/Interdiction/Pathfinder mit `small`+`Combat`.
+
+Die Rolle ist keine Schiffs-Eigenschaft, sondern eine taktische Entscheidung pro Op. Neu:
+`FleetUnit.roleOverride` (null = Katalog-Vorgabe). Teilnehmer wählt beim Anbieten, Operator
+überschreibt per Dropdown; Änderung landet als `unit:role` im Missions-Log. Der Presenter liefert die
+**effektive** Klasse in `shipClass`, dadurch folgen Lane-Zuordnung, Staffel-Fähigkeit,
+Carrier-Regeln und Bedarf-Matching automatisch. Deklarierte Rolle erscheint als Chip im Roster.
+
+### Fixed - Schiffsklassifizierung nutzte Werte, die es im Katalog nicht gibt (2026-07-20)
+
+- `career === "transport"` matchte **1** Schiff — der Katalogwert heißt `Transporter` (42×).
+- `career === "mining"` matchte **0** — der Wert heißt `Industrial` (19×).
+- Die Frachter-Rollen heißen `Medium/Light/Heavy Freight`, enthalten also weder „transport" noch
+  „cargo". Ergebnis: ~40 Frachter fielen durch alle Zweige und bekamen ihre Größe als Klasse.
+- **Zweck schlägt jetzt Hüllengröße.** Ein Hull C ist ein Transport, der zufällig groß ist; vorher
+  wurde er „Sub-capital" und fiel damit durch jeden Transport-Bedarf. `shipClass` und
+  `matchesCategory` widersprachen sich dabei sogar (Klasse „Sub-capital", Kategorie „transport") —
+  `matchesCategory` leitet jetzt aus derselben Klasse ab, es gibt nur noch eine Wahrheit.
+- Bomber und Interceptor zählen jetzt als Jäger.
+
 ### Added - Roster-Transparenz: Verband sichtbar, Missions-Log, Carrier-Baum (2026-07-20)
 
 Zweiter Teil des Konzept-Audits (Gap 7+8). Leitsatz: was zugeteilt wurde, muss der Teilnehmer sehen.

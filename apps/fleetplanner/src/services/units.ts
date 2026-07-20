@@ -1,5 +1,5 @@
 import { prisma } from "../db.js";
-import { shipClass } from "./composition.js";
+import { effectiveShipClass, shipClass } from "./composition.js";
 import { autoAssignFighterToSquad } from "./formations.js";
 import { specForShip, specForSquad } from "./seats.js";
 import type { Prisma, Ship } from "@prisma/client";
@@ -11,6 +11,8 @@ export type RegisterUnitInput = {
   squadSize?: number;
   requirementId?: string;
   captainNote?: string;
+  /** Role in this op; omit to use the catalog-derived class. */
+  roleOverride?: string;
   /** Required for unitType "vehicle": the parent ship unit that carries it. */
   carrierUnitId?: string;
 };
@@ -42,19 +44,20 @@ export async function registerUnit(
   // A vehicle or a Jäger MAY ride in a ship; if no carrier is given it's an
   // "orphan" the operator assigns later. It inherits the carrier's accept/reject
   // status when carried. Anything bigger than a fighter can't be loaded.
-  const loadable = unitType === "vehicle" || (unitType === "ship" && shipClass(ship) === "Fighter");
+  const declaredClass = input.roleOverride ?? shipClass(ship);
+  const loadable = unitType === "vehicle" || (unitType === "ship" && declaredClass === "Fighter");
   let vehicleStatus = "pending";
   let carrierUnitId: string | null = null;
   if (loadable && input.carrierUnitId) {
     const carrier = await prisma.fleetUnit.findUnique({
       where: { id: input.carrierUnitId },
-      select: { operationId: true, status: true, unitType: true, ship: { select: { size: true, career: true, role: true } } },
+      select: { operationId: true, status: true, unitType: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },
     });
     if (!carrier || carrier.operationId !== operationId) {
       throw new Error("Carrier ship not found in this operation");
     }
     if (carrier.unitType !== "ship") throw new Error("Vehicles and fighters can only attach to a ship");
-    if (shipClass(carrier.ship) === "Fighter") throw new Error("A fighter can't carry anything");
+    if (effectiveShipClass(carrier) === "Fighter") throw new Error("A fighter can't carry anything");
     carrierUnitId = input.carrierUnitId;
     vehicleStatus = carrier.status;
   }
@@ -74,6 +77,7 @@ export async function registerUnit(
         squadSize: input.squadSize ?? null,
         carrierUnitId: loadable ? carrierUnitId : null,
         requirementId: input.requirementId ?? null,
+        roleOverride: input.roleOverride ?? null,
         captainNote: input.captainNote ?? null,
         status: unitType === "vehicle" ? vehicleStatus : "pending",
       },

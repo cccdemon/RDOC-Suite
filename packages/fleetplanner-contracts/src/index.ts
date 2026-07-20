@@ -180,6 +180,25 @@ export const SeatSchema = z
   .meta({ id: "Seat" });
 export type Seat = z.infer<typeof SeatSchema>;
 
+/**
+ * The roles a unit can hold in an operation. A ship's role is a tactical choice,
+ * not a catalog property — the ship catalog itself calls the Cutlass Black
+ * "Light Freight / Medium Fighter" — so the offering player picks one of these
+ * and the operator can change it. The catalog only supplies the default.
+ */
+export const SHIP_CLASSES = [
+  "Fighter",
+  "Transport",
+  "Support",
+  "Mining",
+  "Salvage",
+  "Exploration",
+  "Capital",
+  "Sub-capital",
+  "Ground vehicle",
+] as const;
+export type ShipClass = (typeof SHIP_CLASSES)[number];
+
 export const FleetUnitSchema = z
   .object({
     id: z.string(),
@@ -187,9 +206,15 @@ export const FleetUnitSchema = z
     status: z.string(),
     name: z.string(),
     shipName: z.string().nullable(),
-    /** Derived ship class (Fighter/Capital/Transport…) for board grouping; null
-     *  for non-ship units. Lets the board split fighters into their own lane. */
+    /** EFFECTIVE ship class (Fighter/Capital/Transport…) for board grouping; null
+     *  for non-ship units. Lets the board split fighters into their own lane.
+     *  This is `roleOverride` when declared, otherwise the catalog-derived class,
+     *  so consumers never need to resolve the two themselves. */
     shipClass: z.string().nullable(),
+    /** Role declared for THIS operation (null = using the catalog default). A
+     *  ship's role is a tactical choice, not a catalog property — the catalog
+     *  calls the Cutlass Black "Light Freight / Medium Fighter". */
+    roleOverride: z.enum(SHIP_CLASSES).nullable(),
     squadName: z.string().nullable(),
     captain: z.object({ id: z.string(), username: z.string() }).nullable(),
     captainNote: z.string().nullable(),
@@ -674,6 +699,8 @@ export const RegisterUnitRequestSchema = z
     requirementId: cuid.optional(),
     captainNote: z.string().max(280).optional(),
     carrierUnitId: cuid.optional(),
+    /** Role this ship plays in the op. Omit to use the catalog's guess. */
+    roleOverride: z.enum(SHIP_CLASSES).optional(),
   })
   .meta({ id: "RegisterUnitRequest" });
 
@@ -689,6 +716,9 @@ export const PatchUnitRequestSchema = z
     squadName: z.string().min(1).max(80).optional(),
     /** Rebind the unit to a different Fleet Requirement (Bedarf); null detaches. */
     requirementId: cuid.nullable().optional(),
+    /** Role in this op; null falls back to the catalog-derived class. Settable by
+     *  the ship's captain and by operators. */
+    roleOverride: z.enum(SHIP_CLASSES).nullable().optional(),
   })
   .meta({ id: "PatchUnitRequest" });
 

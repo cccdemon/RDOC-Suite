@@ -66,6 +66,7 @@ describe("contracts", () => {
           carrierUnitId: null,
           requirementId: null,
           formationId: null,
+          roleOverride: null,
           formationSlot: null,
           lateEta: null,
           seats: [

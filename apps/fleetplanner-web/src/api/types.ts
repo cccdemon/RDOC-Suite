@@ -10,6 +10,7 @@ export type {
   OrgFleetEntry,
   Seat,
   FleetUnit,
+  ShipClass,
   ResourceLink,
   OperationStream,
   OperationDetail,

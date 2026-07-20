@@ -13,6 +13,16 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-20",
+    title: "You decide what your ship is here for",
+    changes: [
+      "When you offer a ship you can now say what role it plays in this operation — fighter, transport, support, mining, salvage, exploration or capital. The ship catalog only supplies the suggestion.",
+      "This matters for hybrids: the catalog calls the Cutlass Black a \"Light Freight / Medium Fighter\", so it used to land in the fighter lane whether you brought it as one or not. Now you say, and the fleet operator can change it.",
+      "Fleet operators have a role dropdown on every ship on the board. Changing it moves the ship to the right lane and is recorded in the mission log.",
+      "Fixed ship classification generally: around 40 freighters and all mining ships were falling through into no category at all, so they never matched a transport or mining requirement. Bombers and interceptors now count as fighters.",
+    ],
+  },
+  {
+    date: "2026-07-20",
     title: "See where you were placed",
     changes: [
       "Every ship, vehicle and fighter on the board now shows which squadron or formation it belongs to — previously only the fleet operator could see that.",

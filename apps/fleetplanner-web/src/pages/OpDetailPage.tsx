@@ -28,6 +28,7 @@ import { Avatar } from "../components/Avatar";
 import { LateArrival } from "../components/LateArrival";
 import { Markdown } from "../components/Markdown";
 import { useSeo, metaText } from "../seo";
+import { roleLabel } from "../shipRoles";
 
 const MONO = "var(--mono)";
 
@@ -636,9 +637,12 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     const g = groupOfUnit(u);
     const carrier = unitById(u.carrierUnitId);
     const carried = op.units.filter((x) => x.carrierUnitId === u.id && x.status !== "rejected");
-    if (!g && !carrier && carried.length === 0) return null;
+    if (!g && !carrier && carried.length === 0 && !u.roleOverride) return null;
     return (
       <>
+        {/* Only shown when the role was declared — otherwise it's just the catalog
+            guess and would be noise on every single card. */}
+        {u.roleOverride && chip(`ROLLE: ${roleLabel(u.roleOverride).toUpperCase()}`, "#00d4ff", "0,212,255", `unit-role-chip-${u.id}`)}
         {g && g.kind === "STAFFEL" && chip(`STAFFEL: ${g.name.toUpperCase()}`, "#a78bfa", "167,139,250", `unit-squad-chip-${u.id}`)}
         {g && g.kind === "VERBAND" && chip(`VERBAND: ${g.name.toUpperCase()}`, "#00d4ff", "0,212,255", `unit-verband-chip-${u.id}`)}
         {g?.parentId && verbandChip(g.parentId)}

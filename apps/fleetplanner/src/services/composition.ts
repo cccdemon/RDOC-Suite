@@ -6,6 +6,10 @@
 //
 // Intentionally tolerant: matching is a *hint*, never a hard gate.
 
+// SHIP_CLASSES lives in the contracts package (single source of truth for API
+// types); the SPA offers exactly these options in its role picker.
+import { SHIP_CLASSES, type ShipClass } from "@rdoc-suite/fleetplanner-contracts";
+
 export type ShipLike = {
   size?: string | null;
   career?: string | null;
@@ -15,6 +19,24 @@ export type ShipLike = {
 export type UnitLike = {
   unitType: string; // "ship" | "squad"
   ship?: ShipLike | null;
+  /** Role declared for THIS operation; overrides the derived class. */
+  roleOverride?: string | null;
+};
+
+function isShipClass(v: string | null | undefined): v is ShipClass {
+  return !!v && (SHIP_CLASSES as readonly string[]).includes(v);
+}
+
+/** Requirement category → the ship class that satisfies it. */
+const CLASS_BY_CATEGORY: Record<string, ShipClass> = {
+  capital: "Capital",
+  subcapital: "Sub-capital",
+  fighter: "Fighter",
+  support: "Support",
+  transport: "Transport",
+  mining: "Mining",
+  salvage: "Salvage",
+  exploration: "Exploration",
 };
 
 /**
@@ -38,34 +60,12 @@ export function matchesCategory(category: string, unit: UnitLike): boolean {
 
   // Remaining categories are ship categories — a squad never matches.
   if (unit.unitType !== "ship") return false;
-  const ship = unit.ship;
-  if (!ship) return false;
+  if (!unit.ship) return false;
 
-  const size = (ship.size ?? "").toLowerCase();
-  const career = (ship.career ?? "").toLowerCase();
-  const role = (ship.role ?? "").toLowerCase();
-
-  switch (cat) {
-    case "capital":
-      return size === "capital";
-    case "subcapital":
-      return size === "large";
-    case "fighter":
-      return role.includes("fighter") || (size === "small" && career === "combat");
-    case "support":
-      return career === "support" || role.includes("support");
-    case "transport":
-      return career === "transport" || role.includes("transport") || role.includes("cargo");
-    case "mining":
-      return career === "mining" || role.includes("mining");
-    case "salvage":
-      return career === "salvage" || role.includes("salvage");
-    case "exploration":
-      return career === "exploration" || role.includes("explor");
-    default:
-      // Unknown category → don't claim a mismatch.
-      return true;
-  }
+  const want = CLASS_BY_CATEGORY[cat];
+  // Unknown category → don't claim a mismatch.
+  if (!want) return true;
+  return effectiveShipClass(unit) === want;
 }
 
 /**
@@ -77,16 +77,50 @@ export function shipClass(ship: ShipLike | null | undefined): string {
   const size = (ship.size ?? "").toLowerCase();
   const career = (ship.career ?? "").toLowerCase();
   const role = (ship.role ?? "").toLowerCase();
+
+  // The catalog's own vocabulary, not what one would guess it is. Verified
+  // against the live catalog (298 ships): the transport career is spelled
+  // "Transporter" (42 ships) — plain "transport" hits exactly 1 — mining ships
+  // are careered "Industrial" (19), and freighters are roled "… Freight",
+  // which contains neither "transport" nor "cargo". Getting these wrong silently
+  // dropped ~40 freighters out of every class and into their raw size.
+  const isTransport =
+    career === "transporter" || career === "transport" || role.includes("freight") || role.includes("cargo") || role.includes("transport");
+  // "Industrial" covers mining, salvage AND freight (Golem OX is Light Freight /
+  // Industrial), so the career alone decides nothing — the role does.
+  const isMining = career === "mining" || role.includes("mining");
+  const isSalvage = career === "salvage" || role.includes("salvage") || role.includes("recovery");
+  const isExploration = career === "exploration" || role.includes("explor") || role.includes("expedition") || role.includes("pathfinder");
+  const isSupport =
+    career === "support" || role.includes("support") || role.includes("medical") || role.includes("refuel") || role.includes("repair");
+
+  // Purpose beats hull size. A Hull C is a Transport that happens to be large —
+  // classifying it as "Sub-capital" made it fail every transport requirement,
+  // and it also disagreed with the old matchesCategory, which checked career
+  // independently of size. Capital/Sub-capital is the fallback for big hulls
+  // with no clearer purpose (Idris, Heavy Gunship), not a hard override.
+  if (size === "vehicle") return "Ground vehicle"; // vehicles are their own unit type
+  if (role.includes("fighter") || role.includes("bomber") || role.includes("interceptor") || (size === "small" && career === "combat"))
+    return "Fighter";
+  if (isMining) return "Mining";
+  if (isSalvage) return "Salvage";
+  if (isTransport) return "Transport";
+  if (isExploration) return "Exploration";
+  if (isSupport) return "Support";
   if (size === "capital") return "Capital";
   if (size === "large") return "Sub-capital";
-  if (role.includes("fighter") || (size === "small" && career === "combat")) return "Fighter";
-  if (career === "transport" || role.includes("cargo") || role.includes("transport")) return "Transport";
-  if (career === "mining" || role.includes("mining")) return "Mining";
-  if (career === "salvage" || role.includes("salvage")) return "Salvage";
-  if (career === "exploration" || role.includes("explor")) return "Exploration";
-  if (career === "support" || role.includes("support") || role.includes("medical")) return "Support";
-  if (size === "vehicle") return "Ground vehicle";
   return ship.size ? String(ship.size) : "Ship";
+}
+
+/**
+ * The role a unit actually plays in its operation: the declared override when
+ * set, otherwise the catalog-derived class. Everything downstream — board lane,
+ * squadron eligibility, requirement matching — reads this, so declaring a role
+ * moves the unit everywhere at once.
+ */
+export function effectiveShipClass(unit: UnitLike): string {
+  if (isShipClass(unit.roleOverride)) return unit.roleOverride;
+  return shipClass(unit.ship);
 }
 
 export type SlotLike = {

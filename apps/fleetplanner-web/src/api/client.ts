@@ -258,7 +258,13 @@ export function patchUnit(
   opId: string,
   unitId: string,
   csrfToken: string,
-  data: { requirementId?: string | null; squadName?: string; captainNote?: string | null },
+  data: {
+    requirementId?: string | null;
+    squadName?: string;
+    captainNote?: string | null;
+    /** Role in this op; null falls back to the catalog-derived class. */
+    roleOverride?: import("./types").ShipClass | null;
+  },
 ): Promise<{ ok: true }> {
   return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}`, csrfToken, data);
 }
@@ -420,6 +426,8 @@ export function registerUnit(
     captainNote?: string;
     /** FR: offer the ship for a specific fleet requirement (Bedarf). */
     requirementId?: string;
+    /** Role in this op; omit to use the catalog-derived class. */
+    roleOverride?: import("./types").ShipClass;
   },
 ): Promise<{ ok: true; unitId: string }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/units`, csrfToken, input);

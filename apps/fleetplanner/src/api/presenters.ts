@@ -4,7 +4,11 @@
 // existing services already load and emit exactly the contract types — no
 // HTML-flavored fields, no secrets (tokens, ciphertexts, audit details stay
 // server-side).
-import { shipClass } from "../services/composition.js";
+import { effectiveShipClass } from "../services/composition.js";
+import { SHIP_CLASSES } from "@rdoc-suite/fleetplanner-contracts";
+
+const isShipClass = (v: string | null | undefined): v is (typeof SHIP_CLASSES)[number] =>
+  !!v && (SHIP_CLASSES as readonly string[]).includes(v);
 import type {
   FleetUnit,
   GuildSettings,
@@ -37,6 +41,7 @@ type UnitRow = {
   captainNote: string | null;
   carrierUnitId: string | null;
   requirementId?: string | null;
+  roleOverride?: string | null;
   formationId?: string | null;
   formationSlot?: number | null;
   ship?: { name: string; size?: string | null; career?: string | null; role?: string | null } | null;
@@ -114,9 +119,11 @@ export function presentUnit(u: UnitRow, redact = false): FleetUnit {
     status: u.status,
     name: u.ship?.name ?? u.squadName ?? "Unit",
     shipName: u.ship?.name ?? null,
-    // Derived class so the board can split fighters into their own lane; null for
-    // non-ship units (squads/vehicles get their own lanes by unitType).
-    shipClass: u.unitType === "ship" && u.ship ? shipClass(u.ship) : null,
+    // EFFECTIVE class (declared role wins over the catalog guess) so the board can
+    // split fighters into their own lane; null for non-ship units (squads/vehicles
+    // get their own lanes by unitType).
+    shipClass: u.unitType === "ship" && u.ship ? effectiveShipClass(u) : null,
+    roleOverride: isShipClass(u.roleOverride) ? u.roleOverride : null,
     squadName: u.squadName,
     captain: u.captain ? (redact ? null : { id: u.captain.id, username: u.captain.username }) : null,
     captainNote: u.captainNote,

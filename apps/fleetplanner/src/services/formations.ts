@@ -3,7 +3,7 @@
 // Pure DB ops, operator-only (gated in the routes).
 
 import { prisma } from "../db.js";
-import { shipClass } from "./composition.js";
+import { effectiveShipClass } from "./composition.js";
 
 // A Jäger-Staffel holds "à N Jäger" from the fighter-squad Bedarf (default 2).
 const DEFAULT_FIGHTER_SQUAD_SIZE = 2;
@@ -149,9 +149,9 @@ export async function setMemberSlot(
 export async function groupFighterCount(operationId: string, groupId: string): Promise<number> {
   const units = await prisma.fleetUnit.findMany({
     where: { operationId, formationId: groupId, unitType: "ship", status: { not: "rejected" } },
-    select: { ship: { select: { size: true, career: true, role: true } } },
+    select: { unitType: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },
   });
-  const fighters = units.filter((u) => shipClass(u.ship) === "Fighter").length;
+  const fighters = units.filter((u) => effectiveShipClass(u) === "Fighter").length;
   const pilots = await prisma.cqbSignup.count({
     where: { operationId, assignedGroupId: groupId, status: { not: "rejected" } },
   });
@@ -168,10 +168,10 @@ export async function groupFighterCount(operationId: string, groupId: string): P
 export async function autoAssignFighterToSquad(operationId: string, unitId: string): Promise<void> {
   const unit = await prisma.fleetUnit.findFirst({
     where: { id: unitId, operationId },
-    select: { id: true, unitType: true, formationId: true, ship: { select: { size: true, career: true, role: true } } },
+    select: { id: true, unitType: true, formationId: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },
   });
   if (!unit || unit.unitType !== "ship" || unit.formationId) return;
-  if (shipClass(unit.ship) !== "Fighter") return;
+  if (effectiveShipClass(unit) !== "Fighter") return;
   const cap = await fighterSquadCapacity(operationId);
   for (const f of await fighterSquads(operationId)) {
     if ((await groupFighterCount(operationId, f.id)) >= cap) continue; // full → next
@@ -194,11 +194,11 @@ export async function autoFillAllFighters(operationId: string): Promise<number> 
   const fighters = await prisma.fleetUnit.findMany({
     where: { operationId, unitType: "ship", status: "accepted", formationId: null },
     orderBy: { createdAt: "asc" },
-    select: { id: true, ship: { select: { size: true, career: true, role: true } } },
+    select: { id: true, unitType: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },
   });
   let placed = 0;
   for (const f of fighters) {
-    if (shipClass(f.ship) !== "Fighter") continue;
+    if (effectiveShipClass(f) !== "Fighter") continue;
     await autoAssignFighterToSquad(operationId, f.id);
     const u = await prisma.fleetUnit.findUnique({ where: { id: f.id }, select: { formationId: true } });
     if (u?.formationId) placed++;

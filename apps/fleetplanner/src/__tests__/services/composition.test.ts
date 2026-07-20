@@ -3,6 +3,7 @@ import {
   isCqbCategory,
   matchesCategory,
   shipClass,
+  effectiveShipClass,
   suggestSlot,
 } from "../../services/composition.js";
 
@@ -47,10 +48,34 @@ describe("matchesCategory", () => {
 describe("shipClass", () => {
   it("derives a human class from catalog attributes", () => {
     expect(shipClass(idris)).toBe("Capital");
-    expect(shipClass(freighter)).toBe("Sub-capital");
+    // Purpose beats hull size: a large freighter is a Transport, not a
+    // "Sub-capital". Sub-capital is the fallback for big hulls with no clearer
+    // purpose — which is what makes it match a transport requirement.
+    expect(shipClass(freighter)).toBe("Transport");
+    expect(shipClass({ size: "Large", career: "Combat", role: "Heavy Gunship" })).toBe("Sub-capital");
     expect(shipClass(fighter)).toBe("Fighter");
     expect(shipClass({ size: "Vehicle" })).toBe("Ground vehicle");
     expect(shipClass(null)).toBe("Ship");
+  });
+
+  it("uses the catalog's real vocabulary, not the obvious guesses", () => {
+    // Verified against the live catalog: the transport career is spelled
+    // "Transporter" (42 ships; plain "transport" hits 1), mining ships are
+    // careered "Industrial", and freighters are roled "… Freight" — which
+    // contains neither "transport" nor "cargo".
+    expect(shipClass({ size: "Small", career: "Transporter", role: "Light Freight" })).toBe("Transport");
+    expect(shipClass({ size: "Small", career: "Industrial", role: "Light Mining" })).toBe("Mining");
+    expect(shipClass({ size: "Small", career: "Industrial", role: "Light Salvage" })).toBe("Salvage");
+  });
+
+  it("prefers a declared role over the catalog", () => {
+    // The catalog calls the Cutlass Black "Light Freight / Medium Fighter"; the
+    // player decides which one it is for this operation.
+    const cutlass = { size: "Medium", career: "Multi-Role", role: "Light Freight / Medium Fighter" };
+    expect(effectiveShipClass({ unitType: "ship", ship: cutlass })).toBe("Fighter");
+    expect(effectiveShipClass({ unitType: "ship", ship: cutlass, roleOverride: "Transport" })).toBe("Transport");
+    // Garbage overrides fall back to the derived class rather than leaking through.
+    expect(effectiveShipClass({ unitType: "ship", ship: cutlass, roleOverride: "Nonsense" })).toBe("Fighter");
   });
 });
 

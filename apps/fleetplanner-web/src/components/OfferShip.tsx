@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ApiError, getHangar, registerUnit, searchShips } from "../api/client";
-import type { ShipSummary } from "../api/types";
+import type { ShipClass, ShipSummary } from "../api/types";
+import { OFFERABLE_ROLES, ROLE_LABEL } from "../shipRoles";
 
 type Mode = "ship" | "squad" | "vehicle";
 
@@ -37,6 +38,10 @@ export function OfferShip({
   const [squadName, setSquadName] = useState("");
   const [squadSize, setSquadSize] = useState(4);
   const [carrierUnitId, setCarrierUnitId] = useState("");
+  // Role this ship plays in THIS op. Empty = let the catalog decide. The catalog
+  // can't: it calls the Cutlass Black "Light Freight / Medium Fighter", so the
+  // player says what they're bringing it as. The operator can change it later.
+  const [roleOverride, setRoleOverride] = useState("");
   const [requirementId, setRequirementId] = useState(""); // chosen Bedarf (ship mode)
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -91,6 +96,7 @@ export function OfferShip({
           unitType: "ship",
           ...(ownedShipId ? { ownedShipId } : { shipId: catalogShipId!, storeOwnedShip: store }),
           ...(requirementId ? { requirementId } : {}),
+          ...(roleOverride ? { roleOverride: roleOverride as ShipClass } : {}),
           ...(note.trim() ? { captainNote: note.trim() } : {}),
         });
       } else if (mode === "squad") {
@@ -281,6 +287,26 @@ export function OfferShip({
               ))}
             </select>
           </label>
+        </div>
+      )}
+
+      {mode === "ship" && (
+        <div style={{ marginTop: "0.8rem" }}>
+          <div className="fpw-mono-label" style={{ marginBottom: "0.5rem" }}>ROLLE IN DIESER OPERATION</div>
+          <select
+            value={roleOverride}
+            data-testid="role-select"
+            onChange={(e) => setRoleOverride(e.target.value)}
+            style={{ width: "100%", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
+          >
+            <option value="">— aus dem Katalog übernehmen —</option>
+            {OFFERABLE_ROLES.map((r) => (
+              <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+            ))}
+          </select>
+          <p className="fpw-meta" style={{ marginTop: "0.35rem" }}>
+            Nur nötig, wenn der Katalog danebenliegt — eine Cutlass Black als Jäger statt Frachter.
+          </p>
         </div>
       )}
 

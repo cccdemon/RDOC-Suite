@@ -47,6 +47,7 @@ export const opDetailFixture: OperationDetail = {
       carrierUnitId: null,
       requirementId: null,
       formationId: null,
+      roleOverride: null,
       formationSlot: null,
       lateEta: null,
       seats: [
