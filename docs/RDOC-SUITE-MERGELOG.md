@@ -1,5 +1,39 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: README vollständig neu schreiben
+
+Status: ⏳ In Arbeit. Die README beschreibt fast durchgehend den Voice-Stack, der mit `dbd2c3f`
+(`chore: remove legacy voice/CC stack`) entfernt wurde. Abgleich Ist-Stand vs. README:
+
+| README behauptet | Realität |
+|---|---|
+| `apps/bot`, `apps/bridge`, `apps/relay-bots` | existieren nicht mehr |
+| LiveKit-SFU, `livekit.yaml`, Ports 7880/7881/7882 | entfernt (2026-06-18) |
+| `docker-compose.yml` (dev) für LiveKit | Datei existiert nicht |
+| `/cc`-Slash-Commands, Bridge-Admin-UI, Command Net / Global Radio Net | alles weg |
+| Prod-Stack „Caddy, LiveKit, Bridge, Bot, Fleetplanner, Postgres, Relay bots, Prometheus, Grafana" | tatsächlich: caddy-rdoc, fleetplanner, fleetplanner-web, fleetplanner-db, error-page, mission-cover, monitoring, alertmanager, postgres-exporter, node-exporter, grafana |
+| Bandbreiten-/Voice-Kapazitätstabellen | gegenstandslos |
+| `apps/fleetplanner-web`, `apps/mission-cover`, `apps/error-page`, `packages/fleetplanner-contracts` | fehlen komplett |
+
+Neu: Fleetplanner-zentrierte README mit echtem Apps-/Services-Inventar, korrigiertem
+Architektur-Diagramm, realistischen Anforderungen (nur noch Port 443), echten Env-Gruppen aus
+`.env.prod.template`, echtem Repo-Layout und echten Doku-Links. `apps/companion` wird ehrlich als
+ruhend markiert (Code ruft noch Bridge/LiveKit, beide Backends sind weg). Auch notiert: die
+Root-`prisma/` + `pnpm db:*`-Skripte gehören zum entfernten bridge/bot-Schema und sind verwaist.
+
+Folge-Notiz: **CLAUDE.md ist an denselben Stellen veraltet** (Workspace-Tabelle listet bot/bridge/
+relay-bots, Architektur-Punkte 1-10 beschreiben Bridge/LiveKit/Companion-PTT, Ports-Tabelle,
+Mermaid-Diagramm). Nicht Teil dieses Schritts — separat anzugehen.
+
+Nur Doku. Kein Deploy nötig.
+
+Umgesetzt (2026-07-20): README komplett neu. Alle Link-Ziele und jede genannte Env-Variable gegen
+`apps/fleetplanner/src/config/env.ts` und `docker-compose.prod.yml` verifiziert. Zusätzlicher Fund,
+in der README dokumentiert: **beide .env-Vorlagen sind gedriftet** — `.env.example` fehlen
+`DISCORD_CLIENT_ID`, `WEB_PUBLIC_URL`, `SUPERADMIN_DISCORD_ID`, `VOICEBOT_ENCRYPTION_KEY`;
+`.env.prod.template` trägt noch `BRIDGE_*` + `RELAY_BOTS_*` für gelöschte Services. Als
+autoritative Quelle ist jetzt das Zod-Schema verlinkt.
+
 ## Queued / In Progress - 2026-07-20: Spieler-Changelog überarbeiten
 
 Status: ⏳ In Arbeit. Die vier 2026-07-20-Einträge in `apps/fleetplanner/src/lib/changelog.ts` waren

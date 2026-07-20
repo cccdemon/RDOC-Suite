@@ -1,163 +1,101 @@
 # RDOC-Suite
 
-RDOC-Suite is a self-hosted Discord operations and voice coordination suite. It combines a Discord bot, a backend bridge, a Windows companion push-to-talk app, Fleetplanner, LiveKit voice rooms, Discord relay bots, and monitoring.
+RDOC-Suite is a self-hosted fleet operations planner for Star Citizen orgs that run on Discord. Members sign up for an operation, offer ships, take seats, and the fleet operator builds the roster: ships, fighter squadrons, ground vehicles and CQB troops, grouped into formations and staffed down to the individual slot.
 
-The project avoids Discord selfbots, client modifications, and Discord audio capture. It uses Discord's Bot API, OAuth2, and a separate LiveKit audio path.
+It integrates with Discord through the official Bot API and OAuth2 only — no selfbots, no client modifications, no audio capture.
+
+> **Voice is gone.** Earlier versions shipped a cross-channel push-to-talk stack (Discord bot with `/cc` commands, a bridge backend, LiveKit SFU and Discord relay bots). That stack was removed in `dbd2c3f`; LiveKit followed on 2026-06-18. The archives are in [docs/VOICE-ARCHIVE-2026-06.md](docs/VOICE-ARCHIVE-2026-06.md) and [docs/LIVEKIT-ARCHIVE-2026-06.md](docs/LIVEKIT-ARCHIVE-2026-06.md).
 
 ## What it does
 
-- Lets selected Discord users use cross-channel push-to-talk through the RDOC Squad Link companion app.
-- Provides `/cc` Discord commands for server setup, commander roles, allowed voice channels, enable/disable state, and admin access.
-- Hosts a bridge backend for OAuth, sessions, WebSocket signaling, LiveKit tokens, downloads, admin UI, relay config, and metrics.
-- Provides Fleetplanner for fleet operations, ships, seats, crew assignments, Discord auth, scheduled events, and mission voice sessions.
-- Runs optional relay bots that subscribe to LiveKit audio and transmit it into Discord voice channels.
-- Provides Prometheus and Grafana configuration for production monitoring.
+**Operations**
 
-## Mission role and voice concept
+- Plan an operation with a structured set of needs: ships (by type), fighter squadrons, and CQB teams of a given size.
+- Members offer ships from a synced Star Citizen ship catalogue or from their own hangar; the fleet operator accepts or rejects each offer.
+- Crew claim seats on accepted ships, or sign up flexibly and let the operator place them.
+- Group units into formations, nest squadrons and troops beneath them, and load vehicles and fighters into carrier ships.
+- The first place in a ship, squadron or troop is always the Captain; the operator can hand that role to anyone.
+- Late arrivals carry an ETA so the operator can plan around them.
+- Every roster change is recorded in a per-operation mission log, visible to participants.
 
-Fleet-level roles and mission roles are separate. A `Superadmin`, `Fleetadmin`, or `Crew` member can have fleet or platform permissions, but does not automatically receive mission voice access.
+**Discord**
 
-Mission voice uses two named nets:
+- Discord OAuth login; guild membership and roles map to fleet operator / captain / crew per guild.
+- Operations publish as Discord scheduled events. Clicking "Interested" there enrolls the pilot in the operation automatically, even before their first login.
+- Cross-post operations to partner orgs' Discords, with per-partner auto-share or an approval inbox.
+- Feedback tickets and DMs through the Fleetplanner bot.
 
-- `Command Net`: mission commander voice for mission leaders and commanders.
-- `Global Radio Net`: RelayBot broadcast voice into assigned Discord voice channels.
+**Around it**
 
-| Scope | Role | Operation lifecycle | Need assignment / unit confirmation | Commanders tab | Command Net | Global Radio Net |
-| --- | --- | --- | --- | --- | --- | --- |
-| Fleet | Superadmin | Platform/admin scope | Admin scope only | No | No | No |
-| Fleet | Fleetadmin | Guild/fleet admin scope | Admin scope only | No | No | No |
-| Fleet | Crew | No | No | No | No | No |
-| Mission Leader | Event Leader | Yes | Yes | Yes | Yes | Yes |
-| Mission Leader | Fleetcommander | No by itself | Yes | No by default | No by default | No by default |
-| Mission Leader | Raidleader | Raid leadership | Yes | Yes | Yes | Yes |
-| Mission Leader | Wingcommander | Deputy raid leadership | Yes | Yes | Yes | Yes |
-| Mission Commander | Ship Captain | No | Own unit context | Yes | Yes | No by default |
-| Mission Commander | CQB Captain | No | Own unit context | Yes | Yes | No by default |
-| Mission Commander | Added Commander | No | No by default | Yes | Yes | Optional |
-
-Design rules:
-
-- The Commanders tab is a mission roster, not an admin roster.
-- Fleet admins are not listed as mission commanders unless they are assigned to that mission role.
-- `fleet_commander` manages mission needs and confirms units, but is not automatically on the Command Net.
-- `event_leader`, `raid_leader`, and `wing_commander` are voice-bearing leader roles.
-- Global Radio Net access is intentionally narrower than Command Net and should be granted only to users who may broadcast through RelayBots.
-
-The detailed voice architecture is documented in `docs/companion-voice-architecture.md`.
+- Mission cover images rendered server-side for operation banners.
+- Polls, streams, recurring operations, an org fleet roster, JSON fleet import, and a roadmap page.
+- Prometheus, Alertmanager and Grafana for production monitoring.
 
 ## Apps
 
-| App                 | Purpose                                                                                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/bot`          | Discord bot for `/cc` setup, roles, channel configuration, admin management, and voice-state pushes.                                                          |
-| `apps/bridge`       | Main backend service: OAuth, JWT sessions, WebSockets, LiveKit tokens, admin UI, downloads, relay config, metrics, and internal APIs.                         |
-| `apps/companion`    | Tauri + React desktop app, currently Windows-first. Handles login, global hotkeys, microphone/audio devices, LiveKit audio, updates, and mission voice links. |
-| `apps/fleetplanner` | Web app for planning operations, ships, seats, crew, guild membership, Discord events, and mission voice sessions.                                            |
-| `apps/relay-bots`   | Worker that runs Discord voice bots, subscribes to a LiveKit relay room, and forwards audio into Discord voice channels.                                      |
-| `apps/monitoring`   | Prometheus image/config for scraping RDOC-Suite services. Grafana config lives under `deploy/grafana`.                                                        |
+| App                     | Purpose                                                                                                             |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `apps/fleetplanner`     | Backend: Fastify + Prisma (PostgreSQL). REST API under `/api/v1`, Discord bot, schedulers, and a secondary SSR layer. |
+| `apps/fleetplanner-web` | The actual user interface: React + Vite SPA. Its nginx is the front door and proxies every API request to the backend. |
+| `apps/mission-cover`    | Render microservice for operation cover images (headless Chromium). Engine by **Vi5E**.                              |
+| `apps/error-page`       | Static nginx error page served by the reverse proxy when a service is down.                                          |
+| `apps/monitoring`       | Prometheus image plus scrape config. Grafana and Alertmanager config live under `deploy/`.                           |
+| `apps/companion`        | **Dormant.** Tauri desktop app from the voice era. Its backends (bridge, LiveKit) no longer exist, so it does not currently function. Kept for reference. |
+
+| Package                          | Purpose                                                                                       |
+| -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `packages/fleetplanner-contracts` | Zod schemas for the API. **Single source of truth** — backend and SPA import the same types. |
+| `packages/shared`                | Shared types and validation helpers.                                                            |
+| `packages/db`                    | Prisma client wrapper. Belongs to the removed bridge/bot schema; effectively vestigial.         |
 
 ## Architecture
 
 ```mermaid
 graph LR
-    Companion["Companion App<br/>Tauri + React"]
-    Bot["Discord Bot<br/>discord.js"]
-    Bridge["Bridge<br/>Fastify + WS"]
-    Fleetplanner["Fleetplanner<br/>Fastify + Prisma"]
-    RelayBots["Relay Bots<br/>Discord Voice"]
-    LiveKit["LiveKit SFU"]
-    BridgeDB[(Bridge DB<br/>SQLite/Postgres)]
-    FleetDB[(Fleetplanner DB<br/>Postgres)]
+    Browser["Browser"]
+    Caddy["Caddy<br/>reverse proxy"]
+    Web["fleetplanner-web<br/>React SPA + nginx"]
+    Api["fleetplanner<br/>Fastify + Prisma"]
+    Cover["mission-cover<br/>Chromium renderer"]
+    DB[("PostgreSQL")]
     Discord["Discord API"]
-    Monitoring["Prometheus/Grafana"]
+    Mon["Prometheus<br/>Grafana / Alertmanager"]
 
-    Companion -->|OAuth + WS| Bridge
-    Companion <-->|WebRTC audio| LiveKit
-    Bot <-->|slash commands + guild state| Discord
-    Bot --> Bridge
-    Bridge --> BridgeDB
-    Bridge --> LiveKit
-    Fleetplanner --> FleetDB
-    Fleetplanner --> Discord
-    Fleetplanner --> LiveKit
-    RelayBots -->|subscribe| LiveKit
-    RelayBots -->|voice output| Discord
-    Monitoring --> Bridge
-    Monitoring --> LiveKit
-    Monitoring --> RelayBots
+    Browser -->|HTTPS| Caddy
+    Caddy --> Web
+    Web -->|/api/v1| Api
+    Api --> DB
+    Api <-->|bot, OAuth, events| Discord
+    Api --> Cover
+    Mon --> Api
+    Mon --> DB
 ```
 
-## Minimum requirements
+`fleetplanner-web`'s nginx is the single canonical security-header layer in front of the backend.
 
-These requirements apply to the full production server stack:
+## Requirements
 
-- `caddy-rdoc`
-- `livekit`
-- `bridge`
-- `bot`
-- `fleetplanner`
-- `fleetplanner-db`
-- `relay-bots`
-- `monitoring` / Prometheus
-- Grafana
+### Server
 
-### Server requirements
+| Resource  |                  Minimum |                     Recommended |
+| --------- | -----------------------: | ------------------------------: |
+| CPU       |                   2 vCPU |                          4 vCPU |
+| RAM       |                     2 GB |                            4 GB |
+| Disk      |               20 GB free |                    40 GB+ SSD   |
+| OS        | Linux x86_64 with Docker | Ubuntu 22.04/24.04 or Debian 12 |
+| Network   |         Public IP, HTTPS |                     Public IPv4 |
 
-| Resource  |                         Minimum |                          Recommended |
-| --------- | ------------------------------: | -----------------------------------: |
-| CPU       |                          2 vCPU |                               4 vCPU |
-| RAM       |                            4 GB |                                 8 GB |
-| Disk      |                      20 GB free |                         40-80 GB SSD |
-| Bandwidth |               10 Mbps symmetric |                   50+ Mbps symmetric |
-| OS        |        Linux x86_64 with Docker |      Ubuntu 22.04/24.04 or Debian 12 |
-| Network   | Public IP, HTTPS, UDP reachable | Public IPv4, low latency, stable UDP |
+There is no real-time media path any more, so the load is Node services, PostgreSQL and the monitoring stack. Mission-cover renders with headless Chromium and is the one memory spike worth planning for.
 
-The suite can probably start on **2 vCPU / 4 GB RAM**, but that is the floor. It includes Node services, LiveKit, Postgres, Prometheus, Grafana, Caddy, and Discord relay bots.
+Disk is not only the database: Docker images, build cache, logs, Prometheus metrics, Grafana data and rendered covers all consume space. Use 40 GB+ if the host builds images locally.
 
-For real voice use, **4 vCPU / 8 GB RAM** is the safer baseline.
+### Ports
 
-Disk usage is not only databases. Docker images, build cache, logs, Prometheus metrics, Grafana data, Postgres data, SQLite bridge data, and Companion downloads all consume space.
+| Port      | Purpose                              |
+| --------- | ------------------------------------ |
+| `443/tcp` | HTTPS reverse proxy for the whole UI |
 
-Do not deploy this on less than **20 GB free**. Use **40 GB+** if the host builds Docker images locally.
-
-### Bandwidth estimate
-
-Voice traffic is the important part. LiveKit forwards Opus audio streams, so bandwidth scales with active speakers and listeners.
-
-```text
-egress ~= active_speakers * listeners * 0.08-0.12 Mbps
-ingress ~= active_speakers * 0.08-0.12 Mbps
-```
-
-| Scenario                    | Approx server bandwidth |
-| --------------------------- | ----------------------: |
-| 10 users, 1 active speaker  |        ~1 Mbps outbound |
-| 20 users, 1 active speaker  |        ~2 Mbps outbound |
-| 50 users, 1 active speaker  |        ~5 Mbps outbound |
-| 50 users, 2 active speakers |       ~10 Mbps outbound |
-
-Relay bots add more CPU and outbound traffic because they subscribe to LiveKit audio and push it into Discord voice channels.
-
-### Required public ports
-
-| Port       | Purpose                                                |
-| ---------- | ------------------------------------------------------ |
-| `443/tcp`  | HTTPS reverse proxy for suite UI/API                   |
-| `7880/tcp` | LiveKit signaling, usually behind proxy as `wss://...` |
-| `7881/tcp` | LiveKit WebRTC TCP                                     |
-| `7882/udp` | LiveKit WebRTC UDP, important for good voice quality   |
-
-### Companion client requirements
-
-The Companion app is currently Windows-first. The Tauri/Rust layer contains Windows-specific hotkey and audio handling; mouse hotkeys are Windows-only for now.
-
-| Resource | Minimum                            |
-| -------- | ---------------------------------- |
-| OS       | Windows 10/11                      |
-| CPU      | Any modern dual-core               |
-| RAM      | 4 GB                               |
-| Network  | Stable internet, Discord reachable |
-| Devices  | Microphone + audio output          |
+That is the only port that needs to be public.
 
 ## Local development
 
@@ -165,17 +103,9 @@ The Companion app is currently Windows-first. The Tauri/Rust layer contains Wind
 
 - Node.js >= 20 LTS
 - pnpm 10.33.x
-- Docker Desktop or Docker Engine
-- Rust + Visual Studio Build Tools, only for `apps/companion`
+- Docker (for a local PostgreSQL, or use SQLite)
 
-On Windows for Companion builds:
-
-```powershell
-winget install Rustlang.Rustup
-winget install Microsoft.VisualStudio.2022.BuildTools
-```
-
-### Clone and install
+### Setup
 
 ```bash
 git clone git@github.com:cccdemon/RDOC-Suite.git
@@ -184,8 +114,7 @@ pnpm install
 cp .env.example .env
 ```
 
-Edit `.env` before starting the services. Fleetplanner needs a Discord login
-provider. At minimum, configure:
+Fleetplanner needs Discord credentials to log anyone in. At minimum:
 
 ```text
 SESSION_SECRET=32_or_more_random_characters
@@ -195,159 +124,147 @@ DISCORD_FLEETPLANNER_BOT_TOKEN=...
 WEB_PUBLIC_URL=http://localhost:3200
 ```
 
-### Prepare local databases
+### Database
 
-The bridge/bot use the root Prisma schema. Generate the Prisma client and apply local SQLite migrations:
+Fleetplanner owns its Prisma schema in `apps/fleetplanner/prisma`. Locally it defaults to SQLite unless `DATABASE_URL` points elsewhere:
 
 ```bash
-pnpm db:generate
-pnpm db:migrate
+pnpm --filter @rdoc-suite/fleetplanner db:generate   # required after every fresh clone
+pnpm --filter @rdoc-suite/fleetplanner db:push       # local schema sync, no migration history
 ```
 
-Fleetplanner has its own Prisma schema. For local development it defaults to `file:./data/fleetplanner.db` unless `DATABASE_URL` is set:
+`db:generate` is not optional. Without the generated client, TypeScript resolves every Prisma call as `any` and the build collapses into a cascade of `TS7006` errors.
+
+In production, migrations run automatically from the container entrypoint.
+
+### Run
 
 ```bash
-pnpm --filter @rdoc-suite/fleetplanner db:generate
-pnpm --filter @rdoc-suite/fleetplanner db:push
+pnpm --filter @rdoc-suite/fleetplanner dev       # API on http://localhost:3200
+pnpm --filter @rdoc-suite/fleetplanner-web dev   # SPA (Vite dev server)
 ```
 
-### Start LiveKit
-
-The local compose file only starts LiveKit with dev credentials:
+After changing anything in `packages/fleetplanner-contracts`, rebuild it before type-checking the SPA — the SPA imports the built `dist`, not `src`:
 
 ```bash
-docker compose up -d livekit
-```
-
-### Run services
-
-Use separate terminals:
-
-```bash
-# Bridge API/admin UI on http://localhost:8787
-pnpm --filter @rdoc-suite/bridge build
-node apps/bridge/dist/index.js
-```
-
-```bash
-# Discord bot
-pnpm --filter @rdoc-suite/bot build
-node apps/bot/dist/index.js
-```
-
-```bash
-# Fleetplanner on http://localhost:3200
-pnpm --filter @rdoc-suite/fleetplanner dev
-```
-
-```bash
-# Companion desktop app
-pnpm --filter @rdoc-suite/companion tauri:dev
-```
-
-Relay bots are optional in local development. They need a config file and Discord bot token/channel setup:
-
-```bash
-pnpm --filter @rdoc-suite/relay-bots dev
+pnpm --filter @rdoc-suite/fleetplanner-contracts build
 ```
 
 ## Production deployment
 
-Production is Docker-first. The server does not need local Node, pnpm, Rust, or Cargo when building/running through Docker.
+Production is Docker-first. The server needs no local Node, pnpm or Rust — everything builds inside the containers.
 
-1. Create `.env` from `.env.example`.
-2. Fill in Discord app credentials, secrets, LiveKit credentials, database passwords, domain URLs, and Grafana credentials.
-3. Make sure `LIVEKIT_NODE_IP` is set to the host's public IP.
-4. Create `data/relay-bots/config.json` if using relay bots. See `apps/relay-bots/config.example.json`.
-5. Start the stack:
+1. Create `.env` from [`.env.prod.template`](.env.prod.template).
+2. Fill in Discord credentials, secrets, the database password and the public URLs.
+3. Start the stack:
 
 ```bash
 docker compose -f docker-compose.prod.yml up -d --build
+
+# or a single service
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner-web
+docker compose -f docker-compose.prod.yml logs -f fleetplanner
 ```
 
 The production compose file runs:
 
-- Caddy reverse proxy
-- LiveKit
-- Bridge
-- Discord bot
-- Fleetplanner
-- Postgres for Fleetplanner
-- Relay bots
-- Prometheus
-- Grafana
+| Service            | Role                                     |
+| ------------------ | ---------------------------------------- |
+| `caddy-rdoc`       | TLS reverse proxy                        |
+| `fleetplanner-web` | SPA + nginx front door                   |
+| `fleetplanner`     | API, Discord bot, schedulers             |
+| `fleetplanner-db`  | PostgreSQL                               |
+| `mission-cover`    | Cover renderer                           |
+| `error-page`       | Fallback page                            |
+| `monitoring`       | Prometheus                               |
+| `alertmanager`     | Alert routing                            |
+| `postgres-exporter`, `node-exporter` | Metrics exporters      |
+| `grafana`          | Dashboards                               |
 
-Bridge migrations and Fleetplanner migrations are applied by their container entrypoints on startup.
+Fleetplanner applies its Prisma migrations on container start.
 
-## Important environment groups
+## Environment
 
-| Group                       | Variables                                                                                                             |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Shared                      | `SESSION_SECRET`, `DATABASE_URL`, `LOG_LEVEL`                                                                         |
-| Fleetplanner                | `FLEETPLANNER_DB_PASSWORD`, `FLEETPLANNER_PUBLIC_URL`, `WEB_PUBLIC_URL`, `SUPERADMIN_DISCORD_ID`                      |
-| Fleetplanner Discord bot    | `DISCORD_FLEETPLANNER_CLIENT_ID`, `DISCORD_FLEETPLANNER_BOT_TOKEN`                                                    |
-| Relay bots                  | `RELAY_LIVEKIT_ROOM`, `RELAY_BOTS_SECRET`, `RELAY_BOTS_ADMIN_URL`, `RELAY_BOTS_ADMIN_SECRET`                          |
-| Internal APIs               | `INTERNAL_BRIDGE_SECRET`, `BRIDGE_INTERNAL_URL`, `BRIDGE_FLEET_SECRET`                                                |
-| Companion downloads/updates | `GITHUB_REPO`, `GITHUB_TOKEN`, `COMPANION_ASSET_PATTERN`, `COMPANION_UPDATER_PATTERN`                                 |
-| Monitoring                  | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`, `LIVEKIT_PROMETHEUS_URL`                                              |
+| Group         | Variables                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------- |
+| Core          | `SESSION_SECRET`, `DATABASE_URL`, `NODE_ENV`, `LOG_LEVEL`, `PUBLIC_BASE_PATH`, `PORT`, `HOST`, `TRUST_PROXY` |
+| Database      | `FLEETPLANNER_DB_PASSWORD` (compose, PostgreSQL container)                                     |
+| Discord       | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_FLEETPLANNER_CLIENT_ID`, `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_PUBLIC_KEY` |
+| URLs          | `WEB_PUBLIC_URL`, `FLEETPLANNER_PUBLIC_URL`, `OAUTH_REDIRECT_URI`                              |
+| Bootstrap     | `SUPERADMIN_DISCORD_ID`, `SUPERADMIN_CONTACT`                                                  |
+| Encryption    | `VOICEBOT_ENCRYPTION_KEY` — encrypts stored Discord voice-bot tokens. **Set once, never change it**, or every stored token has to be re-entered. |
+| Mission cover | `MISSIONCOVER_SERVICE_SECRET`, `MISSIONCOVER_SERVICE_URL`, `MISSIONCOVER_PUBLIC_URL`           |
+| Monitoring    | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                                                 |
+| Optional      | `MAINTENANCE_MODE`, alternative login providers (`GITHUB_*`, `GOOGLE_*`)                       |
 
-See `.env.example` for the full list and comments.
+The authoritative list is the Zod schema in [`apps/fleetplanner/src/config/env.ts`](apps/fleetplanner/src/config/env.ts) — it validates at startup and will reject a bad config.
+
+Both `.env` templates have drifted and should be treated as incomplete: [`.env.example`](.env.example) is missing `DISCORD_CLIENT_ID`, `WEB_PUBLIC_URL`, `SUPERADMIN_DISCORD_ID` and `VOICEBOT_ENCRYPTION_KEY`, and [`.env.prod.template`](.env.prod.template) still carries `BRIDGE_*` and `RELAY_BOTS_*` keys for services that no longer exist.
 
 ## Repository layout
 
 ```text
 .
 |-- apps/
-|   |-- bot/           # Discord bot
-|   |-- bridge/        # Backend API, admin UI, WebSocket signaling
-|   |-- companion/     # Tauri + React desktop client
-|   |-- fleetplanner/  # Operations planning web app
-|   |-- monitoring/    # Prometheus image/config
-|   `-- relay-bots/    # LiveKit-to-Discord voice relay worker
+|   |-- companion/        # dormant desktop app from the voice era
+|   |-- error-page/       # static nginx error page
+|   |-- fleetplanner/     # backend: API, Discord bot, schedulers, SSR
+|   |-- fleetplanner-web/ # React SPA + nginx front door  <- the real UI
+|   |-- mission-cover/    # cover render microservice
+|   `-- monitoring/       # Prometheus image + scrape config
 |-- deploy/
-|   |-- caddy-rdoc/    # Caddy build/config
-|   `-- grafana/       # Grafana provisioning and dashboards
-|-- docs/              # Admin, commander, privacy, backlog, handover notes
+|   |-- alertmanager/
+|   |-- caddy-rdoc/
+|   `-- grafana/
+|-- docs/                 # merge log, roadmap, feature requests, privacy
 |-- packages/
-|   |-- db/            # Shared Prisma client wrapper for bridge/bot
-|   `-- shared/        # Shared protocol/types/validation
-|-- prisma/            # Bridge/bot Prisma schema and migrations
-|-- docker-compose.yml
+|   |-- db/               # Prisma wrapper (vestigial, see above)
+|   |-- fleetplanner-contracts/  # Zod API contracts — source of truth
+|   `-- shared/           # shared types + validation
+|-- prisma/               # schema of the removed bridge/bot stack (vestigial)
 |-- docker-compose.prod.yml
-|-- livekit.yaml
 `-- package.json
 ```
 
+The root `prisma/` directory and the root `pnpm db:generate` / `db:migrate` / `db:studio` scripts belong to the removed bridge/bot services. Fleetplanner uses its own schema and its own scripts; use the `--filter @rdoc-suite/fleetplanner` variants.
+
 ## Scripts
 
-| Command                                         | What it does                                         |
-| ----------------------------------------------- | ---------------------------------------------------- |
-| `pnpm build`                                    | Builds every workspace package.                      |
-| `pnpm test`                                     | Runs every workspace test suite that defines `test`. |
-| `pnpm lint`                                     | Runs ESLint across the repo.                         |
-| `pnpm format`                                   | Formats the repo with Prettier.                      |
-| `pnpm format:check`                             | Checks formatting without writing changes.           |
-| `pnpm db:generate`                              | Generates the root Prisma client for bridge/bot.     |
-| `pnpm db:migrate`                               | Applies root Prisma migrations locally.              |
-| `pnpm db:studio`                                | Opens Prisma Studio for the root database.           |
-| `pnpm --filter @rdoc-suite/bridge test`         | Runs bridge tests.                                   |
-| `pnpm --filter @rdoc-suite/fleetplanner test`   | Runs Fleetplanner tests.                             |
-| `pnpm --filter @rdoc-suite/companion tauri:dev` | Starts the Companion desktop app in dev mode.        |
+| Command                                                    | What it does                                    |
+| ---------------------------------------------------------- | ----------------------------------------------- |
+| `pnpm build`                                               | Builds every workspace package.                 |
+| `pnpm test`                                                | Runs every workspace test suite.                |
+| `pnpm lint`                                                | Runs ESLint across the repo.                     |
+| `pnpm format` / `pnpm format:check`                        | Prettier write / check.                          |
+| `pnpm --filter @rdoc-suite/fleetplanner dev`               | Backend in watch mode.                           |
+| `pnpm --filter @rdoc-suite/fleetplanner test`              | Backend tests.                                   |
+| `pnpm --filter @rdoc-suite/fleetplanner db:generate`       | Generates the Fleetplanner Prisma client.        |
+| `pnpm --filter @rdoc-suite/fleetplanner-web dev`           | SPA dev server.                                  |
+| `pnpm --filter @rdoc-suite/fleetplanner-contracts build`   | Rebuilds the API contracts.                      |
 
 ## Documentation
 
-- Privacy/data inventory: [docs/privacy.md](docs/privacy.md)
-- Design and implementation notes: [CLAUDE.md](CLAUDE.md)
-- Fleetplanner backlog: [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md)
+| File                                                             | Contents                                                   |
+| ---------------------------------------------------------------- | ---------------------------------------------------------- |
+| [docs/RDOC-SUITE-MERGELOG.md](docs/RDOC-SUITE-MERGELOG.md)       | **Primary source.** Queued, completed and open decisions.  |
+| [docs/ROADMAP.md](docs/ROADMAP.md)                               | Planned features with priorities and dependencies.         |
+| [CHANGELOG.md](CHANGELOG.md)                                     | Developer changelog.                                       |
+| [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md)     | Feature backlog.                                           |
+| [docs/privacy.md](docs/privacy.md)                               | Data inventory.                                            |
+| [security-plan.md](security-plan.md)                             | Threat model and hardening.                                |
+| [CLAUDE.md](CLAUDE.md)                                           | Working rules and architecture notes for contributors.     |
+
+The player-facing changelog lives in `apps/fleetplanner/src/lib/changelog.ts` and is published at `/handbuch/changelog`.
 
 ## Privacy and security
 
-- Audio is not persisted by the bridge or LiveKit (`roomRecord: false`).
-- Discord OAuth access tokens are used for login and are not stored as long-term credentials.
-- Session tokens are JWTs and can be expired/revoked by deployment policy.
-- Server admins can disable Channel Commander per guild.
-- API inputs are validated at service boundaries with Zod.
-- Relay bot credentials and service secrets belong in `.env` or mounted config, not in git.
+- Discord OAuth tokens are used for login and are not kept as long-term credentials.
+- Discord IDs are always handled as strings — snowflakes exceed `Number.MAX_SAFE_INTEGER`.
+- All external input is validated with Zod at the service boundary.
+- Anonymous viewers of a public operation never see member identities or the mission log.
+- Server admins can disable the integration per guild.
+- Secrets belong in `.env` or mounted config, never in git.
 
 ## License
 
