@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - „Flexibel angemeldet" erschien nicht im Operator-Panel (2026-07-20)
+
+Zwei verschiedene Tabellen hießen beide „flexibel": der Roster-Button „Flexibel anmelden" schreibt
+eine `CqbSignup`-Zeile ohne Gruppe, das Operator-Panel „FLEXIBEL" und der Sitz-Picker lasen aber nur
+`CrewAssignmentRequest`. Wer den Button benutzte, war für den Operator unsichtbar und tauchte nur im
+CQB-Block als „Soldat" auf — was die Absicht falsch wiedergibt. Das Panel, der Zähler und der
+Sitz-Picker bilden jetzt die Vereinigung beider Quellen (dedupliziert; wer schon einen Sitz hat,
+wartet nicht mehr und fällt raus). `OperatorView.cqbSoldiers` trägt dafür jetzt `userId`.
+
 ### Fixed - Jäger standen unter „OHNE STAFFEL", obwohl zugeteilt (2026-07-20)
 
 Regression aus dem Roster-Fundament, live gesichtet: die Fighter-Lane wählte

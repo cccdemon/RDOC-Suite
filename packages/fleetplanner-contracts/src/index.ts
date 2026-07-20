@@ -826,7 +826,11 @@ export const OperatorViewSchema = z
     ),
     cqbSoldiers: z.array(
       z.object({
+        /** CqbSignup id (what the assign/late endpoints take). */
         id: z.string(),
+        /** The person. Needed to seat them and to tell whether they already hold
+         *  a seat — an unassigned signup IS a flexible signup. */
+        userId: z.string(),
         username: z.string(),
         assignedGroupId: z.string().nullable(),
         /** Slot inside the assigned group; 0 = Captain. */

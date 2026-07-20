@@ -13,6 +13,15 @@ export type ChangelogEntry = {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-20",
+    title: "Flexible signups reach the fleet operator again",
+    changes: [
+      "Signing up with \"just place me somewhere\" now actually shows up in the fleet operator's Flexible list, so you get assigned instead of sitting unseen. Previously that button wrote to a different place than the operator's panel was reading.",
+      "Fighters assigned to a squadron no longer show up as \"no squadron\" on the board when the operation uses both requirement squadrons and hand-built formations.",
+      "Fleet operators can now move a fighter into a requirement squadron — the dropdown only offered hand-built formations before.",
+    ],
+  },
+  {
+    date: "2026-07-20",
     title: "You decide what your ship is here for",
     changes: [
       "When you offer a ship you can now say what role it plays in this operation — fighter, transport, support, mining, salvage, exploration or capital. The ship catalog only supplies the suggestion.",

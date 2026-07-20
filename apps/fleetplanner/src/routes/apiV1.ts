@@ -2472,6 +2472,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         .filter((s) => s.status !== "rejected")
         .map((s) => ({
           id: s.id,
+          userId: s.userId,
           username: s.user.username,
           assignedGroupId: s.assignedGroupId,
           slotIndex: s.slotIndex,

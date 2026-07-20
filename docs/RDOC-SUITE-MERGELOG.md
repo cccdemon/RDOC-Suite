@@ -1,5 +1,37 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: Fix — „Flexibel angemeldet" erscheint nicht im Operator-Panel
+
+Status: ⏳ In Arbeit. Live gemeldet. Zwei verschiedene Tabellen heißen beide „flexibel":
+
+- Roster-Button „Flexibel anmelden" („Teilt mich ein — der Operator gibt dir einen Platz",
+  `OpDetailPage.tsx:1012`) ruft `cqbSignup()` **ohne** `groupId` → Zeile in **`CqbSignup`**
+  (`assignedGroupId: null`).
+- Operator-Panel „FLEXIBEL" (`flexPanel`) und der Sitz-Picker „WER SOLL HIER REIN?" lesen
+  ausschließlich `view.crewRequests` → **`CrewAssignmentRequest`**.
+
+Wer sich also flexibel anmeldet, erscheint für den Operator nirgends als flexibel — er taucht nur im
+CQB-Block als „Soldat" auf, was die Absicht falsch wiedergibt (er wollte irgendeinen Platz, nicht
+explizit Bodentruppe).
+
+Fix (Variante A, wirkt auch auf Bestandsdaten): das Operator-Panel bildet die **Vereinigung** beider
+Quellen — `crewRequests` plus `cqbSoldiers` ohne Gruppe, die noch keinen Sitz halten; dedupliziert
+über `userId`. Gilt für `flexPanel`, den Zähler `flexWaiting` und den Sitz-Picker, damit der Operator
+sie auch tatsächlich einteilen kann. Dafür braucht `OperatorView.cqbSoldiers` ein `userId`-Feld
+(bisher nur die Signup-`id`) — Contract + Route.
+
+Nicht gewählt: den Roster-Button auf `CrewAssignmentRequest` umzubiegen — das würde die bestehenden
+Zeilen verwaisen lassen und die CQB-Bedeutung des Signups zerstören.
+
+Betroffen: `packages/fleetplanner-contracts`, `apps/fleetplanner` (apiV1 operator view),
+`apps/fleetplanner-web` (OperatorPanel). Keine Migration. Deploy: rebuild `fleetplanner` +
+`fleetplanner-web`.
+
+Umgesetzt (2026-07-20): `OperatorView.cqbSoldiers[].userId` (Contract + Route). `flexPeople` im
+OperatorPanel als Map-Dedup über beide Quellen; `seatedUserIds` filtert bereits Sitzende raus.
+Verdrahtet in `flexPanel`, `flexWaiting`, Sitz-Picker und Drag-Label. tsc grün; Backend 13 = Baseline
+(null neue), Web 6 vorbestehend.
+
 ## Queued / In Progress - 2026-07-20: Fix — Jäger landen in OHNE STAFFEL, obwohl zugeteilt
 
 Status: ⏳ In Arbeit. Regression aus `bd5c19a`, live gesichtet in `cmrqu6mpp006snz07go27aeil`.

@@ -192,7 +192,24 @@ export function OperatorPanel({
   const total = accepted.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0);
   const open = total - filled;
   const fillPct = total ? Math.round((filled / total) * 100) : 0;
-  const flexWaiting = view?.crewRequests.length ?? 0;
+  // "Flexibel angemeldet" arrives through two different tables: the crew-assignment
+  // request, and a CQB signup with no group — which is what the roster's
+  // "Flexibel anmelden" button actually writes. Reading only crewRequests made
+  // everyone who used that button invisible to the operator. People who already
+  // hold a seat are no longer waiting, so they drop out.
+  const seatedUserIds = new Set(
+    accepted.flatMap((u) => u.seats.map((s) => s.claimedBy?.id).filter((x): x is string => !!x)),
+  );
+  const flexPeople: { userId: string; username: string; note: string | null; createdAt?: string }[] = (() => {
+    const out = new Map<string, { userId: string; username: string; note: string | null; createdAt?: string }>();
+    for (const r of view?.crewRequests ?? []) out.set(r.userId, { userId: r.userId, username: r.username, note: r.note, createdAt: r.createdAt });
+    for (const s of view?.cqbSoldiers ?? []) {
+      if (s.assignedGroupId || seatedUserIds.has(s.userId) || out.has(s.userId)) continue;
+      out.set(s.userId, { userId: s.userId, username: s.username, note: s.note });
+    }
+    return [...out.values()];
+  })();
+  const flexWaiting = flexPeople.length;
   const openQ = view?.questions.filter((q) => !q.answer).length ?? 0;
 
   const bars = LANES.map((l) => {
@@ -266,7 +283,7 @@ export function OperatorPanel({
             let uid = dragUserId;
             if (!uid) { try { uid = e.dataTransfer.getData("text/plain") || null; } catch { uid = null; } }
             if (!uid) return;
-            const name = view?.crewRequests.find((r) => r.userId === uid)?.username ?? "—";
+            const name = flexPeople.find((r) => r.userId === uid)?.username ?? "—";
             assignSeatOptimistic(s.id, uid, name);
           }}
           style={{
@@ -316,8 +333,8 @@ export function OperatorPanel({
         {picker === s.id && !s.claimedBy && !placing && (
           <div style={{ borderTop: "1px solid rgba(0,212,255,0.12)", padding: "0.6rem", display: "flex", flexDirection: "column", gap: "0.35rem", background: "#0a121c" }}>
             <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>WER SOLL HIER REIN?</div>
-            {view.crewRequests.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.78rem" }}>Keine flexiblen Anmeldungen.</div>}
-            {view.crewRequests.map((r) => (
+            {flexPeople.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.78rem" }}>Keine flexiblen Anmeldungen.</div>}
+            {flexPeople.map((r) => (
               <button key={r.userId} type="button" data-testid={`op-pick-${r.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, r.userId, r.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.28)", background: "rgba(240,165,0,0.05)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
                 <Avatar name={r.username} />
                 <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{r.username}</span>
@@ -360,10 +377,10 @@ export function OperatorPanel({
     <section style={{ ...card, border: "1px solid rgba(240,165,0,0.22)" }}>
       {panelHead("swap", "#f0a500", "FLEXIBEL", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{flexWaiting} wartet</span>)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        {view.crewRequests.length === 0 ? (
+        {flexPeople.length === 0 ? (
           <div style={{ padding: "0.7rem", textAlign: "center", color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Alle eingeteilt ✓</div>
         ) : (
-          view.crewRequests.map((r) => {
+          flexPeople.map((r) => {
             const isPlacing = placing?.userId === r.userId;
             return (
               <div
