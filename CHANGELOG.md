@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Jäger standen unter „OHNE STAFFEL", obwohl zugeteilt (2026-07-20)
+
+Regression aus dem Roster-Fundament, live gesichtet: die Fighter-Lane wählte
+`fighterSquads.length ? fighterSquads : formations` — **entweder/oder**. Sobald beide Gruppentypen
+existieren (Bedarf-Staffel + selbst angelegte „Staffel 1/2"-Verbände), gewann `fighter_squad`, und
+alle an Verbände gebundenen Jäger fielen unter „OHNE STAFFEL". Die Lane bildet jetzt die Vereinigung.
+
+Dazu ließ sich ein Jäger gar nicht in eine Bedarf-Staffel schieben: die Kompositions-Dropdowns
+listeten nur Verbände, obwohl das Backend `fighter_squad` längst akzeptiert. Beide Dropdowns listen
+jetzt beide Gruppentypen (getrennt nach „Staffeln"/„Verbände"), ebenso die ZUSAMMENSETZUNG-Sektion —
+dort erschienen Units in einer Bedarf-Staffel sonst als „ohne Zuordnung".
+
 ### Changed - Schiffsrolle wird deklariert statt geraten (2026-07-20)
 
 Letzte offene Lücke des Konzept-Audits. Bisher wurde „ist das ein Jäger?" aus `Ship.role/size/career`

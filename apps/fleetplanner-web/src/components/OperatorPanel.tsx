@@ -600,10 +600,10 @@ export function OperatorPanel({
   // (squad groups); the operator assigns/moves each via a team dropdown.
   const cqbTeams = view.cqbTeams;
   const cqbSoldiers = view.cqbSoldiers;
-  // Jäger-Staffeln: the Bedarf-materialised fighter_squad groups. Legacy ops where
-  // the operator built their Staffeln as Verbände keep working via the fallback —
-  // same rule the backend uses, so both sides group fighters identically.
-  const fighterFormations = view.fighterSquads.length > 0 ? view.fighterSquads : view.formations;
+  // Jäger-Staffeln: the Bedarf-materialised fighter_squad groups PLUS the Verbände
+  // operators build by hand and use as squadrons. Both kinds coexist in real ops,
+  // so picking one list over the other hid half the squadrons from the operator.
+  const fighterFormations = [...view.fighterSquads, ...view.formations];
   const verbaende = view.formations;
 
   // "Hängt unter Verband X" selector, shared by Trupps and Staffeln. Detaching is
@@ -829,7 +829,16 @@ export function OperatorPanel({
             style={{ flexShrink: 0, maxWidth: "9.5rem", background: "#0e1926", border: "1px solid rgba(167,139,250,0.3)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.62rem", padding: "0.2rem 0.4rem", borderRadius: 6, outline: "none" }}
           >
             <option value="">— ohne Staffel/Verband —</option>
-            {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            {view.fighterSquads.length > 0 && (
+              <optgroup label="Staffeln">
+                {view.fighterSquads.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </optgroup>
+            )}
+            {view.formations.length > 0 && (
+              <optgroup label="Verbände">
+                {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </optgroup>
+            )}
           </select>
         </div>
         {(teams.length > 0 || vehicles.length > 0) && (
@@ -882,9 +891,11 @@ export function OperatorPanel({
       {accepted.length > 0 && (
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.8rem", marginBottom: "0.9rem" }}>
           <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2", marginBottom: "0.2rem" }}>ZUSAMMENSETZUNG — EINHEITEN ZUORDNEN</div>
-          <div style={{ fontSize: "0.72rem", color: "#5b6b7a", marginBottom: "0.6rem" }}>Schiffe, Jäger, Fahrzeuge und Bodentruppen einem Verband zuordnen — sofort gespeichert.</div>
+          <div style={{ fontSize: "0.72rem", color: "#5b6b7a", marginBottom: "0.6rem" }}>Schiffe, Jäger, Fahrzeuge und Bodentruppen einer Staffel oder einem Verband zuordnen — sofort gespeichert.</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
-            {view.formations.map((f) => (
+            {/* Both group kinds — otherwise units sitting in a Bedarf-Staffel show
+                up as "ohne Zuordnung" here even though they are assigned. */}
+            {[...view.fighterSquads, ...view.formations].map((f) => (
               <div key={f.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}>
                   <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="board" size={13} /></span>
@@ -976,10 +987,10 @@ export function OperatorPanel({
                           <SaveDot id={`unitrole-${u.id}`} />
                         </span>
                       )}
-                      {/* Verband-Zuordnung für ALLE Einheitstypen (Schiffe/Jäger/Bodentruppen/Fahrzeuge). */}
-                      {view.formations.length > 0 && (
+                      {/* Staffel-/Verband-Zuordnung für ALLE Einheitstypen (Schiffe/Jäger/Bodentruppen/Fahrzeuge). */}
+                      {(view.formations.length > 0 || view.fighterSquads.length > 0) && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
-                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>VERBAND</span>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>STAFFEL / VERBAND</span>
                           <select
                             data-testid={`unit-formation-${u.id}`}
                             value={u.formationId ?? ""}
@@ -988,7 +999,18 @@ export function OperatorPanel({
                             style={{ background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— kein —</option>
-                            {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                            {/* Both kinds belong here: a fighter has to be assignable
+                                to a Bedarf-Staffel, not just to a hand-built Verband. */}
+                            {view.fighterSquads.length > 0 && (
+                              <optgroup label="Staffeln">
+                                {view.fighterSquads.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                              </optgroup>
+                            )}
+                            {view.formations.length > 0 && (
+                              <optgroup label="Verbände">
+                                {view.formations.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                              </optgroup>
+                            )}
                           </select>
                           <SaveDot id={`unitfm-${u.id}`} />
                         </span>

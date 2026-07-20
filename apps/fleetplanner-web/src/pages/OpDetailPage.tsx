@@ -1099,10 +1099,19 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                       // via formationId. Grouped fighters sit in their squad card, the
                       // rest under "Ohne Staffel". Slots show N/target, over-fill allowed.
                       // A Staffel is a fighter_squad group (its count IS the Bedarf).
-                      // Legacy ops that built Staffeln as Verbände fall back to
-                      // formations — same rule the backend uses. Fighters bind via
-                      // formationId, pilots via members. Rest → "Ohne Staffel".
-                      const squads = (op.fighterSquads?.length ? op.fighterSquads : op.formations) ?? [];
+                      // Ops also build Staffeln as Verbände, and both kinds coexist —
+                      // picking one list over the other stranded every fighter bound
+                      // to the other kind under "Ohne Staffel". So: all fighter_squad
+                      // groups, plus the formations that actually hold fighters.
+                      const fighterUnitGroupIds = new Set(
+                        lane.units.map((u) => u.formationId).filter((x): x is string => !!x),
+                      );
+                      const squads = [
+                        ...(op.fighterSquads ?? []),
+                        ...(op.formations ?? []).filter(
+                          (f) => fighterUnitGroupIds.has(f.id) || f.members.length > 0,
+                        ),
+                      ];
                       const squadIds = new Set(squads.map((s) => s.id));
                       const cap = needs?.fighterSquadSize ?? 2;
                       const ungrouped = lane.units.filter((u) => !u.formationId || !squadIds.has(u.formationId));

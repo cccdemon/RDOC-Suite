@@ -1,5 +1,33 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: Fix — Jäger landen in OHNE STAFFEL, obwohl zugeteilt
+
+Status: ⏳ In Arbeit. Regression aus `bd5c19a`, live gesichtet in `cmrqu6mpp006snz07go27aeil`.
+Datenlage dort: `Fighter Squad 2` (kind `fighter_squad`, 0 Units) UND `Staffel 1`/`Staffel 2`
+(kind `formation`, 3 bzw. 2 Units).
+
+(1) Die Fighter-Lane wählt `op.fighterSquads.length ? fighterSquads : formations` — **entweder/oder**.
+Sobald beide Gruppentypen existieren, gewinnt `fighter_squad`, und die an Formations hängenden Jäger
+fallen unter „OHNE STAFFEL", obwohl sie zugeteilt sind (der „VERBAND: STAFFEL 1"-Chip auf denselben
+Karten belegt die Zuteilung). Fix: **Vereinigung** — alle `fighter_squad`-Gruppen plus alle
+Formations, die tatsächlich Jäger halten.
+
+(2) Das Kompositions-Dropdown auf dem Operator-Board listet nur `view.formations`, deshalb lässt sich
+ein Jäger gar nicht in eine `fighter_squad`-Gruppe schieben. Das Backend erlaubt es längst
+(`assignUnitToFormation` akzeptiert `SLOTTED_KINDS`) — nur die UI bot es nicht an. Fix: beide
+Gruppentypen im Dropdown, per `<optgroup>` getrennt (Staffeln / Verbände). Gleiches im
+Fighter-Block des Operator-Panels (`fighterFormations` nutzt denselben Entweder-oder-Ausdruck).
+
+Nur SPA. Keine Migration, kein Contract. Deploy: rebuild `fleetplanner-web`.
+
+Umgesetzt (2026-07-20): Fighter-Lane bildet die Vereinigung (alle `fighter_squad` + die Formations,
+die tatsächlich Jäger-Units oder Piloten halten — reine Schiffs-Verbände tauchen dort nicht auf).
+`fighterFormations` im Operator-Panel ebenso. Beide Kompositions-Dropdowns (Board-Zeile +
+`compUnitRow`) listen jetzt beide Gruppentypen per `<optgroup>` „Staffeln"/„Verbände"; Gate und
+Label auf „STAFFEL / VERBAND" erweitert. Die ZUSAMMENSETZUNG-Sektion iteriert beide Kinds, sonst
+erscheinen Units in einer Bedarf-Staffel dort fälschlich als „ohne Zuordnung". tsc grün,
+Web-Tests 6 = unveränderte Baseline.
+
 ## Queued / In Progress - 2026-07-20: Schiffsrolle wird deklariert statt geraten (Gap 1)
 
 Status: ⏳ In Arbeit. Letzte offene Lücke des Konzept-Audits. Bisher wird „ist das ein Jäger?" zur
