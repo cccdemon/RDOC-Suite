@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Roster-Fundament: Verband/Staffel-Hierarchie, Captain-Slots, Jäger-Carrier (2026-07-20)
+
+Ergebnis eines Konzept-Audits (Soll-Modell vs. Code). Umgesetzt wurden die Struktur-Lücken:
+
+- **Verband → Staffel/Trupp-Verschachtelung.** `CompositionGroup.parentId` (eine Ebene tief): eine
+  Jäger-Staffel oder ein CQB-Trupp kann jetzt unter einem Verband hängen — „Staffel 1 + Staffel 2
+  bilden einen Verband" ist abbildbar. Operator setzt das per „VERBAND"-Dropdown; das Roster zeigt
+  den Verband als Chip auf der Staffel-/Trupp-Kachel, auch für normale Teilnehmer.
+- **Captain ist positional: Slot 1 ist immer der Captain.** `CqbSignup.slotIndex` +
+  `FleetUnit.formationSlot`. Der erste Soldat eines Trupps und der erste Jäger einer Staffel werden
+  automatisch Captain; der Operator kann per „★ CPT" jemand anderen auf Slot 1 heben (der bisherige
+  Captain tauscht den Platz, nie zwei Captains).
+- **CQB-Trupp als echte Kachel mit N Plätzen.** „2 Trupps à 4 Soldaten" rendert jetzt zwei Kacheln
+  mit vier Slots — Slot 1 als „CAPTAIN", freie Plätze als „FREI" statt einer bloßen Namensliste.
+- **Jäger können in Schiffen transportiert werden** (gleiche Carrier-Relation wie Fahrzeuge).
+- **Jäger-Staffeln sind wieder die `fighter_squad`-Bedarf-Groups** (ihre Anzahl IST der Bedarf), mit
+  Fallback auf Verbände für bestehende Events — keine Datenmigration nötig, alte Rosters bleiben gültig.
+- **Personen-Zuweisung bei Partner-Events:** der Picker listet zusätzlich die Mitglieder der
+  Partner-Guilds, die das Event sehen können (mit Org-Label). Weiterhin nur echte Accounts —
+  keine Freitext-Platzhalter.
+
+### Fixed - Schiff-in-Schiff über die Carrier-Route (2026-07-20)
+
+- `PUT /operations/:id/units/:unitId/carrier` akzeptierte jede `ship`-Einheit als Ladung, wodurch ein
+  Capital-Schiff in ein anderes Schiff geladen werden konnte — `registerUnit` verbietet das bei der
+  Anlage. Jetzt sind nur Fahrzeuge und Jäger ladbar, und ein Jäger kann selbst nichts tragen.
+
 ### Changed - Jäger-Staffel = Verband (Formation) + Auto-Fill (2026-07-19)
 
 - **Die Jäger-Staffel im Roster + Auto-Fill sind jetzt die Verbände (Formations), die du selbst

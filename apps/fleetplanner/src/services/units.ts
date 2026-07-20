@@ -1,4 +1,5 @@
 import { prisma } from "../db.js";
+import { shipClass } from "./composition.js";
 import { autoAssignFighterToSquad } from "./formations.js";
 import { specForShip, specForSquad } from "./seats.js";
 import type { Prisma, Ship } from "@prisma/client";
@@ -38,19 +39,22 @@ export async function registerUnit(
   const unitType =
     ship && (ship.size ?? "").toLowerCase() === "vehicle" ? "vehicle" : input.unitType;
 
-  // A vehicle MAY ride in a ship; if none is given it's an "orphan" the operator
-  // assigns later. It inherits the carrier's accept/reject status when carried.
+  // A vehicle or a Jäger MAY ride in a ship; if no carrier is given it's an
+  // "orphan" the operator assigns later. It inherits the carrier's accept/reject
+  // status when carried. Anything bigger than a fighter can't be loaded.
+  const loadable = unitType === "vehicle" || (unitType === "ship" && shipClass(ship) === "Fighter");
   let vehicleStatus = "pending";
   let carrierUnitId: string | null = null;
-  if (unitType === "vehicle" && input.carrierUnitId) {
+  if (loadable && input.carrierUnitId) {
     const carrier = await prisma.fleetUnit.findUnique({
       where: { id: input.carrierUnitId },
-      select: { operationId: true, status: true, unitType: true },
+      select: { operationId: true, status: true, unitType: true, ship: { select: { size: true, career: true, role: true } } },
     });
     if (!carrier || carrier.operationId !== operationId) {
       throw new Error("Carrier ship not found in this operation");
     }
-    if (carrier.unitType !== "ship") throw new Error("Vehicles can only attach to a ship");
+    if (carrier.unitType !== "ship") throw new Error("Vehicles and fighters can only attach to a ship");
+    if (shipClass(carrier.ship) === "Fighter") throw new Error("A fighter can't carry anything");
     carrierUnitId = input.carrierUnitId;
     vehicleStatus = carrier.status;
   }
@@ -68,7 +72,7 @@ export async function registerUnit(
         shipId: input.shipId ?? null,
         squadName: input.squadName ?? null,
         squadSize: input.squadSize ?? null,
-        carrierUnitId: unitType === "vehicle" ? carrierUnitId : null,
+        carrierUnitId: loadable ? carrierUnitId : null,
         requirementId: input.requirementId ?? null,
         captainNote: input.captainNote ?? null,
         status: unitType === "vehicle" ? vehicleStatus : "pending",

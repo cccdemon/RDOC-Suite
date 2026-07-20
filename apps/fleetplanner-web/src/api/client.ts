@@ -213,9 +213,25 @@ export function assignUnitFormation(opId: string, unitId: string, csrfToken: str
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/formation`, csrfToken, { formationId });
 }
 
-// FR-B4: load a vehicle into a carrier ship (carrierUnitId null = standalone).
+// FR-B4: load a vehicle or a Jäger into a carrier ship (carrierUnitId null = standalone).
 export function assignUnitCarrier(opId: string, unitId: string, csrfToken: string, carrierUnitId: string | null): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/carrier`, csrfToken, { carrierUnitId });
+}
+
+// Roster-Fundament: hang a Staffel/Trupp under a Verband (parentId null = detach).
+export function setGroupParent(opId: string, groupId: string, csrfToken: string, parentId: string | null): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/groups/${encodeURIComponent(groupId)}/parent`, csrfToken, { parentId });
+}
+
+// Roster-Fundament: move a member to a slot in its group. Slot 0 = make Captain.
+export function setMemberSlot(
+  opId: string,
+  csrfToken: string,
+  memberKind: "unit" | "person",
+  memberId: string,
+  slot: number,
+): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/member-slot`, csrfToken, { memberKind, memberId, slot });
 }
 
 export function setHangarShare(opId: string, csrfToken: string, allow: boolean): Promise<{ ok: true }> {

@@ -595,6 +595,11 @@ model CompositionGroup {
   targetSize  Int? // squads only: how many soldiers the squad wants (null = no cap)
   // FR-P1 Phase 4b: a CQB team can be embedded in (ride in) a non-fighter ship.
   carrierUnitId String?
+  // Roster-Fundament 2026-07-20: group nesting. A Jäger-Staffel (kind="fighter_squad")
+  // or a Trupp (kind="squad") can hang under a Verband (kind="formation"), so
+  // "Staffel 1 + Staffel 2 bilden einen Verband" is representable. Only formations
+  // may act as a parent; nesting is one level deep (enforced in services/formations.ts).
+  parentId    String?
 
   operation    Operation                @relation(fields: [operationId], references: [id], onDelete: Cascade)
   requirements CompositionRequirement[]
@@ -602,6 +607,10 @@ model CompositionGroup {
   // FR-P1 Phase 4: ships assigned to this group when kind="formation".
   formationUnits FleetUnit[]            @relation("Formation")
   carrier      FleetUnit?              @relation("SquadCarrier", fields: [carrierUnitId], references: [id], onDelete: SetNull)
+  parent       CompositionGroup?       @relation("GroupNesting", fields: [parentId], references: [id], onDelete: SetNull)
+  children     CompositionGroup[]      @relation("GroupNesting")
+
+  @@index([parentId])
 }
 
 // FR-P1: a single person volunteering as a CQB soldier (no role taxonomy —
@@ -615,6 +624,10 @@ model CqbSignup {
   note            String?
   status          String   @default("pending") // pending | accepted | rejected
   assignedGroupId String? // → CompositionGroup(kind=squad), set by the operator
+  // Roster-Fundament 2026-07-20: position inside the assigned group. Slot 0 is
+  // ALWAYS the Captain (squad-link capable); 1..n are soldiers/pilots. Null =
+  // in the group but not pinned to a slot yet (legacy rows).
+  slotIndex       Int?
   // Late-arrival ("nachkommen") for this soldier/pilot: HH:MM (null = on time).
   lateEta         String?
   createdAt       DateTime @default(now())
@@ -662,7 +675,12 @@ model FleetUnit {
   carrierUnitId String?
 
   // FR-P1 Phase 4: ships grouped into operator formations (Verbände).
+  // Generic "belongs to group" pointer: a ship points at a Verband
+  // (kind="formation"), a Jäger at a Staffel (kind="fighter_squad").
   formationId String?
+  // Roster-Fundament 2026-07-20: position inside that group. Slot 0 is ALWAYS the
+  // group Captain (Staffel-Captain for a Jäger-Staffel). Null = unpinned (legacy).
+  formationSlot Int?
 
   captainId     String
   requirementId String?

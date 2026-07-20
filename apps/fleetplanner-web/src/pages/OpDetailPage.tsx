@@ -589,6 +589,25 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     : cqbGroupsEmpty.length;
   const cqbGroupsShown = [...cqbGroupsStaffed, ...cqbGroupsEmpty.slice(0, cqbRemainingEmpty)];
 
+  // ── Verband / Captain helpers ───────────────────────────────────────
+  // Slot 0 of a group is always its Captain — the same rule the backend enforces,
+  // so the roster can mark it without a separate leader field.
+  const verbandName = (parentId: string | null | undefined) =>
+    parentId ? (op.formations ?? []).find((f) => f.id === parentId)?.name ?? null : null;
+
+  const captainTag = (
+    <span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "#ffd600", border: "1px solid rgba(255,214,0,0.35)", background: "rgba(255,214,0,0.1)", borderRadius: 4, padding: "0.05rem 0.28rem", flexShrink: 0 }}>★ CAPTAIN</span>
+  );
+
+  // "Teil von <Verband>" chip, so a participant can see the higher formation
+  // their Staffel/Trupp belongs to without opening the operator console.
+  const verbandChip = (parentId: string | null | undefined) => {
+    const n = verbandName(parentId);
+    return n ? (
+      <span data-testid="verband-chip" style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.3)", background: "rgba(0,212,255,0.07)", borderRadius: 4, padding: "0.05rem 0.3rem", flexShrink: 0 }}>VERBAND: {n.toUpperCase()}</span>
+    ) : null;
+  };
+
   return (
     <article>
       {/* FR-A5: operator preview switcher — see the page as guest / crew / self. */}
@@ -997,10 +1016,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                       // Jäger-Staffeln (fighter squads) as CQB-style cards: fighters bind
                       // via formationId. Grouped fighters sit in their squad card, the
                       // rest under "Ohne Staffel". Slots show N/target, over-fill allowed.
-                      // A Jäger-Staffel is a Verband (formation); fighters bind via
-                      // formationId, pilots via formation.members. Capacity = the
-                      // "à N Jäger" from the Bedarf. Rest → "Ohne Staffel".
-                      const squads = op.formations ?? [];
+                      // A Staffel is a fighter_squad group (its count IS the Bedarf).
+                      // Legacy ops that built Staffeln as Verbände fall back to
+                      // formations — same rule the backend uses. Fighters bind via
+                      // formationId, pilots via members. Rest → "Ohne Staffel".
+                      const squads = (op.fighterSquads?.length ? op.fighterSquads : op.formations) ?? [];
                       const squadIds = new Set(squads.map((s) => s.id));
                       const cap = needs?.fighterSquadSize ?? 2;
                       const ungrouped = lane.units.filter((u) => !u.formationId || !squadIds.has(u.formationId));
@@ -1019,6 +1039,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: empty ? 0 : "0.7rem" }}>
                                   <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={15} sw={1.7} /></span>
                                   <strong style={{ fontSize: "0.95rem", color: "#eaf4fb" }}>{sq.name}</strong>
+                                  {/* Legacy fallback groups (formations) have no parent. */}
+                                  {verbandChip((sq as { parentId?: string | null }).parentId ?? null)}
                                   <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "#00ff88" : "#9fb1c2" }}>{filledF}/{cap}{over ? " (über)" : ""}</span>
                                 </div>
                                 {empty ? (
@@ -1028,7 +1050,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                                     {fs.map((u) => unitCard(u, lane))}
                                     {mem.map((m) => (
                                       <div key={m.id} data-testid={`fighter-pilot-${m.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8", padding: "0.35rem 0.4rem", border: "1px solid rgba(167,139,250,0.15)", borderRadius: 8 }}>
-                                        <Avatar name={m.username} /> <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null} <span style={{ color: "#7e92a4", fontFamily: MONO, fontSize: "0.58rem" }}>Pilot</span></span>
+                                        <Avatar name={m.username} /> <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null} <span style={{ color: "#7e92a4", fontFamily: MONO, fontSize: "0.58rem" }}>{m.slotIndex === 0 ? "Staffel-Captain" : "Pilot"}</span></span>
+                                        {m.slotIndex === 0 && captainTag}
                                         <LateArrival eta={m.lateEta} canEdit={false} onSet={() => {}} />
                                       </div>
                                     ))}
@@ -1086,22 +1109,55 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   {cqbGroupsShown.map((tm) => {
                     const inTeam = !!me && tm.members.some((m) => m.id === me.id);
                     const full = tm.targetSize != null && tm.members.length >= tm.targetSize && !inTeam;
+                    // Render the Trupp as N real slots — "2 Trupps à 4 Soldaten" must
+                    // look like two tiles with four places, not a bare member list.
+                    // Slot 0 is the Captain. Members without a slot (legacy rows) drop
+                    // into the first free place so nobody disappears from the tile.
+                    const slotted = new Map<number, (typeof tm.members)[number]>();
+                    const loose: typeof tm.members = [];
+                    for (const m of tm.members) {
+                      if (m.slotIndex != null && !slotted.has(m.slotIndex)) slotted.set(m.slotIndex, m);
+                      else loose.push(m);
+                    }
+                    const highest = slotted.size ? Math.max(...slotted.keys()) + 1 : 0;
+                    const slotCount = Math.max(tm.targetSize ?? 0, highest, tm.members.length);
+                    const slots: Array<(typeof tm.members)[number] | null> = [];
+                    for (let i = 0; i < slotCount; i++) {
+                      slots.push(slotted.get(i) ?? loose.shift() ?? null);
+                    }
+                    const carrier = tm.carrierUnitId ? op.units.find((u) => u.id === tm.carrierUnitId) : null;
                     return (
                       <article key={tm.id} data-testid={`cqb-squad-${tm.id}`} style={{ width: "100%", minWidth: 0, border: "1px solid rgba(240,165,0,0.2)", borderTop: "2px solid rgba(240,165,0,0.5)", borderRadius: 13, background: "#0a1018", padding: "1.1rem 1.2rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.7rem" }}>
                           <span style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(240,165,0,0.12)", border: "1px solid rgba(240,165,0,0.3)", color: "#f0a500", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="fps" size={18} sw={1.6} /></span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <strong style={{ fontSize: "1.02rem", color: "#eaf4fb" }}>{tm.name}</strong>
-                            <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", marginTop: 1 }}>BODENTRUPPE</div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap", marginTop: 2 }}>
+                              <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a" }}>BODENTRUPPE</span>
+                              {verbandChip(tm.parentId)}
+                              {carrier && (
+                                <span data-testid={`cqb-carrier-${tm.id}`} style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "#ff7a45", border: "1px solid rgba(255,122,69,0.3)", background: "rgba(255,122,69,0.07)", borderRadius: 4, padding: "0.05rem 0.3rem" }}>FÄHRT IN: {(carrier.shipName ?? carrier.name).toUpperCase()}</span>
+                              )}
+                            </div>
                           </div>
                           <span style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", flexShrink: 0 }}>{tm.members.length}<span style={{ color: "#5b6b7a" }}>/{tm.targetSize ?? "∞"}</span></span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: me && csrf ? "0.8rem" : 0 }}>
-                          {tm.members.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Noch keine Soldaten.</div>}
-                          {tm.members.map((m) => (
-                            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8" }}>
-                              <Avatar name={m.username} /> <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}</span>
-                              <LateArrival eta={m.lateEta} canEdit={false} onSet={() => {}} />
+                          {slots.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Noch keine Plätze definiert.</div>}
+                          {slots.map((m, i) => (
+                            <div key={m?.id ?? `free-${i}`} data-testid={`cqb-slot-${tm.id}-${i}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: m ? "#ccdde8" : "#5b6b7a", padding: "0.3rem 0.4rem", borderRadius: 8, border: `1px ${m ? "solid" : "dashed"} rgba(240,165,0,${m ? 0.18 : 0.22})`, background: m ? "rgba(240,165,0,0.03)" : "transparent" }}>
+                              {/* Slot 1 is always the Captain — squad-link capable. */}
+                              <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: i === 0 ? "#ffd600" : "#5b6b7a", width: 26, flexShrink: 0 }}>{i === 0 ? "CPT" : `#${i + 1}`}</span>
+                              {m ? (
+                                <>
+                                  <Avatar name={m.username} />
+                                  <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}</span>
+                                  {i === 0 && captainTag}
+                                  <LateArrival eta={m.lateEta} canEdit={false} onSet={() => {}} />
+                                </>
+                              ) : (
+                                <span style={{ flex: 1, minWidth: 0, fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em" }}>{i === 0 ? "CAPTAIN — FREI" : "FREI"}</span>
+                              )}
                             </div>
                           ))}
                         </div>

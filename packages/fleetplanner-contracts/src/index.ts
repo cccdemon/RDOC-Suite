@@ -196,8 +196,12 @@ export const FleetUnitSchema = z
     carrierUnitId: z.string().nullable(),
     /** Fleet-requirement (Bedarf) this offered unit is bound to, if any. */
     requirementId: z.string().nullable(),
-    /** FR-B2: formation (Verband) this ship belongs to, if any. */
+    /** FR-B2: group this unit belongs to — a Verband (kind="formation") for a
+     *  ship, a Jäger-Staffel (kind="fighter_squad") for a fighter. */
     formationId: z.string().nullable(),
+    /** Position inside that group. Slot 0 is ALWAYS the group's Captain
+     *  (Staffel-Captain for a Jäger). Null = in the group but unpinned. */
+    formationSlot: z.number().int().nullable(),
     /** Late-arrival ("nachkommen") ETA HH:MM for this unit (null = on time). */
     lateEta: z.string().nullable(),
     seats: z.array(SeatSchema),
@@ -230,6 +234,17 @@ export const OperationStreamSchema = z
   })
   .meta({ id: "OperationStream" });
 export type OperationStream = z.infer<typeof OperationStreamSchema>;
+
+/** A person placed into a Trupp/Staffel/Verband. `slotIndex` 0 = Captain. */
+export const GroupMemberSchema = z
+  .object({
+    id: z.string(),
+    username: z.string(),
+    slotIndex: z.number().int().nullable(),
+    lateEta: z.string().nullable(),
+  })
+  .meta({ id: "GroupMember" });
+export type GroupMember = z.infer<typeof GroupMemberSchema>;
 
 export const OperationDetailSchema = OperationSummarySchema.extend({
   description: z.string(),
@@ -265,7 +280,11 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
       id: z.string(),
       name: z.string(),
       targetSize: z.number().int().nullable(),
-      members: z.array(z.object({ id: z.string(), username: z.string(), lateEta: z.string().nullable() })),
+      /** Verband (kind="formation") this Trupp hangs under, if any. */
+      parentId: z.string().nullable(),
+      /** Ship this Trupp rides in, if any. */
+      carrierUnitId: z.string().nullable(),
+      members: z.array(GroupMemberSchema),
     }),
   ),
   /** Fighter squads (Jäger-Staffeln) as joinable slot groups — like cqbTeams.
@@ -277,16 +296,19 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
       id: z.string(),
       name: z.string(),
       targetSize: z.number().int().nullable(),
-      members: z.array(z.object({ id: z.string(), username: z.string(), lateEta: z.string().nullable() })),
+      /** Verband this Staffel hangs under, if any. */
+      parentId: z.string().nullable(),
+      members: z.array(GroupMemberSchema),
     }),
   ),
-  /** Operator formations (Verbände) — the fighter "Staffeln". Fighter units bind
-   *  via `FleetUnit.formationId`; `members` are person-pilots the operator placed
-   *  (no ship). Rendered as the roster fighter-lane grouping. */
+  /** Operator formations (Verbände) — the top level of the roster hierarchy. A
+   *  Verband holds ships directly (via `FleetUnit.formationId`) AND/OR nested
+   *  Staffeln/Trupps (via their `parentId`). `members` are person-pilots the
+   *  operator placed into the Verband itself (no ship). */
   formations: z.array(z.object({
     id: z.string(),
     name: z.string(),
-    members: z.array(z.object({ id: z.string(), username: z.string(), lateEta: z.string().nullable() })),
+    members: z.array(GroupMemberSchema),
   })),
   /** Mission-cover image URL (banner) if generated; null → client uses the
    *  default asset. Visible to all viewers of the op (not operator-gated). */
@@ -756,6 +778,8 @@ export const OperatorViewSchema = z
         targetSize: z.number().int().nullable(),
         /** FR-B3: carrier ship this team rides in, if any. */
         carrierUnitId: z.string().nullable(),
+        /** Verband this Trupp hangs under, if any. */
+        parentId: z.string().nullable(),
       }),
     ),
     cqbSoldiers: z.array(
@@ -763,15 +787,39 @@ export const OperatorViewSchema = z
         id: z.string(),
         username: z.string(),
         assignedGroupId: z.string().nullable(),
+        /** Slot inside the assigned group; 0 = Captain. */
+        slotIndex: z.number().int().nullable(),
         note: z.string().nullable(),
         lateEta: z.string().nullable(),
       }),
     ),
-    /** FR-B2: operator formations (Verbände) — ships group into these. */
+    /** FR-B2: operator formations (Verbände) — ships and nested Staffeln/Trupps
+     *  group under these. Top level of the roster hierarchy. */
     formations: z.array(z.object({ id: z.string(), name: z.string() })),
     /** Fighter squads (Jäger-Staffeln) — fighters group into these (targetSize =
      *  pilots). Operator assigns fighters via the same per-unit dropdown. */
-    fighterSquads: z.array(z.object({ id: z.string(), name: z.string(), targetSize: z.number().int().nullable() })),
+    fighterSquads: z.array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        targetSize: z.number().int().nullable(),
+        /** Verband this Staffel hangs under, if any. */
+        parentId: z.string().nullable(),
+      }),
+    ),
+    /** Everyone the operator may drop onto a seat or into a Trupp/Staffel: host
+     *  guild members plus, for a partner event, members of the partner guilds
+     *  that can see this op. Always real accounts — no free-text placeholders. */
+    assignablePeople: z.array(
+      z.object({
+        userId: z.string(),
+        username: z.string(),
+        guildId: z.string(),
+        guildName: z.string(),
+        /** false = reachable via a partnership, not a host-guild member. */
+        isHost: z.boolean(),
+      }),
+    ),
   })
   .meta({ id: "OperatorView" });
 
@@ -802,10 +850,25 @@ export const AssignFormationRequestSchema = z
   .object({ formationId: cuid.nullable() })
   .meta({ id: "AssignFormationRequest" });
 
-/** FR-B4: load a vehicle into a carrier ship (null = detach / standalone). */
+/** FR-B4: load a vehicle or a Jäger into a carrier ship (null = detach). */
 export const AssignCarrierRequestSchema = z
   .object({ carrierUnitId: cuid.nullable() })
   .meta({ id: "AssignCarrierRequest" });
+
+/** Hang a Staffel/Trupp under a Verband, or detach it (null). */
+export const SetGroupParentRequestSchema = z
+  .object({ parentId: cuid.nullable() })
+  .meta({ id: "SetGroupParentRequest" });
+
+/** Move a member to an explicit slot in its group. Slot 0 makes it the Captain;
+ *  whoever held that slot trades places with the mover. */
+export const SetMemberSlotRequestSchema = z
+  .object({
+    memberKind: z.enum(["unit", "person"]),
+    memberId: cuid,
+    slot: z.number().int().min(0).max(23),
+  })
+  .meta({ id: "SetMemberSlotRequest" });
 
 /** FR-C2: post an op announcement to a Discord text channel (snowflake id). */
 export const AnnounceRequestSchema = z

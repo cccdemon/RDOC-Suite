@@ -17,6 +17,11 @@ vi.mock("../../db.js", () => ({
       deleteMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    // Slot allocation (formations.nextFreeSlot) reads both member tables to find
+    // the lowest free place in a group.
+    fleetUnit: {
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -44,6 +49,9 @@ beforeEach(() => {
   p.cqbSignup.updateMany.mockResolvedValue({ count: 1 });
   p.cqbSignup.deleteMany.mockResolvedValue({ count: 1 });
   p.cqbSignup.upsert.mockResolvedValue({ id: "su" });
+  // Empty group by default → the next free slot is 0 (the Captain seat).
+  p.cqbSignup.findMany.mockResolvedValue([]);
+  p.fleetUnit.findMany.mockResolvedValue([]);
 });
 
 describe("createSignup", () => {
@@ -73,10 +81,19 @@ describe("bundleSquad", () => {
     expect(p.compositionGroup.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ name: "Alpha", kind: "squad" }) }),
     );
-    expect(p.cqbSignup.updateMany).toHaveBeenCalledWith(
+    // Slots are handed out in the given order — the first signup becomes Captain.
+    expect(p.cqbSignup.updateMany).toHaveBeenNthCalledWith(
+      1,
       expect.objectContaining({
-        where: expect.objectContaining({ id: { in: ["s1", "s2"] }, assignedGroupId: null }),
-        data: { assignedGroupId: "grp", status: "accepted" },
+        where: expect.objectContaining({ id: "s1", assignedGroupId: null }),
+        data: { assignedGroupId: "grp", status: "accepted", slotIndex: 0 },
+      }),
+    );
+    expect(p.cqbSignup.updateMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "s2", assignedGroupId: null }),
+        data: { assignedGroupId: "grp", status: "accepted", slotIndex: 1 },
       }),
     );
   });
@@ -125,7 +142,7 @@ describe("unbundle", () => {
     await unbundle("op1", "g1");
     expect(p.cqbSignup.updateMany).toHaveBeenCalledWith({
       where: { operationId: "op1", assignedGroupId: "g1" },
-      data: { assignedGroupId: null, status: "pending" },
+      data: { assignedGroupId: null, status: "pending", slotIndex: null },
     });
     expect(p.compositionGroup.deleteMany).toHaveBeenCalledWith({
       where: { id: "g1", operationId: "op1", kind: "squad" },
@@ -138,7 +155,8 @@ describe("assignToSquad", () => {
     await assignToSquad("op1", "s1", "g1");
     expect(p.cqbSignup.updateMany).toHaveBeenCalledWith({
       where: { id: "s1", operationId: "op1" },
-      data: { assignedGroupId: "g1", status: "accepted" },
+      // Empty squad → the newcomer takes slot 0 and is therefore the Captain.
+      data: { assignedGroupId: "g1", status: "accepted", slotIndex: 0 },
     });
   });
 

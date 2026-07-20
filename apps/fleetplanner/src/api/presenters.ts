@@ -38,6 +38,7 @@ type UnitRow = {
   carrierUnitId: string | null;
   requirementId?: string | null;
   formationId?: string | null;
+  formationSlot?: number | null;
   ship?: { name: string; size?: string | null; career?: string | null; role?: string | null } | null;
   captain?: UserRow | null;
   seats: SeatRow[];
@@ -73,8 +74,8 @@ type OpDetailRow = OpListRow & {
   }>;
   streams?: Array<{ id: string; platform: string; url: string; label: string; userId: string | null; user: { id: string; username: string } | null }>;
   questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
-  groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null }>;
-  cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; lateEta?: string | null; user: { id: string; username: string } }>;
+  groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null; parentId?: string | null; carrierUnitId?: string | null }>;
+  cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; slotIndex?: number | null; lateEta?: string | null; user: { id: string; username: string } }>;
   cover?: { url: string } | null;
 };
 
@@ -90,6 +91,19 @@ export function presentSeat(s: SeatRow, redact = false): Seat {
     claimedBy: claimed ? (redact ? { id: "", username: "Belegt" } : { id: s.user!.id, username: s.user!.username }) : null,
     lateEta: s.lateEta ?? null,
   };
+}
+
+// Members of one Trupp/Staffel/Verband, ordered by slot so index 0 — the
+// Captain — always renders first. Unslotted (legacy) rows sort to the end.
+function groupMembers(op: OpDetailRow, groupId: string, redact: boolean) {
+  return (op.cqbSignups ?? [])
+    .filter((s) => s.assignedGroupId === groupId && s.status !== "rejected")
+    .sort((a, b) => (a.slotIndex ?? 99) - (b.slotIndex ?? 99))
+    .map((s) =>
+      redact
+        ? { id: "", username: "Belegt", slotIndex: s.slotIndex ?? null, lateEta: null }
+        : { id: s.user.id, username: s.user.username, slotIndex: s.slotIndex ?? null, lateEta: s.lateEta ?? null },
+    );
 }
 
 export function presentUnit(u: UnitRow, redact = false): FleetUnit {
@@ -108,6 +122,7 @@ export function presentUnit(u: UnitRow, redact = false): FleetUnit {
     carrierUnitId: u.carrierUnitId,
     requirementId: u.requirementId ?? null,
     formationId: u.formationId ?? null,
+    formationSlot: u.formationSlot ?? null,
     lateEta: u.lateEta ?? null,
     // FR-B1: include inactive seats too (with the active flag) so the operator can
     // re-activate them; the player board filters to active client-side.
@@ -210,9 +225,9 @@ export function presentOperationDetail(
         id: g.id,
         name: g.name,
         targetSize: g.targetSize,
-        members: (op.cqbSignups ?? [])
-          .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
-          .map((s) => (redact ? { id: "", username: "Belegt", lateEta: null } : { id: s.user.id, username: s.user.username, lateEta: s.lateEta ?? null })),
+        parentId: g.parentId ?? null,
+        carrierUnitId: g.carrierUnitId ?? null,
+        members: groupMembers(op, g.id, redact),
       })),
     // Fighter squads (Jäger-Staffeln) — `members` are pilots (person signups the
     // operator placed directly); fighter units bind via formationId, grouped
@@ -223,18 +238,15 @@ export function presentOperationDetail(
         id: g.id,
         name: g.name,
         targetSize: g.targetSize,
-        members: (op.cqbSignups ?? [])
-          .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
-          .map((s) => (redact ? { id: "", username: "Belegt", lateEta: null } : { id: s.user.id, username: s.user.username, lateEta: s.lateEta ?? null })),
+        parentId: g.parentId ?? null,
+        members: groupMembers(op, g.id, redact),
       })),
     formations: (op.groups ?? [])
       .filter((g) => g.kind === "formation")
       .map((g) => ({
         id: g.id,
         name: g.name,
-        members: (op.cqbSignups ?? [])
-          .filter((s) => s.assignedGroupId === g.id && s.status !== "rejected")
-          .map((s) => (redact ? { id: "", username: "Belegt", lateEta: null } : { id: s.user.id, username: s.user.username, lateEta: s.lateEta ?? null })),
+        members: groupMembers(op, g.id, redact),
       })),
     coverUrl: op.cover?.url ?? null,
     viewerRole: viewer.role,

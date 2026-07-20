@@ -16,17 +16,18 @@ import {
   deleteFormation,
   renameCqbTeam,
   renameFormation,
-  getGuildSettings,
   getOperatorView,
   patchSeat,
   patchUnit,
   removeLeader,
   removeNeed,
   setFighterSquads,
+  setGroupParent,
+  setMemberSlot,
   unassignSeat,
   withdrawUnit,
 } from "../api/client";
-import type { FleetUnit, GuildSettingsMember, OperationDetail, OperatorView } from "../api/types";
+import type { FleetUnit, OperationDetail, OperatorView } from "../api/types";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
 import { LateArrival } from "./LateArrival";
@@ -99,7 +100,6 @@ export function OperatorPanel({
   const [dragUserId, setDragUserId] = useState<string | null>(null);
   const [leaderPick, setLeaderPick] = useState(false);
 
-  const [members, setMembers] = useState<GuildSettingsMember[] | null>(null);
   const [memberFilter, setMemberFilter] = useState("");
   // #5: per-CQB-team "add any person" picker — teamId whose picker is open + search.
   const [addMemberTeam, setAddMemberTeam] = useState<string | null>(null);
@@ -117,10 +117,9 @@ export function OperatorPanel({
   // Keep the optimistic board copy in sync with server reloads.
   useEffect(() => { setUnits(op.units); }, [op]);
 
-  // Guild members for the seat picker (assign anyone, not just flex signups).
-  useEffect(() => {
-    getGuildSettings(op.guild.id).then((r) => setMembers(r.members)).catch(() => setMembers([]));
-  }, [op.guild.id]);
+  // People the operator may assign. Comes from the operator view, so a partner
+  // event also lists the partner guilds' members — not just the host guild's.
+  const members = view?.assignablePeople ?? [];
 
   // ── action helpers ──────────────────────────────────────────────
   // View-scoped action (cqb teams / formations list / questions / flex): optimistic
@@ -332,7 +331,7 @@ export function OperatorPanel({
                 value={memberFilter}
                 onClick={(e) => e.stopPropagation()}
                 onChange={(e) => setMemberFilter(e.target.value)}
-                placeholder="Guild-Mitglied suchen…"
+                placeholder="Person suchen (auch Partner-Discord)…"
                 style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
               />
               {memberFilter.trim() && (members ?? [])
@@ -342,7 +341,9 @@ export function OperatorPanel({
                   <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, m.userId, m.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
                     <Avatar name={m.username} />
                     <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
-                    <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#00d4ff" }}>MITGLIED</span>
+                    {/* Partner-guild members are labelled with their org so the
+                        operator never mistakes them for their own crew. */}
+                    <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: m.isHost ? "#00d4ff" : "#f0a500" }}>{m.isHost ? "MITGLIED" : (m.guildName || "PARTNER").toUpperCase()}</span>
                   </button>
                 ))}
             </div>
@@ -598,7 +599,45 @@ export function OperatorPanel({
   // (squad groups); the operator assigns/moves each via a team dropdown.
   const cqbTeams = view.cqbTeams;
   const cqbSoldiers = view.cqbSoldiers;
-  const fighterFormations = view.formations;
+  // Jäger-Staffeln: the Bedarf-materialised fighter_squad groups. Legacy ops where
+  // the operator built their Staffeln as Verbände keep working via the fallback —
+  // same rule the backend uses, so both sides group fighters identically.
+  const fighterFormations = view.fighterSquads.length > 0 ? view.fighterSquads : view.formations;
+  const verbaende = view.formations;
+
+  // "Hängt unter Verband X" selector, shared by Trupps and Staffeln. Detaching is
+  // always allowed; a Verband can't be nested into itself (backend rejects it too).
+  const parentSelect = (groupId: string, parentId: string | null | undefined, testid: string) =>
+    verbaende.length > 0 && (
+      <>
+        <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>VERBAND</span>
+        <select
+          data-testid={testid}
+          value={parentId ?? ""}
+          onChange={(e) => { const pid = e.target.value || null; viewAct(`parent-${groupId}`, () => setGroupParent(op.id, groupId, csrf, pid)); }}
+          style={{ flexShrink: 0, maxWidth: "34%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
+        >
+          <option value="">— kein Verband —</option>
+          {verbaende.filter((f) => f.id !== groupId).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+        </select>
+      </>
+    );
+
+  // Slot 0 of any group is the Captain. This promotes a member into it; whoever
+  // held slot 0 trades places, so a group never shows two Captains.
+  const captainButton = (kind: "unit" | "person", id: string, isCaptain: boolean, testid: string) => (
+    <button
+      type="button"
+      data-testid={testid}
+      title={isCaptain ? "Ist Captain (Slot 1)" : "Zum Captain machen (Slot 1)"}
+      disabled={isCaptain}
+      onClick={() => viewAct(`slot-${id}`, () => setMemberSlot(op.id, csrf, kind, id, 0))}
+      style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, padding: "0.18rem 0.4rem", border: `1px solid ${isCaptain ? "rgba(255,214,0,0.5)" : "rgba(255,255,255,0.14)"}`, background: isCaptain ? "rgba(255,214,0,0.12)" : "transparent", color: isCaptain ? "#ffd600" : "#7e92a4", fontFamily: MONO, fontSize: "0.56rem", borderRadius: 5, cursor: isCaptain ? "default" : "pointer" }}
+    >
+      ★ {isCaptain ? "CAPTAIN" : "CPT"}
+    </button>
+  );
+
   // Reusable "add any person" picker for a group (CQB team OR fighter squad).
   const memberPicker = (groupId: string) => {
     const alreadyIn = new Set(cqbSoldiers.filter((s) => s.assignedGroupId === groupId).map((s) => s.username.toLowerCase()));
@@ -622,6 +661,7 @@ export function OperatorPanel({
               <button key={m.userId} type="button" data-testid={`add-member-pick-${groupId}-${m.userId}`} disabled={inTeam} onClick={() => { setAddMemberTeam(null); setAddMemberFilter(""); run(() => addCqbTeamMember(op.id, groupId, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(240,165,0,0.22)", background: inTeam ? "transparent" : "rgba(240,165,0,0.05)", borderRadius: 7, cursor: inTeam ? "default" : "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem", opacity: inTeam ? 0.5 : 1 }}>
                 <Avatar name={m.username} />
                 <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
+                {!m.isHost && <span style={{ fontFamily: MONO, fontSize: "0.55rem", color: "#7e92a4" }}>{(m.guildName || "PARTNER").toUpperCase()}</span>}
                 <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: inTeam ? "#5b6b7a" : "#f0a500" }}>{inTeam ? "DABEI" : "HINZUFÜGEN"}</span>
               </button>
             );
@@ -662,6 +702,7 @@ export function OperatorPanel({
                   <option value="">— eigenständig —</option>
                   {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                {parentSelect(tm.id, tm.parentId, `cqb-team-parent-${tm.id}`)}
               </div>
               {pickOpen && memberPicker(tm.id)}
             </div>
@@ -682,6 +723,7 @@ export function OperatorPanel({
                   <strong style={{ fontSize: "0.86rem", color: "#eaf4fb" }}>{s.username}</strong>
                   {s.note && <div style={{ color: "#7e92a4", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.note}</div>}
                 </div>
+                {team && captainButton("person", s.id, s.slotIndex === 0, `cqb-captain-${s.id}`)}
                 <LateArrival eta={s.lateEta} canEdit testid={`cqb-late-${s.id}`} onSet={(eta) => viewAct(`cqblate-${s.id}`, () => setCqbLateArrival(op.id, s.id, eta, csrf), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, lateEta: eta } : x)) }))} />
                 <SaveDot id={`cqb-${s.id}`} />
                 <select
@@ -722,12 +764,25 @@ export function OperatorPanel({
                 <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={14} sw={1.7} /></span>
                 <strong style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: "#eaf4fb" }}>{sq.name}</strong>
                 <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a", flexShrink: 0 }}>{filledF} Jäger</span>
+                {/* Legacy fallback groups (formations) have no parent. */}
+                {parentSelect(sq.id, (sq as { parentId?: string | null }).parentId ?? null, `fighter-squad-parent-${sq.id}`)}
                 <button type="button" data-testid={`fighter-add-member-${sq.id}`} title="Pilot dieser Staffel zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : sq.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(167,139,250,0.6)" : "rgba(167,139,250,0.35)"}`, background: "rgba(167,139,250,0.08)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Pilot</button>
               </div>
+              {/* Fighters that came WITH a ship. Listed here too so the operator can
+                  promote one to Staffel-Captain — the board only offers squad assignment. */}
+              {accepted.filter((u) => u.formationId === sq.id && u.shipClass === "Fighter").map((u) => (
+                <div key={u.id} data-testid={`fighter-unit-op-${u.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid rgba(167,139,250,0.16)", background: "rgba(167,139,250,0.03)" }}>
+                  <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={12} sw={1.7} /></span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "#dce8f0" }}>{u.name}{u.captain ? ` · ${u.captain.username}` : ""}</span>
+                  {captainButton("unit", u.id, u.formationSlot === 0, `fighter-unit-captain-${u.id}`)}
+                  <SaveDot id={`slot-${u.id}`} />
+                </div>
+              ))}
               {mem.map((s) => (
                 <div key={s.id} data-testid={`fighter-pilot-op-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid rgba(167,139,250,0.16)", background: "rgba(167,139,250,0.03)" }}>
                   <Avatar name={s.username} />
                   <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "#dce8f0" }}>{s.username}</span>
+                  {captainButton("person", s.id, s.slotIndex === 0, `fighter-captain-${s.id}`)}
                   <LateArrival eta={s.lateEta} canEdit testid={`fighter-late-${s.id}`} onSet={(eta) => viewAct(`cqblate-${s.id}`, () => setCqbLateArrival(op.id, s.id, eta, csrf), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, lateEta: eta } : x)) }))} />
                   <SaveDot id={`cqb-${s.id}`} />
                   <button type="button" title="Aus Staffel entfernen" onClick={() => viewAct(`cqb-${s.id}`, () => assignCqbSoldier(op.id, s.id, csrf, null), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, assignedGroupId: null } : x)) }))} style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: "1px solid rgba(255,68,68,0.35)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={10} sw={2} /></button>

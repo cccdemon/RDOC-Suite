@@ -93,7 +93,9 @@ import { importUserFleet } from "../services/fleetImport.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, placeInSquad as placeCqbMember, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
 import { cqbOwner, seatOwner, setCqbLateEta, setSeatLateEta, setUnitLateEta, unitOwner } from "../services/lateArrival.js";
-import { assignUnitToFormation, autoFillAllFighters, createFormation, deleteFormation, renameFormation } from "../services/formations.js";
+import { assignUnitToFormation, autoFillAllFighters, createFormation, deleteFormation, renameFormation, setGroupParent, setMemberSlot } from "../services/formations.js";
+import { shipClass } from "../services/composition.js";
+import { assignablePeople } from "../services/people.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
 import { addStream, removeStream, streamOwner } from "../services/streams.js";
@@ -109,6 +111,8 @@ import {
   AddCqbMemberRequestSchema,
   AssignCqbRequestSchema,
   SetLateArrivalRequestSchema,
+  SetGroupParentRequestSchema,
+  SetMemberSlotRequestSchema,
   AssignFormationRequestSchema,
   CqbSignupRequestSchema,
   FormationRequestSchema,
@@ -1930,6 +1934,57 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // Roster-Fundament: hang a Staffel/Trupp under a Verband (parentId null =
+  // detach). One level deep — the service rejects nesting a Verband that already
+  // has children or a parent.
+  app.put<{ Params: { id: string; gid: string }; Body: unknown }>(
+    "/api/v1/operations/:id/groups/:gid/parent",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse({ id: req.params.id });
+      if (!p.success || !/^[a-z0-9]{20,32}$/i.test(req.params.gid))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const body = SetGroupParentRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const r = await setGroupParent(p.data.id, req.params.gid, body.data.parentId);
+      if (!r.ok) {
+        const status = r.reason === "too_deep" || r.reason === "self" ? 409 : 404;
+        return sendError(reply, req, status, status === 409 ? "conflict" : "not_found", r.reason ?? "Failed.");
+      }
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "group:parent", body.data.parentId ?? "detach");
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // Roster-Fundament: move a member to an explicit slot inside its group.
+  // Slot 0 is the Captain, so this is also "make X the Staffel-/Trupp-Captain".
+  app.put<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/member-slot",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = SetMemberSlotRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const r = await setMemberSlot(
+        p.data.id,
+        { kind: body.data.memberKind, id: body.data.memberId },
+        body.data.slot,
+      );
+      if (!r.ok) return sendError(reply, req, 404, "not_found", r.reason ?? "Member not found.");
+      await logAudit(
+        p.data.id,
+        ctx.user.id,
+        ctx.user.username,
+        body.data.slot === 0 ? "group:captain" : "group:slot",
+        `${body.data.memberKind}:${body.data.memberId} → Slot ${body.data.slot}`,
+      );
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   app.put<{ Params: { id: string; unitId: string }; Body: unknown }>(
     "/api/v1/operations/:id/units/:unitId/formation",
     async (req, reply) => {
@@ -1964,10 +2019,11 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
-  // FR-B4: load a ground vehicle into a carrier ship (carrierUnitId null = detach).
-  // The carried unit inherits the carrier's accept/reject status. A real cargo-bay
-  // fit-check needs Fleetyards bay data we don't model yet → this validates the
-  // structural rules (carrier is a ship in this op, no self-carry) only.
+  // FR-B4: load a ground vehicle OR a Jäger into a carrier ship (carrierUnitId
+  // null = detach). The carried unit inherits the carrier's accept/reject status.
+  // A real cargo-bay/hangar fit-check needs Fleetyards bay data we don't model yet
+  // → this validates the structural rules only: the carried unit is a vehicle or a
+  // fighter, the carrier is a non-fighter ship in this op, and nothing carries itself.
   app.put<{ Params: { id: string; unitId: string }; Body: unknown }>(
     "/api/v1/operations/:id/units/:unitId/carrier",
     async (req, reply) => {
@@ -1980,18 +2036,24 @@ export async function apiV1Routes(app: FastifyInstance) {
 
       const unit = await prisma.fleetUnit.findFirst({
         where: { id: p.data.unitId, operationId: p.data.id, unitType: { in: ["vehicle", "ship"] } },
-        select: { id: true },
+        select: { id: true, unitType: true, ship: { select: { size: true, career: true, role: true } } },
       });
       if (!unit) return sendError(reply, req, 404, "not_found", "Unit not found.");
       if (body.data.carrierUnitId === p.data.unitId)
         return sendError(reply, req, 409, "conflict", "A unit can't carry itself.");
+      // Only vehicles and Jäger are loadable. Without this a capital ship could be
+      // stuffed into another ship — registerUnit already forbids that at creation.
+      if (unit.unitType === "ship" && shipClass(unit.ship) !== "Fighter")
+        return sendError(reply, req, 409, "conflict", "Only vehicles and fighters can be loaded into a ship.");
 
       if (body.data.carrierUnitId) {
         const carrier = await prisma.fleetUnit.findFirst({
           where: { id: body.data.carrierUnitId, operationId: p.data.id, unitType: "ship" },
-          select: { status: true },
+          select: { status: true, ship: { select: { size: true, career: true, role: true } } },
         });
         if (!carrier) return sendError(reply, req, 404, "not_found", "Carrier ship not found.");
+        if (shipClass(carrier.ship) === "Fighter")
+          return sendError(reply, req, 409, "conflict", "A fighter can't carry anything.");
         await prisma.fleetUnit.update({
           where: { id: p.data.unitId },
           data: { carrierUnitId: body.data.carrierUnitId, status: carrier.status },
@@ -2348,8 +2410,8 @@ export async function apiV1Routes(app: FastifyInstance) {
       auditLogs: Array<{ actor: string; action: string; detail: string; createdAt: Date }>;
       eventInterests: Array<{ id: string; displayName: string; userId: string | null }>;
       units: Array<{ seats: Array<{ userId: string | null }> }>;
-      groups: Array<{ id: string; name: string; kind: string; targetSize: number | null; carrierUnitId: string | null }>;
-      cqbSignups: Array<{ id: string; userId: string; status: string; note: string | null; assignedGroupId: string | null; lateEta: string | null; user: { username: string } }>;
+      groups: Array<{ id: string; name: string; kind: string; targetSize: number | null; carrierUnitId: string | null; parentId: string | null }>;
+      cqbSignups: Array<{ id: string; userId: string; status: string; note: string | null; assignedGroupId: string | null; slotIndex: number | null; lateEta: string | null; user: { username: string } }>;
     };
     // userIds already holding a seat in this op → mark interested users "seated".
     const seatedUserIds = new Set(
@@ -2398,16 +2460,24 @@ export async function apiV1Routes(app: FastifyInstance) {
       })),
       cqbTeams: o.groups
         .filter((g) => g.kind === "squad")
-        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize, carrierUnitId: g.carrierUnitId })),
+        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize, carrierUnitId: g.carrierUnitId, parentId: g.parentId })),
       cqbSoldiers: o.cqbSignups
         .filter((s) => s.status !== "rejected")
-        .map((s) => ({ id: s.id, username: s.user.username, assignedGroupId: s.assignedGroupId, note: s.note, lateEta: s.lateEta })),
+        .map((s) => ({
+          id: s.id,
+          username: s.user.username,
+          assignedGroupId: s.assignedGroupId,
+          slotIndex: s.slotIndex,
+          note: s.note,
+          lateEta: s.lateEta,
+        })),
       formations: o.groups
         .filter((g) => g.kind === "formation")
         .map((g) => ({ id: g.id, name: g.name })),
       fighterSquads: o.groups
         .filter((g) => g.kind === "fighter_squad")
-        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize })),
+        .map((g) => ({ id: g.id, name: g.name, targetSize: g.targetSize, parentId: g.parentId })),
+      assignablePeople: await assignablePeople(p.data.id),
     };
     return reply.type("application/json").send(view);
   });

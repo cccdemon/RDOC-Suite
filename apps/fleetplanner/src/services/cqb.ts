@@ -4,6 +4,15 @@
 
 import { prisma } from "../db.js";
 import { shipClass } from "./composition.js";
+import { nextFreeSlot } from "./formations.js";
+
+/** Groups a person can be slotted into. Slot 0 of any of them is the Captain. */
+const SLOTTED_KINDS = ["squad", "fighter_squad", "formation"];
+
+/** Join payload for a person entering `groupId` at the lowest free slot. */
+async function joinData(operationId: string, groupId: string) {
+  return { assignedGroupId: groupId, status: "accepted", slotIndex: await nextFreeSlot(operationId, groupId) };
+}
 
 /** Player: volunteer as a CQB soldier (idempotent per op+user). When `groupId`
  *  is given the player joins that squad directly (self-service slot); otherwise
@@ -14,10 +23,11 @@ export async function createSignup(
   note: string | null,
   groupId?: string | null,
 ) {
+  const join = groupId ? await joinData(operationId, groupId) : {};
   return prisma.cqbSignup.upsert({
     where: { operationId_userId: { operationId, userId } },
-    create: { operationId, userId, note, ...(groupId ? { assignedGroupId: groupId, status: "accepted" } : {}) },
-    update: { note, ...(groupId ? { assignedGroupId: groupId, status: "accepted" } : {}) },
+    create: { operationId, userId, note, ...join },
+    update: { note, ...join },
   });
 }
 
@@ -54,11 +64,14 @@ export async function bundleSquad(
       targetSize: clampSize(targetSize),
     },
   });
-  if (signupIds.length) {
-    await prisma.cqbSignup.updateMany({
-      where: { operationId, id: { in: signupIds }, assignedGroupId: null },
-      data: { assignedGroupId: group.id, status: "accepted" },
+  // Slots are handed out in the given order — the first signup becomes Captain.
+  let slot = 0;
+  for (const id of signupIds) {
+    const moved = await prisma.cqbSignup.updateMany({
+      where: { operationId, id, assignedGroupId: null },
+      data: { assignedGroupId: group.id, status: "accepted", slotIndex: slot },
     });
+    if (moved.count) slot++;
   }
   return group;
 }
@@ -76,7 +89,7 @@ export async function assignToSquad(
   if (!group) return;
   await prisma.cqbSignup.updateMany({
     where: { id: signupId, operationId },
-    data: { assignedGroupId: groupId, status: "accepted" },
+    data: await joinData(operationId, groupId),
   });
 }
 
@@ -92,18 +105,18 @@ export async function reassignSignup(
   if (groupId) {
     const group = await prisma.compositionGroup.findFirst({
       // Members can be reassigned into CQB squads OR fighter wings.
-      where: { id: groupId, operationId, kind: { in: ["squad", "fighter_squad", "formation"] } },
+      where: { id: groupId, operationId, kind: { in: SLOTTED_KINDS } },
       select: { id: true },
     });
     if (!group) return;
     await prisma.cqbSignup.updateMany({
       where: { id: signupId, operationId },
-      data: { assignedGroupId: groupId, status: "accepted" },
+      data: await joinData(operationId, groupId),
     });
   } else {
     await prisma.cqbSignup.updateMany({
       where: { id: signupId, operationId },
-      data: { assignedGroupId: null, status: "pending" },
+      data: { assignedGroupId: null, status: "pending", slotIndex: null },
     });
   }
 }
@@ -141,14 +154,15 @@ export async function placeInSquad(
 ): Promise<void> {
   const group = await prisma.compositionGroup.findFirst({
     // Operator can place a player into a CQB squad OR a fighter wing.
-    where: { id: groupId, operationId, kind: { in: ["squad", "fighter_squad", "formation"] } },
+    where: { id: groupId, operationId, kind: { in: SLOTTED_KINDS } },
     select: { id: true },
   });
   if (!group) return;
+  const join = await joinData(operationId, groupId);
   await prisma.cqbSignup.upsert({
     where: { operationId_userId: { operationId, userId } },
-    create: { operationId, userId, assignedGroupId: groupId, status: "accepted" },
-    update: { assignedGroupId: groupId, status: "accepted" },
+    create: { operationId, userId, ...join },
+    update: join,
   });
   await prisma.crewAssignmentRequest.deleteMany({ where: { operationId, userId } });
 }
@@ -190,7 +204,7 @@ export async function joinSquad(
   groupId: string,
 ): Promise<{ ok: true; name: string } | { ok: false; reason: "not_found" | "full" }> {
   const group = await prisma.compositionGroup.findFirst({
-    where: { id: groupId, operationId, kind: { in: ["squad", "fighter_squad", "formation"] } },
+    where: { id: groupId, operationId, kind: { in: SLOTTED_KINDS } },
     select: { id: true, name: true, targetSize: true },
   });
   if (!group) return { ok: false, reason: "not_found" };
@@ -205,10 +219,11 @@ export async function joinSquad(
     if (!alreadyIn && members >= group.targetSize) return { ok: false, reason: "full" };
   }
   // One CQB signup per op+user — joining a squad moves the player into it.
+  const join = await joinData(operationId, groupId);
   await prisma.cqbSignup.upsert({
     where: { operationId_userId: { operationId, userId } },
-    create: { operationId, userId, assignedGroupId: groupId, status: "accepted" },
-    update: { assignedGroupId: groupId, status: "accepted" },
+    create: { operationId, userId, ...join },
+    update: join,
   });
   return { ok: true, name: group.name };
 }
@@ -246,7 +261,7 @@ export async function setSquadCarrier(
 export async function unbundle(operationId: string, groupId: string): Promise<void> {
   await prisma.cqbSignup.updateMany({
     where: { operationId, assignedGroupId: groupId },
-    data: { assignedGroupId: null, status: "pending" },
+    data: { assignedGroupId: null, status: "pending", slotIndex: null },
   });
   await prisma.compositionGroup.deleteMany({
     where: { id: groupId, operationId, kind: "squad" },

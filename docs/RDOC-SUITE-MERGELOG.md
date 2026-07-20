@@ -1,5 +1,55 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-20: Roster-Fundament — Verband/Staffel-Hierarchie, Gruppen-Captain, CQB-Slots, Jäger-Carrier
+
+Status: ⏳ In Arbeit. Ergebnis eines Konzept-Audits (User-Vorgabe vs. Ist-Stand). Bestätigte Lücken:
+(3) `CompositionGroup` ist flach — kein `parentId`, also kein „Staffel 1 + Staffel 2 bilden einen Verband";
+(4) kein Captain/Leader auf Gruppen (nur `FleetUnit.captainId` + Sitz `order===0`), also kein Staffel-
+Captain und kein Trupp-Captain (`CqbSignup` hat weder `order` noch Rollenfeld);
+(5) CQB-Trupp hat keine echten Slots — flache Member-Liste + Zähler statt „Kachel mit 4 Plätzen";
+(2) Jäger können nicht in Schiffen transportiert werden (Carrier-Relation nur Fahrzeug→Schiff,
+CQB-Group→Schiff);
+(9) Bug: Carrier-Route erlaubt `unitType: {in:["vehicle","ship"]}` als geladene Einheit → Schiff-in-Schiff,
+obwohl `registerUnit` das verbietet.
+Nicht in diesem Schritt (User-Reihenfolge „Fundament zuerst"): Gap 7 (Verband/Auditlog-Transparenz für
+Teilnehmer) + Gap 8 (Carrier-Baum im Roster) folgen danach.
+
+Modell-Entscheidung: **Verband = `kind:"formation"`** (kann Schiffe direkt UND Staffeln enthalten),
+**Staffel = `kind:"fighter_squad"`** (Kapazität = Bedarf `squadSize`, default 2), **Trupp = `kind:"squad"`**.
+`CompositionGroup.parentId` (self, `onDelete: SetNull`) hängt Staffel/Trupp unter einen Verband.
+`FleetUnit.formationId` bleibt der generische „gehört zu Gruppe"-Zeiger (Schiff→Verband, Jäger→Staffel);
+Verband eines Jägers wird über `staffel.parentId` abgeleitet. Bestandsdaten bleiben gültig (Formation mit
+direkt zugewiesenen Jägern rendert weiter) — keine Daten-Migration, nur additive Spalten.
+
+Änderungen: Migration `CompositionGroup.parentId`, `CompositionGroup.leaderId` (Staffel-/Trupp-Captain),
+`CqbSignup.slotIndex` (Slot im Trupp, 0 = Captain). Backend: `formations.ts` (Parent setzen/lösen,
+`setGroupLeader`), `cqb.ts` (Slot-basierte Platzierung, Slot 0 ⇒ Captain, Leader-Sync), `units.ts` +
+Carrier-Route (Jäger→Schiff erlauben, Schiff-in-Schiff verbieten). Gap 6: Personen-Picker zieht bei
+Partner-Events zusätzlich die Mitglieder der geteilten Partner-Guilds (Spieler muss min. einmal
+eingeloggt gewesen sein — kein Freitext/Platzhalter). Contracts: `parentId`/`leader`/`slots`.
+SPA: Roster rendert Verband → Staffel verschachtelt; CQB-Trupp als N Slots mit Slot 0 = Captain;
+OperatorPanel: Staffel/Trupp einem Verband zuordnen, Captain setzen, Jäger-Carrier wählen.
+Deploy: Migration + rebuild `fleetplanner` + `fleetplanner-web`.
+
+Umgesetzt (2026-07-20): Migration `20260720090000_roster_foundation` (`CompositionGroup.parentId` +FK
++Index, `CqbSignup.slotIndex`, `FleetUnit.formationSlot` — alle nullable/additiv). `formations.ts`:
+`setGroupParent` (1 Ebene, self/too_deep-Guards), `nextFreeSlot` (Units + Personen teilen EINEN
+Slot-Raum), `setMemberSlot` (Tausch statt Doppelbelegung), `fighterSquads()` mit Legacy-Fallback auf
+Formations, Auto-Fill zielt wieder auf `fighter_squad`. `cqb.ts`: alle Join-Pfade über `joinData()`
+→ Slot; Detach/Unbundle setzt `slotIndex: null`; `bundleSquad` vergibt Slots in Reihenfolge.
+`units.ts` + Carrier-Route: Jäger ladbar, Schiff-in-Schiff verboten, Fighter trägt nichts.
+Neu `services/people.ts` → `assignablePeople` (Host-Guild + distribuierte/partners-sichtbare
+Partner-Guilds, dedupliziert, Host zuerst) im OperatorView; SPA-Picker ersetzt `getGuildSettings`.
+Routen: `PUT /groups/:gid/parent`, `PUT /member-slot` (+Audit `group:parent`/`group:captain`/`group:slot`).
+Contracts: `GroupMemberSchema` (slotIndex), `formationSlot`, `parentId`/`carrierUnitId` auf Gruppen,
+`assignablePeople`, `SetGroupParentRequest`, `SetMemberSlotRequest`. SPA: CQB-Kachel als N Slots
+(Slot 1 = CAPTAIN, „FREI"), Verband-Chip + „FÄHRT IN"-Chip im Roster, Captain-Tag, OperatorPanel
+Verband-Dropdown + ★CPT-Button (Trupps, Staffeln, Fighter-Units).
+tsc grün (Backend + Web). Backend-Tests: 13 Failures vs. 14 auf Baseline → **null neue** (eine
+vorbestehende Contract-Fixture repariert); Web: 6 vorbestehende (login/overview/recurrence).
+OFFEN (Gap 7+8, User-Reihenfolge): Verband-Anzeige auf Schiff-/Fahrzeug-Karten + im „Dein Status",
+Auditlog für Teilnehmer sichtbar, Carrier-Baum (Fahrzeug/Jäger im Schiff) im Roster.
+
 ## Queued / In Progress - 2026-07-19: Jäger Auto-Fill auch für Bestand (Button)
 
 Status: ⏳ In Arbeit. Auto-Fill soll auch bereits akzeptierte, staffellose Jäger treffen. Operator-
