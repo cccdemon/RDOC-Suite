@@ -23,6 +23,14 @@ Volume muss beim `up -d` angelegt werden.
 
 
 
+## Completed - 2026-07-22: YouTube + PDF an Ops deployed (25cd30d)
+
+Committed `25cd30d`, master gepusht (`69957c4..25cd30d`), LXC 103 `git pull` → `25cd30d`,
+`fleetplanner` + `fleetplanner-web` neu gebaut. Volume `fleetplanner_docs` angelegt, Migration
+`20260722140000_op_documents` angewandt. Verify: SPA 200, `/api/v1/health` 200, Server listening,
+keine Fehler. YouTube (Resource-Link `kind youtube`) + PDF-Upload (`OperationDocument`, DocumentsPanel)
+im Wizard + Op-Detail live.
+
 ## Completed - 2026-07-22: Feature-/Fix-Batch deployed (fc6168c, afec6f3)
 
 Committed (`afec6f3` CLAUDE.md-Rewrite, `fc6168c` Batch), master `9dd91e9..fc6168c` gepusht,
