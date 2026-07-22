@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - YouTube-Video + PDF-Dokumente an Ops (2026-07-22)
+
+Bei der Event-Erstellung (und später auf der Op-Seite) kann der Operator ein YouTube-Video hinterlegen
+und PDF-Dokumente hochladen.
+- **YouTube**: Reuse der bestehenden Resource-Links (`kind: youtube`) — neues Wizard-Feld ruft
+  `addResourceLink`. Anzeige über die vorhandene Briefing/Links-Sektion.
+- **PDF (echter Upload)**: neues `OperationDocument`-Modell (Migration `20260722140000_op_documents`),
+  Storage auf Disk unter `OP_DOCS_DIR` (=`/app/data/op-docs`, neues Volume `fleetplanner_docs`), Service
+  `opDocuments.ts` (max 5 Dateien × 8 MB, nur `application/pdf`). Routes: `POST …/documents` (multipart,
+  Manager), `GET …/documents/:docId` (Download, gated auf Op-Sichtbarkeit), `DELETE …/documents/:docId`.
+  Contract `OperationDocument` + `OperationDetail.documents`; Presenter + `getOperation`-Include. SPA:
+  `uploadOpDocument`/`deleteOpDocument`/`opDocumentUrl` + wiederverwendbares `DocumentsPanel` (Wizard
+  post-create + Op-Detail).
+
+Deploy: `fleetplanner` (Migration + Volume) **und** `fleetplanner-web`.
+
 ### Added - Partner-Discords pro Op auswählbar statt Auto-Fan-out (2026-07-22, FR-P1)
 
 Beim Erstellen einer Op mit Sichtbarkeit `partners`/`public` wählt der Operator jetzt im Wizard

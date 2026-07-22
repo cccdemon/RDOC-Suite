@@ -1,5 +1,28 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-22: Event-Erstellung — YouTube + PDF hinterlegen
+
+Status: ⏳ In Arbeit. Wunsch: bei der Event-Erstellung ein YouTube-Video + ein PDF-Dokument hinterlegen.
+Entscheidung (User): PDF = **echter Datei-Upload** (nicht nur Link).
+
+Umsetzung:
+- **YouTube**: reuse bestehende `OperationResourceLink` (`kind: youtube`, Thumbnail via `youtubeId`).
+  Neues Wizard-Feld (post-create) ruft `addResourceLink`. Op-Detail zeigt Links bereits.
+- **PDF-Upload**: neues Prisma-Modell `OperationDocument` (id, operationId, filename, storedName, size,
+  addedById) + Migration `20260722140000_op_documents`. Disk-Storage `OP_DOCS_DIR=/app/data/op-docs`
+  (neues Compose-Volume `fleetplanner_docs`), Service `services/opDocuments.ts` (max 5 × 8 MB, nur
+  `application/pdf`, randomUUID-storedName). Routes in apiV1: `POST/GET/DELETE …/operations/:id/documents[/:docId]`
+  (Upload = `canApproveUnits`-Manager + multipart-`document`-Part; Download = Op-Sichtbarkeit wie GET op,
+  streamt `application/pdf`; Delete = Manager). Contract `OperationDocumentSchema` + `OperationDetail.documents`;
+  Presenter + `getOperation`-Include. SPA: client `uploadOpDocument`/`deleteOpDocument`/`opDocumentUrl`,
+  Komponente `DocumentsPanel` (Wizard post-create + Op-Detail), Wizard `YoutubeField`. Web-Fixture um
+  `documents: []` ergänzt (Contract-Pflichtfeld).
+
+Deploy: `fleetplanner` (Migration + neues Volume `fleetplanner_docs`) **und** `fleetplanner-web`.
+Volume muss beim `up -d` angelegt werden.
+
+
+
 ## Completed - 2026-07-22: Feature-/Fix-Batch deployed (fc6168c, afec6f3)
 
 Committed (`afec6f3` CLAUDE.md-Rewrite, `fc6168c` Batch), master `9dd91e9..fc6168c` gepusht,

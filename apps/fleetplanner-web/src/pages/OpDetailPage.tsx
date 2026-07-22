@@ -27,6 +27,7 @@ import { Ic } from "../components/Icons";
 import { Avatar } from "../components/Avatar";
 import { LateArrival } from "../components/LateArrival";
 import { Markdown } from "../components/Markdown";
+import { DocumentsPanel } from "../components/DocumentsPanel";
 import { useSeo, metaText } from "../seo";
 import { roleLabel } from "../shipRoles";
 
@@ -808,6 +809,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               </>
             )}
             <StreamsSection op={op} csrf={csrf} meId={me?.id ?? null} canManage={op.canManage} onChanged={load} />
+            <div style={{ marginTop: "1rem" }}>
+              <DocumentsPanel opId={op.id} csrf={csrf} canManage={op.canManage} initialDocs={op.documents} onNotice={setNotice} />
+            </div>
           </div>
         </div>
 

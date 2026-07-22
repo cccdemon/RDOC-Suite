@@ -75,6 +75,8 @@ services:
     volumes:
       # FR-P3 org-fleet: persistent cache for ship images pulled from Fleetyards.
       - fleetplanner_shipimg:/app/data/ship-images
+      # Operator-attached op PDF documents (OperationDocument.storedName lives here).
+      - fleetplanner_docs:/app/data/op-docs
     depends_on:
       fleetplanner-db:
         condition: service_healthy
@@ -223,6 +225,7 @@ volumes:
   caddy_rdoc_data:
   fleetplanner_pgdata:
   fleetplanner_shipimg:
+  fleetplanner_docs:
   grafana_data:
   mission_cover_data:
   monitoring_data:

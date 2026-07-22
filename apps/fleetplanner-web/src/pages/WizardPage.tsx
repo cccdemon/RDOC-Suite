@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { announceOperation, ApiError, addShipNeeds, createOperation, createRecurrence, getGuildChannels, getPartnerships, setCqbTeams, setFighterSquads } from "../api/client";
+import { announceOperation, ApiError, addResourceLink, addShipNeeds, createOperation, createRecurrence, getGuildChannels, getPartnerships, setCqbTeams, setFighterSquads } from "../api/client";
 import type { SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { CoverPanel } from "../components/CoverPanel";
+import { DocumentsPanel } from "../components/DocumentsPanel";
 import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, coreValid, coreOpBody } from "../components/opForm";
 import { useT } from "../i18n";
 import { TemplatesPage } from "./TemplatesPage";
@@ -322,6 +323,8 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                 </div>
                 <p style={{ fontSize: "0.84rem", color: "#9fb1c2", margin: 0, lineHeight: 1.5 }}>{t("cover.wizardHint")}</p>
                 <CoverPanel opId={createdId} csrf={csrf} onNotice={setNotice} />
+                <YoutubeField opId={createdId} csrf={csrf} onNotice={setNotice} />
+                <DocumentsPanel opId={createdId} csrf={csrf} canManage initialDocs={[]} onNotice={setNotice} />
                 <ShareChannel opId={createdId} guildId={guildId} csrf={csrf} onNotice={setNotice} />
                 <button type="button" data-testid="wiz-to-op" onClick={() => nav(`/ops/${createdId}`)} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid rgba(0,212,255,0.5)", background: "rgba(0,212,255,0.14)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}>{t("cover.toOp")}<Ic name="arrow" size={14} sw={1.8} /></button>
               </div>
@@ -370,6 +373,44 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
         </div>
       )}
     </div>
+  );
+}
+
+// Attach a YouTube video to the op as a resource link (kind youtube → thumbnail on
+// the op page). Reuses the resource-links backend; the op detail page's
+// ResourceLinksPanel can add/remove more later.
+function YoutubeField({ opId, csrf, onNotice }: { opId: string; csrf: string | null; onNotice: (m: string) => void }) {
+  const [url, setUrl] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  async function add() {
+    if (!csrf || !url.trim() || busy) return;
+    setBusy(true);
+    try {
+      await addResourceLink(opId, csrf, { url: url.trim(), kind: "youtube" });
+      setAdded(true);
+      setUrl("");
+      onNotice("YouTube-Video hinterlegt.");
+    } catch (e) {
+      onNotice(e instanceof ApiError ? e.message : "Konnte Video nicht hinterlegen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section style={{ border: "1px solid rgba(0,212,255,0.16)", borderRadius: 14, background: "#090f18", padding: "1.1rem 1.2rem" }} data-testid="youtube-field">
+      <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.06em", color: "#eaf4fb", marginBottom: "0.9rem" }}>
+        <span style={{ color: "#ff4444", display: "inline-flex" }}><Ic name="youtube" size={15} sw={1.6} /></span> YOUTUBE-VIDEO
+      </div>
+      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+        <input data-testid="youtube-url" type="url" value={url} onChange={(e) => { setUrl(e.target.value); setAdded(false); }} placeholder="https://youtu.be/… oder youtube.com/watch?v=…" style={{ ...inp, width: "auto", minWidth: 220, flex: "1 1 220px" }} />
+        <button type="button" data-testid="youtube-add" disabled={busy || !csrf || !url.trim()} onClick={add} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid rgba(0,212,255,0.5)", background: "rgba(0,212,255,0.14)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>
+          {added ? <><Ic name="check" size={14} sw={2} /> Hinterlegt</> : <><Ic name="plus" size={14} sw={1.7} /> Hinterlegen</>}
+        </button>
+      </div>
+    </section>
   );
 }
 

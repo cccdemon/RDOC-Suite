@@ -99,6 +99,7 @@ import { effectiveShipClass } from "../services/composition.js";
 import { assignablePeople } from "../services/people.js";
 import { setHangarShare } from "../services/hangarShare.js";
 import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
+import { addOpDocument, getOpDocument, openOpDocument, removeOpDocument, MAX_OP_DOCUMENTS } from "../services/opDocuments.js";
 import { addStream, removeStream, streamOwner } from "../services/streams.js";
 import { sendDiscordDm } from "../services/discord.js";
 import { searchLocalShips } from "../services/scwiki.js";
@@ -2345,6 +2346,86 @@ export async function apiV1Routes(app: FastifyInstance) {
       return reply.type("application/json").send({ ok: true as const });
     },
   );
+
+  // ── op documents (PDF) ──────────────────────────────────────────────
+  // Upload: multipart, one `document` PDF part. Any op manager. CSRF via the
+  // x-csrf-token header (requireSessionJson works for multipart too).
+  app.post<{ Params: { id: string } }>("/api/v1/operations/:id/documents", async (req, reply) => {
+    const p = IdParamSchema.safeParse(req.params);
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    if (!(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+      return sendError(reply, req, 403, "forbidden", "Operator, creator or commander role required.");
+    if (!req.isMultipart())
+      return sendError(reply, req, 400, "bad_request", "Expected multipart/form-data.");
+
+    let filename = "";
+    let buf: Buffer | null = null;
+    try {
+      for await (const part of req.parts()) {
+        if (part.type === "file") {
+          if (part.fieldname !== "document") { part.file.resume(); continue; }
+          if (part.mimetype !== "application/pdf") {
+            part.file.resume();
+            return sendError(reply, req, 400, "bad_request", "Only PDF files are allowed.");
+          }
+          filename = part.filename || "dokument.pdf";
+          buf = await part.toBuffer(); // throws if over the plugin fileSize limit
+        }
+      }
+    } catch {
+      return sendError(reply, req, 400, "bad_request", "The file was too large (max 8 MB).");
+    }
+    if (!buf) return sendError(reply, req, 400, "bad_request", "No document file provided.");
+
+    const res = await addOpDocument(p.data.id, ctx.user.id, filename, buf);
+    if (!res.ok) {
+      const msg =
+        res.reason === "too_large" ? "The file was too large (max 8 MB)."
+        : res.reason === "limit" ? `Document limit reached (max ${MAX_OP_DOCUMENTS}).`
+        : "The file was empty.";
+      return sendError(reply, req, 409, "conflict", msg);
+    }
+    await logAudit(p.data.id, ctx.user.id, ctx.user.username, "document:add", res.doc.filename);
+    return reply.type("application/json").send({ ok: true as const, document: { ...res.doc, createdAt: res.doc.createdAt.toISOString() } });
+  });
+
+  // Download: streams the PDF. Read access follows the op's own visibility
+  // (anonymous only for public ops; authenticated viewers need an effective role).
+  app.get<{ Params: { id: string; docId: string } }>("/api/v1/operations/:id/documents/:docId", async (req, reply) => {
+    const p = LinkParamSchema.safeParse({ id: req.params.id, linkId: req.params.docId });
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+    const op = await getOperation(req.params.id);
+    if (!op) return sendError(reply, req, 404, "not_found", "Operation not found.");
+    const ctx = await optionalAuth(req);
+    const visibility = (op as { visibility?: string }).visibility;
+    if (!ctx) {
+      if (visibility !== "public") return sendError(reply, req, 401, "unauthenticated", "Sign in to view this operation.");
+    } else if (!(await effectiveOpRole(ctx.user.id, ctx.user.role, op.id))) {
+      return sendError(reply, req, 404, "not_found", "Operation not found.");
+    }
+
+    const doc = await getOpDocument(req.params.id, req.params.docId);
+    if (!doc) return sendError(reply, req, 404, "not_found", "Document not found.");
+    return reply
+      .type("application/pdf")
+      .header("Content-Disposition", `inline; filename="${doc.filename.replace(/"/g, "")}"`)
+      .send(openOpDocument(doc.storedName));
+  });
+
+  // Delete: any op manager.
+  app.delete<{ Params: { id: string; docId: string } }>("/api/v1/operations/:id/documents/:docId", async (req, reply) => {
+    const p = LinkParamSchema.safeParse({ id: req.params.id, linkId: req.params.docId });
+    if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid id.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    if (!(await canApproveUnits(ctx.user.id, ctx.user.role, req.params.id)))
+      return sendError(reply, req, 403, "forbidden", "Operator, creator or commander role required.");
+    await removeOpDocument(req.params.id, req.params.docId);
+    await logAudit(req.params.id, ctx.user.id, ctx.user.username, "document:remove", req.params.docId);
+    return reply.type("application/json").send({ ok: true as const });
+  });
 
   // ── FR-P3 Phase B: streamer links (self-service) ───────────────────
   // Add: any user with op access (member / partner / public viewer). The entry is

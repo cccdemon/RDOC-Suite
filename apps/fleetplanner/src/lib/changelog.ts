@@ -35,6 +35,14 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-07-22",
+    title: "Attach a YouTube video and PDFs to an event",
+    changes: [
+      "When you create an operation you can now attach a YouTube video and upload PDF documents (briefing, rules of engagement, maps). They appear on the operation page for everyone who can see the op.",
+      "Operators can also add or remove documents later, straight from the operation page. Up to 5 PDFs, 8 MB each.",
+    ],
+  },
+  {
+    date: "2026-07-22",
     title: "Choose which partner Discords get your event",
     changes: [
       "When you create a partner or public operation, you now pick exactly which partner Discords the event is posted to. Nothing is selected by default, so an event is never posted to a partner server you didn't choose.",

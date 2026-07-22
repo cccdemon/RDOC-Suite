@@ -77,6 +77,7 @@ type OpDetailRow = OpListRow & {
     kind: string;
     sortOrder: number;
   }>;
+  documents?: Array<{ id: string; filename: string; size: number; createdAt: Date }>;
   streams?: Array<{ id: string; platform: string; url: string; label: string; userId: string | null; user: { id: string; username: string } | null }>;
   questions?: Array<{ id: string; asker: string; body: string; answer: string | null; answeredBy: string | null }>;
   groups?: Array<{ id: string; name: string; kind: string; targetSize: number | null; parentId?: string | null; carrierUnitId?: string | null }>;
@@ -209,6 +210,12 @@ export function presentOperationDetail(
       url: l.url,
       kind: l.kind,
       sortOrder: l.sortOrder,
+    })),
+    documents: (op.documents ?? []).map((d) => ({
+      id: d.id,
+      filename: d.filename,
+      size: d.size,
+      createdAt: d.createdAt.toISOString(),
     })),
     streams: (op.streams ?? []).map((s) => ({
       id: s.id,

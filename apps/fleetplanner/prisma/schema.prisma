@@ -45,6 +45,7 @@ model User {
   pollVotes           PollVote[]
   voiceRecipients     OperationVoiceRecipient[]
   operationStreams    OperationStream[]
+  documentsAdded      OperationDocument[]
 }
 
 // ── Guilds (multi-tenant: one Discord server = one tenant) ─────────
@@ -398,8 +399,28 @@ model Operation {
   resourceLinks            OperationResourceLink[]
   voiceRecipients          OperationVoiceRecipient[]
   streams                  OperationStream[]
+  documents                OperationDocument[]
 
   @@index([recurrenceId])
+}
+
+// Operator-attached PDF documents on an operation (briefing/rules one-pagers).
+// The file lives on disk (op-docs volume, `storedName`); this row is the metadata.
+// Visibility follows the operation's own visibility (download route re-checks it).
+model OperationDocument {
+  id          String   @id @default(cuid())
+  operationId String
+  filename    String   // original name, sanitized — shown + used for download
+  storedName  String   // opaque on-disk name (…/op-docs/<storedName>)
+  size        Int      // bytes
+  addedById   String
+  createdAt   DateTime @default(now())
+
+  operation Operation @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  addedBy   User      @relation(fields: [addedById], references: [id])
+
+  @@index([operationId])
+  @@index([addedById])
 }
 
 // FR-P3 Stream-Event Phase B: streamer links on an op (self-service). Each row is

@@ -306,6 +306,48 @@ export function removeResourceLink(opId: string, linkId: string, csrfToken: stri
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/resource-links/${encodeURIComponent(linkId)}`, csrfToken);
 }
 
+// ── op documents (PDF) ──────────────────────────────────────────────
+export type OpDocument = { id: string; filename: string; size: number; createdAt: string };
+
+/** Absolute URL for downloading/viewing a document (cookie-auth GET). */
+export function opDocumentUrl(opId: string, docId: string): string {
+  return `${API_BASE}/operations/${encodeURIComponent(opId)}/documents/${encodeURIComponent(docId)}`;
+}
+
+/** Upload a PDF (multipart). CSRF in the header with the same stale-token retry as mutate(). */
+export async function uploadOpDocument(opId: string, csrfToken: string, file: File): Promise<{ ok: true; document: OpDocument }> {
+  const path = `/operations/${encodeURIComponent(opId)}/documents`;
+  const send = (token: string) => {
+    const fd = new FormData();
+    fd.append("document", file, file.name);
+    return fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { accept: "application/json", "x-csrf-token": token },
+      body: fd,
+    });
+  };
+  let res = await send(csrfOverride ?? csrfToken);
+  if (res.status === 403) {
+    const fresh = await get<SessionResponse>("/session").catch(() => null);
+    const freshCsrf = fresh?.csrfToken ?? null;
+    if (freshCsrf && freshCsrf !== (csrfOverride ?? csrfToken)) {
+      csrfOverride = freshCsrf;
+      res = await send(freshCsrf);
+    }
+  }
+  if (!res.ok) {
+    let errBody: ApiErrorBody | null = null;
+    try { errBody = (await res.json()) as ApiErrorBody; } catch { errBody = null; }
+    throw new ApiError(res.status, errBody);
+  }
+  return (await res.json()) as { ok: true; document: OpDocument };
+}
+
+export function deleteOpDocument(opId: string, docId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/documents/${encodeURIComponent(docId)}`, csrfToken);
+}
+
 export type OperationStream = { id: string; platform: "twitch" | "youtube" | "vdo_ninja" | "other"; url: string; label: string; userId: string | null; username: string | null };
 export function addStream(opId: string, csrfToken: string, input: { platform: string; url: string; label?: string }): Promise<{ ok: true; stream: OperationStream }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/streams`, csrfToken, input);

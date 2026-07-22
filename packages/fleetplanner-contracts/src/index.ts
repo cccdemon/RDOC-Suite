@@ -245,6 +245,17 @@ export const ResourceLinkSchema = z
   .meta({ id: "ResourceLink" });
 export type ResourceLink = z.infer<typeof ResourceLinkSchema>;
 
+/** An operator-attached PDF document on an op. Bytes live on disk; this is metadata. */
+export const OperationDocumentSchema = z
+  .object({
+    id: z.string(),
+    filename: z.string(),
+    size: z.number().int(),
+    createdAt: z.iso.datetime(),
+  })
+  .meta({ id: "OperationDocument" });
+export type OperationDocument = z.infer<typeof OperationDocumentSchema>;
+
 /** FR-P3 Phase B: a streamer link on an op (self-service). */
 export const STREAM_PLATFORMS = ["twitch", "youtube", "vdo_ninja", "other"] as const;
 export const OperationStreamSchema = z
@@ -286,6 +297,8 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
   leaders: z.array(z.object({ id: z.string(), username: z.string() })),
   units: z.array(FleetUnitSchema),
   resourceLinks: z.array(ResourceLinkSchema),
+  /** Operator-attached PDF documents (download via /operations/:id/documents/:docId). */
+  documents: z.array(OperationDocumentSchema),
   /** FR-P3 Phase B: streamer links (self-service). */
   streams: z.array(OperationStreamSchema),
   /** Q&A thread — askers see answers; operators answer in the console. */
