@@ -4,7 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Projektname
 
-RDOC-Suite — Discord Channel Commander Voice Bridge (Monorepo aus RDCC + RDOC-RTC + RDOC-VoiceRelayBots)
+RDOC-Suite — **Fleetplanner** für Star-Citizen-Orgs (Event-/Op-Planung, Discord-Integration).
+
+> **Historie:** Das Repo war ursprünglich eine „Discord Channel Commander Voice Bridge" (RDCC +
+> RDOC-RTC + VoiceRelayBots). Der komplette Voice-Stack (`apps/bot`, `apps/bridge`,
+> `apps/relay-bots`, LiveKit) wurde entfernt (`dbd2c3f chore: remove legacy voice/CC stack`;
+> LiveKit 2026-06-18). Restore-Referenz nur noch als Doku: `docs/LIVEKIT-ARCHIVE-2026-06.md`.
+> **Verwaiste Reste, Löschkandidaten:** `apps/companion` (ruft noch tote Bridge/LiveKit),
+> `packages/shared` (nur von companion importiert), `packages/db` + Root-`prisma/` + die
+> `pnpm db:*`-Skripte (waren das Bridge/Bot-Schema — kein lebender Consumer mehr).
 
 ## Merge-Log zuerst — immer
 
@@ -14,11 +22,9 @@ RDOC-Suite — Discord Channel Commander Voice Bridge (Monorepo aus RDCC + RDOC-
 - **Completed Steps** — nach Commit hierher verschieben/kopieren, Commit-Hash anhängen.
 - **Open Decisions** — ungeklärte Architekturfragen; entfernen wenn entschieden.
 
-Offene Entscheidungen (Stand 2026-05-27):
+Offene Entscheidungen (Stand 2026-07-22):
 1. **Package-Namespace**: ✓ Entschieden — `@rdoc-suite/*` (war `@dccc/*`, umbenannt 2026-05-31).
-2. **Voice-to-All**: Commander-Rolle, separate Discord-Rolle oder Admin-only?
-3. **Session-Modell**: Invite-basierte Ops-Räume (Step 3 implementiert) vs. einheitliche Guild-Räume mit Invite-Links?
-4. **`Caddyfile` im Repo**: veraltet, Production läuft auf Traefik — kann gelöscht werden.
+2. **Voice-Era-Reste löschen?** `apps/companion`, `packages/shared`, `packages/db`, Root-`prisma/` sind verwaist (siehe Historie oben) — Löschung vs. behalten noch nicht entschieden.
 
 ## Deploy-Regeln — immer einhalten
 
@@ -29,34 +35,37 @@ Offene Entscheidungen (Stand 2026-05-27):
 | **RDOC-Suite** | `10.10.10.99` | `/opt/RDOC-Suite` | `docker compose -f docker-compose.prod.yml` |
 | **DCCC** | `10.10.10.97` (headwig) | `/opt/discord-channel-commander` | `docker compose -f docker-compose.prod.yml` |
 
+Reverse-Proxy in Prod = **Caddy** (`Caddyfile`, Service `caddy-rdoc`) — nicht Traefik.
+
 **RDOC-Suite Deploy:**
 ```bash
 cd /opt/RDOC-Suite
 git pull
-docker compose -f docker-compose.prod.yml up -d --build          # alle Services
-docker compose -f docker-compose.prod.yml up -d --build bridge    # einzeln
-docker compose -f docker-compose.prod.yml up -d --build fleetplanner
+docker compose -f docker-compose.prod.yml up -d --build             # alle Services
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner      # Backend/API einzeln
 docker compose -f docker-compose.prod.yml up -d --build fleetplanner-web   # SPA-Frontend (Nav/UX)
 docker compose -f docker-compose.prod.yml logs -f fleetplanner
 ```
+
+Prod-Services (aus `docker-compose.prod.yml`): `caddy-rdoc`, `fleetplanner`, `fleetplanner-web`,
+`fleetplanner-db` (Postgres), `error-page`, `mission-cover`, `monitoring` (Prometheus),
+`alertmanager`, `postgres-exporter`, `node-exporter`, `grafana`.
 
 Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md mehr.
 
 ## Discord Bots — NIE verwechseln
 
-> **RDOC-RTC Bot entfernt (2026-06-23).** Der Voice-Bridge-Bot (Prod App
-> `1507722962919227452`, Slash-Commands `/cc`, Bridge-OAuth, Strategy-Channels) +
-> die darauf zeigende Companion-OAuth-App sind raus — Voice-Stack (`apps/bot`,
-> `apps/bridge`, `apps/relay-bots`) entfernt seit 2026-06-12, LiveKit seit 2026-06-18.
-> Keine Env-Vars (`DISCORD_RDOCRTC_*`, `DISCORD_COMPANION_BOT_*`) mehr im Code.
+Es gibt **nur noch einen** Bot-Typ + die Funkrelais-Bots. Der frühere RDOC-RTC-Voice-Bridge-Bot
+(App `1507722962919227452`, `/cc`, Bridge-OAuth) + die Companion-OAuth-App sind entfernt.
 
-| Bot | Env-Vars | Container | Zweck |
-|---|---|---|---|
-| **RDOC-Fleetplanner Bot** (Prod App `1509191397264064689`, Developer-Portal-Name `RDOC-Fleetplanner`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | — (im fleetplanner) | Discord-Events, Feedback-Tickets, DMs, Event-Rollen |
+| Bot | Env-Vars | Zweck |
+|---|---|---|
+| **RDOC-Fleetplanner Bot** (Prod App `1509191397264064689`, Portal-Name `RDOC-Fleetplanner`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | Discord-Events, Feedback-Tickets, DMs, Event-Rollen |
+| **Funkrelais Bots** (6×, in `GuildVoiceBot`-Tabelle) | pro Bot eigenes Token, verschlüsselt in DB | „Launch Voice Channels" — jeder Bot joined einen Discord-Voice-Channel |
 
 ### Erforderliche Bot-Permissions
 
-**Fleetmanager Bot** — Scopes: `bot applications.commands`
+**Fleetplanner Bot** — Scopes: `bot applications.commands`
 - Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_ROLES`, `MANAGE_EVENTS`
 - Intents: `Guilds`, `GuildVoiceStates`
 
@@ -97,13 +106,10 @@ Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md me
 ```bash
 # Installation und Setup
 pnpm install
-pnpm db:generate            # Prisma Client generieren (nach jedem frischen Clone zwingend!)
-pnpm db:migrate             # Migrationen auf dev.db anwenden (bridge/bot root schema)
-pnpm db:studio              # Prisma Web-UI für die SQLite-DB
 
 # Fleetplanner hat ein eigenes Prisma-Schema (PostgreSQL in Prod, SQLite lokal)
-pnpm --filter @rdoc-suite/fleetplanner db:generate
-pnpm --filter @rdoc-suite/fleetplanner db:push   # lokal (SQLite, kein Migrations-History)
+pnpm --filter @rdoc-suite/fleetplanner db:generate   # nach frischem Clone zwingend
+pnpm --filter @rdoc-suite/fleetplanner db:push       # lokal (SQLite, kein Migrations-History)
 # Prod: Migrationen laufen automatisch beim Container-Start via entrypoint
 
 # Build / Lint / Format / Test (alle Workspaces)
@@ -112,30 +118,21 @@ pnpm lint
 pnpm format
 pnpm test                   # vitest in jedem Workspace mit test-Skript
 
-# Einzelnes Workspace bauen / entwickeln (Watch-Mode)
-pnpm --filter @rdoc-suite/bot dev
-pnpm --filter @rdoc-suite/bridge dev
-pnpm --filter @rdoc-suite/companion dev          # nur Vite-Frontend
-pnpm --filter @rdoc-suite/companion tauri:dev    # Vite + Rust Shell (Hotkeys, Deep-Link)
-# Companion-Voraussetzungen (Windows): Rust + MSVC Build Tools
-# winget install Rustlang.Rustup
-# winget install Microsoft.VisualStudio.2022.BuildTools
+# Einzelnes Workspace entwickeln (Watch-Mode)
 pnpm --filter @rdoc-suite/fleetplanner dev
 pnpm --filter @rdoc-suite/fleetplanner-web dev   # React/Vite SPA (Fleetplanner-Frontend)
 pnpm --filter @rdoc-suite/fleetplanner-contracts build  # nach Contract-Änderung, vor SPA-Typecheck
-pnpm --filter @rdoc-suite/relay-bots dev
-
-# Bot / Bridge starten (nach `build`)
-node apps/bot/dist/index.js
-node apps/bridge/dist/index.js
+pnpm --filter @rdoc-suite/mission-cover dev
 
 # Einzelne Tests laufen lassen
-pnpm --filter @rdoc-suite/bridge test -- oauth      # nur oauth.test.ts
-pnpm --filter @rdoc-suite/bridge test -- -t "name"  # einzelner it("name", ...) Block
-
+pnpm --filter @rdoc-suite/fleetplanner test -- <datei>     # nur eine Test-Datei
+pnpm --filter @rdoc-suite/fleetplanner test -- -t "name"   # einzelner it("name", ...) Block
 ```
 
-Es gibt keinen `ts-node`-Runner. Bot und Bridge müssen vor dem Start kompiliert werden (Output in `dist/`). **Für Production wird ausschließlich in Docker gebaut** — kein lokaler pnpm/npm/cargo auf dem Server.
+Es gibt keinen `ts-node`-Runner. **Für Production wird ausschließlich in Docker gebaut** — kein lokaler pnpm/npm/cargo auf dem Server.
+
+> Die Root-`pnpm db:*`-Skripte + Root-`prisma/schema.prisma` gehören zum entfernten Bridge/Bot-Schema
+> und sind verwaist. Für Fleetplanner immer die `--filter @rdoc-suite/fleetplanner db:*`-Varianten nutzen.
 
 ### Häufige Commands — Production (LXC 103, `/opt/RDOC-Suite`)
 
@@ -145,106 +142,58 @@ Zugang **immer** über Proxmox-Host (siehe Regel 3): `ssh -i ~/.ssh/claude_deplo
 cd /opt/RDOC-Suite
 git pull
 docker compose -f docker-compose.prod.yml up -d --build             # alle Services
-docker compose -f docker-compose.prod.yml up -d --build fleetplanner  # einzeln (Backend/API)
-docker compose -f docker-compose.prod.yml up -d --build fleetplanner-web  # SPA-Frontend (Nav/UX)
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner      # Backend/API einzeln
+docker compose -f docker-compose.prod.yml up -d --build fleetplanner-web   # SPA-Frontend
 docker compose -f docker-compose.prod.yml logs -f fleetplanner
-docker compose -f docker-compose.prod.yml logs -f bridge
 ```
 
-Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Windows** (Tauri braucht Rust + MSVC).
+Build läuft komplett im Container.
 
 ### Workspace-Namen
 
-| Verzeichnis | pnpm-Name | Docker-Image |
-| --- | --- | --- |
-| [apps/bot/](apps/bot/) | `@rdoc-suite/bot` | `rdoc-suite-bot` |
-| [apps/bridge/](apps/bridge/) | `@rdoc-suite/bridge` | `rdoc-suite-bridge` |
-| [apps/companion/](apps/companion/) | `@rdoc-suite/companion` | — (lokaler Windows-Build) |
-| [apps/fleetplanner/](apps/fleetplanner/) | `@rdoc-suite/fleetplanner` | `rdoc-suite-fleetplanner` |
-| [apps/fleetplanner-web/](apps/fleetplanner-web/) | `@rdoc-suite/fleetplanner-web` | `rdoc-suite-fleetplanner-web` |
-| [apps/relay-bots/](apps/relay-bots/) | `@rdoc-suite/relay-bots` | `rdoc-suite-relay-bots` (noch nicht in Prod-Compose) |
-| [apps/monitoring/](apps/monitoring/) | — (Prometheus-Image) | `rdoc-suite-monitoring` |
-| [apps/error-page/](apps/error-page/) | — (nginx static) | `rdoc-suite-error-page` |
-| [apps/mission-cover/](apps/mission-cover/) | — | `rdoc-suite-mission-cover` |
-| [packages/shared/](packages/shared/) | `@rdoc-suite/shared` | — |
-| [packages/db/](packages/db/) | `@rdoc-suite/db` | — |
-| [packages/fleetplanner-contracts/](packages/fleetplanner-contracts/) | `@rdoc-suite/fleetplanner-contracts` | — |
+| Verzeichnis | pnpm-Name | Docker-Image | Status |
+| --- | --- | --- | --- |
+| [apps/fleetplanner/](apps/fleetplanner/) | `@rdoc-suite/fleetplanner` | `rdoc-suite-fleetplanner` | **live** (Backend/API) |
+| [apps/fleetplanner-web/](apps/fleetplanner-web/) | `@rdoc-suite/fleetplanner-web` | `rdoc-suite-fleetplanner-web` | **live** (SPA-Frontend) |
+| [apps/mission-cover/](apps/mission-cover/) | `@rdoc-suite/mission-cover` | `rdoc-suite-mission-cover` | **live** (Vite-Frontend + Engine) |
+| [apps/monitoring/](apps/monitoring/) | — (Prometheus-Image) | `rdoc-suite-monitoring` | **live** |
+| [apps/error-page/](apps/error-page/) | — (nginx static) | `rdoc-suite-error-page` | **live** |
+| [packages/fleetplanner-contracts/](packages/fleetplanner-contracts/) | `@rdoc-suite/fleetplanner-contracts` | — | **live** (SoT für API-Typen) |
+| [apps/companion/](apps/companion/) | `@rdoc-suite/companion` | — | **verwaist** (Löschkandidat, ruft tote Bridge/LiveKit) |
+| [packages/shared/](packages/shared/) | `@rdoc-suite/shared` | — | **verwaist** (nur von companion) |
+| [packages/db/](packages/db/) | `@rdoc-suite/db` | — | **verwaist** (Bridge/Bot-Schema) |
+
+Prod-Only-Services ohne eigenes TS-Workspace: `alertmanager`, `postgres-exporter`, `node-exporter`, `grafana` (Standard-Images + Config).
 
 ### Architektur-Pickup
 
-1. **Bridge = Fastify** mit `@fastify/cookie` + `@fastify/websocket`. Bootstrap in [apps/bridge/src/app.ts](apps/bridge/src/app.ts); Health-Check `/health`, OAuth `/auth/*`, WebSocket `/ws`, Admin-UI `/admin/*`, Sessions `/sessions/*`, Relay-Token `/relay/*`, Relay-Bots-Config `/relay-bots/*`, Suite-Capabilities `/suite/capabilities`.
+1. **`apps/fleetplanner` = Fastify + Prisma** (`@rdoc-suite/fleetplanner`). Eigene **PostgreSQL**-DB (`fleetplanner-db` Container); Production unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate`-Skripte pro Workspace. Prod-Migrationen laufen automatisch beim Container-Start via entrypoint.
 
-2. **Session-Token = HS256-JWT** via `jose`, 15 min TTL, Issuer `dccc-bridge`, Audience `dccc-companion`, In-Memory-Revocation per `jti` ([apps/bridge/src/auth/sessionToken.ts](apps/bridge/src/auth/sessionToken.ts)). Companion sendet `?token=…` beim WS-Connect.
+2. **Fleetplanner-Frontend = SPA `fleetplanner-web` (React + Vite).** Die reale Benutzeroberfläche ist die Single-Page-App in [apps/fleetplanner-web/](apps/fleetplanner-web/); ihr **nginx** ([apps/fleetplanner-web/nginx.conf](apps/fleetplanner-web/nginx.conf)) ist die **Front Door** vor `suite.raumdock.org/fleetplanner`, proxied jeden API-Request an das `fleetplanner`-Backend und ist die **eine kanonische Security-Header-Schicht** ([apps/fleetplanner/src/app.ts](apps/fleetplanner/src/app.ts)). Nav-Rail-Modell in [apps/fleetplanner-web/src/nav.ts](apps/fleetplanner-web/src/nav.ts) (`NAV_GROUPS` + `gate`/`auth`). Das SSR in [apps/fleetplanner/src/web/](apps/fleetplanner/src/web/) (`render.ts`/`pages.ts`) existiert noch, ist aber **sekundär** — Nav-/UX-Änderungen fast immer im SPA. Deploy: `docker compose … up -d --build fleetplanner-web` (zusätzlich zu `fleetplanner`).
 
-3. **WS-Protokoll** in [packages/shared/src/protocol.ts](packages/shared/src/protocol.ts); Zod-Validatoren in [packages/shared/src/validation.ts](packages/shared/src/validation.ts). Non-Standard Close-Codes: `4401` unauth, `4400` protocol, `4403` forbidden. Heartbeat alle 20 s, Permission-Recheck alle 60 s (nur Rolle; Voice-State kommt per Push).
+3. **API-Typen: `@rdoc-suite/fleetplanner-contracts` ist Single Source of Truth.** Zod-Schemas in [packages/fleetplanner-contracts/src/index.ts](packages/fleetplanner-contracts/src/index.ts); Backend (`fleetplanner`) und SPA (`fleetplanner-web`) importieren dieselben Typen (SPA type-only via [apps/fleetplanner-web/src/api/types.ts](apps/fleetplanner-web/src/api/types.ts), damit zod nicht ins Bundle wandert). Neue/erweiterte API-Felder → **zuerst hier**, dann Consumer.
 
-4. **Voice geht über LiveKit (SFU), Lifecycle sticky per WS-Session.** Direkt nach WS-Auth minted die Bridge ein LiveKit-Token, joined den Commander in den Room, schickt `bridge:joined` mit `livekitUrl` + `livekitToken`. `ptt:start`/`ptt:stop` toggeln nur Mic-Mute + `speaking`-Flag. Echter Leave erst bei WS-Close oder Permission-Fail. Räume in-memory ([apps/bridge/src/services/rooms.ts](apps/bridge/src/services/rooms.ts)).
+4. **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Per-Guild-Rollen (`fleetoperator | captain | crew`) leben in `GuildMembership.role`. Middleware: `requireSuperAdmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role` für die aktive Guild. Discord-Mapping: `admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain` (aus Guild-Settings). Default bei neuem Member: `crew`.
 
-5. **Companion: 2-PTT-Architektur (Mission-First).** Zwei Hotkeys, zwei semantisch getrennte Voice-Pfade:
+5. **Funkrelais-Token-Verschlüsselung:** [apps/fleetplanner/src/services/secrets.ts](apps/fleetplanner/src/services/secrets.ts) nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen die 6 Bot-Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
 
-   | PTT | Hotkey-Setting | Ziel (ohne Mission) | Ziel (mit Mission) | Transport |
-   |-----|----------------|---------------------|--------------------|-----------|
-   | **LOKAL** | `localHotkey` (default Mouse4) | Guild-Bridge-Room (Squad Link, LiveKit via Bridge) | Mission `commanderRoom` | LiveKit |
-   | **GLOBAL** | `globalHotkey` (default R) | Discord-Relay-Bots | Discord-Relay-Bots | RelayAudio |
+6. **`apps/mission-cover` = Vite-Frontend + Engine** (`@rdoc-suite/mission-cover`). Generiert Mission-Cover-Grafiken; eigenes Volume (`mission_cover_data`). Route: `suite.raumdock.org` (siehe Caddyfile).
 
-   Mission-Link-Flow: `rdoc://mission?token=…&url=…` (Legacy: `dccc://fleet-voice?token=…&url=…` — beide Schemata aktiv) → `applyRaw`/`saveMissionConfig` → 30s-Poll `GET /api/companion/mission-voice` beim Fleetplanner → liefert `commanderRoom` (Captain/Fleetoperator) oder null (normale Crew). Bei `op: null` oder anderer `opId` als der gepinnten → Mission beenden, zurück zu Bridge-Room.
+7. **`apps/monitoring` = Prometheus-Image.** Keine eigene TypeScript-Quelle; `apps/monitoring/Dockerfile` wraps das offizielle Prometheus-Image mit `apps/monitoring/prometheus.yml`. Ergänzt in Prod durch `alertmanager`, `postgres-exporter`, `node-exporter`, `grafana`. Route: `suite.raumdock.org/monitoring`.
 
-   GLOBAL-Pfad verbindet unabhängig vom Missionszustand, sobald `canUseRelay === true`.
+8. **`PUBLIC_BASE_PATH`** (Fleetplanner env): leer (`""`) auf Production (Root-Host). Nur setzen, wenn ein Strip-Proxy mit Path-Prefix verwendet wird. Zod akzeptiert nur `""` oder Werte mit führendem `/`.
 
-   Hotkey-Layer (OS): Tastatur via `@tauri-apps/plugin-global-shortcut`, Maus-Tasten via eigenem `rdev`-Thread in Rust ([apps/companion/src-tauri/src/lib.rs:13](apps/companion/src-tauri/src/lib.rs#L13)). Beide emittieren `"hotkey"` Event; React-Schicht filtert nach Accelerator-Name.
-
-   Deep-Link-Schemes `rdoc://` + `dccc://` registriert in `tauri.conf.json` und `src-tauri/src/lib.rs`.
-
-6. **Voice-Channel-Enforcement: DB für State, HTTP-Push für Realtime.** Bot abonniert `voiceStateUpdate` ([apps/bot/src/events/voiceState.ts](apps/bot/src/events/voiceState.ts)), upsertet `UserVoiceState`, schickt fire-and-forget POST an Bridge `/internal/voice-state-changed` (Auth: `X-Internal-Auth` + `INTERNAL_BRIDGE_SECRET`) → sofortiges `audio:enable`/`audio:disable` an Companion. 60s-Loop prüft weiterhin nur noch die Discord-Rolle. Ohne `INTERNAL_BRIDGE_SECRET`: Fallback auf 60s-Recheck-only.
-
-7. **Admin-UI Phase B (seit 2026-05-24): zwei Tiers.** Admin = Discord-User auf `AdminUser`-Whitelist, kann das Web-Admin-UI unter `/admin/*` nutzen. Commander = Discord-User mit Commander-Rolle, nutzt Companion via JWT-WS-Flow. **Bootstrap (seit 2026-06-01): per Env `BRIDGE_SUPERADMIN_DISCORD_ID` + `BRIDGE_SUPERADMIN_GUILD_ID`** — `seedSuperadmin()` ([apps/bridge/src/services/admins.ts](apps/bridge/src/services/admins.ts)) legt beim Bridge-Start einen protected admiral an (idempotent). Das frühere `/cc admin add` und der gesamte `/cc` Slash-Command sind **entfernt**; Guild-Enable + Commander-Rollen laufen über das Web-UI (`/admin/config`). `BRIDGE_SUPERADMIN_DISCORD_ID` = **deine Discord-User-ID**, NICHT die Guild-ID (beide sind Snowflakes, leicht zu verwechseln). Admin-Invite-Links: single-use, sha256-hash-only persistiert, 7-Tage-TTL, atomic-consume in Transaction. Code: [apps/bridge/src/admin/](apps/bridge/src/admin/), [apps/bridge/src/services/adminInviteLinks.ts](apps/bridge/src/services/adminInviteLinks.ts).
-   - **Bridge-Config auch via Fleetplanner (seit 2026-06-01, Option B):** Wenn `BRIDGE_FLEET_SECRET` gesetzt ist, verwaltet der Fleetplanner-**Superadmin** die Bridge unter `suite.raumdock.org/fleetplanner/admin/bridge` — ohne zweiten Login im Bridge-Admin-UI. Bridge exponiert dafür eine M2M-API (`/internal/fleet/*`, Bearer `BRIDGE_FLEET_SECRET`) in [apps/bridge/src/routes/fleetInternal.ts](apps/bridge/src/routes/fleetInternal.ts) (Dashboard/Strip-Role + Dashboard-Daten in [apps/bridge/src/services/fleetAdmin.ts](apps/bridge/src/services/fleetAdmin.ts)); Fleetplanner-Client [apps/fleetplanner/src/services/bridge.ts](apps/fleetplanner/src/services/bridge.ts), Routes/Pages [apps/fleetplanner/src/routes/bridgeAdmin.ts](apps/fleetplanner/src/routes/bridgeAdmin.ts). Migrierte Panels: **Phase 1** Config, Admins (add/remove), Monitoring, Audit; **Phase 2** Dashboard (Commander-Roster + Strip-Role), Sessions (CRUD + Invites), Relay Bots (Config + Restart), Discord Voice (Move/Role, server-rendered statt Live-Polling); **Phase 3** Admins komplett (Rollenwechsel + Admin-Invite-Links mint/revoke); **Phase 4** Companion-Download-Tokens (mint/list/revoke + DM-Link + Release-Diagnostik), Relay-Live-Metrics-Snapshot, Refresh-Links. **Raid Planer**: NICHT als `/admin/bridge`-Panel portiert — stattdessen op-nativ. Die Kernfunktion (Crew in Voice-Channels ziehen) lebt jetzt in der **Op-Detailseite** als "Voice Control"-Sektion ([apps/fleetplanner/src/services/opVoice.ts](apps/fleetplanner/src/services/opVoice.ts)): pro Unit Crew→Discord-Voice-Channel via Bridge-Move-API, gated auf fleetoperator + voiceEnabled + bridgeConfigured + op open/in_progress + Unit hat Discord-Voice-Channel. Das Bridge `/admin/raid-planer` wurde **entfernt** (2026-06-02): Channel-Reorder + Strategy-Channels sind jetzt im Fleetplanner Discord-Voice-Panel (`/admin/bridge/:guildId/discord-voice`), Crew-Move/Rollen waren schon dort. Bridge exponiert dafür zwei M2M-Endpunkte (`POST /internal/fleet/guilds/:guildId/discord/channels/reorder`, `.../strategy-channel`) die `bulkModifyChannelPositions` bzw. `createStrategyChannel` wrappen.
-   - **Native Bridge-Admin Operation-Pages entfernt (2026-06-02, plan step 5):** Dashboard (`GET /admin/` → redirect auf `/admin/sessions`), Raid-Planer, Konfig (`/admin/config`) + deren `/admin/api/*` (live, live-stream, config) sind weg. Bridge-Admin-UI bleibt als **Diagnose-Only** (sessions, relay-bots, monitoring, audit, discord-voice, admins) + Auth. `strategyChannels.ts` (+ GC) bleibt — wird von `fleetInternal.ts` genutzt. Inertes Restmüll-Dead-Code (`loadDashboardData`, `renderDashboard/Config/RaidPlaner`, redundante admin reorder/strategy-Endpunkte) ist im Mergelog als Cleanup-Follow-up notiert.
-   - **Phased Sunset via `BRIDGE_ADMIN_UI_MODE` (seit 2026-06-02):** Env-Flag in [apps/bridge/src/config/env.ts](apps/bridge/src/config/env.ts), default `full`. Steuert NUR das native `/admin/*` Web-UI — alle Backend-Routes (`/internal/fleet/*`, `/sessions/*`, `/download/*`, `/updater/*`, `/relay*`, WS-Signaling) bleiben unabhängig registriert.
-     - `full`: native Bridge Admin UI unverändert.
-     - `legacy`: native UI bleibt per Direkt-URL erreichbar, zeigt Legacy-Banner; Dashboard/Raid Planer/Konfig sind aus der Primär-Nav entfernt (Fleetplanner ist die normale Operator-UI). Diagnostik (Sessions/Relay/Monitoring/Audit/Discord-Voice/Admins) bleibt sichtbar.
-     - `disabled`: `registerAdminRoutes` wird übersprungen → `/admin/*` 404, `/health` + alle Backend-Routes laufen weiter.
-     - `buildApp({ bridgeAdminUiMode })`-Override existiert nur für Tests (kein `process.env`-Mutieren). Prod liest den Wert via `env_file: .env` ([.env.prod.template](.env.prod.template), default-Empfehlung `legacy`). Native-Admin-**Operation-Pages** (Dashboard/Raid-Planer/Konfig) sind seit 2026-06-02 entfernt (plan step 5, siehe oben); Diagnose-Pages bleiben. (Plan + Implementation-Log dazu am 2026-06-06 als erledigt gelöscht; Historie im Mergelog.)
-
-8. **Sessions (Step 3, 2026-05-27): invite-basierte Ops-Räume.** Admiral minted single-use Invite-Token; Commander löst per `POST /sessions/join` LiveKit-Credentials ein. Schema: `Session` + `SessionInvite` in [prisma/schema.prisma](prisma/schema.prisma). Service: [apps/bridge/src/services/sessions.ts](apps/bridge/src/services/sessions.ts). Admin-UI unter `/admin/sessions`. Tests: [apps/bridge/src/__tests__/sessions.test.ts](apps/bridge/src/__tests__/sessions.test.ts).
-
-9. **Relay-Bots Config (Step 5) in der Bridge.** Bridge speichert `RelayBotsConfig` in SQLite, stellt `/relay/token` (Bearer JWT, Publisher/Subscriber-Grant-Split) und `/relay-bots/*`-Admin-Routes bereit. Relay-Bots-Service fetcht Config via `GET /relay-bots/service-config` (Bearer `RELAY_BOTS_SECRET`).
-
-10. **`apps/relay-bots` (Step 6) = importierter VoiceRelayBots-Worker** (`@rdoc-suite/relay-bots`). Liest Config von der Bridge, subscribed LiveKit-Track, relayed Audio in Discord Voice Channels via `@discordjs/voice`. `@discordjs/opus` ist ein nativer Addon — `pnpm approve-builds` nötig beim Deploy.
-
-11. **`apps/fleetplanner` = Fastify + Prisma + SSR** (`@rdoc-suite/fleetplanner`). Eigene **PostgreSQL**-DB (`fleetplanner-db` Container); Production-Route unter `suite.raumdock.org/fleetplanner`. Eigene `db:generate`/`db:migrate` Skripte pro Workspace. (Companion-OAuth via RDOC-RTC Bot + fleet voice via LiveKit — beide mit dem Voice-Stack 2026-06-12/06-18 entfernt.)
-    - **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Per-Guild-Rollen (`fleetoperator | captain | crew`) leben in `GuildMembership.role`. Middleware: `requireSuperAdmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role` für die aktive Guild. Discord-Mapping: `admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain` (aus Guild-Settings). Default bei neuem Member: `crew`.
-    - **Fleetplanner bots:** (a) **Fleetplanner Bot** (`DISCORD_FLEETPLANNER_BOT_TOKEN`): Events, DMs, Rollen-Zuweisung; (b) **Funkrelais Bots** (6×, in `GuildVoiceBot`-Tabelle): für "Launch Voice Channels" — jeder Bot joined einen Channel per eigenem Token. (Die frühere Companion-OAuth-App via RDOC-RTC Bot wurde mit dem Voice-Stack entfernt.)
-    - **Funkrelais-Token-Verschlüsselung:** `apps/fleetplanner/src/services/secrets.ts` nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
-
-12. **`apps/monitoring` = Prometheus-Image.** Keine eigene TypeScript-Quelle; `apps/monitoring/Dockerfile` wraps das offizielle Prometheus-Image mit `apps/monitoring/prometheus.yml`. Route: `suite.raumdock.org/monitoring`.
-
-13. **`PUBLIC_BASE_PATH`** ([apps/bridge/src/config/env.ts:17-23](apps/bridge/src/config/env.ts#L17-L23)): leer (`""`) auf Production (Root-Host). Nur setzen, wenn ein Strip-Proxy mit Path-Prefix verwendet wird. Zod akzeptiert nur `""` oder Werte mit führendem `/`.
-
-14. **`/suite/capabilities`-Route** gibt Companion-JWT-gesichert zurück, ob der User `canManageSessions` (= Admin in `AdminUser` für die Guild), `canUseRelay`, `canUseFleetTools`. Companion rendert Admiral-Tools nur wenn granted.
-
-15. **Fleetplanner-Frontend = SPA `fleetplanner-web` (React + Vite), nicht mehr SSR.** Die reale Benutzeroberfläche ist die Single-Page-App in [apps/fleetplanner-web/](apps/fleetplanner-web/); ihr **nginx** ([apps/fleetplanner-web/nginx.conf](apps/fleetplanner-web/nginx.conf)) ist die **Front Door** vor `suite.raumdock.org/fleetplanner`, proxied jeden API-Request an das `fleetplanner`-Backend und ist die **eine kanonische Security-Header-Schicht** ([apps/fleetplanner/src/app.ts:64](apps/fleetplanner/src/app.ts#L64)). Nav-Rail-Modell in [apps/fleetplanner-web/src/nav.ts](apps/fleetplanner-web/src/nav.ts) (`NAV_GROUPS` + `gate`/`auth`). Das SSR in [apps/fleetplanner/src/web/](apps/fleetplanner/src/web/) (`render.ts`/`pages.ts`) existiert noch, ist aber **sekundär** — Nav-/UX-Änderungen fast immer im SPA. Deploy: `docker compose … up -d --build fleetplanner-web` (zusätzlich zu `fleetplanner`).
-
-16. **API-Typen: `@rdoc-suite/fleetplanner-contracts` ist Single Source of Truth.** Zod-Schemas in [packages/fleetplanner-contracts/src/index.ts](packages/fleetplanner-contracts/src/index.ts); Backend (`fleetplanner`) und SPA (`fleetplanner-web`) importieren dieselben Typen (SPA type-only via [apps/fleetplanner-web/src/api/types.ts](apps/fleetplanner-web/src/api/types.ts), damit zod nicht ins Bundle wandert). Neue/erweiterte API-Felder → **zuerst hier**, dann Consumer.
+Autoritative Env-Referenz: das Zod-Schema in [apps/fleetplanner/src/config/env.ts](apps/fleetplanner/src/config/env.ts) — nicht die `.env`-Templates (beide sind gedriftet, siehe README).
 
 ### Quirks, die schon Zeit gekostet haben
 
-- **`pnpm db:generate` muss nach jedem frischen Clone laufen, bevor gebaut werden kann.** `packages/db/generated/client` ist in `.gitignore`. Ohne es löst TypeScript `getPrisma()` als `any` auf → Kaskade von `TS7006`-Fehlern in jedem Prisma-Callback.
-- **`--node-ip` ist überall load-bearing.** Dev-Compose: `--node-ip 127.0.0.1`; Prod-Compose: `--node-ip ${LIVEKIT_NODE_IP}`. STUN-basierte Auto-Detection liefert in Proxmox/LXC-Double-NAT nur die LXC-Bridge-Gateway-IP → ICE schlägt fehl.
-- **`tauri_plugin_single_instance` muss als allererstes registriert werden** ([apps/companion/src-tauri/src/lib.rs:60](apps/companion/src-tauri/src/lib.rs#L60)), sonst öffnet jeder `dccc://`-Deep-Link eine zweite Instanz.
+- **`pnpm --filter @rdoc-suite/fleetplanner db:generate` muss nach jedem frischen Clone laufen**, bevor gebaut werden kann — sonst löst TypeScript den Prisma-Client als `any` auf → Kaskade von `TS7006`-Fehlern in jedem Prisma-Callback.
 - **Discord-IDs immer als String**, nie Number — Snowflakes überschreiten `Number.MAX_SAFE_INTEGER`.
-- **SQLite-Pfad auf Prod ist `/app/data/prod.db`, NICHT `/app/prisma/prod.db`.** Volume mountet auf `/app/data`; `/app/prisma` darf NICHT vom Volume überdeckt werden (hatten wir 2026-05-23 mit einem Parallel-Branch). Filename `prod.db`, nicht `dev.db`, weil Docker nicht-existente Bind-Mount-Sources als Directory anlegt → Prisma `P1013`.
-- **`pnpm install` im Bridge-Dockerfile braucht `--no-frozen-lockfile` und `ENV CI=true`** — bewusst kein gefrorener Lockfile-Workflow.
 - **Lokales `tsc --noEmit` in `fleetplanner-web` schlägt fehl, wenn `packages/fleetplanner-contracts/dist` veraltet ist.** Die SPA importiert Typen aus dem gebauten `dist`, nicht aus `src` — neue Contract-Felder (z.B. `isStreamEvent`, `streams`) fehlen dann mit `TS2305`/`TS2339`, obwohl der Code korrekt ist. Docker baut Contracts vor der SPA neu → Prod-Build ist grün. Lokal vor Typecheck erst `pnpm --filter @rdoc-suite/fleetplanner-contracts build` laufen lassen (oder die Fehler ignorieren, wenn sie nur Contract-Felder betreffen).
-- **pnpm-Workspaces im Runtime-Image: jedes** Workspace-`node_modules/` muss mit-kopiert werden. Vorlage: [apps/bridge/Dockerfile](apps/bridge/Dockerfile).
-- **Alter systemd-Service `dccc-bridge.service` kann Port 8787 belegen.** Vor Prod-Deploy prüfen: `systemctl is-enabled dccc-bridge`. Falls aktiv → `systemctl disable --now dccc-bridge`.
-- **`GuildVoiceStates` ist nicht-privileged** — kein Toggle im Discord Developer Portal nötig. Wenn trotzdem keine Events: Intent fehlt im `new Client({intents: […]})`.
-- **Voice-State-Race beim Bot-Restart**: User die vor dem Bot in Voice waren, fehlen kurz in `UserVoiceState`. Connectet Companion in dem Fenster, kriegt es `not_in_voice` — Channel kurz verlassen + joinen umgeht's. Akzeptiert.
-- **`@discordjs/opus` in relay-bots ist ein nativer Addon** und benötigt `pnpm approve-builds` beim Deploy. TypeScript-Build läuft ohne es.
+- **pnpm-Workspaces im Runtime-Image: jedes** Workspace-`node_modules/` muss mit-kopiert werden. Vorlage: [apps/fleetplanner/Dockerfile](apps/fleetplanner/Dockerfile).
 - **Fleetplanner `__tests__/` aus TSC-Build ausgeschlossen.** `apps/fleetplanner/tsconfig.json` excludet `src/__tests__` — Vitest kompiliert Tests separat. Nie den exclude entfernen, sonst bricht Docker-Build wegen Mock-Typ-Inkompatibilität.
 - **`VOICEBOT_ENCRYPTION_KEY` stabil halten.** Fleetplanner verschlüsselt Funkrelais-Bot-Tokens mit diesem Key. Wird er geändert (oder ist nicht gesetzt → Fallback auf `SESSION_SECRET`), müssen alle 6 Bot-Tokens in den Guild-Einstellungen neu eingegeben werden. Key einmal setzen, nie wieder anfassen.
 - **"Unsupported state or unable to authenticate data" bei "Launch Voice Channels"** = `VOICEBOT_ENCRYPTION_KEY` hat sich geändert oder fehlt. Fix: alle Funkrelais-Tokens in `/guilds/settings` neu eingeben.
-- **`BRIDGE_FLEET_SECRET` muss in BEIDEN Services identisch sein.** Compose reicht dieselbe `.env` an `bridge` UND `fleetplanner`. Wenn nur eins gesetzt ist: Fleetplanner `/admin/bridge` zeigt 404 (Tab versteckt) oder die Bridge-API 503t/401t. Min. 32 Zeichen, NICHT mit `INTERNAL_BRIDGE_SECRET` (Bot-only, min. 16) verwechseln — das sind zwei verschiedene Secrets. Verify: `docker compose ... exec bridge sh -c 'echo ${#BRIDGE_FLEET_SECRET}'` und dasselbe für `fleetplanner`, beide müssen 64 (bei hex 32) zeigen.
 
 ### Wo welche Doku liegt
 
@@ -257,9 +206,8 @@ Build läuft komplett im Container. Companion-Builds laufen nur **lokal auf Wind
 | [docs/privacy.md](docs/privacy.md) | Daten-Inventar |
 | [README.md](README.md) | Quickstart, Architektur-Diagramm, Repository-Layout |
 | [security-plan.md](security-plan.md) | Threat-Model und geplante Härtungen |
-| [prisma/schema.prisma](prisma/schema.prisma) | Bridge/Bot Datenmodell |
 | [apps/fleetplanner/prisma/schema.prisma](apps/fleetplanner/prisma/schema.prisma) | Fleetplanner Datenmodell |
-| [packages/shared/src/protocol.ts](packages/shared/src/protocol.ts) | WS-Protokoll |
+| [docs/LIVEKIT-ARCHIVE-2026-06.md](docs/LIVEKIT-ARCHIVE-2026-06.md) | Restore-Referenz für den entfernten Voice-Stack |
 
 Kein STAND.md — alles in `docs/`.
 
@@ -272,35 +220,32 @@ Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals ei
 | [docs/archiv/opus-tennant-architecture.md](docs/archiv/opus-tennant-architecture.md) | Op-Visibility (`private/partners/public`) + Guild-Partnerships (`GuildPartnership`-Tabelle) | ✓ **Umgesetzt** — archiviert 2026-06-15, Design-Referenz/Historie |
 | [docs/orgmodule-implementationplan.md](docs/orgmodule-implementationplan.md) | Org-Modul: SC-Orgs als First-Class-Entities (`Org`, `OrgMembership`, `OrgInvite`) | Plan, kein Code |
 | [docs/archiv/composition-rebuild-plan.md](docs/archiv/composition-rebuild-plan.md) | Composition Board + Leader-Assign + Auto-Match (Schritte 1+2 im Code, Schritte 3-5 offen) | Archiviert 2026-06-15 (Rebuild zurückgestellt) |
-| [docs/FR-P1-event-distribution.md](docs/FR-P1-event-distribution.md) | **FeatureRequest, Prio 1.** Event-Distribution: Op-Discord-Event an alle aktiven Partner-Discords cross-posten (einer Fleetplanner-Bot, bereits in allen Partner-Guilds), Allowlist (`PartnerSharePolicy.autoShare`) + Approval (Web-Inbox + DM-Buttons) durch **alle Fleetoperators des Ziel-Guilds**. Basis für FR-P3-federation-voice. | ✓ **Umgesetzt** (Phase 1+2, 2026-06-07) |
-| [docs/FR-P3-federation-voice.md](docs/FR-P3-federation-voice.md) | **FeatureRequest, Prio 3.** Federation Voice (Homeoffice-Party / shared LiveKit room, host+deputies, Cap 16) + Relay-Bots-Multi-Session-Umbau für gleichzeitige isolierte Events. | ✗ **Abgelehnt** (2026-06-07, Begründung folgt) |
-| [docs/FR-P3-recurring-events.md](docs/FR-P3-recurring-events.md) | **FeatureRequest, Prio 3.** Wiederkehrende Events: RRULE-Template + Scheduler materialisiert Op-Instanzen; nativer Discord `recurrence_rule` (Approach A). Kern eigenständig; Serien-Distribution soft-hängt an FR-P1. | Plan, kein Code |
-| [docs/FR-P1-eventcreation-simplification.md](docs/FR-P1-eventcreation-simplification.md) | **FeatureRequest, Prio 1.** Event-Anlage vereinfachen: 2 Views (Mobile-Join + Admin-Wizard). „Vi5E Tools" noch sichten. | Plan, kein Code |
-| [docs/FR-P2-fleet-import-json.md](docs/FR-P2-fleet-import-json.md) | **FeatureRequest, Prio 2.** Flotten-Import via JSON (CCU-Game-Format) → UserShips; = Backlog #1. | ✓ Umgesetzt |
-| [docs/FR-P2-discord-event-interest.md](docs/FR-P2-discord-event-interest.md) | **FeatureRequest, Prio 2.** Discord-Event-"Interested" → User erscheint im Op automatisch als unassigned. REST-Poll `scheduled-events/{id}/users` (Bot-Token, KEIN privilegierter Intent), Schatten-Teilnehmer + Claim beim Discord-Login, `EventInterest`-Modell, 5-Min-Scheduler. | ✓ Umgesetzt (2026-06-07) |
-| [docs/FR-P3-roadmap-tab.md](docs/FR-P3-roadmap-tab.md) | **FeatureRequest, Prio 3.** Roadmap-Tab + Auto-Ingest Discord-Feedback (Reverse des Feedback-Ticket-Flows). | Plan, kein Code |
-| [docs/FR-P3-language-switch.md](docs/FR-P3-language-switch.md) | **FeatureRequest, Prio 3.** Sprachumschaltung (DE/EN/EN_US/FR/ES), eine Präferenz im User-Profil für Fleetplanner + Companion + MissionCover. | Plan, kein Code (groß/phasenweise) |
-| [docs/archiv/FR-P3-org-fleet.md](docs/archiv/FR-P3-org-fleet.md) | **FeatureRequest, Prio 3.** Org-Fleet-Tab: welches Guild-Mitglied welches Schiff hat (aus UserShip+Membership), zum Ausleihen/Ansehen, optional DC-Kontakt. | ✓ **Umgesetzt** (2026-06-15, archiviert) — MVP + Discord tier-1; bot-DM relay deferred |
-| [docs/FR-P3-inactivity-alert.md](docs/FR-P3-inactivity-alert.md) | **FeatureRequest, Prio 3.** Member Last-Seen via Fleetmanager-Gateway-Bot (echte Discord-Aktivität) + Alert in Channel bei konfigurierbarer Inaktivität (default 6 Mon.). Braucht GUILD_MEMBERS Intent. | Plan, kein Code |
+| [docs/FR-P1-event-distribution.md](docs/FR-P1-event-distribution.md) | **FeatureRequest, Prio 1.** Event-Distribution: Op-Discord-Event an alle aktiven Partner-Discords cross-posten, Allowlist (`PartnerSharePolicy.autoShare`) + Approval durch alle Fleetoperators des Ziel-Guilds. | ✓ **Umgesetzt** (Phase 1+2, 2026-06-07) |
+| [docs/FR-P3-federation-voice.md](docs/FR-P3-federation-voice.md) | **FeatureRequest, Prio 3.** Federation Voice (shared LiveKit room, host+deputies, Cap 16) + Relay-Bots-Multi-Session-Umbau. | ✗ **Abgelehnt** (2026-06-07) |
+| [docs/FR-P3-recurring-events.md](docs/FR-P3-recurring-events.md) | **FeatureRequest, Prio 3.** Wiederkehrende Events: RRULE-Template + Scheduler; nativer Discord `recurrence_rule`. Serien-Distribution soft-hängt an FR-P1. | Plan, kein Code |
+| [docs/FR-P1-eventcreation-simplification.md](docs/FR-P1-eventcreation-simplification.md) | **FeatureRequest, Prio 1.** Event-Anlage vereinfachen: 2 Views (Mobile-Join + Admin-Wizard). | Plan, kein Code |
+| [docs/FR-P2-fleet-import-json.md](docs/FR-P2-fleet-import-json.md) | **FeatureRequest, Prio 2.** Flotten-Import via JSON (CCU-Game-Format) → UserShips. | ✓ Umgesetzt |
+| [docs/FR-P2-discord-event-interest.md](docs/FR-P2-discord-event-interest.md) | **FeatureRequest, Prio 2.** Discord-Event-"Interested" → User erscheint im Op automatisch als unassigned. `EventInterest`-Modell, 5-Min-Scheduler. | ✓ Umgesetzt (2026-06-07) |
+| [docs/FR-P3-roadmap-tab.md](docs/FR-P3-roadmap-tab.md) | **FeatureRequest, Prio 3.** Roadmap-Tab + Auto-Ingest Discord-Feedback. | Plan, kein Code |
+| [docs/FR-P3-language-switch.md](docs/FR-P3-language-switch.md) | **FeatureRequest, Prio 3.** Sprachumschaltung (DE/EN/EN_US/FR/ES), eine Präferenz im User-Profil. | Plan, kein Code (groß/phasenweise) |
+| [docs/archiv/FR-P3-org-fleet.md](docs/archiv/FR-P3-org-fleet.md) | **FeatureRequest, Prio 3.** Org-Fleet-Tab: welches Guild-Mitglied welches Schiff hat. | ✓ **Umgesetzt** (2026-06-15, archiviert) |
+| [docs/FR-P3-inactivity-alert.md](docs/FR-P3-inactivity-alert.md) | **FeatureRequest, Prio 3.** Member Last-Seen via Gateway-Bot + Alert bei Inaktivität. Braucht GUILD_MEMBERS Intent. | Plan, kein Code |
 | [docs/FR-P5-item-database.md](docs/FR-P5-item-database.md) | **FeatureRequest, Prio 5.** Loot-/Item-DB. Blockiert: keine Items-API. | Plan, kein Code |
 
 ### Naming & URL-Konventionen
 
 - Public-Interface: `https://suite.raumdock.org`
-- ~~LiveKit-Signaling: `wss://voice.raumdock.org`~~ — LiveKit entfernt 2026-06-18 (Restore: `docs/LIVEKIT-ARCHIVE-2026-06.md`)
 - Docker-Image-Prefix: `rdoc-suite-<part>`
-- `PUBLIC_BASE_PATH` = `""` — kein `/dccc`-Prefix irgendwo.
-- Companion-OAuth deep-link scheme: `dccc://` (kein OS-Level-Register; nur im Webview abgefangen)
+- `PUBLIC_BASE_PATH` = `""` — kein Path-Prefix irgendwo.
+- Reverse-Proxy = Caddy (`Caddyfile`).
 
 ### Erforderliche Ports (Production)
 
 | Port | Protokoll | Zweck |
 |---|---|---|
-| `443` | TCP | HTTPS Reverse-Proxy (Caddy/Traefik → Fleetplanner, Monitoring) |
+| `443` | TCP | HTTPS Reverse-Proxy (Caddy → Fleetplanner, Mission-Cover, Monitoring) |
 
-LiveKit (Signaling 7880, WebRTC-Media 7881/tcp + 7882/udp) wurde 2026-06-18 entfernt —
-verwaist seit Voice-Removal 2026-06-12. Restore-Plan inkl. Ports/Firewall-Hinweise:
-`docs/LIVEKIT-ARCHIVE-2026-06.md`.
+Die früheren LiveKit-Ports (7880/7881/7882) sind mit dem Voice-Stack entfernt (2026-06-18).
 
 ---
 
@@ -308,53 +253,38 @@ verwaist seit Voice-Removal 2026-06-12. Restore-Plan inkl. Ports/Firewall-Hinwei
 
 ```mermaid
 graph LR
-    Companion["Companion App\nTauri + React"]
-    Bot["Discord Bot\ndiscord.js"]
-    Bridge["Bridge\nFastify + WS"]
-    Fleetplanner["Fleetplanner\nFastify + Prisma"]
-    RelayBots["Relay Bots\nDiscord Voice"]
-    LiveKit["LiveKit SFU"]
-    BridgeDB[(Bridge DB\nSQLite)]
-    FleetDB[(Fleetplanner DB\nPostgres)]
+    SPA["fleetplanner-web\nReact + Vite (nginx Front Door)"]
+    Fleetplanner["fleetplanner\nFastify + Prisma"]
+    MissionCover["mission-cover\nVite + Engine"]
+    Monitoring["monitoring\nPrometheus + Grafana"]
+    FleetDB[(fleetplanner-db\nPostgres)]
     Discord["Discord API"]
+    Caddy["caddy-rdoc\nReverse-Proxy :443"]
 
-    Companion -->|OAuth + WS| Bridge
-    Companion <-->|WebRTC audio| LiveKit
-    Bot <-->|slash commands + guild state| Discord
-    Bot --> Bridge
-    Bridge --> BridgeDB
-    Bridge --> LiveKit
+    Caddy --> SPA
+    Caddy --> MissionCover
+    Caddy --> Monitoring
+    SPA -->|proxied API| Fleetplanner
     Fleetplanner --> FleetDB
-    Fleetplanner --> Discord
-    Fleetplanner --> LiveKit
-    RelayBots -->|subscribe| LiveKit
-    RelayBots -->|voice output| Discord
+    Fleetplanner <-->|Bot + OAuth + Events| Discord
+    Monitoring -->|scrape| Fleetplanner
 ```
 
 ---
 
 ## Ziel
 
-Discord-Integration für **Channel Commander**: ausgewählte Nutzer können per Hotkey channelübergreifend miteinander sprechen, ohne ihren Team-Channel dauerhaft zu verlassen. Audio läuft über eine eigene LiveKit-SFU-Bridge — Discord wird für Audio nicht angefasst.
-
-## Wichtige rechtliche und technische Rahmenbedingungen
-
-Discord-ToS verbietet Selfbots und Automatisierung von Nutzerkonten außerhalb der offiziellen Bot-/OAuth2-API.
-
-Verboten: User-Tokens, Automatisierung normaler Discord-Nutzerkonten, Discord-Client-Modifikation (inkl. BetterDiscord/Vencord), Audio-Hooking aus dem Discord-Prozess, heimliches Mithören/Aufzeichnen.
-
-Erlaubt (was wir gebaut haben): offizieller Discord-Bot (discord.js), Companion-App (Tauri) für Hotkey + lokale Audio-Steuerung, eigene Voice-Bridge (Fastify + LiveKit SFU), explizite Commander-Registrierung via Discord-Rollen.
+Fleetplanner: Event-/Op-Planung für Star-Citizen-Orgs mit tiefer Discord-Integration —
+Discord-Scheduled-Events ↔ Ops, Rollen-/Rechte-Sync, Feedback-Tickets, Flotten-Import, Roster/
+Squad-Planung. Discord-Bot + OAuth2 offiziell; keine User-Tokens, keine Client-Mods.
 
 ## Sicherheitsregeln
 
 1. Niemals User-Tokens verwenden.
 2. Niemals Discord-Client modifizieren.
-3. Niemals heimlich Audio aufnehmen oder speichern.
-4. Commander müssen sichtbar erkennen können, ob sie live sprechen.
-5. Nutzer müssen sehen können, ob sie mit der Bridge verbunden sind.
-6. Admins müssen das System pro Server deaktivieren können.
-7. Berechtigungen werden serverseitig geprüft — clientseitige Checks sind nur UX.
-8. Alle API-Inputs mit Zod validieren (an der Boundary).
+3. Berechtigungen werden serverseitig geprüft — clientseitige Checks sind nur UX.
+4. Alle API-Inputs mit Zod validieren (an der Boundary).
+5. Admins müssen Guild-Features pro Server deaktivieren können.
 
 ## Coding Guidelines
 
@@ -371,3 +301,5 @@ Compliance vor Komfort.
 Stabilität vor Hack.
 Transparenz vor Magie.
 ```
+</content>
+</invoke>
