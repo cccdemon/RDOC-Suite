@@ -1,5 +1,18 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-07-22: Feature-/Fix-Batch deployed (fc6168c, afec6f3)
+
+Committed (`afec6f3` CLAUDE.md-Rewrite, `fc6168c` Batch), master `9dd91e9..fc6168c` gepusht,
+LXC 103 `git pull` → `fc6168c`, `fleetplanner` + `fleetplanner-web` neu gebaut. Beide Migrationen
+(`op_partner_targets`, `user_last_seen_changelog`) beim Container-Start angewandt. Verify: SPA 200,
+`/api/v1/health` 200, keine Fehler im Log. Umfasst die untenstehenden Queued-Einträge vom 2026-07-22:
+CLAUDE.md-Rewrite, Partner-Discord-Auswahl (FR-P1), „Was ist neu?"-Popup, Op-Board-Live-Refresh,
+Board-Dropdown-Overflow, LateArrival-Label, CQB-Größe ≤20, Mission-Cover-`formatOk`-Fix.
+
+Offener Folge-Task (noch nicht gebaut): Event-Erstellung — YouTube-Video + PDF-Dokument hinterlegen.
+
+
+
 ## Queued / In Progress - 2026-07-22: Generiertes Mission-Cover erschien nicht (Editor-Save)
 
 Status: ⏳ In Arbeit. Bug: über „Editor öffnen" erstellte Covers erschienen nicht in der Operation.
