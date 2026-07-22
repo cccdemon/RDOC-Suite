@@ -10,7 +10,42 @@ export type ChangelogEntry = {
   changes: string[];
 };
 
+/**
+ * The current release marker = the newest entry's date. The "what's new" popup
+ * shows entries newer than what a user last acknowledged, and ack stores this value.
+ * (Caveat: two releases on the same date share a marker — acceptable; releases are dated.)
+ */
+export function latestChangelogVersion(): string {
+  return CHANGELOG[0]?.date ?? "";
+}
+
+/**
+ * Entries a user with `lastSeen` acknowledgement has NOT seen yet.
+ *  - lastSeen === latest → [] (up to date)
+ *  - lastSeen null       → the newest release only (never dump full history on a new user)
+ *  - otherwise           → every entry dated after lastSeen
+ */
+export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
+  const latest = latestChangelogVersion();
+  if (!latest) return [];
+  if (!lastSeen) return CHANGELOG.filter((e) => e.date === latest);
+  return CHANGELOG.filter((e) => e.date > lastSeen);
+}
+
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: "2026-07-22",
+    title: "Choose which partner Discords get your event",
+    changes: [
+      "When you create a partner or public operation, you now pick exactly which partner Discords the event is posted to. Nothing is selected by default, so an event is never posted to a partner server you didn't choose.",
+      "Leave everything unticked and the operation stays on your own server — no partner cross-posting at all.",
+      "The operation board now updates on its own: changes to needs, roles and the roster show up right away, and edits made by another operator appear within seconds — no more reloading the page.",
+      "After each update you'll get a short \"what's new\" note like this one, once per release — so you never miss a change.",
+      "CQB teams can now be up to 20 soldiers (was 8); the default is still 4.",
+      "Fixed: a mission cover made in the cover editor now actually shows up on the operation (and on the Discord event) — saves were being silently rejected.",
+      "Smaller fixes: the operation board dropdowns no longer spill over the card edge on smaller screens, and the late-arrival button now reads \"Verspätung eintragen\" so it's clearly an action.",
+    ],
+  },
   {
     date: "2026-07-20",
     title: "Squadrons, ground troops and captains",

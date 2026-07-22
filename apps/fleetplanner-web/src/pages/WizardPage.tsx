@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { announceOperation, ApiError, addShipNeeds, createOperation, createRecurrence, getGuildChannels, setCqbTeams, setFighterSquads } from "../api/client";
+import { announceOperation, ApiError, addShipNeeds, createOperation, createRecurrence, getGuildChannels, getPartnerships, setCqbTeams, setFighterSquads } from "../api/client";
 import type { SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { CoverPanel } from "../components/CoverPanel";
@@ -49,6 +49,10 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const [meetingLocation, setMeetingLocation] = useState("");
   const [visibility, setVisibility] = useState("private");
   const [isStreamEvent, setIsStreamEvent] = useState(false);
+  // FR-P1: active partners of the selected guild + the host-picked subset to
+  // distribute to. Default empty → nothing auto-posts to partner Discords.
+  const [partners, setPartners] = useState<Array<{ guildId: string; name: string }>>([]);
+  const [partnerTargets, setPartnerTargets] = useState<string[]>([]);
   const [ships, setShips] = useState<string[]>([]);
   const [fighters, setFighters] = useState(0);
   const [cqb, setCqb] = useState(0);
@@ -59,6 +63,27 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const [createdId, setCreatedId] = useState<string | null>(null); // FR-C1: hold after create for the cover step
 
   useEffect(() => { if (!guildId && operatorGuilds[0]) setGuildId(operatorGuilds[0].guildId); }, [guildId, operatorGuilds]);
+
+  // Load the guild's ACTIVE partners for the distribution picker; reset the
+  // selection whenever the guild changes so targets never leak across guilds.
+  useEffect(() => {
+    setPartnerTargets([]);
+    if (!guildId) { setPartners([]); return; }
+    let live = true;
+    getPartnerships(guildId)
+      .then((r) => {
+        if (!live) return;
+        setPartners(
+          r.partnerships
+            .filter((p) => p.status === "active" && p.partnerGuildId)
+            .map((p) => ({ guildId: p.partnerGuildId as string, name: p.partnerGuildName ?? p.partnerGuildId as string })),
+        );
+      })
+      .catch(() => { if (live) setPartners([]); });
+    return () => { live = false; };
+  }, [guildId]);
+
+  const sharesToPartners = visibility === "partners" || visibility === "public";
 
   const eckdatenDone = coreValid({ title, scheduledAt });
   const stepDone = useMemo(() => [eckdatenDone, true, true, true, true, false], [eckdatenDone]);
@@ -83,6 +108,8 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
         guildId,
         ...coreOpBody({ title, scheduledAt, opType, description, meetingSystem, meetingLocation, visibility, isStreamEvent }),
         scheduledAt: new Date(scheduledAt).toISOString(),
+        // Only send targets that are still valid partners for this visibility.
+        partnerTargetGuildIds: sharesToPartners ? partnerTargets.filter((id) => partners.some((p) => p.guildId === id)) : [],
       });
       // Apply fleet needs + recurrence to the fresh op (best-effort, non-fatal).
       try {
@@ -114,6 +141,9 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
     ["Wiederholung", RECUR.find((r) => r.key === freq)?.label ?? "Nie"],
     ["Treffpunkt", `${meetingSystem}${meetingLocation ? " · " + meetingLocation : ""}`],
     ["Sichtbarkeit", VIS.find((v) => v.key === visibility)?.label ?? visibility],
+    ...(sharesToPartners
+      ? [["Partner-Discords", partnerTargets.length === 0 ? "keine" : partners.filter((p) => partnerTargets.includes(p.guildId)).map((p) => p.name).join(", ")] as [string, string]]
+      : []),
     ["Stream-Event", isStreamEvent ? "Ja" : "Nein"],
     ["Bedarfe", `${ships.length} Schiff(e) · ${fighters} Jäger · ${cqb} CQB`],
   ];
@@ -206,6 +236,40 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                     })}
                   </div>
                 </div>
+                {/* FR-P1: pick WHICH partner Discords receive this op. Nothing is
+                    preselected — the event is only cross-posted to partners the
+                    operator explicitly ticks here. */}
+                {sharesToPartners && (
+                  <div data-testid="wiz-partner-targets">
+                    <label style={lbl}>PARTNER-DISCORDS (Event-Verteilung)</label>
+                    {partners.length === 0 ? (
+                      <p style={{ fontSize: "0.8rem", color: "#7e92a4", margin: 0, lineHeight: 1.5 }}>Keine aktiven Partnerschaften. Ohne Auswahl wird das Event auf keinen Partner-Discord verteilt.</p>
+                    ) : (
+                      <>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", marginBottom: "0.5rem" }}>
+                          {partners.map((p) => {
+                            const on = partnerTargets.includes(p.guildId);
+                            return (
+                              <button
+                                key={p.guildId}
+                                type="button"
+                                data-testid={`wiz-partner-${p.guildId}`}
+                                aria-pressed={on}
+                                onClick={() => setPartnerTargets((prev) => on ? prev.filter((x) => x !== p.guildId) : [...prev, p.guildId])}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.65rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid rgba(0,255,136,0.5)" : "1px solid rgba(255,255,255,0.12)", background: on ? "rgba(0,255,136,0.13)" : "transparent", color: on ? "#00ff88" : "#9fb1c2" }}
+                              >
+                                <Ic name={on ? "check" : "link"} size={13} sw={1.8} />{p.name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p style={{ fontSize: "0.76rem", color: "#7e92a4", margin: 0, lineHeight: 1.5 }}>
+                          {partnerTargets.length === 0 ? "Keine ausgewählt — das Event wird auf keinem Partner-Discord erstellt." : `${partnerTargets.length} Partner erhalten das Event.`}
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -224,7 +288,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                 <div style={{ display: "flex", gap: "1.2rem", flexWrap: "wrap" }}>
                   <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>Jäger-Staffeln<input data-testid="wiz-fighters" type="number" min={0} max={50} value={fighters} onChange={(e) => setFighters(Number(e.target.value))} style={{ ...inp, width: 80 }} /></label>
                   <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>CQB-Teams<input data-testid="wiz-cqb" type="number" min={0} max={50} value={cqb} onChange={(e) => setCqb(Number(e.target.value))} style={{ ...inp, width: 80 }} /></label>
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>Team-Größe<input data-testid="wiz-cqbsize" type="number" min={1} max={8} value={cqbSize} onChange={(e) => setCqbSize(Number(e.target.value))} style={{ ...inp, width: 80 }} /></label>
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>Team-Größe<input data-testid="wiz-cqbsize" type="number" min={1} max={20} value={cqbSize} onChange={(e) => setCqbSize(Number(e.target.value))} style={{ ...inp, width: 80 }} /></label>
                 </div>
               </div>
             )}

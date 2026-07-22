@@ -20,6 +20,9 @@ model User {
   active     Boolean  @default(true)
   joinedAt   DateTime @default(now())
   lastSeenAt DateTime @default(now())
+  // Newest player-changelog version (CHANGELOG[0].date) this user has acknowledged
+  // via the "what's new" popup. null = never acked → popup shows the latest release once.
+  lastSeenChangelog String?
 
   sessions           UserSession[]
   companionSessions  CompanionSession[]
@@ -351,6 +354,11 @@ model Operation {
   description     String   @default("")
   opType          String   @default("combat") // combat | pve | mining | salvage | training | mixed | exploration | transport | social
   visibility      String   @default("private") // private | partners | public — independent of status
+  // FR-P1: host-selected subset of active partner guilds this op distributes to.
+  // Empty = distribute to NO partners (even when visibility is partners/public). The
+  // operator picks the targets in the create wizard; distribution intersects this list
+  // with the guild's currently-active partnerships.
+  partnerTargetGuildIds String[] @default([])
   meetingSystem   String   @default("stanton")
   meetingLocation String   @default("")
   scheduledAt     DateTime

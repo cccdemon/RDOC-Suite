@@ -114,7 +114,11 @@ export function OperatorPanel({
       .then(setView)
       .catch((e) => onError(e instanceof ApiError ? e.message : "Operator-Daten nicht ladbar."));
   }
-  useEffect(reload, [op.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Refetch the operator view whenever the PARENT op reloads (new object ref), not
+  // just on op.id change. Needs/role/roster edits from other panels (NeedsEditor,
+  // CommandersPanel, another operator via the page poll) flow through the parent's
+  // load() → the board's requirements/assignable-people update live, no page reload.
+  useEffect(reload, [op]); // eslint-disable-line react-hooks/exhaustive-deps
   // Keep the optimistic board copy in sync with server reloads.
   useEffect(() => { setUnits(op.units); }, [op]);
 
@@ -250,7 +254,7 @@ export function OperatorPanel({
       value={value}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => onPick(e.target.value)}
-      style={{ maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.18)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+      style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.18)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
     >
       <option value="">— kein Bedarf —</option>
       {reqChoices(u).map((r) => (
@@ -981,7 +985,7 @@ export function OperatorPanel({
                   {(requirements.length > 0 || view.formations.length > 0 || u.unitType === "vehicle") && (
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
                       {requirements.length > 0 && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
                           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>BEDARF</span>
                           {reqSelect(u, u.requirementId ?? "", (id) => boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, requirementId: id || null } : x)), () => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
                         </span>
@@ -989,14 +993,14 @@ export function OperatorPanel({
                       {/* Rolle in dieser Op. Überschreibt die Katalog-Ableitung und
                           verschiebt die Einheit damit auch zwischen den Board-Lanes. */}
                       {u.unitType === "ship" && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
                           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>ROLLE</span>
                           <select
                             data-testid={`unit-role-${u.id}`}
                             value={u.roleOverride ?? ""}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => { const r = (e.target.value || null) as ShipClass | null; boardAct(`unitrole-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, roleOverride: r, shipClass: r ?? x.shipClass } : x)), () => patchUnit(op.id, u.id, csrf, { roleOverride: r })); }}
-                            style={{ background: "#0e1926", border: "1px solid rgba(0,212,255,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                            style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— Katalog: {roleLabel(u.shipClass) || "unbekannt"} —</option>
                             {OFFERABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
@@ -1006,14 +1010,14 @@ export function OperatorPanel({
                       )}
                       {/* Staffel-/Verband-Zuordnung für ALLE Einheitstypen (Schiffe/Jäger/Bodentruppen/Fahrzeuge). */}
                       {(view.formations.length > 0 || view.fighterSquads.length > 0) && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
                           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>STAFFEL / VERBAND</span>
                           <select
                             data-testid={`unit-formation-${u.id}`}
                             value={u.formationId ?? ""}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => { const fid = e.target.value || null; boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, formationId: fid } : x)), () => assignUnitFormation(op.id, u.id, csrf, fid)); }}
-                            style={{ background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                            style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— kein —</option>
                             {/* Both kinds belong here: a fighter has to be assignable
@@ -1033,14 +1037,14 @@ export function OperatorPanel({
                         </span>
                       )}
                       {u.unitType === "vehicle" && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
                           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>TRÄGER</span>
                           <select
                             data-testid={`unit-carrier-${u.id}`}
                             value={u.carrierUnitId ?? ""}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => run(() => assignUnitCarrier(op.id, u.id, csrf, e.target.value || null))}
-                            style={{ background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                            style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— eigenständig —</option>
                             {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

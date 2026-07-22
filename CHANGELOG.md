@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Partner-Discords pro Op auswählbar statt Auto-Fan-out (2026-07-22, FR-P1)
+
+Beim Erstellen einer Op mit Sichtbarkeit `partners`/`public` wählt der Operator jetzt im Wizard
+(Schritt „Treffpunkt") explizit, welche aktiven Partner-Discords das Discord-Event bekommen — **nichts
+vorausgewählt**. Bisher verteilte `distributeOperation` an *alle* aktiven Partner, gated nur durch die
+`autoShare`-Policy des Empfängers; dadurch entstand das Event ungewollt auf jedem Partner-Discord.
+Neu: `Operation.partnerTargetGuildIds String[]` (Migration `20260722120000_op_partner_targets`) hält die
+Host-Auswahl; `distributeOperation` schneidet die aktiven Partner mit dieser Liste (leer = keine
+Verteilung). Contract `CreateOperationRequest.partnerTargetGuildIds`; Wizard lädt Partner via
+`getPartnerships` und sendet die Auswahl. Empfängerseitige `autoShare`-Logik (auto vs. Approval) bleibt
+unverändert. SSR-Create sendet keine Auswahl → default keine Verteilung.
+
+### Fixed - Editor-generiertes Mission-Cover erschien nicht in der Op (2026-07-22)
+
+`cover.ts` `formatOk` prüfte das `format`-Feld (= Seitenverhältnis `"16:9"` etc.) gegen Bild-Formate
+`["png","jpg","jpeg","webp"]` → jeder Save aus dem Mission-Cover-Editor wurde abgewiesen (`opCover.upsert`
+nie erreicht). Regression aus `a69f313`. `formatOk` validiert jetzt die Aspect-Ratio-Enum
+(`coverFormatSchema`). Quick-„Generate" war nicht betroffen.
+
+### Changed - CQB-Teamgröße jetzt bis 20 (2026-07-22)
+
+Max. CQB-Teamgröße 8 → 20 (Default 4). `needs.ts` `CQB_TEAM_MAX`, Contract `SetCqbTeamsRequest.size`,
+Wizard-Input. `RegisterUnit.squadSize` (Fleet-Unit-Squads) unverändert.
+
+### Added - „Was ist neu?"-Popup nach jedem Release (2026-07-22)
+
+Eingeloggte User bekommen nach einem Update einmalig ein Popup mit den neuen Spieler-Changelog-Einträgen
+(OK-Button), genau 1x pro Veröffentlichung, serverseitig pro User getrackt (`User.lastSeenChangelog`,
+Migration `20260722130000_user_last_seen_changelog`). Marker = neuestes `CHANGELOG[0].date`.
+`GET /api/v1/changelog/unseen` liefert ungesehene Einträge, `POST /api/v1/changelog/ack` markiert gesehen;
+`ChangelogPopup` (SPA) global in `App` gemountet. Bestandsuser (`lastSeenChangelog` null) sehen das
+aktuelle Release einmal.
+
+### Fixed - Operator-Board zeigte Änderungen erst nach vollständigem Reload (2026-07-22)
+
+`OperatorPanel` refetchte seine `view` (requirements/assignablePeople) nur bei `op.id`-Wechsel; ein
+Parent-Reload durch einen anderen Panel-Teil (NeedsEditor/Commanders/Streams `onChanged=load`) ließ
+`op.id` unverändert → Board blieb stale bis Full-Reload. Dependency `[op.id]` → `[op]`. Zusätzlich pollt
+`OpDetailPage` die Op alle 20s (visibility-aware, Resync bei Re-Focus), damit Änderungen anderer
+Operatoren/Admins live im Board erscheinen.
+
+### Fixed - Board-Dropdowns liefen bei 1080p über die Card-Kante (2026-07-22)
+
+Die BEDARF/ROLLE/STAFFEL/TRÄGER-`<select>` im Flotten-Board (`OperatorPanel`) ragten bei schmaler Card
+über den rechten Rand, weil die umschließenden `inline-flex`-Spans `min-width:auto` hatten und das
+`<select>` (min-content = breiteste Option) nicht schrumpfen konnte. `minWidth:0` auf Feld-Spans + Selects.
+
+### Changed - LateArrival-Button liest „Verspätung eintragen" (2026-07-22)
+
+„kommt später" las sich wie eine Statusaussage statt einer Aktion.
+
 ### Fixed - CQB-Bedarf war auf dem CQB-Tab nicht setzbar (2026-07-20)
 
 `NeedsEditor` wurde nur für `tab === "fleet"` gemountet. Auf dem CQB-Tab — wo man CQB-Teams verwaltet

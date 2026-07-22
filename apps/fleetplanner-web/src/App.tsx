@@ -28,6 +28,7 @@ import { SystemPage } from "./pages/SystemPage";
 import { LoginPage } from "./pages/LoginPage";
 import { ApiDocsPage } from "./pages/ApiDocsPage";
 import { ErrorState } from "./components/ErrorState";
+import { ChangelogPopup } from "./components/ChangelogPopup";
 
 // IA merge D: the operator console is now part of /ops/:id (op=<tab>). The old
 // manage/edit/cover URLs redirect there, preserving any tab + flash.
@@ -64,6 +65,7 @@ export function App() {
     <LocaleProvider preferred={session?.user?.locale}>
     <div className="app-root" style={{ filter: theme.filter === "none" ? undefined : theme.filter }}>
       <div className="crt-scanlines" />
+      <ChangelogPopup session={session} />
       <div className="app-shell">
         <Sidebar session={session} theme={theme} setThemeId={setThemeId} />
         <div className="app-content">

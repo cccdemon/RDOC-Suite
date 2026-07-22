@@ -565,6 +565,12 @@ export const CreateOperationRequestSchema = z
     visibility: z.enum(["private", "guild", "partners", "public"]).default("guild"),
     /** FR-P3: mark the new op as a streamed event. */
     isStreamEvent: z.boolean().default(false),
+    /**
+     * FR-P1: host-selected partner guilds this op distributes to. Only meaningful
+     * with visibility partners/public; empty (the default) = distribute to no
+     * partners, so the operator must opt each partner in explicitly.
+     */
+    partnerTargetGuildIds: z.array(z.string()).max(100).default([]),
   })
   .meta({ id: "CreateOperationRequest" });
 export type CreateOperationRequest = z.infer<typeof CreateOperationRequestSchema>;
@@ -1242,7 +1248,7 @@ export const SetFighterSquadsRequestSchema = z
 export const SetCqbTeamsRequestSchema = z
   .object({
     count: z.coerce.number().int().min(0).max(50),
-    size: z.coerce.number().int().min(1).max(8).default(4),
+    size: z.coerce.number().int().min(1).max(20).default(4),
   })
   .meta({ id: "SetCqbTeamsRequest" });
 

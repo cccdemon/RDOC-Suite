@@ -30,7 +30,7 @@ export function shipTypeLabel(slug: string): string {
 }
 
 export const CQB_TEAM_DEFAULT = 4;
-export const CQB_TEAM_MAX = 8;
+export const CQB_TEAM_MAX = 20;
 export const FIGHTER_SQUAD_SIZE = 2;
 
 const FIGHTER_PREFIX = "Fighter Squad";

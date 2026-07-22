@@ -589,6 +589,15 @@ export function getDiagnostics(guildId: string): Promise<import("./types").Diagn
   return get<import("./types").DiagnosticsResponse>(`/guilds/${encodeURIComponent(guildId)}/diagnostics`);
 }
 
+// "What's new" popup: unseen player-changelog for the signed-in user + ack.
+export type UnseenChangelog = { version: string; entries: Array<{ date: string; title: string; changes: string[] }> };
+export function getUnseenChangelog(): Promise<UnseenChangelog> {
+  return get<UnseenChangelog>("/changelog/unseen");
+}
+export function ackChangelog(csrfToken: string): Promise<{ ok: true }> {
+  return mutate("POST", "/changelog/ack", csrfToken);
+}
+
 export function getPartnerships(guildId: string): Promise<import("./types").PartnershipsResponse> {
   return get<import("./types").PartnershipsResponse>(`/guilds/${encodeURIComponent(guildId)}/partnerships`);
 }
@@ -706,6 +715,7 @@ export function createOperation(
     minParticipants?: number;
     visibility?: string;
     isStreamEvent?: boolean;
+    partnerTargetGuildIds?: string[];
   },
 ): Promise<{ ok: true; id: string }> {
   return mutate("POST", "/operations", csrfToken, input);

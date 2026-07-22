@@ -22,6 +22,8 @@ export type CreateOperationInput = {
   maxParticipants?: number | null;
   squadLinkVoiceEnabled?: boolean;
   isStreamEvent?: boolean;
+  // FR-P1: subset of active partner guilds to distribute this op to (empty = none).
+  partnerTargetGuildIds?: string[];
 };
 
 /** Append an audit entry (best-effort; never throws into the caller). */
@@ -59,6 +61,7 @@ export async function createOperation(createdById: string, input: CreateOperatio
     minParticipants: input.minParticipants ?? 0,
     maxParticipants: input.maxParticipants ?? null,
     isStreamEvent: input.isStreamEvent ?? false,
+    partnerTargetGuildIds: input.partnerTargetGuildIds ?? [],
   };
   return prisma.operation.create({ data });
 }

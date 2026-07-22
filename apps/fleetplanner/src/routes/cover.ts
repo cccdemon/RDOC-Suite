@@ -43,8 +43,11 @@ function coverUrlOk(u: unknown): boolean {
 function dimsOk(w: unknown, h: unknown): boolean {
   return [w, h].every((n) => Number.isInteger(n) && (n as number) > 0 && (n as number) <= 5000);
 }
+// `format` is the cover ASPECT RATIO (see apps/mission-cover coverFormatSchema),
+// NOT an image file format. The original whitelist checked png/jpg/… and rejected
+// every real save (all values are "16:9"/"1:1"/… ) — a69f313 regression.
 function formatOk(f: unknown): boolean {
-  return typeof f === "string" && ["png", "jpg", "jpeg", "webp"].includes(f.toLowerCase());
+  return typeof f === "string" && ["16:9", "1:1", "9:16", "4:3", "custom"].includes(f);
 }
 
 export async function coverRoutes(app: FastifyInstance): Promise<void> {

@@ -1,5 +1,126 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-22: Generiertes Mission-Cover erschien nicht (Editor-Save)
+
+Status: ⏳ In Arbeit. Bug: über „Editor öffnen" erstellte Covers erschienen nicht in der Operation.
+Ursache: `formatOk` in [apps/fleetplanner/src/routes/cover.ts](apps/fleetplanner/src/routes/cover.ts) (Zeile 46) prüfte das `format`-Feld gegen
+Bild-Formate `["png","jpg","jpeg","webp"]`. `format` ist aber das **Seitenverhältnis** (`"16:9"` etc.,
+`coverFormatSchema`). Jeder Editor-Save wurde am Gate (`cover.ts:72`) abgewiesen → `opCover.upsert` nie
+erreicht → kein Cover. Regression aus `a69f313` (Security-Härtung, 2026-06-15). Quick-„Generate"-Button
+(`apiV1.ts:1242`) war nie betroffen (kein `formatOk`), daher fiel es nur beim Editor auf.
+
+Fix: `formatOk` validiert jetzt die Aspect-Ratio-Enum `["16:9","1:1","9:16","4:3","custom"]` (deckungs-
+gleich mit `apps/mission-cover` `coverFormatSchema`). Read-/Display-Pfad war intakt. Nur Backend.
+Deploy: `fleetplanner`.
+
+## Queued / In Progress - 2026-07-22: CQB-Teamgröße 1–8 → 1–20
+
+Status: ⏳ In Arbeit. Max. CQB-Teamgröße von 8 auf 20 erhöht (Default bleibt 4). Drei Stellen:
+`needs.ts` `CQB_TEAM_MAX 8→20` (propagiert zu Service-Clamp, `NeedsResponse.cqbTeamMax` → NeedsEditor
+`max={needs.cqbTeamMax}`, SSR), Contract `SetCqbTeamsRequest.size.max(8)→max(20)`, Wizard-Input
+`wiz-cqbsize max={8}→20`. `RegisterUnit.squadSize` (Fleet-Unit-Squads, min 2/max 8) bleibt unberührt —
+das ist nicht CQB. Deploy: `fleetplanner` + `fleetplanner-web`.
+
+## Queued / In Progress - 2026-07-22: „Was ist neu?"-Popup nach Deploy (1x pro Release/User)
+
+Status: ⏳ In Arbeit. Wunsch: nach einem Fleetplanner-Update sieht jeder eingeloggte User einmalig ein
+Popup mit den neuen Änderungen (OK-Button), genau 1x pro Veröffentlichung, serverseitig pro User.
+
+Umsetzung (server-per-user, kein localStorage):
+- Schema: `User.lastSeenChangelog String?` + Migration `20260722130000_user_last_seen_changelog`.
+- `lib/changelog.ts`: `latestChangelogVersion()` (= `CHANGELOG[0].date`) + `unseenChangelog(lastSeen)`
+  (lastSeen==latest ⇒ []; null ⇒ nur neuestes Release; sonst alle Einträge mit date > lastSeen).
+- apiV1: `GET /api/v1/changelog/unseen` (session-guarded) → `{version, entries}`; `POST /api/v1/changelog/ack`
+  setzt `lastSeenChangelog = latest`. Beide über `requireSessionJson` (CSRF inklusive).
+- SPA: `getUnseenChangelog`/`ackChangelog` (client), `ChangelogPopup` (global in App gemountet) — lädt beim
+  Login unseen, zeigt Modal wenn entries>0, OK ackt. Gäste/aktuelle User sehen nichts.
+- Marker = neuestes Changelog-Datum. Caveat: zwei Releases am selben Tag teilen den Marker (akzeptiert).
+  Bestandsuser (lastSeen null) sehen beim ersten Deploy das aktuelle Release einmal.
+
+Deploy: `fleetplanner` (Migration + API) **und** `fleetplanner-web` (Popup). Migration beim Container-Start.
+
+## Queued / In Progress - 2026-07-22: Op-Board live — Änderungen ohne Page-Reload
+
+Status: ⏳ In Arbeit. Problem: Änderungen (Bedarf via NeedsEditor, Rollen, Roster) erschienen im
+Operator-Board erst nach vollständigem Page-Reload. Ursache: `OperatorPanel` lud seine `view`
+(getOperatorView → requirements/assignablePeople) nur bei `op.id`-Wechsel oder eigenen Board-Aktionen.
+Wenn ein anderer Panel-Teil den Parent-`op` neu lud (`onChanged=load`), blieb `op.id` gleich → die
+`view` blieb stale.
+
+Fix (nur SPA):
+- `OperatorPanel`: view-reload-Effekt-Dependency `[op.id]` → `[op]` (neue Objekt-Ref bei jedem
+  Parent-Reload ⇒ view refetch). Eigene optimistische Aktionen lösen keinen Parent-Reload aus → keine
+  Refetch-Schleife.
+- `OpDetailPage`: visibility-aware Poll (20s, pausiert bei hidden, sofort-Resync bei Re-Focus) ruft
+  `load()` → Änderungen anderer Operatoren/Admins erscheinen live. Kleines Risiko: optimistische Aktion,
+  die exakt in ein Poll-Fenster fällt, kann kurz zurückspringen bis persistiert (self-heal nächster Tick).
+
+Deploy: `fleetplanner-web`.
+
+## Queued / In Progress - 2026-07-22: Partner-Discords pro Op auswählbar (FR-P1)
+
+Status: ⏳ In Arbeit. Problem: `distributeOperation` verteilt eine Op an ALLE aktiven Partner-Guilds,
+gated nur durch die empfängerseitige `PartnerSharePolicy.autoShare` — kein host-seitiges „an welche
+Partner". Folge: Event entsteht ungewollt auf jedem Partner-Discord. Gewünscht (User): Partner beim
+Erstellen einzeln auswählbar, Default **keine**.
+
+Umsetzung:
+- Schema: `Operation.partnerTargetGuildIds String[] @default([])` + Migration `20260722120000_op_partner_targets`
+  (`ALTER TABLE ... ADD COLUMN ... TEXT[] DEFAULT ARRAY[]::TEXT[]`).
+- `createOperation` (operations.ts) nimmt/persistiert `partnerTargetGuildIds`.
+- `distributeOperation` (eventDistribution.ts) liest die Auswahl frisch aus der Op-Zeile und schneidet
+  `getActivePartnerGuildIds` damit (leer ⇒ keine Verteilung). Keine Signatur-/Call-Site-Änderung nötig.
+- Contract `CreateOperationRequest.partnerTargetGuildIds` (`z.array(string).max(100).default([])`).
+- apiV1 Create-Handler reicht das Feld durch; client `createOperation` um optionales Feld erweitert.
+- Wizard (Schritt „Treffpunkt"): lädt aktive Partner via `getPartnerships`, Multi-Select-Chips, nichts
+  vorausgewählt, Auswahl in Payload + Review. Guild-Wechsel resettet die Auswahl.
+- Empfängerseitige autoShare-Logik (auto vs. Approval) unverändert. SSR-Create sendet keine Auswahl.
+- Changelogs: CHANGELOG.md [Unreleased] + Spieler-Changelog (2026-07-22).
+
+Deploy: `fleetplanner` (Migration + Backend) **und** `fleetplanner-web` (Wizard). Migration läuft beim
+Container-Start.
+
+## Queued / In Progress - 2026-07-22: Board-Dropdowns überlaufen Card bei 1080p
+
+Status: ⏳ In Arbeit. Im Flotten-Board ([apps/fleetplanner-web/src/components/OperatorPanel.tsx](apps/fleetplanner-web/src/components/OperatorPanel.tsx))
+ragen die BEDARF/ROLLE/STAFFEL-Selects bei schmaler Card (1080p) über die rechte Card-Kante in die
+Lane-Lücke. Ursache: `<select>`-min-content = breiteste Option, die umschließenden `inline-flex`-Spans
+haben `min-width:auto` → kein Shrink. Fix: `minWidth:0` auf Feld-Spans + Selects (`reqSelect`, ROLLE,
+STAFFEL/VERBAND, TRÄGER), damit sie schrumpfen statt überzulaufen. Nur Frontend. Deploy: `fleetplanner-web`.
+
+## Queued / In Progress - 2026-07-22: LateArrival-Button-Label klarer
+
+Status: ⏳ In Arbeit. Button-Label „kommt später" in [apps/fleetplanner-web/src/components/LateArrival.tsx](apps/fleetplanner-web/src/components/LateArrival.tsx)
+liest sich wie eine Zustands-Aussage, ist aber eine Aktion. → „Verspätung eintragen". Nur Frontend-Text.
+Deploy: `fleetplanner-web`.
+
+## Queued / In Progress - 2026-07-22: CLAUDE.md gegen aktuellen Stack neu schreiben
+
+Status: ⏳ In Arbeit. Folge-Schritt zur README-Neufassung (2026-07-20). CLAUDE.md beschreibt an
+denselben Stellen noch den mit `dbd2c3f` (`chore: remove legacy voice/CC stack`) entfernten
+Voice-Stack. Abgleich Ist-Stand vs. CLAUDE.md:
+
+| CLAUDE.md behauptet | Realität |
+|---|---|
+| Projektname „Discord Channel Commander Voice Bridge" | Fleetplanner-Suite; Voice-Stack raus |
+| Workspace-Tabelle listet `bot`, `bridge`, `relay-bots` | existieren nicht mehr (`apps/`) |
+| Architektur-Pickup §1–10 (Bridge/WS/JWT/LiveKit/Sessions/Relay/2-PTT/Voice-Enforcement) | Code entfernt |
+| Dev-Commands `--filter bot/bridge/relay-bots dev`, `node apps/bot|bridge/dist` | Workspaces weg |
+| Mermaid-Diagramm Companion/Bot/Bridge/RelayBots/LiveKit | nur noch fleetplanner + web + mission-cover + Postgres + Caddy |
+| „Ziel" + „rechtliche Rahmenbedingungen" = Channel-Commander-Voice | gegenstandslos |
+| Proxy = Traefik (Deploy-Tabelle, Open Decision #4, Ports-Tabelle) | **Caddy** (`Caddyfile`, `caddy-rdoc`-Service) |
+| Ports 7880/7881/7882 (LiveKit) | entfernt 2026-06-18 |
+| `db:migrate`-Quirks, `--node-ip`, tauri single_instance, `dccc-bridge.service`, `@discordjs/opus`, `BRIDGE_FLEET_SECRET` | betreffen entfernte Services |
+| Prod-Services unvollständig | fehlten: `grafana`, `alertmanager`, `postgres-exporter`, `node-exporter` |
+
+Neu: Fleetplanner-zentrierte CLAUDE.md. Erhalten bleiben Mergelog-first-Regel, Deploy-Regeln (LXC 103,
+Caddy statt Traefik), Fleetplanner-Bot-Tabelle, Claude-Regeln, Fleetplanner-Architektur (Rollen-Scoping,
+Contracts-SoT, SPA-Front-Door, Funkrelais-Verschlüsselung), noch gültige Quirks, Doku-/Plan-Tabellen.
+Als **Löschkandidaten** ehrlich markiert (verwaister Voice-Era-Cluster): `apps/companion` → `packages/shared`,
+`packages/db`, Root-`prisma/` + `pnpm db:*`. Nur `apps/companion` ruft noch tote Bridge/LiveKit.
+
+Nur Doku. Kein Deploy nötig.
+
 ## Queued / In Progress - 2026-07-20: README vollständig neu schreiben
 
 Status: ⏳ In Arbeit. Die README beschreibt fast durchgehend den Voice-Stack, der mit `dbd2c3f`

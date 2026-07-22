@@ -52,7 +52,7 @@ export function LateArrival({
       ) : (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }} onClick={(e) => e.stopPropagation()}>
           <button type="button" data-testid={testid ? `${testid}-open` : undefined} title="Als Nachzügler markieren (Ankunftszeit)" onClick={() => { setVal(eta ?? ""); setOpen(true); }} style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "0.12rem 0.4rem", border: "1px solid rgba(240,165,0,0.3)", background: "transparent", color: "#9a8455", fontFamily: MONO, fontSize: "0.58rem", borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap" }}>
-            <Ic name="bolt" size={10} sw={1.8} /> {eta ? "ändern" : "kommt später"}
+            <Ic name="bolt" size={10} sw={1.8} /> {eta ? "ändern" : "Verspätung eintragen"}
           </button>
           {eta && (
             <button type="button" data-testid={testid ? `${testid}-clear` : undefined} title="Nachzügler-Markierung entfernen" onClick={() => onSet(null)} style={{ display: "inline-flex", padding: "0.12rem 0.3rem", border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#7e92a4", borderRadius: 5, cursor: "pointer" }}><Ic name="x" size={10} sw={2} /></button>

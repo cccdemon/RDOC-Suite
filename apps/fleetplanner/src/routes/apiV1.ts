@@ -33,6 +33,7 @@ import { getLocationSyncState, runLocationSync, updateLocationSyncConfig, search
 import { getSystemHealth } from "../services/systemHealth.js";
 import { listSystemEvents, SYSTEM_EVENT_RETENTION_DAYS, type EventLevel } from "../services/systemEvents.js";
 import { ROADMAP } from "../lib/roadmap.js";
+import { latestChangelogVersion, unseenChangelog } from "../lib/changelog.js";
 import {
   addLeader,
   deleteOperation,
@@ -440,6 +441,34 @@ export async function apiV1Routes(app: FastifyInstance) {
     if (typeof req.body?.shareHangarWithOrg === "boolean") data.shareHangarWithOrg = req.body.shareHangarWithOrg;
     if (Object.keys(data).length === 0) return sendError(reply, req, 400, "bad_request", "No valid fields.");
     await prisma.user.update({ where: { id: ctx.user.id }, data });
+    return reply.type("application/json").send({ ok: true as const });
+  });
+
+  // ── "what's new" popup ───────────────────────────────────────────────
+  // Unseen player-changelog for the signed-in user (empty when up to date). The
+  // SPA shows a one-shot modal after login and acks below. Uses the same session
+  // guard as everything else; no partner/guild scoping — it's per-user.
+  app.get("/api/v1/changelog/unseen", async (req, reply) => {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    const u = await prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { lastSeenChangelog: true },
+    });
+    const entries = unseenChangelog(u?.lastSeenChangelog ?? null);
+    return reply
+      .type("application/json")
+      .send({ version: latestChangelogVersion(), entries });
+  });
+
+  // Mark the latest release acknowledged → the popup never re-shows until the next.
+  app.post("/api/v1/changelog/ack", async (req, reply) => {
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    await prisma.user.update({
+      where: { id: ctx.user.id },
+      data: { lastSeenChangelog: latestChangelogVersion() },
+    });
     return reply.type("application/json").send({ ok: true as const });
   });
 
@@ -994,6 +1023,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       // OpVisibility's TS type predates "guild"; the column/UI accept it.
       visibility: body.data.visibility as "private" | "partners" | "public",
       isStreamEvent: body.data.isStreamEvent,
+      partnerTargetGuildIds: body.data.partnerTargetGuildIds,
     });
     await logAudit(op.id, ctx.user.id, ctx.user.username, "created", "");
     return reply.type("application/json").send({ ok: true as const, id: op.id });

@@ -133,6 +133,18 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     load();
   }, [load]);
 
+  // Live refresh: poll the op while the tab is visible so changes made elsewhere
+  // (an operator on another screen, an admin edit) appear in the board/roster within
+  // seconds — no full page reload. Paused when the tab is hidden to avoid idle load,
+  // and re-synced immediately on re-focus.
+  useEffect(() => {
+    if (!id) return;
+    const tick = () => { if (document.visibilityState === "visible") load(); };
+    const timer = window.setInterval(tick, 20000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
+  }, [id, load]);
+
   // Load the mission's needs once we have access (logged in). Best-effort: a 403
   // for a viewer without access just leaves the card hidden.
   useEffect(() => {

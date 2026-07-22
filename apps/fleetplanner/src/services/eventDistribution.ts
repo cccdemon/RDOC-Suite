@@ -64,7 +64,17 @@ type DistributableOp = {
 export async function distributeOperation(
   op: DistributableOp,
 ): Promise<{ auto: number; pending: number; failed: number }> {
-  const targets = await getActivePartnerGuildIds(op.guildId);
+  // FR-P1: the host operator picks WHICH partners this op goes to (create wizard).
+  // Distribution is the active partners intersected with that selection — an empty
+  // selection means no cross-post at all, even at visibility partners/public. Read it
+  // fresh from the op row so every caller (create-open, edit, SSR) stays gated the same.
+  const selRow = await prisma.operation.findUnique({
+    where: { id: op.id },
+    select: { partnerTargetGuildIds: true },
+  });
+  const selected = new Set(selRow?.partnerTargetGuildIds ?? []);
+  const active = await getActivePartnerGuildIds(op.guildId);
+  const targets = active.filter((id) => selected.has(id));
   let auto = 0;
   let pending = 0;
   let failed = 0;
