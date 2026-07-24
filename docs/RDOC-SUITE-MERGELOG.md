@@ -1,5 +1,16 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-07-22: Operator konnte CQB-Soldat nicht entfernen
+
+Status: ⏳ In Arbeit. Bug: Operator kann Personen einem CQB-Team hinzufügen (`addCqbTeamMember`), aber
+nicht mehr entfernen. `assignCqbSoldier(…, null)` löst nur die Team-Zuordnung, der Soldat bleibt im
+CQB-Pool; ein Operator-Delete des Signups fehlte (nur `withdrawCqbSignup` = Selbst-Abmeldung existierte,
+funktioniert). Fix: neue Route `DELETE /operations/:id/cqb/:signupId` (requireOperator, löscht das
+`CqbSignup` op-scoped), client `removeCqbSoldier`, ✕-Button auf jeder CQB-Soldaten-Zeile im OperatorPanel.
+Nur SPA + Backend, keine Migration. Deploy: `fleetplanner` + `fleetplanner-web`.
+
+
+
 ## Queued / In Progress - 2026-07-22: Event-Erstellung — YouTube + PDF hinterlegen
 
 Status: ⏳ In Arbeit. Wunsch: bei der Event-Erstellung ein YouTube-Video + ein PDF-Dokument hinterlegen.

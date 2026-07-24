@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Operator konnte CQB-Soldaten nicht entfernen (2026-07-22)
+
+`addCqbTeamMember` legte ein Signup an, aber es gab keinen Operator-Delete — `assignCqbSoldier(null)` löste
+nur die Team-Zuordnung. Neue Route `DELETE /operations/:id/cqb/:signupId` (requireOperator), client
+`removeCqbSoldier`, ✕-Button je CQB-Soldaten-Zeile. Selbst-Abmeldung (`withdrawCqbSignup`) war nie betroffen.
+
 ### Added - YouTube-Video + PDF-Dokumente an Ops (2026-07-22)
 
 Bei der Event-Erstellung (und später auf der Op-Seite) kann der Operator ein YouTube-Video hinterlegen

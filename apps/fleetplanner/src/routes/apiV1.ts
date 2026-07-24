@@ -1780,6 +1780,25 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // Operator removes a CQB soldier from the op entirely (deletes the signup).
+  // Distinct from assign(null), which only detaches them from a team but keeps
+  // them in the pool. Scoped to the op so a stray id can't cross ops.
+  app.delete<{ Params: { id: string; signupId: string } }>(
+    "/api/v1/operations/:id/cqb/:signupId",
+    async (req, reply) => {
+      const pid = IdParamSchema.safeParse({ id: req.params.id });
+      const sid = req.params.signupId;
+      if (!pid.success || !/^[a-z0-9]{20,32}$/i.test(sid))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireOperator(req, reply, pid.data.id);
+      if (!ctx) return;
+      const del = await prisma.cqbSignup.deleteMany({ where: { id: sid, operationId: pid.data.id } });
+      if (del.count === 0) return sendError(reply, req, 404, "not_found", "CQB signup not found.");
+      await logAudit(pid.data.id, ctx.user.id, ctx.user.username, "cqb:remove", sid);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   // #5: operator adds ANY person (guild member or ship-seat occupant) to a CQB
   // team — creates their CQB signup if none exists. No capacity gate; a person
   // can be both a ship's crew AND a member of the team that ship carries.

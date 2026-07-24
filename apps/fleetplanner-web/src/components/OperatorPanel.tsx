@@ -19,6 +19,7 @@ import {
   getOperatorView,
   patchSeat,
   patchUnit,
+  removeCqbSoldier,
   removeLeader,
   removeNeed,
   setFighterSquads,
@@ -757,6 +758,7 @@ export function OperatorPanel({
                   <option value="">— kein Team —</option>
                   {cqbTeams.map((t) => <option key={t.id} value={t.id}>{t.name}{t.targetSize ? ` (${cqbSoldiers.filter((x) => x.assignedGroupId === t.id).length}/${t.targetSize})` : ""}</option>)}
                 </select>
+                <button type="button" data-testid={`cqb-remove-${s.id}`} title="Aus CQB entfernen" onClick={() => run(() => removeCqbSoldier(op.id, s.id, csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
               </div>
             );
           })}

@@ -170,6 +170,10 @@ export function assignCqbSoldier(opId: string, signupId: string, csrfToken: stri
 }
 
 // #5: operator adds any person (guild member / seat occupant) to a CQB team.
+export function removeCqbSoldier(opId: string, signupId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/cqb/${encodeURIComponent(signupId)}`, csrfToken);
+}
+
 export function addCqbTeamMember(opId: string, groupId: string, userId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}/members`, csrfToken, { userId });
 }

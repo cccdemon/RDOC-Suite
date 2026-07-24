@@ -39,6 +39,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     changes: [
       "When you create an operation you can now attach a YouTube video and upload PDF documents (briefing, rules of engagement, maps). They appear on the operation page for everyone who can see the op.",
       "Operators can also add or remove documents later, straight from the operation page. Up to 5 PDFs, 8 MB each.",
+      "Fixed: operators can now remove a person from a CQB team again — each soldier row has a remove button.",
     ],
   },
   {
