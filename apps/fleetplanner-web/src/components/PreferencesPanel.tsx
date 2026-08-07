@@ -54,7 +54,7 @@ export function PreferencesPanel({ session }: { session: SessionResponse | null 
       <p style={{ margin: "0 0 0.7rem", color: "var(--dim)", fontSize: "0.85rem" }}>{t("prefs.languageHint")}</p>
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
         {LOCALES.map((l) => (
-          <button key={l} type="button" data-testid={`prefs-lang-${l}`} disabled={busy} onClick={() => changeLanguage(l)} style={segChip(locale === l, "var(--cyan)", "0,212,255")}>
+          <button key={l} type="button" data-testid={`prefs-lang-${l}`} disabled={busy} onClick={() => changeLanguage(l)} style={segChip(locale === l, "var(--cyan)", "118, 130, 141")}>
             {LOCALE_NAMES[l]}
           </button>
         ))}
@@ -71,7 +71,7 @@ export function PreferencesPanel({ session }: { session: SessionResponse | null 
         data-testid="prefs-share-hangar"
         disabled={busy}
         onClick={toggleShare}
-        style={segChip(share, "var(--cyan)", "0,212,255")}
+        style={segChip(share, "var(--cyan)", "118, 130, 141")}
       >
         {share ? "✓ Schiffe in Org-Flotte zeigen" : "Schiffe NICHT in Org-Flotte zeigen"}
       </button>

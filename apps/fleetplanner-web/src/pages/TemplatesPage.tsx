@@ -69,16 +69,16 @@ export function TemplatesPage({ session }: { session: SessionResponse | null }) 
   return (
     <div data-testid="templates-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
-        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="board" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Vorlagen-Marktplatz</h1>
+        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="board" size={20} /></span>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Vorlagen-Marktplatz</h1>
       </div>
       {notice && <p className="fpw-tag gold" role="alert" data-testid="templates-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem", marginBottom: "1.2rem", alignItems: "center" }}>
-        <select data-testid="templates-guild" value={guildId} onChange={(e) => setGuildId(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", padding: "0.5rem", borderRadius: 8 }}>
+        <select data-testid="templates-guild" value={guildId} onChange={(e) => setGuildId(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "0.5rem", borderRadius: 8 }}>
           {operatorGuilds.map((g) => <option key={g.guildId} value={g.guildId}>{g.guildName}</option>)}
         </select>
-        <input type="search" data-testid="templates-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Vorlage suchen…" style={{ flex: "1 1 240px", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", padding: "0.5rem 0.7rem", borderRadius: 8, outline: "none" }} />
+        <input type="search" data-testid="templates-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Vorlage suchen…" style={{ flex: "1 1 240px", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", padding: "0.5rem 0.7rem", borderRadius: 8, outline: "none" }} />
       </div>
 
       {templates === null ? (
@@ -98,7 +98,7 @@ export function TemplatesPage({ session }: { session: SessionResponse | null }) 
               <div className="fpw-mono-label" style={{ fontSize: "0.6rem", marginBottom: "0.7rem" }}>{t.ownerGuildName} · {t.usageCount}× genutzt</div>
               {applyId === t.id ? (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
-                  <input type="datetime-local" data-testid={`template-when-${t.id}`} value={when} onChange={(e) => setWhen(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", padding: "0.4rem", borderRadius: 8 }} />
+                  <input type="datetime-local" data-testid={`template-when-${t.id}`} value={when} onChange={(e) => setWhen(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "0.4rem", borderRadius: 8 }} />
                   <button type="button" data-testid={`template-confirm-${t.id}`} className="fpw-btn" disabled={busy} style={{ padding: "0.4rem 0.7rem", fontSize: "0.7rem" }} onClick={() => doApply(t.id)}>Erstellen</button>
                   <button type="button" className="fpw-btn" style={{ padding: "0.4rem 0.7rem", fontSize: "0.7rem", borderColor: "rgba(255,255,255,0.18)", background: "transparent", color: "var(--dim)" }} onClick={() => setApplyId(null)}>Abbrechen</button>
                 </div>

@@ -18,7 +18,7 @@ import type { AdminGuild, AdminSettingsResponse, AdminUser, SessionResponse } fr
 import { Ic } from "../components/Icons";
 
 const MONO = "'Share Tech Mono',ui-monospace,monospace";
-const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
+const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
 
 const ROLE_LABELS: Record<string, string> = { superadmin: "Admiral", fleetoperator: "Fleet Op", crew: "Crew" };
 
@@ -41,25 +41,25 @@ function fmtRel(iso: string | null): string {
   return `vor ${days} Tagen`;
 }
 function roleChip(role: string): React.CSSProperties {
-  const map: Record<string, { c: string }> = { superadmin: { c: "#f0a500" }, fleetoperator: { c: "#00d4ff" }, crew: { c: "#9fb1c2" } };
+  const map: Record<string, { c: string }> = { superadmin: { c: "var(--gold)" }, fleetoperator: { c: "var(--cyan)" }, crew: { c: "var(--dim)" } };
   const c = (map[role] ?? map.crew).c;
   return { display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", borderRadius: "4px", border: `1px solid ${c}55`, background: `${c}14`, color: c, whiteSpace: "nowrap" };
 }
 function miniRole(role: string): React.CSSProperties {
-  const c = role === "fleetoperator" ? "#00d4ff" : "#7e92a4";
+  const c = role === "fleetoperator" ? "var(--cyan)" : "var(--dim2)";
   return { display: "inline-flex", alignItems: "center", padding: "1px 5px", fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.04em", borderRadius: "3px", border: `1px solid ${c}44`, background: `${c}12`, color: c, whiteSpace: "nowrap" };
 }
 function statusChip(active: boolean): React.CSSProperties {
-  const c = active ? "#00ff88" : "#ff4444";
+  const c = active ? "var(--green)" : "var(--red)";
   return { display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", borderRadius: "4px", border: `1px solid ${c}55`, background: `${c}14`, color: c, whiteSpace: "nowrap", cursor: "pointer" };
 }
 function avatarColor(role: string): string {
-  return role === "superadmin" ? "#f0a500" : role === "fleetoperator" ? "#00d4ff" : "#5b6b7a";
+  return role === "superadmin" ? "var(--gold)" : role === "fleetoperator" ? "var(--cyan)" : "var(--dim3)";
 }
-const field: React.CSSProperties = { background: "#0e1926", border: "1px solid rgba(0,212,255,0.12)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.78rem", padding: "0.4rem 0.55rem", borderRadius: "6px" };
-const colHead: React.CSSProperties = { textAlign: "left", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#7e92a4", padding: "0.55rem 0.8rem", borderBottom: "1px solid rgba(0,212,255,0.2)", fontWeight: 400 };
-const cell: React.CSSProperties = { padding: "0.55rem 0.8rem", borderBottom: "1px solid rgba(0,212,255,0.07)", verticalAlign: "middle" };
-const monoSub = (extra?: React.CSSProperties): React.CSSProperties => ({ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: "#5b6b7a", ...extra });
+const field: React.CSSProperties = { background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: MONO, fontSize: "0.78rem", padding: "0.4rem 0.55rem", borderRadius: "6px" };
+const colHead: React.CSSProperties = { textAlign: "left", fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim2)", padding: "0.55rem 0.8rem", borderBottom: "1px solid var(--border)", fontWeight: 400 };
+const cell: React.CSSProperties = { padding: "0.55rem 0.8rem", borderBottom: "1px solid var(--border)", verticalAlign: "middle" };
+const monoSub = (extra?: React.CSSProperties): React.CSSProperties => ({ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: "var(--dim3)", ...extra });
 
 export function AdminPage({ session }: { session: SessionResponse | null }) {
   const me = session?.user ?? null;
@@ -134,15 +134,15 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
   const bannedServers = guilds.filter((g) => g.bannedAt).length;
   const maintOn = settings?.maintenanceOn ?? false;
   const maintForced = settings?.maintenanceForcedByEnv ?? false;
-  const maintColor = maintOn ? "#f0a500" : "#00ff88";
+  const maintColor = maintOn ? "var(--gold)" : "var(--green)";
 
   // ── KPI tiles ─────────────────────────────────────────────────────────
   const tiles: Array<{ label: string; value: string; sub: string; color: string; icon: string }> = [
-    { label: "NUTZER", value: String(users.length), sub: `${activeUsers} aktiv · ${users.length - activeUsers} inaktiv`, color: "#00d4ff", icon: "users" },
-    { label: "DISCORD-SERVER", value: String(guilds.length), sub: `${activeServers} aktiv · ${bannedServers} gebannt`, color: "#00ff88", icon: "server" },
-    { label: "SCHIFFE", value: fmtNum(settings?.shipCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.shipCatalog.lastRun ?? null)}`, color: "#f0a500", icon: "ship" },
-    { label: "STANDORTE", value: fmtNum(settings?.locationCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.locationCatalog.lastRun ?? null)}`, color: "#a064ff", icon: "pin" },
-    { label: "OPERATIONEN", value: String(settings?.operations.total ?? settings?.operationCount ?? 0), sub: settings ? `${settings.operations.private} Privat · ${settings.operations.partners} Partner · ${settings.operations.public} Öffentl.` : "live", color: "#ff70c8", icon: "cal" },
+    { label: "NUTZER", value: String(users.length), sub: `${activeUsers} aktiv · ${users.length - activeUsers} inaktiv`, color: "var(--cyan)", icon: "users" },
+    { label: "DISCORD-SERVER", value: String(guilds.length), sub: `${activeServers} aktiv · ${bannedServers} gebannt`, color: "var(--green)", icon: "server" },
+    { label: "SCHIFFE", value: fmtNum(settings?.shipCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.shipCatalog.lastRun ?? null)}`, color: "var(--gold)", icon: "ship" },
+    { label: "STANDORTE", value: fmtNum(settings?.locationCatalog.count ?? 0), sub: `Sync ${fmtRel(settings?.locationCatalog.lastRun ?? null)}`, color: "var(--purple)", icon: "pin" },
+    { label: "OPERATIONEN", value: String(settings?.operations.total ?? settings?.operationCount ?? 0), sub: settings ? `${settings.operations.private} Privat · ${settings.operations.partners} Partner · ${settings.operations.public} Öffentl.` : "live", color: "var(--pink)", icon: "cal" },
     { label: "WARTUNG", value: maintOn ? "AN" : "AUS", sub: maintOn ? "Instanz gesperrt" : "Betrieb normal", color: maintColor, icon: "wrench" },
   ];
   const statCols = mobile ? "repeat(2,1fr)" : narrow ? "repeat(3,1fr)" : "repeat(6,1fr)";
@@ -173,23 +173,23 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
   ) => {
     const running = state.running;
     return (
-      <section style={{ border: "1px solid rgba(0,212,255,0.16)", borderRadius: 13, background: "#090f18", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid rgba(0,212,255,0.1)" }}>
+      <section style={{ border: "1px solid var(--border)", borderRadius: 13, background: "var(--bg2)", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid var(--border)" }}>
           <span style={{ width: 30, height: 30, borderRadius: 8, background: `rgba(${rgb},0.12)`, border: `1px solid rgba(${rgb},0.3)`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={icon} size={16} sw={1.6} /></span>
-          <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "#eaf4fb" }}>{title}</div>
+          <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "var(--text-hi)" }}>{title}</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.55rem 0.8rem", marginBottom: "0.85rem" }}>
-          <div><div style={monoSub()}>GECACHED</div><div style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", marginTop: 1 }}>{fmtNum(state.count)}</div></div>
-          <div><div style={monoSub()}>AUTO-REFRESH</div><div style={{ fontSize: "0.86rem", color: "#c2d2de", marginTop: 3 }}>alle {state.intervalDays} Tage</div></div>
-          <div><div style={monoSub()}>LETZTER LAUF</div><div style={{ fontSize: "0.86rem", color: "#c2d2de", marginTop: 3 }}>{fmtRel(state.lastRun)}</div></div>
-          <div><div style={monoSub()}>STATUS</div><div style={{ fontFamily: MONO, fontSize: "0.78rem", color: running ? "#f0a500" : "#00ff88", marginTop: 3 }}>{running ? "⟳ Läuft" : "Bereit"}</div></div>
+          <div><div style={monoSub()}>GECACHED</div><div style={{ fontFamily: MONO, fontSize: "1.05rem", color: "var(--text-hi)", marginTop: 1 }}>{fmtNum(state.count)}</div></div>
+          <div><div style={monoSub()}>AUTO-REFRESH</div><div style={{ fontSize: "0.86rem", color: "var(--text)", marginTop: 3 }}>alle {state.intervalDays} Tage</div></div>
+          <div><div style={monoSub()}>LETZTER LAUF</div><div style={{ fontSize: "0.86rem", color: "var(--text)", marginTop: 3 }}>{fmtRel(state.lastRun)}</div></div>
+          <div><div style={monoSub()}>STATUS</div><div style={{ fontFamily: MONO, fontSize: "0.78rem", color: running ? "var(--gold)" : "var(--green)", marginTop: 3 }}>{running ? "⟳ Läuft" : "Bereit"}</div></div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginTop: "auto" }}>
           <button type="button" data-testid={`sync-${kind}`} disabled={busy || !csrf || running} onClick={() => run(() => syncCatalog(csrf!, kind), `${title} synchronisiert.`)} style={syncBtn(running, accent)}>
             <span style={running ? { animation: "fpw-spin 0.9s linear infinite", display: "inline-flex" } : { display: "inline-flex" }}><Ic name="refresh" size={14} sw={1.8} /></span>
             {running ? "Synchronisiert…" : "Sync jetzt"}
           </button>
-          <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.62rem", color: "#7e92a4" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim2)" }}>
             Intervall
             <input
               type="number" min={1} max={90} value={interval} data-testid={`interval-${kind}`}
@@ -204,15 +204,15 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
   };
 
   return (
-    <div data-testid="admin-page" style={{ width: "100%", color: "#ccdde8" }}>
+    <div data-testid="admin-page" style={{ width: "100%", color: "var(--text)" }}>
       <style>{`@keyframes fpw-spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* PAGE HEADER */}
-      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "1rem 1.4rem", marginBottom: "1.4rem", paddingBottom: "1.1rem", borderBottom: "1px solid rgba(0,212,255,0.14)" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "1rem 1.4rem", marginBottom: "1.4rem", paddingBottom: "1.1rem", borderBottom: "1px solid var(--border)" }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}><span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="shield" size={19} sw={1.7} /></span><span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.14em", color: "#5b6b7a" }}>ADMIN // SYSTEMSTEUERUNG</span></div>
-          <h1 style={{ fontWeight: 700, fontSize: "1.95rem", lineHeight: 1.05, color: "#eaf4fb", margin: 0 }}>Admin-Konsole</h1>
-          <div style={{ color: "#9fb1c2", fontSize: "0.9rem", marginTop: "0.2rem" }}>RDOC Fleetplanner · Instanz <span style={{ fontFamily: MONO, color: "#7e92a4" }}>raumdock.org</span></div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.35rem" }}><span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="shield" size={19} sw={1.7} /></span><span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.14em", color: "var(--dim3)" }}>ADMIN // SYSTEMSTEUERUNG</span></div>
+          <h1 style={{ fontWeight: 700, fontSize: "1.95rem", lineHeight: 1.05, color: "var(--text-hi)", margin: 0 }}>Admin-Konsole</h1>
+          <div style={{ color: "var(--dim)", fontSize: "0.9rem", marginTop: "0.2rem" }}>RDOC Fleetplanner · Instanz <span style={{ fontFamily: MONO, color: "var(--dim2)" }}>raumdock.org</span></div>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.7rem" }}>
           <button type="button" data-testid="maint-toggle" disabled={busy || !csrf || maintForced} title={maintForced ? "per ENV erzwungen" : undefined} onClick={() => run(() => setMaintenanceMode(csrf!, !maintOn), maintOn ? "Wartungsmodus deaktiviert." : "Wartungsmodus aktiviert.")} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "0.5rem 0.85rem", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 9, cursor: maintForced ? "not-allowed" : "pointer", whiteSpace: "nowrap", border: `1px solid ${maintColor}66`, background: `${maintColor}12`, color: maintColor, opacity: maintForced ? 0.6 : 1 }}>
@@ -225,34 +225,34 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
       {/* KPI STATUS STRIP */}
       <div data-testid="admin-settings" style={{ display: "grid", gridTemplateColumns: statCols, gap: "0.8rem", marginBottom: "1.1rem" }}>
         {tiles.map((t) => (
-          <div key={t.label} style={{ border: "1px solid rgba(0,212,255,0.14)", borderLeft: `3px solid ${t.color}`, borderRadius: 12, background: "#090f18", padding: "0.85rem 0.95rem", minWidth: 0 }}>
+          <div key={t.label} style={{ border: "1px solid var(--border)", borderLeft: `3px solid ${t.color}`, borderRadius: 12, background: "var(--bg2)", padding: "0.85rem 0.95rem", minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "0.5rem" }}>
-              <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#7e92a4" }}>{t.label}</span>
+              <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim2)" }}>{t.label}</span>
               <span style={{ color: t.color, display: "inline-flex" }}><Ic name={t.icon} size={15} sw={1.6} /></span>
             </div>
-            <div style={{ fontFamily: MONO, fontSize: "1.5rem", lineHeight: 1, color: "#eaf4fb" }}>{t.value}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.3rem" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: t.color, flexShrink: 0 }} /><span style={{ fontSize: "0.72rem", color: "#9fb1c2", lineHeight: 1.2 }}>{t.sub}</span></div>
+            <div style={{ fontFamily: MONO, fontSize: "1.5rem", lineHeight: 1, color: "var(--text-hi)" }}>{t.value}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginTop: "0.3rem" }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: t.color, flexShrink: 0 }} /><span style={{ fontSize: "0.72rem", color: "var(--dim)", lineHeight: 1.2 }}>{t.sub}</span></div>
           </div>
         ))}
       </div>
 
       {/* CONTROL GRID */}
       <div style={{ display: "grid", gridTemplateColumns: ctrlCols, gap: "0.9rem", marginBottom: "1.1rem" }}>
-        {settings && catalogCard("ships", "SCHIFFSKATALOG", "ship", "#f0a500", "240,165,0", settings.shipCatalog, shipInterval, setShipInterval)}
-        {settings && catalogCard("locations", "STANDORTKATALOG", "pin", "#a064ff", "160,100,255", settings.locationCatalog, locInterval, setLocInterval)}
-        <section style={{ border: "1px solid rgba(0,212,255,0.16)", borderRadius: 13, background: "#090f18", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid rgba(0,212,255,0.1)" }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)", color: "#00d4ff", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="chat" size={16} sw={1.6} /></span>
-            <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "#eaf4fb" }}>FEEDBACK-KANAL</div>
+        {settings && catalogCard("ships", "SCHIFFSKATALOG", "ship", "var(--gold)", "240,165,0", settings.shipCatalog, shipInterval, setShipInterval)}
+        {settings && catalogCard("locations", "STANDORTKATALOG", "pin", "var(--purple)", "160,100,255", settings.locationCatalog, locInterval, setLocInterval)}
+        <section style={{ border: "1px solid var(--border)", borderRadius: 13, background: "var(--bg2)", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid var(--border)" }}>
+            <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(43, 49, 53, 0.1)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="chat" size={16} sw={1.6} /></span>
+            <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "var(--text-hi)" }}>FEEDBACK-KANAL</div>
           </div>
           <div style={monoSub({ marginBottom: "0.3rem" })}>DISCORD-KANAL-ID</div>
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.9rem" }}>
             <input type="text" inputMode="numeric" data-testid="feedback-channel" value={feedbackInput} placeholder="leer = aus" onChange={(e) => setFeedbackInput(e.target.value)} style={{ ...field, flex: 1, minWidth: 0 }} />
-            <button type="button" data-testid="feedback-save" disabled={busy || !csrf} onClick={() => run(() => setFeedbackChannel(csrf!, feedbackInput.trim()), "Feedback-Kanal gespeichert.")} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, padding: "0 0.7rem", border: "1px solid rgba(0,212,255,0.3)", background: "rgba(0,212,255,0.06)", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 6, cursor: "pointer" }}><Ic name="save" size={13} sw={1.7} /> Speichern</button>
+            <button type="button" data-testid="feedback-save" disabled={busy || !csrf} onClick={() => run(() => setFeedbackChannel(csrf!, feedbackInput.trim()), "Feedback-Kanal gespeichert.")} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, padding: "0 0.7rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.06)", color: "var(--dim)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 6, cursor: "pointer" }}><Ic name="save" size={13} sw={1.7} /> Speichern</button>
           </div>
           <div style={{ marginTop: "auto", paddingTop: "0.8rem", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <span style={{ color: "#5b6b7a", flexShrink: 0, display: "inline-flex" }}><Ic name="alert" size={15} sw={1.6} /></span>
-            <span style={{ fontSize: "0.76rem", color: "#7e92a4", lineHeight: 1.35 }}>Feedback aus dem Web wird an diesen Kanal gepostet. Leer lassen, um Weiterleitung zu deaktivieren.</span>
+            <span style={{ color: "var(--dim3)", flexShrink: 0, display: "inline-flex" }}><Ic name="alert" size={15} sw={1.6} /></span>
+            <span style={{ fontSize: "0.76rem", color: "var(--dim2)", lineHeight: 1.35 }}>Feedback aus dem Web wird an diesen Kanal gepostet. Leer lassen, um Weiterleitung zu deaktivieren.</span>
           </div>
         </section>
       </div>
@@ -260,9 +260,9 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
       {/* DATA TABLES */}
       <div style={tablesGrid}>
         {/* USERS */}
-        <section style={{ border: "1px solid rgba(0,212,255,0.14)", borderRadius: 13, background: "#090f18", overflow: "hidden", minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", padding: "0.9rem 1.15rem", borderBottom: "1px solid rgba(0,212,255,0.14)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}><span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={16} sw={1.6} /></span><span style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.08em", color: "#eaf4fb" }}>NUTZER</span><span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{users.length} gesamt</span></div>
+        <section style={{ border: "1px solid var(--border)", borderRadius: 13, background: "var(--bg2)", overflow: "hidden", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", padding: "0.9rem 1.15rem", borderBottom: "1px solid var(--border)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}><span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={16} sw={1.6} /></span><span style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.08em", color: "var(--text-hi)" }}>NUTZER</span><span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim3)" }}>{users.length} gesamt</span></div>
             <input type="search" data-testid="user-search" placeholder="Suchen…" value={search} onChange={(e) => setSearch(e.target.value)} style={{ ...field, width: "9rem", fontSize: "0.74rem", padding: "0.32rem 0.55rem" }} />
           </div>
 
@@ -279,33 +279,33 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
                       <tr key={u.id} data-testid={`admin-user-${u.id}`}>
                         <td style={cell}>
                           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
-                            <span style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: ac, color: "#04060a", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{initialsOf(u.username)}</span>
-                            <div style={{ minWidth: 0 }}><div style={{ fontSize: "0.88rem", color: "#eaf4fb", lineHeight: 1.15 }}>{u.username}{u.id === me.id ? " (du)" : ""}</div><div style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a" }}>{u.id}</div></div>
+                            <span style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: ac, color: "var(--bg)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{initialsOf(u.username)}</span>
+                            <div style={{ minWidth: 0 }}><div style={{ fontSize: "0.88rem", color: "var(--text-hi)", lineHeight: 1.15 }}>{u.username}{u.id === me.id ? " (du)" : ""}</div><div style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim3)" }}>{u.id}</div></div>
                           </div>
                         </td>
                         <td style={cell}>
                           {u.discordId ? (
-                            <><div style={{ fontFamily: MONO, fontSize: "0.74rem", color: "#c2d2de" }}>{u.discordId}</div><div style={{ fontSize: "0.72rem", color: "#7e92a4" }}>{u.discordName ? `@${u.discordName}` : ""}</div></>
+                            <><div style={{ fontFamily: MONO, fontSize: "0.74rem", color: "var(--text)" }}>{u.discordId}</div><div style={{ fontSize: "0.72rem", color: "var(--dim2)" }}>{u.discordName ? `@${u.discordName}` : ""}</div></>
                           ) : (
-                            <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.05em", borderRadius: 4, border: "1px solid rgba(255,68,68,0.38)", background: "rgba(255,68,68,0.08)", color: "#ff4444" }}>NICHT VERKNÜPFT</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.05em", borderRadius: 4, border: "1px solid rgba(228, 115, 106,0.38)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)" }}>NICHT VERKNÜPFT</span>
                           )}
                         </td>
                         <td style={cell}>
                           <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
-                            {u.guilds.length === 0 ? <span style={{ fontSize: "0.76rem", color: "#5b6b7a" }}>—</span> : u.guilds.map((g, i) => (
-                              <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", color: "#c2d2de" }}><span>{g.name}</span><span style={miniRole(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span></div>
+                            {u.guilds.length === 0 ? <span style={{ fontSize: "0.76rem", color: "var(--dim3)" }}>—</span> : u.guilds.map((g, i) => (
+                              <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.78rem", color: "var(--text)" }}><span>{g.name}</span><span style={miniRole(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span></div>
                             ))}
                           </div>
                         </td>
                         <td style={cell}>
-                          <select data-testid={`admin-user-role-${u.id}`} value={u.role} disabled={busy || !csrf} onChange={(e) => run(() => setUserRole(u.id, csrf!, e.target.value), `Rolle von ${u.username} → ${ROLE_LABELS[e.target.value] ?? e.target.value}.`)} style={{ background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.72rem", padding: "0.28rem 0.4rem", borderRadius: 6, cursor: "pointer" }}>
+                          <select data-testid={`admin-user-role-${u.id}`} value={u.role} disabled={busy || !csrf} onChange={(e) => run(() => setUserRole(u.id, csrf!, e.target.value), `Rolle von ${u.username} → ${ROLE_LABELS[e.target.value] ?? e.target.value}.`)} style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: MONO, fontSize: "0.72rem", padding: "0.28rem 0.4rem", borderRadius: 6, cursor: "pointer" }}>
                             {["superadmin", "fleetoperator", "crew"].map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                           </select>
                         </td>
                         <td style={cell}>
                           <button type="button" data-testid={`admin-user-active-${u.id}`} title="Status umschalten" disabled={busy || !csrf} onClick={() => run(() => toggleUserActive(u.id, csrf!))} style={statusChip(u.active)}>{u.active ? "AKTIV" : "DEAKTIVIERT"}</button>
                         </td>
-                        <td style={{ ...cell, fontSize: "0.76rem", color: "#7e92a4", whiteSpace: "nowrap" }}>{fmtRel(u.lastSeen)}</td>
+                        <td style={{ ...cell, fontSize: "0.76rem", color: "var(--dim2)", whiteSpace: "nowrap" }}>{fmtRel(u.lastSeen)}</td>
                       </tr>
                     );
                   })}
@@ -317,21 +317,21 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
               {filtered.map((u) => {
                 const ac = avatarColor(u.role);
                 return (
-                  <div key={u.id} data-testid={`admin-user-${u.id}`} style={{ border: "1px solid rgba(0,212,255,0.12)", borderLeft: `3px solid ${ac}`, borderRadius: 10, background: "#0a1018", padding: "0.8rem 0.9rem" }}>
+                  <div key={u.id} data-testid={`admin-user-${u.id}`} style={{ border: "1px solid var(--border)", borderLeft: `3px solid ${ac}`, borderRadius: 10, background: "var(--row)", padding: "0.8rem 0.9rem" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.6rem" }}>
-                      <span style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: ac, color: "#04060a", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{initialsOf(u.username)}</span>
-                      <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: "0.95rem", color: "#eaf4fb" }}>{u.username}</div><div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{u.id} · {fmtRel(u.lastSeen)}</div></div>
+                      <span style={{ width: 28, height: 28, borderRadius: 7, flexShrink: 0, background: ac, color: "var(--bg)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{initialsOf(u.username)}</span>
+                      <div style={{ minWidth: 0, flex: 1 }}><div style={{ fontSize: "0.95rem", color: "var(--text-hi)" }}>{u.username}</div><div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)" }}>{u.id} · {fmtRel(u.lastSeen)}</div></div>
                       <button type="button" data-testid={`admin-user-active-${u.id}`} disabled={busy || !csrf} onClick={() => run(() => toggleUserActive(u.id, csrf!))} style={statusChip(u.active)}>{u.active ? "AKTIV" : "DEAKTIVIERT"}</button>
                     </div>
                     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.4rem", marginBottom: "0.55rem" }}>
                       <select data-testid={`admin-user-role-${u.id}`} value={u.role} disabled={busy || !csrf} onChange={(e) => run(() => setUserRole(u.id, csrf!, e.target.value), `Rolle von ${u.username} → ${ROLE_LABELS[e.target.value] ?? e.target.value}.`)} style={{ ...roleChip(u.role), cursor: "pointer" }}>
                         {["superadmin", "fleetoperator", "crew"].map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                       </select>
-                      {u.guilds.map((g, i) => <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontSize: "0.74rem", color: "#9fb1c2" }}>{g.name}<span style={miniRole(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span></span>)}
+                      {u.guilds.map((g, i) => <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontSize: "0.74rem", color: "var(--dim)" }}>{g.name}<span style={miniRole(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span></span>)}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.68rem", color: "#7e92a4" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.68rem", color: "var(--dim2)" }}>
                       <Ic name="link" size={13} sw={1.6} />
-                      {u.discordId ? <span>{u.discordName ? `@${u.discordName}` : u.discordId}</span> : <span style={{ color: "#ff4444" }}>nicht verknüpft</span>}
+                      {u.discordId ? <span>{u.discordName ? `@${u.discordName}` : u.discordId}</span> : <span style={{ color: "var(--red)" }}>nicht verknüpft</span>}
                     </div>
                   </div>
                 );
@@ -341,31 +341,31 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
         </section>
 
         {/* SERVERS */}
-        <section style={{ border: "1px solid rgba(0,212,255,0.14)", borderRadius: 13, background: "#090f18", overflow: "hidden", minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.9rem 1.15rem", borderBottom: "1px solid rgba(0,212,255,0.14)" }}><span style={{ color: "#00ff88", display: "inline-flex" }}><Ic name="server" size={16} sw={1.6} /></span><span style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.08em", color: "#eaf4fb" }}>DISCORD-SERVER</span><span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{guilds.length} gesamt</span></div>
+        <section style={{ border: "1px solid var(--border)", borderRadius: 13, background: "var(--bg2)", overflow: "hidden", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.9rem 1.15rem", borderBottom: "1px solid var(--border)" }}><span style={{ color: "var(--green)", display: "inline-flex" }}><Ic name="server" size={16} sw={1.6} /></span><span style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.08em", color: "var(--text-hi)" }}>DISCORD-SERVER</span><span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim3)" }}>{guilds.length} gesamt</span></div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {[...guilds].sort((a, b) => b.eventCount - a.eventCount || a.name.localeCompare(b.name)).map((s, gi) => {
               const banned = !!s.bannedAt;
-              const c = banned ? "#ff4444" : s.active ? "#00ff88" : "#7e92a4";
+              const c = banned ? "var(--red)" : s.active ? "var(--green)" : "var(--dim2)";
               const mostActive = gi === 0 && s.eventCount > 0;
               return (
-                <div key={s.id} data-testid={`admin-guild-${s.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", rowGap: "0.5rem", flexWrap: mobile ? "wrap" : "nowrap", padding: "0.7rem 1.1rem", borderBottom: "1px solid rgba(0,212,255,0.08)" }}>
+                <div key={s.id} data-testid={`admin-guild-${s.id}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.6rem", rowGap: "0.5rem", flexWrap: mobile ? "wrap" : "nowrap", padding: "0.7rem 1.1rem", borderBottom: "1px solid var(--border)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", minWidth: 0, flex: 1 }}>
                     <span style={{ width: 30, height: 30, borderRadius: 8, flexShrink: 0, background: `${c}18`, border: `1px solid ${c}55`, color: c, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.64rem", fontWeight: 700 }}>{initialsOf(s.name)}</span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
-                        <span style={{ fontSize: "0.88rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
-                        {mostActive && <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.06em", color: "#00ff88", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase" }}>Aktivster</span>}
+                        <span style={{ fontSize: "0.88rem", color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
+                        {mostActive && <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.06em", color: "var(--green)", border: "1px solid rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.08)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase" }}>Aktivster</span>}
                       </div>
-                      <div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{fmtNum(s.memberCount)} Mitglieder · <span style={{ color: s.eventCount > 0 ? "#00d4ff" : "#5b6b7a" }}>{fmtNum(s.eventCount)} Events</span></div>
+                      <div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)" }}>{fmtNum(s.memberCount)} Mitglieder · <span style={{ color: s.eventCount > 0 ? "var(--cyan)" : "var(--dim3)" }}>{fmtNum(s.eventCount)} Events</span></div>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexShrink: 0 }}>
                     <span style={statusChip(!banned && s.active)}>{banned ? "GEBANNT" : s.active ? "AKTIV" : "INAKTIV"}</span>
                     {banned ? (
-                      <button type="button" data-testid={`admin-unban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => unbanGuild(s.id, csrf!), `${s.name} entbannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", color: "#00ff88" }}><Ic name="check" size={12} sw={1.8} /> Entbannen</button>
+                      <button type="button" data-testid={`admin-unban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => unbanGuild(s.id, csrf!), `${s.name} entbannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.08)", color: "var(--green)" }}><Ic name="check" size={12} sw={1.8} /> Entbannen</button>
                     ) : (
-                      <button type="button" data-testid={`admin-ban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => banGuild(s.id, csrf!), `${s.name} gebannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(255,68,68,0.32)", background: "rgba(255,68,68,0.07)", color: "#ff4444" }}><Ic name="ban" size={12} sw={1.8} /> Bannen</button>
+                      <button type="button" data-testid={`admin-ban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => banGuild(s.id, csrf!), `${s.name} gebannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(228, 115, 106,0.32)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)" }}><Ic name="ban" size={12} sw={1.8} /> Bannen</button>
                     )}
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
 
       {/* TOAST */}
       {toast && (
-        <div data-testid="admin-notice" role="status" style={{ position: "fixed", left: "50%", bottom: "1.6rem", transform: "translateX(-50%)", zIndex: 9997, display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.1rem", background: "#0a1018", border: "1px solid rgba(0,212,255,0.4)", borderRadius: 10, color: "#00d4ff", fontFamily: MONO, fontSize: "0.78rem", boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}>
+        <div data-testid="admin-notice" role="status" style={{ position: "fixed", left: "50%", bottom: "1.6rem", transform: "translateX(-50%)", zIndex: 9997, display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.65rem 1.1rem", background: "var(--row)", border: "1px solid var(--border-hi)", borderRadius: 10, color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", boxShadow: "0 12px 40px rgba(0,0,0,0.55)" }}>
           <Ic name="check" size={15} sw={1.8} /> {toast}
         </div>
       )}

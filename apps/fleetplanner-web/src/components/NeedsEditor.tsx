@@ -23,9 +23,9 @@ function RenameInput({ value, disabled, onRename }: { value: string; disabled: b
     />
   );
 }
-const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
+const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
 const field: React.CSSProperties = {
-  boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)",
+  boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)",
   color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.5rem 0.6rem", borderRadius: 8, outline: "none",
 };
 
@@ -92,7 +92,7 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
             <div key={s.id} className="fpw-seat" data-testid={`need-row-${s.id}`}>
               <RenameInput value={s.label} disabled={busy || !csrf} onRename={(name) => run(() => renameNeed(opId, s.id, csrf!, name))} />
               <span className="fpw-meta">{s.shipType}</span>
-              <button type="button" data-testid={`need-remove-${s.id}`} title="Bedarf entfernen" disabled={busy || !csrf} onClick={() => run(() => removeNeed(opId, s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button type="button" data-testid={`need-remove-${s.id}`} title="Bedarf entfernen" disabled={busy || !csrf} onClick={() => run(() => removeNeed(opId, s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Ic name="x" size={12} sw={2} />
               </button>
             </div>
@@ -108,9 +108,9 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
             onClick={() => togglePick(t.slug)}
             style={{
               padding: "0.32rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem",
-              border: picked.includes(t.slug) ? "1px solid rgba(0,212,255,0.55)" : "1px solid rgba(0,212,255,0.2)",
-              background: picked.includes(t.slug) ? "rgba(0,212,255,0.14)" : "rgba(0,212,255,0.04)",
-              color: picked.includes(t.slug) ? "#00d4ff" : "#9fb1c2",
+              border: picked.includes(t.slug) ? "1px solid var(--border-hi)" : "1px solid rgba(43, 49, 53, 0.2)",
+              background: picked.includes(t.slug) ? "rgba(43, 49, 53, 0.14)" : "rgba(43, 49, 53, 0.04)",
+              color: picked.includes(t.slug) ? "var(--cyan)" : "var(--dim)",
             }}
           >
             {t.label}
@@ -134,11 +134,11 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
       {/* CQB teams */}
       <div style={{ ...label, fontSize: "0.6rem", marginBottom: "0.5rem" }}>CQB-TEAMS (Größe 1–{needs.cqbTeamMax})</div>
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>
           Anzahl
           <input data-testid="cqb-count" type="number" min={0} max={50} value={cqbCount} onChange={(e) => setCqbCount(Number(e.target.value))} style={{ ...field, width: 80 }} />
         </label>
-        <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.82rem" }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.82rem" }}>
           Größe
           <input data-testid="cqb-size" type="number" min={1} max={needs.cqbTeamMax} value={cqbSize} onChange={(e) => setCqbSize(Number(e.target.value))} style={{ ...field, width: 80 }} />
         </label>

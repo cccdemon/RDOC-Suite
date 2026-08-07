@@ -9,8 +9,8 @@ function initials(name: string): string {
   return name.replace(/[^A-Za-z0-9 ]/g, "").split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "??";
 }
 function roleStyle(role: string): React.CSSProperties {
-  const c = role === "fleetoperator" || role === "superadmin" ? "var(--cyan)" : "#9fb1c2";
-  const rgb = role === "fleetoperator" || role === "superadmin" ? "0,212,255" : "159,177,194";
+  const c = role === "fleetoperator" || role === "superadmin" ? "var(--cyan)" : "var(--dim)";
+  const rgb = role === "fleetoperator" || role === "superadmin" ? "118, 130, 141" : "159,177,194";
   return { fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.05em", padding: "3px 9px", borderRadius: 5, border: `1px solid rgba(${rgb},0.4)`, background: `rgba(${rgb},0.1)`, color: c, whiteSpace: "nowrap" };
 }
 
@@ -37,12 +37,12 @@ export function ServerListPage({ session }: { session: SessionResponse | null })
           </div>
           <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: 0 }}>Deine Server</h1>
         </div>
-        <a href="/fleetplanner/guilds/add" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid rgba(0,212,255,0.45)", background: "rgba(0,212,255,0.12)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, textDecoration: "none" }} data-testid="add-bot"><Ic name="plus" size={14} sw={1.9} /> Bot hinzufügen</a>
+        <a href="/fleetplanner/guilds/add" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.12)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, textDecoration: "none" }} data-testid="add-bot"><Ic name="plus" size={14} sw={1.9} /> Bot hinzufügen</a>
       </div>
 
       {guilds.length === 0 ? (
         <div data-testid="servers-none" style={{ maxWidth: 560, margin: "2.5rem auto", textAlign: "center", padding: "0 1rem" }}>
-          <span style={{ width: 60, height: 60, borderRadius: 15, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(0,212,255,0.1)", border: "1px solid rgba(0,212,255,0.3)", color: "var(--cyan)", marginBottom: "1.1rem" }}>
+          <span style={{ width: 60, height: 60, borderRadius: 15, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "rgba(43, 49, 53, 0.1)", border: "1px solid var(--border-hi)", color: "var(--cyan)", marginBottom: "1.1rem" }}>
             <Ic name="server" size={28} sw={1.6} />
           </span>
           <h2 style={{ fontWeight: 700, fontSize: "1.5rem", color: "var(--text-hi)", margin: "0 0 0.6rem" }}>Kein Server verbunden</h2>
@@ -58,12 +58,12 @@ export function ServerListPage({ session }: { session: SessionResponse | null })
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
           {guilds.map((g) => (
-            <div key={g.guildId} data-testid={`server-${g.guildId}`} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.8rem", padding: "0.9rem 1.05rem", border: "1px solid rgba(0,212,255,0.13)", borderRadius: 13, background: "var(--bg2)" }}>
-              <span style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.3)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.7rem", fontWeight: 700 }}>{initials(g.guildName)}</span>
+            <div key={g.guildId} data-testid={`server-${g.guildId}`} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.8rem", padding: "0.9rem 1.05rem", border: "1px solid var(--border)", borderRadius: 13, background: "var(--bg2)" }}>
+              <span style={{ width: 38, height: 38, borderRadius: 10, flexShrink: 0, background: "rgba(43, 49, 53, 0.12)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.7rem", fontWeight: 700 }}>{initials(g.guildName)}</span>
               <div style={{ flex: 1, minWidth: 130, display: "flex", flexDirection: "column", gap: 3 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
                   <span style={{ fontFamily: "var(--body)", fontWeight: 600, fontSize: "1.08rem", color: "var(--text-hi)" }}>{g.guildName}</span>
-                  <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "var(--green)", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.1)", padding: "1px 6px", borderRadius: 4 }}>AKTIV</span>
+                  <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "var(--green)", border: "1px solid rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.1)", padding: "1px 6px", borderRadius: 4 }}>AKTIV</span>
                 </div>
               </div>
               <span style={roleStyle(g.role)}>{ROLE_LABELS[g.role] ?? g.role}</span>
@@ -71,7 +71,7 @@ export function ServerListPage({ session }: { session: SessionResponse | null })
                   partner/crew membership (or instance superadmin status) must NOT
                   expose another guild's settings here. Link carries the guild id. */}
               {g.role === "fleetoperator" && (
-                <Link to={`/guilds/settings?guild=${encodeURIComponent(g.guildId)}`} data-testid={`server-settings-${g.guildId}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none" }}><Ic name="wrench" size={13} sw={1.6} /> Einstellungen</Link>
+                <Link to={`/guilds/settings?guild=${encodeURIComponent(g.guildId)}`} data-testid={`server-settings-${g.guildId}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none" }}><Ic name="wrench" size={13} sw={1.6} /> Einstellungen</Link>
               )}
             </div>
           ))}

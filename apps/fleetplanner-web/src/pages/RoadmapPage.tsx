@@ -23,8 +23,8 @@ export function RoadmapPage() {
   return (
     <div data-testid="roadmap-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.3rem" }}>
-        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="board" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>{t("roadmap.title")}</h1>
+        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="board" size={20} /></span>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>{t("roadmap.title")}</h1>
       </div>
       <p className="fpw-meta" style={{ marginBottom: "1.5rem" }}>
         {t("roadmap.intro")}{" "}
@@ -46,10 +46,10 @@ export function RoadmapPage() {
                 {list.map((r, i) => (
                   <div key={i} className="fpw-card" data-testid={`roadmap-${g.key}-${i}`}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
-                      <span style={{ flex: 1, fontWeight: 700, fontSize: "1.05rem", color: "#eaf4fb" }}>{r.title}</span>
+                      <span style={{ flex: 1, fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)" }}>{r.title}</span>
                       <span className={`fpw-tag ${g.cls}`}>{t(`roadmap.status.${g.key}`)}</span>
                     </div>
-                    <p style={{ margin: 0, color: "#c2d2de", fontSize: "0.95rem", lineHeight: 1.5 }}>{r.desc}</p>
+                    <p style={{ margin: 0, color: "var(--text)", fontSize: "0.95rem", lineHeight: 1.5 }}>{r.desc}</p>
                     {r.note && <p className="fpw-meta" style={{ margin: "0.4rem 0 0", fontSize: "0.84rem" }}>{r.note}</p>}
                     {r.reason && (
                       <div style={{ margin: "0.5rem 0 0", borderLeft: "2px solid var(--red)", paddingLeft: "0.8rem" }}>

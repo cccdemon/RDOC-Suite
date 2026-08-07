@@ -63,10 +63,10 @@ export function ResourceLinksPanel({
   return (
     <section style={{ ...card, marginTop: "1.1rem" }} data-testid="rlinks-panel">
       <CardHead icon="doc" label={t("rlink.title").toUpperCase()} tone="cyan" />
-      <p style={{ margin: "0 0 0.9rem", color: "#7e92a4", fontSize: "0.84rem" }}>{t("rlink.hint")}</p>
+      <p style={{ margin: "0 0 0.9rem", color: "var(--dim2)", fontSize: "0.84rem" }}>{t("rlink.hint")}</p>
 
       {op.resourceLinks.length === 0 ? (
-        <p style={{ margin: "0 0 1rem", color: "#7e92a4", fontSize: "0.86rem" }} data-testid="rlinks-empty">
+        <p style={{ margin: "0 0 1rem", color: "var(--dim2)", fontSize: "0.86rem" }} data-testid="rlinks-empty">
           {t("rlink.empty")}
         </p>
       ) : (
@@ -75,15 +75,15 @@ export function ResourceLinksPanel({
             <div
               key={l.id}
               data-testid={`rlink-${l.id}`}
-              style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, background: "rgba(0,212,255,0.05)", border: "1px solid rgba(0,212,255,0.12)" }}
+              style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, background: "rgba(43, 49, 53, 0.05)", border: "1px solid var(--border)" }}
             >
-              <a href={l.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "#00d4ff", textDecoration: "none", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {l.title || l.url} <span style={{ color: "#5b6b7a" }}>↗</span>
+              <a href={l.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "var(--cyan)", textDecoration: "none", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {l.title || l.url} <span style={{ color: "var(--dim3)" }}>↗</span>
               </a>
               <button
                 type="button"
                 data-testid={`rlink-remove-${l.id}`}
-                style={{ ...btnGhost, padding: "0.3rem 0.55rem", fontSize: "0.7rem", borderColor: "rgba(255,77,79,0.4)", color: "var(--red)" }}
+                style={{ ...btnGhost, padding: "0.3rem 0.55rem", fontSize: "0.7rem", borderColor: "rgba(228, 115, 106,0.4)", color: "var(--red)" }}
                 disabled={busy || !csrf}
                 onClick={() => remove(l.id)}
               >

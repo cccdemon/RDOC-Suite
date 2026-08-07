@@ -1,5 +1,51 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-08-07: Restyling der SPA auf das RDOC-Brandkit v2.0
+
+Status: In Arbeit. Quelle: `C:\Users\streamer\Documents\Projekte\RDOC-Brandkit\brandkit` (BrandGuide.md
+v2.0, `digital/web/brand.css`, `figma/tokens.json`, `fonts/`).
+
+Ausgangslage: Das SPA-Design ist das, was der Guide in Paragraph 1 ausdruecklich ausschliesst -
+Neon-Cyan `#00d4ff`, Neon-Gruen `#00ff88`, Rajdhani + Share Tech Mono, OG-Bild "Tactical Mode".
+Gemessen: **372 hartcodierte Cyan-Literale in ~25 Dateien**, ueberwiegend Inline-Styles in `.tsx`.
+Nur die CSS-Variablen umzubiegen reicht daher nicht.
+
+User-Entscheidungen (2026-08-07):
+1. **Scope**: SPA `fleetplanner-web` + Favicons/Manifest/OG/Head. **Nicht** SSR `web/render.ts`,
+   **nicht** mission-cover, **nicht** error-page.
+2. **Theme-Picker**: die 10 Hersteller-`hue-rotate`-Filter bleiben als bewusste Ausnahme; der
+   Default "Raumdock" wird markenkonform.
+3. **Fonts**: selbst gehostet aus `brandkit/fonts` (5 TTF), CSP auf `font-src 'self'` verschaerft -
+   kein Google-Fonts-Request mehr.
+
+Bindende Guide-Regeln, die das Mapping bestimmen (nicht bloss Farbtausch):
+- Paragraph 8 "Wie viel Copper": pro Ansicht traegt **genau ein** Element Copper (die primaere Aktion);
+  Fliesstext nie Copper; Copper ist kein Hintergrund. Cyan sitzt heute auf Rahmen, Ueberschriften,
+  Labels und Links - das wird nach **Rolle** gemappt, nicht 1:1.
+- Paragraph 8 "Kein Effekt": keine Verlaeufe, Schatten, Glow. `--hero-grad` und die Cyan-Glow-Verlaeufe
+  fallen weg.
+- Paragraph 8: Farbe ist nie das einzige Signal - Zustaende brauchen Wort oder Icon.
+- Paragraph 10: nur echte Schnitte (Space Grotesk 500/700, Plex Sans 400/600, Plex Mono 400).
+
+Rollen-Mapping:
+| heute | Rolle | Brand |
+|---|---|---|
+| `rgba(0,212,255,.07-.32)` | Rahmen, Hairlines, Struktur | Graphite `#2B3135` |
+| `--cyan` auf Ueberschrift/Brand | Primaerer Vordergrund | Off White `#F2F2F0` |
+| `--cyan` auf Label/Meta | Sekundaertext | Steel `#76828D` |
+| `--cyan` auf CTA/aktiv | Primaeraktion | Copper `#C48A4A` |
+| `--green` / `--gold` / `--red` | funktional | `#5BB98A` / `#D9A94E` / `#E4736A` |
+
+Phasen:
+- **A** Assets: `digital/web` (favicon.ico/svg, icons/, site.webmanifest, og.png) nach
+  `apps/fleetplanner-web/public/`, head-snippet in `index.html`, `theme-color` auf `#121416`,
+  5 TTF nach `public/fonts` + `@font-face`, CSP `font-src 'self'`.
+- **B** Token-Layer: `styles.css` `:root` auf die Brand-Tokens umgestellt, Verlaeufe raus.
+- **C** Sweep: die ~330 Inline-Literale in den `.tsx` nach Rollen-Mapping auf Variablen.
+- **D** `theme.ts`: Default "Raumdock" auf `filter: none` gegen die neue Palette gegengeprueft.
+
+Deploy: nur `fleetplanner-web`.
+
 ## Queued / In Progress - 2026-08-07: Companion-App (Tauri) + Voice-Era-Reste entfernen
 
 Status: In Arbeit. User-Entscheidung 2026-08-07: `apps/companion` kann raus. Die Companion-App ist ein

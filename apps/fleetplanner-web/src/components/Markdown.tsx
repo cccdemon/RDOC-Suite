@@ -66,5 +66,5 @@ export function Markdown({ text, style }: { text: string; style?: React.CSSPrope
   }
   flushPara(); flushList();
 
-  return <div style={{ color: "#c2d2de", fontSize: "1.02rem", ...style }}>{blocks}</div>;
+  return <div style={{ color: "var(--text)", fontSize: "1.02rem", ...style }}>{blocks}</div>;
 }

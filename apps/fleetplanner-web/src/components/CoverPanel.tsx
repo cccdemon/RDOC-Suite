@@ -76,13 +76,13 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
     return (
       <section style={card} data-testid="cover-panel">
         <CardHead icon="image" label={t("cover.label")} tone="cyan" />
-        <p style={{ margin: 0, color: "#7e92a4", fontSize: "0.86rem" }}>
+        <p style={{ margin: 0, color: "var(--dim2)", fontSize: "0.86rem" }}>
           {t("cover.notConfigured")}
         </p>
       </section>
     );
 
-  const danger: React.CSSProperties = { ...btnGhost, borderColor: "rgba(255,77,79,0.5)", color: "var(--red)" };
+  const danger: React.CSSProperties = { ...btnGhost, borderColor: "rgba(228, 115, 106,0.5)", color: "var(--red)" };
 
   return (
     <section style={card} data-testid="cover-panel">
@@ -94,14 +94,14 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
             src={cover.url}
             alt="Mission-Cover"
             data-testid="cover-image"
-            style={{ maxWidth: "100%", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 8, display: "block" }}
+            style={{ maxWidth: "100%", border: "1px solid var(--border)", borderRadius: 8, display: "block" }}
           />
-          <p style={{ fontFamily: MONO, fontSize: "0.7rem", color: "#9fb1c2", margin: "0.5rem 0 0" }}>
+          <p style={{ fontFamily: MONO, fontSize: "0.7rem", color: "var(--dim)", margin: "0.5rem 0 0" }}>
             {cover.format} · {cover.preset} · {cover.width}×{cover.height}px
           </p>
         </div>
       ) : (
-        <p style={{ margin: "0 0 1.1rem", color: "#7e92a4", fontSize: "0.86rem" }} data-testid="cover-empty">
+        <p style={{ margin: "0 0 1.1rem", color: "var(--dim2)", fontSize: "0.86rem" }} data-testid="cover-empty">
           {t("cover.empty")}
         </p>
       )}

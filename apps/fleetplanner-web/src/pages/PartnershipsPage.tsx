@@ -13,9 +13,9 @@ import type { IncomingDistribution, Partnership, SessionResponse } from "../api/
 import { Ic } from "../components/Icons";
 
 const MONO = "var(--mono)";
-const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
+const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
 const field: React.CSSProperties = {
-  boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)",
+  boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)",
   color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none",
 };
 
@@ -112,8 +112,8 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
   return (
     <div data-testid="partnerships-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.3rem" }}>
-        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Partnerschaften</h1>
+        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={20} /></span>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Partnerschaften</h1>
       </div>
       <p className="fpw-meta" style={{ marginBottom: "1.4rem" }}>
         <Link to="/guilds/settings">← Server-Einstellungen</Link>
@@ -132,8 +132,8 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
 
       {/* Incoming inbox */}
       {incoming.length > 0 && (
-        <section className="fpw-card" style={{ marginBottom: "1.2rem", border: "1px solid rgba(240,165,0,0.35)" }}>
-          <div style={{ ...label, color: "#f0a500" }}>EINGEHENDE EVENTS ({incoming.length})</div>
+        <section className="fpw-card" style={{ marginBottom: "1.2rem", border: "1px solid rgba(217, 169, 78,0.35)" }}>
+          <div style={{ ...label, color: "var(--gold)" }}>EINGEHENDE EVENTS ({incoming.length})</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {incoming.map((d) => (
               <div key={d.id} className="fpw-seat" data-testid={`incoming-${d.id}`}>
@@ -142,7 +142,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
                   <span className="fpw-meta">{d.hostOrgName || d.hostGuildName}</span>
                 </span>
                 <button type="button" data-testid={`incoming-approve-${d.id}`} className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => decideSharedEvent(guildId!, d.id, "approve", csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem" }}>Annehmen</button>
-                <button type="button" data-testid={`incoming-decline-${d.id}`} disabled={busy || !csrf} onClick={() => run(() => decideSharedEvent(guildId!, d.id, "decline", csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem", borderRadius: 7, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", cursor: "pointer", fontFamily: MONO }}>Ablehnen</button>
+                <button type="button" data-testid={`incoming-decline-${d.id}`} disabled={busy || !csrf} onClick={() => run(() => decideSharedEvent(guildId!, d.id, "decline", csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem", borderRadius: 7, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", cursor: "pointer", fontFamily: MONO }}>Ablehnen</button>
               </div>
             ))}
           </div>
@@ -165,12 +165,12 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
                   <span className="fpw-meta">{p.label} · {p.status}{p.isInitiator ? " · ausgestellt" : ""}</span>
                 </span>
                 {p.status === "active" && p.partnerGuildId && (
-                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#9fb1c2", fontSize: "0.8rem" }}>
-                    <input type="checkbox" data-testid={`partner-autoshare-${p.id}`} checked={p.autoShare} disabled={busy || !csrf} onChange={(e) => run(() => setPartnerAutoShare(guildId!, p.partnerGuildId!, csrf!, e.target.checked))} style={{ accentColor: "#00d4ff", width: 16, height: 16 }} />
+                  <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--dim)", fontSize: "0.8rem" }}>
+                    <input type="checkbox" data-testid={`partner-autoshare-${p.id}`} checked={p.autoShare} disabled={busy || !csrf} onChange={(e) => run(() => setPartnerAutoShare(guildId!, p.partnerGuildId!, csrf!, e.target.checked))} style={{ accentColor: "var(--cyan)", width: 16, height: 16 }} />
                     Auto-Share
                   </label>
                 )}
-                <button type="button" data-testid={`partner-revoke-${p.id}`} title="Partnerschaft widerrufen" disabled={busy || !csrf} onClick={() => run(() => revokePartnership(guildId!, p.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button type="button" data-testid={`partner-revoke-${p.id}`} title="Partnerschaft widerrufen" disabled={busy || !csrf} onClick={() => run(() => revokePartnership(guildId!, p.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={12} sw={2} />
                 </button>
               </div>
@@ -190,8 +190,8 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
           <div data-testid="minted-token" style={{ marginTop: "0.8rem" }}>
             <p className="fpw-meta" style={{ margin: "0 0 0.3rem", fontSize: "0.8rem" }}>Einmal-Token — jetzt kopieren, wird nicht erneut angezeigt:</p>
             <div style={{ display: "flex", gap: "0.5rem", alignItems: "stretch", flexWrap: "wrap" }}>
-              <code style={{ flex: "1 1 200px", wordBreak: "break-all", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.2)", borderRadius: 8, padding: "0.5rem 0.7rem", color: "#00d4ff", fontSize: "0.85rem" }}>{mintedToken}</code>
-              <button type="button" data-testid="invite-copy" onClick={copyToken} aria-label="Token kopieren" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: `1px solid ${tokenCopied ? "#00ff8866" : "rgba(0,212,255,0.3)"}`, background: tokenCopied ? "rgba(0,255,136,0.1)" : "rgba(0,212,255,0.06)", color: tokenCopied ? "#00ff88" : "#00d4ff", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <code style={{ flex: "1 1 200px", wordBreak: "break-all", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.5rem 0.7rem", color: "var(--cyan)", fontSize: "0.85rem" }}>{mintedToken}</code>
+              <button type="button" data-testid="invite-copy" onClick={copyToken} aria-label="Token kopieren" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: `1px solid ${tokenCopied ? "var(--green)66" : "rgba(43, 49, 53, 0.3)"}`, background: tokenCopied ? "rgba(91, 185, 138,0.1)" : "rgba(43, 49, 53, 0.06)", color: tokenCopied ? "var(--green)" : "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
                 <Ic name={tokenCopied ? "check" : "copy"} size={13} sw={1.8} /> {tokenCopied ? "Kopiert" : "Kopieren"}
               </button>
             </div>

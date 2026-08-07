@@ -6,7 +6,7 @@ import { Avatar } from "./Avatar";
 import { card, MONO } from "./ui";
 import { SaveDot, useFieldSave } from "./fieldSave";
 
-const PURPLE = "rgba(160,100,255";
+const PURPLE = "rgba(118, 130, 141";
 
 type Recipient = { id: string; name: string; role: string };
 
@@ -81,7 +81,7 @@ export function VoicePanel({
   const head = (icon: string, color: string, label: string, right?: React.ReactNode) => (
     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.8rem" }}>
       <span style={{ color, display: "inline-flex" }}><Ic name={icon} size={15} /></span>
-      <span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>{label}</span>
+      <span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.1em", color: "var(--dim)" }}>{label}</span>
       {right && <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>{right}</span>}
     </div>
   );
@@ -98,7 +98,7 @@ export function VoicePanel({
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <button type="button" data-testid="voice-master-toggle" aria-pressed={voiceEnabled} onClick={onToggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", padding: "0.55rem 0.9rem", borderRadius: 10, cursor: "pointer", border: voiceEnabled ? "1px solid var(--purple)" : "1px solid rgba(255,255,255,0.14)", background: voiceEnabled ? `${PURPLE},0.12)` : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.04em" }}>
             <span style={{ width: 34, height: 18, borderRadius: 10, background: voiceEnabled ? "var(--purple)" : "#23303f", position: "relative", flexShrink: 0, transition: "background .15s" }}>
-              <span style={{ position: "absolute", top: 2, left: voiceEnabled ? 18 : 2, width: 14, height: 14, borderRadius: "50%", background: "#fff", transition: "left .15s" }} />
+              <span style={{ position: "absolute", top: 2, left: voiceEnabled ? 18 : 2, width: 14, height: 14, borderRadius: "50%", background: "var(--text-hi)", transition: "left .15s" }} />
             </span>
             {voiceEnabled ? "AKTIV" : "DEAKTIVIERT"}
           </button>
@@ -123,8 +123,8 @@ export function VoicePanel({
       <section style={card}>
         {head("link", "var(--cyan)", "COMMANDNET-SPRACHRAUM")}
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-          <code style={{ flex: "1 1 240px", minWidth: 0, fontFamily: MONO, fontSize: "0.8rem", color: "var(--cyan)", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 8, padding: "0.55rem 0.7rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{room}</code>
-          <button type="button" data-testid="voice-copy" onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.8rem", border: "1px solid rgba(0,212,255,0.4)", background: "rgba(0,212,255,0.1)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 8, cursor: "pointer" }}><Ic name="copy" size={13} /> Kopieren</button>
+          <code style={{ flex: "1 1 240px", minWidth: 0, fontFamily: MONO, fontSize: "0.8rem", color: "var(--cyan)", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.55rem 0.7rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{room}</code>
+          <button type="button" data-testid="voice-copy" onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.8rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.1)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 8, cursor: "pointer" }}><Ic name="copy" size={13} /> Kopieren</button>
           <SaveDot id="voice-copy" />
         </div>
       </section>
@@ -143,14 +143,14 @@ export function VoicePanel({
             {recipients.map((p) => {
               const has = !!links[p.id];
               return (
-                <div key={p.id} data-testid={`voice-recipient-${p.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", borderRadius: 9, border: `1px solid ${has ? "rgba(0,255,136,0.22)" : "rgba(255,255,255,0.07)"}`, background: has ? "rgba(0,255,136,0.04)" : "transparent" }}>
+                <div key={p.id} data-testid={`voice-recipient-${p.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", borderRadius: 9, border: `1px solid ${has ? "rgba(91, 185, 138,0.22)" : "rgba(255,255,255,0.07)"}`, background: has ? "rgba(91, 185, 138,0.04)" : "transparent" }}>
                   <Avatar name={p.name} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <strong style={{ fontSize: "0.86rem", color: "var(--text-hi)" }}>{p.name}</strong>
                     <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.04em", color: "var(--dim2)", marginTop: 1 }}>{p.role}</div>
                   </div>
                   <SaveDot id={"voice-" + p.id} />
-                  <button type="button" data-testid={`voice-toggle-${p.id}`} onClick={() => toggle(p.id)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.66rem", border: has ? "1px solid rgba(0,255,136,0.45)" : "1px solid rgba(255,255,255,0.14)", background: has ? "rgba(0,255,136,0.1)" : "transparent", color: has ? "var(--green)" : "var(--dim)" }}>
+                  <button type="button" data-testid={`voice-toggle-${p.id}`} onClick={() => toggle(p.id)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.66rem", border: has ? "1px solid rgba(91, 185, 138,0.45)" : "1px solid rgba(255,255,255,0.14)", background: has ? "rgba(91, 185, 138,0.1)" : "transparent", color: has ? "var(--green)" : "var(--dim)" }}>
                     <Ic name={has ? "check" : "link"} size={13} /> {has ? "Link vergeben" : "Link senden"}
                   </button>
                 </div>

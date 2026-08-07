@@ -9,10 +9,10 @@ export const OP_TYPES: OpType[] = [
   { key: "combat", label: "Kampf", color: "var(--red)", rgb: "255,68,68", icon: "fighter" },
   { key: "mining", label: "Mining", color: "var(--gold)", rgb: "240,165,0", icon: "bolt" },
   { key: "salvage", label: "Bergung", color: "var(--orange)", rgb: "255,122,69", icon: "swap" },
-  { key: "explore", label: "Exploration", color: "var(--cyan)", rgb: "0,212,255", icon: "globe" },
+  { key: "explore", label: "Exploration", color: "var(--cyan)", rgb: "118, 130, 141", icon: "globe" },
   { key: "transport", label: "Transport", color: "var(--purple)", rgb: "160,100,255", icon: "vehicle" },
   { key: "training", label: "Training", color: "var(--green)", rgb: "0,255,136", icon: "lead" },
-  { key: "social", label: "Sozial", color: "#ff70c8", rgb: "255,112,200", icon: "users" },
+  { key: "social", label: "Sozial", color: "var(--pink)", rgb: "255,112,200", icon: "users" },
 ];
 
 // 3-option visibility (the design's model). Legacy "guild" maps onto "private".

@@ -34,6 +34,16 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-08",
+    title: "New look",
+    changes: [
+      "Fleetplanner now wears the official RDOC colours and typefaces. The neon blue is gone — the interface is quieter, and the one warm copper accent per screen points at the action that matters.",
+      "Text should be easier to read: new headline and body typefaces, loaded from our own server instead of Google's, so nothing about your visit leaves the site.",
+      "The manufacturer themes are still there in the footer if you want them.",
+      "A few older pages (maintenance notice, legal texts) still use the previous colours and will follow.",
+    ],
+  },
+  {
     date: "2026-08-07",
     title: "Import your fleet from Fleetyards",
     changes: [

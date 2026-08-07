@@ -56,10 +56,10 @@ function fmtShort(iso: string, tz: string | null): string {
 
 // design: category lanes with accent color + rgb (for borders/washes)
 const LANES = [
-  { type: "ship", label: "SCHIFFE & CREW", icon: "ship", accent: "#00d4ff", rgb: "0,212,255" },
-  { type: "fighter", label: "JÄGER", icon: "fighter", accent: "#a78bfa", rgb: "167,139,250" },
-  { type: "squad", label: "BODENTRUPPEN", icon: "fps", accent: "#f0a500", rgb: "240,165,0" },
-  { type: "vehicle", label: "FAHRZEUGE", icon: "vehicle", accent: "#ff7a45", rgb: "255,122,69" },
+  { type: "ship", label: "SCHIFFE & CREW", icon: "ship", accent: "var(--cyan)", rgb: "118, 130, 141" },
+  { type: "fighter", label: "JÄGER", icon: "fighter", accent: "var(--purple)", rgb: "167,139,250" },
+  { type: "squad", label: "BODENTRUPPEN", icon: "fps", accent: "var(--gold)", rgb: "240,165,0" },
+  { type: "vehicle", label: "FAHRZEUGE", icon: "vehicle", accent: "var(--orange)", rgb: "255,122,69" },
 ] as const;
 
 // Fighter-class ships get their own lane (a fighter is its own class, not a ship).
@@ -84,17 +84,17 @@ const TAG_BASE: React.CSSProperties = {
   textTransform: "uppercase",
 };
 const TAGS = {
-  fest: { text: "FEST", style: { ...TAG_BASE, color: "#9fb6c9", borderColor: "rgba(159,182,201,0.34)", background: "rgba(159,182,201,0.07)" } },
-  typ: { text: "TYP", style: { ...TAG_BASE, color: "#f0a500", borderColor: "rgba(240,165,0,0.44)", background: "rgba(240,165,0,0.09)" } },
-  rolle_offen: { text: "ROLLE OFFEN", style: { ...TAG_BASE, color: "#00ff88", borderColor: "rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)" } },
-  frei: { text: "FREI", style: { ...TAG_BASE, color: "#9fb6c9", borderColor: "rgba(159,182,201,0.34)", borderStyle: "dashed", background: "transparent" } },
+  fest: { text: "FEST", style: { ...TAG_BASE, color: "var(--dim)", borderColor: "rgba(118, 130, 141,0.34)", background: "rgba(118, 130, 141,0.07)" } },
+  typ: { text: "TYP", style: { ...TAG_BASE, color: "var(--gold)", borderColor: "rgba(217, 169, 78,0.44)", background: "rgba(217, 169, 78,0.09)" } },
+  rolle_offen: { text: "ROLLE OFFEN", style: { ...TAG_BASE, color: "var(--green)", borderColor: "rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.08)" } },
+  frei: { text: "FREI", style: { ...TAG_BASE, color: "var(--dim)", borderColor: "rgba(118, 130, 141,0.34)", borderStyle: "dashed", background: "transparent" } },
 } as const;
 
 const monoLabel = (extra?: React.CSSProperties): React.CSSProperties => ({
   fontFamily: MONO,
   fontSize: "0.72rem",
   letterSpacing: "0.14em",
-  color: "#9fb1c2",
+  color: "var(--dim)",
   ...extra,
 });
 
@@ -293,7 +293,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     border: "1px solid transparent",
     cursor: "pointer",
     background: "transparent",
-    color: "#9fb1c2",
+    color: "var(--dim)",
     transition: "all .14s",
   };
 
@@ -304,20 +304,20 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           width: 30,
           height: 30,
           borderRadius: 7,
-          background: "#0e1926",
-          border: "1px solid rgba(0,212,255,0.12)",
+          background: "var(--bg3)",
+          border: "1px solid var(--border)",
           display: "inline-flex",
           alignItems: "center",
           justifyContent: "center",
           flexShrink: 0,
-          color: "#9fb1c2",
+          color: "var(--dim)",
         }}
       >
         <Ic name={icon} size={15} sw={1.6} />
       </span>
       <span>
-        <span style={{ display: "block", fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#5b6b7a" }}>{lab}</span>
-        <span style={{ color: "#ccdde8", fontSize: "0.92rem" }}>{val}</span>
+        <span style={{ display: "block", fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim3)" }}>{lab}</span>
+        <span style={{ color: "var(--text)", fontSize: "0.92rem" }}>{val}</span>
       </span>
     </div>
   );
@@ -333,7 +333,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           gap: "0.7rem",
           padding: "0.6rem 0.7rem",
           background: "rgba(255,255,255,0.013)",
-          border: "1px solid rgba(0,212,255,0.08)",
+          border: "1px solid var(--border)",
           borderRadius: 9,
           minWidth: 0,
         }}
@@ -343,9 +343,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             width: 30,
             height: 30,
             borderRadius: 7,
-            background: "#0e1926",
+            background: "var(--bg3)",
             border: "1px solid rgba(255,255,255,0.06)",
-            color: "#9fb1c2",
+            color: "var(--dim)",
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
@@ -356,14 +356,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", flexWrap: "wrap" }}>
-            <strong style={{ fontWeight: 600, fontSize: "0.98rem", color: "#dce8f0" }}>{s.label}</strong>
+            <strong style={{ fontWeight: 600, fontSize: "0.98rem", color: "var(--text)" }}>{s.label}</strong>
             <span style={TAGS.fest.style}>{TAGS.fest.text}</span>
           </div>
         </div>
         {s.claimedBy ? (
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0, minWidth: 0 }}>
             <Avatar name={s.claimedBy.username} />
-            <span style={{ fontSize: "0.86rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "11rem" }}>
+            <span style={{ fontSize: "0.86rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "11rem" }}>
               {s.claimedBy.username}
             </span>
             <LateArrival eta={s.lateEta} canEdit={!!csrf && ((!!me && s.claimedBy.id === me.id) || canManage)} testid={`seat-late-${s.id}`} onSet={(eta) => run(() => setSeatLateArrival(id!, s.id, eta, csrf!))} />
@@ -392,9 +392,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               gap: 5,
               flexShrink: 0,
               padding: "0.4rem 0.7rem",
-              border: "1px solid rgba(0,212,255,0.32)",
-              background: "rgba(0,212,255,0.05)",
-              color: "#00d4ff",
+              border: "1px solid var(--border-hi)",
+              background: "rgba(43, 49, 53, 0.05)",
+              color: "var(--cyan)",
               fontFamily: MONO,
               fontSize: "0.72rem",
               letterSpacing: "0.03em",
@@ -416,8 +416,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   // (mirrors the operator's controls, but scoped to the unit's captain). Shows
   // inactive seats too so they can be re-activated. Claimed seats aren't toggled.
   const captainSeatRow = (u: FleetUnit, s: FleetUnit["seats"][number]) => (
-    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(0,212,255,0.08)", borderRadius: 9, opacity: s.active ? 1 : 0.55 }}>
-      <span style={{ width: 28, height: 28, borderRadius: 7, background: "#0e1926", border: "1px solid rgba(255,255,255,0.06)", color: "#9fb1c2", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", background: "rgba(255,255,255,0.013)", border: "1px solid var(--border)", borderRadius: 9, opacity: s.active ? 1 : 0.55 }}>
+      <span style={{ width: 28, height: 28, borderRadius: 7, background: "var(--bg3)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
         <Ic name={seatIcon(u, s.order)} size={15} sw={1.6} />
       </span>
       <input
@@ -433,10 +433,10 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       {s.claimedBy ? (
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
           <Avatar name={s.claimedBy.username} />
-          <span style={{ fontSize: "0.82rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "8rem" }}>{s.claimedBy.username}</span>
+          <span style={{ fontSize: "0.82rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "8rem" }}>{s.claimedBy.username}</span>
         </div>
       ) : (
-        <button type="button" data-testid={`cap-seat-toggle-${s.id}`} title={s.active ? "Sitz/Turret deaktivieren — zählt dann nicht mehr zur Crew" : "Sitz/Turret aktivieren — zählt dann zur Crew"} disabled={busySeat === s.id} onClick={() => run(() => patchSeat(id!, s.id, csrf!, { active: !s.active }))} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.5rem", borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "Deaktivieren" : "Aktivieren"}</button>
+        <button type="button" data-testid={`cap-seat-toggle-${s.id}`} title={s.active ? "Sitz/Turret deaktivieren — zählt dann nicht mehr zur Crew" : "Sitz/Turret aktivieren — zählt dann zur Crew"} disabled={busySeat === s.id} onClick={() => run(() => patchSeat(id!, s.id, csrf!, { active: !s.active }))} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.5rem", borderRadius: 5, cursor: "pointer", whiteSpace: "nowrap", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(91, 185, 138,0.4)", background: s.active ? "transparent" : "rgba(91, 185, 138,0.08)", color: s.active ? "var(--dim2)" : "var(--green)" }}>{s.active ? "Deaktivieren" : "Aktivieren"}</button>
       )}
     </div>
   );
@@ -483,8 +483,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       >
         <Ic name={icon} size={19} sw={1.6} />
       </span>
-      <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "#eaf4fb", marginBottom: "0.3rem" }}>{title}</div>
-      <div style={{ color: "#9fb1c2", fontSize: "0.88rem", marginBottom: "0.9rem", lineHeight: 1.5 }}>{sub}</div>
+      <div style={{ fontWeight: 700, fontSize: "1.1rem", color: "var(--text-hi)", marginBottom: "0.3rem" }}>{title}</div>
+      <div style={{ color: "var(--dim)", fontSize: "0.88rem", marginBottom: "0.9rem", lineHeight: 1.5 }}>{sub}</div>
       <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color, fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.04em" }}>
         {cta} <Ic name="arrow" size={14} sw={1.8} />
       </span>
@@ -504,7 +504,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         key={u.id}
         data-testid="unit-card"
         data-pending={isPending ? "1" : undefined}
-        style={{ width: "100%", minWidth: 0, border: `1px solid rgba(${lane.rgb},0.16)`, borderTop: `2px solid rgba(${lane.rgb},${isPending ? 0.28 : 0.5})`, borderRadius: 13, background: "#0a1018", padding: "1.15rem 1.2rem", opacity: isPending ? 0.72 : 1 }}
+        style={{ width: "100%", minWidth: 0, border: `1px solid rgba(${lane.rgb},0.16)`, borderTop: `2px solid rgba(${lane.rgb},${isPending ? 0.28 : 0.5})`, borderRadius: 13, background: "var(--row)", padding: "1.15rem 1.2rem", opacity: isPending ? 0.72 : 1 }}
       >
         <div onClick={() => setCollapsed((c) => ({ ...c, [u.id]: !c[u.id] }))} style={{ display: "flex", alignItems: "flex-start", gap: "0.8rem", cursor: "pointer" }}>
           <span style={{ width: 42, height: 42, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: `rgba(${lane.rgb},0.13)`, border: `1px solid rgba(${lane.rgb},0.28)`, color: lane.accent }}>
@@ -512,19 +512,19 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-              <strong style={{ fontWeight: 700, fontSize: "1.12rem", color: "#eaf4fb", lineHeight: 1.2 }}>{u.name}</strong>
+              <strong style={{ fontWeight: 700, fontSize: "1.12rem", color: "var(--text-hi)", lineHeight: 1.2 }}>{u.name}</strong>
               {isPending && (
-                <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "#f0a500", borderColor: "rgba(240,165,0,0.4)", background: "rgba(240,165,0,0.08)", gap: 4, padding: "2px 8px" }}>
+                <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "var(--gold)", borderColor: "rgba(217, 169, 78,0.4)", background: "rgba(217, 169, 78,0.08)", gap: 4, padding: "2px 8px" }}>
                   <Ic name="bolt" size={12} sw={2} /> WARTET AUF BESTÄTIGUNG
                 </span>
               )}
               {full && !isPending && (
-                <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "#00ff88", borderColor: "rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", gap: 4, padding: "2px 8px" }}>
+                <span style={{ ...TAG_BASE, fontSize: "9.5px", color: "var(--green)", borderColor: "rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.08)", gap: 4, padding: "2px 8px" }}>
                   <Ic name="check" size={12} sw={2} /> VOLL
                 </span>
               )}
             </div>
-            <div style={{ color: "#9fb1c2", fontSize: "0.86rem", marginTop: "0.15rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+            <div style={{ color: "var(--dim)", fontSize: "0.86rem", marginTop: "0.15rem", display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
               <span>{u.unitType}{u.captain ? ` · Captain: ${u.captain.username}` : ""}</span>
               {u.formationSlot === 0 && captainTag}
               {unitChips(u)}
@@ -536,34 +536,34 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             </div>
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", lineHeight: 1 }}>{uFilled}<span style={{ color: "#5b6b7a" }}>/{u.seats.length}</span></div>
-            <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#5b6b7a", marginTop: "0.25rem" }}>BESETZT</div>
+            <div style={{ fontFamily: MONO, fontSize: "1.05rem", color: "var(--text-hi)", lineHeight: 1 }}>{uFilled}<span style={{ color: "var(--dim3)" }}>/{u.seats.length}</span></div>
+            <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "var(--dim3)", marginTop: "0.25rem" }}>BESETZT</div>
           </div>
           {me && csrf && u.captain?.id === me.id && (
-            <button type="button" data-testid={`withdraw-unit-${u.id}`} title="Mein Schiff zurückziehen" onClick={(e) => { e.stopPropagation(); if (window.confirm("Dein Schiff aus dieser Operation zurückziehen?")) run(() => withdrawUnit(id!, u.id, csrf)); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.35rem 0.6rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}>
+            <button type="button" data-testid={`withdraw-unit-${u.id}`} title="Mein Schiff zurückziehen" onClick={(e) => { e.stopPropagation(); if (window.confirm("Dein Schiff aus dieser Operation zurückziehen?")) run(() => withdrawUnit(id!, u.id, csrf)); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.35rem 0.6rem", border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}>
               <Ic name="x" size={12} sw={2} /> Zurückziehen
             </button>
           )}
-          <span style={{ display: "inline-flex", flexShrink: 0, transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "#5b6b7a" }}>
+          <span style={{ display: "inline-flex", flexShrink: 0, transform: expanded ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "var(--dim3)" }}>
             <Ic name="chevron" size={16} sw={2} />
           </span>
         </div>
         {expanded && (
           <div style={{ marginTop: "1rem" }}>
             {u.captainNote && (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#9fb1c2", fontSize: "0.86rem", marginBottom: "0.9rem" }}>
-                <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={15} /></span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--dim)", fontSize: "0.86rem", marginBottom: "0.9rem" }}>
+                <span style={{ color: "var(--gold)", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={15} /></span>
                 <span style={{ fontStyle: "italic" }}>{u.captainNote}</span>
               </div>
             )}
             {me && csrf && isMine ? (
               <>
-                <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#5b6b7a", marginBottom: "0.5rem" }}>DEINE SITZE · UMBENENNEN / AKTIVIEREN</div>
+                <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim3)", marginBottom: "0.5rem" }}>DEINE SITZE · UMBENENNEN / AKTIVIEREN</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>{u.seats.map((s) => captainSeatRow(u, s))}</div>
               </>
             ) : isPending ? (
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#9fb1c2", fontSize: "0.84rem", fontStyle: "italic" }}>
-                <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={14} /></span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--dim)", fontSize: "0.84rem", fontStyle: "italic" }}>
+                <span style={{ color: "var(--gold)", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={14} /></span>
                 Sitze buchbar, sobald der Operator dieses Schiff annimmt.
               </div>
             ) : (
@@ -583,10 +583,10 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           <Ic name={lane.icon} size={19} sw={1.5} />
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <strong style={{ fontWeight: 700, fontSize: "1rem", color: "#c2d2de" }}>{label}</strong>
+          <strong style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text)" }}>{label}</strong>
           <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.08em", color: lane.accent, marginTop: "0.2rem" }}>BEDARF · UNERFÜLLT</div>
         </div>
-        <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a", flexShrink: 0, whiteSpace: "nowrap" }}>noch kein Schiff</span>
+        <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)", flexShrink: 0, whiteSpace: "nowrap" }}>noch kein Schiff</span>
       </div>
     </article>
   );
@@ -613,7 +613,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     parentId ? (op.formations ?? []).find((f) => f.id === parentId)?.name ?? null : null;
 
   const captainTag = (
-    <span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "#ffd600", border: "1px solid rgba(255,214,0,0.35)", background: "rgba(255,214,0,0.1)", borderRadius: 4, padding: "0.05rem 0.28rem", flexShrink: 0 }}>★ CAPTAIN</span>
+    <span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "var(--gold)", border: "1px solid rgba(217, 169, 78,0.35)", background: "rgba(217, 169, 78,0.1)", borderRadius: 4, padding: "0.05rem 0.28rem", flexShrink: 0 }}>★ CAPTAIN</span>
   );
 
   // "Teil von <Verband>" chip, so a participant can see the higher formation
@@ -621,7 +621,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
   const verbandChip = (parentId: string | null | undefined) => {
     const n = verbandName(parentId);
     return n ? (
-      <span data-testid="verband-chip" style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "#00d4ff", border: "1px solid rgba(0,212,255,0.3)", background: "rgba(0,212,255,0.07)", borderRadius: 4, padding: "0.05rem 0.3rem", flexShrink: 0 }}>VERBAND: {n.toUpperCase()}</span>
+      <span data-testid="verband-chip" style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "var(--cyan)", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.07)", borderRadius: 4, padding: "0.05rem 0.3rem", flexShrink: 0 }}>VERBAND: {n.toUpperCase()}</span>
     ) : null;
   };
 
@@ -655,12 +655,12 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
       <>
         {/* Only shown when the role was declared — otherwise it's just the catalog
             guess and would be noise on every single card. */}
-        {u.roleOverride && chip(`ROLLE: ${roleLabel(u.roleOverride).toUpperCase()}`, "#00d4ff", "0,212,255", `unit-role-chip-${u.id}`)}
-        {g && g.kind === "STAFFEL" && chip(`STAFFEL: ${g.name.toUpperCase()}`, "#a78bfa", "167,139,250", `unit-squad-chip-${u.id}`)}
-        {g && g.kind === "VERBAND" && chip(`VERBAND: ${g.name.toUpperCase()}`, "#00d4ff", "0,212,255", `unit-verband-chip-${u.id}`)}
+        {u.roleOverride && chip(`ROLLE: ${roleLabel(u.roleOverride).toUpperCase()}`, "var(--cyan)", "118, 130, 141", `unit-role-chip-${u.id}`)}
+        {g && g.kind === "STAFFEL" && chip(`STAFFEL: ${g.name.toUpperCase()}`, "var(--purple)", "167,139,250", `unit-squad-chip-${u.id}`)}
+        {g && g.kind === "VERBAND" && chip(`VERBAND: ${g.name.toUpperCase()}`, "var(--cyan)", "118, 130, 141", `unit-verband-chip-${u.id}`)}
         {g?.parentId && verbandChip(g.parentId)}
-        {carrier && chip(`FÄHRT IN: ${unitLabel(carrier).toUpperCase()}`, "#ff7a45", "255,122,69", `unit-carrier-chip-${u.id}`)}
-        {carried.length > 0 && chip(`AN BORD: ${carried.map(unitLabel).join(", ").toUpperCase()}`, "#ff7a45", "255,122,69", `unit-carried-chip-${u.id}`)}
+        {carrier && chip(`FÄHRT IN: ${unitLabel(carrier).toUpperCase()}`, "var(--orange)", "255,122,69", `unit-carrier-chip-${u.id}`)}
+        {carried.length > 0 && chip(`AN BORD: ${carried.map(unitLabel).join(", ").toUpperCase()}`, "var(--orange)", "255,122,69", `unit-carried-chip-${u.id}`)}
       </>
     );
   };
@@ -669,8 +669,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
     <article>
       {/* FR-A5: operator preview switcher — see the page as guest / crew / self. */}
       {op.canManage && (
-        <div data-testid="viewas-bar" style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "1rem", padding: "0.55rem 0.75rem", border: "1px solid rgba(0,212,255,0.18)", background: "rgba(0,212,255,0.04)", borderRadius: 10 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>
+        <div data-testid="viewas-bar" style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "1rem", padding: "0.55rem 0.75rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", borderRadius: 10 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "var(--dim)" }}>
             <Ic name="eye" size={14} /> ANSICHT ALS
           </span>
           {([["self", "Ich selbst"], ["crew", "Crew"], ["guest", "Gast"]] as const).map(([key, lab]) => {
@@ -681,14 +681,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 type="button"
                 data-testid={`viewas-${key}`}
                 onClick={() => setViewAs(key)}
-                style={{ padding: "0.3rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid rgba(0,212,255,0.5)" : "1px solid rgba(255,255,255,0.12)", background: on ? "rgba(0,212,255,0.14)" : "transparent", color: on ? "#00d4ff" : "#9fb1c2" }}
+                style={{ padding: "0.3rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid var(--border-hi)" : "1px solid rgba(255,255,255,0.12)", background: on ? "rgba(43, 49, 53, 0.14)" : "transparent", color: on ? "var(--cyan)" : "var(--dim)" }}
               >
                 {lab}
               </button>
             );
           })}
           {viewAs !== "self" && (
-            <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.62rem", color: "#f0a500" }}>VORSCHAU — keine Operator-Steuerung</span>
+            <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.62rem", color: "var(--gold)" }}>VORSCHAU — keine Operator-Steuerung</span>
           )}
         </div>
       )}
@@ -715,9 +715,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
-                border: "1px solid rgba(0,255,136,0.4)",
-                color: "#00ff88",
-                background: "rgba(0,255,136,0.08)",
+                border: "1px solid rgba(91, 185, 138,0.4)",
+                color: "var(--green)",
+                background: "rgba(91, 185, 138,0.08)",
                 fontFamily: MONO,
                 fontSize: "0.66rem",
                 letterSpacing: "0.08em",
@@ -726,14 +726,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 textTransform: "uppercase",
               }}
             >
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "#00ff88", boxShadow: "0 0 8px #00ff88" }} />
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", boxShadow: "0 0 8px var(--green)" }} />
               {op.status}
             </span>
             <span
               style={{
-                border: "1px solid rgba(0,212,255,0.38)",
-                color: "#00d4ff",
-                background: "rgba(0,212,255,0.08)",
+                border: "1px solid var(--border-hi)",
+                color: "var(--cyan)",
+                background: "rgba(43, 49, 53, 0.08)",
                 fontFamily: MONO,
                 fontSize: "0.66rem",
                 letterSpacing: "0.08em",
@@ -752,7 +752,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   alignItems: "center",
                   gap: 6,
                   border: "1px solid rgba(145,70,255,0.45)",
-                  color: "#b98bff",
+                  color: "var(--purple)",
                   background: "rgba(145,70,255,0.1)",
                   fontFamily: MONO,
                   fontSize: "0.66rem",
@@ -765,44 +765,44 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 <Ic name="stream" size={13} sw={1.7} /> Stream
               </span>
             )}
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "#9fb1c2", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", padding: "0.2rem" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--dim)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", padding: "0.2rem" }}>
               <Ic name="clock" size={13} />
               {fmtDate(op.scheduledAt, op.guild.timezone).toUpperCase()}
             </span>
           </div>
-          <h1 style={{ fontWeight: 700, fontSize: "2.1rem", lineHeight: 1.12, color: "#eaf4fb", margin: "0 0 0.7rem", letterSpacing: "0.01em" }} data-testid="op-title">
+          <h1 style={{ fontWeight: 700, fontSize: "2.1rem", lineHeight: 1.12, color: "var(--text-hi)", margin: "0 0 0.7rem", letterSpacing: "0.01em" }} data-testid="op-title">
             {op.title}
           </h1>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem 1.3rem", color: "#9fb1c2", fontSize: "0.92rem" }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem 1.3rem", color: "var(--dim)", fontSize: "0.92rem" }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="pin" size={15} sw={1.6} /></span>
+              <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="pin" size={15} sw={1.6} /></span>
               {op.meetingLocation}
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="globe" size={15} sw={1.6} /></span>
+              <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="globe" size={15} sw={1.6} /></span>
               {op.meetingSystem}
             </span>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={15} sw={1.6} /></span>
+              <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={15} sw={1.6} /></span>
               {filled} angemeldet · min {op.minParticipants}
             </span>
           </div>
 
           {/* MISSION OBJECTIVE — part of the hero */}
-          <div style={{ marginTop: "1.1rem", paddingTop: "1.1rem", borderTop: "1px solid rgba(0,212,255,0.1)" }}>
+          <div style={{ marginTop: "1.1rem", paddingTop: "1.1rem", borderTop: "1px solid var(--border)" }}>
             <div style={monoLabel({ marginBottom: "0.45rem" })}>MISSION OBJECTIVE</div>
             {op.description ? (
               <Markdown text={op.description} style={{ fontSize: "0.95rem" }} />
             ) : (
-              <p style={{ margin: 0, color: "#7e92a4" }}>Kein Missionsziel hinterlegt.</p>
+              <p style={{ margin: 0, color: "var(--dim2)" }}>Kein Missionsziel hinterlegt.</p>
             )}
             {op.resourceLinks.length > 0 && (
               <>
                 <div style={monoLabel({ margin: "1rem 0 0.55rem", fontSize: "0.7rem" })}>BRIEFING / LINKS</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                   {op.resourceLinks.map((l) => (
-                    <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "#00d4ff", textDecoration: "none", fontSize: "0.92rem" }}>
-                      {l.title} <span style={{ color: "#5b6b7a" }}>↗</span>
+                    <a key={l.id} href={l.url} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "var(--cyan)", textDecoration: "none", fontSize: "0.92rem" }}>
+                      {l.title} <span style={{ color: "var(--dim3)" }}>↗</span>
                     </a>
                   ))}
                 </div>
@@ -819,17 +819,17 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             The box drives the row height; the image scales into it with object-fit
             contain (whole image always visible, letterboxed). Wraps to stacked on narrow screens. */}
         <div style={{ flex: "1 1 420px", minWidth: 0, alignSelf: "stretch", display: "flex", flexDirection: "row", flexWrap: "wrap", gap: "1rem", alignItems: "stretch" }}>
-          <div style={{ flex: "1 1 220px", minWidth: 0, border: "1px solid rgba(0,212,255,0.13)", borderRadius: 12, background: "rgba(9,15,24,0.55)", padding: "0.85rem 1rem" }}>
+          <div style={{ flex: "1 1 220px", minWidth: 0, border: "1px solid var(--border)", borderRadius: 12, background: "rgba(18, 20, 22,0.55)", padding: "0.85rem 1rem" }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: "0.5rem" }}>
               <span style={monoLabel()}>ANMELDUNGEN</span>
-              <span style={{ fontFamily: MONO, fontSize: "1.1rem", color: "#eaf4fb" }}>
-                <strong style={{ color: "#f0a500" }}>{filled}</strong> <span style={{ color: "#5b6b7a" }}>/ {op.minParticipants}</span>
+              <span style={{ fontFamily: MONO, fontSize: "1.1rem", color: "var(--text-hi)" }}>
+                <strong style={{ color: "var(--gold)" }}>{filled}</strong> <span style={{ color: "var(--dim3)" }}>/ {op.minParticipants}</span>
               </span>
             </div>
-            <div style={{ height: 7, borderRadius: 5, background: "#0e1926", overflow: "hidden", marginBottom: "0.4rem" }}>
-              <div style={{ height: "100%", width: `${pct}%`, borderRadius: 5, background: "linear-gradient(90deg,#f0a500,#f5c451)" }} />
+            <div style={{ height: 7, borderRadius: 5, background: "var(--bg3)", overflow: "hidden", marginBottom: "0.4rem" }}>
+              <div style={{ height: "100%", width: `${pct}%`, borderRadius: 5, background: "var(--gold)" }} />
             </div>
-            <div style={{ color: "#9fb1c2", fontSize: "0.8rem", marginBottom: "0.6rem" }}>
+            <div style={{ color: "var(--dim)", fontSize: "0.8rem", marginBottom: "0.6rem" }}>
               {Math.max(0, op.minParticipants - filled) > 0 ? `Noch ${op.minParticipants - filled} bis zur Mindestzahl.` : "Mindestzahl erreicht."}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
@@ -853,7 +853,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   borderRadius: 8,
                   border: "1px solid rgba(88,101,242,0.5)",
                   background: "rgba(88,101,242,0.14)",
-                  color: "#c7ccf8",
+                  color: "var(--purple)",
                   textDecoration: "none",
                   fontFamily: MONO,
                   fontSize: "0.72rem",
@@ -866,7 +866,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               </a>
             )}
           </div>
-          <button type="button" data-testid="cover-open" title="Cover vergrößern" onClick={() => setLightbox(true)} style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid rgba(0,212,255,0.18)", borderRadius: 10, overflow: "hidden", background: "#0a1622", padding: 0, cursor: "zoom-in" }}>
+          <button type="button" data-testid="cover-open" title="Cover vergrößern" onClick={() => setLightbox(true)} style={{ flex: "2 1 320px", minWidth: 0, aspectRatio: "16 / 9", border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden", background: "#0a1622", padding: 0, cursor: "zoom-in" }}>
             <img src={op.coverUrl ?? heroImg} alt={`Operation ${op.title}`} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
           </button>
         </div>
@@ -874,29 +874,29 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
       {/* What the mission needs — visible to crew for planning (read-only). */}
       {needs && (needs.shipNeeds.length > 0 || needs.fighterSquads > 0 || needs.cqbTeams.count > 0) && (
-        <section data-testid="needs-overview" style={{ border: "1px solid rgba(0,212,255,0.13)", borderRadius: 12, background: "rgba(9,15,24,0.55)", padding: "1rem 1.2rem", marginBottom: "1.4rem" }}>
+        <section data-testid="needs-overview" style={{ border: "1px solid var(--border)", borderRadius: 12, background: "rgba(18, 20, 22,0.55)", padding: "1rem 1.2rem", marginBottom: "1.4rem" }}>
           <div style={monoLabel({ marginBottom: "0.7rem" })}>GESUCHT — WAS DIE MISSION BRAUCHT</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
             {needs.shipNeeds.map((s) => {
               const bound = accepted.filter((u) => u.requirementId === s.id).length;
               return (
-                <span key={s.id} data-testid={`need-chip-${s.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: `1px solid ${bound > 0 ? "rgba(0,255,136,0.35)" : "rgba(0,212,255,0.25)"}`, background: bound > 0 ? "rgba(0,255,136,0.06)" : "rgba(0,212,255,0.05)", color: "#dce8f0" }}>
-                  <span style={{ color: bound > 0 ? "#00ff88" : "#00d4ff", display: "inline-flex" }}><Ic name={bound > 0 ? "check" : "ship"} size={13} sw={1.8} /></span>
+                <span key={s.id} data-testid={`need-chip-${s.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: `1px solid ${bound > 0 ? "rgba(91, 185, 138,0.35)" : "rgba(43, 49, 53, 0.25)"}`, background: bound > 0 ? "rgba(91, 185, 138,0.06)" : "rgba(43, 49, 53, 0.05)", color: "var(--text)" }}>
+                  <span style={{ color: bound > 0 ? "var(--green)" : "var(--cyan)", display: "inline-flex" }}><Ic name={bound > 0 ? "check" : "ship"} size={13} sw={1.8} /></span>
                   {s.label}
                 </span>
               );
             })}
             {needs.fighterSquads > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: "1px solid rgba(167,139,250,0.3)", background: "rgba(167,139,250,0.06)", color: "#dce8f0" }}>
-                <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="fighter" size={13} sw={1.8} /></span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: "1px solid rgba(118, 130, 141,0.3)", background: "rgba(118, 130, 141,0.06)", color: "var(--text)" }}>
+                <span style={{ color: "var(--purple)", display: "inline-flex" }}><Ic name="fighter" size={13} sw={1.8} /></span>
                 {needs.fighterSquads} Jäger-Staffel{needs.fighterSquads === 1 ? "" : "n"} · je {needs.fighterSquadSize} Piloten
               </span>
             )}
             {needs.cqbTeams.count > 0 && (() => {
               const covered = cqbProvidedTeams >= needs.cqbTeams.count;
               return (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: `1px solid ${covered ? "rgba(0,255,136,0.35)" : "rgba(240,165,0,0.3)"}`, background: covered ? "rgba(0,255,136,0.06)" : "rgba(240,165,0,0.06)", color: "#dce8f0" }}>
-                  <span style={{ color: covered ? "#00ff88" : "#f0a500", display: "inline-flex" }}><Ic name={covered ? "check" : "fps"} size={13} sw={1.8} /></span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.3rem 0.6rem", borderRadius: 7, fontSize: "0.8rem", border: `1px solid ${covered ? "rgba(91, 185, 138,0.35)" : "rgba(217, 169, 78,0.3)"}`, background: covered ? "rgba(91, 185, 138,0.06)" : "rgba(217, 169, 78,0.06)", color: "var(--text)" }}>
+                  <span style={{ color: covered ? "var(--green)" : "var(--gold)", display: "inline-flex" }}><Ic name={covered ? "check" : "fps"} size={13} sw={1.8} /></span>
                   {cqbProvidedTeams}/{needs.cqbTeams.count} CQB-Teams{cqbProvidedTeams > needs.cqbTeams.count ? " (über)" : ""} · je {needs.cqbTeams.size} Soldaten
                 </span>
               );
@@ -921,7 +921,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         const mySeats = op.units
           .filter((u) => u.captain?.id !== me.id) // seats on my OWN ship are covered by the ship row
           .flatMap((u) => u.seats.filter((s) => s.claimedBy?.id === me.id).map((s) => ({ seat: s, unit: u })));
-        const shipTone = (status: string) => (status === "accepted" ? "#00ff88" : status === "rejected" ? "#ff6b6b" : "#f0a500");
+        const shipTone = (status: string) => (status === "accepted" ? "var(--green)" : status === "rejected" ? "var(--red)" : "var(--gold)");
         const shipStatus = (status: string) => (status === "accepted" ? "bestätigt" : status === "rejected" ? "abgelehnt" : "noch nicht bestätigt");
         const items: { key: string; icon: string; tone: string; text: React.ReactNode }[] = [];
         // Where a unit sits in the hierarchy, as a readable suffix: the group it
@@ -940,7 +940,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         for (const u of myShips)
           items.push({ key: `ship-${u.id}`, icon: "ship", tone: shipTone(u.status), text: <>Schiff <strong>{u.shipName ?? u.name}</strong> — {shipStatus(u.status)}{placement(u)}{u.formationSlot === 0 ? <> · <strong>Captain</strong></> : null}</> });
         for (const { seat, unit } of mySeats)
-          items.push({ key: `seat-${seat.id}`, icon: "pilot", tone: "#00ff88", text: <>Platz <strong>{seat.label}</strong> auf {unit.shipName ?? unit.name} — bestätigt{placement(unit)}</> });
+          items.push({ key: `seat-${seat.id}`, icon: "pilot", tone: "var(--green)", text: <>Platz <strong>{seat.label}</strong> auf {unit.shipName ?? unit.name} — bestätigt{placement(unit)}</> });
         // Placement into a ground troop / squadron — the operator may have put the
         // player there without them ever offering a ship.
         for (const tm of op.cqbTeams) {
@@ -951,7 +951,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           items.push({
             key: `cqb-${tm.id}`,
             icon: "fps",
-            tone: "#00ff88",
+            tone: "var(--green)",
             text: <>Bodentruppe <strong>{tm.name}</strong> — Platz {(m.slotIndex ?? 0) + 1}{m.slotIndex === 0 ? <> (<strong>Captain</strong>)</> : null}{vb ? ` · Verband ${vb}` : ""}{carrier ? ` · fährt in ${unitLabel(carrier)}` : ""}</>,
           });
         }
@@ -962,29 +962,29 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           items.push({
             key: `sq-${sq.id}`,
             icon: "fighter",
-            tone: "#00ff88",
+            tone: "var(--green)",
             text: <>Staffel <strong>{sq.name}</strong> — Pilot{m.slotIndex === 0 ? <> (<strong>Staffel-Captain</strong>)</> : null}{vb ? ` · Verband ${vb}` : ""}</>,
           });
         }
         if (op.viewerCqbSignedUp && !items.some((i) => i.key.startsWith("cqb-") || i.key.startsWith("sq-")))
-          items.push({ key: "cqb", icon: "swap", tone: "#f0a500", text: <>Flexibel angemeldet — der Operator teilt dich passend ein</> });
+          items.push({ key: "cqb", icon: "swap", tone: "var(--gold)", text: <>Flexibel angemeldet — der Operator teilt dich passend ein</> });
         // Any other waitlist reason (e.g. a pending crew-assignment request) still gets ack'd.
         if (items.length === 0 && op.signupState)
           items.push({
             key: "generic",
             icon: "check",
-            tone: op.signupState === "joined" ? "#00ff88" : "#f0a500",
+            tone: op.signupState === "joined" ? "var(--green)" : "var(--gold)",
             text: op.signupState === "joined" ? <>Du bist Teilnehmer</> : <>Angemeldet — wird vom Operator bestätigt</>,
           });
         const signedUp = items.length > 0;
         return (
           <div style={{ marginBottom: "1.8rem" }}>
             {signedUp && (
-              <section data-testid="my-status" style={{ border: "1px solid rgba(0,255,136,0.25)", background: "rgba(0,255,136,0.04)", borderRadius: 12, padding: "0.9rem 1.1rem", marginBottom: "0.9rem" }}>
-                <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.12em", color: "#7e92a4", marginBottom: "0.6rem" }}>DEIN STATUS · BEREITS ANGEMELDET</div>
+              <section data-testid="my-status" style={{ border: "1px solid rgba(91, 185, 138,0.25)", background: "rgba(91, 185, 138,0.04)", borderRadius: 12, padding: "0.9rem 1.1rem", marginBottom: "0.9rem" }}>
+                <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.12em", color: "var(--dim2)", marginBottom: "0.6rem" }}>DEIN STATUS · BEREITS ANGEMELDET</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
                   {items.map((it) => (
-                    <div key={it.key} style={{ display: "flex", alignItems: "center", gap: "0.55rem", fontSize: "0.9rem", color: "#dce8f0" }}>
+                    <div key={it.key} style={{ display: "flex", alignItems: "center", gap: "0.55rem", fontSize: "0.9rem", color: "var(--text)" }}>
                       <span style={{ color: it.tone, display: "inline-flex", flexShrink: 0 }}><Ic name={it.icon} size={15} sw={1.7} /></span>
                       <span>{it.text}</span>
                     </div>
@@ -997,7 +997,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               <a
                 href={`${import.meta.env.BASE_URL}ops/${id}/calendar.ics`}
                 data-testid="calendar-export"
-                style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "#00d4ff", textDecoration: "none", fontFamily: MONO, fontSize: "0.74rem", border: "1px solid rgba(0,212,255,0.3)", borderRadius: 8, padding: "0.4rem 0.75rem" }}
+                style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", color: "var(--cyan)", textDecoration: "none", fontFamily: MONO, fontSize: "0.74rem", border: "1px solid var(--border-hi)", borderRadius: 8, padding: "0.4rem 0.75rem" }}
               >
                 <Ic name="cal" size={14} sw={1.7} /> Im Kalender speichern
               </a>
@@ -1010,22 +1010,22 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
         <>
           {/* MITMACHEN — three entry cards */}
           {canJoin && (
-            <section data-testid="join-card" style={{ border: "1px solid rgba(0,212,255,0.13)", borderRadius: 14, background: "#090f18", padding: "1.6rem 1.7rem", marginBottom: "1.6rem" }}>
+            <section data-testid="join-card" style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", padding: "1.6rem 1.7rem", marginBottom: "1.6rem" }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.7rem", flexWrap: "wrap", marginBottom: "0.4rem" }}>
-                <h2 style={{ fontWeight: 700, fontSize: "1.45rem", color: "#eaf4fb", margin: 0 }}>Mitmachen</h2>
-                <span style={{ color: "#9fb1c2", fontSize: "0.95rem" }}>Wie willst du beitragen?</span>
+                <h2 style={{ fontWeight: 700, fontSize: "1.45rem", color: "var(--text-hi)", margin: 0 }}>Mitmachen</h2>
+                <span style={{ color: "var(--dim)", fontSize: "0.95rem" }}>Wie willst du beitragen?</span>
               </div>
-              <p style={{ margin: "0 0 1.3rem", color: "#9fb1c2", fontSize: "0.95rem", maxWidth: "62ch" }}>
+              <p style={{ margin: "0 0 1.3rem", color: "var(--dim)", fontSize: "0.95rem", maxWidth: "62ch" }}>
                 Du kannst mehrere Wege kombinieren — ein Schiff bringen <em>und</em> einen Sitz an Bord nehmen schließen sich nicht aus. Jeder Platz zeigt mit einem Tag, wie festgelegt er ist.
               </p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "0.9rem" }}>
-                {entryCard("0,212,255", "#00d4ff", "ship", "Freien Platz nehmen", "Sieh die Flotte unten und klick auf einen offenen Sitz.", "Zur Flotte", () =>
+                {entryCard("118, 130, 141", "var(--cyan)", "ship", "Freien Platz nehmen", "Sieh die Flotte unten und klick auf einen offenen Sitz.", "Zur Flotte", () =>
                   fleetRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
                 )}
-                {entryCard("0,255,136", "#00ff88", "fighter", "Eigenes Schiff einbringen", "Bring eines deiner Schiffe — die Crew besetzt die Sitze.", "Schiff wählen", () => setOfferOpen((v) => !v), "offer-ship-open")}
+                {entryCard("0,255,136", "var(--green)", "fighter", "Eigenes Schiff einbringen", "Bring eines deiner Schiffe — die Crew besetzt die Sitze.", "Schiff wählen", () => setOfferOpen((v) => !v), "offer-ship-open")}
                 {op.viewerCqbSignedUp
-                  ? entryCard("240,165,0", "#f0a500", "check", "Du bist flexibel angemeldet", "Der Operator teilt dich passend ein. Klick zum Zurückziehen.", "Zurückziehen", () => run(() => cqbWithdraw(id!, csrf!)), "cqb-withdraw")
-                  : entryCard("240,165,0", "#f0a500", "swap", "Teilt mich ein", "Keine Lust zu wählen? Der Operator gibt dir einen Platz.", "Flexibel anmelden", () => run(() => cqbSignup(id!, csrf!)), "cqb-signup")}
+                  ? entryCard("240,165,0", "var(--gold)", "check", "Du bist flexibel angemeldet", "Der Operator teilt dich passend ein. Klick zum Zurückziehen.", "Zurückziehen", () => run(() => cqbWithdraw(id!, csrf!)), "cqb-withdraw")
+                  : entryCard("240,165,0", "var(--gold)", "swap", "Teilt mich ein", "Keine Lust zu wählen? Der Operator gibt dir einen Platz.", "Flexibel anmelden", () => run(() => cqbSignup(id!, csrf!)), "cqb-signup")}
               </div>
               <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.9rem", marginTop: "1.1rem" }}>
                 <label style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
@@ -1034,9 +1034,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                     checked={op.viewerHangarShared}
                     data-testid="hangar-toggle"
                     onChange={(e) => run(() => setHangarShare(id!, csrf!, e.target.checked))}
-                    style={{ accentColor: "#00d4ff", width: 18, height: 18 }}
+                    style={{ accentColor: "var(--cyan)", width: 18, height: 18 }}
                   />
-                  <span style={{ color: "#9fb1c2", fontSize: "0.9rem", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ color: "var(--dim)", fontSize: "0.9rem", display: "inline-flex", alignItems: "center", gap: 5 }}>
                     <Ic name="eye" size={14} /> Operator darf meinen Hangar sehen
                   </span>
                 </label>
@@ -1068,11 +1068,11 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               gap: "0.5rem 1.1rem",
               padding: "0.7rem 0.2rem",
               marginBottom: "1.2rem",
-              borderTop: "1px solid rgba(0,212,255,0.1)",
-              borderBottom: "1px solid rgba(0,212,255,0.1)",
+              borderTop: "1px solid var(--border)",
+              borderBottom: "1px solid var(--border)",
             }}
           >
-            <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.1em", color: "#5b6b7a" }}>WIE FEST IST EIN PLATZ?</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.1em", color: "var(--dim3)" }}>WIE FEST IST EIN PLATZ?</span>
             {(
               [
                 ["fest", "Genau dieser Platz"],
@@ -1083,14 +1083,14 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             ).map(([k, desc]) => (
               <span key={k} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <span style={TAGS[k].style}>{TAGS[k].text}</span>
-                <span style={{ color: "#9fb1c2", fontSize: "0.8rem" }}>{desc}</span>
+                <span style={{ color: "var(--dim)", fontSize: "0.8rem" }}>{desc}</span>
               </span>
             ))}
           </div>
 
           {/* CATEGORY BOARD — Schiffe / Jäger / CQB / Fahrzeuge as columns */}
           <div ref={fleetRef} style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(500px, 1fr))", gap: "1.3rem", alignItems: "start" }}>
-            {lanes.length === 0 && op.cqbTeams.length === 0 && <p style={{ color: "#7e92a4" }}>Noch keine Einheiten.</p>}
+            {lanes.length === 0 && op.cqbTeams.length === 0 && <p style={{ color: "var(--dim2)" }}>Noch keine Einheiten.</p>}
             {lanes.map((lane) => {
               // Header count reflects CONFIRMED capacity only — pending units are
               // shown in the lane but must not inflate the "besetzt/total" tally.
@@ -1104,8 +1104,8 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                       <Ic name={lane.icon} size={16} />
                       {lane.label}
                     </span>
-                    <span style={{ flex: 1, height: 1, background: `linear-gradient(90deg,rgba(${lane.rgb},0.4),transparent)` }} />
-                    <span style={{ fontFamily: MONO, fontSize: "0.78rem", color: "#9fb1c2", whiteSpace: "nowrap" }}>
+                    <span style={{ flex: 1, height: 1, background: "var(--border-hi)" }} />
+                    <span style={{ fontFamily: MONO, fontSize: "0.78rem", color: "var(--dim)", whiteSpace: "nowrap" }}>
                       {laneFilled}/{laneTotal}
                     </span>
                   </div>
@@ -1142,22 +1142,22 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                             const met = filledF >= cap;
                             const empty = fs.length === 0 && mem.length === 0;
                             return (
-                              <div key={sq.id} data-testid={`fighter-squad-${sq.id}`} style={{ border: "1px solid rgba(167,139,250,0.22)", borderTop: "2px solid rgba(167,139,250,0.5)", borderRadius: 13, background: "rgba(167,139,250,0.03)", padding: "0.8rem 0.85rem" }}>
+                              <div key={sq.id} data-testid={`fighter-squad-${sq.id}`} style={{ border: "1px solid rgba(118, 130, 141,0.22)", borderTop: "2px solid rgba(118, 130, 141,0.5)", borderRadius: 13, background: "rgba(118, 130, 141,0.03)", padding: "0.8rem 0.85rem" }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: empty ? 0 : "0.7rem" }}>
-                                  <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={15} sw={1.7} /></span>
-                                  <strong style={{ fontSize: "0.95rem", color: "#eaf4fb" }}>{sq.name}</strong>
+                                  <span style={{ color: "var(--purple)", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={15} sw={1.7} /></span>
+                                  <strong style={{ fontSize: "0.95rem", color: "var(--text-hi)" }}>{sq.name}</strong>
                                   {/* Legacy fallback groups (formations) have no parent. */}
                                   {verbandChip((sq as { parentId?: string | null }).parentId ?? null)}
-                                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "#00ff88" : "#9fb1c2" }}>{filledF}/{cap}{over ? " (über)" : ""}</span>
+                                  <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "var(--green)" : "var(--dim)" }}>{filledF}/{cap}{over ? " (über)" : ""}</span>
                                 </div>
                                 {empty ? (
-                                  <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.06em", color: "#5b6b7a" }}>Noch kein Jäger zugewiesen.</div>
+                                  <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.06em", color: "var(--dim3)" }}>Noch kein Jäger zugewiesen.</div>
                                 ) : (
                                   <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
                                     {fs.map((u) => unitCard(u, lane))}
                                     {mem.map((m) => (
-                                      <div key={m.id} data-testid={`fighter-pilot-${m.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "#ccdde8", padding: "0.35rem 0.4rem", border: "1px solid rgba(167,139,250,0.15)", borderRadius: 8 }}>
-                                        <Avatar name={m.username} /> <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null} <span style={{ color: "#7e92a4", fontFamily: MONO, fontSize: "0.58rem" }}>{m.slotIndex === 0 ? "Staffel-Captain" : "Pilot"}</span></span>
+                                      <div key={m.id} data-testid={`fighter-pilot-${m.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: "var(--text)", padding: "0.35rem 0.4rem", border: "1px solid rgba(118, 130, 141,0.15)", borderRadius: 8 }}>
+                                        <Avatar name={m.username} /> <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "var(--green)", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null} <span style={{ color: "var(--dim2)", fontFamily: MONO, fontSize: "0.58rem" }}>{m.slotIndex === 0 ? "Staffel-Captain" : "Pilot"}</span></span>
                                         {m.slotIndex === 0 && captainTag}
                                         <LateArrival eta={m.lateEta} canEdit={false} onSet={() => {}} />
                                       </div>
@@ -1169,12 +1169,12 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                           })}
                           {ungrouped.length > 0 && (
                             <>
-                              {squads.length > 0 && <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>OHNE STAFFEL</div>}
+                              {squads.length > 0 && <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)" }}>OHNE STAFFEL</div>}
                               {ungrouped.map((u) => unitCard(u, lane))}
                             </>
                           )}
                           {nothing && (
-                            <div data-testid="lane-empty-fighter" style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                            <div data-testid="lane-empty-fighter" style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "var(--dim3)" }}>KEIN BEDARF</div>
                           )}
                         </>
                       );
@@ -1183,7 +1183,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                         {lane.units.map((u) => unitCard(u, lane))}
                         {lane.placeholders.map((label, i) => emptyNeedCard(label, lane, `ph-${lane.type}-${i}`))}
                         {lane.units.length === 0 && lane.placeholders.length === 0 && (
-                          <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                          <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "var(--dim3)" }}>KEIN BEDARF</div>
                         )}
                       </>
                     )}
@@ -1197,12 +1197,12 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             {(
               <section style={{ minWidth: 0 }} data-testid="cqb-squads">
                 <div style={{ display: "flex", alignItems: "center", gap: "0.7rem", marginBottom: "1rem" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "#f0a500", whiteSpace: "nowrap" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.78rem", letterSpacing: "0.12em", color: "var(--gold)", whiteSpace: "nowrap" }}>
                     <Ic name="fps" size={16} /> BODENTRUPPEN / CQB
                   </span>
-                  <span style={{ flex: 1, height: 1, background: "linear-gradient(90deg,rgba(240,165,0,0.4),transparent)" }} />
+                  <span style={{ flex: 1, height: 1, background: "var(--border-hi)" }} />
                   {cqbNeedCount != null && (
-                    <span style={{ fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: cqbProvidedTeams >= cqbNeedCount ? "#00ff88" : "#9fb1c2" }}>
+                    <span style={{ fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: cqbProvidedTeams >= cqbNeedCount ? "var(--green)" : "var(--dim)" }}>
                       {cqbProvidedTeams}/{cqbNeedCount} Teams{cqbProvidedTeams > cqbNeedCount ? " (über)" : ""}
                     </span>
                   )}
@@ -1211,7 +1211,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                   {/* Offered squads as their own CQB teams (members = seat holders). */}
                   {squadUnits.map((u) => unitCard(u, squadLane))}
                   {cqbGroupsShown.length > 0 && (
-                    <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a", marginTop: squadUnits.length ? "0.3rem" : 0 }}>EINZEL-SOLDATEN — FREIEN PLATZ NEHMEN</div>
+                    <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)", marginTop: squadUnits.length ? "0.3rem" : 0 }}>EINZEL-SOLDATEN — FREIEN PLATZ NEHMEN</div>
                   )}
                   {cqbGroupsShown.map((tm) => {
                     const inTeam = !!me && tm.members.some((m) => m.id === me.id);
@@ -1234,31 +1234,31 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                     }
                     const carrier = tm.carrierUnitId ? op.units.find((u) => u.id === tm.carrierUnitId) : null;
                     return (
-                      <article key={tm.id} data-testid={`cqb-squad-${tm.id}`} style={{ width: "100%", minWidth: 0, border: "1px solid rgba(240,165,0,0.2)", borderTop: "2px solid rgba(240,165,0,0.5)", borderRadius: 13, background: "#0a1018", padding: "1.1rem 1.2rem" }}>
+                      <article key={tm.id} data-testid={`cqb-squad-${tm.id}`} style={{ width: "100%", minWidth: 0, border: "1px solid rgba(217, 169, 78,0.2)", borderTop: "2px solid rgba(217, 169, 78,0.5)", borderRadius: 13, background: "var(--row)", padding: "1.1rem 1.2rem" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.7rem" }}>
-                          <span style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(240,165,0,0.12)", border: "1px solid rgba(240,165,0,0.3)", color: "#f0a500", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="fps" size={18} sw={1.6} /></span>
+                          <span style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(217, 169, 78,0.12)", border: "1px solid rgba(217, 169, 78,0.3)", color: "var(--gold)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="fps" size={18} sw={1.6} /></span>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <strong style={{ fontSize: "1.02rem", color: "#eaf4fb" }}>{tm.name}</strong>
+                            <strong style={{ fontSize: "1.02rem", color: "var(--text-hi)" }}>{tm.name}</strong>
                             <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", flexWrap: "wrap", marginTop: 2 }}>
-                              <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a" }}>BODENTRUPPE</span>
+                              <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim3)" }}>BODENTRUPPE</span>
                               {verbandChip(tm.parentId)}
                               {carrier && (
-                                <span data-testid={`cqb-carrier-${tm.id}`} style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "#ff7a45", border: "1px solid rgba(255,122,69,0.3)", background: "rgba(255,122,69,0.07)", borderRadius: 4, padding: "0.05rem 0.3rem" }}>FÄHRT IN: {(carrier.shipName ?? carrier.name).toUpperCase()}</span>
+                                <span data-testid={`cqb-carrier-${tm.id}`} style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.06em", color: "var(--orange)", border: "1px solid rgba(217, 169, 78,0.3)", background: "rgba(217, 169, 78,0.07)", borderRadius: 4, padding: "0.05rem 0.3rem" }}>FÄHRT IN: {(carrier.shipName ?? carrier.name).toUpperCase()}</span>
                               )}
                             </div>
                           </div>
-                          <span style={{ fontFamily: MONO, fontSize: "1.05rem", color: "#eaf4fb", flexShrink: 0 }}>{tm.members.length}<span style={{ color: "#5b6b7a" }}>/{tm.targetSize ?? "∞"}</span></span>
+                          <span style={{ fontFamily: MONO, fontSize: "1.05rem", color: "var(--text-hi)", flexShrink: 0 }}>{tm.members.length}<span style={{ color: "var(--dim3)" }}>/{tm.targetSize ?? "∞"}</span></span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: me && csrf ? "0.8rem" : 0 }}>
-                          {slots.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.82rem" }}>Noch keine Plätze definiert.</div>}
+                          {slots.length === 0 && <div style={{ color: "var(--dim2)", fontSize: "0.82rem" }}>Noch keine Plätze definiert.</div>}
                           {slots.map((m, i) => (
-                            <div key={m?.id ?? `free-${i}`} data-testid={`cqb-slot-${tm.id}-${i}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: m ? "#ccdde8" : "#5b6b7a", padding: "0.3rem 0.4rem", borderRadius: 8, border: `1px ${m ? "solid" : "dashed"} rgba(240,165,0,${m ? 0.18 : 0.22})`, background: m ? "rgba(240,165,0,0.03)" : "transparent" }}>
+                            <div key={m?.id ?? `free-${i}`} data-testid={`cqb-slot-${tm.id}-${i}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.86rem", color: m ? "var(--text)" : "var(--dim3)", padding: "0.3rem 0.4rem", borderRadius: 8, border: `1px ${m ? "solid" : "dashed"} rgba(217, 169, 78,${m ? 0.18 : 0.22})`, background: m ? "rgba(217, 169, 78,0.03)" : "transparent" }}>
                               {/* Slot 1 is always the Captain — squad-link capable. */}
-                              <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: i === 0 ? "#ffd600" : "#5b6b7a", width: 26, flexShrink: 0 }}>{i === 0 ? "CPT" : `#${i + 1}`}</span>
+                              <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: i === 0 ? "var(--gold)" : "var(--dim3)", width: 26, flexShrink: 0 }}>{i === 0 ? "CPT" : `#${i + 1}`}</span>
                               {m ? (
                                 <>
                                   <Avatar name={m.username} />
-                                  <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "#00ff88", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}</span>
+                                  <span style={{ flex: 1, minWidth: 0 }}>{m.username}{me && m.id === me.id ? <span style={{ color: "var(--green)", fontFamily: MONO, fontSize: "0.6rem" }}> · DU</span> : null}</span>
                                   {i === 0 && captainTag}
                                   <LateArrival eta={m.lateEta} canEdit={false} onSet={() => {}} />
                                 </>
@@ -1270,16 +1270,16 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                         </div>
                         {me && csrf && (
                           inTeam ? (
-                            <button type="button" data-testid={`cqb-leave-${tm.id}`} onClick={() => run(() => cqbWithdraw(id!, csrf!))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Squad verlassen</button>
+                            <button type="button" data-testid={`cqb-leave-${tm.id}`} onClick={() => run(() => cqbWithdraw(id!, csrf!))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Squad verlassen</button>
                           ) : canJoin ? (
-                            <button type="button" data-testid={`cqb-join-${tm.id}`} disabled={full} onClick={() => run(() => cqbSignup(id!, csrf!, { groupId: tm.id }))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.9rem", border: `1px solid ${full ? "rgba(255,255,255,0.12)" : "rgba(240,165,0,0.45)"}`, background: full ? "transparent" : "rgba(240,165,0,0.12)", color: full ? "#5b6b7a" : "#f0a500", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: full ? "default" : "pointer" }}>{full ? "Voll" : <>Platz nehmen <Ic name="arrow" size={13} sw={1.8} /></>}</button>
+                            <button type="button" data-testid={`cqb-join-${tm.id}`} disabled={full} onClick={() => run(() => cqbSignup(id!, csrf!, { groupId: tm.id }))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.9rem", border: `1px solid ${full ? "rgba(255,255,255,0.12)" : "rgba(217, 169, 78,0.45)"}`, background: full ? "transparent" : "rgba(217, 169, 78,0.12)", color: full ? "var(--dim3)" : "var(--gold)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: full ? "default" : "pointer" }}>{full ? "Voll" : <>Platz nehmen <Ic name="arrow" size={13} sw={1.8} /></>}</button>
                           ) : null
                         )}
                       </article>
                     );
                   })}
                   {squadUnits.length === 0 && cqbGroupsShown.length === 0 && (
-                    <div data-testid="lane-empty-cqb" style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                    <div data-testid="lane-empty-cqb" style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.4rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.08em", color: "var(--dim3)" }}>KEIN BEDARF</div>
                   )}
                 </div>
               </section>
@@ -1292,24 +1292,24 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           recorded, so a participant can check when they were put into a Verband,
           moved to another slot or had their ship accepted. Collapsed by default. */}
       {op.auditLogs.length > 0 && (
-        <section data-testid="mission-log" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, background: "#090f18", padding: "1.1rem 1.3rem", marginTop: "1.6rem" }}>
+        <section data-testid="mission-log" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, background: "var(--bg2)", padding: "1.1rem 1.3rem", marginTop: "1.6rem" }}>
           <button
             type="button"
             data-testid="mission-log-toggle"
             onClick={() => setLogOpen((v) => !v)}
             style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", background: "transparent", border: "none", padding: 0, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}
           >
-            <span style={{ ...monoLabel(), color: "#7e92a4" }}>MISSIONS-LOG</span>
-            <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a" }}>{op.auditLogs.length}</span>
-            <span style={{ marginLeft: "auto", display: "inline-flex", transform: logOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "#5b6b7a" }}><Ic name="chevron" size={15} sw={2} /></span>
+            <span style={{ ...monoLabel(), color: "var(--dim2)" }}>MISSIONS-LOG</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim3)" }}>{op.auditLogs.length}</span>
+            <span style={{ marginLeft: "auto", display: "inline-flex", transform: logOpen ? "rotate(90deg)" : "rotate(0deg)", transition: "transform .15s", color: "var(--dim3)" }}><Ic name="chevron" size={15} sw={2} /></span>
           </button>
           {logOpen && (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginTop: "0.8rem" }}>
               {op.auditLogs.map((a, i) => (
-                <div key={`${a.createdAt}-${i}`} style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", fontSize: "0.8rem", color: "#9fb1c2", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingBottom: "0.25rem" }}>
-                  <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a", flexShrink: 0 }}>{new Date(a.createdAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
-                  <span style={{ color: "#dce8f0", flexShrink: 0 }}>{a.actor}</span>
-                  <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#00d4ff", flexShrink: 0 }}>{a.action}</span>
+                <div key={`${a.createdAt}-${i}`} style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", fontSize: "0.8rem", color: "var(--dim)", borderBottom: "1px solid rgba(255,255,255,0.04)", paddingBottom: "0.25rem" }}>
+                  <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)", flexShrink: 0 }}>{new Date(a.createdAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>
+                  <span style={{ color: "var(--text)", flexShrink: 0 }}>{a.actor}</span>
+                  <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--cyan)", flexShrink: 0 }}>{a.action}</span>
                   <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.detail}</span>
                 </div>
               ))}
@@ -1320,21 +1320,21 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
       {/* FR-B7: Q&A — any logged-in viewer asks; operators answer in the console */}
       {me && id && (
-        <section data-testid="qa-section" style={{ border: "1px solid rgba(0,212,255,0.13)", borderRadius: 14, background: "#090f18", padding: "1.2rem 1.3rem", marginTop: "1.6rem" }}>
+        <section data-testid="qa-section" style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", padding: "1.2rem 1.3rem", marginTop: "1.6rem" }}>
           <div style={monoLabel({ marginBottom: "0.8rem" })}>{t("qa.title").toUpperCase()}</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: csrf ? "0.9rem" : 0 }}>
-            {op.questions.length === 0 && <div style={{ color: "#7e92a4", fontSize: "0.85rem" }}>{t("qa.empty")}</div>}
+            {op.questions.length === 0 && <div style={{ color: "var(--dim2)", fontSize: "0.85rem" }}>{t("qa.empty")}</div>}
             {op.questions.map((q) => (
               <div key={q.id} style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 9, padding: "0.6rem 0.7rem" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}><Avatar name={q.asker} /><strong style={{ fontSize: "0.82rem", color: "#eaf4fb" }}>{q.asker}</strong></div>
-                <div style={{ color: "#c2d2de", fontSize: "0.88rem", lineHeight: 1.4, marginBottom: q.answer ? "0.45rem" : "0.3rem" }}>{q.body}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}><Avatar name={q.asker} /><strong style={{ fontSize: "0.82rem", color: "var(--text-hi)" }}>{q.asker}</strong></div>
+                <div style={{ color: "var(--text)", fontSize: "0.88rem", lineHeight: 1.4, marginBottom: q.answer ? "0.45rem" : "0.3rem" }}>{q.body}</div>
                 {q.answer ? (
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.45rem", padding: "0.45rem 0.55rem", border: "1px solid rgba(0,255,136,0.28)", background: "rgba(0,255,136,0.05)", borderRadius: 8 }}>
-                    <span style={{ color: "#00ff88", display: "inline-flex", flexShrink: 0, marginTop: 2 }}><Ic name="check" size={13} sw={2} /></span>
-                    <div style={{ minWidth: 0 }}><span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#00ff88" }}>{t("qa.answeredBy", { who: q.answeredBy ?? "" })}</span><div style={{ color: "#c2d2de", fontSize: "0.84rem", lineHeight: 1.4 }}>{q.answer}</div></div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: "0.45rem", padding: "0.45rem 0.55rem", border: "1px solid rgba(91, 185, 138,0.28)", background: "rgba(91, 185, 138,0.05)", borderRadius: 8 }}>
+                    <span style={{ color: "var(--green)", display: "inline-flex", flexShrink: 0, marginTop: 2 }}><Ic name="check" size={13} sw={2} /></span>
+                    <div style={{ minWidth: 0 }}><span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--green)" }}>{t("qa.answeredBy", { who: q.answeredBy ?? "" })}</span><div style={{ color: "var(--text)", fontSize: "0.84rem", lineHeight: 1.4 }}>{q.answer}</div></div>
                   </div>
                 ) : (
-                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", color: "#7e92a4" }}>{t("qa.unanswered")}</span>
+                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", color: "var(--dim2)" }}>{t("qa.unanswered")}</span>
                 )}
               </div>
             ))}
@@ -1347,9 +1347,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                 onChange={(e) => setQDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void submitQuestion(); } }}
                 placeholder={t("qa.placeholder")}
-                style={{ flex: 1, minWidth: 0, minHeight: 38, background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.9rem", padding: "0.5rem 0.6rem", borderRadius: 8, outline: "none", resize: "vertical" }}
+                style={{ flex: 1, minWidth: 0, minHeight: 38, background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.9rem", padding: "0.5rem 0.6rem", borderRadius: 8, outline: "none", resize: "vertical" }}
               />
-              <button type="button" data-testid="qa-send" disabled={!qDraft.trim()} onClick={() => void submitQuestion()} style={{ flexShrink: 0, padding: "0.55rem 0.9rem", border: "1px solid rgba(0,212,255,0.45)", background: "rgba(0,212,255,0.12)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 8, cursor: "pointer" }}>{t("qa.send")}</button>
+              <button type="button" data-testid="qa-send" disabled={!qDraft.trim()} onClick={() => void submitQuestion()} style={{ flexShrink: 0, padding: "0.55rem 0.9rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.12)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 8, cursor: "pointer" }}>{t("qa.send")}</button>
             </div>
           )}
         </section>
@@ -1382,19 +1382,19 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           aria-modal="true"
           data-testid="cover-lightbox"
           onClick={() => setLightbox(false)}
-          style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(2,5,10,0.88)", display: "flex", alignItems: "center", justifyContent: "center", padding: "3vh 3vw", cursor: "zoom-out" }}
+          style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(18, 20, 22,0.88)", display: "flex", alignItems: "center", justifyContent: "center", padding: "3vh 3vw", cursor: "zoom-out" }}
         >
           <img
             src={op.coverUrl ?? heroImg}
             alt={`Operation ${op.title}`}
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: "100%", maxHeight: "94vh", objectFit: "contain", borderRadius: 10, border: "1px solid rgba(0,212,255,0.25)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}
+            style={{ maxWidth: "100%", maxHeight: "94vh", objectFit: "contain", borderRadius: 10, border: "1px solid var(--border)", boxShadow: "0 24px 80px rgba(0,0,0,0.7)" }}
           />
           <button
             type="button"
             data-testid="cover-lightbox-close"
             onClick={() => setLightbox(false)}
-            style={{ position: "fixed", top: "2vh", right: "2vw", width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(9,15,24,0.8)", color: "#eaf4fb", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            style={{ position: "fixed", top: "2vh", right: "2vw", width: 36, height: 36, borderRadius: 9, border: "1px solid rgba(255,255,255,0.2)", background: "rgba(18, 20, 22,0.8)", color: "var(--text-hi)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
           >
             <Ic name="x" size={18} sw={2} />
           </button>
@@ -1407,10 +1407,10 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 // FR-P3 Phase B: streamer links on an op (self-service). Any logged-in viewer
 // adds their own stream; the owner or an operator can remove it.
 const STREAM_META: Record<string, { icon: string; label: string; color: string }> = {
-  twitch: { icon: "twitch", label: "Twitch", color: "#a064ff" },
-  youtube: { icon: "youtube", label: "YouTube", color: "#ff4444" },
-  vdo_ninja: { icon: "stream", label: "VDO.Ninja", color: "#00d4ff" },
-  other: { icon: "stream", label: "Stream", color: "#9fb1c2" },
+  twitch: { icon: "twitch", label: "Twitch", color: "var(--purple)" },
+  youtube: { icon: "youtube", label: "YouTube", color: "var(--red)" },
+  vdo_ninja: { icon: "stream", label: "VDO.Ninja", color: "var(--cyan)" },
+  other: { icon: "stream", label: "Stream", color: "var(--dim)" },
 };
 
 function StreamsSection({
@@ -1463,18 +1463,18 @@ function StreamsSection({
     }
   }
 
-  const inp: React.CSSProperties = { boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.16)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.88rem", padding: "0.45rem 0.6rem", borderRadius: 7, outline: "none" };
+  const inp: React.CSSProperties = { boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.88rem", padding: "0.45rem 0.6rem", borderRadius: 7, outline: "none" };
 
   return (
     <div data-testid="op-streams" style={{ marginTop: "1.1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0 0 0.55rem" }}>
         <span style={monoLabel({ fontSize: "0.7rem" })}>STREAMS</span>
         <span style={{ color: "#9146ff", display: "inline-flex" }}><Ic name="stream" size={13} sw={1.7} /></span>
-        {streams.length > 0 && <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{streams.length}</span>}
+        {streams.length > 0 && <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)" }}>{streams.length}</span>}
       </div>
 
       {streams.length === 0 ? (
-        <p style={{ margin: "0 0 0.5rem", color: "#7e92a4", fontSize: "0.86rem" }}>Noch keine Streams. Streamst du diese Operation?</p>
+        <p style={{ margin: "0 0 0.5rem", color: "var(--dim2)", fontSize: "0.86rem" }}>Noch keine Streams. Streamst du diese Operation?</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.5rem" }}>
           {streams.map((s) => {
@@ -1483,11 +1483,11 @@ function StreamsSection({
             return (
               <div key={s.id} data-testid={`op-stream-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.55rem" }}>
                 <span style={{ color: m.color, display: "inline-flex", flexShrink: 0 }}><Ic name={m.icon} size={15} sw={1.7} /></span>
-                <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "#eaf4fb", textDecoration: "none", fontSize: "0.9rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {s.label || m.label}{s.username ? <span style={{ color: "#5b6b7a" }}> · {s.username}</span> : null} <span style={{ color: "#00d4ff" }}>↗</span>
+                <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "var(--text-hi)", textDecoration: "none", fontSize: "0.9rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {s.label || m.label}{s.username ? <span style={{ color: "var(--dim3)" }}> · {s.username}</span> : null} <span style={{ color: "var(--cyan)" }}>↗</span>
                 </a>
                 {canDelete && (
-                  <button type="button" data-testid={`op-stream-del-${s.id}`} title="Entfernen" onClick={() => del(s.id)} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                  <button type="button" data-testid={`op-stream-del-${s.id}`} title="Entfernen" onClick={() => del(s.id)} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                     <Ic name="x" size={12} sw={2} />
                   </button>
                 )}
@@ -1507,14 +1507,14 @@ function StreamsSection({
           </select>
           <input data-testid="op-stream-url" type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://twitch.tv/…" style={{ ...inp, flex: "1 1 200px" }} />
           <input data-testid="op-stream-label" type="text" maxLength={80} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Label (optional)" style={{ ...inp, flex: "1 1 130px" }} />
-          <button type="button" data-testid="op-stream-add" disabled={busy || !url.trim()} onClick={add} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.12)", color: "#00ff88", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>
+          <button type="button" data-testid="op-stream-add" disabled={busy || !url.trim()} onClick={add} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid rgba(91, 185, 138,0.45)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>
             <Ic name="check" size={13} sw={1.8} /> Hinzufügen
           </button>
-          <button type="button" onClick={() => { setOpen(false); setErr(null); }} style={{ flexShrink: 0, padding: "0.45rem 0.7rem", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
-          {err && <span style={{ flexBasis: "100%", color: "#ff7a7a", fontSize: "0.78rem" }}>{err}</span>}
+          <button type="button" onClick={() => { setOpen(false); setErr(null); }} style={{ flexShrink: 0, padding: "0.45rem 0.7rem", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
+          {err && <span style={{ flexBasis: "100%", color: "var(--red)", fontSize: "0.78rem" }}>{err}</span>}
         </div>
       ) : (
-        <button type="button" data-testid="op-stream-open" onClick={() => setOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: "1px solid rgba(0,212,255,0.35)", background: "rgba(0,212,255,0.06)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>
+        <button type="button" data-testid="op-stream-open" onClick={() => setOpen(true)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.06)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>
           <Ic name="stream" size={13} sw={1.7} /> Ich streame das
         </button>
       ))}

@@ -38,10 +38,10 @@ import { SaveDot, useFieldSave } from "./fieldSave";
 const MONO = "var(--mono)";
 
 const LANES = [
-  { type: "ship", label: "SCHIFFE & CREW", icon: "ship", accent: "#00d4ff", rgb: "0,212,255" },
-  { type: "fighter", label: "JÄGER", icon: "fighter", accent: "#a78bfa", rgb: "167,139,250" },
-  { type: "squad", label: "BODENTRUPPEN", icon: "fps", accent: "#f0a500", rgb: "240,165,0" },
-  { type: "vehicle", label: "FAHRZEUGE", icon: "vehicle", accent: "#ff7a45", rgb: "255,122,69" },
+  { type: "ship", label: "SCHIFFE & CREW", icon: "ship", accent: "var(--cyan)", rgb: "118, 130, 141" },
+  { type: "fighter", label: "JÄGER", icon: "fighter", accent: "var(--purple)", rgb: "167,139,250" },
+  { type: "squad", label: "BODENTRUPPEN", icon: "fps", accent: "var(--gold)", rgb: "240,165,0" },
+  { type: "vehicle", label: "FAHRZEUGE", icon: "vehicle", accent: "var(--orange)", rgb: "255,122,69" },
 ] as const;
 
 // Board lane for a unit. Fighter-class ships get their own lane (the user wants
@@ -52,13 +52,13 @@ function laneOf(u: FleetUnit): string {
   return u.unitType;
 }
 
-const card: React.CSSProperties = { border: "1px solid rgba(0,212,255,0.13)", borderRadius: 14, background: "#090f18", padding: "1.1rem 1.2rem" };
-const railLabel: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
-const opActBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, width: "100%", justifyContent: "flex-start", padding: "0.6rem 0.8rem", fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.03em", borderRadius: 8, cursor: "pointer", border: "1px solid rgba(0,212,255,0.18)", background: "rgba(0,212,255,0.04)", color: "#c2d2de", textDecoration: "none" };
+const card: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", padding: "1.1rem 1.2rem" };
+const railLabel: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
+const opActBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, width: "100%", justifyContent: "flex-start", padding: "0.6rem 0.8rem", fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.03em", borderRadius: 8, cursor: "pointer", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", color: "var(--text)", textDecoration: "none" };
 const panelHead = (icon: string, color: string, label: string, right?: ReactNode) => (
   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.8rem" }}>
     <span style={{ color, display: "inline-flex" }}><Ic name={icon} size={15} /></span>
-    <span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.1em", color: color === "#f0a500" ? "#f0a500" : "#9fb1c2" }}>{label}</span>
+    <span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.1em", color: color === "var(--gold)" ? "var(--gold)" : "var(--dim)" }}>{label}</span>
     {right}
   </div>
 );
@@ -255,7 +255,7 @@ export function OperatorPanel({
       value={value}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => onPick(e.target.value)}
-      style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.18)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+      style={{ minWidth: 0, maxWidth: "100%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
     >
       <option value="">— kein Bedarf —</option>
       {reqChoices(u).map((r) => (
@@ -268,7 +268,7 @@ export function OperatorPanel({
   const opSeatRow = (u: FleetUnit, s: FleetUnit["seats"][number]) => {
     const isTarget = (!!placing || !!dragUserId) && !s.claimedBy && s.active;
     return (
-      <div key={s.id} style={{ border: isTarget ? "1px solid rgba(0,255,136,0.55)" : "1px solid rgba(0,212,255,0.06)", borderRadius: 9, overflow: "hidden", opacity: s.active ? 1 : 0.55, transition: "border-color .12s" }}>
+      <div key={s.id} style={{ border: isTarget ? "1px solid rgba(91, 185, 138,0.55)" : "1px solid rgba(43, 49, 53, 0.06)", borderRadius: 9, overflow: "hidden", opacity: s.active ? 1 : 0.55, transition: "border-color .12s" }}>
         <div
           data-testid={!s.claimedBy && s.active ? `op-target-${s.id}` : undefined}
           onClick={() => {
@@ -299,10 +299,10 @@ export function OperatorPanel({
             background: "rgba(255,255,255,0.013)",
             minWidth: 0,
             cursor: s.claimedBy ? "default" : "pointer",
-            boxShadow: isTarget ? "0 0 0 1px rgba(0,255,136,0.5)" : "none",
+            boxShadow: isTarget ? "0 0 0 1px rgba(91, 185, 138,0.5)" : "none",
           }}
         >
-          <span style={{ width: 28, height: 28, borderRadius: 7, background: "#0e1926", border: "1px solid rgba(255,255,255,0.06)", color: "#9fb1c2", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 7, background: "var(--bg3)", border: "1px solid rgba(255,255,255,0.06)", color: "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Ic name={seatIcon(u, s.order)} size={15} sw={1.6} />
           </span>
           <input
@@ -317,33 +317,33 @@ export function OperatorPanel({
           />
           <span onClick={(e) => e.stopPropagation()}><SaveDot id={`seat-${s.id}`} /></span>
           {!s.claimedBy && (
-            <button type="button" data-testid={`op-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, active: !x.active })), () => patchSeat(op.id, s.id, csrf, { active: !s.active })); }} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(0,255,136,0.4)", background: s.active ? "transparent" : "rgba(0,255,136,0.08)", color: s.active ? "#7e92a4" : "#00ff88" }}>{s.active ? "AUS" : "AN"}</button>
+            <button type="button" data-testid={`op-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, active: !x.active })), () => patchSeat(op.id, s.id, csrf, { active: !s.active })); }} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(91, 185, 138,0.4)", background: s.active ? "transparent" : "rgba(91, 185, 138,0.08)", color: s.active ? "var(--dim2)" : "var(--green)" }}>{s.active ? "AUS" : "AN"}</button>
           )}
           {s.claimedBy ? (
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
               <Avatar name={s.claimedBy.username} />
-              <span style={{ fontSize: "0.8rem", color: "#ccdde8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "6.5rem" }}>{s.claimedBy.username}</span>
+              <span style={{ fontSize: "0.8rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "6.5rem" }}>{s.claimedBy.username}</span>
               {s.order !== 0 && (
-                <button type="button" data-testid={`op-free-${s.id}`} title="Platz freigeben" onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, claimedBy: null })), () => unassignSeat(op.id, s.id, csrf)); }} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#7e92a4", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button type="button" data-testid={`op-free-${s.id}`} title="Platz freigeben" onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, claimedBy: null })), () => unassignSeat(op.id, s.id, csrf)); }} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "var(--dim2)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={11} sw={2} />
                 </button>
               )}
             </div>
           ) : isTarget ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "#00ff88", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.05em" }}>HIER <Ic name="arrow" size={13} sw={1.9} /></span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "var(--green)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.05em" }}>HIER <Ic name="arrow" size={13} sw={1.9} /></span>
           ) : (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "#00d4ff", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.03em" }}><Ic name="plus" size={13} sw={1.9} /> Einteilen</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "var(--cyan)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.03em" }}><Ic name="plus" size={13} sw={1.9} /> Einteilen</span>
           )}
         </div>
         {picker === s.id && !s.claimedBy && !placing && (
-          <div style={{ borderTop: "1px solid rgba(0,212,255,0.12)", padding: "0.6rem", display: "flex", flexDirection: "column", gap: "0.35rem", background: "#0a121c" }}>
-            <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>WER SOLL HIER REIN?</div>
-            {flexPeople.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.78rem" }}>Keine flexiblen Anmeldungen.</div>}
+          <div style={{ borderTop: "1px solid var(--border)", padding: "0.6rem", display: "flex", flexDirection: "column", gap: "0.35rem", background: "var(--bg2)" }}>
+            <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim)" }}>WER SOLL HIER REIN?</div>
+            {flexPeople.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.78rem" }}>Keine flexiblen Anmeldungen.</div>}
             {flexPeople.map((r) => (
-              <button key={r.userId} type="button" data-testid={`op-pick-${r.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, r.userId, r.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.28)", background: "rgba(240,165,0,0.05)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+              <button key={r.userId} type="button" data-testid={`op-pick-${r.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, r.userId, r.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(217, 169, 78,0.28)", background: "rgba(217, 169, 78,0.05)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
                 <Avatar name={r.username} />
-                <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{r.username}</span>
-                <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#f0a500" }}>FLEX</span>
+                <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{r.username}</span>
+                <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--gold)" }}>FLEX</span>
               </button>
             ))}
             {/* assign ANY guild member (e.g. someone who confirmed by phone) */}
@@ -355,22 +355,22 @@ export function OperatorPanel({
                 onClick={(e) => e.stopPropagation()}
                 onChange={(e) => setMemberFilter(e.target.value)}
                 placeholder="Person suchen (auch Partner-Discord)…"
-                style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
+                style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
               />
               {memberFilter.trim() && (members ?? [])
                 .filter((m) => m.username.toLowerCase().includes(memberFilter.trim().toLowerCase()))
                 .slice(0, 8)
                 .map((m) => (
-                  <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, m.userId, m.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
+                  <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, m.userId, m.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
                     <Avatar name={m.username} />
-                    <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
+                    <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{m.username}</span>
                     {/* Partner-guild members are labelled with their org so the
                         operator never mistakes them for their own crew. */}
-                    <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: m.isHost ? "#00d4ff" : "#f0a500" }}>{m.isHost ? "MITGLIED" : (m.guildName || "PARTNER").toUpperCase()}</span>
+                    <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: m.isHost ? "var(--cyan)" : "var(--gold)" }}>{m.isHost ? "MITGLIED" : (m.guildName || "PARTNER").toUpperCase()}</span>
                   </button>
                 ))}
             </div>
-            <button type="button" onClick={(e) => { e.stopPropagation(); setPicker(null); }} style={{ padding: "0.4rem 0.6rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 7, cursor: "pointer" }}>Schließen</button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setPicker(null); }} style={{ padding: "0.4rem 0.6rem", border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 7, cursor: "pointer" }}>Schließen</button>
           </div>
         )}
       </div>
@@ -379,11 +379,11 @@ export function OperatorPanel({
 
   // ── panels (shared between layouts) ──────────────────────────
   const flexPanel = (
-    <section style={{ ...card, border: "1px solid rgba(240,165,0,0.22)" }}>
-      {panelHead("swap", "#f0a500", "FLEXIBEL", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{flexWaiting} wartet</span>)}
+    <section style={{ ...card, border: "1px solid rgba(217, 169, 78,0.22)" }}>
+      {panelHead("swap", "var(--gold)", "FLEXIBEL", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim3)" }}>{flexWaiting} wartet</span>)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {flexPeople.length === 0 ? (
-          <div style={{ padding: "0.7rem", textAlign: "center", color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Alle eingeteilt ✓</div>
+          <div style={{ padding: "0.7rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Alle eingeteilt ✓</div>
         ) : (
           flexPeople.map((r) => {
             const isPlacing = placing?.userId === r.userId;
@@ -393,14 +393,14 @@ export function OperatorPanel({
                 draggable
                 onDragStart={(e) => { setDragUserId(r.userId); setPlacing(null); setPicker(null); try { e.dataTransfer.setData("text/plain", r.userId); e.dataTransfer.effectAllowed = "move"; } catch { /* noop */ } }}
                 onDragEnd={() => setDragUserId(null)}
-                style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "grab", opacity: dragUserId === r.userId ? 0.45 : 1, border: isPlacing ? "1px solid rgba(240,165,0,0.6)" : "1px solid rgba(255,255,255,0.06)", background: isPlacing ? "rgba(240,165,0,0.08)" : "transparent" }}
+                style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "grab", opacity: dragUserId === r.userId ? 0.45 : 1, border: isPlacing ? "1px solid rgba(217, 169, 78,0.6)" : "1px solid rgba(255,255,255,0.06)", background: isPlacing ? "rgba(217, 169, 78,0.08)" : "transparent" }}
               >
                 <Avatar name={r.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <strong style={{ fontSize: "0.9rem", color: "#eaf4fb" }}>{r.username}</strong>
-                  {r.note && <div style={{ color: "#7e92a4", fontSize: "0.76rem", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.note}</div>}
+                  <strong style={{ fontSize: "0.9rem", color: "var(--text-hi)" }}>{r.username}</strong>
+                  {r.note && <div style={{ color: "var(--dim2)", fontSize: "0.76rem", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.note}</div>}
                 </div>
-                <button type="button" data-testid={`op-place-${r.userId}`} onClick={() => setPlacing(isPlacing ? null : { userId: r.userId, name: r.username })} style={{ flexShrink: 0, padding: "0.38rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.03em", border: isPlacing ? "1px solid rgba(255,68,68,0.45)" : "1px solid rgba(240,165,0,0.45)", background: isPlacing ? "rgba(255,68,68,0.08)" : "rgba(240,165,0,0.1)", color: isPlacing ? "#ff6b6b" : "#f0a500" }}>
+                <button type="button" data-testid={`op-place-${r.userId}`} onClick={() => setPlacing(isPlacing ? null : { userId: r.userId, name: r.username })} style={{ flexShrink: 0, padding: "0.38rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.03em", border: isPlacing ? "1px solid rgba(228, 115, 106,0.45)" : "1px solid rgba(217, 169, 78,0.45)", background: isPlacing ? "rgba(228, 115, 106,0.08)" : "rgba(217, 169, 78,0.1)", color: isPlacing ? "var(--red)" : "var(--gold)" }}>
                   {isPlacing ? "Abbrechen" : "Einteilen"}
                 </button>
               </div>
@@ -417,24 +417,24 @@ export function OperatorPanel({
   const interests = view.eventInterests;
   const interestUnknown = interests.filter((e) => !e.userId).length;
   const interestPanel = interests.length > 0 && (
-    <section style={{ ...card, border: "1px solid rgba(88,166,255,0.22)" }} data-testid="interest-panel">
-      {panelHead("users", "#58a6ff", "EVENT-INTERESSE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.62rem", color: "#5b6b7a" }}>{interests.length - interestUnknown} verknüpft · {interestUnknown} unbekannt</span>)}
+    <section style={{ ...card, border: "1px solid rgba(121, 174, 220,0.22)" }} data-testid="interest-panel">
+      {panelHead("users", "var(--info)", "EVENT-INTERESSE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)" }}>{interests.length - interestUnknown} verknüpft · {interestUnknown} unbekannt</span>)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.45rem" }}>
         {interests.map((e) => {
           const isPlacing = !!e.userId && placing?.userId === e.userId;
           return (
-            <div key={e.id} data-testid={`interest-${e.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", borderRadius: 9, border: isPlacing ? "1px solid rgba(88,166,255,0.6)" : "1px solid rgba(255,255,255,0.06)", background: isPlacing ? "rgba(88,166,255,0.08)" : "transparent" }}>
+            <div key={e.id} data-testid={`interest-${e.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", borderRadius: 9, border: isPlacing ? "1px solid rgba(121, 174, 220,0.6)" : "1px solid rgba(255,255,255,0.06)", background: isPlacing ? "rgba(121, 174, 220,0.08)" : "transparent" }}>
               <Avatar name={e.displayName} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <strong style={{ fontSize: "0.88rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>{e.displayName}</strong>
-                {!e.userId && <div style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#7e92a4", marginTop: 1 }}>nicht verknüpft · muss sich einmal anmelden</div>}
+                <strong style={{ fontSize: "0.88rem", color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>{e.displayName}</strong>
+                {!e.userId && <div style={{ fontFamily: MONO, fontSize: "0.58rem", color: "var(--dim2)", marginTop: 1 }}>nicht verknüpft · muss sich einmal anmelden</div>}
               </div>
               {e.seated ? (
-                <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, fontFamily: MONO, fontSize: "0.64rem", color: "#00ff88" }}><Ic name="check" size={12} sw={2} /> eingeteilt</span>
+                <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, fontFamily: MONO, fontSize: "0.64rem", color: "var(--green)" }}><Ic name="check" size={12} sw={2} /> eingeteilt</span>
               ) : e.userId ? (
-                <button type="button" data-testid={`interest-place-${e.id}`} onClick={() => setPlacing(isPlacing ? null : { userId: e.userId!, name: e.displayName })} style={{ flexShrink: 0, padding: "0.34rem 0.65rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem", border: isPlacing ? "1px solid rgba(255,68,68,0.45)" : "1px solid rgba(88,166,255,0.45)", background: isPlacing ? "rgba(255,68,68,0.08)" : "rgba(88,166,255,0.1)", color: isPlacing ? "#ff6b6b" : "#58a6ff" }}>{isPlacing ? "Abbrechen" : "Einteilen"}</button>
+                <button type="button" data-testid={`interest-place-${e.id}`} onClick={() => setPlacing(isPlacing ? null : { userId: e.userId!, name: e.displayName })} style={{ flexShrink: 0, padding: "0.34rem 0.65rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem", border: isPlacing ? "1px solid rgba(228, 115, 106,0.45)" : "1px solid rgba(121, 174, 220,0.45)", background: isPlacing ? "rgba(228, 115, 106,0.08)" : "rgba(121, 174, 220,0.1)", color: isPlacing ? "var(--red)" : "var(--info)" }}>{isPlacing ? "Abbrechen" : "Einteilen"}</button>
               ) : (
-                <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a", border: "1px solid rgba(255,255,255,0.1)", padding: "0.18rem 0.42rem", borderRadius: 5 }}>UNBEKANNT</span>
+                <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim3)", border: "1px solid rgba(255,255,255,0.1)", padding: "0.18rem 0.42rem", borderRadius: 5 }}>UNBEKANNT</span>
               )}
             </div>
           );
@@ -445,7 +445,7 @@ export function OperatorPanel({
 
   const needsPanel = (
     <section style={card}>
-      {panelHead("alert", "#00d4ff", "OFFENE BEDARFE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "#5b6b7a" }}>{open} offen</span>)}
+      {panelHead("alert", "var(--cyan)", "OFFENE BEDARFE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim3)" }}>{open} offen</span>)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.42rem" }}>
         {lanes.flatMap((lane) =>
           lane.units
@@ -455,36 +455,36 @@ export function OperatorPanel({
               <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.45rem 0.55rem", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: 2, background: lane.accent, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "0.85rem", color: "#dce8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
-                  <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.04em", color: "#5b6b7a", marginTop: 1 }}>{lane.label}</div>
+                  <div style={{ fontSize: "0.85rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
+                  <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.04em", color: "var(--dim3)", marginTop: 1 }}>{lane.label}</div>
                 </div>
-                <span style={{ fontFamily: MONO, fontSize: "0.9rem", color: "#f0a500", flexShrink: 0 }}>{openN}</span>
+                <span style={{ fontFamily: MONO, fontSize: "0.9rem", color: "var(--gold)", flexShrink: 0 }}>{openN}</span>
               </div>
             )),
         )}
-        {open === 0 && <div style={{ padding: "0.5rem", color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Keine offenen Plätze ✓</div>}
+        {open === 0 && <div style={{ padding: "0.5rem", color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Keine offenen Plätze ✓</div>}
       </div>
     </section>
   );
 
   const qaPanel = (
     <section style={card}>
-      {panelHead("chat", "#00d4ff", "FRAGEN", openQ > 0 ? <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.58rem", color: "#f0a500", border: "1px solid rgba(240,165,0,0.4)", background: "rgba(240,165,0,0.08)", padding: "0.08rem 0.4rem", borderRadius: 10 }}>{openQ} offen</span> : undefined)}
+      {panelHead("chat", "var(--cyan)", "FRAGEN", openQ > 0 ? <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.58rem", color: "var(--gold)", border: "1px solid rgba(217, 169, 78,0.4)", background: "rgba(217, 169, 78,0.08)", padding: "0.08rem 0.4rem", borderRadius: 10 }}>{openQ} offen</span> : undefined)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-        {view.questions.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Keine Fragen.</div>}
+        {view.questions.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Keine Fragen.</div>}
         {view.questions.map((q) => (
           <div key={q.id} style={{ border: "1px solid rgba(255,255,255,0.06)", borderRadius: 9, padding: "0.6rem 0.65rem" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.4rem" }}><Avatar name={q.asker} /><strong style={{ fontSize: "0.82rem", color: "#eaf4fb" }}>{q.asker}</strong></div>
-            <div style={{ color: "#c2d2de", fontSize: "0.84rem", lineHeight: 1.42, marginBottom: "0.5rem" }}>{q.body}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.4rem" }}><Avatar name={q.asker} /><strong style={{ fontSize: "0.82rem", color: "var(--text-hi)" }}>{q.asker}</strong></div>
+            <div style={{ color: "var(--text)", fontSize: "0.84rem", lineHeight: 1.42, marginBottom: "0.5rem" }}>{q.body}</div>
             {q.answer ? (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.45rem", padding: "0.45rem 0.55rem", border: "1px solid rgba(0,255,136,0.28)", background: "rgba(0,255,136,0.05)", borderRadius: 8 }}>
-                <span style={{ color: "#00ff88", display: "inline-flex", flexShrink: 0, marginTop: 2 }}><Ic name="check" size={13} sw={2} /></span>
-                <div style={{ minWidth: 0 }}><span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#00ff88" }}>{q.answeredBy ?? ""}</span><div style={{ color: "#c2d2de", fontSize: "0.82rem", lineHeight: 1.4 }}>{q.answer}</div></div>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.45rem", padding: "0.45rem 0.55rem", border: "1px solid rgba(91, 185, 138,0.28)", background: "rgba(91, 185, 138,0.05)", borderRadius: 8 }}>
+                <span style={{ color: "var(--green)", display: "inline-flex", flexShrink: 0, marginTop: 2 }}><Ic name="check" size={13} sw={2} /></span>
+                <div style={{ minWidth: 0 }}><span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--green)" }}>{q.answeredBy ?? ""}</span><div style={{ color: "var(--text)", fontSize: "0.82rem", lineHeight: 1.4 }}>{q.answer}</div></div>
               </div>
             ) : (
               <div style={{ display: "flex", gap: "0.4rem", alignItems: "flex-end" }}>
-                <textarea value={drafts[q.id] ?? ""} data-testid={`answer-input-${q.id}`} onChange={(e) => setDrafts((d) => ({ ...d, [q.id]: e.target.value }))} placeholder="Antwort…" style={{ flex: 1, minWidth: 0, minHeight: 36, background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.84rem", padding: "0.42rem 0.55rem", borderRadius: 8, outline: "none", resize: "vertical" }} />
-                <button type="button" data-testid={`answer-send-${q.id}`} disabled={!(drafts[q.id] ?? "").trim()} onClick={() => run(() => answerQuestion(op.id, q.id, drafts[q.id].trim(), csrf))} style={{ flexShrink: 0, padding: "0.5rem 0.65rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.12)", color: "#00ff88", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 8, cursor: "pointer" }}>Senden</button>
+                <textarea value={drafts[q.id] ?? ""} data-testid={`answer-input-${q.id}`} onChange={(e) => setDrafts((d) => ({ ...d, [q.id]: e.target.value }))} placeholder="Antwort…" style={{ flex: 1, minWidth: 0, minHeight: 36, background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.84rem", padding: "0.42rem 0.55rem", borderRadius: 8, outline: "none", resize: "vertical" }} />
+                <button type="button" data-testid={`answer-send-${q.id}`} disabled={!(drafts[q.id] ?? "").trim()} onClick={() => run(() => answerQuestion(op.id, q.id, drafts[q.id].trim(), csrf))} style={{ flexShrink: 0, padding: "0.5rem 0.65rem", border: "1px solid rgba(91, 185, 138,0.45)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 8, cursor: "pointer" }}>Senden</button>
               </div>
             )}
           </div>
@@ -508,27 +508,27 @@ export function OperatorPanel({
   const fillRingCard = (
     <section style={card}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.9rem", marginBottom: bars.length ? "1rem" : 0 }}>
-        <div style={{ width: 88, height: 88, borderRadius: "50%", flexShrink: 0, position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `conic-gradient(#00ff88 ${fillPct * 3.6}deg, #0e1926 ${fillPct * 3.6}deg)` }}>
-          <div style={{ position: "absolute", inset: 7, borderRadius: "50%", background: "#090f18", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontFamily: MONO, fontSize: "1.1rem", color: "#eaf4fb", lineHeight: 1 }}>{fillPct}%</span>
-            <span style={{ fontFamily: MONO, fontSize: "0.48rem", letterSpacing: "0.1em", color: "#5b6b7a" }}>VOLL</span>
+        <div style={{ width: 88, height: 88, borderRadius: "50%", flexShrink: 0, position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center", background: `conic-gradient(var(--green) ${fillPct * 3.6}deg, var(--bg3) ${fillPct * 3.6}deg)` }}>
+          <div style={{ position: "absolute", inset: 7, borderRadius: "50%", background: "var(--bg2)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontFamily: MONO, fontSize: "1.1rem", color: "var(--text-hi)", lineHeight: 1 }}>{fillPct}%</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.48rem", letterSpacing: "0.1em", color: "var(--dim3)" }}>VOLL</span>
           </div>
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid rgba(0,255,136,0.4)", color: "#00ff88", background: "rgba(0,255,136,0.08)", fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.08em", padding: "0.16rem 0.45rem", borderRadius: 4, textTransform: "uppercase" }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00ff88", boxShadow: "0 0 6px #00ff88" }} />{op.status}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, border: "1px solid rgba(91, 185, 138,0.4)", color: "var(--green)", background: "rgba(91, 185, 138,0.08)", fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.08em", padding: "0.16rem 0.45rem", borderRadius: 4, textTransform: "uppercase" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)", boxShadow: "0 0 6px var(--green)" }} />{op.status}
           </span>
-          <div style={{ fontWeight: 700, fontSize: "1rem", color: "#eaf4fb", marginTop: "0.4rem", lineHeight: 1.1 }}>{filled} / {total} Plätze</div>
-          <div style={{ color: "#7e92a4", fontSize: "0.76rem", marginTop: 1 }}>{open} offen · {flexWaiting} flexibel</div>
+          <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--text-hi)", marginTop: "0.4rem", lineHeight: 1.1 }}>{filled} / {total} Plätze</div>
+          <div style={{ color: "var(--dim2)", fontSize: "0.76rem", marginTop: 1 }}>{open} offen · {flexWaiting} flexibel</div>
         </div>
       </div>
       {bars.map((b) => (
         <div key={b.label} style={{ marginTop: "0.6rem" }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.28rem" }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.78rem", color: "#c2d2de" }}><span style={{ width: 8, height: 8, borderRadius: 2, background: b.accent }} />{b.label}</span>
-            <span style={{ fontFamily: MONO, fontSize: "0.74rem", color: "#9fb1c2" }}>{b.f}/{b.t}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.78rem", color: "var(--text)" }}><span style={{ width: 8, height: 8, borderRadius: 2, background: b.accent }} />{b.label}</span>
+            <span style={{ fontFamily: MONO, fontSize: "0.74rem", color: "var(--dim)" }}>{b.f}/{b.t}</span>
           </div>
-          <div style={{ height: 5, borderRadius: 4, background: "#0e1926", overflow: "hidden" }}><div style={{ height: "100%", width: `${b.pct}%`, background: b.accent, borderRadius: 4 }} /></div>
+          <div style={{ height: 5, borderRadius: 4, background: "var(--bg3)", overflow: "hidden" }}><div style={{ height: "100%", width: `${b.pct}%`, background: b.accent, borderRadius: 4 }} /></div>
         </div>
       ))}
     </section>
@@ -549,22 +549,22 @@ export function OperatorPanel({
       <div style={{ display: "flex", alignItems: "center", marginBottom: "0.7rem" }}>
         <span style={railLabel as React.CSSProperties}>LEITUNG</span>
         {canManageLeaders && (
-          <button type="button" data-testid="leader-add-toggle" onClick={() => setLeaderPick((v) => !v)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid rgba(0,212,255,0.28)", background: "rgba(0,212,255,0.05)", color: "#00d4ff", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}>
+          <button type="button" data-testid="leader-add-toggle" onClick={() => setLeaderPick((v) => !v)} style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.05)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}>
             <Ic name="plus" size={12} sw={2} /> Leiter
           </button>
         )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-        {op.leaders.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>Keine Leiter ernannt.</div>}
+        {op.leaders.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.8rem" }}>Keine Leiter ernannt.</div>}
         {op.leaders.map((l) => (
           <div key={l.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Avatar name={l.username} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "0.85rem", color: "#eaf4fb" }}>{l.username}</div>
-              <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.04em", color: "#5b6b7a" }}>Leitung</div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-hi)" }}>{l.username}</div>
+              <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.04em", color: "var(--dim3)" }}>Leitung</div>
             </div>
             {canManageLeaders && (
-              <button type="button" data-testid={`leader-remove-${l.id}`} title="Leiter entfernen" onClick={() => run(() => removeLeader(op.id, l.id, csrf))} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "#7e92a4", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button type="button" data-testid={`leader-remove-${l.id}`} title="Leiter entfernen" onClick={() => run(() => removeLeader(op.id, l.id, csrf))} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "var(--dim2)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Ic name="x" size={11} sw={2} />
               </button>
             )}
@@ -573,14 +573,14 @@ export function OperatorPanel({
       </div>
       {canManageLeaders && leaderPick && (
         <div style={{ marginTop: "0.7rem", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.6rem", display: "flex", flexDirection: "column", gap: "0.35rem" }}>
-          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2" }}>TEILNEHMER ERNENNEN</div>
+          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim)" }}>TEILNEHMER ERNENNEN</div>
           {leaderCandidates.length === 0 ? (
-            <div style={{ color: "#5b6b7a", fontSize: "0.78rem" }}>Keine geeigneten Teilnehmer.</div>
+            <div style={{ color: "var(--dim3)", fontSize: "0.78rem" }}>Keine geeigneten Teilnehmer.</div>
           ) : (
             leaderCandidates.map((c) => (
-              <button key={c.id} type="button" data-testid={`leader-cand-${c.id}`} onClick={() => run(() => addLeader(op.id, c.id, csrf))} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+              <button key={c.id} type="button" data-testid={`leader-cand-${c.id}`} onClick={() => run(() => addLeader(op.id, c.id, csrf))} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
                 <Avatar name={c.username} />
-                <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{c.username}</span>
+                <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{c.username}</span>
                 <Ic name="plus" size={13} sw={2} />
               </button>
             ))
@@ -594,22 +594,22 @@ export function OperatorPanel({
   // in its own seat 0) at the chosen Bedarf; "✕" rejects. (Dropping a unit onto a
   // single seat is meaningless here — flex persons cover seat drag-and-drop.)
   const pendingBlock = pendingUnits.length > 0 && (
-    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="pending-block">
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(217, 169, 78,0.22)" }} data-testid="pending-block">
       <div style={railLabel}>ANSTEHENDE EINHEITEN ({pendingUnits.length})</div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {pendingUnits.map((u) => {
           const sel = acceptReq[u.id] ?? suggestReqId(u);
           return (
-          <div key={u.id} data-testid={`pending-${u.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", padding: "0.6rem 0.7rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(240,165,0,0.16)", borderRadius: 9 }}>
-            <span style={{ flex: "1 1 160px", minWidth: 0, color: "#eaf4fb", fontWeight: 600 }}>{u.name} <span style={{ color: "#7e92a4", fontWeight: 400, fontSize: "0.84rem" }}>· {u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</span></span>
+          <div key={u.id} data-testid={`pending-${u.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", padding: "0.6rem 0.7rem", background: "rgba(255,255,255,0.013)", border: "1px solid rgba(217, 169, 78,0.16)", borderRadius: 9 }}>
+            <span style={{ flex: "1 1 160px", minWidth: 0, color: "var(--text-hi)", fontWeight: 600 }}>{u.name} <span style={{ color: "var(--dim2)", fontWeight: 400, fontSize: "0.84rem" }}>· {u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</span></span>
             {requirements.length > 0 && (
-              <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem", color: "var(--dim)", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
                 BEDARF
                 {reqSelect(u, sel, (id) => setAcceptReq((m) => ({ ...m, [u.id]: id })), `unit-bedarf-${u.id}`)}
               </label>
             )}
-            <button type="button" data-testid={`accept-${u.id}`} onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.7rem", border: "1px solid rgba(0,255,136,0.45)", background: "rgba(0,255,136,0.1)", color: "#00ff88", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
-            <button type="button" data-testid={`reject-${u.id}`} title="Ablehnen" onClick={() => run(() => decideUnit(op.id, u.id, "reject", csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
+            <button type="button" data-testid={`accept-${u.id}`} onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.7rem", border: "1px solid rgba(91, 185, 138,0.45)", background: "rgba(91, 185, 138,0.1)", color: "var(--green)", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
+            <button type="button" data-testid={`reject-${u.id}`} title="Ablehnen" onClick={() => run(() => decideUnit(op.id, u.id, "reject", csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
             <SaveDot id={`pending-${u.id}`} />
           </div>
           );
@@ -633,12 +633,12 @@ export function OperatorPanel({
   const parentSelect = (groupId: string, parentId: string | null | undefined, testid: string) =>
     verbaende.length > 0 && (
       <>
-        <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>VERBAND</span>
+        <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "var(--dim3)", flexShrink: 0 }}>VERBAND</span>
         <select
           data-testid={testid}
           value={parentId ?? ""}
           onChange={(e) => { const pid = e.target.value || null; viewAct(`parent-${groupId}`, () => setGroupParent(op.id, groupId, csrf, pid)); }}
-          style={{ flexShrink: 0, maxWidth: "34%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
+          style={{ flexShrink: 0, maxWidth: "34%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
         >
           <option value="">— kein Verband —</option>
           {verbaende.filter((f) => f.id !== groupId).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
@@ -655,7 +655,7 @@ export function OperatorPanel({
       title={isCaptain ? "Ist Captain (Slot 1)" : "Zum Captain machen (Slot 1)"}
       disabled={isCaptain}
       onClick={() => viewAct(`slot-${id}`, () => setMemberSlot(op.id, csrf, kind, id, 0))}
-      style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, padding: "0.18rem 0.4rem", border: `1px solid ${isCaptain ? "rgba(255,214,0,0.5)" : "rgba(255,255,255,0.14)"}`, background: isCaptain ? "rgba(255,214,0,0.12)" : "transparent", color: isCaptain ? "#ffd600" : "#7e92a4", fontFamily: MONO, fontSize: "0.56rem", borderRadius: 5, cursor: isCaptain ? "default" : "pointer" }}
+      style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, padding: "0.18rem 0.4rem", border: `1px solid ${isCaptain ? "rgba(217, 169, 78,0.5)" : "rgba(255,255,255,0.14)"}`, background: isCaptain ? "rgba(217, 169, 78,0.12)" : "transparent", color: isCaptain ? "var(--gold)" : "var(--dim2)", fontFamily: MONO, fontSize: "0.56rem", borderRadius: 5, cursor: isCaptain ? "default" : "pointer" }}
     >
       ★ {isCaptain ? "CAPTAIN" : "CPT"}
     </button>
@@ -665,7 +665,7 @@ export function OperatorPanel({
   const memberPicker = (groupId: string) => {
     const alreadyIn = new Set(cqbSoldiers.filter((s) => s.assignedGroupId === groupId).map((s) => s.username.toLowerCase()));
     return (
-      <div style={{ padding: "0.4rem 0.5rem", border: "1px solid rgba(240,165,0,0.25)", borderRadius: 8, background: "rgba(240,165,0,0.03)" }}>
+      <div style={{ padding: "0.4rem 0.5rem", border: "1px solid rgba(217, 169, 78,0.25)", borderRadius: 8, background: "rgba(217, 169, 78,0.03)" }}>
         <input
           type="search"
           autoFocus
@@ -673,7 +673,7 @@ export function OperatorPanel({
           value={addMemberFilter}
           onChange={(e) => setAddMemberFilter(e.target.value)}
           placeholder="Person suchen (z.B. Sitz-Insasse einer Trägerin)…"
-          style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.14)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
+          style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.8rem", padding: "0.35rem 0.5rem", borderRadius: 7, outline: "none", marginBottom: "0.35rem" }}
         />
         {addMemberFilter.trim() && (members ?? [])
           .filter((m) => m.username.toLowerCase().includes(addMemberFilter.trim().toLowerCase()))
@@ -681,11 +681,11 @@ export function OperatorPanel({
           .map((m) => {
             const inTeam = alreadyIn.has(m.username.toLowerCase());
             return (
-              <button key={m.userId} type="button" data-testid={`add-member-pick-${groupId}-${m.userId}`} disabled={inTeam} onClick={() => { setAddMemberTeam(null); setAddMemberFilter(""); run(() => addCqbTeamMember(op.id, groupId, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(240,165,0,0.22)", background: inTeam ? "transparent" : "rgba(240,165,0,0.05)", borderRadius: 7, cursor: inTeam ? "default" : "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem", opacity: inTeam ? 0.5 : 1 }}>
+              <button key={m.userId} type="button" data-testid={`add-member-pick-${groupId}-${m.userId}`} disabled={inTeam} onClick={() => { setAddMemberTeam(null); setAddMemberFilter(""); run(() => addCqbTeamMember(op.id, groupId, m.userId, csrf)); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(217, 169, 78,0.22)", background: inTeam ? "transparent" : "rgba(217, 169, 78,0.05)", borderRadius: 7, cursor: inTeam ? "default" : "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem", opacity: inTeam ? 0.5 : 1 }}>
                 <Avatar name={m.username} />
-                <span style={{ flex: 1, fontSize: "0.84rem", color: "#eaf4fb" }}>{m.username}</span>
-                {!m.isHost && <span style={{ fontFamily: MONO, fontSize: "0.55rem", color: "#7e92a4" }}>{(m.guildName || "PARTNER").toUpperCase()}</span>}
-                <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: inTeam ? "#5b6b7a" : "#f0a500" }}>{inTeam ? "DABEI" : "HINZUFÜGEN"}</span>
+                <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{m.username}</span>
+                {!m.isHost && <span style={{ fontFamily: MONO, fontSize: "0.55rem", color: "var(--dim2)" }}>{(m.guildName || "PARTNER").toUpperCase()}</span>}
+                <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: inTeam ? "var(--dim3)" : "var(--gold)" }}>{inTeam ? "DABEI" : "HINZUFÜGEN"}</span>
               </button>
             );
           })}
@@ -693,8 +693,8 @@ export function OperatorPanel({
     );
   };
   const cqbBlock = (cqbTeams.length > 0 || cqbSoldiers.length > 0) && (
-    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(240,165,0,0.22)" }} data-testid="cqb-block">
-      {panelHead("fps", "#f0a500", "CQB-TEAMS · SOLDATEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>)}
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(217, 169, 78,0.22)" }} data-testid="cqb-block">
+      {panelHead("fps", "var(--gold)", "CQB-TEAMS · SOLDATEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim3)" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>)}
       {/* FR-B6 rename + FR-B3 carrier: list teams (carrier dropdown when ships exist). */}
       {cqbTeams.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.9rem", paddingBottom: "0.8rem", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -714,13 +714,13 @@ export function OperatorPanel({
                   style={{ flex: 1, minWidth: 0, fontSize: "0.82rem" }}
                 />
                 <SaveDot id={`team-${tm.id}`} />
-                <button type="button" data-testid={`cqb-add-member-${tm.id}`} title="Person diesem Team zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : tm.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(240,165,0,0.6)" : "rgba(240,165,0,0.35)"}`, background: "rgba(240,165,0,0.08)", color: "#f0a500", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Person</button>
-                <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "#5b6b7a", flexShrink: 0 }}>FÄHRT IN</span>
+                <button type="button" data-testid={`cqb-add-member-${tm.id}`} title="Person diesem Team zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : tm.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(217, 169, 78,0.6)" : "rgba(217, 169, 78,0.35)"}`, background: "rgba(217, 169, 78,0.08)", color: "var(--gold)", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Person</button>
+                <span style={{ fontFamily: MONO, fontSize: "0.58rem", color: "var(--dim3)", flexShrink: 0 }}>FÄHRT IN</span>
                 <select
                   data-testid={`cqb-team-carrier-${tm.id}`}
                   value={tm.carrierUnitId ?? ""}
                   onChange={(e) => { const cu = e.target.value || null; viewAct(`team-${tm.id}`, () => assignCqbTeamCarrier(op.id, tm.id, csrf, cu), (vw) => ({ ...vw, cqbTeams: vw.cqbTeams.map((x) => (x.id === tm.id ? { ...x, carrierUnitId: cu } : x)) })); }}
-                  style={{ flexShrink: 0, maxWidth: "40%", background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
+                  style={{ flexShrink: 0, maxWidth: "40%", background: "var(--bg3)", border: "1px solid rgba(217, 169, 78,0.28)", color: "var(--text)", fontFamily: MONO, fontSize: "0.64rem", padding: "0.22rem 0.4rem", borderRadius: 6, outline: "none" }}
                 >
                   <option value="">— eigenständig —</option>
                   {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -734,17 +734,17 @@ export function OperatorPanel({
         </div>
       )}
       {cqbSoldiers.length === 0 ? (
-        <div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div>
+        <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {cqbSoldiers.map((s) => {
             const team = cqbTeams.find((t) => t.id === s.assignedGroupId);
             return (
-              <div key={s.id} data-testid={`cqb-soldier-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, border: `1px solid ${team ? "rgba(0,255,136,0.2)" : "rgba(240,165,0,0.2)"}`, background: team ? "rgba(0,255,136,0.04)" : "rgba(240,165,0,0.04)" }}>
+              <div key={s.id} data-testid={`cqb-soldier-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, border: `1px solid ${team ? "rgba(91, 185, 138,0.2)" : "rgba(217, 169, 78,0.2)"}`, background: team ? "rgba(91, 185, 138,0.04)" : "rgba(217, 169, 78,0.04)" }}>
                 <Avatar name={s.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <strong style={{ fontSize: "0.86rem", color: "#eaf4fb" }}>{s.username}</strong>
-                  {s.note && <div style={{ color: "#7e92a4", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.note}</div>}
+                  <strong style={{ fontSize: "0.86rem", color: "var(--text-hi)" }}>{s.username}</strong>
+                  {s.note && <div style={{ color: "var(--dim2)", fontSize: "0.74rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.note}</div>}
                 </div>
                 {team && captainButton("person", s.id, s.slotIndex === 0, `cqb-captain-${s.id}`)}
                 <LateArrival eta={s.lateEta} canEdit testid={`cqb-late-${s.id}`} onSet={(eta) => viewAct(`cqblate-${s.id}`, () => setCqbLateArrival(op.id, s.id, eta, csrf), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, lateEta: eta } : x)) }))} />
@@ -753,19 +753,19 @@ export function OperatorPanel({
                   data-testid={`cqb-assign-${s.id}`}
                   value={s.assignedGroupId ?? ""}
                   onChange={(e) => { const g = e.target.value || null; viewAct(`cqb-${s.id}`, () => assignCqbSoldier(op.id, s.id, csrf, g), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, assignedGroupId: g } : x)) })); }}
-                  style={{ flexShrink: 0, maxWidth: "50%", background: "#0e1926", border: "1px solid rgba(240,165,0,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                  style={{ flexShrink: 0, maxWidth: "50%", background: "var(--bg3)", border: "1px solid rgba(217, 169, 78,0.28)", color: "var(--text)", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                 >
                   <option value="">— kein Team —</option>
                   {cqbTeams.map((t) => <option key={t.id} value={t.id}>{t.name}{t.targetSize ? ` (${cqbSoldiers.filter((x) => x.assignedGroupId === t.id).length}/${t.targetSize})` : ""}</option>)}
                 </select>
-                <button type="button" data-testid={`cqb-remove-${s.id}`} title="Aus CQB entfernen" onClick={() => run(() => removeCqbSoldier(op.id, s.id, csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
+                <button type="button" data-testid={`cqb-remove-${s.id}`} title="Aus CQB entfernen" onClick={() => run(() => removeCqbSoldier(op.id, s.id, csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
               </div>
             );
           })}
         </div>
       )}
       {cqbTeams.length === 0 && cqbSoldiers.length > 0 && (
-        <p style={{ margin: "0.7rem 0 0", color: "#7e92a4", fontSize: "0.78rem" }}>Keine CQB-Teams definiert — lege unter „Bedarfe" CQB-Teams an, um Soldaten einzuteilen.</p>
+        <p style={{ margin: "0.7rem 0 0", color: "var(--dim2)", fontSize: "0.78rem" }}>Keine CQB-Teams definiert — lege unter „Bedarfe" CQB-Teams an, um Soldaten einzuteilen.</p>
       )}
     </section>
   );
@@ -774,8 +774,8 @@ export function OperatorPanel({
   // a fighter squad — mirrors CQB. Fighters with a ship bind via the board dropdown;
   // this manages the pilot roster + late-arrival.
   const fighterBlock = fighterFormations.length > 0 && (
-    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(167,139,250,0.22)" }} data-testid="fighter-block">
-      {panelHead("fighter", "#a78bfa", "JÄGER-STAFFELN · PILOTEN EINTEILEN", <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.6rem" }}><button type="button" data-testid="fighter-autofill" title="Alle noch nicht zugeteilten Jäger in die erste Staffel mit freiem Platz füllen" onClick={() => run(() => autoFillFighters(op.id, csrf))} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid rgba(167,139,250,0.4)", background: "rgba(167,139,250,0.1)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.6rem", borderRadius: 6, cursor: "pointer" }}><Ic name="swap" size={11} sw={2} /> Auto-Fill</button><span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{fighterFormations.length} Staffeln</span></span>)}
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(118, 130, 141,0.22)" }} data-testid="fighter-block">
+      {panelHead("fighter", "var(--purple)", "JÄGER-STAFFELN · PILOTEN EINTEILEN", <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.6rem" }}><button type="button" data-testid="fighter-autofill" title="Alle noch nicht zugeteilten Jäger in die erste Staffel mit freiem Platz füllen" onClick={() => run(() => autoFillFighters(op.id, csrf))} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid rgba(118, 130, 141,0.4)", background: "rgba(118, 130, 141,0.1)", color: "var(--purple)", fontFamily: MONO, fontSize: "0.6rem", borderRadius: 6, cursor: "pointer" }}><Ic name="swap" size={11} sw={2} /> Auto-Fill</button><span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim3)" }}>{fighterFormations.length} Staffeln</span></span>)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         {fighterFormations.map((sq) => {
           const mem = cqbSoldiers.filter((s) => s.assignedGroupId === sq.id);
@@ -785,31 +785,31 @@ export function OperatorPanel({
           return (
             <div key={sq.id} data-testid={`fighter-squad-op-${sq.id}`} style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={14} sw={1.7} /></span>
-                <strong style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: "#eaf4fb" }}>{sq.name}</strong>
-                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a", flexShrink: 0 }}>{filledF} Jäger</span>
+                <span style={{ color: "var(--purple)", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={14} sw={1.7} /></span>
+                <strong style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: "var(--text-hi)" }}>{sq.name}</strong>
+                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim3)", flexShrink: 0 }}>{filledF} Jäger</span>
                 {/* Legacy fallback groups (formations) have no parent. */}
                 {parentSelect(sq.id, (sq as { parentId?: string | null }).parentId ?? null, `fighter-squad-parent-${sq.id}`)}
-                <button type="button" data-testid={`fighter-add-member-${sq.id}`} title="Pilot dieser Staffel zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : sq.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(167,139,250,0.6)" : "rgba(167,139,250,0.35)"}`, background: "rgba(167,139,250,0.08)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Pilot</button>
+                <button type="button" data-testid={`fighter-add-member-${sq.id}`} title="Pilot dieser Staffel zuweisen" onClick={() => { setAddMemberTeam(pickOpen ? null : sq.id); setAddMemberFilter(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "0.22rem 0.5rem", border: `1px solid ${pickOpen ? "rgba(118, 130, 141,0.6)" : "rgba(118, 130, 141,0.35)"}`, background: "rgba(118, 130, 141,0.08)", color: "var(--purple)", fontFamily: MONO, fontSize: "0.62rem", borderRadius: 6, cursor: "pointer" }}><Ic name="plus" size={11} sw={2} /> Pilot</button>
               </div>
               {/* Fighters that came WITH a ship. Listed here too so the operator can
                   promote one to Staffel-Captain — the board only offers squad assignment. */}
               {accepted.filter((u) => u.formationId === sq.id && u.shipClass === "Fighter").map((u) => (
-                <div key={u.id} data-testid={`fighter-unit-op-${u.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid rgba(167,139,250,0.16)", background: "rgba(167,139,250,0.03)" }}>
-                  <span style={{ color: "#a78bfa", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={12} sw={1.7} /></span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "#dce8f0" }}>{u.name}{u.captain ? ` · ${u.captain.username}` : ""}</span>
+                <div key={u.id} data-testid={`fighter-unit-op-${u.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid rgba(118, 130, 141,0.16)", background: "rgba(118, 130, 141,0.03)" }}>
+                  <span style={{ color: "var(--purple)", display: "inline-flex", flexShrink: 0 }}><Ic name="fighter" size={12} sw={1.7} /></span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "var(--text)" }}>{u.name}{u.captain ? ` · ${u.captain.username}` : ""}</span>
                   {captainButton("unit", u.id, u.formationSlot === 0, `fighter-unit-captain-${u.id}`)}
                   <SaveDot id={`slot-${u.id}`} />
                 </div>
               ))}
               {mem.map((s) => (
-                <div key={s.id} data-testid={`fighter-pilot-op-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid rgba(167,139,250,0.16)", background: "rgba(167,139,250,0.03)" }}>
+                <div key={s.id} data-testid={`fighter-pilot-op-${s.id}`} style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0.5rem", borderRadius: 7, border: "1px solid rgba(118, 130, 141,0.16)", background: "rgba(118, 130, 141,0.03)" }}>
                   <Avatar name={s.username} />
-                  <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "#dce8f0" }}>{s.username}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: "0.82rem", color: "var(--text)" }}>{s.username}</span>
                   {captainButton("person", s.id, s.slotIndex === 0, `fighter-captain-${s.id}`)}
                   <LateArrival eta={s.lateEta} canEdit testid={`fighter-late-${s.id}`} onSet={(eta) => viewAct(`cqblate-${s.id}`, () => setCqbLateArrival(op.id, s.id, eta, csrf), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, lateEta: eta } : x)) }))} />
                   <SaveDot id={`cqb-${s.id}`} />
-                  <button type="button" title="Aus Staffel entfernen" onClick={() => viewAct(`cqb-${s.id}`, () => assignCqbSoldier(op.id, s.id, csrf, null), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, assignedGroupId: null } : x)) }))} style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: "1px solid rgba(255,68,68,0.35)", background: "rgba(255,68,68,0.07)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={10} sw={2} /></button>
+                  <button type="button" title="Aus Staffel entfernen" onClick={() => viewAct(`cqb-${s.id}`, () => assignCqbSoldier(op.id, s.id, csrf, null), (vw) => ({ ...vw, cqbSoldiers: vw.cqbSoldiers.map((x) => (x.id === s.id ? { ...x, assignedGroupId: null } : x)) }))} style={{ flexShrink: 0, width: 20, height: 20, borderRadius: 5, border: "1px solid rgba(228, 115, 106,0.35)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={10} sw={2} /></button>
                 </div>
               ))}
               {pickOpen && memberPicker(sq.id)}
@@ -831,9 +831,9 @@ export function OperatorPanel({
   const formationUnits = (fid: string) => accepted.filter((u) => u.formationId === fid);
   const ungroupedUnits = accepted.filter((u) => !u.formationId);
   const unitMeta = (u: FleetUnit): [string, string] =>
-    u.unitType === "ship" ? (u.shipClass === "Fighter" ? ["#a78bfa", "fighter"] : ["#00d4ff", "ship"])
-      : u.unitType === "squad" ? ["#f0a500", "fps"]
-        : u.unitType === "vehicle" ? ["#ff7a45", "vehicle"] : ["#9fb1c2", "board"];
+    u.unitType === "ship" ? (u.shipClass === "Fighter" ? ["var(--purple)", "fighter"] : ["var(--cyan)", "ship"])
+      : u.unitType === "squad" ? ["var(--gold)", "fps"]
+        : u.unitType === "vehicle" ? ["var(--orange)", "vehicle"] : ["var(--dim)", "board"];
   // Editable composition row: type icon + name + a formation (Verband) select.
   const compUnitRow = (u: FleetUnit) => {
     const [color, icon] = unitMeta(u);
@@ -843,13 +843,13 @@ export function OperatorPanel({
       <div key={u.id} style={{ marginBottom: "0.3rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.4rem 0.5rem", borderRadius: 7, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.012)" }}>
           <span style={{ color, display: "inline-flex", flexShrink: 0 }}><Ic name={icon} size={13} sw={1.7} /></span>
-          <span style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", color: "#dce8f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}{u.shipClass ? <span style={{ color: "#5b6b7a", fontFamily: MONO, fontSize: "0.6rem" }}> · {u.shipClass}</span> : null}</span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "0.8rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}{u.shipClass ? <span style={{ color: "var(--dim3)", fontFamily: MONO, fontSize: "0.6rem" }}> · {u.shipClass}</span> : null}</span>
           <SaveDot id={`unitfm-${u.id}`} />
           <select
             data-testid={`comp-formation-${u.id}`}
             value={u.formationId ?? ""}
             onChange={(e) => { const fid = e.target.value || null; boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, formationId: fid } : x)), () => assignUnitFormation(op.id, u.id, csrf, fid)); }}
-            style={{ flexShrink: 0, maxWidth: "9.5rem", background: "#0e1926", border: "1px solid rgba(167,139,250,0.3)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.62rem", padding: "0.2rem 0.4rem", borderRadius: 6, outline: "none" }}
+            style={{ flexShrink: 0, maxWidth: "9.5rem", background: "var(--bg3)", border: "1px solid rgba(118, 130, 141,0.3)", color: "var(--text)", fontFamily: MONO, fontSize: "0.62rem", padding: "0.2rem 0.4rem", borderRadius: 6, outline: "none" }}
           >
             <option value="">— ohne Staffel/Verband —</option>
             {view.fighterSquads.length > 0 && (
@@ -867,13 +867,13 @@ export function OperatorPanel({
         {(teams.length > 0 || vehicles.length > 0) && (
           <div style={{ marginLeft: "1.3rem", marginTop: "0.2rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
             {teams.map((tm) => (
-              <div key={tm.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.76rem", color: "#9fb1c2" }}>
-                <span style={{ color: "#f0a500" }}>⮡</span><Ic name="fps" size={11} sw={1.7} /> {tm.name} <span style={{ color: "#5b6b7a", fontSize: "0.62rem" }}>fährt mit</span>
+              <div key={tm.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.76rem", color: "var(--dim)" }}>
+                <span style={{ color: "var(--gold)" }}>⮡</span><Ic name="fps" size={11} sw={1.7} /> {tm.name} <span style={{ color: "var(--dim3)", fontSize: "0.62rem" }}>fährt mit</span>
               </div>
             ))}
             {vehicles.map((v) => (
-              <div key={v.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.76rem", color: "#9fb1c2" }}>
-                <span style={{ color: "#ff7a45" }}>⮡</span><Ic name="vehicle" size={11} sw={1.7} /> {v.name} <span style={{ color: "#5b6b7a", fontSize: "0.62rem" }}>verladen</span>
+              <div key={v.id} style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.76rem", color: "var(--dim)" }}>
+                <span style={{ color: "var(--orange)" }}>⮡</span><Ic name="vehicle" size={11} sw={1.7} /> {v.name} <span style={{ color: "var(--dim3)", fontSize: "0.62rem" }}>verladen</span>
               </div>
             ))}
           </div>
@@ -883,15 +883,15 @@ export function OperatorPanel({
   };
 
   const formationBlock = (
-    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(167,139,250,0.22)" }} data-testid="formation-block">
-      {panelHead("board", "#a78bfa", "VERBÄNDE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{view.formations.length}</span>)}
+    <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid rgba(118, 130, 141,0.22)" }} data-testid="formation-block">
+      {panelHead("board", "var(--purple)", "VERBÄNDE", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim3)" }}>{view.formations.length}</span>)}
       {view.formations.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "0.8rem" }}>
           {view.formations.map((f) => {
             const count = accepted.filter((u) => u.formationId === f.id).length;
             return (
-              <div key={f.id} data-testid={`formation-${f.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, border: "1px solid rgba(167,139,250,0.2)", background: "rgba(167,139,250,0.04)" }}>
-                <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="board" size={14} /></span>
+              <div key={f.id} data-testid={`formation-${f.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, border: "1px solid rgba(118, 130, 141,0.2)", background: "rgba(118, 130, 141,0.04)" }}>
+                <span style={{ color: "var(--purple)", display: "inline-flex" }}><Ic name="board" size={14} /></span>
                 <input
                   className="fpw-inline-edit"
                   data-testid={`formation-name-${f.id}`}
@@ -903,8 +903,8 @@ export function OperatorPanel({
                   style={{ flex: 1, minWidth: 0, fontSize: "0.86rem" }}
                 />
                 <SaveDot id={`fm-${f.id}`} />
-                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#9fb1c2" }}>{count} Einheit{count === 1 ? "" : "en"}</span>
-                <button type="button" data-testid={`formation-del-${f.id}`} title="Verband löschen" onClick={() => { setUnits((us) => us.map((x) => (x.formationId === f.id ? { ...x, formationId: null } : x))); viewAct(`fm-${f.id}`, () => deleteFormation(op.id, f.id, csrf), (vw) => ({ ...vw, formations: vw.formations.filter((x) => x.id !== f.id) })); }} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
+                <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim)" }}>{count} Einheit{count === 1 ? "" : "en"}</span>
+                <button type="button" data-testid={`formation-del-${f.id}`} title="Verband löschen" onClick={() => { setUnits((us) => us.map((x) => (x.formationId === f.id ? { ...x, formationId: null } : x))); viewAct(`fm-${f.id}`, () => deleteFormation(op.id, f.id, csrf), (vw) => ({ ...vw, formations: vw.formations.filter((x) => x.id !== f.id) })); }} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
               </div>
             );
           })}
@@ -913,29 +913,29 @@ export function OperatorPanel({
       {/* ZUSAMMENSETZUNG — assign EVERY unit type (ship/fighter/squad/vehicle) to a Verband. */}
       {accepted.length > 0 && (
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "0.8rem", marginBottom: "0.9rem" }}>
-          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "#9fb1c2", marginBottom: "0.2rem" }}>ZUSAMMENSETZUNG — EINHEITEN ZUORDNEN</div>
-          <div style={{ fontSize: "0.72rem", color: "#5b6b7a", marginBottom: "0.6rem" }}>Schiffe, Jäger, Fahrzeuge und Bodentruppen einer Staffel oder einem Verband zuordnen — sofort gespeichert.</div>
+          <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim)", marginBottom: "0.2rem" }}>ZUSAMMENSETZUNG — EINHEITEN ZUORDNEN</div>
+          <div style={{ fontSize: "0.72rem", color: "var(--dim3)", marginBottom: "0.6rem" }}>Schiffe, Jäger, Fahrzeuge und Bodentruppen einer Staffel oder einem Verband zuordnen — sofort gespeichert.</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
             {/* Both group kinds — otherwise units sitting in a Bedarf-Staffel show
                 up as "ohne Zuordnung" here even though they are assigned. */}
             {[...view.fighterSquads, ...view.formations].map((f) => (
               <div key={f.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.3rem" }}>
-                  <span style={{ color: "#a78bfa", display: "inline-flex" }}><Ic name="board" size={13} /></span>
-                  <strong style={{ fontSize: "0.8rem", color: "#c9b8ff" }}>{f.name}</strong>
-                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#5b6b7a" }}>{formationUnits(f.id).length} Einheit{formationUnits(f.id).length === 1 ? "" : "en"}</span>
+                  <span style={{ color: "var(--purple)", display: "inline-flex" }}><Ic name="board" size={13} /></span>
+                  <strong style={{ fontSize: "0.8rem", color: "var(--purple)" }}>{f.name}</strong>
+                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim3)" }}>{formationUnits(f.id).length} Einheit{formationUnits(f.id).length === 1 ? "" : "en"}</span>
                 </div>
                 <div style={{ marginLeft: "0.4rem" }}>
                   {formationUnits(f.id).length > 0
                     ? formationUnits(f.id).map(compUnitRow)
-                    : <div style={{ fontSize: "0.74rem", color: "#5b6b7a", fontStyle: "italic" }}>keine Einheiten</div>}
+                    : <div style={{ fontSize: "0.74rem", color: "var(--dim3)", fontStyle: "italic" }}>keine Einheiten</div>}
                 </div>
               </div>
             ))}
             {ungroupedUnits.length > 0 && (
               <div>
                 {view.formations.length > 0 && (
-                  <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", marginBottom: "0.3rem" }}>OHNE VERBAND</div>
+                  <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim3)", marginBottom: "0.3rem" }}>OHNE VERBAND</div>
                 )}
                 <div style={{ marginLeft: "0.4rem" }}>{ungroupedUnits.map(compUnitRow)}</div>
               </div>
@@ -952,17 +952,17 @@ export function OperatorPanel({
           placeholder="Verbandsname (z. B. Task Force Alpha)"
           onChange={(e) => setNewFormation(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && newFormation.trim()) { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); } }}
-          style={{ flex: "1 1 200px", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.86rem", padding: "0.4rem 0.55rem", borderRadius: 7, outline: "none" }}
+          style={{ flex: "1 1 200px", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(118, 130, 141,0.28)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.86rem", padding: "0.4rem 0.55rem", borderRadius: 7, outline: "none" }}
         />
-        <button type="button" data-testid="formation-add" disabled={!newFormation.trim()} onClick={() => { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.7rem", border: "1px solid rgba(167,139,250,0.45)", background: "rgba(167,139,250,0.1)", color: "#a78bfa", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7, cursor: "pointer" }}><Ic name="plus" size={12} sw={2} /> Verband</button>
+        <button type="button" data-testid="formation-add" disabled={!newFormation.trim()} onClick={() => { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.7rem", border: "1px solid rgba(118, 130, 141,0.45)", background: "rgba(118, 130, 141,0.1)", color: "var(--purple)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7, cursor: "pointer" }}><Ic name="plus" size={12} sw={2} /> Verband</button>
       </div>
     </section>
   );
 
   const boardBlock = (
     <>
-      <div style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "#9fb1c2", marginBottom: "1rem" }}>
-        FLOTTEN-BOARD <span style={{ color: "#5b6b7a" }}>· Platz anklicken oder Person draufziehen</span>
+      <div style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "var(--dim)", marginBottom: "1rem" }}>
+        FLOTTEN-BOARD <span style={{ color: "var(--dim3)" }}>· Platz anklicken oder Person draufziehen</span>
       </div>
       <div className="fpw-board" style={{ gap: "0.85rem" }}>
         {lanes.map((lane) => (
@@ -970,7 +970,7 @@ export function OperatorPanel({
             <div style={{ display: "flex", alignItems: "center", gap: "0.45rem", marginBottom: "0.8rem", paddingBottom: "0.5rem", borderBottom: `1px solid rgba(${lane.rgb},0.4)` }}>
               <span style={{ color: lane.accent, display: "inline-flex", flexShrink: 0 }}><Ic name={lane.icon} size={15} /></span>
               <span style={{ flex: 1, minWidth: 0, fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.06em", color: lane.accent, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lane.label}</span>
-              <span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2", flexShrink: 0 }}>{lane.units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0)}/{lane.units.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0)}</span>
+              <span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "var(--dim)", flexShrink: 0 }}>{lane.units.reduce((a, u) => a + u.seats.filter((s) => s.claimedBy).length, 0)}/{lane.units.reduce((a, u) => a + u.seats.filter((s) => s.active).length, 0)}</span>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
               {lane.units.map((u) => (
@@ -978,17 +978,17 @@ export function OperatorPanel({
                   <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.7rem" }}>
                     <span style={{ width: 36, height: 36, borderRadius: 9, background: `rgba(${lane.rgb},0.1)`, border: `1px solid rgba(${lane.rgb},0.26)`, color: lane.accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={lane.icon} size={18} sw={1.6} /></span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <strong style={{ fontWeight: 700, fontSize: "1.02rem", color: "#eaf4fb", lineHeight: 1.15 }}>{u.name}</strong>
-                      <div style={{ color: "#7e92a4", fontSize: "0.78rem", marginTop: 1 }}>{u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</div>
+                      <strong style={{ fontWeight: 700, fontSize: "1.02rem", color: "var(--text-hi)", lineHeight: 1.15 }}>{u.name}</strong>
+                      <div style={{ color: "var(--dim2)", fontSize: "0.78rem", marginTop: 1 }}>{u.shipClass ?? u.unitType}{u.captain ? ` · ${u.captain.username}` : ""}</div>
                     </div>
-                    <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "#eaf4fb", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
-                    <button type="button" data-testid={`unit-remove-${u.id}`} title="Einheit entfernen" onClick={() => { if (window.confirm(`„${u.name}" aus der Operation entfernen?`)) run(() => withdrawUnit(op.id, u.id, csrf)); }} style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
+                    <span style={{ fontFamily: MONO, fontSize: "0.95rem", color: "var(--text-hi)", flexShrink: 0 }}>{u.seats.filter((s) => s.claimedBy).length}<span style={{ color: "var(--dim3)", fontSize: "0.8rem" }}>/{u.seats.filter((s) => s.active).length}</span></span>
+                    <button type="button" data-testid={`unit-remove-${u.id}`} title="Einheit entfernen" onClick={() => { if (window.confirm(`„${u.name}" aus der Operation entfernen?`)) run(() => withdrawUnit(op.id, u.id, csrf)); }} style={{ flexShrink: 0, width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
                   </div>
                   {(requirements.length > 0 || view.formations.length > 0 || u.unitType === "vehicle") && (
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
                       {requirements.length > 0 && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
-                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>BEDARF</span>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim3)", flexShrink: 0 }}>BEDARF</span>
                           {reqSelect(u, u.requirementId ?? "", (id) => boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, requirementId: id || null } : x)), () => patchUnit(op.id, u.id, csrf, { requirementId: id || null })), `unit-req-${u.id}`)}
                         </span>
                       )}
@@ -996,13 +996,13 @@ export function OperatorPanel({
                           verschiebt die Einheit damit auch zwischen den Board-Lanes. */}
                       {u.unitType === "ship" && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
-                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>ROLLE</span>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim3)", flexShrink: 0 }}>ROLLE</span>
                           <select
                             data-testid={`unit-role-${u.id}`}
                             value={u.roleOverride ?? ""}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => { const r = (e.target.value || null) as ShipClass | null; boardAct(`unitrole-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, roleOverride: r, shipClass: r ?? x.shipClass } : x)), () => patchUnit(op.id, u.id, csrf, { roleOverride: r })); }}
-                            style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(0,212,255,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                            style={{ minWidth: 0, maxWidth: "100%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— Katalog: {roleLabel(u.shipClass) || "unbekannt"} —</option>
                             {OFFERABLE_ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
@@ -1013,13 +1013,13 @@ export function OperatorPanel({
                       {/* Staffel-/Verband-Zuordnung für ALLE Einheitstypen (Schiffe/Jäger/Bodentruppen/Fahrzeuge). */}
                       {(view.formations.length > 0 || view.fighterSquads.length > 0) && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
-                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>STAFFEL / VERBAND</span>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim3)", flexShrink: 0 }}>STAFFEL / VERBAND</span>
                           <select
                             data-testid={`unit-formation-${u.id}`}
                             value={u.formationId ?? ""}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => { const fid = e.target.value || null; boardAct(`unitfm-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, formationId: fid } : x)), () => assignUnitFormation(op.id, u.id, csrf, fid)); }}
-                            style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(167,139,250,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                            style={{ minWidth: 0, maxWidth: "100%", background: "var(--bg3)", border: "1px solid rgba(118, 130, 141,0.28)", color: "var(--text)", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— kein —</option>
                             {/* Both kinds belong here: a fighter has to be assignable
@@ -1040,13 +1040,13 @@ export function OperatorPanel({
                       )}
                       {u.unitType === "vehicle" && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", minWidth: 0, maxWidth: "100%" }}>
-                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>TRÄGER</span>
+                          <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim3)", flexShrink: 0 }}>TRÄGER</span>
                           <select
                             data-testid={`unit-carrier-${u.id}`}
                             value={u.carrierUnitId ?? ""}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => run(() => assignUnitCarrier(op.id, u.id, csrf, e.target.value || null))}
-                            style={{ minWidth: 0, maxWidth: "100%", background: "#0e1926", border: "1px solid rgba(255,122,69,0.28)", color: "#ccdde8", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
+                            style={{ minWidth: 0, maxWidth: "100%", background: "var(--bg3)", border: "1px solid rgba(217, 169, 78,0.28)", color: "var(--text)", fontFamily: MONO, fontSize: "0.66rem", padding: "0.25rem 0.4rem", borderRadius: 6, outline: "none" }}
                           >
                             <option value="">— eigenständig —</option>
                             {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -1058,7 +1058,7 @@ export function OperatorPanel({
                   {/* FR-A2: rename a squad + set a captain note (patchUnit). */}
                   {u.unitType === "squad" && (
                     <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.5rem" }}>
-                      <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "#5b6b7a", flexShrink: 0 }}>SQUAD</span>
+                      <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim3)", flexShrink: 0 }}>SQUAD</span>
                       <input
                         className="fpw-inline-edit"
                         data-testid={`unit-name-${u.id}`}
@@ -1072,7 +1072,7 @@ export function OperatorPanel({
                     </div>
                   )}
                   <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
-                    <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={13} /></span>
+                    <span style={{ color: "var(--gold)", display: "inline-flex", flexShrink: 0 }}><Ic name="bolt" size={13} /></span>
                     <input
                       className="fpw-inline-edit"
                       data-testid={`unit-note-${u.id}`}
@@ -1093,16 +1093,16 @@ export function OperatorPanel({
                 <div key={`ph-${lane.type}-${i}`} data-testid="need-slot" style={{ border: `1px dashed rgba(${lane.rgb},0.4)`, borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "0.9rem 1rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
                   <span style={{ width: 32, height: 32, borderRadius: 8, background: `rgba(${lane.rgb},0.07)`, border: `1px dashed rgba(${lane.rgb},0.4)`, color: lane.accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={lane.icon} size={16} sw={1.5} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <strong style={{ fontSize: "0.92rem", color: "#c2d2de" }}>{ph.label}</strong>
+                    <strong style={{ fontSize: "0.92rem", color: "var(--text)" }}>{ph.label}</strong>
                     <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: lane.accent, marginTop: 1 }}>BEDARF · UNERFÜLLT</div>
                   </div>
                   {ph.onRemove && (
-                    <button type="button" data-testid={`need-remove-${ph.key}`} title="Bedarf entfernen" onClick={ph.onRemove} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
+                    <button type="button" data-testid={`need-remove-${ph.key}`} title="Bedarf entfernen" onClick={ph.onRemove} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={11} sw={2} /></button>
                   )}
                 </div>
               ))}
               {lane.units.length === 0 && lane.placeholders.length === 0 && (
-                <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.3rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.08em", color: "#5b6b7a" }}>KEIN BEDARF</div>
+                <div data-testid={`lane-empty-${lane.type}`} style={{ border: "1px dashed rgba(255,255,255,0.1)", borderRadius: 13, background: "rgba(255,255,255,0.012)", padding: "1.3rem 1rem", textAlign: "center", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.08em", color: "var(--dim3)" }}>KEIN BEDARF</div>
               )}
             </div>
           </div>
@@ -1113,7 +1113,7 @@ export function OperatorPanel({
 
   const toolsBlock = (
     <div style={{ marginTop: "1.2rem" }}>
-      <button type="button" onClick={() => setToolsOpen((v) => !v)} style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.85rem", border: "1px solid rgba(0,212,255,0.16)", background: "rgba(0,212,255,0.03)", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 8, cursor: "pointer" }}>
+      <button type="button" onClick={() => setToolsOpen((v) => !v)} style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.85rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.03)", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 8, cursor: "pointer" }}>
         <span style={{ display: "inline-flex", transform: toolsOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }}><Ic name="chevron" size={14} /></span>
         Werkzeuge / Aktivität
       </button>
@@ -1122,24 +1122,24 @@ export function OperatorPanel({
           <section style={{ ...card, flex: "1 1 300px", minWidth: 0 }}>
             <div style={railLabel}>AKTIVITÄT</div>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {view.auditLogs.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>—</div>}
+              {view.auditLogs.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.8rem" }}>—</div>}
               {view.auditLogs.slice(0, 12).map((a, i) => (
                 <div key={i} style={{ display: "flex", gap: "0.6rem", padding: "0.32rem 0", borderBottom: "1px solid rgba(255,255,255,0.05)", fontSize: "0.82rem" }}>
-                  <span style={{ fontFamily: MONO, fontSize: "0.7rem", color: "#5b6b7a", flexShrink: 0 }}>{new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(new Date(a.createdAt))}</span>
-                  <span style={{ color: "#c2d2de" }}><strong style={{ color: "#eaf4fb" }}>{a.actor}</strong> {a.action}{a.detail && <span style={{ color: "#7e92a4" }}> · {a.detail}</span>}</span>
+                  <span style={{ fontFamily: MONO, fontSize: "0.7rem", color: "var(--dim3)", flexShrink: 0 }}>{new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit" }).format(new Date(a.createdAt))}</span>
+                  <span style={{ color: "var(--text)" }}><strong style={{ color: "var(--text-hi)" }}>{a.actor}</strong> {a.action}{a.detail && <span style={{ color: "var(--dim2)" }}> · {a.detail}</span>}</span>
                 </div>
               ))}
             </div>
           </section>
           <section style={{ ...card, flex: "1 1 300px", minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}><span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="eye" size={15} /></span><span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.12em", color: "#9fb1c2" }}>HANGAR-FREIGABEN</span></div>
-            <p style={{ margin: "0 0 0.9rem", color: "#7e92a4", fontSize: "0.78rem" }}>Nur für Operatoren sichtbar.</p>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}><span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="eye" size={15} /></span><span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.12em", color: "var(--dim)" }}>HANGAR-FREIGABEN</span></div>
+            <p style={{ margin: "0 0 0.9rem", color: "var(--dim2)", fontSize: "0.78rem" }}>Nur für Operatoren sichtbar.</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
-              {view.hangarShares.length === 0 && <div style={{ color: "#5b6b7a", fontSize: "0.8rem" }}>Noch keine Freigaben.</div>}
+              {view.hangarShares.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.8rem" }}>Noch keine Freigaben.</div>}
               {view.hangarShares.map((h) => (
-                <div key={h.userId} style={{ border: "1px solid rgba(0,212,255,0.1)", borderRadius: 10, padding: "0.7rem 0.8rem" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: h.ships.length ? "0.55rem" : 0 }}><Avatar name={h.username} /><strong style={{ fontSize: "0.9rem", color: "#eaf4fb" }}>{h.username}</strong><span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "#5b6b7a" }}>{h.ships.length} Schiffe</span></div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>{h.ships.map((sh) => <span key={sh.id} style={{ fontFamily: MONO, fontSize: "0.7rem", color: "#c2d2de", border: "1px solid rgba(0,212,255,0.16)", background: "#0e1926", padding: "0.22rem 0.5rem", borderRadius: 5 }}>{sh.name}</span>)}</div>
+                <div key={h.userId} style={{ border: "1px solid var(--border)", borderRadius: 10, padding: "0.7rem 0.8rem" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: h.ships.length ? "0.55rem" : 0 }}><Avatar name={h.username} /><strong style={{ fontSize: "0.9rem", color: "var(--text-hi)" }}>{h.username}</strong><span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim3)" }}>{h.ships.length} Schiffe</span></div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>{h.ships.map((sh) => <span key={sh.id} style={{ fontFamily: MONO, fontSize: "0.7rem", color: "var(--text)", border: "1px solid var(--border)", background: "var(--bg3)", padding: "0.22rem 0.5rem", borderRadius: 5 }}>{sh.name}</span>)}</div>
                 </div>
               ))}
             </div>
@@ -1150,20 +1150,20 @@ export function OperatorPanel({
   );
 
   const placeBanner = placing && (
-    <div style={{ position: "sticky", top: 58, zIndex: 60, display: "flex", alignItems: "center", gap: "0.7rem", padding: "0.7rem 1rem", marginBottom: "1.1rem", border: "1px solid rgba(240,165,0,0.55)", background: "linear-gradient(90deg,rgba(240,165,0,0.16),rgba(240,165,0,0.04))", borderRadius: 10, boxShadow: "0 8px 28px rgba(0,0,0,0.45)" }}>
-      <span style={{ color: "#f0a500", display: "inline-flex", flexShrink: 0 }}><Ic name="swap" size={17} sw={1.8} /></span>
+    <div style={{ position: "sticky", top: 58, zIndex: 60, display: "flex", alignItems: "center", gap: "0.7rem", padding: "0.7rem 1rem", marginBottom: "1.1rem", border: "1px solid rgba(217, 169, 78,0.55)", background: "var(--bg2)", borderRadius: 10 }}>
+      <span style={{ color: "var(--gold)", display: "inline-flex", flexShrink: 0 }}><Ic name="swap" size={17} sw={1.8} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.12em", color: "#f0a500" }}>EINTEILEN-MODUS</span>
-        <div style={{ color: "#eaf4fb", fontSize: "0.92rem", marginTop: 1 }}><strong>{placing.name}</strong> — wähle unten einen offenen Platz <span style={{ color: "#f0c97a" }}>(grün markiert)</span></div>
+        <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.12em", color: "var(--gold)" }}>EINTEILEN-MODUS</span>
+        <div style={{ color: "var(--text-hi)", fontSize: "0.92rem", marginTop: 1 }}><strong>{placing.name}</strong> — wähle unten einen offenen Platz <span style={{ color: "var(--gold)" }}>(grün markiert)</span></div>
       </div>
-      <button type="button" onClick={() => setPlacing(null)} style={{ flexShrink: 0, padding: "0.42rem 0.8rem", border: "1px solid rgba(255,255,255,0.18)", background: "transparent", color: "#9fb1c2", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
+      <button type="button" onClick={() => setPlacing(null)} style={{ flexShrink: 0, padding: "0.42rem 0.8rem", border: "1px solid rgba(255,255,255,0.18)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
     </div>
   );
 
   // Redesign: each console tab renders one section. "fleet" = board + right rail;
   // the rest are their own tabs (CQB / Verbände / Fragen).
   if (section === "cqb")
-    return <div data-testid="operator-panel">{placeBanner}{pendingBlock}{fighterBlock}{cqbBlock || <section style={card}><div style={{ color: "#5b6b7a", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div></section>}</div>;
+    return <div data-testid="operator-panel">{placeBanner}{pendingBlock}{fighterBlock}{cqbBlock || <section style={card}><div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div></section>}</div>;
   if (section === "formations")
     return <div data-testid="operator-panel">{formationBlock}</div>;
   if (section === "qa")
@@ -1177,12 +1177,12 @@ export function OperatorPanel({
         <div style={{ flex: "1 1 420px", minWidth: 0 }}>
           <section style={{ ...card, marginBottom: "1.3rem", padding: "1rem 1.2rem" }}>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.7rem 1.4rem" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><span style={{ fontFamily: MONO, fontSize: "1.5rem", color: "#eaf4fb", lineHeight: 1 }}>{fillPct}%</span><span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "#5b6b7a" }}>BESETZT</span></div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}><span style={{ fontFamily: MONO, fontSize: "1.5rem", color: "var(--text-hi)", lineHeight: 1 }}>{fillPct}%</span><span style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.1em", color: "var(--dim3)" }}>BESETZT</span></div>
               <div style={{ flex: 1, minWidth: 200, display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                 {bars.map((b) => (
                   <div key={b.label}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.22rem" }}><span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.74rem", color: "#c2d2de" }}><span style={{ width: 8, height: 8, borderRadius: 2, background: b.accent }} />{b.label}</span><span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "#9fb1c2" }}>{b.f}/{b.t}</span></div>
-                    <div style={{ height: 5, borderRadius: 4, background: "#0e1926", overflow: "hidden" }}><div style={{ height: "100%", width: `${b.pct}%`, background: b.accent, borderRadius: 4 }} /></div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "0.22rem" }}><span style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.74rem", color: "var(--text)" }}><span style={{ width: 8, height: 8, borderRadius: 2, background: b.accent }} />{b.label}</span><span style={{ fontFamily: MONO, fontSize: "0.72rem", color: "var(--dim)" }}>{b.f}/{b.t}</span></div>
+                    <div style={{ height: 5, borderRadius: 4, background: "var(--bg3)", overflow: "hidden" }}><div style={{ height: "100%", width: `${b.pct}%`, background: b.accent, borderRadius: 4 }} /></div>
                   </div>
                 ))}
               </div>

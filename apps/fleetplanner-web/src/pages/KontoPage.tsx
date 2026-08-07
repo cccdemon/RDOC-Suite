@@ -28,7 +28,7 @@ export function KontoPage({ session }: { session: SessionResponse | null }) {
 
   return (
     <div data-testid="konto-page">
-      <div style={{ display: "flex", gap: "0.3rem", overflowX: "auto", borderBottom: "1px solid rgba(0,212,255,0.14)", marginBottom: "1.4rem" }}>
+      <div style={{ display: "flex", gap: "0.3rem", overflowX: "auto", borderBottom: "1px solid var(--border)", marginBottom: "1.4rem" }}>
         {TABS.map((t) => (
           <Link key={t.key} to={`/konto/${t.key}`} data-testid={`konto-tab-${t.key}`} style={t.key === active.key ? tabActive : tabBase}>
             <Ic name={t.icon} size={14} sw={1.7} />{t.label}

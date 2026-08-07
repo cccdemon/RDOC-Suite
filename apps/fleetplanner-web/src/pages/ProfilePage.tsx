@@ -5,7 +5,7 @@ import type { FleetImportResponse, FleetyardsImportResponse, SessionResponse, Sh
 import { Ic } from "../components/Icons";
 
 const MONO = "var(--mono)";
-const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
+const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
 
 export function ProfilePage({ session }: { session: SessionResponse | null }) {
   const [hangar, setHangar] = useState<ShipSummary[] | null>(null);
@@ -147,8 +147,8 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
   return (
     <div data-testid="profile-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.2rem" }}>
-        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Profil · {me.username}</h1>
+        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={20} /></span>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Profil · {me.username}</h1>
       </div>
       {me.role === "superadmin" && (
         <p className="fpw-meta" style={{ marginBottom: "1rem" }}>
@@ -181,7 +181,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                   </span>
                 )}
                 <span className="fpw-meta">{s.manufacturer} · {s.maxCrew} Crew</span>
-                <button type="button" data-testid={`hangar-remove-${s.id}`} title="Aus Hangar entfernen" disabled={busy} onClick={() => run(() => removeHangarShip(s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button type="button" data-testid={`hangar-remove-${s.id}`} title="Aus Hangar entfernen" disabled={busy} onClick={() => run(() => removeHangarShip(s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={12} sw={2} />
                 </button>
               </div>
@@ -198,7 +198,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Schiffsname suchen…"
-          style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
+          style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
         />
         {results.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.6rem" }}>
@@ -236,7 +236,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
             placeholder="Fleetyards-Benutzername"
             autoComplete="off"
             spellCheck={false}
-            style={{ flex: "1 1 12rem", minWidth: 0, background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
+            style={{ flex: "1 1 12rem", minWidth: 0, background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
           />
           <button
             type="button"
@@ -270,7 +270,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
           onChange={(e) => setFleetJson(e.target.value)}
           placeholder='[{"name":"Polaris", ...}]'
           rows={5}
-          style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--mono)", fontSize: "0.82rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none", resize: "vertical" }}
+          style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--mono)", fontSize: "0.82rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none", resize: "vertical" }}
         />
         <div style={{ marginTop: "0.6rem" }}>
           <button type="button" data-testid="fleet-import-submit" className="fpw-btn" disabled={busy || !csrf || fleetJson.trim().length === 0} onClick={runImport}>
@@ -288,9 +288,9 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                 <div style={{ ...label, fontSize: "0.6rem", marginBottom: "0.45rem" }}>NICHT ERKANNT — MANUELL ZUORDNEN</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                   {importResult.unmatched.map((name) => (
-                    <div key={name} data-testid={`unmatched-${name}`} style={{ border: "1px solid rgba(240,165,0,0.2)", background: "rgba(240,165,0,0.04)", borderRadius: 8, padding: "0.45rem 0.6rem" }}>
+                    <div key={name} data-testid={`unmatched-${name}`} style={{ border: "1px solid rgba(217, 169, 78,0.2)", background: "rgba(217, 169, 78,0.04)", borderRadius: 8, padding: "0.45rem 0.6rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: "0.86rem", color: "#eaf4fb", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: "0.86rem", color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
                         <button
                           type="button"
                           data-testid={`unmatched-assign-${name}`}
@@ -310,7 +310,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                             value={assignQ}
                             onChange={(e) => setAssignQ(e.target.value)}
                             placeholder="Katalog-Schiff suchen…"
-                            style={{ width: "100%", boxSizing: "border-box", background: "#0e1926", border: "1px solid rgba(0,212,255,0.18)", color: "#ccdde8", fontFamily: "var(--body)", fontSize: "0.85rem", padding: "0.4rem 0.55rem", borderRadius: 7, outline: "none" }}
+                            style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.85rem", padding: "0.4rem 0.55rem", borderRadius: 7, outline: "none" }}
                           />
                           {assignResults.length > 0 && (
                             <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", marginTop: "0.4rem" }}>
@@ -321,10 +321,10 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                                   data-testid={`unmatched-pick-${s.id}`}
                                   disabled={busy}
                                   onClick={() => assignUnmatched(name, s.id)}
-                                  style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 6, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}
+                                  style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", borderRadius: 6, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}
                                 >
-                                  <span style={{ flex: 1, fontSize: "0.82rem", color: "#eaf4fb" }}>{s.name}</span>
-                                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "#7e92a4" }}>{s.manufacturer}</span>
+                                  <span style={{ flex: 1, fontSize: "0.82rem", color: "var(--text-hi)" }}>{s.name}</span>
+                                  <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim2)" }}>{s.manufacturer}</span>
                                 </button>
                               ))}
                             </div>

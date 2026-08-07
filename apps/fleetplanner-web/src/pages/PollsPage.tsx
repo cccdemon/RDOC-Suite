@@ -10,11 +10,11 @@ const MONO = "var(--mono)";
 export function visibilityTag(v: PollSummary["visibility"]): { labelKey: string; color: string; bg: string; bd: string } {
   switch (v) {
     case "partners":
-      return { labelKey: "poll.vis.partners", color: "var(--gold)", bg: "rgba(240,165,0,0.09)", bd: "rgba(240,165,0,0.42)" };
+      return { labelKey: "poll.vis.partners", color: "var(--gold)", bg: "rgba(217, 169, 78,0.09)", bd: "rgba(217, 169, 78,0.42)" };
     case "public":
-      return { labelKey: "poll.vis.public", color: "var(--purple)", bg: "rgba(160,100,255,0.09)", bd: "rgba(160,100,255,0.42)" };
+      return { labelKey: "poll.vis.public", color: "var(--purple)", bg: "rgba(118, 130, 141,0.09)", bd: "rgba(118, 130, 141,0.42)" };
     default:
-      return { labelKey: "poll.vis.private", color: "var(--cyan)", bg: "rgba(0,212,255,0.08)", bd: "rgba(0,212,255,0.38)" };
+      return { labelKey: "poll.vis.private", color: "var(--cyan)", bg: "rgba(43, 49, 53, 0.08)", bd: "rgba(43, 49, 53, 0.38)" };
   }
 }
 
@@ -58,7 +58,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
     display: "inline-flex", alignItems: "center", gap: 6, padding: "0.42rem 0.8rem", fontFamily: MONO,
     fontSize: "0.7rem", borderRadius: 7, cursor: "pointer", border: "1px solid transparent", background: "transparent", color: "var(--dim)",
   };
-  const segOn: React.CSSProperties = { background: "rgba(0,212,255,0.14)", borderColor: "rgba(0,212,255,0.4)", color: "var(--cyan)" };
+  const segOn: React.CSSProperties = { background: "rgba(43, 49, 53, 0.14)", borderColor: "var(--border-hi)", color: "var(--cyan)" };
 
   return (
     <div data-testid="polls-page" style={{ width: "100%" }}>
@@ -66,9 +66,9 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
             <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={20} /></span>
-            <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>{t("polls.title")}</h1>
+            <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>{t("polls.title")}</h1>
           </div>
-          <div style={{ color: "#9fb1c2", fontSize: "0.9rem" }}>
+          <div style={{ color: "var(--dim)", fontSize: "0.9rem" }}>
             {t("polls.count", { open: openCount, closed: closedCount })}
           </div>
         </div>
@@ -77,7 +77,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
             data-testid="poll-new-link"
             to="/polls/new"
             className="fpw-btn"
-            style={{ borderColor: "rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.12)", color: "var(--green)" }}
+            style={{ borderColor: "rgba(91, 185, 138,0.5)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)" }}
           >
             <Ic name="plus" size={14} /> {t("polls.new")}
           </Link>
@@ -95,7 +95,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
       {loading ? (
         <p className="fpw-meta">{t("common.loading")}</p>
       ) : error ? (
-        <p className="fpw-meta" style={{ color: "#ff7a7a" }}>{error}</p>
+        <p className="fpw-meta" style={{ color: "var(--red)" }}>{error}</p>
       ) : shown.length === 0 ? (
         <p className="fpw-meta">{t("polls.empty")} {session?.user ? t("polls.emptyHint") : t("polls.emptyAnon")}</p>
       ) : (
@@ -107,20 +107,20 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
               <Link key={p.id} data-testid={`poll-card-${p.id}`} to={`/polls/${p.id}`} className="fpw-card fpw-cardlink" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
                   {p.status === "open" ? (
-                    <Tag label={t("poll.status.open")} color="var(--green)" bg="rgba(0,255,136,0.08)" bd="rgba(0,255,136,0.4)" />
+                    <Tag label={t("poll.status.open")} color="var(--green)" bg="rgba(91, 185, 138,0.08)" bd="rgba(91, 185, 138,0.4)" />
                   ) : p.status === "draft" ? (
-                    <Tag label={t("poll.status.draft")} color="var(--gold)" bg="rgba(240,165,0,0.09)" bd="rgba(240,165,0,0.42)" />
+                    <Tag label={t("poll.status.draft")} color="var(--gold)" bg="rgba(217, 169, 78,0.09)" bd="rgba(217, 169, 78,0.42)" />
                   ) : (
-                    <Tag label={t("poll.status.closed")} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
+                    <Tag label={t("poll.status.closed")} color="var(--dim)" bg="rgba(118, 130, 141,0.07)" bd="rgba(118, 130, 141,0.34)" />
                   )}
                   <Tag label={t(vt.labelKey)} color={vt.color} bg={vt.bg} bd={vt.bd} />
-                  <Tag label={p.mode === "multiple" ? t("poll.mode.multi") + (p.maxChoices ? t("poll.maxChoices", { n: p.maxChoices }) : "") : t("poll.mode.single")} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
+                  <Tag label={p.mode === "multiple" ? t("poll.mode.multi") + (p.maxChoices ? t("poll.maxChoices", { n: p.maxChoices }) : "") : t("poll.mode.single")} color="var(--dim)" bg="rgba(118, 130, 141,0.07)" bd="rgba(118, 130, 141,0.34)" />
                 </div>
-                <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "#eaf4fb", lineHeight: 1.2 }}>{p.title}</div>
+                <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)", lineHeight: 1.2 }}>{p.title}</div>
                 {p.description && (
-                  <div style={{ color: "#9fb1c2", fontSize: "0.9rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
+                  <div style={{ color: "var(--dim)", fontSize: "0.9rem", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{p.description}</div>
                 )}
-                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem 1rem", flexWrap: "wrap", fontFamily: MONO, fontSize: "0.66rem", color: "#7e92a4", letterSpacing: "0.04em", marginTop: "auto" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.3rem 1rem", flexWrap: "wrap", fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim2)", letterSpacing: "0.04em", marginTop: "auto" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="users" size={12} /> {t("poll.votes", { n: p.totalVotes })}</span>
                   {closes && <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Ic name="clock" size={12} /> {p.status === "closed" ? t("poll.ended") : t("poll.until", { when: closes })}</span>}
                   {p.viewerHasVoted && <span style={{ color: "var(--green)" }}>{t("poll.youVoted")}</span>}

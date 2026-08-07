@@ -10,11 +10,11 @@ type Mode = "single" | "multiple";
 type ResultsVis = "always" | "after_vote" | "after_close";
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", background: "var(--bg)", border: "1px solid rgba(0,212,255,0.16)",
-  borderRadius: 8, color: "#eaf4fb", fontFamily: "var(--body)", fontSize: "0.98rem", padding: "0.6rem 0.75rem", outline: "none",
+  width: "100%", boxSizing: "border-box", background: "var(--bg)", border: "1px solid var(--border)",
+  borderRadius: 8, color: "var(--text-hi)", fontFamily: "var(--body)", fontSize: "0.98rem", padding: "0.6rem 0.75rem", outline: "none",
 };
 const labelStyle: React.CSSProperties = {
-  display: "block", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "#9fb1c2", textTransform: "uppercase", marginBottom: "0.4rem",
+  display: "block", fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "var(--dim)", textTransform: "uppercase", marginBottom: "0.4rem",
 };
 
 export function PollCreatePage({ session }: { session: SessionResponse | null }) {
@@ -84,17 +84,17 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
 
   const pill = (on: boolean): React.CSSProperties => ({
     flex: 1, minWidth: 150, padding: "0.7rem 0.8rem", borderRadius: 10, cursor: "pointer",
-    border: `1px solid ${on ? "rgba(0,212,255,0.4)" : "rgba(0,212,255,0.16)"}`,
-    background: on ? "rgba(0,212,255,0.08)" : "var(--bg)",
+    border: `1px solid ${on ? "rgba(43, 49, 53, 0.4)" : "rgba(43, 49, 53, 0.16)"}`,
+    background: on ? "rgba(43, 49, 53, 0.08)" : "var(--bg)",
   });
   const Toggle = ({ on, set, label, hint }: { on: boolean; set: (v: boolean) => void; label: string; hint: string }) => (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 0", borderBottom: "1px solid rgba(0,212,255,0.12)" }}>
-      <span style={{ fontWeight: 600, color: "#dce8f0" }}>{label}<small style={{ display: "block", color: "#7e92a4", fontWeight: 400, fontSize: "0.82rem" }}>{hint}</small></span>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 0", borderBottom: "1px solid var(--border)" }}>
+      <span style={{ fontWeight: 600, color: "var(--text)" }}>{label}<small style={{ display: "block", color: "var(--dim2)", fontWeight: 400, fontSize: "0.82rem" }}>{hint}</small></span>
       <span
         onClick={() => set(!on)}
-        style={{ width: 42, height: 24, borderRadius: 14, flexShrink: 0, cursor: "pointer", position: "relative", background: on ? "rgba(0,255,136,0.18)" : "var(--bg3)", border: `1px solid ${on ? "rgba(0,255,136,0.5)" : "rgba(0,212,255,0.16)"}` }}
+        style={{ width: 42, height: 24, borderRadius: 14, flexShrink: 0, cursor: "pointer", position: "relative", background: on ? "rgba(91, 185, 138,0.18)" : "var(--bg3)", border: `1px solid ${on ? "rgba(91, 185, 138,0.5)" : "rgba(43, 49, 53, 0.16)"}` }}
       >
-        <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: on ? "var(--green)" : "#7e92a4", transition: "left 0.15s", boxShadow: on ? "0 0 8px var(--green)" : "none" }} />
+        <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: on ? "var(--green)" : "var(--dim2)", transition: "left 0.15s", boxShadow: on ? "0 0 8px var(--green)" : "none" }} />
       </span>
     </div>
   );
@@ -103,7 +103,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
     <div data-testid="poll-create-page" style={{ width: "100%", maxWidth: 900 }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.1rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Neue Umfrage</h1>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Neue Umfrage</h1>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}>
@@ -130,7 +130,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
               <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
                 <input style={inputStyle} value={o} onChange={(e) => setOption(i, e.target.value)} placeholder={`Option ${i + 1}`} maxLength={200} />
                 {options.length > 2 && (
-                  <button onClick={() => removeOption(i)} title="Entfernen" style={{ color: "var(--red)", border: "1px solid rgba(255,68,68,0.3)", background: "rgba(255,68,68,0.06)", borderRadius: 7, padding: "0.5rem 0.6rem", cursor: "pointer" }}><Ic name="x" size={13} /></button>
+                  <button onClick={() => removeOption(i)} title="Entfernen" style={{ color: "var(--red)", border: "1px solid rgba(228, 115, 106,0.3)", background: "rgba(228, 115, 106,0.06)", borderRadius: 7, padding: "0.5rem 0.6rem", cursor: "pointer" }}><Ic name="x" size={13} /></button>
                 )}
               </div>
             ))}
@@ -143,17 +143,17 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
             <label style={labelStyle}>Modus</label>
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <div style={pill(mode === "single")} onClick={() => setMode("single")}>
-                <div style={{ fontWeight: 700, color: "#eaf4fb" }}>Einfachauswahl</div>
-                <div style={{ fontSize: "0.82rem", color: "#9fb1c2" }}>Eine Stimme pro Person</div>
+                <div style={{ fontWeight: 700, color: "var(--text-hi)" }}>Einfachauswahl</div>
+                <div style={{ fontSize: "0.82rem", color: "var(--dim)" }}>Eine Stimme pro Person</div>
               </div>
               <div style={pill(mode === "multiple")} onClick={() => setMode("multiple")}>
-                <div style={{ fontWeight: 700, color: "#eaf4fb" }}>Mehrfachauswahl</div>
-                <div style={{ fontSize: "0.82rem", color: "#9fb1c2" }}>Bis max. N Optionen</div>
+                <div style={{ fontWeight: 700, color: "var(--text-hi)" }}>Mehrfachauswahl</div>
+                <div style={{ fontSize: "0.82rem", color: "var(--dim)" }}>Bis max. N Optionen</div>
               </div>
             </div>
             {mode === "multiple" && (
               <div style={{ marginTop: "0.7rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <span style={{ color: "#9fb1c2", fontSize: "0.9rem" }}>Max. Auswahl:</span>
+                <span style={{ color: "var(--dim)", fontSize: "0.9rem" }}>Max. Auswahl:</span>
                 <input type="number" min={2} max={30} value={maxChoices} onChange={(e) => setMaxChoices(e.target.value)} onBlur={(e) => setMaxChoices(String(Math.min(30, Math.max(2, Number(e.target.value) || 2))))} style={{ ...inputStyle, width: 90 }} />
               </div>
             )}
@@ -172,8 +172,8 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
                   onClick={() => enabled && setVisibility(v)}
                   style={{ ...pill(visibility === v && enabled), opacity: enabled ? 1 : 0.45, cursor: enabled ? "pointer" : "not-allowed" }}
                 >
-                  <div style={{ fontWeight: 700, color: "#eaf4fb" }}>{t}</div>
-                  <div style={{ fontSize: "0.82rem", color: "#9fb1c2" }}>{s}{!enabled ? " · nur Fleetoperator" : ""}</div>
+                  <div style={{ fontWeight: 700, color: "var(--text-hi)" }}>{t}</div>
+                  <div style={{ fontSize: "0.82rem", color: "var(--dim)" }}>{s}{!enabled ? " · nur Fleetoperator" : ""}</div>
                 </div>
               ))}
             </div>
@@ -183,8 +183,8 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
             <label style={labelStyle}>Optionen</label>
             <Toggle on={anonymous} set={setAnonymous} label="Anonyme Abstimmung" hint="Wähler-Identitäten im Ergebnis verbergen" />
             <Toggle on={allowAddOptions} set={setAllowAddOptions} label="Eigene Optionen erlauben" hint="Wähler dürfen Optionen vorschlagen" />
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 0", borderBottom: "1px solid rgba(0,212,255,0.12)" }}>
-              <span style={{ fontWeight: 600, color: "#dce8f0" }}>Ergebnis sichtbar</span>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 0", borderBottom: "1px solid var(--border)" }}>
+              <span style={{ fontWeight: 600, color: "var(--text)" }}>Ergebnis sichtbar</span>
               <select value={resultsVisibility} onChange={(e) => setResultsVisibility(e.target.value as ResultsVis)} style={{ ...inputStyle, width: "auto" }}>
                 <option value="always">immer</option>
                 <option value="after_vote">nach eigener Stimme</option>
@@ -192,18 +192,18 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
               </select>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 0", gap: "0.6rem", flexWrap: "wrap" }}>
-              <span style={{ fontWeight: 600, color: "#dce8f0" }}>Automatisch schließen (optional)</span>
+              <span style={{ fontWeight: 600, color: "var(--text)" }}>Automatisch schließen (optional)</span>
               <input type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} style={{ ...inputStyle, width: "auto" }} />
             </div>
           </div>
 
-          {error && <p className="fpw-meta" style={{ color: "#ff7a7a" }}>{error}</p>}
+          {error && <p className="fpw-meta" style={{ color: "var(--red)" }}>{error}</p>}
           <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
             <button
               onClick={() => void submit(false)}
               disabled={!canSubmit}
               className="fpw-btn"
-              style={{ borderColor: "rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.12)", color: "var(--green)", opacity: canSubmit ? 1 : 0.4 }}
+              style={{ borderColor: "rgba(91, 185, 138,0.5)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)", opacity: canSubmit ? 1 : 0.4 }}
             >
               {saving ? "Speichere…" : "Umfrage erstellen"}
             </button>
@@ -211,7 +211,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
               onClick={() => void submit(true)}
               disabled={!canSubmit}
               className="fpw-btn"
-              style={{ borderColor: "rgba(159,182,201,0.3)", color: "var(--dim)", opacity: canSubmit ? 1 : 0.4 }}
+              style={{ borderColor: "rgba(118, 130, 141,0.3)", color: "var(--dim)", opacity: canSubmit ? 1 : 0.4 }}
             >
               Als Entwurf speichern
             </button>

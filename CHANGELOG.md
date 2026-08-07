@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - SPA auf das RDOC-Brandkit v2.0 umgestellt (2026-08-07)
+
+Quelle: `RDOC-Brandkit/brandkit` (BrandGuide.md v2.0). Das bisherige Design war das, was der Guide in
+Paragraph 1 ausdruecklich ausschliesst - Neon-Cyan `#00d4ff`, Neon-Gruen, Rajdhani + Share Tech Mono,
+OG-Bild "Tactical Mode". Gemessen waren **~1400 Farbliterale**, davon 372 Cyan, ueberwiegend als
+Inline-Styles in den `.tsx`.
+
+Scope laut User: SPA `fleetplanner-web` + Favicons/Manifest/OG/Head. **Nicht** SSR `web/render.ts`,
+nicht mission-cover, nicht error-page.
+
+Gemappt wurde nach **Rolle**, nicht nach Farbe - Paragraph 8 erlaubt genau ein Copper-Element pro
+Ansicht (die primaere Aktion), also konnte Cyan nicht 1:1 auf Copper gehen:
+- Rahmen/Hairlines/Struktur -> Graphite `#2B3135` (`--border*`)
+- Ueberschriften/Vordergrund -> Off White `#F2F2F0`
+- technische Labels, Icons, Lane-Heads -> Steel `#76828D` (`--cyan` behielt den Namen, nicht die Rolle)
+- Primaeraktion + aktive Zustaende -> Copper `#C48A4A` (neu: `--accent`, u.a. `.fpw-btn`)
+- `--green`/`--gold`/`--red` -> Functional `#5BB98A`/`#D9A94E`/`#E4736A`, `--info` neu
+- Violett/Pink/Orange hatten kein Brand-Aequivalent (die Palette ist geschlossen) und loesen auf Steel
+  bzw. Warning auf
+
+Paragraph 8 "Kein Effekt" umgesetzt: alle Verlaeufe flachgelegt (Hero, Progress, Poll-Balken,
+Sticky-Bar, Lane-Trenner), Farb-Glow entfernt (`.fpw-dot`, `.theme-dot`, Live-Puls-Keyframe jetzt
+Opacity statt `box-shadow`), Text- und Layer-Schatten raus.
+
+Typografie (Paragraph 10): Space Grotesk fuer Ueberschriften, IBM Plex Sans fuer UI, IBM Plex Mono fuer
+Labels - **selbst gehostet** aus `brandkit/fonts` nach `public/fonts`. Die App fordert 400/500/600/700
+an, es gibt aber nur fuenf echte Schnitte; jede `@font-face` deklariert deshalb eine **Weight-Range**,
+damit jede Anfrage auf einer echten Datei landet statt synthetisiert zu werden.
+
+Assets: `favicon.ico/.svg`, `icons/` (11 Dateien), `site.webmanifest`, `og.png` und die Logo-SVGs aus
+`brandkit/digital/web` nach `public/`. Head auf das Brandkit-Snippet umgestellt, `theme-color` auf
+`#121416`/`#F2F2F0`, OG-Bild vom alten "Tactical Mode"-Hero auf `og.png`. Das Manifest traegt den
+Prod-Base-Path `/fleetplanner/` fest ein (Vite kopiert `public/` unveraendert - im lokalen Dev mit
+Base `/` zeigt es daher ins Leere; nur die PWA-Installation ist betroffen).
+
+CSP in `nginx.conf` (3 Stellen) von `style-src … https://fonts.googleapis.com; font-src
+https://fonts.gstatic.com` auf `style-src 'self' 'unsafe-inline'; font-src 'self'` verschaerft - es gibt
+keinen Drittanbieter-Request mehr. Geprueft: der SSR-Layer haengt nicht an Google Fonts (er nutzt schon
+System-Fallbacks), die schaerfere CSP bricht ihn also nicht.
+
+Der Hersteller-Theme-Picker bleibt auf Wunsch erhalten. Der Default "Raumdock" ist filterfrei und damit
+markenkonform; sein Swatch ist jetzt Copper. Die uebrigen Filter verlassen den Markenfarbraum bewusst -
+im Code als Ausnahme dokumentiert.
+
+**Nicht umgestellt und daher weiterhin neon:** der SSR-Layer `apps/fleetplanner/src/web/render.ts`
+(Maintenance-Seite, Rechtstexte), `mission-cover` und `error-page`.
+
+Deploy: nur `fleetplanner-web`.
+
 ### Removed - Companion-App (Tauri) + Voice-Era-Reste (2026-08-07)
 
 `apps/companion` war eine eigene Tauri-Desktop-App aus der Voice-Aera; Voice laeuft inzwischen ueber

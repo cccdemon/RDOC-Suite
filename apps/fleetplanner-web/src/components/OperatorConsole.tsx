@@ -149,22 +149,22 @@ function OperatorConsoleInner({
 
   // ── status header (always above the tabs) ──
   const kpiTile = (label: string, value: number | string, color: string) => (
-    <div key={label} style={{ flex: "1 1 110px", border: `1px solid ${color === "var(--cyan)" ? "rgba(0,212,255,0.22)" : "rgba(255,255,255,0.08)"}`, borderLeft: `2px solid ${color}`, borderRadius: 9, background: "rgba(255,255,255,0.012)", padding: "0.55rem 0.75rem" }}>
+    <div key={label} style={{ flex: "1 1 110px", border: `1px solid ${color === "var(--cyan)" ? "rgba(43, 49, 53, 0.22)" : "rgba(255,255,255,0.08)"}`, borderLeft: `2px solid ${color}`, borderRadius: 9, background: "rgba(255,255,255,0.012)", padding: "0.55rem 0.75rem" }}>
       <div style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.08em", color: "var(--dim2)", marginBottom: 4 }}>{label}</div>
       <div style={{ fontFamily: MONO, fontSize: "1.2rem", color, lineHeight: 1 }}>{value}</div>
     </div>
   );
 
   const statusHeader = (
-    <div style={{ border: "1px solid rgba(0,212,255,0.3)", borderRadius: 14, background: "linear-gradient(180deg, rgba(0,212,255,0.05), rgba(0,212,255,0.01))", padding: "0.9rem 1rem", marginBottom: "1rem" }}>
+    <div style={{ border: "1px solid var(--border-hi)", borderRadius: 14, background: "var(--bg2)", padding: "0.9rem 1rem", marginBottom: "1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.8rem" }}>
-        <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(0,212,255,0.14)", border: "1px solid rgba(0,212,255,0.4)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="board" size={17} /></span>
+        <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(43, 49, 53, 0.14)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="board" size={17} /></span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATOR-KONSOLE · NUR EINSATZLEITUNG</div>
           <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{op.title}</div>
         </div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-          <button type="button" data-testid="voice-quickswitch" title="SquadLink Voice" onClick={toggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.36rem 0.65rem", borderRadius: 8, cursor: "pointer", border: voiceEnabled ? "1px solid rgba(160,100,255,0.5)" : "1px solid rgba(255,255,255,0.14)", background: voiceEnabled ? "rgba(160,100,255,0.1)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim2)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em" }}>
+          <button type="button" data-testid="voice-quickswitch" title="SquadLink Voice" onClick={toggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.36rem 0.65rem", borderRadius: 8, cursor: "pointer", border: voiceEnabled ? "1px solid rgba(118, 130, 141,0.5)" : "1px solid rgba(255,255,255,0.14)", background: voiceEnabled ? "rgba(118, 130, 141,0.1)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim2)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em" }}>
             <Ic name="mic" size={13} /> {voiceEnabled ? "VOICE AN" : "VOICE AUS"}
           </button>
           <SaveDot id="op-voice" />
@@ -174,7 +174,7 @@ function OperatorConsoleInner({
       <div style={{ display: "flex", gap: "0.9rem", flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.1em", color: "var(--dim2)" }}>STATUS</span>
-          <div data-testid="manage-status" style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(0,212,255,0.14)", flexWrap: "wrap" }}>
+          <div data-testid="manage-status" style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border)", flexWrap: "wrap" }}>
             {STATUSES.map(([v, l, col]) => {
               const on = status === v;
               return (
@@ -210,10 +210,10 @@ function OperatorConsoleInner({
       style={{
         width: "100%",
         marginTop: "2.5rem",
-        border: "1px solid rgba(0,212,255,0.4)",
+        border: "1px solid var(--border-hi)",
         borderRadius: 16,
-        background: "rgba(0,212,255,0.04)",
-        boxShadow: "0 0 0 1px rgba(0,212,255,0.06), 0 18px 50px rgba(0,0,0,0.35)",
+        background: "rgba(43, 49, 53, 0.04)",
+        boxShadow: "0 0 0 1px rgba(43, 49, 53, 0.06), 0 18px 50px rgba(0,0,0,0.35)",
         overflow: "hidden",
       }}
     >
@@ -225,15 +225,15 @@ function OperatorConsoleInner({
           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cyan)" }} />
           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>ARBEITSBEREICH</span>
         </div>
-        <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "1.2rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid rgba(0,212,255,0.2)" }}>
+        <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "1.2rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid var(--border)" }}>
           {TABS.map((t) => {
             const on = tab === t.key;
             const badge = tabBadge(t.key);
             const acc = accentOf(t.key);
             return (
-              <button key={t.key} type="button" data-testid={`manage-tab-${t.key}`} onClick={() => setTab(t.key)} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 9, padding: "0.6rem 1rem", borderRadius: 10, cursor: "pointer", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid rgba(255,255,255,0.08)", background: on ? "var(--cyan)" : "rgba(255,255,255,0.02)", color: on ? "#04060a" : "var(--dim)", boxShadow: on ? "0 0 16px rgba(0,212,255,0.45)" : "none", transition: "all .12s" }}>
-                <span style={{ display: "inline-flex", color: on ? "#04060a" : acc }}><Ic name={t.icon} size={16} /></span>{t.label}
-                {badge && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 19, height: 19, padding: "0 5px", borderRadius: 10, fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700, background: on ? "rgba(4,6,10,0.22)" : badge.color, color: "#04060a" }}>{badge.n}</span>}
+              <button key={t.key} type="button" data-testid={`manage-tab-${t.key}`} onClick={() => setTab(t.key)} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 9, padding: "0.6rem 1rem", borderRadius: 10, cursor: "pointer", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid rgba(255,255,255,0.08)", background: on ? "var(--cyan)" : "rgba(255,255,255,0.02)", color: on ? "var(--bg)" : "var(--dim)", boxShadow: on ? "0 0 16px rgba(43, 49, 53, 0.45)" : "none", transition: "all .12s" }}>
+                <span style={{ display: "inline-flex", color: on ? "var(--bg)" : acc }}><Ic name={t.icon} size={16} /></span>{t.label}
+                {badge && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 19, height: 19, padding: "0 5px", borderRadius: 10, fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700, background: on ? "rgba(18, 20, 22,0.22)" : badge.color, color: "var(--bg)" }}>{badge.n}</span>}
               </button>
             );
           })}

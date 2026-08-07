@@ -31,7 +31,7 @@ export function ApiDocsPage() {
     <div
       data-testid="api-docs"
       ref={ref}
-      style={{ background: "#fff", borderRadius: 8, overflow: "hidden" }}
+      style={{ background: "var(--text-hi)", borderRadius: 8, overflow: "hidden" }}
     />
   );
 }

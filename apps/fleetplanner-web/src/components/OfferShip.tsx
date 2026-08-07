@@ -149,7 +149,7 @@ export function OfferShip({
       className="fpw-btn"
       style={
         mode === m
-          ? { background: "var(--cyan)", color: "#04060a", borderColor: "var(--cyan)" }
+          ? { background: "var(--cyan)", color: "var(--bg)", borderColor: "var(--cyan)" }
           : { background: "transparent", color: "var(--dim)", borderColor: "rgba(255,255,255,.18)" }
       }
     >
@@ -197,7 +197,7 @@ export function OfferShip({
         data-testid="ship-search"
         onChange={(e) => setQuery(e.target.value)}
         placeholder={mode === "vehicle" ? "Fahrzeugname…" : "Schiffsname…"}
-        style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
+        style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
       />
       {results.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginTop: "0.5rem" }}>
@@ -229,7 +229,7 @@ export function OfferShip({
   );
 
   return (
-    <div data-testid="offer-ship-form" style={{ width: "100%", borderTop: "1px solid rgba(0,212,255,.12)", paddingTop: "0.9rem", marginTop: "0.4rem" }}>
+    <div data-testid="offer-ship-form" style={{ width: "100%", borderTop: "1px solid var(--border)", paddingTop: "0.9rem", marginTop: "0.4rem" }}>
       <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.9rem", flexWrap: "wrap" }}>
         {seg("ship", "Schiff")}
         {seg("squad", "Squad")}
@@ -252,7 +252,7 @@ export function OfferShip({
               value={requirementId}
               data-testid="offer-requirement"
               onChange={(e) => setRequirementId(e.target.value)}
-              style={{ width: "100%", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
+              style={{ width: "100%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
             >
               <option value="">— Operator entscheidet —</option>
               {offerNeeds.map((n) => (
@@ -272,7 +272,7 @@ export function OfferShip({
             onChange={(e) => setSquadName(e.target.value)}
             maxLength={80}
             placeholder="Squad-Name…"
-            style={{ flex: "1 1 200px", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
+            style={{ flex: "1 1 200px", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
           />
           <label className="fpw-meta" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
             Größe
@@ -280,7 +280,7 @@ export function OfferShip({
               value={squadSize}
               data-testid="squad-size"
               onChange={(e) => setSquadSize(Number(e.target.value))}
-              style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.45rem", borderRadius: 8 }}
+              style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "0.45rem", borderRadius: 8 }}
             >
               {[2, 3, 4, 5, 6, 7, 8].map((n) => (
                 <option key={n} value={n}>{n}</option>
@@ -297,7 +297,7 @@ export function OfferShip({
             value={roleOverride}
             data-testid="role-select"
             onChange={(e) => setRoleOverride(e.target.value)}
-            style={{ width: "100%", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
+            style={{ width: "100%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
           >
             <option value="">— aus dem Katalog übernehmen —</option>
             {OFFERABLE_ROLES.map((r) => (
@@ -320,7 +320,7 @@ export function OfferShip({
               value={carrierUnitId}
               data-testid="carrier-select"
               onChange={(e) => setCarrierUnitId(e.target.value)}
-              style={{ width: "100%", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
+              style={{ width: "100%", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "0.55rem", borderRadius: 8 }}
             >
               <option value="">— Trägerschiff wählen —</option>
               {carrierOptions.map((c) => (
@@ -336,7 +336,7 @@ export function OfferShip({
         onChange={(e) => setNote(e.target.value)}
         maxLength={280}
         placeholder="Notiz an den Operator (optional)…"
-        style={{ width: "100%", boxSizing: "border-box", minHeight: 56, marginTop: "0.8rem", background: "var(--bg3)", border: "1px solid rgba(0,212,255,.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.92rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none", resize: "vertical" }}
+        style={{ width: "100%", boxSizing: "border-box", minHeight: 56, marginTop: "0.8rem", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.92rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none", resize: "vertical" }}
       />
       <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.8rem" }}>
         <button type="button" className="fpw-btn" data-testid="offer-ship-submit" disabled={busy} onClick={submit}>

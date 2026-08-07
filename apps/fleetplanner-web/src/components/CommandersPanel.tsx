@@ -49,7 +49,7 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {op.leaders.length === 0 && <div style={{ color: "var(--dim2)", fontSize: "0.85rem" }}>Noch keine Leitung benannt.</div>}
         {op.leaders.map((l) => (
-          <div key={l.id} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.75rem", border: "1px solid rgba(0,212,255,0.1)", borderRadius: 9, background: "var(--row)" }}>
+          <div key={l.id} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.75rem", border: "1px solid var(--border)", borderRadius: 9, background: "var(--row)" }}>
             <Avatar name={l.username} size={28} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: "0.9rem", color: "var(--text-hi)" }}>{l.username}</div>
@@ -74,7 +74,7 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Mitglied suchen…"
-            style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.9rem", padding: "0.45rem 0.6rem", borderRadius: 8, outline: "none", marginBottom: "0.6rem" }}
+            style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.9rem", padding: "0.45rem 0.6rem", borderRadius: 8, outline: "none", marginBottom: "0.6rem" }}
           />
           {members === null ? (
             <div style={{ color: "var(--dim2)", fontSize: "0.82rem" }}>Lade Mitglieder…</div>
@@ -83,7 +83,7 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               {candidates.map((c) => (
-                <button key={c.id} type="button" data-testid={`leader-cand-${c.id}`} disabled={busy} onClick={() => run(() => addLeader(op.id, c.id, csrf!))} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.45rem 0.55rem", border: "1px solid rgba(0,212,255,0.2)", background: "rgba(0,212,255,0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+                <button key={c.id} type="button" data-testid={`leader-cand-${c.id}`} disabled={busy} onClick={() => run(() => addLeader(op.id, c.id, csrf!))} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.45rem 0.55rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
                   <Avatar name={c.username} size={24} />
                   <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{c.username}</span>
                   <Ic name="plus" size={14} sw={2} />

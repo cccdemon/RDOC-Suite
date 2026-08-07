@@ -1,5 +1,5 @@
 // 22px initials square — identical to the design's avatarStyle()/AV color hash.
-const AV_COLORS = ["#00d4ff", "#a064ff", "#00ff88", "#f0a500", "#ff70c8"];
+const AV_COLORS = ["var(--cyan)", "var(--purple)", "var(--green)", "var(--gold)", "var(--pink)"];
 
 export function avatarColor(name: string): string {
   let h = 0;
@@ -21,7 +21,7 @@ export function Avatar({ name, size = 22 }: { name: string; size?: number }) {
         fontFamily: "var(--mono)",
         fontSize: 9,
         fontWeight: 700,
-        color: "#04060a",
+        color: "var(--bg)",
         background: avatarColor(name),
         flexShrink: 0,
       }}

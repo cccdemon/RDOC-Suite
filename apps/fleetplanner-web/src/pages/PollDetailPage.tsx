@@ -72,7 +72,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
   }, [load]);
 
   if (loading) return <p className="fpw-meta">Lade…</p>;
-  if (error || !poll) return <p className="fpw-meta" style={{ color: "#ff7a7a" }}>{error ?? "Umfrage nicht gefunden."}</p>;
+  if (error || !poll) return <p className="fpw-meta" style={{ color: "var(--red)" }}>{error ?? "Umfrage nicht gefunden."}</p>;
 
   const totalForBars = poll.options.reduce((s, o) => s + o.votes, 0);
   const maxVotes = Math.max(1, ...poll.options.map((o) => o.votes));
@@ -155,26 +155,26 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
 
   return (
     <div data-testid="poll-detail-page" style={{ width: "100%", maxWidth: 760 }}>
-      <button onClick={() => nav("/polls")} className="fpw-btn" style={{ fontSize: "0.72rem", padding: "0.4rem 0.7rem", marginBottom: "1rem", borderColor: "rgba(159,182,201,0.3)", color: "var(--dim)", background: "transparent" }}>
+      <button onClick={() => nav("/polls")} className="fpw-btn" style={{ fontSize: "0.72rem", padding: "0.4rem 0.7rem", marginBottom: "1rem", borderColor: "rgba(118, 130, 141,0.3)", color: "var(--dim)", background: "transparent" }}>
         <Ic name="back" size={13} /> Alle Umfragen
       </button>
 
       <div className="fpw-card">
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.7rem" }}>
           {poll.status === "open" ? (
-            <Tag label="Offen" color="var(--green)" bg="rgba(0,255,136,0.08)" bd="rgba(0,255,136,0.4)" />
+            <Tag label="Offen" color="var(--green)" bg="rgba(91, 185, 138,0.08)" bd="rgba(91, 185, 138,0.4)" />
           ) : poll.status === "draft" ? (
-            <Tag label="Entwurf" color="var(--gold)" bg="rgba(240,165,0,0.09)" bd="rgba(240,165,0,0.42)" />
+            <Tag label="Entwurf" color="var(--gold)" bg="rgba(217, 169, 78,0.09)" bd="rgba(217, 169, 78,0.42)" />
           ) : (
-            <Tag label="Geschlossen" color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
+            <Tag label="Geschlossen" color="var(--dim)" bg="rgba(118, 130, 141,0.07)" bd="rgba(118, 130, 141,0.34)" />
           )}
           <Tag label={t(vt.labelKey)} color={vt.color} bg={vt.bg} bd={vt.bd} />
-          <Tag label={poll.mode === "multiple" ? `Mehrfach${poll.maxChoices ? ` · max ${poll.maxChoices}` : ""}` : "Einfach"} color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />
-          {poll.anonymous && <Tag label="anonym" color="#9fb6c9" bg="rgba(159,182,201,0.07)" bd="rgba(159,182,201,0.34)" />}
+          <Tag label={poll.mode === "multiple" ? `Mehrfach${poll.maxChoices ? ` · max ${poll.maxChoices}` : ""}` : "Einfach"} color="var(--dim)" bg="rgba(118, 130, 141,0.07)" bd="rgba(118, 130, 141,0.34)" />
+          {poll.anonymous && <Tag label="anonym" color="var(--dim)" bg="rgba(118, 130, 141,0.07)" bd="rgba(118, 130, 141,0.34)" />}
         </div>
 
-        <h1 data-testid="poll-title-display" style={{ fontWeight: 700, fontSize: "1.45rem", color: "#eaf4fb", margin: "0 0 0.5rem" }}>{poll.title}</h1>
-        {poll.description && <p style={{ color: "#9fb1c2", fontSize: "0.95rem", whiteSpace: "pre-wrap", margin: "0 0 1rem" }}>{poll.description}</p>}
+        <h1 data-testid="poll-title-display" style={{ fontWeight: 700, fontSize: "1.45rem", color: "var(--text-hi)", margin: "0 0 0.5rem" }}>{poll.title}</h1>
+        {poll.description && <p style={{ color: "var(--dim)", fontSize: "0.95rem", whiteSpace: "pre-wrap", margin: "0 0 1rem" }}>{poll.description}</p>}
 
         {/* ── voting / options ── */}
         <div style={{ marginTop: "0.4rem" }}>
@@ -189,27 +189,27 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
                   <div
                     data-testid={`poll-option-${o.id}`}
                     onClick={() => !busy && toggle(o.id)}
-                    style={{ display: "flex", alignItems: "center", gap: "0.8rem", padding: "0.7rem 0.8rem", border: `1px solid ${sel ? "rgba(0,255,136,0.5)" : "rgba(0,212,255,0.12)"}`, borderRadius: 10, background: sel ? "rgba(0,255,136,0.06)" : "rgba(255,255,255,0.013)", cursor: "pointer" }}
+                    style={{ display: "flex", alignItems: "center", gap: "0.8rem", padding: "0.7rem 0.8rem", border: `1px solid ${sel ? "rgba(91, 185, 138,0.5)" : "rgba(43, 49, 53, 0.12)"}`, borderRadius: 10, background: sel ? "rgba(91, 185, 138,0.06)" : "rgba(255,255,255,0.013)", cursor: "pointer" }}
                   >
-                    <span style={{ width: 20, height: 20, flexShrink: 0, border: `2px solid ${sel ? "var(--green)" : "rgba(159,182,201,0.5)"}`, borderRadius: poll.mode === "single" ? "50%" : 5, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--green)" }}>
+                    <span style={{ width: 20, height: 20, flexShrink: 0, border: `2px solid ${sel ? "var(--green)" : "rgba(118, 130, 141,0.5)"}`, borderRadius: poll.mode === "single" ? "50%" : 5, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "var(--green)" }}>
                       {sel && (poll.mode === "single" ? <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--green)" }} /> : <Ic name="check" size={13} />)}
                     </span>
-                    <span style={{ fontWeight: 600, color: "#dce8f0", flex: 1 }}>{o.label}</span>
-                    {poll.showResults && <span style={{ fontFamily: MONO, fontSize: "0.8rem", color: "#9fb1c2" }}>{o.votes}</span>}
+                    <span style={{ fontWeight: 600, color: "var(--text)", flex: 1 }}>{o.label}</span>
+                    {poll.showResults && <span style={{ fontFamily: MONO, fontSize: "0.8rem", color: "var(--dim)" }}>{o.votes}</span>}
                   </div>
                 ) : (
                   /* results-only row */
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.3rem" }}>
-                      <span style={{ fontWeight: 600, color: "#dce8f0" }}>
+                      <span style={{ fontWeight: 600, color: "var(--text)" }}>
                         {o.label}
-                        {youVoted && <span style={{ fontFamily: MONO, fontSize: "0.55rem", color: "var(--green)", border: "1px solid rgba(0,255,136,0.4)", background: "rgba(0,255,136,0.08)", borderRadius: 4, padding: "0.05rem 0.3rem", marginLeft: "0.45rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>deine Stimme</span>}
+                        {youVoted && <span style={{ fontFamily: MONO, fontSize: "0.55rem", color: "var(--green)", border: "1px solid rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.08)", borderRadius: 4, padding: "0.05rem 0.3rem", marginLeft: "0.45rem", letterSpacing: "0.06em", textTransform: "uppercase" }}>deine Stimme</span>}
                       </span>
-                      {poll.showResults && <span style={{ fontFamily: MONO, fontSize: "0.85rem", color: "#eaf4fb" }}>{pct}% <span style={{ color: "#7e92a4", fontSize: "0.7rem" }}>· {o.votes}</span></span>}
+                      {poll.showResults && <span style={{ fontFamily: MONO, fontSize: "0.85rem", color: "var(--text-hi)" }}>{pct}% <span style={{ color: "var(--dim2)", fontSize: "0.7rem" }}>· {o.votes}</span></span>}
                     </div>
                     {poll.showResults && (
                       <div style={{ height: 9, borderRadius: 6, background: "var(--bg3)", overflow: "hidden" }}>
-                        <div style={{ height: "100%", width: `${pct}%`, borderRadius: 6, background: win ? "linear-gradient(90deg,var(--gold),#f5c451)" : "linear-gradient(90deg,var(--cyan),#5fe6ff)" }} />
+                        <div style={{ height: "100%", width: `${pct}%`, borderRadius: 6, background: win ? "var(--gold)" : "var(--cyan)" }} />
                       </div>
                     )}
                   </div>
@@ -233,12 +233,12 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
               onClick={() => void run(() => votePoll(poll.id, csrf!, [...selected]))}
               disabled={busy || selected.size === 0}
               className="fpw-btn"
-              style={{ borderColor: "rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.12)", color: "var(--green)", opacity: busy || selected.size === 0 ? 0.4 : 1 }}
+              style={{ borderColor: "rgba(91, 185, 138,0.5)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)", opacity: busy || selected.size === 0 ? 0.4 : 1 }}
             >
               {poll.viewerHasVoted ? "Auswahl aktualisieren" : "Stimme abgeben"}
             </button>
             {poll.viewerHasVoted && (
-              <button data-testid="poll-vote-withdraw" onClick={() => void run(() => withdrawPollVote(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(159,182,201,0.3)", color: "var(--dim)", background: "transparent" }}>
+              <button data-testid="poll-vote-withdraw" onClick={() => void run(() => withdrawPollVote(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(118, 130, 141,0.3)", color: "var(--dim)", background: "transparent" }}>
                 Stimme zurückziehen
               </button>
             )}
@@ -254,7 +254,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
               onChange={(e) => setNewOption(e.target.value)}
               placeholder="Eigene Option vorschlagen…"
               maxLength={200}
-              style={{ flex: 1, boxSizing: "border-box", background: "var(--bg)", border: "1px solid rgba(0,212,255,0.16)", borderRadius: 8, color: "#eaf4fb", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem" }}
+              style={{ flex: 1, boxSizing: "border-box", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-hi)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem" }}
             />
             <button
               onClick={() => void run(async () => { await addPollOption(poll.id, csrf!, newOption.trim()); setNewOption(""); })}
@@ -267,7 +267,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
           </div>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem 1rem", flexWrap: "wrap", fontFamily: MONO, fontSize: "0.66rem", color: "#7e92a4", letterSpacing: "0.04em", marginTop: "1.2rem", paddingTop: "0.9rem", borderTop: "1px solid rgba(0,212,255,0.12)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.3rem 1rem", flexWrap: "wrap", fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim2)", letterSpacing: "0.04em", marginTop: "1.2rem", paddingTop: "0.9rem", borderTop: "1px solid var(--border)" }}>
           <span><Ic name="users" size={12} /> {poll.totalVotes} Stimmen</span>
           {closesLabel && <span><Ic name="clock" size={12} /> {poll.status === "closed" ? "beendet" : `schließt ${closesLabel}`}</span>}
           <span>{poll.guild.name} · von {poll.createdBy.username}</span>
@@ -277,7 +277,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
       {/* ── manager controls ── */}
       {poll.canManage && (
         <div className="fpw-card" style={{ marginTop: "1rem" }}>
-          <div style={{ fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "#9fb1c2", textTransform: "uppercase", marginBottom: "0.7rem" }}>Verwaltung</div>
+          <div style={{ fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "var(--dim)", textTransform: "uppercase", marginBottom: "0.7rem" }}>Verwaltung</div>
 
           {edit ? (
             <PollEditForm edit={edit} setEdit={setEdit} mode={poll.mode} busy={busy} onSave={() => void saveEdit()} onCancel={() => setEdit(null)} />
@@ -288,7 +288,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
                   <button onClick={openEdit} disabled={busy} className="fpw-btn"><Ic name="edit" size={13} /> Bearbeiten</button>
                 )}
                 {poll.status === "open" && (
-                  <button data-testid="poll-close" onClick={() => void run(() => closePoll(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(240,165,0,0.5)", background: "rgba(240,165,0,0.1)", color: "var(--gold)" }}>
+                  <button data-testid="poll-close" onClick={() => void run(() => closePoll(poll.id, csrf!))} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(217, 169, 78,0.5)", background: "rgba(217, 169, 78,0.1)", color: "var(--gold)" }}>
                     <Ic name="lock" size={13} /> Umfrage schließen
                   </button>
                 )}
@@ -297,7 +297,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
                   onClick={() => { if (window.confirm("Umfrage wirklich löschen? Das kann nicht rückgängig gemacht werden.")) void run(async () => { await deletePoll(poll.id, csrf!); nav("/polls"); }); }}
                   disabled={busy}
                   className="fpw-btn"
-                  style={{ borderColor: "rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "var(--red2)" }}
+                  style={{ borderColor: "rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red2)" }}
                 >
                   <Ic name="x" size={13} /> Löschen
                 </button>
@@ -316,11 +316,11 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
 }
 
 const editInput: React.CSSProperties = {
-  width: "100%", boxSizing: "border-box", background: "var(--bg)", border: "1px solid rgba(0,212,255,0.16)",
-  borderRadius: 8, color: "#eaf4fb", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", outline: "none",
+  width: "100%", boxSizing: "border-box", background: "var(--bg)", border: "1px solid var(--border)",
+  borderRadius: 8, color: "var(--text-hi)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", outline: "none",
 };
 const editLabel: React.CSSProperties = {
-  display: "block", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.1em", color: "#9fb1c2", textTransform: "uppercase", marginBottom: "0.35rem",
+  display: "block", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.1em", color: "var(--dim)", textTransform: "uppercase", marginBottom: "0.35rem",
 };
 
 function PollEditForm({
@@ -354,7 +354,7 @@ function PollEditForm({
           <div key={o.id ?? `new-${i}`} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
             <input style={editInput} value={o.label} maxLength={200} onChange={(e) => setOpt(i, e.target.value)} placeholder={`Option ${i + 1}`} />
             {edit.options.length > 2 && (
-              <button onClick={() => removeOpt(i)} title="Entfernen" style={{ color: "var(--red)", border: "1px solid rgba(255,68,68,0.3)", background: "rgba(255,68,68,0.06)", borderRadius: 7, padding: "0.5rem 0.6rem", cursor: "pointer" }}><Ic name="x" size={13} /></button>
+              <button onClick={() => removeOpt(i)} title="Entfernen" style={{ color: "var(--red)", border: "1px solid rgba(228, 115, 106,0.3)", background: "rgba(228, 115, 106,0.06)", borderRadius: 7, padding: "0.5rem 0.6rem", cursor: "pointer" }}><Ic name="x" size={13} /></button>
             )}
           </div>
         ))}
@@ -378,13 +378,13 @@ function PollEditForm({
         <label style={editLabel}>Automatisch schließen (optional)</label>
         <input type="datetime-local" value={edit.closesAt} onChange={(e) => patch({ closesAt: e.target.value })} style={{ ...editInput, width: "auto" }} />
       </div>
-      <label style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "#dce8f0", fontSize: "0.92rem", cursor: "pointer" }}>
+      <label style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", color: "var(--text)", fontSize: "0.92rem", cursor: "pointer" }}>
         <input type="checkbox" checked={edit.allowAddOptions} onChange={(e) => patch({ allowAddOptions: e.target.checked })} />
         Eigene Optionen erlauben
       </label>
       <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-        <button onClick={onSave} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(0,255,136,0.5)", background: "rgba(0,255,136,0.12)", color: "var(--green)" }}><Ic name="save" size={13} /> Speichern</button>
-        <button onClick={onCancel} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(159,182,201,0.3)", color: "var(--dim)", background: "transparent" }}>Abbrechen</button>
+        <button onClick={onSave} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(91, 185, 138,0.5)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)" }}><Ic name="save" size={13} /> Speichern</button>
+        <button onClick={onCancel} disabled={busy} className="fpw-btn" style={{ borderColor: "rgba(118, 130, 141,0.3)", color: "var(--dim)", background: "transparent" }}>Abbrechen</button>
       </div>
     </div>
   );

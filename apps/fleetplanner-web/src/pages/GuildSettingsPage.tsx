@@ -5,10 +5,10 @@ import type { GuildSettings, GuildSettingsMember, SessionResponse } from "../api
 import { Ic } from "../components/Icons";
 
 const MONO = "var(--mono)";
-const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "#9fb1c2", marginBottom: "0.7rem" };
+const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
 const field: React.CSSProperties = {
   width: "100%", boxSizing: "border-box", background: "var(--bg3)",
-  border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)",
+  border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)",
   fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none",
 };
 
@@ -122,8 +122,8 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
   return (
     <div data-testid="guild-settings-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.2rem" }}>
-        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="users" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>Server-Einstellungen</h1>
+        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={20} /></span>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Server-Einstellungen</h1>
       </div>
       <p className="fpw-meta" style={{ marginBottom: "1.2rem", display: "flex", gap: "1.2rem", flexWrap: "wrap" }}>
         <Link to="/guilds/partnerships" data-testid="partnerships-link">Partnerschaften verwalten →</Link>

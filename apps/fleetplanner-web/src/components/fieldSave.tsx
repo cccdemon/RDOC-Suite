@@ -58,9 +58,9 @@ export function useFieldSave(): Ctx {
 
 const DOT: Record<Exclude<SaveStatus, "idle">, [string, string, string, string]> = {
   // [color, label, border, bg]
-  saving: ["var(--cyan)", "speichert…", "rgba(0,212,255,0.4)", "rgba(0,212,255,0.08)"],
-  saved: ["var(--green)", "gespeichert ✓", "rgba(0,255,136,0.4)", "rgba(0,255,136,0.08)"],
-  error: ["var(--red2)", "Fehler ⟳", "rgba(255,68,68,0.4)", "rgba(255,68,68,0.08)"],
+  saving: ["var(--cyan)", "speichert…", "rgba(43, 49, 53, 0.4)", "rgba(43, 49, 53, 0.08)"],
+  saved: ["var(--green)", "gespeichert ✓", "rgba(91, 185, 138,0.4)", "rgba(91, 185, 138,0.08)"],
+  error: ["var(--red2)", "Fehler ⟳", "rgba(228, 115, 106,0.4)", "rgba(228, 115, 106,0.08)"],
 };
 
 /** Tiny per-field status pill. Renders nothing while idle. */
@@ -81,7 +81,7 @@ export function SaveDot({ id }: { id: string }) {
 export function GlobalSaveBadge() {
   const { anySaving } = useFieldSave();
   return (
-    <span data-testid="global-save-badge" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 8, border: `1px solid ${anySaving ? "rgba(0,212,255,0.4)" : "rgba(0,255,136,0.32)"}`, background: anySaving ? "rgba(0,212,255,0.06)" : "rgba(0,255,136,0.05)" }}>
+    <span data-testid="global-save-badge" style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 11px", borderRadius: 8, border: `1px solid ${anySaving ? "rgba(43, 49, 53, 0.4)" : "rgba(91, 185, 138,0.32)"}`, background: anySaving ? "rgba(43, 49, 53, 0.06)" : "rgba(91, 185, 138,0.05)" }}>
       <span style={{ width: 7, height: 7, borderRadius: "50%", background: anySaving ? "var(--cyan)" : "var(--green)", boxShadow: `0 0 8px ${anySaving ? "var(--cyan)" : "var(--green)"}`, animation: anySaving ? "fpwPulseDot 1s infinite" : "none" }} />
       <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.06em", color: anySaving ? "var(--cyan)" : "var(--green)" }}>{anySaving ? "SPEICHERT LIVE…" : "ALLE ÄNDERUNGEN LIVE GESPEICHERT"}</span>
     </span>

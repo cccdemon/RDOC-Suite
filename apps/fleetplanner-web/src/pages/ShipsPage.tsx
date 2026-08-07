@@ -60,10 +60,10 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
   return (
     <div data-testid="ships-page" style={{ width: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.3rem" }}>
-        <span style={{ color: "#00d4ff", display: "inline-flex" }}><Ic name="ship" size={20} /></span>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "#eaf4fb", margin: 0 }}>{tr("ships.title")}</h1>
+        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="ship" size={20} /></span>
+        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>{tr("ships.title")}</h1>
       </div>
-      <div style={{ color: "#9fb1c2", fontSize: "0.9rem", marginBottom: "1.2rem" }}>{tr("ships.source")}</div>
+      <div style={{ color: "var(--dim)", fontSize: "0.9rem", marginBottom: "1.2rem" }}>{tr("ships.source")}</div>
 
       {notice && <p className="fpw-tag gold" role="alert" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
 
@@ -73,7 +73,7 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={tr("ships.searchPlaceholder")}
-        style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.98rem", padding: "0.6rem 0.8rem", borderRadius: 8, outline: "none", marginBottom: "1rem" }}
+        style={{ width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.98rem", padding: "0.6rem 0.8rem", borderRadius: 8, outline: "none", marginBottom: "1rem" }}
       />
 
       {loading && ships.length === 0 ? (
@@ -82,7 +82,7 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
         <p className="fpw-meta">{tr("ships.noHits")}</p>
       ) : (
         <div className="fpw-card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "#5b6b7a", padding: "0.7rem 1rem", borderBottom: "1px solid rgba(0,212,255,0.12)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)", padding: "0.7rem 1rem", borderBottom: "1px solid var(--border)" }}>
             <span /><span>{tr("ships.col.name")}</span><span>{tr("ships.col.manufacturer")}</span><span>{tr("ships.col.size")}</span><span>{tr("ships.col.role")}</span><span style={{ textAlign: "right" }}>{tr("ships.col.crew")}</span>{canAdd && <span />}
           </div>
           {ships.map((s) => (
@@ -100,7 +100,7 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
                     alt=""
                     loading="lazy"
                     onError={(ev) => { (ev.currentTarget as HTMLImageElement).style.display = "none"; }}
-                    style={{ width: 36, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid rgba(0,212,255,0.18)", flex: "none" }}
+                    style={{ width: 36, height: 24, objectFit: "cover", borderRadius: 4, border: "1px solid var(--border)", flex: "none" }}
                   />
                 ) : (
                   <span style={{ color: "#3a4754", display: "inline-flex" }}><Ic name="ship" size={16} /></span>
@@ -110,7 +110,7 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
               <span className="fpw-meta">{s.manufacturer || "—"}</span>
               <span className="fpw-meta">{s.size || "—"}</span>
               <span className="fpw-meta">{s.role || "—"}</span>
-              <span style={{ fontFamily: MONO, fontSize: "0.82rem", color: "#9fb1c2", textAlign: "right" }}>{s.minCrew}–{s.maxCrew}</span>
+              <span style={{ fontFamily: MONO, fontSize: "0.82rem", color: "var(--dim)", textAlign: "right" }}>{s.minCrew}–{s.maxCrew}</span>
               {canAdd && (
                 <span style={{ display: "inline-flex", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
                   {owned.has(s.id) ? (

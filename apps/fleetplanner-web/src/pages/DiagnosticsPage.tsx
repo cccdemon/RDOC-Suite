@@ -9,7 +9,7 @@ import { useT } from "../i18n";
 const SEV: Record<string, { labelKey: string; color: string; rgb: string }> = {
   ok: { labelKey: "diag.sev.ok", color: "var(--green)", rgb: "0,255,136" },
   warn: { labelKey: "diag.sev.warn", color: "var(--gold)", rgb: "240,165,0" },
-  error: { labelKey: "diag.sev.error", color: "#ff6b6b", rgb: "255,68,68" },
+  error: { labelKey: "diag.sev.error", color: "var(--red)", rgb: "255,68,68" },
 };
 
 export function DiagnosticsPage({ session }: { session: SessionResponse | null }) {
@@ -46,11 +46,11 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
           </div>
           <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: 0 }}>{t("diag.title")}{diag ? ` · ${diag.guild.name}` : ""}</h1>
         </div>
-        <button type="button" data-testid="diag-retest" disabled={busy || !guildId} onClick={() => guildId && reload(guildId)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid rgba(0,212,255,0.45)", background: "rgba(0,212,255,0.12)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}><Ic name="refresh" size={14} sw={1.8} /> {t("diag.retest")}</button>
+        <button type="button" data-testid="diag-retest" disabled={busy || !guildId} onClick={() => guildId && reload(guildId)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.12)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}><Ic name="refresh" size={14} sw={1.8} /> {t("diag.retest")}</button>
       </div>
 
       {manageable.length > 1 && (
-        <select data-testid="diag-guild" value={guildId ?? ""} onChange={(e) => setGuildId(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: MONO, fontSize: "0.8rem", padding: "0.5rem 0.6rem", borderRadius: 8, marginBottom: "1rem", minWidth: 220 }}>
+        <select data-testid="diag-guild" value={guildId ?? ""} onChange={(e) => setGuildId(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: MONO, fontSize: "0.8rem", padding: "0.5rem 0.6rem", borderRadius: 8, marginBottom: "1rem", minWidth: 220 }}>
           {manageable.map((m) => <option key={m.guildId} value={m.guildId}>{m.guildName}</option>)}
         </select>
       )}
@@ -82,18 +82,18 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
                         <strong style={{ fontFamily: "var(--body)", fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)" }}>{b.name}{b.username ? ` · @${b.username}` : ""}</strong>
                         <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.05em", padding: "2px 7px", borderRadius: 5, border: `1px solid rgba(${sv.rgb},0.4)`, background: `rgba(${sv.rgb},0.1)`, color: sv.color }}>{t(sv.labelKey)}</span>
                       </div>
-                      <div style={{ fontSize: "0.82rem", color: "#9fb1c2", lineHeight: 1.45, marginBottom: "0.55rem" }}>{b.note}</div>
+                      <div style={{ fontSize: "0.82rem", color: "var(--dim)", lineHeight: 1.45, marginBottom: "0.55rem" }}>{b.note}</div>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
                         {b.requiredPermissions.map((p) => {
                           const missing = b.missingPermissions.some((m) => m.key === p.key);
                           const c = missing ? "255,68,68" : "0,255,136";
-                          const col = missing ? "#ff6b6b" : "var(--green)";
+                          const col = missing ? "var(--red)" : "var(--green)";
                           return <span key={p.key} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontFamily: MONO, fontSize: "0.62rem", padding: "2px 7px", borderRadius: 5, border: `1px solid rgba(${c},0.35)`, background: `rgba(${c},0.07)`, color: col }}><Ic name={missing ? "x" : "check"} size={11} sw={2} />{p.label}</span>;
                         })}
                       </div>
                     </div>
                     {b.inviteUrl && (
-                      <a href={b.inviteUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid rgba(0,212,255,0.4)", background: "rgba(0,212,255,0.08)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none", whiteSpace: "nowrap" }}>{b.installed ? t("diag.reinvite") : t("diag.install")}</a>
+                      <a href={b.inviteUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.08)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, textDecoration: "none", whiteSpace: "nowrap" }}>{b.installed ? t("diag.reinvite") : t("diag.install")}</a>
                     )}
                   </div>
                 </section>
