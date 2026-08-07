@@ -116,11 +116,31 @@ monitoring.raumdock.org:9443 {
 squadlink.raumdock.org:9443 {
 	# Installer download (served from the caddy ./downloads volume).
 	handle_path /download* {
-		root * /srv/downloads/squadlink
+		root * /srv/downloads/subraum
 		file_server browse
 	}
 	# Everything else → InitConnection (signaling + session REST + /j landing).
 	handle {
 		reverse_proxy 127.0.0.1:8090
 	}
+}
+
+# subraum.cc — same InitConnection backend as squadlink.raumdock.org above.
+# Both hostnames are mapped to this LXC in the nginx SNI map on LXC 101.
+subraum.cc:9443 {
+	# Installer download (served from the caddy ./downloads volume).
+	handle_path /download* {
+		root * /srv/downloads/subraum
+		file_server browse
+	}
+	# Everything else → InitConnection (signaling + session REST + /j landing).
+	handle {
+		reverse_proxy 127.0.0.1:8090
+	}
+}
+
+# Canonical host is the apex. Needs `www.subraum.cc` in the nginx SNI map to be
+# reachable; the cert is issued over DNS-01 either way.
+www.subraum.cc:9443 {
+	redir https://subraum.cc{uri} permanent
 }

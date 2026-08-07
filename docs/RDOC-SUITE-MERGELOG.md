@@ -1,5 +1,27 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-08-07: subraum.cc-Caddyfile ins Repo uebernommen
+
+Status: In Arbeit. Beim Deploy heute (siehe Completed-Eintrag darunter) blockierte ungetrackte
+Live-Config den `git pull`: `deploy/caddy-rdoc/Caddyfile` war auf Prod von Hand um 21 Zeilen erweitert
+worden, ohne je im Repo zu landen.
+
+Inhalt der Drift:
+- `squadlink.raumdock.org` Download-Root von `/srv/downloads/squadlink` auf `/srv/downloads/subraum`
+- neuer Vhost `subraum.cc:9443` - gleicher InitConnection-Backend (`127.0.0.1:8090`) wie
+  squadlink.raumdock.org, plus `handle_path /download*` auf dasselbe Verzeichnis
+- neuer Vhost `www.subraum.cc:9443` - permanenter Redirect auf die Apex-Domain
+
+Uebernommen wird die **Prod-Fassung byte-genau** (base64 uebertragen, sha256 `41ec4e48…` auf beiden
+Seiten gleich, Tabs und UTF-8 erhalten), damit der naechste `git pull` auf Prod konfliktfrei
+durchlaeuft und die Domain nicht mehr an einem unachtsamen `git checkout .` haengt.
+
+Voraussetzungen, die ausserhalb dieses Repos liegen und dokumentiert bleiben muessen: `subraum.cc` und
+`www.subraum.cc` muessen in der nginx-SNI-Map auf **LXC 101** auf diesen Container zeigen; die
+Zertifikate laufen ueber DNS-01.
+
+Kein Deploy noetig - die Datei auf Prod ist bereits genau dieser Stand.
+
 ## Completed - 2026-08-07: Fleetyards-Import, Companion-Removal + Brandkit-Restyling deployed (aac6b60)
 
 Vier Commits, gepusht und auf LXC 103 deployed:
