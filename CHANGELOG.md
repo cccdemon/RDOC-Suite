@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed - Companion-App (Tauri) + Voice-Era-Reste (2026-08-07)
+
+`apps/companion` war eine eigene Tauri-Desktop-App aus der Voice-Aera; Voice laeuft inzwischen ueber
+**RDOC-SACompanion / SquadLink** (eigenes Repo, Windows Store). Entscheidung des Users, schliesst Open
+Decision 2 aus CLAUDE.md teilweise.
+
+Vor der Loeschung geprueft:
+- `packages/shared` hatte nur `apps/companion` als Consumer (App.tsx, lib/ws.ts).
+- Die Backend-Reste waren ebenfalls tot: `createMissionVoiceSession()` hatte **keinen Aufrufer**, es
+  entstand also nie eine `CompanionSession`-Zeile -> `/companion/mission` rendert immer "invalid or
+  expired", und der Deep-Link nutzte `rdoc://` (Tauri-Schema), nicht `squadlink://`.
+- **Unberuehrt geblieben**: der SquadLink-Pfad (`SQUADLINK_ROOM_AUTH_SECRET`, `SQUADLINK_WS_URL`,
+  `SQUADLINK_STORE_URL`) und `FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL` (generische URL im Captain-DM,
+  kann aufs Store-Listing zeigen).
+
+Entfernt: `apps/companion/`, `packages/shared/`, `.github/workflows/companion-build.yml`,
+`scripts/release-companion.ps1`, `compile.ps1`, `apps/fleetplanner/src/auth/companionSession.ts`
+(+ Test), die Routen `/companion/mission` und `/companion/download` in `routes/auth.ts`, die ungenutzte
+`setCompanionCors` + `MISSION_VOICE_LEADER_ROLES` in `routes/api.ts`, das Prisma-Modell
+`CompanionSession` (+ `User.companionSessions`), die Companion-Auto-Update-Variablen aus `.env.example`,
+`@tauri-apps/cli` + `@discordjs/opus` aus der Root-`package.json` sowie die Companion-Eintraege in
+`.dockerignore`. Docs `companion-app-opus.md`, `companion-app-overview.md`,
+`companion-voice-architecture.md` geloescht; CLAUDE.md + README aktualisiert.
+
+`pnpm-lock.yaml` neu erzeugt (`--lockfile-only`) - die Dockerfiles bauen mit `--frozen-lockfile`, ein
+veraltetes Lockfile haette den Prod-Build mit `ERR_PNPM_OUTDATED_LOCKFILE` gekippt.
+
+**Offen:** die Tabelle `CompanionSession` steht noch in der Prod-DB. Das Modell ist aus dem Schema raus,
+aber eine `DROP TABLE`-Migration ist bewusst noch nicht geschrieben (laeuft beim Container-Start
+automatisch = irreversibel). Ebenfalls weiter offen: `packages/db` + Root-`prisma/`.
+
+Deploy: `fleetplanner`. `fleetplanner-web` unberuehrt.
+
 ### Added - Fleetyards.net Flotten-Import (2026-08-07)
 
 Spieler können ihre Flotte aus dem öffentlichen <https://fleetyards.net>-Hangar importieren, statt eine

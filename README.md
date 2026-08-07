@@ -40,12 +40,10 @@ It integrates with Discord through the official Bot API and OAuth2 only — no s
 | `apps/mission-cover`    | Render microservice for operation cover images (headless Chromium). Engine by **Vi5E**.                              |
 | `apps/error-page`       | Static nginx error page served by the reverse proxy when a service is down.                                          |
 | `apps/monitoring`       | Prometheus image plus scrape config. Grafana and Alertmanager config live under `deploy/`.                           |
-| `apps/companion`        | **Dormant.** Tauri desktop app from the voice era. Its backends (bridge, LiveKit) no longer exist, so it does not currently function. Kept for reference. |
 
 | Package                          | Purpose                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `packages/fleetplanner-contracts` | Zod schemas for the API. **Single source of truth** — backend and SPA import the same types. |
-| `packages/shared`                | Shared types and validation helpers.                                                            |
 | `packages/db`                    | Prisma client wrapper. Belongs to the removed bridge/bot schema; effectively vestigial.         |
 
 ## Architecture
@@ -207,7 +205,6 @@ Both `.env` templates have drifted and should be treated as incomplete: [`.env.e
 ```text
 .
 |-- apps/
-|   |-- companion/        # dormant desktop app from the voice era
 |   |-- error-page/       # static nginx error page
 |   |-- fleetplanner/     # backend: API, Discord bot, schedulers, SSR
 |   |-- fleetplanner-web/ # React SPA + nginx front door  <- the real UI
@@ -220,8 +217,7 @@ Both `.env` templates have drifted and should be treated as incomplete: [`.env.e
 |-- docs/                 # merge log, roadmap, feature requests, privacy
 |-- packages/
 |   |-- db/               # Prisma wrapper (vestigial, see above)
-|   |-- fleetplanner-contracts/  # Zod API contracts — source of truth
-|   `-- shared/           # shared types + validation
+|   `-- fleetplanner-contracts/  # Zod API contracts — source of truth
 |-- prisma/               # schema of the removed bridge/bot stack (vestigial)
 |-- docker-compose.prod.yml
 `-- package.json

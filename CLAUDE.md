@@ -10,8 +10,10 @@ RDOC-Suite — **Fleetplanner** für Star-Citizen-Orgs (Event-/Op-Planung, Disco
 > RDOC-RTC + VoiceRelayBots). Der komplette Voice-Stack (`apps/bot`, `apps/bridge`,
 > `apps/relay-bots`, LiveKit) wurde entfernt (`dbd2c3f chore: remove legacy voice/CC stack`;
 > LiveKit 2026-06-18). Restore-Referenz nur noch als Doku: `docs/LIVEKIT-ARCHIVE-2026-06.md`.
-> **Verwaiste Reste, Löschkandidaten:** `apps/companion` (ruft noch tote Bridge/LiveKit),
-> `packages/shared` (nur von companion importiert), `packages/db` + Root-`prisma/` + die
+> `apps/companion` (Tauri-Desktop-App) + `packages/shared` wurden 2026-08-07 entfernt — Voice läuft
+> über **RDOC-SACompanion / SquadLink** (eigenes Repo, Windows Store; im Fleetplanner nur über die
+> `SQUADLINK_*`-Env angebunden).
+> **Verwaiste Reste, Löschkandidaten:** `packages/db` + Root-`prisma/` + die
 > `pnpm db:*`-Skripte (waren das Bridge/Bot-Schema — kein lebender Consumer mehr).
 
 ## Merge-Log zuerst — immer
@@ -22,9 +24,10 @@ RDOC-Suite — **Fleetplanner** für Star-Citizen-Orgs (Event-/Op-Planung, Disco
 - **Completed Steps** — nach Commit hierher verschieben/kopieren, Commit-Hash anhängen.
 - **Open Decisions** — ungeklärte Architekturfragen; entfernen wenn entschieden.
 
-Offene Entscheidungen (Stand 2026-07-22):
+Offene Entscheidungen (Stand 2026-08-07):
 1. **Package-Namespace**: ✓ Entschieden — `@rdoc-suite/*` (war `@dccc/*`, umbenannt 2026-05-31).
-2. **Voice-Era-Reste löschen?** `apps/companion`, `packages/shared`, `packages/db`, Root-`prisma/` sind verwaist (siehe Historie oben) — Löschung vs. behalten noch nicht entschieden.
+2. **Voice-Era-Reste löschen?** Teilweise entschieden — `apps/companion` + `packages/shared` sind
+   2026-08-07 gelöscht. Offen bleiben `packages/db` + Root-`prisma/` (+ `pnpm db:*`-Skripte).
 
 ## Deploy-Regeln — immer einhalten
 
@@ -159,8 +162,6 @@ Build läuft komplett im Container.
 | [apps/monitoring/](apps/monitoring/) | — (Prometheus-Image) | `rdoc-suite-monitoring` | **live** |
 | [apps/error-page/](apps/error-page/) | — (nginx static) | `rdoc-suite-error-page` | **live** |
 | [packages/fleetplanner-contracts/](packages/fleetplanner-contracts/) | `@rdoc-suite/fleetplanner-contracts` | — | **live** (SoT für API-Typen) |
-| [apps/companion/](apps/companion/) | `@rdoc-suite/companion` | — | **verwaist** (Löschkandidat, ruft tote Bridge/LiveKit) |
-| [packages/shared/](packages/shared/) | `@rdoc-suite/shared` | — | **verwaist** (nur von companion) |
 | [packages/db/](packages/db/) | `@rdoc-suite/db` | — | **verwaist** (Bridge/Bot-Schema) |
 
 Prod-Only-Services ohne eigenes TS-Workspace: `alertmanager`, `postgres-exporter`, `node-exporter`, `grafana` (Standard-Images + Config).

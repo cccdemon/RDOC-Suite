@@ -21,11 +21,6 @@ out/
 .vite/
 *.tsbuildinfo
 
-# Rust / Tauri
-target/
-**/src-tauri/target/
-**/src-tauri/gen/
-
 # Prisma / databases
 *.db
 *.db-journal
@@ -69,7 +64,3 @@ Chaos Crew Voice Console — Design System-handoff.zip
 chaos-crew-admin.css
 .design-bundle/
 
-# Tauri updater signing keys — private key + password must NEVER be
-# committed. Public key is in apps/companion/src-tauri/tauri.conf.json
-# which IS committed (that's the whole point — clients verify against it).
-.tauri/

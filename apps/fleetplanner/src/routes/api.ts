@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { requireAuth, requireOpRole } from "../auth/middleware.js";
 import { effectiveOpRole } from "../services/guilds.js";
 import { basePath, getEnv } from "../config/env.js";
@@ -60,16 +60,6 @@ import {
 import { prisma } from "../db.js";
 import type { Ship } from "@prisma/client";
 import { specForShip, specForSquad } from "../services/seats.js";
-
-const MISSION_VOICE_LEADER_ROLES = new Set(["event_leader", "raid_leader", "wing_commander"]);
-
-function setCompanionCors(reply: FastifyReply, request: FastifyRequest): void {
-  const origin = request.headers.origin;
-  reply.header("access-control-allow-origin", typeof origin === "string" && origin ? origin : "null");
-  reply.header("vary", "Origin");
-  reply.header("access-control-allow-methods", "GET, OPTIONS");
-  reply.header("access-control-allow-headers", "authorization, content-type");
-}
 
 function csrfOk(body: Record<string, unknown>, csrfToken: string): boolean {
   return typeof body._csrf === "string" && body._csrf === csrfToken;

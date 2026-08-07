@@ -20,17 +20,8 @@ import {
   clearSessionCookie,
 } from "../auth/session.js";
 import { requireAuth } from "../auth/middleware.js";
-import { loadMissionVoiceSession } from "../auth/companionSession.js";
 
 const STATE_COOKIE = "fp_oauth_state";
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function cookieOpts(env: ReturnType<typeof getEnv>) {
   return {
@@ -169,77 +160,6 @@ export async function authRoutes(app: FastifyInstance) {
     // Preserves ?code=&state= query params.
     const qs = new URLSearchParams(req.query as Record<string, string>).toString();
     return reply.redirect(basePath(`/auth/discord/callback${qs ? "?" + qs : ""}`), 302);
-  });
-
-  app.get<{ Querystring: { token?: string } }>("/companion/mission", async (req, reply) => {
-    const token = req.query.token?.trim() ?? "";
-    const session = await loadMissionVoiceSession(token);
-    const missionUrl = `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH ?? ""}`;
-    const params = new URLSearchParams({ token, url: missionUrl });
-    const deepLink = session ? `rdoc://mission?${params.toString()}` : "";
-    const downloadUrl = env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL ?? "";
-    const escapedDeepLink = escapeHtml(deepLink);
-    const escapedDownloadUrl = escapeHtml(downloadUrl);
-
-    reply.type("text/html; charset=utf-8").send(`<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RDOC Companion Mission</title>
-  <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #060b10; color: #eef7fb; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { width: min(640px, calc(100vw - 32px)); border: 1px solid #234253; padding: 28px; background: #0b141b; }
-    h1 { margin: 0 0 12px; font-size: 24px; }
-    p { color: #aab8c2; line-height: 1.5; }
-    a, button { color: #041016; background: #50d9ff; border: 0; padding: 10px 14px; text-decoration: none; font: inherit; cursor: pointer; }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 22px 0; }
-    code { display: block; overflow-wrap: anywhere; background: #05090d; border: 1px solid #1f3542; padding: 12px; color: #d7f4ff; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>RDOC Companion Mission</h1>
-    ${
-      deepLink
-        ? `<p>Open this mission configuration in Companion. If your browser does not open the app, copy the raw configuration link below.</p>
-           <div class="actions">
-             <a href="${escapedDeepLink}">Open Companion</a>
-             ${downloadUrl ? `<a href="${escapedDownloadUrl}">Download Companion</a>` : ""}
-           </div>
-           <code>${escapedDeepLink}</code>`
-        : `<p>This mission configuration link is invalid or expired.</p>
-           ${downloadUrl ? `<div class="actions"><a href="${escapedDownloadUrl}">Download Companion</a></div>` : ""}`
-    }
-  </main>
-</body>
-</html>`);
-  });
-
-  app.get("/companion/download", async (_req, reply) => {
-    const downloadUrl = env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL;
-    // Only redirect to a real http(s) target (no javascript:/data: from a stale env value).
-    if (downloadUrl && /^https?:\/\//i.test(downloadUrl)) return reply.redirect(downloadUrl, 302);
-
-    reply.type("text/html; charset=utf-8").send(`<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RDOC Companion Download</title>
-  <style>
-    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #060b10; color: #eef7fb; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-    main { width: min(560px, calc(100vw - 32px)); border: 1px solid #234253; padding: 28px; background: #0b141b; }
-    p { color: #aab8c2; line-height: 1.5; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>RDOC Companion Download</h1>
-    <p>No Companion download is configured yet. Ask your fleet lead for the current installer.</p>
-  </main>
-</body>
-</html>`);
   });
 
   app.post("/auth/logout", async (req, reply) => {

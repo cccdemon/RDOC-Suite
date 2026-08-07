@@ -5,10 +5,6 @@ node_modules
 **/coverage
 **/*.log
 
-# Tauri build artifacts — huge, never needed in the bridge image
-apps/companion/src-tauri/target
-apps/companion/dist
-
 # Prisma generated client is regenerated inside the image
 packages/db/generated
 

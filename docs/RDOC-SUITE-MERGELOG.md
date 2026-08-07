@@ -1,5 +1,38 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-08-07: Companion-App (Tauri) + Voice-Era-Reste entfernen
+
+Status: In Arbeit. User-Entscheidung 2026-08-07: `apps/companion` kann raus. Die Companion-App ist ein
+eigenes Projekt; Voice laeuft ueber **Subraum / RDOC-SACompanion** (eigenes Repo, im Windows Store).
+Schliesst Open Decision 2 aus CLAUDE.md teilweise.
+
+Befund vor der Loeschung:
+- `packages/shared` wird **nur** von `apps/companion` importiert (App.tsx, lib/ws.ts) -> faellt mit.
+- Backend-Reste sind ebenfalls tot: `createMissionVoiceSession` hat **keinen Aufrufer**, also entsteht nie
+  eine `CompanionSession`-Zeile -> `/companion/mission` rendert immer "invalid or expired", und der
+  Deep-Link nutzt `rdoc://` (Tauri-Schema), nicht `squadlink://`.
+- **Bleibt bestehen**: der ganze SquadLink-Pfad (`SQUADLINK_ROOM_AUTH_SECRET`, `SQUADLINK_WS_URL`,
+  `SQUADLINK_STORE_URL`) - das ist RDOC-SACompanion und ist live.
+- **Bleibt bestehen**: `FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL` - generische URL im Captain-DM, kann auf
+  das Store-Listing zeigen.
+- **Nicht angefasst**: `packages/db`, Root-`prisma/` (Open Decision 2, Rest) sowie die gitignorierten
+  lokalen Artefakt-Ordner `msi/`, `nsis/`, `addOns/`, `videos/` (nie im Repo; `addOns/` enthaelt auch
+  MissionCover).
+
+Entfernt:
+- `apps/companion/` (96 getrackte Dateien, Tauri + React), `packages/shared/`
+- `.github/workflows/companion-build.yml`, `scripts/release-companion.ps1`, `compile.ps1`
+- Backend: `src/auth/companionSession.ts` + Test, Routen `/companion/mission` und `/companion/download`
+  in `routes/auth.ts`, ungenutzte `setCompanionCors` in `routes/api.ts`
+- Prisma: Modell `CompanionSession` + `User.companionSessions` aus dem Schema.
+  **Noch offen**: die Tabelle selbst steht weiter in der Prod-DB. Eine `DROP TABLE`-Migration wurde
+  bewusst NICHT geschrieben - sie liefe beim Container-Start automatisch und waere irreversibel.
+  Braucht eine explizite Freigabe.
+- Docs: `docs/companion-app-opus.md`, `docs/companion-app-overview.md`, `docs/companion-voice-architecture.md`
+- CLAUDE.md + README: Companion-/shared-Zeilen aus Workspace-Tabelle, Historie und Open Decision 2
+
+Deploy: `fleetplanner` (Migration). `fleetplanner-web` unberuehrt.
+
 ## Queued / In Progress - 2026-08-07: Fleetyards.net Flotten-Import
 
 Status: ⏳ In Arbeit. Wunsch (User): Spieler-Flotte von <https://fleetyards.net/> importieren statt

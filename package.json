@@ -21,7 +21,6 @@
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@prisma/client": "^6.19.3",
-    "@tauri-apps/cli": "^2.11.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.4.2",
@@ -34,7 +33,6 @@
       "prisma",
       "@prisma/client",
       "@prisma/engines",
-      "@discordjs/opus",
       "esbuild"
     ],
     "overrides": {
