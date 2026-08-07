@@ -132,6 +132,31 @@ pnpm --filter @rdoc-suite/fleetplanner test -- <datei>     # nur eine Test-Datei
 pnpm --filter @rdoc-suite/fleetplanner test -- -t "name"   # einzelner it("name", ...) Block
 ```
 
+**Es gibt vier Test-Ebenen, `pnpm test` deckt nur die erste ab:**
+
+```bash
+# 1. Unit (vitest, Prisma gemockt) — src/__tests__/{api,auth,services,web}
+pnpm --filter @rdoc-suite/fleetplanner test
+
+# 2. DB-Integration: echtes Postgres in Docker via globalSetup, prisma db push,
+#    App über Fastify .inject(). Läuft sequenziell (fileParallelism: false).
+pnpm --filter @rdoc-suite/fleetplanner test:db
+
+# 3. Playwright-E2E gegen eine LIVE-Instanz. Eigenes npm-Projekt, NICHT im
+#    pnpm-Workspace. Seam: apps/fleetplanner/src/routes/e2eAuth.ts
+cd e2e && npm install && npx playwright install chromium
+E2E_TEST_LOGIN_SECRET=<Instanz-Secret> E2E_BASE_URL=https://suite.raumdock.org npx playwright test
+#    Nur e2e-*-User in der E2E-Guild 100000000000000001.
+#    NACH DEM LAUF E2E_TEST_LOGIN_SECRET auf der Instanz wieder entfernen.
+
+# 4. Prod-Smoke (GET-only, read-only, jederzeit sicher)
+E2E_BASE_URL=https://suite.raumdock.org ./scripts/prod-e2e-readonly.sh
+bash scripts/test-integration.sh          # oder docker-compose.test.yml
+
+# Dead-Code-Gate (knip.json existiert, es gibt kein package.json-Skript dafür)
+npx knip
+```
+
 Es gibt keinen `ts-node`-Runner. **Für Production wird ausschließlich in Docker gebaut** — kein lokaler pnpm/npm/cargo auf dem Server.
 
 > Die Root-`pnpm db:*`-Skripte + Root-`prisma/schema.prisma` gehören zum entfernten Bridge/Bot-Schema
@@ -172,17 +197,23 @@ Prod-Only-Services ohne eigenes TS-Workspace: `alertmanager`, `postgres-exporter
 
 2. **Fleetplanner-Frontend = SPA `fleetplanner-web` (React + Vite).** Die reale Benutzeroberfläche ist die Single-Page-App in [apps/fleetplanner-web/](apps/fleetplanner-web/); ihr **nginx** ([apps/fleetplanner-web/nginx.conf](apps/fleetplanner-web/nginx.conf)) ist die **Front Door** vor `suite.raumdock.org/fleetplanner`, proxied jeden API-Request an das `fleetplanner`-Backend und ist die **eine kanonische Security-Header-Schicht** ([apps/fleetplanner/src/app.ts](apps/fleetplanner/src/app.ts)). Nav-Rail-Modell in [apps/fleetplanner-web/src/nav.ts](apps/fleetplanner-web/src/nav.ts) (`NAV_GROUPS` + `gate`/`auth`). Das SSR in [apps/fleetplanner/src/web/](apps/fleetplanner/src/web/) (`render.ts`/`pages.ts`) existiert noch, ist aber **sekundär** — Nav-/UX-Änderungen fast immer im SPA. Deploy: `docker compose … up -d --build fleetplanner-web` (zusätzlich zu `fleetplanner`).
 
-3. **API-Typen: `@rdoc-suite/fleetplanner-contracts` ist Single Source of Truth.** Zod-Schemas in [packages/fleetplanner-contracts/src/index.ts](packages/fleetplanner-contracts/src/index.ts); Backend (`fleetplanner`) und SPA (`fleetplanner-web`) importieren dieselben Typen (SPA type-only via [apps/fleetplanner-web/src/api/types.ts](apps/fleetplanner-web/src/api/types.ts), damit zod nicht ins Bundle wandert). Neue/erweiterte API-Felder → **zuerst hier**, dann Consumer.
+3. **Zwei API-Layer im Backend.** [routes/apiV1.ts](apps/fleetplanner/src/routes/apiV1.ts) (~3100 Zeilen) ist der aktuelle `/api/v1` mit eigenem, sanitisiertem Fehler-Envelope (`sendError`) — **neue Endpoints kommen hierher**. [routes/api.ts](apps/fleetplanner/src/routes/api.ts) (~1500 Zeilen) ist der ältere SSR-nahe Layer. Drumherum: [src/api/](apps/fleetplanner/src/api/) mit `openapi.ts` (Pfade + Schema-Registry), `presenters.ts` (DTO-Mapping), `rateLimit.ts`, `contracts/`. Eine API-Änderung fasst in der Regel Contract → Presenter → Route → OpenAPI an.
 
-4. **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Per-Guild-Rollen (`fleetoperator | captain | crew`) leben in `GuildMembership.role`. Middleware: `requireSuperAdmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role` für die aktive Guild. Discord-Mapping: `admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain` (aus Guild-Settings). Default bei neuem Member: `crew`.
+4. **`trustProxy`-Kette.** Caddy → nginx (fleetplanner-web) → Fastify, alle im Docker-Netz. `TRUST_PROXY` akzeptiert `true`/`false` oder eine kommaseparierte IP/CIDR-Allowlist ([app.ts](apps/fleetplanner/src/app.ts)). Falsch gesetzt heißt: Clients können `X-Forwarded-For` fälschen.
 
-5. **Funkrelais-Token-Verschlüsselung:** [apps/fleetplanner/src/services/secrets.ts](apps/fleetplanner/src/services/secrets.ts) nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen die 6 Bot-Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
+5. **i18n ist zweischichtig.** Backend/SSR [src/i18n/dicts](apps/fleetplanner/src/i18n/dicts) führt 5 Locales (de/en/en-US/fr/es), die SPA [i18n.tsx](apps/fleetplanner-web/src/i18n.tsx) nur de/en. Eine neue Sprache heißt: beide Seiten.
 
-6. **`apps/mission-cover` = Vite-Frontend + Engine** (`@rdoc-suite/mission-cover`). Generiert Mission-Cover-Grafiken; eigenes Volume (`mission_cover_data`). Route: `suite.raumdock.org` (siehe Caddyfile).
+6. **API-Typen: `@rdoc-suite/fleetplanner-contracts` ist Single Source of Truth.** Zod-Schemas in [packages/fleetplanner-contracts/src/index.ts](packages/fleetplanner-contracts/src/index.ts); Backend (`fleetplanner`) und SPA (`fleetplanner-web`) importieren dieselben Typen (SPA type-only via [apps/fleetplanner-web/src/api/types.ts](apps/fleetplanner-web/src/api/types.ts), damit zod nicht ins Bundle wandert). Neue/erweiterte API-Felder → **zuerst hier**, dann Consumer.
 
-7. **`apps/monitoring` = Prometheus-Image.** Keine eigene TypeScript-Quelle; `apps/monitoring/Dockerfile` wraps das offizielle Prometheus-Image mit `apps/monitoring/prometheus.yml`. Ergänzt in Prod durch `alertmanager`, `postgres-exporter`, `node-exporter`, `grafana`. Route: `suite.raumdock.org/monitoring`.
+7. **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Per-Guild-Rollen (`fleetoperator | captain | crew`) leben in `GuildMembership.role`. Middleware: `requireSuperAdmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role` für die aktive Guild. Discord-Mapping: `admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain` (aus Guild-Settings). Default bei neuem Member: `crew`.
 
-8. **`PUBLIC_BASE_PATH`** (Fleetplanner env): leer (`""`) auf Production (Root-Host). Nur setzen, wenn ein Strip-Proxy mit Path-Prefix verwendet wird. Zod akzeptiert nur `""` oder Werte mit führendem `/`.
+8. **Funkrelais-Token-Verschlüsselung:** [apps/fleetplanner/src/services/secrets.ts](apps/fleetplanner/src/services/secrets.ts) nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen die 6 Bot-Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
+
+9. **`apps/mission-cover` = Vite-Frontend + Engine** (`@rdoc-suite/mission-cover`). Generiert Mission-Cover-Grafiken; eigenes Volume (`mission_cover_data`). Route: `suite.raumdock.org` (siehe Caddyfile).
+
+10. **`apps/monitoring` = Prometheus-Image.** Keine eigene TypeScript-Quelle; `apps/monitoring/Dockerfile` wraps das offizielle Prometheus-Image mit `apps/monitoring/prometheus.yml`. Ergänzt in Prod durch `alertmanager`, `postgres-exporter`, `node-exporter`, `grafana`. Route: `suite.raumdock.org/monitoring`.
+
+11. **`PUBLIC_BASE_PATH`** (Fleetplanner env): leer (`""`) auf Production (Root-Host). Nur setzen, wenn ein Strip-Proxy mit Path-Prefix verwendet wird. Zod akzeptiert nur `""` oder Werte mit führendem `/`.
 
 Autoritative Env-Referenz: das Zod-Schema in [apps/fleetplanner/src/config/env.ts](apps/fleetplanner/src/config/env.ts) — nicht die `.env`-Templates (beide sind gedriftet, siehe README).
 
@@ -205,6 +236,11 @@ Autoritative Env-Referenz: das Zod-Schema in [apps/fleetplanner/src/config/env.t
 | [docs/ROADMAP.md](docs/ROADMAP.md) | **Roadmap-Übersicht** — alle FR-P* mit Prio/Deps/Reihenfolge + Bug-/Feedback-Liste + „needs sighting". Forward-looking (Changelog = Vergangenheit). |
 | [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md) | Feature-Backlog Fleetplanner — was done, was fehlt. |
 | [docs/privacy.md](docs/privacy.md) | Daten-Inventar |
+| [docs/api/fleetplanner-v1.md](docs/api/fleetplanner-v1.md) | `/api/v1`-Vertrag, Fehler-Envelope, Auth/CSRF |
+| [docs/api/fleetplanner-route-inventory.md](docs/api/fleetplanner-route-inventory.md) | Vollständige Routen-Liste (welcher Layer bedient was) |
+| [docs/Testing-Checklist.md](docs/Testing-Checklist.md) | Manuelle Abnahme vor Deploy |
+| [docs/FLEETPLANNER-UEBERBLICK.md](docs/FLEETPLANNER-UEBERBLICK.md) | Feature-Überblick für Nicht-Entwickler |
+| [docs/archiv/](docs/archiv/) | Umgesetzte FR-Docs — Design-Referenz, keine offenen Aufgaben |
 | [README.md](README.md) | Quickstart, Architektur-Diagramm, Repository-Layout |
 | [security-plan.md](security-plan.md) | Threat-Model und geplante Härtungen |
 | [apps/fleetplanner/prisma/schema.prisma](apps/fleetplanner/prisma/schema.prisma) | Fleetplanner Datenmodell |
@@ -214,24 +250,30 @@ Kein STAND.md — alles in `docs/`.
 
 ### Planungsdokumente — NOCH NICHT IMPLEMENTIERT
 
-Diese Docs beschreiben genehmigte Pläne, die **nicht im Code sind**. Niemals eigenständig implementieren — nur auf explizite Anweisung.
+**Status-Wahrheit steht in [docs/ROADMAP.md](docs/ROADMAP.md), nicht hier.** Diese Tabelle listet nur
+die Pläne, die wirklich noch ohne Code sind. Niemals eigenständig implementieren — nur auf explizite
+Anweisung. Vor dem Anfassen trotzdem gegen den Code prüfen; Pläne veralten schneller als Doku.
 
 | Datei | Inhalt | Status |
 |---|---|---|
-| [docs/archiv/opus-tennant-architecture.md](docs/archiv/opus-tennant-architecture.md) | Op-Visibility (`private/partners/public`) + Guild-Partnerships (`GuildPartnership`-Tabelle) | ✓ **Umgesetzt** — archiviert 2026-06-15, Design-Referenz/Historie |
 | [docs/orgmodule-implementationplan.md](docs/orgmodule-implementationplan.md) | Org-Modul: SC-Orgs als First-Class-Entities (`Org`, `OrgMembership`, `OrgInvite`) | Plan, kein Code |
-| [docs/archiv/composition-rebuild-plan.md](docs/archiv/composition-rebuild-plan.md) | Composition Board + Leader-Assign + Auto-Match (Schritte 1+2 im Code, Schritte 3-5 offen) | Archiviert 2026-06-15 (Rebuild zurückgestellt) |
-| [docs/FR-P1-event-distribution.md](docs/FR-P1-event-distribution.md) | **FeatureRequest, Prio 1.** Event-Distribution: Op-Discord-Event an alle aktiven Partner-Discords cross-posten, Allowlist (`PartnerSharePolicy.autoShare`) + Approval durch alle Fleetoperators des Ziel-Guilds. | ✓ **Umgesetzt** (Phase 1+2, 2026-06-07) |
-| [docs/FR-P3-federation-voice.md](docs/FR-P3-federation-voice.md) | **FeatureRequest, Prio 3.** Federation Voice (shared LiveKit room, host+deputies, Cap 16) + Relay-Bots-Multi-Session-Umbau. | ✗ **Abgelehnt** (2026-06-07) |
-| [docs/FR-P3-recurring-events.md](docs/FR-P3-recurring-events.md) | **FeatureRequest, Prio 3.** Wiederkehrende Events: RRULE-Template + Scheduler; nativer Discord `recurrence_rule`. Serien-Distribution soft-hängt an FR-P1. | Plan, kein Code |
-| [docs/FR-P1-eventcreation-simplification.md](docs/FR-P1-eventcreation-simplification.md) | **FeatureRequest, Prio 1.** Event-Anlage vereinfachen: 2 Views (Mobile-Join + Admin-Wizard). | Plan, kein Code |
-| [docs/FR-P2-fleet-import-json.md](docs/FR-P2-fleet-import-json.md) | **FeatureRequest, Prio 2.** Flotten-Import via JSON (CCU-Game-Format) → UserShips. | ✓ Umgesetzt |
-| [docs/FR-P2-discord-event-interest.md](docs/FR-P2-discord-event-interest.md) | **FeatureRequest, Prio 2.** Discord-Event-"Interested" → User erscheint im Op automatisch als unassigned. `EventInterest`-Modell, 5-Min-Scheduler. | ✓ Umgesetzt (2026-06-07) |
-| [docs/FR-P3-roadmap-tab.md](docs/FR-P3-roadmap-tab.md) | **FeatureRequest, Prio 3.** Roadmap-Tab + Auto-Ingest Discord-Feedback. | Plan, kein Code |
-| [docs/FR-P3-language-switch.md](docs/FR-P3-language-switch.md) | **FeatureRequest, Prio 3.** Sprachumschaltung (DE/EN/EN_US/FR/ES), eine Präferenz im User-Profil. | Plan, kein Code (groß/phasenweise) |
-| [docs/archiv/FR-P3-org-fleet.md](docs/archiv/FR-P3-org-fleet.md) | **FeatureRequest, Prio 3.** Org-Fleet-Tab: welches Guild-Mitglied welches Schiff hat. | ✓ **Umgesetzt** (2026-06-15, archiviert) |
-| [docs/FR-P3-inactivity-alert.md](docs/FR-P3-inactivity-alert.md) | **FeatureRequest, Prio 3.** Member Last-Seen via Gateway-Bot + Alert bei Inaktivität. Braucht GUILD_MEMBERS Intent. | Plan, kein Code |
-| [docs/FR-P5-item-database.md](docs/FR-P5-item-database.md) | **FeatureRequest, Prio 5.** Loot-/Item-DB. Blockiert: keine Items-API. | Plan, kein Code |
+| [docs/FR-P2-fleetplanner-light.md](docs/FR-P2-fleetplanner-light.md) | **Prio 2.** Org-Operator vs Operator-Light; Op-Tier `personal`/`org` + Upgrade. | Plan, kein Code |
+| [docs/FR-P3-inactivity-alert.md](docs/FR-P3-inactivity-alert.md) | **Prio 3.** Member Last-Seen via Gateway-Bot + Alert bei Inaktivität. Braucht GUILD_MEMBERS Intent. | Plan, kein Code |
+| [docs/FR-SPA-PARITY-RESTORE.md](docs/FR-SPA-PARITY-RESTORE.md) | SPA-Parität zum SSR-Stand wiederherstellen. | Plan |
+
+Teilweise umgesetzt — hier lügt eine reine „Plan"-Angabe:
+
+| Thema | Stand im Code |
+|---|---|
+| Sprachumschaltung ([archiv](docs/archiv/FR-P3-language-switch.md)) | Backend [src/i18n/dicts](apps/fleetplanner/src/i18n/dicts) kennt 5 Locales (de/en/en-US/fr/es), die SPA [i18n.tsx](apps/fleetplanner-web/src/i18n.tsx) nur de/en. Volle Mehrsprachigkeit fehlt. |
+| Composition Board ([archiv](docs/archiv/composition-rebuild-plan.md)) | Schritte 1+2 im Code, 3–5 offen. Rebuild 2026-06-15 zurückgestellt. |
+
+Abgelehnt oder verworfen (nicht wiederbeleben ohne Ansage): Federation Voice, Roadmap-Tab,
+Item-Database, Fleet-Needs-Redesign. Begründungen in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+Umgesetzte Feature-Docs liegen in [docs/archiv/](docs/archiv/) — u.a. Event-Distribution,
+Eventcreation-Simplification, Recurring Events, Fleet-Import-JSON, Discord-Event-Interest, Org-Fleet,
+Mission-Cover, Template-Marketplace. Als Design-Referenz lesen, nicht als offene Aufgabe.
 
 ### Naming & URL-Konventionen
 

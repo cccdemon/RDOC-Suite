@@ -1,5 +1,47 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-07: Aufraeumen (gitignore-Luecke, CLAUDE.md-Drift, Companion-Reste)
+
+Kein Deploy noetig - reine Repo-Hygiene und Doku. Dieser Eintrag ist Teil desselben Commits.
+
+**1. Sicherheitsrelevante gitignore-Luecke geschlossen.** Auf Prod lagen `.env.bak.20260615` und
+`.env.bak2.20260615` untracked **und ungeignored** - `.gitignore` deckte nur `.env`, `.env.local` und
+`.env.*.local` ab, `.env.bak.*` matchte keins davon. Ein `git add -A` auf dem Server haette Secrets ins
+GitHub-Repo committet. Ebenfalls ungeignored waren `backup-2026-06-01-1932.sql` (68 MB),
+`downloads/subraum/` (215 MB, das live von Caddy ausgelieferte Installer-Verzeichnis), `data/` und
+`deploy/caddy-rdoc/Caddyfile.bak-subraum-*`. Neue Muster: `.env.bak*`, `.env.*.bak*`, `data/`,
+`downloads/*` (mit `!downloads/.gitkeep`), `*.bak`, `*.bak-*`, `backup-*.sql`, `*.sql.gz`. Gegen die
+echten Prod-Dateinamen mit `git check-ignore` geprueft - alle sechs greifen, `.gitkeep` bleibt getrackt.
+Die Dateien selbst wurden **nicht geloescht**: `downloads/subraum/` ist Live-Inhalt, die Backups
+gehoeren dem User.
+
+**2. CLAUDE.md-Drift bereinigt** (Fund aus dem `/init`):
+- 7 tote Doc-Links entfernt; die `FR-P*`-Dateien liegen in `docs/archiv/`. Alle Links jetzt gueltig.
+- Die Tabelle "Planungsdokumente" widersprach dem Code (recurring-events, eventcreation-simplification,
+  language-switch waren als "Plan, kein Code" gelistet, obwohl umgesetzt bzw. teilweise umgesetzt).
+  Sie dupliziert ROADMAP.md und driftet, deshalb reduziert auf: Verweis auf ROADMAP als
+  Status-Wahrheit, die vier echt offenen Plaene, eine kurze "teilweise umgesetzt"-Tabelle und ein
+  Zeiger auf `docs/archiv/`.
+- Die vier Test-Ebenen dokumentiert - vorher stand dort nur `pnpm test`, das nur die erste abdeckt:
+  Unit, `test:db` (echtes Postgres via globalSetup), Playwright-`e2e/` (eigenes npm-Projekt gegen eine
+  Live-Instanz, inkl. der Warnung, `E2E_TEST_LOGIN_SECRET` danach wieder zu entfernen) und die
+  Prod-Smokes. Dazu `npx knip`.
+- Architektur ergaenzt: die zwei API-Layer (`apiV1.ts` = aktuell, neue Endpoints dorthin; `api.ts` =
+  aelter, SSR-nah) plus `src/api/`, die `trustProxy`-Kette Caddy -> nginx -> Fastify, und dass i18n
+  zweischichtig ist (Backend 5 Locales, SPA 2). Nummerierung der Liste nachgezogen.
+- Fehlende Doku-Zeilen ergaenzt: `docs/api/*`, `Testing-Checklist.md`, `FLEETPLANNER-UEBERBLICK.md`,
+  `docs/archiv/`.
+
+**3. Companion-Reste geloescht.** `apps/companion/` lag nach dem Entfernen noch als untracked
+Build-Muell auf Platte (17 MB, u.a. `src-tauri/gen/`, das seit dem Wegfall der Tauri-Ignore-Regeln in
+`git status` auftauchte). Vorher verifiziert: 0 getrackte Dateien darunter. `packages/shared/` war
+bereits weg. Arbeitsverzeichnis ist jetzt sauber.
+
+**Weiterhin offen:** `DROP TABLE "CompanionSession"` (Modell ist aus dem Schema, Tabelle steht noch in
+Prod - braucht explizite Freigabe, weil die Migration beim Container-Start automatisch laeuft);
+`www.subraum.cc` fehlt in der nginx-SNI-Map auf LXC 101; SSR/mission-cover/error-page noch auf der
+alten Palette; Fonts als TTF statt WOFF2.
+
 ## Completed - 2026-08-07: subraum.cc-Caddyfile ins Repo uebernommen (c7fbdfc)
 
 Beim Deploy blockierte ungetrackte Live-Config den `git pull`: `deploy/caddy-rdoc/Caddyfile` war auf

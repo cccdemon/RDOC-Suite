@@ -7,9 +7,14 @@ yarn-debug.log*
 yarn-error.log*
 
 # Env / secrets
+# The .bak forms matter: production keeps dated copies like .env.bak.20260615
+# next to the real file, and without these patterns they are untracked but NOT
+# ignored - one `git add -A` on the server would publish every secret.
 .env
 .env.local
 .env.*.local
+.env.bak*
+.env.*.bak*
 *.pem
 
 # Build outputs
@@ -54,6 +59,18 @@ videos/
 addOns/
 msi/
 nsis/
+
+# Server-side runtime state and operator backups. These live in the deploy
+# checkout on LXC 103: downloads/ is the installer directory Caddy serves (215 MB
+# and growing), data/ is container state, and the rest are hand-made backups.
+# None of it belongs in the repo, and all of it was previously unignored.
+data/
+downloads/*
+!downloads/.gitkeep
+*.bak
+*.bak-*
+backup-*.sql
+*.sql.gz
 
 # Misc
 .cache/
