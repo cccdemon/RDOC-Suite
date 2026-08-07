@@ -1,26 +1,32 @@
 # RDOC Suite Merge Log
 
-## Queued / In Progress - 2026-08-07: subraum.cc-Caddyfile ins Repo uebernommen
+## Completed - 2026-08-07: subraum.cc-Caddyfile ins Repo uebernommen (c7fbdfc)
 
-Status: In Arbeit. Beim Deploy heute (siehe Completed-Eintrag darunter) blockierte ungetrackte
-Live-Config den `git pull`: `deploy/caddy-rdoc/Caddyfile` war auf Prod von Hand um 21 Zeilen erweitert
-worden, ohne je im Repo zu landen.
+Beim Deploy blockierte ungetrackte Live-Config den `git pull`: `deploy/caddy-rdoc/Caddyfile` war auf
+Prod von Hand um 21 Zeilen erweitert worden, ohne je im Repo zu landen.
 
-Inhalt der Drift:
+Uebernommene Drift:
 - `squadlink.raumdock.org` Download-Root von `/srv/downloads/squadlink` auf `/srv/downloads/subraum`
 - neuer Vhost `subraum.cc:9443` - gleicher InitConnection-Backend (`127.0.0.1:8090`) wie
   squadlink.raumdock.org, plus `handle_path /download*` auf dasselbe Verzeichnis
 - neuer Vhost `www.subraum.cc:9443` - permanenter Redirect auf die Apex-Domain
 
-Uebernommen wird die **Prod-Fassung byte-genau** (base64 uebertragen, sha256 `41ec4e48…` auf beiden
-Seiten gleich, Tabs und UTF-8 erhalten), damit der naechste `git pull` auf Prod konfliktfrei
-durchlaeuft und die Domain nicht mehr an einem unachtsamen `git checkout .` haengt.
+Die Prod-Fassung wurde **byte-genau** uebernommen statt abgetippt (base64 uebertragen, sha256
+`41ec4e4895598aec612a12b31801eecfbce8702beaf25ac7302fe0c4da786778` auf beiden Seiten identisch, Tabs
+und UTF-8 erhalten). Auf Prod wurde die lokale Aenderung danach verworfen und neu gezogen - risikolos,
+weil beide Seiten bitgleich waren; Backup unter `/root/Caddyfile.safety.*`. Caddy wurde nicht neu
+geladen, kein Ausfall.
 
-Voraussetzungen, die ausserhalb dieses Repos liegen und dokumentiert bleiben muessen: `subraum.cc` und
-`www.subraum.cc` muessen in der nginx-SNI-Map auf **LXC 101** auf diesen Container zeigen; die
-Zertifikate laufen ueber DNS-01.
+Ergebnis: Prod steht auf `c7fbdfc`, **0 getrackte Aenderungen**, Datei-sha unveraendert. Der naechste
+Deploy laeuft ohne Stash durch.
 
-Kein Deploy noetig - die Datei auf Prod ist bereits genau dieser Stand.
+Verifiziert: `subraum.cc` 200, `subraum.cc/download/` 200, `squadlink.raumdock.org` 200,
+`suite.raumdock.org/fleetplanner/` 200.
+
+**Vorbestehendes Problem, nicht durch diese Aenderung verursacht:** `www.subraum.cc` antwortet nicht
+(TLS-Handshake bricht ab, bevor Caddy den Host sieht). DNS zeigt korrekt auf dieselbe IP wie die
+Apex-Domain. Ursache ist die fehlende Zuordnung in der **nginx-SNI-Map auf LXC 101** - genau der
+Vorbehalt, der als Kommentar im Caddyfile steht. Liegt ausserhalb dieses Repos und ist offen.
 
 ## Completed - 2026-08-07: Fleetyards-Import, Companion-Removal + Brandkit-Restyling deployed (aac6b60)
 
