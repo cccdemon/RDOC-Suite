@@ -1,115 +1,36 @@
 # RDOC Suite Merge Log
 
-## Queued / In Progress - 2026-08-07: Restyling der SPA auf das RDOC-Brandkit v2.0
+## Completed - 2026-08-07: Fleetyards-Import, Companion-Removal + Brandkit-Restyling deployed (aac6b60)
 
-Status: In Arbeit. Quelle: `C:\Users\streamer\Documents\Projekte\RDOC-Brandkit\brandkit` (BrandGuide.md
-v2.0, `digital/web/brand.css`, `figma/tokens.json`, `fonts/`).
+Vier Commits, gepusht und auf LXC 103 deployed:
+- `8d47a56` feat: Fleetyards.net Flotten-Import (Migration `20260807120000_fleetyards_import` angewandt)
+- `4496457` chore: Tauri-Companion + Voice-Era-Reste entfernt
+- `9dd8e33` style: SPA aufs RDOC-Brandkit v2.0
+- `f0a0e0f` + `aac6b60` fix: nginx liefert die Brandkit-Assets bzw. Fonts mit korrektem MIME
 
-Ausgangslage: Das SPA-Design ist das, was der Guide in Paragraph 1 ausdruecklich ausschliesst -
-Neon-Cyan `#00d4ff`, Neon-Gruen `#00ff88`, Rajdhani + Share Tech Mono, OG-Bild "Tactical Mode".
-Gemessen: **372 hartcodierte Cyan-Literale in ~25 Dateien**, ueberwiegend Inline-Styles in `.tsx`.
-Nur die CSS-Variablen umzubiegen reicht daher nicht.
+Zwei Sachen, die beim Deploy hochkamen:
 
-User-Entscheidungen (2026-08-07):
-1. **Scope**: SPA `fleetplanner-web` + Favicons/Manifest/OG/Head. **Nicht** SSR `web/render.ts`,
-   **nicht** mission-cover, **nicht** error-page.
-2. **Theme-Picker**: die 10 Hersteller-`hue-rotate`-Filter bleiben als bewusste Ausnahme; der
-   Default "Raumdock" wird markenkonform.
-3. **Fonts**: selbst gehostet aus `brandkit/fonts` (5 TTF), CSP auf `font-src 'self'` verschaerft -
-   kein Google-Fonts-Request mehr.
+**1. Prod hatte ungetrackte Live-Config.** `git pull` scheiterte an lokalen Aenderungen in
+`deploy/caddy-rdoc/Caddyfile`: 21 Zeilen von Hand fuer `subraum.cc` + `www.subraum.cc` (Vhosts auf
+InitConnection, Download-Root von `squadlink` auf `subraum` umgestellt). **Diese Config ist nicht im
+Repo.** Sie wurde vor jedem Pull gestasht, danach zurueckgespielt und verifiziert; `subraum.cc` und
+`squadlink.raumdock.org` antworten weiter 200. Backup zusaetzlich unter `/root/Caddyfile.predeploy.*`.
+**Offen: gehoert ins Repo**, sonst blockiert sie jeden Deploy und ein unachtsames `git checkout .`
+schaltet die Domain ab.
 
-Bindende Guide-Regeln, die das Mapping bestimmen (nicht bloss Farbtausch):
-- Paragraph 8 "Wie viel Copper": pro Ansicht traegt **genau ein** Element Copper (die primaere Aktion);
-  Fliesstext nie Copper; Copper ist kein Hintergrund. Cyan sitzt heute auf Rahmen, Ueberschriften,
-  Labels und Links - das wird nach **Rolle** gemappt, nicht 1:1.
-- Paragraph 8 "Kein Effekt": keine Verlaeufe, Schatten, Glow. `--hero-grad` und die Cyan-Glow-Verlaeufe
-  fallen weg.
-- Paragraph 8: Farbe ist nie das einzige Signal - Zustaende brauchen Wort oder Icon.
-- Paragraph 10: nur echte Schnitte (Space Grotesk 500/700, Plex Sans 400/600, Plex Mono 400).
+**2. nginx liefert nur eine Allowlist aus.** Alles, was keine eigene `location` hat, faellt in den
+Backend-Proxy und wird 404 - also saemtliche Brandkit-Assets: Fonts, Icons, Favicons, Manifest, OG-Bild.
+Die SPA lief damit in System-Fallback-Schriften. Dieselbe Luecke hatte schon vorher `/favicon.svg`
+verschluckt. Behoben in `f0a0e0f`. Nachgezogen in `aac6b60`: das nginx-Image kennt kein `.ttf`, die
+Fonts gingen als `application/octet-stream` neben einem `nosniff`-Header raus; Fonts brauchen eine
+eigene Location, weil ein `types`-Block die Mime-Map ersetzt statt sie zu erweitern.
 
-Rollen-Mapping:
-| heute | Rolle | Brand |
-|---|---|---|
-| `rgba(0,212,255,.07-.32)` | Rahmen, Hairlines, Struktur | Graphite `#2B3135` |
-| `--cyan` auf Ueberschrift/Brand | Primaerer Vordergrund | Off White `#F2F2F0` |
-| `--cyan` auf Label/Meta | Sekundaertext | Steel `#76828D` |
-| `--cyan` auf CTA/aktiv | Primaeraktion | Copper `#C48A4A` |
-| `--green` / `--gold` / `--red` | funktional | `#5BB98A` / `#D9A94E` / `#E4736A` |
+Verifiziert live: SPA 200, `/api/v1/health` 200, alle 5 Fonts 200 mit `font/ttf`, Icons 200 `image/png`,
+Favicon/Manifest/OG 200, ausgeliefertes CSS enthaelt Copper `#c48a4a` und Space `#121416` und **kein**
+`#00d4ff` und keinen `googleapis`-Verweis, CSP ohne Drittanbieter-Hosts, Migration im Log angewandt.
 
-Phasen:
-- **A** Assets: `digital/web` (favicon.ico/svg, icons/, site.webmanifest, og.png) nach
-  `apps/fleetplanner-web/public/`, head-snippet in `index.html`, `theme-color` auf `#121416`,
-  5 TTF nach `public/fonts` + `@font-face`, CSP `font-src 'self'`.
-- **B** Token-Layer: `styles.css` `:root` auf die Brand-Tokens umgestellt, Verlaeufe raus.
-- **C** Sweep: die ~330 Inline-Literale in den `.tsx` nach Rollen-Mapping auf Variablen.
-- **D** `theme.ts`: Default "Raumdock" auf `filter: none` gegen die neue Palette gegengeprueft.
-
-Deploy: nur `fleetplanner-web`.
-
-## Queued / In Progress - 2026-08-07: Companion-App (Tauri) + Voice-Era-Reste entfernen
-
-Status: In Arbeit. User-Entscheidung 2026-08-07: `apps/companion` kann raus. Die Companion-App ist ein
-eigenes Projekt; Voice laeuft ueber **Subraum / RDOC-SACompanion** (eigenes Repo, im Windows Store).
-Schliesst Open Decision 2 aus CLAUDE.md teilweise.
-
-Befund vor der Loeschung:
-- `packages/shared` wird **nur** von `apps/companion` importiert (App.tsx, lib/ws.ts) -> faellt mit.
-- Backend-Reste sind ebenfalls tot: `createMissionVoiceSession` hat **keinen Aufrufer**, also entsteht nie
-  eine `CompanionSession`-Zeile -> `/companion/mission` rendert immer "invalid or expired", und der
-  Deep-Link nutzt `rdoc://` (Tauri-Schema), nicht `squadlink://`.
-- **Bleibt bestehen**: der ganze SquadLink-Pfad (`SQUADLINK_ROOM_AUTH_SECRET`, `SQUADLINK_WS_URL`,
-  `SQUADLINK_STORE_URL`) - das ist RDOC-SACompanion und ist live.
-- **Bleibt bestehen**: `FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL` - generische URL im Captain-DM, kann auf
-  das Store-Listing zeigen.
-- **Nicht angefasst**: `packages/db`, Root-`prisma/` (Open Decision 2, Rest) sowie die gitignorierten
-  lokalen Artefakt-Ordner `msi/`, `nsis/`, `addOns/`, `videos/` (nie im Repo; `addOns/` enthaelt auch
-  MissionCover).
-
-Entfernt:
-- `apps/companion/` (96 getrackte Dateien, Tauri + React), `packages/shared/`
-- `.github/workflows/companion-build.yml`, `scripts/release-companion.ps1`, `compile.ps1`
-- Backend: `src/auth/companionSession.ts` + Test, Routen `/companion/mission` und `/companion/download`
-  in `routes/auth.ts`, ungenutzte `setCompanionCors` in `routes/api.ts`
-- Prisma: Modell `CompanionSession` + `User.companionSessions` aus dem Schema.
-  **Noch offen**: die Tabelle selbst steht weiter in der Prod-DB. Eine `DROP TABLE`-Migration wurde
-  bewusst NICHT geschrieben - sie liefe beim Container-Start automatisch und waere irreversibel.
-  Braucht eine explizite Freigabe.
-- Docs: `docs/companion-app-opus.md`, `docs/companion-app-overview.md`, `docs/companion-voice-architecture.md`
-- CLAUDE.md + README: Companion-/shared-Zeilen aus Workspace-Tabelle, Historie und Open Decision 2
-
-Deploy: `fleetplanner` (Migration). `fleetplanner-web` unberuehrt.
-
-## Queued / In Progress - 2026-08-07: Fleetyards.net Flotten-Import
-
-Status: ⏳ In Arbeit. Wunsch (User): Spieler-Flotte von <https://fleetyards.net/> importieren statt
-nur per CCU-Game-JSON-Paste.
-
-Recherche (Live-API geprüft): `GET https://api.fleetyards.net/v1/public/hangars/{username}?perPage=240&page=N`
-liefert `{items:[{id, loaner, model:{name,slug,scIdentifier,…}, hangarGroups, username}], meta.pagination}`.
-Ein Item = ein Hull (Duplikate → `quantity`). 404 `{"code":"not_found"}` bei unbekanntem User,
-`items:[]` bei leerem **oder nicht-öffentlichem** Hangar (nicht unterscheidbar → UI-Hinweis).
-Kein Nickname im Public-Payload. Rate-Limit 5000/h. Keine Auth nötig.
-
-User-Entscheidungen (2026-08-07):
-1. **Username am User speichern** (`User.fleetyardsUsername`) + Re-Sync-Button, kein Scheduler.
-2. **Loaner importieren, aber markieren** → `UserShip.loanerQuantity` (statt bool `isLoaner`, sonst
-   geht der Mischfall "1 gekauft + 1 Loaner desselben Modells" verloren).
-3. **Additiv mergen** wie der CCU-Import — nichts wird gelöscht.
-
-Umsetzung:
-- **Schema** + Migration `20260807120000_fleetyards_import`: `User.fleetyardsUsername String?`,
-  `UserShip.loanerQuantity Int @default(0)`.
-- **Service** `services/fleetyards.ts`: `fetchPublicHangar(username)` (paginiert, 240/Seite, Timeout,
-  Seiten-Cap) + `importFleetFromFleetyards(userId, username)`.
-- **Refactor** `services/fleetImport.ts`: Matcher-Kern (`buildShipMatcher` + `applyFleetEntries`)
-  rausgezogen, damit CCU-JSON und Fleetyards denselben Pfad nutzen. Fleetyards matcht zusätzlich
-  über die bestehende `FleetyardsShip`-Cache-Tabelle (slug → nameKey), dann Fallback auf Namens-Tokens.
-- **Route** `POST /api/v1/hangar/import/fleetyards` (Session + CSRF), Contract
-  `FleetyardsImportRequest/Response` + `SessionUser.fleetyardsUsername`.
-- **SPA** ProfilePage: Fleetyards-Karte (Username-Feld, Import-/Re-Sync-Button, Ergebnis + Loaner-Zeile),
-  Hangar-Liste zeigt `LEIHSCHIFF`-Tag. Hangar-Response um `quantity`/`loanerQuantity` erweitert.
-
-Deploy: `fleetplanner` (Migration) **und** `fleetplanner-web`.
+Weiter auf der alten Palette (bewusst ausserhalb des Scopes): SSR `web/render.ts`, `mission-cover`,
+`error-page`.
 
 ## Queued / In Progress - 2026-07-22: Operator konnte CQB-Soldat nicht entfernen
 
