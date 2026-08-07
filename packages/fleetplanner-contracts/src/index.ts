@@ -48,6 +48,8 @@ export const SessionUserSchema = z
     locale: z.string().nullable(),
     /** FR-P3: opt-in to list one's owned ships in the guild Org-Flotte. */
     shareHangarWithOrg: z.boolean(),
+    /** Fleetyards.net account backing the fleet import; null = never linked. */
+    fleetyardsUsername: z.string().nullable(),
   })
   .meta({ id: "SessionUser" });
 export type SessionUser = z.infer<typeof SessionUserSchema>;
@@ -397,6 +399,11 @@ export const ShipSummarySchema = z
     nickname: z.string().nullable().optional(),
     /** Ship artwork (star-citizen.wiki media); null when the catalog has none. */
     imageUrl: z.string().nullable().optional(),
+    /** Owned hulls of this model (hangar only). */
+    quantity: z.number().int().optional(),
+    /** Loaner hulls of this model from the Fleetyards import (hangar only).
+     *  quantity 0 + loanerQuantity > 0 = the player only has it on loan. */
+    loanerQuantity: z.number().int().optional(),
   })
   .meta({ id: "ShipSummary" });
 export type ShipSummary = z.infer<typeof ShipSummarySchema>;
@@ -610,6 +617,34 @@ export const FleetImportResponseSchema = z
   })
   .meta({ id: "FleetImportResponse" });
 export type FleetImportResponse = z.infer<typeof FleetImportResponseSchema>;
+
+/** POST /api/v1/hangar/import/fleetyards — import from a public Fleetyards hangar.
+ *  The username is also saved on the user so the import can be re-run. */
+export const FleetyardsImportRequestSchema = z
+  .object({
+    username: z
+      .string()
+      .trim()
+      .min(2)
+      .max(64)
+      .regex(/^[A-Za-z0-9_-]+$/, "invalid Fleetyards username"),
+  })
+  .meta({ id: "FleetyardsImportRequest" });
+
+export const FleetyardsImportResponseSchema = z
+  .object({
+    ok: z.literal(true),
+    /** Echo of the saved username (the SPA prefills the field from it). */
+    username: z.string(),
+    total: z.number(),
+    added: z.number(),
+    already: z.number(),
+    /** Hulls flagged `loaner` by Fleetyards; imported and marked, not skipped. */
+    loaners: z.number(),
+    unmatched: z.array(z.string()),
+  })
+  .meta({ id: "FleetyardsImportResponse" });
+export type FleetyardsImportResponse = z.infer<typeof FleetyardsImportResponseSchema>;
 
 export const FeedbackRequestSchema = z
   .object({ subject: z.string().min(1).max(120), message: z.string().min(1).max(1800) })

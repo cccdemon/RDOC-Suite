@@ -4,7 +4,7 @@ import type { OperationDetail, OperationSummary, SessionResponse } from "../api/
 export const sessionGuest: SessionResponse = { user: null, memberships: [], csrfToken: null };
 
 export const sessionCrew: SessionResponse = {
-  user: { id: "user_crew", username: "Crew One", role: "crew", locale: "de", shareHangarWithOrg: false },
+  user: { id: "user_crew", username: "Crew One", role: "crew", locale: "de", shareHangarWithOrg: false, fleetyardsUsername: null },
   memberships: [{ guildId: "guild_1", guildName: "RDOC", role: "crew" }],
   csrfToken: "csrf-test-token",
 };

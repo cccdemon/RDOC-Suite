@@ -16,6 +16,8 @@ import {
   CreateOperationResponseSchema,
   FleetImportRequestSchema,
   FleetImportResponseSchema,
+  FleetyardsImportRequestSchema,
+  FleetyardsImportResponseSchema,
   EditOperationRequestSchema,
   SetStatusRequestSchema,
   AddShipNeedsRequestSchema,
@@ -138,6 +140,8 @@ const SCHEMAS = {
   HangarShipRequest: HangarShipRequestSchema,
   FleetImportRequest: FleetImportRequestSchema,
   FleetImportResponse: FleetImportResponseSchema,
+  FleetyardsImportRequest: FleetyardsImportRequestSchema,
+  FleetyardsImportResponse: FleetyardsImportResponseSchema,
   FeedbackRequest: FeedbackRequestSchema,
   TemplateListResponse: TemplateListResponseSchema,
   ApplyTemplateRequest: ApplyTemplateRequestSchema,
@@ -1514,6 +1518,25 @@ export function buildOpenApiDocument(): JsonObject {
           parameters: [{ name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } }],
           requestBody: { required: true, ...jsonContent(ref("FleetImportRequest")) },
           responses: { "200": { description: "Imported", ...jsonContent(ref("FleetImportResponse")) }, ...errorResponses },
+        },
+      },
+      "/api/v1/hangar/import/fleetyards": {
+        post: {
+          operationId: "importFleetFromFleetyards",
+          summary: "Import owned ships from a public Fleetyards.net hangar",
+          description:
+            "Reads the player's PUBLIC hangar at fleetyards.net and merges the hulls into their " +
+            "hangar (additive — nothing is removed). The username is saved on the account so the " +
+            "import can be re-run. Loaner hulls are imported and marked, not skipped. " +
+            "404 = no such Fleetyards user; an empty result also means the hangar is not public.",
+          tags: ["ships"],
+          security: [{ cookieSession: [] }],
+          parameters: [{ name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } }],
+          requestBody: { required: true, ...jsonContent(ref("FleetyardsImportRequest")) },
+          responses: {
+            "200": { description: "Imported", ...jsonContent(ref("FleetyardsImportResponse")) },
+            ...errorResponses,
+          },
         },
       },
       "/api/v1/hangar/{shipId}": {

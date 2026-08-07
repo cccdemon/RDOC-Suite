@@ -1,5 +1,37 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-08-07: Fleetyards.net Flotten-Import
+
+Status: ⏳ In Arbeit. Wunsch (User): Spieler-Flotte von <https://fleetyards.net/> importieren statt
+nur per CCU-Game-JSON-Paste.
+
+Recherche (Live-API geprüft): `GET https://api.fleetyards.net/v1/public/hangars/{username}?perPage=240&page=N`
+liefert `{items:[{id, loaner, model:{name,slug,scIdentifier,…}, hangarGroups, username}], meta.pagination}`.
+Ein Item = ein Hull (Duplikate → `quantity`). 404 `{"code":"not_found"}` bei unbekanntem User,
+`items:[]` bei leerem **oder nicht-öffentlichem** Hangar (nicht unterscheidbar → UI-Hinweis).
+Kein Nickname im Public-Payload. Rate-Limit 5000/h. Keine Auth nötig.
+
+User-Entscheidungen (2026-08-07):
+1. **Username am User speichern** (`User.fleetyardsUsername`) + Re-Sync-Button, kein Scheduler.
+2. **Loaner importieren, aber markieren** → `UserShip.loanerQuantity` (statt bool `isLoaner`, sonst
+   geht der Mischfall "1 gekauft + 1 Loaner desselben Modells" verloren).
+3. **Additiv mergen** wie der CCU-Import — nichts wird gelöscht.
+
+Umsetzung:
+- **Schema** + Migration `20260807120000_fleetyards_import`: `User.fleetyardsUsername String?`,
+  `UserShip.loanerQuantity Int @default(0)`.
+- **Service** `services/fleetyards.ts`: `fetchPublicHangar(username)` (paginiert, 240/Seite, Timeout,
+  Seiten-Cap) + `importFleetFromFleetyards(userId, username)`.
+- **Refactor** `services/fleetImport.ts`: Matcher-Kern (`buildShipMatcher` + `applyFleetEntries`)
+  rausgezogen, damit CCU-JSON und Fleetyards denselben Pfad nutzen. Fleetyards matcht zusätzlich
+  über die bestehende `FleetyardsShip`-Cache-Tabelle (slug → nameKey), dann Fallback auf Namens-Tokens.
+- **Route** `POST /api/v1/hangar/import/fleetyards` (Session + CSRF), Contract
+  `FleetyardsImportRequest/Response` + `SessionUser.fleetyardsUsername`.
+- **SPA** ProfilePage: Fleetyards-Karte (Username-Feld, Import-/Re-Sync-Button, Ergebnis + Loaner-Zeile),
+  Hangar-Liste zeigt `LEIHSCHIFF`-Tag. Hangar-Response um `quantity`/`loanerQuantity` erweitert.
+
+Deploy: `fleetplanner` (Migration) **und** `fleetplanner-web`.
+
 ## Queued / In Progress - 2026-07-22: Operator konnte CQB-Soldat nicht entfernen
 
 Status: ⏳ In Arbeit. Bug: Operator kann Personen einem CQB-Team hinzufügen (`addCqbTeamMember`), aber

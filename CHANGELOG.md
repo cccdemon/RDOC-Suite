@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Fleetyards.net Flotten-Import (2026-08-07)
+
+Spieler können ihre Flotte aus dem öffentlichen <https://fleetyards.net>-Hangar importieren, statt eine
+CCU-Game-JSON zu pasten.
+- **API-Recherche**: `GET https://api.fleetyards.net/v1/public/hangars/{username}?perPage=240&page=N`,
+  keine Auth nötig, ein Item = ein Hull, `loaner`-Flag pro Hull, Rate-Limit 5000/h. 404 = unbekannter
+  User; leere Item-Liste = leerer **oder** nicht-öffentlicher Hangar (nicht unterscheidbar).
+- **Schema** (Migration `20260807120000_fleetyards_import`): `User.fleetyardsUsername` (gespeichert, damit
+  der Re-Sync ein Klick ist), `UserShip.loanerQuantity` (Loaner getrennt von `quantity` gezählt, sonst
+  ginge „gekauft + geliehen, gleiches Modell“ verloren).
+- **Refactor** `services/fleetImport.ts`: Matcher-Kern `buildShipMatcher` + `applyFleetEntries`
+  herausgezogen; CCU-JSON und Fleetyards laufen jetzt durch denselben Pfad. `FleetEntry.shipId`
+  überspringt das Namens-Matching, wenn die Quelle das Katalog-Schiff schon aufgelöst hat.
+- **Service** `services/fleetyards.ts`: `fetchPublicHangar` (paginiert, 240/Seite, max 10 Seiten,
+  20s-Timeout, Username-Whitelist gegen Path-Escapes) + `importFleetFromFleetyards` (Slug → bestehender
+  `FleetyardsShip`-Cache → Katalogname, Fallback auf den rohen Modellnamen).
+- **Route** `POST /api/v1/hangar/import/fleetyards` (Session + CSRF), 404 bei unbekanntem User, 502 bei
+  Fleetyards-Ausfall. Contracts `FleetyardsImportRequest/Response`, `SessionUser.fleetyardsUsername`,
+  `ShipSummary.quantity`/`.loanerQuantity`; OpenAPI-Pfad ergänzt.
+- **SPA** ProfilePage: neue Karte „Flotte von Fleetyards importieren“ (Username-Feld, Import-/Re-Sync-Button,
+  Ergebniszeile), Hangar-Liste zeigt `×n` und ein `LEIHSCHIFF`-Tag.
+
+Import ist **additiv** — nichts wird aus dem Hangar entfernt.
+
+Deploy: `fleetplanner` (Migration) **und** `fleetplanner-web`.
+
+### Fixed - fleetImport-Tests waren seit `fe12778` rot (2026-08-07)
+
+Der `quantity`-Collapse aus dem Org-Flotte-Feature (2026-06-15) hat `fleetImport.test.ts` gebrochen, ohne
+dass die Tests nachgezogen wurden: erwartet wurde `create({data:{userId,shipId,nickname}})` ohne
+`quantity`, und der 1000-Entry-Test erwartete 1000 `findUnique`-Calls, obwohl der Collapse pro Modell nur
+einen macht. Erwartungen an das reale Verhalten angepasst + Coverage für Loaner-Zählung und
+vorab-aufgelöste `shipId`.
+
 ### Fixed - Operator konnte CQB-Soldaten nicht entfernen (2026-07-22)
 
 `addCqbTeamMember` legte ein Signup an, aber es gab keinen Operator-Delete — `assignCqbSoldier(null)` löste

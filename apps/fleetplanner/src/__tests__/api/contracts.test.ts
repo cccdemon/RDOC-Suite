@@ -21,7 +21,7 @@ const summaryFixture = {
   meetingSystem: "Stanton",
   meetingLocation: "Everus Harbor",
   minParticipants: 8,
-  guild: { id: "guild_1", name: "RDOC", iconHash: null },
+  guild: { id: "guild_1", name: "RDOC", iconHash: null, discordInviteUrl: null },
   signupState: null,
   acceptedUnitCount: 2,
   filledSeats: 3,
@@ -86,6 +86,7 @@ describe("contracts", () => {
         { id: "link_1", title: "Briefing", url: "https://example.com/briefing", kind: "link", sortOrder: 0 },
       ],
       streams: [],
+      documents: [],
       questions: [
         { id: "q_1", asker: "Mira", body: "Treffpunkt?", answer: null, answeredBy: null },
       ],
@@ -131,7 +132,7 @@ describe("contracts", () => {
     ).toBe(true);
     expect(
       SessionResponseSchema.safeParse({
-        user: { id: "u1", username: "Crew", role: "crew", locale: "de", shareHangarWithOrg: false },
+        user: { id: "u1", username: "Crew", role: "crew", locale: "de", shareHangarWithOrg: false, fleetyardsUsername: null },
         memberships: [{ guildId: "g1", guildName: "RDOC", role: "crew" }],
         csrfToken: "tok",
       }).success,

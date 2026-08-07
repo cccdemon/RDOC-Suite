@@ -396,6 +396,15 @@ export function importFleet(csrfToken: string, fleetJson: string): Promise<impor
   return mutate("POST", "/hangar/import", csrfToken, { fleetJson });
 }
 
+/** Pull the player's hulls from their public Fleetyards.net hangar. The username
+ *  is persisted server-side, so this doubles as the re-sync call. */
+export function importFleetFromFleetyards(
+  csrfToken: string,
+  username: string,
+): Promise<import("./types").FleetyardsImportResponse> {
+  return mutate("POST", "/hangar/import/fleetyards", csrfToken, { username });
+}
+
 export async function sendFeedback(
   subject: string,
   message: string,

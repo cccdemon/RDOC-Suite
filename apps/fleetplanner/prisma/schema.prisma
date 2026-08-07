@@ -17,6 +17,9 @@ model User {
   opDetailStyle String @default("board2") // op-detail layout: classic | board1 | board2
   // FR-P3 org-fleet: opt-in to list my owned ships in my guild's Org-Flotte roster.
   shareHangarWithOrg Boolean @default(false)
+  // Fleetyards.net account whose PUBLIC hangar backs the fleet import. Stored so
+  // the player can re-sync with one click instead of retyping it.
+  fleetyardsUsername String?
   active     Boolean  @default(true)
   joinedAt   DateTime @default(now())
   lastSeenAt DateTime @default(now())
@@ -25,7 +28,6 @@ model User {
   lastSeenChangelog String?
 
   sessions           UserSession[]
-  companionSessions  CompanionSession[]
   identities         UserIdentity[]
   ownedShips       UserShip[]
   createdOps       Operation[]
@@ -191,23 +193,6 @@ model UserSession {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model CompanionSession {
-  id        String   @id // 64-char hex bearer token — stored in Tauri settings store
-  userId    String
-  operationId String?
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  // "full" = companion app login token (valid for all companion endpoints).
-  // "mission-voice" = narrow token distributed via dccc://fleet-voice links;
-  // only valid for the mission-voice polling endpoint, not full companion auth.
-  scope     String   @default("full")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([operationId])
-}
-
 // ── Ship cache (SC wiki API) ───────────────────────────────────────
 model Ship {
   id            String   @id @default(cuid())
@@ -288,6 +273,10 @@ model UserShip {
   // FR-P3 org-fleet: hulls owned of this model (UserShip is unique per user×model,
   // so duplicates collapse to one row carrying the count). FR-P2 import sets it.
   quantity  Int      @default(1)
+  // Loaner hulls of this model (Fleetyards `loaner: true`). Kept apart from
+  // `quantity` so "owns 1 + has 1 loaner of the same model" survives the collapse;
+  // quantity == 0 && loanerQuantity > 0 means the entry is loaner-only.
+  loanerQuantity Int @default(0)
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

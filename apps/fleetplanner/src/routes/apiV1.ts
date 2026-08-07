@@ -91,6 +91,7 @@ import {
 } from "../services/needs.js";
 import { listSharedHangars } from "../services/hangarShare.js";
 import { importUserFleet } from "../services/fleetImport.js";
+import { importFleetFromFleetyards, FleetyardsUserNotFound } from "../services/fleetyards.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
 import { createSignup as createCqbSignup, placeInSquad as placeCqbMember, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
 import { cqbOwner, seatOwner, setCqbLateEta, setSeatLateEta, setUnitLateEta, unitOwner } from "../services/lateArrival.js";
@@ -128,6 +129,7 @@ import {
   EditOperationRequestSchema,
   FeedbackRequestSchema,
   FleetImportRequestSchema,
+  FleetyardsImportRequestSchema,
   GuildIdParamSchema,
   GuildMemberParamSchema,
   NeedParamSchema,
@@ -2867,9 +2869,14 @@ export async function apiV1Routes(app: FastifyInstance) {
       include: { ship: true },
       orderBy: { ship: { name: "asc" } },
     });
-    return reply
-      .type("application/json")
-      .send({ ships: rows.map((r) => ({ ...presentShip(r.ship), nickname: r.nickname })) });
+    return reply.type("application/json").send({
+      ships: rows.map((r) => ({
+        ...presentShip(r.ship),
+        nickname: r.nickname,
+        quantity: r.quantity,
+        loanerQuantity: r.loanerQuantity,
+      })),
+    });
   });
 
   app.post<{ Body: unknown }>("/api/v1/hangar", async (req, reply) => {
@@ -2915,6 +2922,42 @@ export async function apiV1Routes(app: FastifyInstance) {
       });
     } catch (err) {
       return sendError(reply, req, 400, "bad_request", err instanceof Error ? err.message : "Import failed.");
+    }
+  });
+
+  // Import owned hulls from a PUBLIC Fleetyards.net hangar. The username is
+  // stored on the user so the player can re-sync with one click. Additive like
+  // the CCU import — nothing is removed from the hangar. Loaner hulls are
+  // imported and marked (UserShip.loanerQuantity), not skipped.
+  app.post<{ Body: unknown }>("/api/v1/hangar/import/fleetyards", async (req, reply) => {
+    const body = FleetyardsImportRequestSchema.safeParse(req.body);
+    if (!body.success)
+      return sendError(reply, req, 400, "bad_request", "A Fleetyards username is required.");
+    const ctx = await requireSessionJson(req, reply);
+    if (!ctx) return;
+    const username = body.data.username;
+    try {
+      const r = await importFleetFromFleetyards(ctx.user.id, username);
+      await prisma.user.update({
+        where: { id: ctx.user.id },
+        data: { fleetyardsUsername: username },
+      });
+      return reply.type("application/json").send({
+        ok: true as const,
+        username,
+        total: r.total,
+        added: r.added,
+        already: r.already,
+        loaners: r.loaners,
+        unmatched: r.unmatched,
+      });
+    } catch (err) {
+      if (err instanceof FleetyardsUserNotFound)
+        return sendError(reply, req, 404, "not_found", `No Fleetyards user "${username}".`);
+      req.log.error(err, "Fleetyards hangar import failed");
+      // Upstream outage/timeout — not the caller's fault, and the message must
+      // not leak fetch internals. No dedicated upstream code in ApiError, so 502 + internal.
+      return sendError(reply, req, 502, "internal", "Fleetyards is not reachable right now.");
     }
   });
 

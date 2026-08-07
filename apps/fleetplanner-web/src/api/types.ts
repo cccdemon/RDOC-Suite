@@ -27,6 +27,7 @@ export type {
   IncomingDistribution,
   PartnershipsResponse,
   FleetImportResponse,
+  FleetyardsImportResponse,
   AdminGuild,
   AdminGuildsResponse,
   AdminUser,

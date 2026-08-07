@@ -34,6 +34,16 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-07",
+    title: "Import your fleet from Fleetyards",
+    changes: [
+      "You can now pull your ships straight from Fleetyards.net — enter your Fleetyards username on your profile and hit import. Your hangar there has to be set to public.",
+      "The username is remembered, so re-syncing after you buy a ship is one click.",
+      "Loaner ships come across too and are marked as LEIHSCHIFF, so you can tell them apart from what you actually own.",
+      "The import only adds — ships you added by hand are never removed.",
+    ],
+  },
+  {
     date: "2026-07-22",
     title: "Attach a YouTube video and PDFs to an event",
     changes: [

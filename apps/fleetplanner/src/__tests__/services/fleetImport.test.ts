@@ -12,7 +12,7 @@ vi.mock("../../db.js", () => ({
 }));
 
 import { prisma } from "../../db.js";
-import { importUserFleet } from "../../services/fleetImport.js";
+import { applyFleetEntries, importUserFleet } from "../../services/fleetImport.js";
 
 const db = prisma as {
   ship: { findMany: ReturnType<typeof vi.fn> };
@@ -59,13 +59,25 @@ describe("importUserFleet", () => {
     });
     expect(db.userShip.create).toHaveBeenCalledTimes(3);
     expect(db.userShip.create).toHaveBeenCalledWith({
-      data: { userId: "user-1", shipId: "ship-carrack", nickname: "Expedition" },
+      data: { userId: "user-1", shipId: "ship-carrack", nickname: "Expedition", quantity: 1, loanerQuantity: 0 },
     });
     expect(db.userShip.create).toHaveBeenCalledWith({
-      data: { userId: "user-1", shipId: "ship-ion", nickname: null },
+      data: { userId: "user-1", shipId: "ship-ion", nickname: null, quantity: 1, loanerQuantity: 0 },
     });
     expect(db.userShip.create).toHaveBeenCalledWith({
-      data: { userId: "user-1", shipId: "ship-freelancer", nickname: null },
+      data: { userId: "user-1", shipId: "ship-freelancer", nickname: null, quantity: 1, loanerQuantity: 0 },
+    });
+  });
+
+  it("collapses duplicate hulls of one model into a quantity", async () => {
+    const result = await importUserFleet(
+      "user-1",
+      JSON.stringify([{ name: "Carrack" }, { name: "Carrack" }, { name: "carrack" }]),
+    );
+
+    expect(result).toEqual({ total: 3, added: 1, already: 0, unmatched: [] });
+    expect(db.userShip.create).toHaveBeenCalledWith({
+      data: { userId: "user-1", shipId: "ship-carrack", nickname: null, quantity: 3, loanerQuantity: 0 },
     });
   });
 
@@ -90,16 +102,46 @@ describe("importUserFleet", () => {
     });
     expect(db.userShip.update).toHaveBeenCalledWith({
       where: { userId_shipId: { userId: "user-1", shipId: "ship-carrack" } },
-      data: { nickname: "X".repeat(80) },
+      data: { quantity: 1, loanerQuantity: 0, nickname: "X".repeat(80) },
     });
   });
 
   it("processes at most 1000 entries", async () => {
-    const entries = Array.from({ length: 1005 }, () => ({ name: "Carrack" }));
+    const entries = Array.from({ length: 1005 }, (_, i) => ({ name: i % 2 === 0 ? "Carrack" : "Freelancer" }));
 
     const result = await importUserFleet("user-1", JSON.stringify(entries));
 
+    // 1000 entries read, collapsed to the two distinct models they resolve to.
     expect(result.total).toBe(1000);
-    expect(db.userShip.findUnique).toHaveBeenCalledTimes(1000);
+    expect(db.userShip.findUnique).toHaveBeenCalledTimes(2);
+    expect(result.added).toBe(2);
+  });
+});
+
+describe("applyFleetEntries", () => {
+  it("counts loaner hulls separately from owned hulls of the same model", async () => {
+    const result = await applyFleetEntries("user-1", [
+      { name: "Carrack" },
+      { name: "Carrack", loaner: true },
+      { name: "Ares Ion", loaner: true },
+    ]);
+
+    expect(result).toEqual({ total: 3, added: 2, already: 0, unmatched: [] });
+    expect(db.userShip.create).toHaveBeenCalledWith({
+      data: { userId: "user-1", shipId: "ship-carrack", nickname: null, quantity: 1, loanerQuantity: 1 },
+    });
+    // Loaner-only model: quantity 0 is what flags it in the hangar UI.
+    expect(db.userShip.create).toHaveBeenCalledWith({
+      data: { userId: "user-1", shipId: "ship-ion", nickname: null, quantity: 0, loanerQuantity: 1 },
+    });
+  });
+
+  it("skips name matching when the caller already resolved the ship id", async () => {
+    const result = await applyFleetEntries("user-1", [{ name: "whatever", shipId: "ship-carrack" }]);
+
+    expect(result).toEqual({ total: 1, added: 1, already: 0, unmatched: [] });
+    expect(db.userShip.create).toHaveBeenCalledWith({
+      data: { userId: "user-1", shipId: "ship-carrack", nickname: null, quantity: 1, loanerQuantity: 0 },
+    });
   });
 });

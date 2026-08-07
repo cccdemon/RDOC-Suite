@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { addHangarShip, ApiError, getHangar, importFleet, removeHangarShip, searchShips } from "../api/client";
-import type { FleetImportResponse, SessionResponse, ShipSummary } from "../api/types";
+import { addHangarShip, ApiError, getHangar, importFleet, importFleetFromFleetyards, removeHangarShip, searchShips } from "../api/client";
+import type { FleetImportResponse, FleetyardsImportResponse, SessionResponse, ShipSummary } from "../api/types";
 import { Ic } from "../components/Icons";
 
 const MONO = "var(--mono)";
@@ -15,6 +15,10 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
   const [busy, setBusy] = useState(false);
   const [fleetJson, setFleetJson] = useState("");
   const [importResult, setImportResult] = useState<FleetImportResponse | null>(null);
+  // Fleetyards.net import — the username is persisted server-side, so the field
+  // is seeded from the session and the button doubles as "re-sync".
+  const [fyName, setFyName] = useState(session?.user?.fleetyardsUsername ?? "");
+  const [fyResult, setFyResult] = useState<FleetyardsImportResponse | null>(null);
   // FR-D2: manually assign an unmatched import name to a catalog ship.
   const [assignName, setAssignName] = useState<string | null>(null);
   const [assignQ, setAssignQ] = useState("");
@@ -31,6 +35,11 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
   useEffect(() => {
     if (me) reload();
   }, [me]);
+
+  useEffect(() => {
+    const saved = session?.user?.fleetyardsUsername;
+    if (saved) setFyName(saved);
+  }, [session?.user?.fleetyardsUsername]);
 
   useEffect(() => {
     const q = query.trim();
@@ -105,6 +114,25 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
     }
   }
 
+  async function runFleetyardsImport() {
+    const name = fyName.trim();
+    if (!csrf || name.length === 0) return;
+    setBusy(true);
+    setNotice(null);
+    try {
+      const r = await importFleetFromFleetyards(csrf, name);
+      setFyResult(r);
+      // Reuse the unmatched-name resolver of the JSON import.
+      setImportResult({ ok: true, total: r.total, added: r.added, already: r.already, unmatched: r.unmatched });
+      reload();
+    } catch (e) {
+      setFyResult(null);
+      setNotice(e instanceof ApiError ? e.message : "Fleetyards-Import fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (session === null) return <div className="fpw-state"><span style={label}>LADE…</span></div>;
   if (!me)
     return (
@@ -146,6 +174,12 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                     s.name
                   )}
                 </span>
+                {(s.quantity ?? 1) > 1 && <span className="fpw-meta">×{s.quantity}</span>}
+                {(s.loanerQuantity ?? 0) > 0 && (
+                  <span className="fpw-tag gold" data-testid={`hangar-loaner-${s.id}`} style={{ display: "inline-flex", flexShrink: 0 }}>
+                    {(s.quantity ?? 0) === 0 ? "LEIHSCHIFF" : `+${s.loanerQuantity} LEIH`}
+                  </span>
+                )}
                 <span className="fpw-meta">{s.manufacturer} · {s.maxCrew} Crew</span>
                 <button type="button" data-testid={`hangar-remove-${s.id}`} title="Aus Hangar entfernen" disabled={busy} onClick={() => run(() => removeHangarShip(s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,68,68,0.4)", background: "rgba(255,68,68,0.08)", color: "#ff6b6b", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={12} sw={2} />
@@ -182,6 +216,46 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
               </div>
             ))}
           </div>
+        )}
+      </section>
+
+      <section className="fpw-card" style={{ marginTop: "1.2rem" }} data-testid="fleetyards-import">
+        <div style={label}>FLOTTE VON FLEETYARDS IMPORTIEREN</div>
+        <p className="fpw-meta" style={{ margin: "0 0 0.7rem", fontSize: "0.85rem" }}>
+          Dein <a href="https://fleetyards.net/" target="_blank" rel="noreferrer noopener">Fleetyards.net</a>-Benutzername
+          — der Hangar dort muss auf <em>öffentlich</em> stehen. Schiffe werden ergänzt, nichts wird gelöscht.
+          Leihschiffe (Loaner) landen mit im Hangar und werden als LEIHSCHIFF markiert.
+        </p>
+        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <input
+            type="text"
+            data-testid="fleetyards-username"
+            value={fyName}
+            onChange={(e) => setFyName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") void runFleetyardsImport(); }}
+            placeholder="Fleetyards-Benutzername"
+            autoComplete="off"
+            spellCheck={false}
+            style={{ flex: "1 1 12rem", minWidth: 0, background: "var(--bg3)", border: "1px solid rgba(0,212,255,0.14)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" }}
+          />
+          <button
+            type="button"
+            data-testid="fleetyards-import-submit"
+            className="fpw-btn"
+            disabled={busy || !csrf || fyName.trim().length === 0}
+            onClick={runFleetyardsImport}
+            style={{ flexShrink: 0 }}
+          >
+            <Ic name="plus" size={12} sw={2} /> {me.fleetyardsUsername ? "Neu synchronisieren" : "Importieren"}
+          </button>
+        </div>
+        {fyResult && (
+          <p className="fpw-meta" data-testid="fleetyards-result" style={{ margin: "0.7rem 0 0" }}>
+            {fyResult.total} Hulls gelesen · {fyResult.added} neu · {fyResult.already} aktualisiert
+            {fyResult.loaners > 0 ? ` · ${fyResult.loaners} Leihschiffe` : ""}
+            {fyResult.unmatched.length > 0 ? ` · ${fyResult.unmatched.length} nicht zugeordnet` : ""}
+            {fyResult.total === 0 ? " — Hangar leer oder nicht öffentlich." : ""}
+          </p>
         )}
       </section>
 

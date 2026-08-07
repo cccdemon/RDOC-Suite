@@ -1,9 +1,13 @@
-// FR-P1 step 6: cache Fleetyards.net ship data locally (top-down silhouette +
-// hardpoint counts) for the seat/turret card. Best-effort: a failed/empty sync
-// just means no silhouette — the card falls back to the abstract seat chips.
-// Mirrors the ship-catalog sync pattern (DB cache + sync-state singleton).
+// Fleetyards.net integration. Two parts:
+//   1. FR-P1 step 6 — cache Fleetyards ship data locally (top-down silhouette +
+//      hardpoint counts) for the seat/turret card. Best-effort: a failed/empty
+//      sync just means no silhouette — the card falls back to abstract seat chips.
+//      Mirrors the ship-catalog sync pattern (DB cache + sync-state singleton).
+//   2. Public-hangar fleet import — pull a player's owned hulls into their
+//      hangar (see the "Public hangar import" section below).
 
 import { prisma } from "../db.js";
+import { applyFleetEntries, type FleetEntry, type FleetImportResult } from "./fleetImport.js";
 
 const FY_BASE = "https://api.fleetyards.net/v1";
 
@@ -126,4 +130,98 @@ export async function ensureFleetyardsFresh(): Promise<void> {
   } catch {
     /* best-effort */
   }
+}
+
+// ── Public hangar import ───────────────────────────────────────────────
+// A Fleetyards player can make their hangar public; it is then readable without
+// auth at /v1/public/hangars/:username. One item = one hull (duplicates of a
+// model appear as separate items), so hull counts fall out of the item list.
+// The endpoint answers 404 for an unknown user and an EMPTY item list both for
+// an empty hangar and for a hangar that is not public — the two are not
+// distinguishable from outside, so the caller surfaces one combined hint.
+
+/** How many pages of 240 to walk before giving up (Fleetyards caps perPage at 240). */
+const HANGAR_MAX_PAGES = 10;
+
+export class FleetyardsUserNotFound extends Error {
+  constructor(username: string) {
+    super(`No Fleetyards user "${username}".`);
+    this.name = "FleetyardsUserNotFound";
+  }
+}
+
+export type FleetyardsHull = {
+  /** Fleetyards model slug, e.g. "orig-325a" — the reliable join key. */
+  modelSlug: string | null;
+  /** Fleetyards model name, e.g. "325a" — fallback when the slug is unknown here. */
+  modelName: string;
+  loaner: boolean;
+};
+
+/** Fleetyards usernames are alphanumeric plus _ and -; reject anything else so
+ *  nothing user-supplied can escape the path segment. */
+export function isValidFleetyardsUsername(name: string): boolean {
+  return /^[A-Za-z0-9_-]{2,64}$/.test(name);
+}
+
+/** Fetch every hull in a player's PUBLIC Fleetyards hangar. */
+export async function fetchPublicHangar(username: string): Promise<FleetyardsHull[]> {
+  if (!isValidFleetyardsUsername(username)) throw new FleetyardsUserNotFound(username);
+  const hulls: FleetyardsHull[] = [];
+  for (let page = 1; page <= HANGAR_MAX_PAGES; page++) {
+    const url = `${FY_BASE}/public/hangars/${encodeURIComponent(username)}?perPage=240&page=${page}`;
+    const res = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (res.status === 404) throw new FleetyardsUserNotFound(username);
+    if (!res.ok) throw new Error(`Fleetyards returned ${res.status}.`);
+    const body = (await res.json()) as { items?: unknown };
+    const list = Array.isArray(body.items) ? body.items : [];
+    for (const raw of list) {
+      const item = obj(raw);
+      const model = obj(item.model);
+      const modelName = str(model.name);
+      const modelSlug = str(model.slug);
+      if (!modelName && !modelSlug) continue;
+      hulls.push({ modelSlug, modelName: modelName ?? "", loaner: item.loaner === true });
+    }
+    if (list.length < 240) break;
+  }
+  return hulls;
+}
+
+/**
+ * Resolve Fleetyards hulls to local catalog ships and merge them into the
+ * player's hangar. Matching order per hull:
+ *   1. Fleetyards slug → local FleetyardsShip cache → its normalized name
+ *   2. the raw Fleetyards model name
+ * Both end up in the shared name matcher, so a stale/missing cache only costs
+ * accuracy, never the import.
+ */
+export async function importFleetFromFleetyards(
+  userId: string,
+  username: string,
+): Promise<FleetImportResult & { loaners: number }> {
+  const hulls = await fetchPublicHangar(username);
+
+  // One query for every slug in the hangar: slug → the cached Fleetyards name,
+  // which is what the local catalog was matched against during the model sync.
+  const slugs = [...new Set(hulls.map((h) => h.modelSlug).filter((s): s is string => !!s))];
+  const cached =
+    slugs.length > 0
+      ? await prisma.fleetyardsShip.findMany({
+          where: { slug: { in: slugs } },
+          select: { slug: true, name: true },
+        })
+      : [];
+  const nameBySlug = new Map(cached.map((c) => [c.slug, c.name]));
+
+  const entries: FleetEntry[] = hulls.map((h) => ({
+    name: (h.modelSlug ? nameBySlug.get(h.modelSlug) : null) || h.modelName,
+    loaner: h.loaner,
+  }));
+
+  const result = await applyFleetEntries(userId, entries);
+  return { ...result, loaners: hulls.filter((h) => h.loaner).length };
 }

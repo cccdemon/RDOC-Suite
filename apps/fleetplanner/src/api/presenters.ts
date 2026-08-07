@@ -284,7 +284,14 @@ export function presentOperationDetail(
 
 export function presentSession(
   ctx: {
-    user: { id: string; username: string; role: string; locale: string | null; shareHangarWithOrg?: boolean };
+    user: {
+      id: string;
+      username: string;
+      role: string;
+      locale: string | null;
+      shareHangarWithOrg?: boolean;
+      fleetyardsUsername?: string | null;
+    };
     csrfToken: string;
   } | null,
   memberships: Array<{ guildId: string; guild: { name: string }; role: string }>,
@@ -297,6 +304,7 @@ export function presentSession(
       role: ctx.user.role as "superadmin" | "fleetoperator" | "crew",
       locale: ctx.user.locale,
       shareHangarWithOrg: ctx.user.shareHangarWithOrg ?? false,
+      fleetyardsUsername: ctx.user.fleetyardsUsername ?? null,
     },
     memberships: memberships.map((m) => ({
       guildId: m.guildId,

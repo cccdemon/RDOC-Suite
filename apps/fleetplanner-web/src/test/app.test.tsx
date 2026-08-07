@@ -656,6 +656,62 @@ describe("Profile / hangar", () => {
     expect(imported).toMatchObject({ fleetJson: '[{"name":"Polaris"}]' });
   });
 
+  it("imports a fleet from Fleetyards (POST hangar/import/fleetyards)", async () => {
+    let imported: Record<string, unknown> | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/hangar`, () => HttpResponse.json({ ships: [] })),
+      http.post(`${API}/hangar/import/fleetyards`, async ({ request }) => {
+        imported = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json({
+          ok: true,
+          username: "SomePlayer",
+          total: 4,
+          added: 3,
+          already: 1,
+          loaners: 1,
+          unmatched: [],
+        });
+      }),
+    );
+    const { findByTestId } = renderAt("/profile");
+    const input = (await findByTestId("fleetyards-username")) as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(input, "SomePlayer");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    (await findByTestId("fleetyards-import-submit")).click();
+    const res = await findByTestId("fleetyards-result");
+    expect(res).toHaveTextContent("3 neu");
+    expect(res).toHaveTextContent("1 Leihschiffe");
+    expect(imported).toMatchObject({ username: "SomePlayer" });
+  });
+
+  it("flags loaner-only hulls in the hangar list", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/hangar`, () =>
+        HttpResponse.json({
+          ships: [
+            {
+              id: "ship_l1",
+              slug: "anvl-carrack",
+              name: "Carrack",
+              manufacturer: "Anvil",
+              size: "Large",
+              role: "Explorer",
+              minCrew: 2,
+              maxCrew: 6,
+              nickname: null,
+              quantity: 0,
+              loanerQuantity: 1,
+            },
+          ],
+        }),
+      ),
+    );
+    const { findByTestId } = renderAt("/profile");
+    expect(await findByTestId("hangar-loaner-ship_l1")).toHaveTextContent("LEIHSCHIFF");
+  });
+
   it("anonymous sees a sign-in prompt", async () => {
     server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
     const { findByTestId } = renderAt("/profile");
