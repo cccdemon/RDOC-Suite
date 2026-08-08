@@ -38,9 +38,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: "New look",
     changes: [
       "Fleetplanner now wears the official RDOC colours and typefaces. The neon blue is gone — the interface is quieter, and the one warm copper accent per screen points at the action that matters.",
+      "Headlines are set in the RDOC display face, and the RDOC mark now sits at the top of the sidebar.",
       "Text should be easier to read: new headline and body typefaces, loaded from our own server instead of Google's, so nothing about your visit leaves the site.",
+      "A teal second accent carries structure — section heads, table headers, board lanes — so those no longer compete with the copper action colour.",
+      "Light Mode is a real light theme now instead of an inverted screen: logos, avatars and mission covers stay the right way round, and every colour was picked for a light background.",
+      "The last pages on the old palette (maintenance notice, legal texts, error pages) have followed.",
       "The manufacturer themes are still there in the footer if you want them.",
-      "A few older pages (maintenance notice, legal texts) still use the previous colours and will follow.",
     ],
   },
   {

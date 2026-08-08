@@ -5,6 +5,7 @@ import type { OperationSummary, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { ErrorState } from "../components/ErrorState";
 import { useSeo } from "../seo";
+import { tint } from "../components/ui";
 
 const MONO = "var(--mono)";
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -12,14 +13,16 @@ const WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
 const DOW = ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
 // op type → design palette (defensive: match lowercased opType incl. de aliases)
-const TYPES: Record<string, { label: string; color: string; rgb: string; icon: string }> = {
-  combat: { label: "Kampf", color: "var(--red)", rgb: "255,68,68", icon: "fighter" },
-  mining: { label: "Mining", color: "var(--gold)", rgb: "240,165,0", icon: "bolt" },
-  salvage: { label: "Bergung", color: "var(--orange)", rgb: "255,122,69", icon: "swap" },
-  explore: { label: "Exploration", color: "var(--cyan)", rgb: "118, 130, 141", icon: "globe" },
-  transport: { label: "Transport", color: "var(--purple)", rgb: "160,100,255", icon: "vehicle" },
-  training: { label: "Training", color: "var(--green)", rgb: "0,255,136", icon: "lead" },
-  social: { label: "Sozial", color: "var(--pink)", rgb: "255,112,200", icon: "users" },
+// Same closed palette as OP_TYPES in opForm.ts: icon and label separate the
+// types, not a hue per type.
+const TYPES: Record<string, { label: string; color: string; icon: string }> = {
+  combat: { label: "Kampf", color: "var(--cyan)", icon: "fighter" },
+  mining: { label: "Mining", color: "var(--cyan)", icon: "bolt" },
+  salvage: { label: "Bergung", color: "var(--cyan)", icon: "swap" },
+  explore: { label: "Exploration", color: "var(--cyan)", icon: "globe" },
+  transport: { label: "Transport", color: "var(--cyan)", icon: "vehicle" },
+  training: { label: "Training", color: "var(--cyan)", icon: "lead" },
+  social: { label: "Sozial", color: "var(--cyan)", icon: "users" },
 };
 const TYPE_ALIASES: Record<string, string> = {
   kampf: "combat", fight: "combat", pvp: "combat", defense: "combat",
@@ -233,10 +236,10 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
     const pct = e.cap > 0 ? Math.min(100, Math.round((e.signed / e.cap) * 100)) : 0;
     const dim = st.key === "done" || st.key === "cancelled";
     return (
-      <Link key={e.id} to={`/ops/${e.id}`} data-testid={`cal-open-${e.id}`} style={{ display: "block", textDecoration: "none", border: `1px solid rgba(${ty.rgb},0.18)`, borderLeft: `3px solid ${ty.color}`, borderRadius: 10, background: "var(--row)", padding: "0.75rem 0.85rem", opacity: dim ? 0.6 : 1 }}>
+      <Link key={e.id} to={`/ops/${e.id}`} data-testid={`cal-open-${e.id}`} style={{ display: "block", textDecoration: "none", border: `1px solid ${tint(ty.color, 18)}`, borderLeft: `3px solid ${ty.color}`, borderRadius: 10, background: "var(--row)", padding: "0.75rem 0.85rem", opacity: dim ? 0.6 : 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <span style={{ fontFamily: MONO, fontSize: compact ? "0.92rem" : "0.98rem", color: "var(--text-hi)", flexShrink: 0 }}>{e.time}</span>
-          <span style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `rgba(${ty.rgb},0.12)`, border: `1px solid rgba(${ty.rgb},0.3)`, color: ty.color }}>
+          <span style={{ width: 26, height: 26, borderRadius: 7, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${tint(ty.color, 12)}`, border: `1px solid ${tint(ty.color, 30)}`, color: ty.color }}>
             <Ic name={ty.icon} size={15} sw={1.6} />
           </span>
           <span style={{ flex: 1 }} />
@@ -249,7 +252,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         </div>
         <strong style={{ display: "block", fontWeight: compact ? 700 : 600, fontSize: compact ? "1.1rem" : "1.08rem", color: "var(--text-hi)", lineHeight: 1.2, margin: "0.5rem 0 0.2rem" }}>{e.title}</strong>
         <div style={{ display: "flex", alignItems: "center", gap: "0.8rem", flexWrap: "wrap", marginTop: "0.55rem" }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 7px", fontFamily: MONO, fontSize: "9px", letterSpacing: "0.05em", borderRadius: 3, border: `1px solid rgba(${ty.rgb},0.4)`, background: `rgba(${ty.rgb},0.08)`, color: ty.color, textTransform: "uppercase" }}>{ty.label}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 7px", fontFamily: MONO, fontSize: "9px", letterSpacing: "0.05em", borderRadius: 3, border: `1px solid ${tint(ty.color, 40)}`, background: `${tint(ty.color, 8)}`, color: ty.color, textTransform: "uppercase" }}>{ty.label}</span>
           <span style={{ color: "var(--dim2)", fontSize: "0.82rem" }}>{e.guild}</span>
           <div style={{ flex: 1, minWidth: 120, display: "flex", alignItems: "center", gap: "0.55rem" }}>
             <div style={{ flex: 1, height: 5, borderRadius: 4, background: "var(--bg3)", overflow: "hidden" }}>
@@ -257,7 +260,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             </div>
             <span style={{ fontFamily: MONO, fontSize: "0.74rem", color: "var(--dim)", whiteSpace: "nowrap" }}>{e.signed}/{e.cap}</span>
           </div>
-          <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.08)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7 }}>
+          <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.75rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7 }}>
             Öffnen <Ic name="arrow" size={13} sw={1.9} />
           </span>
         </div>
@@ -270,9 +273,9 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
       <div style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.8rem" }}>DIESER MONAT</div>
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
         {[
-          { v: statTotal, l: "OPS", c: "var(--text-hi)", b: "rgba(43, 49, 53, 0.14)", bg: "transparent" },
-          { v: statOffen, l: "OFFEN", c: "var(--green)", b: "rgba(91, 185, 138,0.22)", bg: "rgba(91, 185, 138,0.04)" },
-          { v: statFast, l: "FAST VOLL", c: "var(--gold)", b: "rgba(217, 169, 78,0.24)", bg: "rgba(217, 169, 78,0.04)" },
+          { v: statTotal, l: "OPS", c: "var(--text-hi)", b: "var(--wash)", bg: "transparent" },
+          { v: statOffen, l: "OFFEN", c: "var(--green)", b: "var(--edge-green)", bg: "var(--tint-green)" },
+          { v: statFast, l: "FAST VOLL", c: "var(--gold)", b: "var(--edge-gold)", bg: "var(--tint-gold)" },
         ].map((s) => (
           <div key={s.l} style={{ flex: "1 1 60px", border: `1px solid ${s.b}`, borderRadius: 9, padding: "0.6rem 0.5rem", textAlign: "center", background: s.bg }}>
             <div style={{ fontFamily: MONO, fontSize: compact ? "1.3rem" : "1.4rem", color: s.c, lineHeight: 1 }}>{s.v}</div>
@@ -280,7 +283,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
           </div>
         ))}
       </div>
-      <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.1em", color: "var(--dim3)", marginBottom: "0.55rem", paddingTop: "0.2rem", borderTop: "1px solid rgba(255,255,255,0.05)" }}>OPERATIONSTYPEN</div>
+      <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.1em", color: "var(--dim3)", marginBottom: "0.55rem", paddingTop: "0.2rem", borderTop: "1px solid var(--wash)" }}>OPERATIONSTYPEN</div>
       <div style={compact ? { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.45rem 0.8rem" } : { display: "flex", flexDirection: "column", gap: "0.4rem" }}>
         {legend.map((lg) => (
           <div key={lg.label} style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -294,7 +297,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   );
 
   const tabBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.85rem", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 6, border: "1px solid transparent", background: "transparent", color: "var(--dim)", cursor: "pointer" };
-  const tabActive: React.CSSProperties = { ...tabBase, background: "rgba(43, 49, 53, 0.12)", borderColor: "var(--border-hi)", color: "var(--cyan)" };
+  const tabActive: React.CSSProperties = { ...tabBase, background: "var(--wash)", borderColor: "var(--border-hi)", color: "var(--cyan)" };
 
   return (
     <div data-testid="calendar-page">
@@ -302,10 +305,10 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
       {runningOps.length > 0 && (
         <section
           data-testid="running-ops"
-          style={{ border: "1px solid rgba(91, 185, 138,0.32)", borderRadius: 14, background: "var(--bg2)", padding: "1rem 1.1rem", marginBottom: "1.5rem" }}
+          style={{ border: "1px solid var(--edge-green)", borderRadius: 14, background: "var(--bg2)", padding: "1rem 1.1rem", marginBottom: "1.5rem" }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem" }}>
-            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--green)", boxShadow: "0 0 0 0 rgba(91, 185, 138,0.6)", animation: "fpw-live-pulse 1.8s ease-out infinite", flexShrink: 0 }} />
+            <span style={{ width: 9, height: 9, borderRadius: "50%", background: "var(--green)", boxShadow: "0 0 0 0 var(--edge-green)", animation: "fpw-live-pulse 1.8s ease-out infinite", flexShrink: 0 }} />
             <span style={{ fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.14em", color: "var(--green)" }}>AKTUELL LAUFENDE OPERATIONEN</span>
             <span style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)" }}>{runningOps.length}</span>
             <style>{"@keyframes fpw-live-pulse{0%,100%{opacity:1}50%{opacity:0.45}}"}</style>
@@ -321,10 +324,10 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                   key={op.id}
                   to={`/ops/${op.id}`}
                   data-testid={`running-open-${op.id}`}
-                  style={{ display: "block", textDecoration: "none", border: `1px solid rgba(${ty.rgb},0.2)`, borderLeft: "3px solid var(--green)", borderRadius: 10, background: "var(--row)", padding: "0.7rem 0.8rem" }}
+                  style={{ display: "block", textDecoration: "none", border: `1px solid ${tint(ty.color, 20)}`, borderLeft: "3px solid var(--green)", borderRadius: 10, background: "var(--row)", padding: "0.7rem 0.8rem" }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.4rem" }}>
-                    <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `rgba(${ty.rgb},0.12)`, border: `1px solid rgba(${ty.rgb},0.3)`, color: ty.color }}>
+                    <span style={{ width: 24, height: 24, borderRadius: 7, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `${tint(ty.color, 12)}`, border: `1px solid ${tint(ty.color, 30)}`, color: ty.color }}>
                       <Ic name={ty.icon} size={14} sw={1.6} />
                     </span>
                     <span style={{ flex: 1 }} />
@@ -376,7 +379,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             <button type="button" data-testid="cal-view-agenda" onClick={() => setView("agenda")} style={view === "agenda" ? tabActive : tabBase}><Ic name="chat" size={14} /> Agenda</button>
           </div>
           {draftCount > 0 && view !== "liste" && (
-            <button type="button" data-testid="cal-drafts" onClick={() => setView("liste")} title="Entwürfe sind in der Listen-Ansicht sichtbar" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid rgba(217, 169, 78,0.45)", background: "rgba(217, 169, 78,0.1)", color: "var(--gold)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}>
+            <button type="button" data-testid="cal-drafts" onClick={() => setView("liste")} title="Entwürfe sind in der Listen-Ansicht sichtbar" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", color: "var(--gold)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}>
               <Ic name="edit" size={13} sw={1.7} /> {draftCount} {draftCount === 1 ? "Entwurf" : "Entwürfe"}
             </button>
           )}
@@ -400,7 +403,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
               type="button"
               data-testid={`cal-filter-${c.key}`}
               onClick={() => setFilter(c.key)}
-              style={active ? { ...chipBase, border: `1px solid ${c.color}`, background: `${c.color}1f`, color: c.key === "alle" ? "var(--text-hi)" : c.color } : { ...chipBase, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "var(--dim)" }}
+              style={active ? { ...chipBase, border: `1px solid ${c.color}`, background: `${c.color}1f`, color: c.key === "alle" ? "var(--text-hi)" : c.color } : { ...chipBase, border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)" }}
             >
               {c.key !== "alle" && <span style={{ width: 7, height: 7, borderRadius: 2, background: c.color, flexShrink: 0 }} />}
               {c.label}
@@ -413,7 +416,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
           title="Stream-Events: Alle → nur Stream → ohne Stream"
           onClick={() => setStreamFilter((s) => (s === "all" ? "only" : s === "only" ? "off" : "all"))}
           style={streamFilter === "all"
-            ? { ...chipBase, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "var(--dim)" }
+            ? { ...chipBase, border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)" }
             : { ...chipBase, border: "1px solid #9146ff", background: "rgba(145,70,255,0.15)", color: "var(--purple)" }}
         >
           <Ic name="stream" size={13} sw={1.7} />
@@ -427,8 +430,8 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             style={{
               ...chipBase,
               marginLeft: "auto",
-              border: showPast ? "1px solid rgba(217, 169, 78,0.5)" : "1px solid rgba(43, 49, 53, 0.28)",
-              background: showPast ? "rgba(217, 169, 78,0.12)" : "rgba(43, 49, 53, 0.05)",
+              border: showPast ? "1px solid var(--edge-gold)" : "1px solid var(--border)",
+              background: showPast ? "var(--tint-gold)" : "var(--wash)",
               color: showPast ? "var(--gold)" : "var(--dim)",
             }}
           >
@@ -522,7 +525,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 8 }}>
               {cells.map((cell, i) => {
-                if (cell.blank) return <div key={i} style={{ minHeight: 158, border: "1px solid rgba(255,255,255,0.03)", borderRadius: 10, background: "rgba(255,255,255,0.008)" }} />;
+                if (cell.blank) return <div key={i} style={{ minHeight: 158, border: "1px solid var(--wash)", borderRadius: 10, background: "var(--wash)" }} />;
                 const d = cell.day!;
                 const dayOps = visible.filter((e) => e.day === d).sort((a, b) => a.time.localeCompare(b.time));
                 const isToday = isCurrentMonth && d === T.d;
@@ -543,15 +546,15 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                       borderRadius: 10,
                       cursor: "pointer",
                       overflow: "hidden",
-                      border: selected ? "1px solid var(--border-hi)" : isToday ? "1px solid rgba(91, 185, 138,0.45)" : "1px solid rgba(43, 49, 53, 0.1)",
-                      background: selected ? "rgba(43, 49, 53, 0.07)" : isToday ? "rgba(91, 185, 138,0.04)" : "var(--row)",
+                      border: selected ? "1px solid var(--border-hi)" : isToday ? "1px solid var(--edge-green)" : "1px solid var(--wash)",
+                      background: selected ? "var(--wash)" : isToday ? "var(--tint-green)" : "var(--row)",
                       opacity: isPast ? 0.62 : 1,
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <span style={{ fontFamily: MONO, fontSize: "1.05rem", fontWeight: 700, color: isToday ? "var(--green)" : selected ? "var(--cyan)" : "var(--text)" }}>{d}</span>
                       {isToday ? (
-                        <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.08em", color: "var(--green)", border: "1px solid rgba(91, 185, 138,0.4)", borderRadius: 3, padding: "0.1rem 0.3rem" }}>HEUTE</span>
+                        <span style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.08em", color: "var(--green)", border: "1px solid var(--edge-green)", borderRadius: 3, padding: "0.1rem 0.3rem" }}>HEUTE</span>
                       ) : dayOps.length > 0 ? (
                         <span style={{ fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim2)" }}>{dayOps.length} OP</span>
                       ) : null}
@@ -562,7 +565,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                         const cancelled = e.status === "cancelled";
                         const dim = (isCurrentMonth && d < T.d) || monthBeforeToday || cancelled;
                         return (
-                          <div key={e.id} style={{ display: "flex", flexDirection: "column", gap: 1, padding: "4px 7px", borderRadius: 6, background: `rgba(${ty.rgb},0.13)`, borderLeft: `3px solid ${cancelled ? "var(--red)" : ty.color}`, overflow: "hidden", opacity: dim ? 0.5 : 1 }}>
+                          <div key={e.id} style={{ display: "flex", flexDirection: "column", gap: 1, padding: "4px 7px", borderRadius: 6, background: `${tint(ty.color, 13)}`, borderLeft: `3px solid ${cancelled ? "var(--red)" : ty.color}`, overflow: "hidden", opacity: dim ? 0.5 : 1 }}>
                             <span style={{ fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.02em", color: cancelled ? "var(--red)" : ty.color, flexShrink: 0 }}>{e.time}</span>
                             <span style={{ fontSize: "0.8rem", lineHeight: 1.16, color: "var(--text)", fontWeight: 500, textDecoration: cancelled ? "line-through" : "none", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{e.title}</span>
                           </div>
@@ -584,7 +587,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                 <div style={{ fontWeight: 700, fontSize: "1.3rem", color: "var(--text-hi)", lineHeight: 1.1 }}>{selDateLabel}</div>
               </div>
               {selDayOps.length === 0 ? (
-                <div style={{ padding: "1.6rem 0.5rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.9rem", border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 10 }}>
+                <div style={{ padding: "1.6rem 0.5rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.9rem", border: "1px dashed var(--wash)", borderRadius: 10 }}>
                   Keine Operationen an diesem Tag — wähle einen Tag mit Markierung.
                 </div>
               ) : (
@@ -600,7 +603,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         <div style={mobile ? { display: "flex", flexDirection: "column", gap: "1.1rem" } : { display: "flex", gap: "1.3rem", alignItems: "flex-start" }}>
           <div style={mobile ? { width: "100%", minWidth: 0 } : { flex: "1 1 0", minWidth: 0 }}>
             {agenda.length === 0 ? (
-              <div style={{ padding: "3rem 1rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.92rem", border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 12 }}>
+              <div style={{ padding: "3rem 1rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.92rem", border: "1px dashed var(--wash)", borderRadius: 12 }}>
                 {!showPast && hasPast ? (
                   <>
                     Keine anstehenden Operationen in diesem Monat.{" "}

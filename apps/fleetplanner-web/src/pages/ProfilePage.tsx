@@ -181,7 +181,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                   </span>
                 )}
                 <span className="fpw-meta">{s.manufacturer} · {s.maxCrew} Crew</span>
-                <button type="button" data-testid={`hangar-remove-${s.id}`} title="Aus Hangar entfernen" disabled={busy} onClick={() => run(() => removeHangarShip(s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button type="button" data-testid={`hangar-remove-${s.id}`} title="Aus Hangar entfernen" disabled={busy} onClick={() => run(() => removeHangarShip(s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={12} sw={2} />
                 </button>
               </div>
@@ -288,7 +288,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                 <div style={{ ...label, fontSize: "0.6rem", marginBottom: "0.45rem" }}>NICHT ERKANNT — MANUELL ZUORDNEN</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                   {importResult.unmatched.map((name) => (
-                    <div key={name} data-testid={`unmatched-${name}`} style={{ border: "1px solid rgba(217, 169, 78,0.2)", background: "rgba(217, 169, 78,0.04)", borderRadius: 8, padding: "0.45rem 0.6rem" }}>
+                    <div key={name} data-testid={`unmatched-${name}`} style={{ border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", borderRadius: 8, padding: "0.45rem 0.6rem" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
                         <span style={{ flex: 1, minWidth: 0, fontSize: "0.86rem", color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
                         <button
@@ -321,7 +321,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
                                   data-testid={`unmatched-pick-${s.id}`}
                                   disabled={busy}
                                   onClick={() => assignUnmatched(name, s.id)}
-                                  style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", borderRadius: 6, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}
+                                  style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.35rem 0.5rem", border: "1px solid var(--border)", background: "var(--wash)", borderRadius: 6, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}
                                 >
                                   <span style={{ flex: 1, fontSize: "0.82rem", color: "var(--text-hi)" }}>{s.name}</span>
                                   <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--dim2)" }}>{s.manufacturer}</span>

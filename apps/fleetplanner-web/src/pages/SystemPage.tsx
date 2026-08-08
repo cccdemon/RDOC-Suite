@@ -123,7 +123,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
             <span style={{ color: c, display: "inline-flex" }}><Ic name={icon} size={14} sw={1.6} /></span>{name}
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "0.3rem", fontFamily: MONO, fontSize: "0.58rem", color: c }}>
-            <span style={{ width: 7, height: 7, borderRadius: "50%", background: c, boxShadow: `0 0 6px ${c}` }} />{STATUS_TEXT[status] ?? status}
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: c }} />{STATUS_TEXT[status] ?? status}
           </span>
         </div>
         <div style={{ fontSize: "0.78rem", color: "var(--dim)", lineHeight: 1.3 }}>{detail}</div>
@@ -151,14 +151,14 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
             <span style={live ? { animation: "fpw-spin 0.9s linear infinite", display: "inline-flex" } : { display: "inline-flex" }}><Ic name="refresh" size={14} sw={1.8} /></span>
             Live {live ? "an" : "aus"}
           </button>
-          <button type="button" data-testid="manual-refresh" onClick={() => void refresh()} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.5rem 0.8rem", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.06)", color: "var(--dim)" }}>
+          <button type="button" data-testid="manual-refresh" onClick={() => void refresh()} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.5rem 0.8rem", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--dim)" }}>
             <Ic name="refresh" size={14} sw={1.8} /> Aktualisieren
           </button>
         </div>
       </div>
 
       {err && (
-        <div style={{ ...card, borderColor: "rgba(228, 115, 106,0.4)", color: "var(--red)", marginBottom: "1.1rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+        <div style={{ ...card, borderColor: "var(--edge-red)", color: "var(--red)", marginBottom: "1.1rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
           <Ic name="alert" size={16} sw={1.7} /> {err}
         </div>
       )}
@@ -233,7 +233,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
               const lc = LEVEL_COLOR[ev.level] ?? "var(--dim)";
               const open = expanded === ev.id;
               return (
-                <div key={ev.id} data-testid={`event-${ev.id}`} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                <div key={ev.id} data-testid={`event-${ev.id}`} style={{ borderBottom: "1px solid var(--wash)" }}>
                   <div
                     onClick={() => ev.detail && setExpanded(open ? null : ev.id)}
                     style={{ display: "grid", gridTemplateColumns: "auto 84px 110px 1fr", gap: "0.6rem", alignItems: "center", padding: "0.5rem 1.1rem", cursor: ev.detail ? "pointer" : "default", fontSize: "0.84rem" }}

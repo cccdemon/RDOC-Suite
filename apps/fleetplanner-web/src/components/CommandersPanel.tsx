@@ -57,7 +57,7 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
             </div>
             <span className="tag tag-gold">LEITUNG</span>
             {canManage && (
-              <button type="button" data-testid={`leader-remove-${l.id}`} title="Leiter entfernen" disabled={busy} onClick={() => run(() => removeLeader(op.id, l.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button type="button" data-testid={`leader-remove-${l.id}`} title="Leiter entfernen" disabled={busy} onClick={() => run(() => removeLeader(op.id, l.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Ic name="x" size={12} sw={2} />
               </button>
             )}
@@ -83,7 +83,7 @@ export function CommandersPanel({ op, csrf, onChanged, onNotice }: { op: Operati
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               {candidates.map((c) => (
-                <button key={c.id} type="button" data-testid={`leader-cand-${c.id}`} disabled={busy} onClick={() => run(() => addLeader(op.id, c.id, csrf!))} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.45rem 0.55rem", border: "1px solid var(--border)", background: "rgba(43, 49, 53, 0.04)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+                <button key={c.id} type="button" data-testid={`leader-cand-${c.id}`} disabled={busy} onClick={() => run(() => addLeader(op.id, c.id, csrf!))} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.45rem 0.55rem", border: "1px solid var(--border)", background: "var(--wash)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
                   <Avatar name={c.username} size={24} />
                   <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{c.username}</span>
                   <Ic name="plus" size={14} sw={2} />

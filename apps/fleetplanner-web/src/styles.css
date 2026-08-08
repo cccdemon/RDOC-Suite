@@ -1,32 +1,36 @@
-/* RDOC theme - RDOC Brandkit v2.0 (see RDOC-Brandkit/brandkit/BrandGuide.md).
+/* RDOC theme - RDOC Brandkit v2.2 (see RDOC-Brandkit/brandkit/BrandGuide.md).
  *
  * The legacy variable names are kept on purpose: every component already reads
  * them, so the palette lives in exactly one place. What changed is what they
  * point at. Roles, not hues, drive the mapping - the guide (§8) allows exactly
  * one Copper element per view, so Copper is reserved for the primary action and
- * active states. Structure is Graphite, technical labels are Steel, and the
- * primary foreground is Off White.
+ * active states. Structure is Patina, technical labels are Steel, surfaces are
+ * Graphite and the primary foreground is Off White.
  *
  * §8 "Kein Effekt" also forbids gradients, shadows and glow in brand surfaces,
  * so the hero/progress gradients and the dot glow are gone.
+ *
+ * Derived tints use color-mix() against the role token rather than a hardcoded
+ * rgba() triple. That is what makes the light theme at the bottom of this block
+ * a palette swap instead of a second stylesheet.
  */
 
-/* Self-hosted from brandkit/fonts. Only the five cuts that exist as real files
+/* Self-hosted from brandkit/fonts. Only the four cuts that exist as real files
  * are declared - §10 forbids synthetic weights, and a faked bold is visibly
  * different from the real cut.
  *
- * Each face claims a weight RANGE rather than a single value. The app asks for
- * 400/500/600/700 in places; without the ranges the browser would synthesise
- * the two weights it has no file for. With them, every request resolves to a
- * real file: 500 on body text renders as Regular, 700 as SemiBold.
+ * Michroma replaced Space Grotesk as the display face in brandkit v2.1 and has
+ * exactly ONE cut. It is therefore declared at 400 only: asking for 700 makes
+ * the browser smear the outlines into a fake bold. Display lines are emphasised
+ * with size or colour, never with font-weight.
+ *
+ * The two text faces claim a weight RANGE rather than a single value, because
+ * the app asks for 400/500/600/700 in places; the ranges make every request
+ * resolve to a real file (500 renders as Regular, 700 as SemiBold).
  */
 @font-face {
-  font-family: "Space Grotesk"; font-style: normal; font-weight: 500 600; font-display: swap;
-  src: url("/fonts/SpaceGrotesk-Medium.ttf") format("truetype");
-}
-@font-face {
-  font-family: "Space Grotesk"; font-style: normal; font-weight: 700 900; font-display: swap;
-  src: url("/fonts/SpaceGrotesk-Bold.ttf") format("truetype");
+  font-family: "Michroma"; font-style: normal; font-weight: 400; font-display: swap;
+  src: url("/fonts/Michroma-Regular.ttf") format("truetype");
 }
 @font-face {
   font-family: "IBM Plex Sans"; font-style: normal; font-weight: 100 500; font-display: swap;
@@ -48,29 +52,45 @@
   --rdoc-space: #121416;
   --rdoc-graphite: #2b3135;
   --rdoc-steel: #76828d;
-  --rdoc-offwhite: var(--text-hi);
+  --rdoc-offwhite: #f2f2f0;
   --rdoc-copper: #c48a4a;
+  /* Patina joined the palette in v2.2 as the second accent. It carries
+   * structure - section markers, table heads, lane heads, one data series. It
+   * is never the signet, never a second primary action and never a state. */
+  --rdoc-patina: #4fb5b5;
 
-  /* Functional colours. Support colours, never a second accent next to Copper,
-   * and never the only signal - every state also carries a word or an icon. */
-  --rdoc-success: #5bb98a;
-  --rdoc-warning: #d9a94e;
-  --rdoc-error: #e4736a;
+  /* Functional colours. Support colours, never a second accent (that is
+   * Patina), and never the only signal - every state also carries a word or an
+   * icon. The hues moved in v2.2: Warning sat 8 degrees from Copper and was not
+   * readable as a warning next to a Copper button, Success sat 30 degrees from
+   * Patina. */
+  --rdoc-success: #63c271;
+  --rdoc-warning: #ebcf52;
+  --rdoc-error: #ee6e76;
   --rdoc-info: #79aedc;
   --rdoc-focus: #e0a868;
 
-  /* ── grounds ── */
+  /* ── grounds ──
+   * Space is the ground, Graphite is every raised surface, and input wells go
+   * back down to Space so a field reads as cut into its card.
+   *
+   * `--card` and `--text-hi` used to be defined as var(--card) / var(--text-hi)
+   * - a self-reference, which CSS resolves to guaranteed-invalid, so every
+   * `background: var(--bg2)` fell back to transparent. */
   --bg: var(--rdoc-space);
+  --card: var(--rdoc-graphite);
   --bg2: var(--card);
-  --bg3: #1f2427;
-  --card: var(--card);
-  --row: #16191c;
+  --bg3: var(--rdoc-space);
+  --row: color-mix(in srgb, var(--rdoc-graphite) 45%, var(--rdoc-space));
+  /* Sidebar/rail: one step off the ground so the shell reads as chrome. */
+  --chrome: color-mix(in srgb, var(--rdoc-graphite) 35%, var(--rdoc-space));
 
   /* ── accents ──
-   * `--cyan` kept its name but not its job: it is the neutral technical accent
-   * (labels, icons, lane heads). The primary action reads `--accent`. */
-  --cyan: var(--rdoc-steel);
+   * `--cyan` kept its name but not its job: it is the structural accent and
+   * now resolves to Patina (§8). The primary action reads `--accent`. */
+  --cyan: var(--rdoc-patina);
   --accent: var(--rdoc-copper);
+  --accent-2: var(--rdoc-patina);
   --gold: var(--rdoc-warning);
   --green: var(--rdoc-success);
   --red: var(--rdoc-error);
@@ -83,27 +103,45 @@
   --orange: var(--rdoc-warning);
   --pink: var(--rdoc-steel);
   --info: var(--rdoc-info);
+  --focus: var(--rdoc-focus);
 
   /* ── text ── */
-  --text: #d5d7d4;
-  --head: var(--rdoc-offwhite);
+  --text: color-mix(in srgb, var(--rdoc-offwhite) 84%, var(--rdoc-space));
   --text-hi: var(--rdoc-offwhite);
+  --head: var(--text-hi);
   --dim: var(--rdoc-steel);
-  --dim2: #66707a;
-  --dim3: #525b64;
+  --dim2: color-mix(in srgb, var(--rdoc-steel) 85%, var(--rdoc-space));
+  --dim3: color-mix(in srgb, var(--rdoc-steel) 68%, var(--rdoc-space));
 
   --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
   --body: "IBM Plex Sans", system-ui, "Segoe UI", Arial, sans-serif;
-  --display: "Space Grotesk", "IBM Plex Sans", system-ui, sans-serif;
+  --display: "Michroma", "IBM Plex Sans", system-ui, sans-serif;
   /* Flat, per §8 "Kein Effekt" - was a three-stop gradient. */
   --hero-grad: var(--card);
 
-  /* ── structure: Graphite, not a tinted accent ── */
-  --border: rgba(43, 49, 53, 0.9);
-  --border-card: rgba(43, 49, 53, 0.95);
-  --border-hi: var(--rdoc-graphite);
-  --border-in: rgba(43, 49, 53, 0.85);
-  --hairline: rgba(43, 49, 53, 0.6);
+  /* ── structure ──
+   * Graphite is the surface, so borders drawn IN Graphite disappear on a card.
+   * They are mixed from Steel instead - the same family, one step brighter. */
+  --border: color-mix(in srgb, var(--rdoc-steel) 26%, transparent);
+  --border-card: color-mix(in srgb, var(--rdoc-steel) 30%, transparent);
+  --border-hi: color-mix(in srgb, var(--rdoc-steel) 48%, transparent);
+  --border-in: color-mix(in srgb, var(--rdoc-steel) 24%, transparent);
+  --hairline: color-mix(in srgb, var(--rdoc-steel) 16%, transparent);
+  /* Neutral washes. In the dark theme they lighten, in the light theme they
+   * darken - components must never reach for a raw rgba(255,255,255,…). */
+  --wash: color-mix(in srgb, var(--rdoc-offwhite) 4%, transparent);
+  --wash-hi: color-mix(in srgb, var(--rdoc-offwhite) 9%, transparent);
+
+  /* State tints, derived so they follow the theme. */
+  --tint-accent: color-mix(in srgb, var(--accent) 12%, transparent);
+  --tint-cyan: color-mix(in srgb, var(--cyan) 12%, transparent);
+  --tint-green: color-mix(in srgb, var(--green) 12%, transparent);
+  --tint-gold: color-mix(in srgb, var(--gold) 12%, transparent);
+  --tint-red: color-mix(in srgb, var(--red) 10%, transparent);
+  --edge-accent: color-mix(in srgb, var(--accent) 50%, transparent);
+  --edge-green: color-mix(in srgb, var(--green) 45%, transparent);
+  --edge-gold: color-mix(in srgb, var(--gold) 45%, transparent);
+  --edge-red: color-mix(in srgb, var(--red) 40%, transparent);
 
   /* radius scale */
   --r-input: 8px;
@@ -113,6 +151,41 @@
   --r-panel: 13px;
   --r-hero: 16px;
   --t-fast: 0.12s ease;
+}
+
+/* Light theme (BrandGuide §8 "Heller Modus"). Measured, not inverted: Copper
+ * reaches only 2.65:1 on Off White and Patina 2.12:1, so both drop to their
+ * Deep variants for anything that carries meaning. Only the six raw brand hues
+ * and the functional set are restated - every derived token above is a
+ * color-mix() over them and follows automatically. */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --rdoc-space: #f2f2f0;          /* ground */
+  --rdoc-graphite: #e4e4e1;       /* surface */
+  --rdoc-steel: #4e5862;          /* Steel Deep - secondary text */
+  --rdoc-offwhite: #121416;       /* primary foreground */
+  --rdoc-copper: #8a5a22;         /* Copper Deep */
+  --rdoc-patina: #175f63;         /* Patina Deep */
+
+  --rdoc-success: #14652a;
+  --rdoc-warning: #6e5406;
+  --rdoc-error: #a81f2b;
+  --rdoc-info: #14567f;
+  --rdoc-focus: #6e4517;
+
+  /* Wells go UP on a light ground, not down, and the neutral washes have to
+   * darken instead of lighten. */
+  --bg3: #ffffff;
+  --chrome: #e9e9e6;
+  --row: #ebebe8;
+  --border: #c7c9c6;
+  --border-card: #c7c9c6;
+  --border-hi: #adb0ac;
+  --border-in: #c7c9c6;
+  --hairline: #d8d9d6;
+  --wash: color-mix(in srgb, #121416 5%, transparent);
+  --wash-hi: color-mix(in srgb, #121416 10%, transparent);
 }
 
 * { box-sizing: border-box; }
@@ -132,7 +205,7 @@ a { color: var(--cyan); }
   border-bottom: 1px solid var(--border);
 }
 .fpw-brand {
-  font-family: var(--mono); font-size: 0.95rem; letter-spacing: 0.18em;
+  font-family: var(--mono); font-size: 0.95rem; letter-spacing: 0.07em;
   color: var(--cyan); text-decoration: none;
 }
 .fpw-user { font-family: var(--mono); font-size: 0.74rem; color: var(--dim); }
@@ -144,8 +217,8 @@ a { color: var(--cyan); }
   background: var(--bg2);
 }
 .fpw-hero h1 {
-  font-family: var(--display); font-weight: 700; font-size: 2.1rem; line-height: 1.12; color: var(--text-hi);
-  margin: 0 0 0.7rem; letter-spacing: 0.01em;
+  font-family: var(--display); font-weight: 400; font-size: 1.7rem; line-height: 1.18; color: var(--text-hi);
+  margin: 0 0 0.7rem; letter-spacing: 0;
 }
 .fpw-tagrow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-bottom: 0.95rem; }
 .fpw-metarow { display: flex; flex-wrap: wrap; gap: 0.35rem 1.3rem; color: var(--dim); font-size: 0.92rem; }
@@ -168,7 +241,7 @@ a { color: var(--cyan); }
 
 .fpw-lanehead {
   display: flex; align-items: center; gap: 0.45rem; margin-bottom: 0.8rem;
-  padding-bottom: 0.5rem; border-bottom: 1px solid var(--lane-accent, rgba(43, 49, 53, 0.4));
+  padding-bottom: 0.5rem; border-bottom: 1px solid var(--lane-accent, var(--border));
   font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.06em;
   color: var(--lane-color, var(--cyan));
 }
@@ -181,18 +254,18 @@ a { color: var(--cyan); }
   padding: 0.16rem 0.45rem; border-radius: 4px; border: 1px solid;
   text-transform: uppercase; white-space: nowrap;
 }
-.fpw-tag.cyan { color: var(--cyan); border-color: var(--border-hi); background: rgba(43, 49, 53, 0.08); }
-.fpw-tag.green { color: var(--green); border-color: rgba(91, 185, 138 , 0.4); background: rgba(91, 185, 138 , 0.08); }
-.fpw-tag.gold { color: var(--gold); border-color: rgba(217, 169, 78 , 0.42); background: rgba(217, 169, 78 , 0.09); }
-.fpw-tag.dim { color: var(--dim); border-color: rgba(118, 130, 141 , 0.34); background: rgba(118, 130, 141 , 0.07); }
-.fpw-tag.dashed { color: var(--dim); border-color: rgba(118, 130, 141 , 0.34); border-style: dashed; background: transparent; }
+.fpw-tag.cyan { color: var(--cyan); border-color: color-mix(in srgb, var(--cyan) 40%, transparent); background: var(--tint-cyan); }
+.fpw-tag.green { color: var(--green); border-color: var(--edge-green); background: var(--tint-green); }
+.fpw-tag.gold { color: var(--gold); border-color: var(--edge-gold); background: var(--tint-gold); }
+.fpw-tag.dim { color: var(--dim); border-color: var(--border-hi); background: var(--wash); }
+.fpw-tag.dashed { color: var(--dim); border-color: var(--border-hi); border-style: dashed; background: transparent; }
 .fpw-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
 
 /* ── typography helpers ── */
-.fpw-h1 { font-family: var(--display); font-weight: 700; font-size: 1.9rem; line-height: 1.15; color: var(--text-hi); margin: 0 0 0.5rem; }
-.fpw-h2 { font-family: var(--display); font-weight: 700; font-size: 1.2rem; color: var(--text-hi); margin: 0 0 0.6rem; }
+.fpw-h1 { font-family: var(--display); font-weight: 400; font-size: 1.55rem; line-height: 1.2; color: var(--text-hi); margin: 0 0 0.5rem; }
+.fpw-h2 { font-family: var(--display); font-weight: 400; font-size: 1.02rem; color: var(--text-hi); margin: 0 0 0.6rem; }
 .fpw-meta { color: var(--dim); font-size: 0.9rem; }
-.fpw-mono-label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.12em; color: var(--dim); }
+.fpw-mono-label { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.07em; color: var(--dim); }
 
 /* ── unit card + seat rows (design board look) ── */
 .fpw-unit {
@@ -214,12 +287,12 @@ a { color: var(--cyan); }
 .fpw-seat {
   display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.65rem;
   border: 1px solid var(--border); border-radius: 9px;
-  background: rgba(255, 255, 255, 0.013); margin-top: 0.4rem; min-width: 0;
+  background: var(--wash); margin-top: 0.4rem; min-width: 0;
 }
 .fpw-seat-icon {
   width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  background: var(--bg3); border: 1px solid rgba(255, 255, 255, 0.06); color: var(--dim);
+  background: var(--bg3); border: 1px solid var(--border); color: var(--dim);
 }
 .fpw-seat-role { font-weight: 600; font-size: 0.9rem; color: var(--text); }
 
@@ -275,10 +348,10 @@ a { color: var(--cyan); }
 .fpw-doc { color: var(--text); font-family: var(--body); line-height: 1.6; }
 .fpw-doc a { color: var(--cyan); }
 .fpw-doc .page-header { margin-bottom: 1.6rem; }
-.fpw-doc .page-title { font-weight: 700; font-size: 1.9rem; line-height: 1.15; color: var(--text-hi); margin: 0 0 0.4rem; }
+.fpw-doc .page-title { font-family: var(--display); font-weight: 400; font-size: 1.5rem; line-height: 1.2; color: var(--text-hi); margin: 0 0 0.4rem; }
 .fpw-doc .page-subtitle { color: var(--dim); font-size: 0.95rem; }
 .fpw-doc .section { margin-bottom: 1.4rem; }
-.fpw-doc .section-title { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.7rem; }
+.fpw-doc .section-title { font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--dim); margin-bottom: 0.7rem; }
 .fpw-doc .card { border: 1px solid var(--border); border-radius: 14px; background: var(--bg2); padding: 1.1rem 1.2rem; }
 .fpw-doc .card + .card { margin-top: 1rem; }
 .fpw-doc .card-title { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.06em; color: var(--text-hi); }
@@ -288,7 +361,7 @@ a { color: var(--cyan); }
 .fpw-doc .user-table { border-collapse: collapse; width: 100%; }
 .fpw-doc .user-table th, .fpw-doc .user-table td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .fpw-doc .user-table th { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.08em; color: var(--dim); font-weight: 400; text-transform: uppercase; }
-.fpw-doc .btn, .fpw-doc .btn-sm { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; border: 1px solid var(--border-hi); background: rgba(43, 49, 53, 0.08); color: var(--cyan); font-family: var(--mono); font-size: 0.78rem; border-radius: 8px; text-decoration: none; }
+.fpw-doc .btn, .fpw-doc .btn-sm { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; border: 1px solid var(--border-hi); background: var(--wash); color: var(--cyan); font-family: var(--mono); font-size: 0.78rem; border-radius: 8px; text-decoration: none; }
 
 /* =========================================================================
    DESIGN-HANDOFF COMPONENT LAYER (design_tokens.css, SPA redesign 2026-06)
@@ -296,7 +369,8 @@ a { color: var(--cyan); }
    stay for not-yet-migrated pages; both coexist.
    ========================================================================= */
 
-/* persistent CRT scanline overlay */
+/* CRT scanline overlay - only for the Green CRT toy theme (see theme.ts).
+ * The brand is explicitly not cyberpunk/neon, so this is opt-in, not chrome. */
 .crt-scanlines {
   position: fixed; inset: 0; pointer-events: none; z-index: 9999;
   background: repeating-linear-gradient(0deg,
@@ -314,12 +388,12 @@ a { color: var(--cyan); }
 .icon-chip {
   width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  background: rgba(43, 49, 53, 0.12); border: 1px solid var(--border-hi); color: var(--cyan);
+  background: var(--tint-cyan); border: 1px solid var(--border-hi); color: var(--cyan);
 }
 
 /* KPI tile (border-left accent swapped inline per metric) */
 .kpi { min-width: 0; border: 1px solid var(--border); border-left: 3px solid var(--cyan); border-radius: 12px; background: var(--bg2); padding: 0.85rem 0.95rem; }
-.kpi-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.1em; color: var(--dim2); }
+.kpi-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.07em; color: var(--dim2); }
 .kpi-value { font-family: var(--mono); font-size: 1.35rem; line-height: 1; color: var(--head); }
 .kpi-sub { font-size: 0.72rem; color: var(--dim); margin-top: 0.25rem; }
 
@@ -334,27 +408,30 @@ a { color: var(--cyan); }
 .textarea { min-height: 180px; line-height: 1.55; resize: vertical; }
 
 /* segmented control (accent set inline per group) */
-.seg { display: inline-flex; align-items: center; gap: 6px; padding: 0.42rem 0.7rem; font-family: var(--mono); font-size: 0.7rem; border-radius: 8px; cursor: pointer; transition: all var(--t-fast); border: 1px solid rgba(255, 255, 255, 0.1); background: transparent; color: var(--dim); }
-.seg.is-active { border-color: var(--cyan); background: rgba(43, 49, 53, 0.14); color: var(--cyan); }
+.seg { display: inline-flex; align-items: center; gap: 6px; padding: 0.42rem 0.7rem; font-family: var(--mono); font-size: 0.7rem; border-radius: 8px; cursor: pointer; transition: all var(--t-fast); border: 1px solid var(--border); background: transparent; color: var(--dim); }
+.seg.is-active { border-color: var(--cyan); background: var(--tint-cyan); color: var(--cyan); }
 
 /* buttons */
-.btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.03em; padding: 0.55rem 1.2rem; border-radius: 9px; cursor: pointer; border: 1px solid var(--border-hi); background: rgba(43, 49, 53, 0.14); color: var(--cyan); transition: all var(--t-fast); text-decoration: none; }
+.btn { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 0.74rem; letter-spacing: 0.03em; padding: 0.55rem 1.2rem; border-radius: 9px; cursor: pointer; border: 1px solid var(--border-hi); background: var(--wash); color: var(--text); transition: all var(--t-fast); text-decoration: none; }
+.btn:hover:not(:disabled) { border-color: var(--cyan); color: var(--cyan); }
+.btn-primary { border-color: var(--edge-accent); background: var(--tint-accent); color: var(--accent); }
+.btn-primary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.btn-ghost { border-color: rgba(255, 255, 255, 0.14); background: transparent; color: var(--dim); }
-.btn-green { border-color: rgba(91, 185, 138 , 0.5); background: rgba(91, 185, 138 , 0.14); color: var(--green); }
-.btn-gold { border-color: rgba(217, 169, 78 , 0.5); background: rgba(217, 169, 78 , 0.1); color: var(--gold); }
-.btn-danger { border-color: rgba(228, 115, 106 , 0.4); background: rgba(228, 115, 106 , 0.07); color: var(--red2); }
+.btn-ghost { border-color: var(--border); background: transparent; color: var(--dim); }
+.btn-green { border-color: var(--edge-green); background: var(--tint-green); color: var(--green); }
+.btn-gold { border-color: var(--edge-gold); background: var(--tint-gold); color: var(--gold); }
+.btn-danger { border-color: var(--edge-red); background: var(--tint-red); color: var(--red2); }
 
 /* tags / status */
-.tag { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.05em; padding: 2px 7px; border-radius: var(--r-tag); border: 1px solid var(--border-hi); background: rgba(43, 49, 53, 0.1); color: var(--cyan); }
-.tag-green { border-color: rgba(91, 185, 138 , 0.45); background: rgba(91, 185, 138 , 0.1); color: var(--green); }
-.tag-gold { border-color: rgba(217, 169, 78 , 0.45); background: rgba(217, 169, 78 , 0.1); color: var(--gold); }
-.tag-red { border-color: rgba(228, 115, 106 , 0.4); background: rgba(228, 115, 106 , 0.08); color: var(--red2); }
-.tag-dim { border-color: rgba(255, 255, 255, 0.18); background: transparent; color: var(--dim); }
+.tag { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.05em; padding: 2px 7px; border-radius: var(--r-tag); border: 1px solid var(--border-hi); background: var(--wash); color: var(--cyan); }
+.tag-green { border-color: var(--edge-green); background: var(--tint-green); color: var(--green); }
+.tag-gold { border-color: var(--edge-gold); background: var(--tint-gold); color: var(--gold); }
+.tag-red { border-color: var(--edge-red); background: var(--tint-red); color: var(--red2); }
+.tag-dim { border-color: var(--border-hi); background: transparent; color: var(--dim); }
 
 /* sticky action bar (edit forms) */
-.actionbar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; margin-top: 1.2rem; background: rgba(18, 20, 22 , 0.92); backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; }
-.danger { border: 1px solid rgba(228, 115, 106 , 0.25); border-radius: var(--r-panel); background: rgba(228, 115, 106 , 0.04); padding: 1rem 1.1rem; }
+.actionbar { position: sticky; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; padding: 0.85rem 1rem; margin-top: 1.2rem; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--border); border-radius: 12px; }
+.danger { border: 1px solid var(--edge-red); border-radius: var(--r-panel); background: var(--tint-red); padding: 1rem 1.1rem; }
 
 /* table */
 .tbl { width: 100%; border-collapse: collapse; }
@@ -364,9 +441,9 @@ a { color: var(--cyan); }
 
 /* hero + headings */
 .hero { position: relative; border-radius: var(--r-hero); overflow: hidden; border: 1px solid var(--border-hi); background: var(--hero-grad); }
-.hero-title { font-family: var(--display); font-weight: 700; font-size: 2rem; color: var(--text-hi); line-height: 1.05; }
-.eyebrow { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.14em; color: var(--dim3); }
-.h1 { font-family: var(--display); font-weight: 700; font-size: 1.7rem; line-height: 1.12; color: var(--head); }
+.hero-title { font-family: var(--display); font-weight: 400; font-size: 1.6rem; color: var(--text-hi); line-height: 1.15; }
+.eyebrow { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.07em; color: var(--dim3); }
+.h1 { font-family: var(--display); font-weight: 400; font-size: 1.4rem; line-height: 1.2; color: var(--head); }
 
 /* =========================================================================
    APP-SHELL — permanent left sidebar (replaces the old top nav)
@@ -374,32 +451,38 @@ a { color: var(--cyan); }
 .app-shell { display: flex; min-height: 100vh; }
 .sidebar {
   flex: 0 0 256px; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column;
-  background: #070c14; border-right: 1px solid var(--border); overflow: hidden;
+  background: var(--chrome); border-right: 1px solid var(--border); overflow: hidden;
 }
-.sidebar-brand { display: flex; align-items: center; gap: 0.6rem; padding: 1rem 1rem; border-bottom: 1px solid var(--border); }
-.sidebar-brand .brand-main { font-family: var(--mono); font-size: 0.82rem; letter-spacing: 0.1em; color: var(--cyan); }
-.sidebar-brand .brand-sub { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.18em; color: var(--dim2); }
+/* Brand block: the lockup, then the product name in type only. Clear space is
+   half the cap height (§5), which the padding below honours on every side. */
+.sidebar-brand {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem;
+  padding: 1.1rem 1rem; border-bottom: 1px solid var(--border); text-decoration: none;
+}
+.sidebar-brand .brand-lockup { display: inline-flex; color: var(--text-hi); }
+.sidebar-brand .brand-lockup svg { display: block; height: auto; max-width: 100%; }
+.sidebar-brand .brand-sub { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.07em; color: var(--dim2); }
 .sidebar-nav { flex: 1; overflow-y: auto; padding: 1rem 0.7rem; }
 .nav-group { margin-bottom: 1.1rem; }
-.nav-group-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.14em; color: var(--dim2); text-transform: uppercase; padding: 0 0.55rem; margin-bottom: 0.4rem; }
+.nav-group-label { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.07em; color: var(--dim2); text-transform: uppercase; padding: 0 0.55rem; margin-bottom: 0.4rem; }
 .nav-item {
   display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left;
   padding: 0.5rem 0.55rem; margin-bottom: 0.12rem; border-radius: 8px; cursor: pointer;
   border: 1px solid transparent; background: transparent; color: var(--dim);
   font-family: var(--body); font-size: 0.92rem; text-decoration: none; transition: all var(--t-fast);
 }
-.nav-item:hover { background: rgba(255, 255, 255, 0.03); color: var(--text); }
+.nav-item:hover { background: var(--wash); color: var(--text); }
 .nav-item .nav-icon { color: var(--dim2); display: inline-flex; flex-shrink: 0; }
 .nav-item .nav-label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.nav-item.is-active { background: rgba(43, 49, 53, 0.1); border-color: var(--border-hi); color: var(--cyan); }
-.nav-item.is-active .nav-icon { color: var(--cyan); }
+.nav-item.is-active { background: var(--tint-accent); border-color: var(--edge-accent); color: var(--accent); }
+.nav-item.is-active .nav-icon { color: var(--accent); }
 .nav-item .done-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
 .sidebar-foot { border-top: 1px solid var(--border); padding: 0.8rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .theme-pick { display: flex; align-items: center; gap: 0.5rem; }
 .theme-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .foot-user { display: flex; align-items: center; gap: 0.55rem; }
 .foot-user .uname { font-size: 0.84rem; color: var(--text); }
-.foot-user .urole { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--gold); border: 1px solid rgba(217, 169, 78 , 0.38); background: rgba(217, 169, 78 , 0.08); padding: 1px 6px; border-radius: 4px; text-transform: uppercase; }
+.foot-user .urole { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--dim); border: 1px solid var(--border-hi); background: var(--wash); padding: 1px 6px; border-radius: 4px; text-transform: uppercase; }
 
 .app-content { flex: 1; min-width: 0; padding: 1.6rem 2rem 5rem; }
 
@@ -429,4 +512,11 @@ a { color: var(--cyan); }
   .app-content { padding: 1rem clamp(0.8rem, 3vw, 1.4rem) 4rem; }
   .mobile-head { display: flex; }
   .mobile-screen-select { display: block; }
+}
+
+/* Focus ring (BrandGuide §8): visible, brand-coloured, and never only a colour
+   change - the offset keeps it readable on any surface. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }

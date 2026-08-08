@@ -1,5 +1,69 @@
 # RDOC Suite Merge Log
 
+## Queued / In Progress - 2026-08-08: Brandkit v2.2 uebernehmen (Michroma, Patina, Light-Mode)
+
+Quelle: `RDOC-Brandkit/brandkit` (BrandGuide v2.2, 2026-08-08). Das Restyling vom 2026-08-07
+(aac6b60) setzte v2.0 um; v2.1/2.2 haben vier Dinge geaendert, die im Code noch fehlen:
+
+1. **Display-Schrift Michroma statt Space Grotesk** (v2.1). Michroma hat genau einen Schnitt (400) -
+   jedes `font-weight: 700` auf einer Display-Zeile laesst der Browser synthetisieren, und ein
+   gefaketes Bold sieht sichtbar anders aus als ein echter Cut. Michroma setzt ~1,35x breiter bei
+   0,75em Cap-Height (Space Grotesk: 0,70em), deshalb faellt die Groessen-Leiter auf 48/34/28/21 und
+   das negative Tracking entfaellt.
+2. **Patina `#4FB5B5` als Zweitakzent** (v2.2). Vorher trug die Palette genau eine Buntfarbe, alles
+   Nicht-Primaere fiel auf Steel zurueck. Patina traegt Struktur (Sektionsmarken, Tabellenkoepfe,
+   eine Datenreihe) - nie den Ring, nie eine zweite primaere Aktion, nie einen Status.
+3. **Funktionsfarben im Farbton verschoben** (v2.2): Success `#5bb98a` -> `#63C271`, Warning
+   `#d9a94e` -> `#EBCF52`, Error `#e4736a` -> `#EE6E76`. Grund: Warning lag 8 Grad neben Kupfer und
+   war neben einem Kupfer-Button nicht als Warnung lesbar; Success lag 30 Grad neben Patina.
+4. **Gemessene helle Palette** (v2.2, nicht invertiert). Der Light-Mode der SPA ist ein
+   `invert(1) hue-rotate(180deg)`-Filter auf `.app-root` - der invertiert auch Logos und Bilder und
+   produziert Farben, die niemand gemessen hat.
+
+Ausserdem hat sich die **Wortmarken-Zeichnung** geaendert (`rdoc_logo_horizontal_{dark,light}.svg`,
+`og.png` weichen ab); Signet, Favicons und Icons sind identisch geblieben.
+
+Umfang:
+
+- `apps/fleetplanner-web/public/`: neue Logo-SVGs + `og.png`, `Michroma-Regular.ttf` rein,
+  `SpaceGrotesk-*.ttf` raus.
+- `apps/fleetplanner-web/src/styles.css`: `@font-face` auf Michroma 400 (ein Schnitt, keine
+  Weight-Ranges), Display-Regeln auf `font-weight: 400` + `letter-spacing: 0`, Patina-Token,
+  v2.2-Funktionsfarben, `[data-theme="light"]`-Block mit der gemessenen hellen Palette.
+- `apps/fleetplanner-web/src/theme.ts`: Eintrag "Light Mode" setzt `data-theme` statt eines
+  Invert-Filters. Die Hersteller-Filter bleiben, wie sie sind (bewusste In-Fiction-Spielerei).
+- `apps/fleetplanner/src/web/render.ts`: der SSR-Token-Block steht noch komplett auf der alten
+  Neon-Palette (`#00d4ff`, `#00ff88`, Share Tech Mono, Rajdhani, Scanline-Overlay, Glow). Auf
+  Brand-Palette ziehen und die Effekte entfernen (BrandGuide Paragraph 8 "Kein Effekt").
+- `apps/error-page/server.js`: dieselbe Neon-Palette, 84 Zeilen, mitziehen.
+
+Nicht angefasst: `apps/mission-cover`. Dessen CSS ist die Bildsprache der *generierten Cover*
+(Star-Citizen-Missionsgrafik), nicht die Marken-Chrome der Suite - ein Umfaerben wuerde die
+Ausgabe aendern, nicht die Marke schaerfen.
+
+**Waehrend der Arbeit dazugekommen** (Details im CHANGELOG-Eintrag vom selben Tag):
+
+- **~420 eingefrorene `rgba()`-Literale** in Inline-Styles plus die `rgb: "r,g,b"`-Felder der
+  Datentabellen ersetzt. Ohne das kann kein Theme-Wechsel funktionieren - der v2.0-Lauf hatte die
+  alten Neon-Tripel durch Brand-Tripel ersetzt statt durch Tokens. Neu: `tint(color, pct)` in
+  `components/ui.tsx` (color-mix ueber das Rollen-Token) und `--tint-*`/`--edge-*`/`--wash*`.
+- **Zwei kaputte Tokens:** `--card: var(--card)` und `--text-hi: var(--text-hi)` waren
+  Selbstreferenzen. CSS loest das zu guaranteed-invalid auf - jedes `background: var(--bg2)` hat
+  transparent gerendert. Beide Karten-/Textgruende stehen jetzt sauber auf Space/Graphite.
+- **Kategorie-Hues gefallen:** 7 Op-Typen, 9 SSR-Op-Typen, 4 Board-Lanes hatten je eine eigene
+  Farbe. Die Palette ist geschlossen - sie teilen sich den Struktur-Akzent, Icon und Label
+  unterscheiden. Severity-Tabellen behalten ihre Funktionsfarbe, Drittmarken ihre eigene.
+- **Glows entfernt** (Guide Kapitel 11 listet Gluehen unter "Falsch"); Drop-Shadows unter Modals
+  bleiben. Das CRT-Scanline-Overlay lag permanent ueber jeder Ansicht und rendert jetzt nur noch im
+  Toy-Theme "Green CRT".
+- **Lockup in der Sidebar** statt eines generischen Schild-Icons; "FLEETPLANNER" darunter nur
+  typografisch, weil Kapitel 14 Projektnamen nicht mit dem Zeichen kombiniert.
+- Label-Tracking auf die 0,07 em des Guides (war 0,10-0,18 em).
+
+Verifikation: `tsc --noEmit` gruen fuer `fleetplanner` und `fleetplanner-web`, `vite build` gruen.
+Unit-Tests unveraendert gegenueber dem Stand vor der Aenderung (SPA 6, Backend 8 Failures - alle
+schon vorher rot, mit `git stash` gegengeprueft).
+
 ## Completed - 2026-08-07: Aufraeumen (gitignore-Luecke, CLAUDE.md-Drift, Companion-Reste)
 
 Kein Deploy noetig - reine Repo-Hygiene und Doku. Dieser Eintrag ist Teil desselben Commits.

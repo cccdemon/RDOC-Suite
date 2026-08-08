@@ -71,7 +71,7 @@ export function ChangelogPopup({ session }: { session: SessionResponse | null })
             type="button"
             data-testid="changelog-ok"
             onClick={close}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.5rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.14)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.5rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}
           >
             <Ic name="check" size={15} sw={1.9} /> OK, verstanden
           </button>

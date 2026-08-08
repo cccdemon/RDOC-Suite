@@ -132,7 +132,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
 
       {/* Incoming inbox */}
       {incoming.length > 0 && (
-        <section className="fpw-card" style={{ marginBottom: "1.2rem", border: "1px solid rgba(217, 169, 78,0.35)" }}>
+        <section className="fpw-card" style={{ marginBottom: "1.2rem", border: "1px solid var(--edge-gold)" }}>
           <div style={{ ...label, color: "var(--gold)" }}>EINGEHENDE EVENTS ({incoming.length})</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {incoming.map((d) => (
@@ -142,7 +142,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
                   <span className="fpw-meta">{d.hostOrgName || d.hostGuildName}</span>
                 </span>
                 <button type="button" data-testid={`incoming-approve-${d.id}`} className="fpw-btn" disabled={busy || !csrf} onClick={() => run(() => decideSharedEvent(guildId!, d.id, "approve", csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem" }}>Annehmen</button>
-                <button type="button" data-testid={`incoming-decline-${d.id}`} disabled={busy || !csrf} onClick={() => run(() => decideSharedEvent(guildId!, d.id, "decline", csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem", borderRadius: 7, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", cursor: "pointer", fontFamily: MONO }}>Ablehnen</button>
+                <button type="button" data-testid={`incoming-decline-${d.id}`} disabled={busy || !csrf} onClick={() => run(() => decideSharedEvent(guildId!, d.id, "decline", csrf!))} style={{ padding: "0.3rem 0.6rem", fontSize: "0.68rem", borderRadius: 7, border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", cursor: "pointer", fontFamily: MONO }}>Ablehnen</button>
               </div>
             ))}
           </div>
@@ -170,7 +170,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
                     Auto-Share
                   </label>
                 )}
-                <button type="button" data-testid={`partner-revoke-${p.id}`} title="Partnerschaft widerrufen" disabled={busy || !csrf} onClick={() => run(() => revokePartnership(guildId!, p.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <button type="button" data-testid={`partner-revoke-${p.id}`} title="Partnerschaft widerrufen" disabled={busy || !csrf} onClick={() => run(() => revokePartnership(guildId!, p.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={12} sw={2} />
                 </button>
               </div>
@@ -191,7 +191,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
             <p className="fpw-meta" style={{ margin: "0 0 0.3rem", fontSize: "0.8rem" }}>Einmal-Token — jetzt kopieren, wird nicht erneut angezeigt:</p>
             <div style={{ display: "flex", gap: "0.5rem", alignItems: "stretch", flexWrap: "wrap" }}>
               <code style={{ flex: "1 1 200px", wordBreak: "break-all", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.5rem 0.7rem", color: "var(--cyan)", fontSize: "0.85rem" }}>{mintedToken}</code>
-              <button type="button" data-testid="invite-copy" onClick={copyToken} aria-label="Token kopieren" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: `1px solid ${tokenCopied ? "var(--green)66" : "rgba(43, 49, 53, 0.3)"}`, background: tokenCopied ? "rgba(91, 185, 138,0.1)" : "rgba(43, 49, 53, 0.06)", color: tokenCopied ? "var(--green)" : "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <button type="button" data-testid="invite-copy" onClick={copyToken} aria-label="Token kopieren" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: `1px solid ${tokenCopied ? "var(--green)66" : "var(--border)"}`, background: tokenCopied ? "var(--tint-green)" : "var(--wash)", color: tokenCopied ? "var(--green)" : "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer", whiteSpace: "nowrap" }}>
                 <Ic name={tokenCopied ? "check" : "copy"} size={13} sw={1.8} /> {tokenCopied ? "Kopiert" : "Kopieren"}
               </button>
             </div>

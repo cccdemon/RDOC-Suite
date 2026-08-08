@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Brandkit v2.2 uebernommen: Michroma, Patina, gemessener Light-Mode (2026-08-08)
+
+Quelle: `RDOC-Brandkit/brandkit`, BrandGuide v2.2. Das Restyling vom Vortag setzte v2.0 um; v2.1/2.2
+haben vier Dinge geaendert, plus eine neue Wortmarken-Zeichnung.
+
+**1. Display-Schrift Michroma statt Space Grotesk** (v2.1). Michroma hat genau einen Schnitt (400) -
+jedes `font-weight: 700` auf einer Display-Zeile liess der Browser synthetisieren. `@font-face` ist
+jetzt auf 400 deklariert, jede Display-Regel steht auf 400, und die Display-Groessen sind ~20 %
+gefallen (Michroma setzt 1,35x breiter bei 0,75 em Versalhoehe statt 0,70). Negatives Tracking
+entfaellt; Label-Tracking faellt von 0,10–0,18 em auf die 0,07 em des Guides.
+
+**2. Patina `#4FB5B5` als Zweitakzent** (v2.2). `--cyan` behaelt seinen Namen, zeigt aber nicht mehr
+auf Steel, sondern auf Patina: Sektionsmarken, Tabellenkoepfe, Lane-Heads, Links. Copper bleibt
+allein die primaere Aktion (neu: `.btn-primary`; `.btn` ist jetzt ein neutraler Outline-Button
+statt eines Akzent-Buttons).
+
+**3. Funktionsfarben auf die v2.2-Hues:** Success `#5bb98a` -> `#63C271`, Warning `#d9a94e` ->
+`#EBCF52`, Error `#e4736a` -> `#EE6E76`. Warning lag 8 Grad neben Kupfer und war neben einem
+Kupfer-Button nicht als Warnung lesbar, Success 30 Grad neben Patina.
+
+**4. Gemessener Light-Mode.** `[data-theme="light"]` swappt die sechs Marken-Hues plus die
+Funktionsfarben (Copper Deep `#8A5A22`, Patina Deep `#175F63` - die hellen Originale erreichen auf
+Off White nur 2,65:1 bzw. 2,12:1). Der Eintrag "Light Mode" im Theme-Picker setzt jetzt
+`data-theme` auf `<html>` statt `filter: invert(1) hue-rotate(180deg)` auf `.app-root` - der
+invertierte auch Logos, Avatare und Mission-Cover. Die Hersteller-Filter bleiben unveraendert.
+
+**Damit das ueberhaupt geht, mussten die eingefrorenen Farbliterale raus.** Der v2.0-Durchlauf hatte
+die alten Neon-Tripel durch Brand-Tripel *ersetzt*, nicht durch Tokens - ~420 `rgba(r,g,b,a)` in
+Inline-Styles plus die `rgb: "r,g,b"`-Felder in den Datentabellen (`OP_TYPES`, Kalender-`TYPES`,
+`LANES`, `SEV`, Provider-Badges). Alle Tints laufen jetzt ueber `color-mix()` auf dem Rollen-Token,
+neu als `tint(color, pct)` in `components/ui.tsx` und als `--tint-*`/`--edge-*`/`--wash*` in
+`styles.css`. `chip()`, `segChip()`, `entryCard()` und die lokalen `chip()`-Helfer haben ihren
+rgb-Parameter verloren.
+
+**Kategorie-Hues sind gefallen.** Sieben Op-Typen, neun SSR-Op-Typen und vier Board-Lanes hatten je
+eine eigene Farbe - die Palette ist aber geschlossen. Sie teilen sich jetzt den Struktur-Akzent und
+werden ueber Icon und Label unterschieden. Severity-Tabellen (Diagnostics, ErrorState) behalten ihre
+Funktionsfarbe: dafuer ist die funktionale Palette da. Drittmarken (Discord, GitHub, Google, Twitch)
+behalten ihre eigenen Farben - sie sind keine RDOC-Akzente.
+
+**Zwei kaputte Tokens gefixt.** `--card: var(--card)` und `--text-hi: var(--text-hi)` waren
+Selbstreferenzen; CSS loest das zu guaranteed-invalid auf, womit jedes `background: var(--bg2)`
+transparent gerendert hat. Grounds stehen jetzt sauber: Space als Grund, Graphite als Flaeche,
+Space als Input-Well.
+
+**Effekte raus** (Guide Paragraph 11 listet Glühen unter "Falsch"): sieben `0 0 Npx <color>`-Glows
+auf Status-Dots und Tabs sind weg, ebenso zwei Lightbox-Glows (ersetzt durch eine Hairline). Die
+Drop-Shadows unter Modals und Lightboxen bleiben - das ist Elevation, keine Dekoration auf dem
+Zeichen. Das CRT-Scanline-Overlay lag permanent ueber jeder Ansicht und rendert jetzt nur noch im
+Toy-Theme "Green CRT".
+
+**Marke in der Rail.** Der Sidebar-Kopf trug einen generischen Schild-Icon-Chip. Er zeigt jetzt das
+horizontale Lockup (Ring an der Stelle des O, Buchstaben auf `currentColor`, Ring auf Copper) und
+darunter "FLEETPLANNER" nur typografisch - Guide Paragraph 14 fuehrt Projektnamen typografisch und
+verbietet, sie mit dem Zeichen zu kombinieren.
+
+**SSR und Error-Page nachgezogen** (der v2.0-Lauf hatte beide ausgelassen). `web/render.ts` stand
+noch komplett auf `#00d4ff`/`#00ff88` mit Share Tech Mono, Rajdhani, permanentem Scanline-Overlay
+und Radial-Glows in der Systemkarte; es hat jetzt denselben Token-Block, self-hosted Michroma/Plex
+ueber `/fonts`, und die Effekte sind weg. `apps/error-page/server.js` traegt die Palette als
+Literale - die Seite erscheint, wenn der Rest des Stacks unten ist, und darf von keinem anderen
+Container abhaengen.
+
+**Assets** aus dem Brandkit erneuert: `rdoc_logo_horizontal_{dark,light}.svg` und `og.png` (die
+Wortmarken-Zeichnung hat sich geaendert), `rdoc_signet_micro_copper.svg` neu, `Michroma-Regular.ttf`
+rein, `SpaceGrotesk-{Medium,Bold}.ttf` raus. Signet, Favicons und Icon-Set waren identisch.
+
+**Nicht angefasst:** `apps/mission-cover`. Dessen CSS ist die Bildsprache der generierten Cover, nicht
+die Marken-Chrome der Suite.
+
 ### Changed - SPA auf das RDOC-Brandkit v2.0 umgestellt (2026-08-07)
 
 Quelle: `RDOC-Brandkit/brandkit` (BrandGuide.md v2.0). Das bisherige Design war das, was der Guide in

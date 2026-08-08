@@ -10,11 +10,11 @@ const MONO = "var(--mono)";
 export function visibilityTag(v: PollSummary["visibility"]): { labelKey: string; color: string; bg: string; bd: string } {
   switch (v) {
     case "partners":
-      return { labelKey: "poll.vis.partners", color: "var(--gold)", bg: "rgba(217, 169, 78,0.09)", bd: "rgba(217, 169, 78,0.42)" };
+      return { labelKey: "poll.vis.partners", color: "var(--gold)", bg: "var(--tint-gold)", bd: "var(--edge-gold)" };
     case "public":
-      return { labelKey: "poll.vis.public", color: "var(--purple)", bg: "rgba(118, 130, 141,0.09)", bd: "rgba(118, 130, 141,0.42)" };
+      return { labelKey: "poll.vis.public", color: "var(--purple)", bg: "var(--wash)", bd: "var(--border-hi)" };
     default:
-      return { labelKey: "poll.vis.private", color: "var(--cyan)", bg: "rgba(43, 49, 53, 0.08)", bd: "rgba(43, 49, 53, 0.38)" };
+      return { labelKey: "poll.vis.private", color: "var(--cyan)", bg: "var(--wash)", bd: "var(--border)" };
   }
 }
 
@@ -58,7 +58,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
     display: "inline-flex", alignItems: "center", gap: 6, padding: "0.42rem 0.8rem", fontFamily: MONO,
     fontSize: "0.7rem", borderRadius: 7, cursor: "pointer", border: "1px solid transparent", background: "transparent", color: "var(--dim)",
   };
-  const segOn: React.CSSProperties = { background: "rgba(43, 49, 53, 0.14)", borderColor: "var(--border-hi)", color: "var(--cyan)" };
+  const segOn: React.CSSProperties = { background: "var(--wash)", borderColor: "var(--border-hi)", color: "var(--cyan)" };
 
   return (
     <div data-testid="polls-page" style={{ width: "100%" }}>
@@ -77,14 +77,14 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
             data-testid="poll-new-link"
             to="/polls/new"
             className="fpw-btn"
-            style={{ borderColor: "rgba(91, 185, 138,0.5)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)" }}
+            style={{ borderColor: "var(--edge-green)", background: "var(--tint-green)", color: "var(--green)" }}
           >
             <Ic name="plus" size={14} /> {t("polls.new")}
           </Link>
         )}
       </div>
 
-      <div style={{ display: "inline-flex", gap: 6, background: "var(--bg2)", border: "1px solid rgba(255,255,255,0.08)", padding: 4, borderRadius: 10, marginBottom: "1.1rem" }}>
+      <div style={{ display: "inline-flex", gap: 6, background: "var(--bg2)", border: "1px solid var(--wash)", padding: 4, borderRadius: 10, marginBottom: "1.1rem" }}>
         {(["all", "open", "closed"] as const).map((f) => (
           <span key={f} data-testid={`poll-filter-${f}`} style={filter === f ? { ...seg, ...segOn } : seg} onClick={() => setFilter(f)}>
             {t(`polls.filter.${f}`)}
@@ -107,14 +107,14 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
               <Link key={p.id} data-testid={`poll-card-${p.id}`} to={`/polls/${p.id}`} className="fpw-card fpw-cardlink" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
                   {p.status === "open" ? (
-                    <Tag label={t("poll.status.open")} color="var(--green)" bg="rgba(91, 185, 138,0.08)" bd="rgba(91, 185, 138,0.4)" />
+                    <Tag label={t("poll.status.open")} color="var(--green)" bg="var(--tint-green)" bd="var(--edge-green)" />
                   ) : p.status === "draft" ? (
-                    <Tag label={t("poll.status.draft")} color="var(--gold)" bg="rgba(217, 169, 78,0.09)" bd="rgba(217, 169, 78,0.42)" />
+                    <Tag label={t("poll.status.draft")} color="var(--gold)" bg="var(--tint-gold)" bd="var(--edge-gold)" />
                   ) : (
-                    <Tag label={t("poll.status.closed")} color="var(--dim)" bg="rgba(118, 130, 141,0.07)" bd="rgba(118, 130, 141,0.34)" />
+                    <Tag label={t("poll.status.closed")} color="var(--dim)" bg="var(--wash)" bd="var(--border-hi)" />
                   )}
                   <Tag label={t(vt.labelKey)} color={vt.color} bg={vt.bg} bd={vt.bd} />
-                  <Tag label={p.mode === "multiple" ? t("poll.mode.multi") + (p.maxChoices ? t("poll.maxChoices", { n: p.maxChoices }) : "") : t("poll.mode.single")} color="var(--dim)" bg="rgba(118, 130, 141,0.07)" bd="rgba(118, 130, 141,0.34)" />
+                  <Tag label={p.mode === "multiple" ? t("poll.mode.multi") + (p.maxChoices ? t("poll.maxChoices", { n: p.maxChoices }) : "") : t("poll.mode.single")} color="var(--dim)" bg="var(--wash)" bd="var(--border-hi)" />
                 </div>
                 <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)", lineHeight: 1.2 }}>{p.title}</div>
                 {p.description && (

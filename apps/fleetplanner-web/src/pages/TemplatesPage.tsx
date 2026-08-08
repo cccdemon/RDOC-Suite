@@ -100,7 +100,7 @@ export function TemplatesPage({ session }: { session: SessionResponse | null }) 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", alignItems: "center" }}>
                   <input type="datetime-local" data-testid={`template-when-${t.id}`} value={when} onChange={(e) => setWhen(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", padding: "0.4rem", borderRadius: 8 }} />
                   <button type="button" data-testid={`template-confirm-${t.id}`} className="fpw-btn" disabled={busy} style={{ padding: "0.4rem 0.7rem", fontSize: "0.7rem" }} onClick={() => doApply(t.id)}>Erstellen</button>
-                  <button type="button" className="fpw-btn" style={{ padding: "0.4rem 0.7rem", fontSize: "0.7rem", borderColor: "rgba(255,255,255,0.18)", background: "transparent", color: "var(--dim)" }} onClick={() => setApplyId(null)}>Abbrechen</button>
+                  <button type="button" className="fpw-btn" style={{ padding: "0.4rem 0.7rem", fontSize: "0.7rem", borderColor: "var(--wash)", background: "transparent", color: "var(--dim)" }} onClick={() => setApplyId(null)}>Abbrechen</button>
                 </div>
               ) : (
                 <button type="button" data-testid={`template-apply-${t.id}`} className="fpw-btn" style={{ padding: "0.4rem 0.8rem", fontSize: "0.72rem" }} onClick={() => { setApplyId(t.id); setWhen(""); }}>

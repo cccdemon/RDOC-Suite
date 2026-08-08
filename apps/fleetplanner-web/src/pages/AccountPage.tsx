@@ -3,16 +3,18 @@ import { Link } from "react-router-dom";
 import { ApiError, getAccount } from "../api/client";
 import type { AccountResponse, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
-import { CardHead, MONO, card, lbl } from "../components/ui";
+import { CardHead, MONO, card, lbl, tint } from "../components/ui";
 import { useT } from "../i18n";
 
 const PROVIDER_LABELS: Record<string, string> = { discord: "Discord", github: "GitHub", google: "Google", e2e: "E2E" };
-function providerBadge(provider: string): { short: string; color: string; rgb: string } {
+// Third-party marks keep their own colours: they identify Discord, GitHub and
+// Google, they are not RDOC accents.
+function providerBadge(provider: string): { short: string; color: string } {
   switch (provider) {
-    case "discord": return { short: "DC", color: "var(--purple)", rgb: "88,101,242" };
-    case "github": return { short: "GH", color: "var(--text)", rgb: "255,255,255" };
-    case "google": return { short: "GO", color: "#ea4335", rgb: "234,67,53" };
-    default: return { short: provider.slice(0, 2).toUpperCase(), color: "var(--dim)", rgb: "126,146,164" };
+    case "discord": return { short: "DC", color: "#5865f2" };
+    case "github": return { short: "GH", color: "var(--text)" };
+    case "google": return { short: "GO", color: "#ea4335" };
+    default: return { short: provider.slice(0, 2).toUpperCase(), color: "var(--dim)" };
   }
 }
 
@@ -58,7 +60,7 @@ export function AccountPage({ session }: { session: SessionResponse | null }) {
               const b = providerBadge(i.provider);
               return (
                 <div key={n} data-testid={`identity-${i.provider}`} style={{ display: "flex", alignItems: "center", gap: "0.7rem", padding: "0.7rem 0.85rem", border: "1px solid var(--border)", borderRadius: 10, background: "var(--row)" }}>
-                  <span style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: `rgba(${b.rgb},0.14)`, border: `1px solid rgba(${b.rgb},0.4)`, color: b.color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{b.short}</span>
+                  <span style={{ width: 32, height: 32, borderRadius: 8, flexShrink: 0, background: `${tint(b.color, 14)}`, border: `1px solid ${tint(b.color, 40)}`, color: b.color, display: "inline-flex", alignItems: "center", justifyContent: "center", fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700 }}>{b.short}</span>
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                     <div style={{ fontSize: "0.9rem", color: "var(--text-hi)" }}>{PROVIDER_LABELS[i.provider] ?? i.provider}</div>
                     <div style={{ fontSize: "0.76rem", color: "var(--dim)" }}>{i.username ?? "—"}</div>

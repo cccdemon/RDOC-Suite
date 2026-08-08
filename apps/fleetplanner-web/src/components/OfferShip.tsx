@@ -150,7 +150,7 @@ export function OfferShip({
       style={
         mode === m
           ? { background: "var(--cyan)", color: "var(--bg)", borderColor: "var(--cyan)" }
-          : { background: "transparent", color: "var(--dim)", borderColor: "rgba(255,255,255,.18)" }
+          : { background: "transparent", color: "var(--dim)", borderColor: "var(--wash)" }
       }
     >
       {label}
@@ -345,7 +345,7 @@ export function OfferShip({
         <button
           type="button"
           className="fpw-btn"
-          style={{ borderColor: "rgba(255,255,255,.18)", background: "transparent", color: "var(--dim)" }}
+          style={{ borderColor: "var(--wash)", background: "transparent", color: "var(--dim)" }}
           onClick={onCancel}
         >
           Abbrechen

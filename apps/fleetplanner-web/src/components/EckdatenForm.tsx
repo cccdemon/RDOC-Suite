@@ -142,7 +142,7 @@ export function EckdatenForm({
               <div>
                 <L id="op-type">Operationstyp</L>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                  {OP_TYPES.map((t) => <button key={t.key} type="button" data-testid={`edit-type-${t.key}`} onClick={() => setNow("op-type", { opType: t.key }, { opType: t.key })} style={segChip(form.opType === t.key, t.color, t.rgb)}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>)}
+                  {OP_TYPES.map((t) => <button key={t.key} type="button" data-testid={`edit-type-${t.key}`} onClick={() => setNow("op-type", { opType: t.key }, { opType: t.key })} style={segChip(form.opType === t.key, t.color)}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>)}
                 </div>
               </div>
             </div>
@@ -154,7 +154,7 @@ export function EckdatenForm({
               <div>
                 <L id="op-system">System</L>
                 <div style={{ display: "flex", gap: "0.4rem" }}>
-                  {SYSTEMS.map((s) => <button key={s} type="button" data-testid={`edit-system-${s}`} onClick={() => setNow("op-system", { meetingSystem: s }, { meetingSystem: s })} style={{ ...segChip(form.meetingSystem === s, "var(--cyan)", "118, 130, 141"), flex: 1, justifyContent: "center" }}>{s}</button>)}
+                  {SYSTEMS.map((s) => <button key={s} type="button" data-testid={`edit-system-${s}`} onClick={() => setNow("op-system", { meetingSystem: s }, { meetingSystem: s })} style={{ ...segChip(form.meetingSystem === s, "var(--cyan)"), flex: 1, justifyContent: "center" }}>{s}</button>)}
                 </div>
               </div>
               <div>
@@ -181,7 +181,7 @@ export function EckdatenForm({
               {VIS.map((v) => {
                 const active = form.visibility === v.key;
                 return (
-                  <button key={v.key} type="button" data-testid={`edit-vis-${v.key}`} onClick={() => setNow("op-vis", { visibility: v.key }, { visibility: normalizeVisibility(v.key) })} style={{ display: "flex", alignItems: "center", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: active ? "1px solid var(--border-hi)" : "1px solid rgba(255,255,255,0.08)", background: active ? "rgba(43, 49, 53, 0.07)" : "transparent", color: active ? "var(--cyan)" : "var(--dim)" }}>
+                  <button key={v.key} type="button" data-testid={`edit-vis-${v.key}`} onClick={() => setNow("op-vis", { visibility: v.key }, { visibility: normalizeVisibility(v.key) })} style={{ display: "flex", alignItems: "center", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: active ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: active ? "var(--wash)" : "transparent", color: active ? "var(--cyan)" : "var(--dim)" }}>
                     <Ic name={v.icon} size={15} sw={1.6} />
                     <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>{v.label}</span><span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>{v.desc}</span></span>
                     {active && <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={15} sw={2} /></span>}
@@ -198,7 +198,7 @@ export function EckdatenForm({
               data-testid="edit-squadlink-toggle"
               aria-pressed={voiceEnabled}
               onClick={onToggleVoice}
-              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: voiceEnabled ? "1px solid rgba(118, 130, 141,0.45)" : "1px solid rgba(255,255,255,0.08)", background: voiceEnabled ? "rgba(118, 130, 141,0.07)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim)" }}
+              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: voiceEnabled ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: voiceEnabled ? "var(--wash)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim)" }}
             >
               <Ic name={voiceEnabled ? "check" : "mic"} size={15} sw={1.7} />
               <span style={{ flex: 1 }}>
@@ -215,7 +215,7 @@ export function EckdatenForm({
               data-testid="edit-stream-toggle"
               aria-pressed={form.isStreamEvent}
               onClick={() => setNow("op-stream", { isStreamEvent: !form.isStreamEvent }, { isStreamEvent: !form.isStreamEvent })}
-              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: form.isStreamEvent ? "1px solid rgba(145,70,255,0.45)" : "1px solid rgba(255,255,255,0.08)", background: form.isStreamEvent ? "rgba(145,70,255,0.1)" : "transparent", color: form.isStreamEvent ? "var(--purple)" : "var(--dim)" }}
+              style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: form.isStreamEvent ? "1px solid rgba(145,70,255,0.45)" : "1px solid var(--wash)", background: form.isStreamEvent ? "rgba(145,70,255,0.1)" : "transparent", color: form.isStreamEvent ? "var(--purple)" : "var(--dim)" }}
             >
               <Ic name={form.isStreamEvent ? "check" : "stream"} size={15} sw={1.7} />
               <span style={{ flex: 1 }}>
@@ -231,12 +231,12 @@ export function EckdatenForm({
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 <span style={{ color: "var(--text)", fontSize: "0.85rem" }}>Operation unwiderruflich löschen?</span>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button type="button" data-testid="edit-delete-confirm" disabled={busy || !csrf} onClick={remove} style={{ flex: 1, padding: "0.5rem", border: "1px solid rgba(228, 115, 106,0.5)", background: "rgba(228, 115, 106,0.12)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Endgültig löschen</button>
-                  <button type="button" disabled={busy} onClick={() => setConfirmDel(false)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1.1rem", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Abbrechen</button>
+                  <button type="button" data-testid="edit-delete-confirm" disabled={busy || !csrf} onClick={remove} style={{ flex: 1, padding: "0.5rem", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Endgültig löschen</button>
+                  <button type="button" disabled={busy} onClick={() => setConfirmDel(false)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1.1rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Abbrechen</button>
                 </div>
               </div>
             ) : (
-              <button type="button" data-testid="edit-delete" disabled={busy} onClick={() => setConfirmDel(true)} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0.55rem", border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}><Ic name="x" size={14} sw={1.8} /> Operation löschen</button>
+              <button type="button" data-testid="edit-delete" disabled={busy} onClick={() => setConfirmDel(true)} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0.55rem", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}><Ic name="x" size={14} sw={1.8} /> Operation löschen</button>
             )}
           </div>
         </div>

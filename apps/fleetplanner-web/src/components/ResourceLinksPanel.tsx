@@ -75,7 +75,7 @@ export function ResourceLinksPanel({
             <div
               key={l.id}
               data-testid={`rlink-${l.id}`}
-              style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, background: "rgba(43, 49, 53, 0.05)", border: "1px solid var(--border)" }}
+              style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.45rem 0.6rem", borderRadius: 8, background: "var(--wash)", border: "1px solid var(--border)" }}
             >
               <a href={l.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "var(--cyan)", textDecoration: "none", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {l.title || l.url} <span style={{ color: "var(--dim3)" }}>↗</span>
@@ -83,7 +83,7 @@ export function ResourceLinksPanel({
               <button
                 type="button"
                 data-testid={`rlink-remove-${l.id}`}
-                style={{ ...btnGhost, padding: "0.3rem 0.55rem", fontSize: "0.7rem", borderColor: "rgba(228, 115, 106,0.4)", color: "var(--red)" }}
+                style={{ ...btnGhost, padding: "0.3rem 0.55rem", fontSize: "0.7rem", borderColor: "var(--edge-red)", color: "var(--red)" }}
                 disabled={busy || !csrf}
                 onClick={() => remove(l.id)}
               >

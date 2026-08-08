@@ -270,38 +270,62 @@ export function maintenancePage(): SafeHtml {
 
 // ── DCCC Design System CSS ───────────────────────────────────────────
 
-// No external font import: pulling from fonts.googleapis.com leaks every
-// page visit to a third party and breaks rendering offline. The
-// --font-mono / --font-body vars below already carry system-font
-// fallbacks (ui-monospace / system-ui), so the UI renders fine without
-// the Google fonts. To restore the exact Share Tech Mono / Rajdhani
-// typefaces, self-host their woff2 files and add @font-face rules here.
+// RDOC Brandkit v2.2. No external font import: pulling from
+// fonts.googleapis.com leaks every page visit to a third party and breaks
+// rendering offline. The three brand faces are self-hosted under /fonts by the
+// SPA's nginx, which is the front door for these pages too.
+//
+// Michroma has exactly one cut and is never asked for a bold - a synthesised
+// weight is visibly broken (BrandGuide §10).
 const CSS = `
+@font-face { font-family:'Michroma'; font-style:normal; font-weight:400; font-display:swap; src:url('/fonts/Michroma-Regular.ttf') format('truetype'); }
+@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:100 500; font-display:swap; src:url('/fonts/IBMPlexSans-Regular.ttf') format('truetype'); }
+@font-face { font-family:'IBM Plex Sans'; font-style:normal; font-weight:600 900; font-display:swap; src:url('/fonts/IBMPlexSans-SemiBold.ttf') format('truetype'); }
+@font-face { font-family:'IBM Plex Mono'; font-style:normal; font-weight:100 900; font-display:swap; src:url('/fonts/IBMPlexMono-Regular.ttf') format('truetype'); }
+
 :root {
-  --bg:        #050810;
-  --bg2:       #090f18;
-  --bg3:       #0e1926;
-  --text:      #ccdde8;
-  /* Solid (not alpha) so contrast stays readable over tinted/blue panels too. */
-  --dim:       #9fb1c2;
-  --cyan:      #00d4ff;
-  --cyan-08:   rgba(0,212,255,0.08);
-  --cyan-18:   rgba(0,212,255,0.18);
-  --cyan-28:   rgba(0,212,255,0.28);
-  --cyan-38:   rgba(0,212,255,0.38);
-  --cyan-50:   rgba(0,212,255,0.50);
-  --gold:      #f0a500;
-  --gold-08:   rgba(240,165,0,0.08);
-  --gold-28:   rgba(240,165,0,0.28);
-  --gold-38:   rgba(240,165,0,0.38);
-  --green:     #00ff88;
-  --green-08:  rgba(0,255,136,0.08);
-  --red:       #ff4444;
-  --red-08:    rgba(255,68,68,0.08);
-  --border:    rgba(0,212,255,0.12);
-  --border-hi: rgba(0,212,255,0.32);
-  --font-mono: 'Share Tech Mono', ui-monospace, monospace;
-  --font-body: 'Rajdhani', 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+
+  /* Brand palette (BrandGuide §8). Space is the ground, Graphite every raised
+     surface, Steel the secondary text, Copper the one primary action per view,
+     Patina the structural accent. */
+  --rdoc-space:    #121416;
+  --rdoc-graphite: #2b3135;
+  --rdoc-steel:    #76828d;
+  --rdoc-offwhite: #f2f2f0;
+  --rdoc-copper:   #c48a4a;
+  --rdoc-patina:   #4fb5b5;
+
+  --bg:        var(--rdoc-space);
+  --bg2:       var(--rdoc-graphite);
+  --bg3:       color-mix(in srgb, var(--rdoc-graphite) 45%, var(--rdoc-space));
+  --text:      color-mix(in srgb, var(--rdoc-offwhite) 84%, var(--rdoc-space));
+  --text-hi:   var(--rdoc-offwhite);
+  /* Solid (not alpha) so contrast stays readable over tinted panels too. */
+  --dim:       var(--rdoc-steel);
+  --accent:    var(--rdoc-copper);
+  /* --cyan kept its name but not its hue: it is the structural accent. */
+  --cyan:      var(--rdoc-patina);
+  --cyan-08:   color-mix(in srgb, var(--cyan) 8%, transparent);
+  --cyan-18:   color-mix(in srgb, var(--cyan) 18%, transparent);
+  --cyan-28:   color-mix(in srgb, var(--cyan) 28%, transparent);
+  --cyan-38:   color-mix(in srgb, var(--cyan) 38%, transparent);
+  --cyan-50:   color-mix(in srgb, var(--cyan) 50%, transparent);
+  /* Functional colours, v2.2 hues. */
+  --gold:      #ebcf52;
+  --gold-08:   color-mix(in srgb, var(--gold) 8%, transparent);
+  --gold-28:   color-mix(in srgb, var(--gold) 28%, transparent);
+  --gold-38:   color-mix(in srgb, var(--gold) 38%, transparent);
+  --green:     #63c271;
+  --green-08:  color-mix(in srgb, var(--green) 8%, transparent);
+  --red:       #ee6e76;
+  --red-08:    color-mix(in srgb, var(--red) 8%, transparent);
+  --focus:     #e0a868;
+  --border:    color-mix(in srgb, var(--rdoc-steel) 26%, transparent);
+  --border-hi: color-mix(in srgb, var(--rdoc-steel) 48%, transparent);
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  --font-body: 'IBM Plex Sans', system-ui, 'Segoe UI', Arial, sans-serif;
+  --font-display: 'Michroma', 'IBM Plex Sans', system-ui, sans-serif;
   --t-fast:    0.12s ease;
   --radius:    2px;
 }
@@ -318,22 +342,8 @@ html, body {
   min-height: 100vh;
 }
 
-body::after {
-  content: "";
-  position: fixed; inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.08) 2px,
-    rgba(0,0,0,0.08) 4px
-  );
-  pointer-events: none;
-  z-index: 9999;
-}
-
 a { color: var(--cyan); text-decoration: none; }
-a:hover { color: #fff; }
+a:hover { color: var(--text-hi); }
 
 /* ── Nav ─────────────────────────────────────────────────────── */
 .nav {
@@ -389,7 +399,7 @@ a:hover { color: #fff; }
   right: 0;
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.38), rgba(240,165,0,0.42));
+  background: var(--border);
 }
 .credit-mark::before { top: 0; }
 .credit-mark::after { bottom: 0; opacity: 0.68; }
@@ -397,11 +407,10 @@ a:hover { color: #fff; }
   font-family: var(--font-body);
   font-size: 0.9rem;
   line-height: 1;
-  letter-spacing: 0.12em;
-  color: #fff;
-  font-weight: 700;
+  letter-spacing: 0.07em;
+  color: var(--text-hi);
+  font-weight: 600;
   text-transform: uppercase;
-  text-shadow: 0 0 10px rgba(0,212,255,0.22);
 }
 .credit-mark-copy {
   font-family: var(--font-mono);
@@ -487,7 +496,7 @@ a:hover { color: #fff; }
   padding: 0.5rem 1rem;
 }
 .beta-banner a { color: var(--gold); text-decoration: underline; }
-.beta-banner a:hover { color: #fff; }
+.beta-banner a:hover { color: var(--text-hi); }
 
 .flash-ok    { background: var(--green-08); border-color: var(--green); color: var(--green); }
 .flash-warn  { background: var(--gold-08);  border-color: var(--gold);  color: var(--gold); }
@@ -659,7 +668,7 @@ input[required], select[required], textarea[required], .mandatory {
   border-color: var(--gold);
 }
 input[required]:focus, select[required]:focus, textarea[required]:focus,
-.mandatory:focus { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-38); }
+.mandatory:focus { border-color: var(--gold); outline: 2px solid var(--focus); outline-offset: 1px; }
 .form-group.has-error label { color: var(--red); }
 .field-error,
 .field-error:focus {
@@ -726,9 +735,7 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   padding: 1rem;
   border: 1px solid var(--border);
   border-top: 3px solid var(--op-accent);
-  background:
-    linear-gradient(145deg, var(--op-accent-bg), transparent 42%),
-    var(--bg2);
+  background: var(--bg2);
   transition: transform var(--t-fast), border-color var(--t-fast), background var(--t-fast);
 }
 .op-card:hover {
@@ -782,15 +789,13 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.op-type-combat { --op-accent: #ff4f5e; --op-accent-bg: rgba(255,79,94,0.10); }
-.op-type-pve { --op-accent: #ff7a45; --op-accent-bg: rgba(255,122,69,0.10); }
-.op-type-mining { --op-accent: #f0a500; --op-accent-bg: rgba(240,165,0,0.12); }
-.op-type-salvage { --op-accent: #9ad7ff; --op-accent-bg: rgba(154,215,255,0.10); }
-.op-type-training { --op-accent: #00d4ff; --op-accent-bg: rgba(0,212,255,0.10); }
-.op-type-mixed { --op-accent: #a064ff; --op-accent-bg: rgba(160,100,255,0.12); }
-.op-type-exploration { --op-accent: #00ff88; --op-accent-bg: rgba(0,255,136,0.10); }
-.op-type-transport { --op-accent: #d6c66a; --op-accent-bg: rgba(214,198,106,0.11); }
-.op-type-social { --op-accent: #ff70c8; --op-accent-bg: rgba(255,112,200,0.10); }
+/* Nine op types cannot own nine hues - the palette is closed (BrandGuide §8).
+   They share the structural accent and are told apart by their label, exactly
+   as the SPA does it in opForm.ts. The classes stay so the markup and any
+   future per-type treatment keep a hook. */
+.op-type-combat, .op-type-pve, .op-type-mining, .op-type-salvage,
+.op-type-training, .op-type-mixed, .op-type-exploration,
+.op-type-transport, .op-type-social { --op-accent: var(--cyan); --op-accent-bg: var(--cyan-08); }
 
 .op-list { display: flex; flex-direction: column; gap: 0.75rem; }
 .op-row {
@@ -994,7 +999,7 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   position: relative;
   height: 11rem;
   border: 1px solid var(--border);
-  background: radial-gradient(circle at 50% 50%, rgba(0,212,255,0.10), transparent 34%), var(--bg3);
+  background: var(--bg3);
   overflow: hidden;
   margin-bottom: 1rem;
 }
@@ -1013,7 +1018,6 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   left: calc(50% - 0.6rem);
   top: calc(50% - 0.6rem);
   background: var(--gold);
-  box-shadow: 0 0 28px var(--gold);
 }
 .system-node {
   position: absolute;
@@ -1021,7 +1025,6 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   height: 0.45rem;
   border-radius: 50%;
   background: var(--cyan);
-  box-shadow: 0 0 14px var(--cyan);
 }
 .node-a { left: 24%; top: 34%; }
 .node-b { right: 18%; bottom: 28%; }
@@ -1033,8 +1036,8 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   color: var(--cyan);
   letter-spacing: 0.08em;
 }
-.system-pyro { background: radial-gradient(circle at 50% 50%, rgba(255,68,68,0.16), transparent 35%), var(--bg3); }
-.system-nyx { background: radial-gradient(circle at 50% 50%, rgba(255,204,0,0.12), transparent 35%), var(--bg3); }
+.system-pyro { background: var(--bg3); border-color: var(--red-08); }
+.system-nyx { background: var(--bg3); border-color: var(--gold-08); }
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -1077,7 +1080,7 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   border: 1px solid var(--border);
   background-size: cover;
   background-position: center;
-  box-shadow: inset 0 0 0 1px rgba(0,212,255,0.08);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 
 .opv2-shell {
@@ -1110,12 +1113,12 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .mg-tabs { display: flex; flex-wrap: wrap; gap: .45rem; border-bottom: 1px solid var(--border); padding-bottom: .6rem; }
 .mg-tab { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; border: 1px solid var(--border); background: var(--bg2); color: var(--text); font-weight: 600; font-size: .9rem; cursor: pointer; border-radius: 4px; transition: background var(--t-fast), color var(--t-fast), box-shadow var(--t-fast); }
 .mg-tab:hover { border-color: var(--cyan-28); }
-.mg-tab.attn { border-color: var(--gold, #e0b835); box-shadow: 0 0 0 1px var(--gold, #e0b835); }
-.mg-tab.active { background: var(--gold, #e0b835); color: #0a0e16; border-color: var(--gold, #e0b835); box-shadow: none; }
-.mg-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold, #e0b835); }
-.mg-tab.active .mg-tab-dot { background: #0a0e16; }
+.mg-tab.attn { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.mg-tab.active { background: var(--gold); color: var(--bg); border-color: var(--gold); box-shadow: none; }
+.mg-tab-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.mg-tab.active .mg-tab-dot { background: var(--bg); }
 .mg-tabpage[hidden] { display: none; }
-.opv2-unit-vehicle { margin: .5rem 0 .25rem 1rem; padding-left: .7rem; border-left: 2px solid var(--cyan-28, rgba(53,208,224,.28)); }
+.opv2-unit-vehicle { margin: .5rem 0 .25rem 1rem; padding-left: .7rem; border-left: 2px solid var(--cyan-28); }
 .mg-flash { margin-bottom: 1rem; animation: mg-flash-in .2s ease; }
 @keyframes mg-flash-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
 .mg-section > h3 { font-size: 1.05rem; margin: 0 0 .65rem; }
@@ -1165,7 +1168,7 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
   border: 1px solid var(--border);
   background-size: cover;
   background-position: center;
-  box-shadow: inset 0 0 0 1px rgba(0,212,255,0.08);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 .opv2-eyebrow {
   display: flex;
@@ -1400,17 +1403,17 @@ input[required]:focus, select[required]:focus, textarea[required]:focus,
 .board-cat { font-family: var(--font-mono); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--cyan, #35d0e0); border-bottom: 1px solid var(--cyan-28, rgba(53,208,224,.22)); padding: .3rem 0; margin: 1.1rem 0 .2rem; }
 .tag-slot { font-size: .58rem; letter-spacing: .05em; margin-left: .35rem; vertical-align: middle; }
 .slot-fest { border-color: rgba(255,255,255,.18); color: var(--dim, #9fb1c2); }
-.slot-typ { border-color: rgba(240,165,0,.5); color: var(--gold, #f0a500); }
+.slot-typ { border-color: var(--gold-38); color: var(--gold); }
 .slot-rolle_offen { border-color: rgba(53,208,224,.45); color: var(--cyan, #35d0e0); }
-.slot-frei { border-color: rgba(255,255,255,.14); color: var(--dim, #7a8a96); }
+.slot-frei { border-color: var(--border); color: var(--dim); }
 /* Markdown inside the mission-board objective card — keep it body-sized */
 .mb-md > :first-child { margin-top: 0; }
-.mb-md h1, .mb-md h2, .mb-md h3, .mb-md h4 { font-family: 'Rajdhani', system-ui, sans-serif; font-weight: 700; color: #eaf4fb; margin: .7rem 0 .3rem; font-size: 1.04rem; letter-spacing: .02em; }
+.mb-md h1, .mb-md h2, .mb-md h3, .mb-md h4 { font-family: var(--font-display); font-weight: 400; color: var(--text-hi); margin: .7rem 0 .3rem; font-size: 1.04rem; letter-spacing: .02em; }
 .mb-md p { margin: .2rem 0 .6rem; }
 .mb-md ul, .mb-md ol { margin: .2rem 0 .6rem; padding-left: 1.2rem; }
 .mb-md li { margin: .1rem 0; }
-.mb-md a { color: #00d4ff; }
-.mb-md code { font-family: 'Share Tech Mono', ui-monospace, monospace; font-size: .92em; }
+.mb-md a { color: var(--cyan); }
+.mb-md code { font-family: var(--font-mono); font-size: .92em; }
 @media (max-width: 620px) { .mitmachen-cards { grid-template-columns: 1fr; } }
 @media (max-width: 760px) {
   .fleet-req-row,

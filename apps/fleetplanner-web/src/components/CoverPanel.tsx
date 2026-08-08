@@ -82,7 +82,7 @@ export function CoverPanel({ opId, csrf, onNotice }: { opId: string; csrf: strin
       </section>
     );
 
-  const danger: React.CSSProperties = { ...btnGhost, borderColor: "rgba(228, 115, 106,0.5)", color: "var(--red)" };
+  const danger: React.CSSProperties = { ...btnGhost, borderColor: "var(--edge-red)", color: "var(--red)" };
 
   return (
     <section style={card} data-testid="cover-panel">

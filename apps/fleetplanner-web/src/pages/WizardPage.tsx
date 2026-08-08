@@ -8,6 +8,7 @@ import { DocumentsPanel } from "../components/DocumentsPanel";
 import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, coreValid, coreOpBody } from "../components/opForm";
 import { useT } from "../i18n";
 import { TemplatesPage } from "./TemplatesPage";
+import { tint } from "../components/ui";
 
 const MONO = "var(--mono)";
 
@@ -132,7 +133,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
 
   const card: React.CSSProperties = { border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", padding: "1.3rem 1.4rem" };
   const cardHead: React.CSSProperties = { display: "flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.06em", color: "var(--text-hi)", marginBottom: "1.1rem" };
-  const chip: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, background: "rgba(43, 49, 53, 0.12)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
+  const chip: React.CSSProperties = { width: 28, height: 28, borderRadius: 8, background: "var(--wash)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
   const tag = (ok: boolean): React.CSSProperties => ({ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.05em", padding: "2px 7px", borderRadius: 4, border: `1px solid ${ok ? "var(--green)" : "var(--dim3)"}55`, background: `${ok ? "var(--green)" : "var(--dim3)"}14`, color: ok ? "var(--green)" : "var(--dim2)" });
 
   const review: Array<[string, string]> = [
@@ -167,8 +168,8 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
           {STEPS.map((s, i) => {
             const active = i === step;
             return (
-              <button key={s} type="button" data-testid={`wiz-step-${i}`} onClick={() => setStep(i)} style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.55rem 0.65rem", borderRadius: 9, cursor: "pointer", textAlign: "left", border: active ? "1px solid var(--border-hi)" : "1px solid transparent", background: active ? "rgba(43, 49, 53, 0.1)" : "transparent", color: active ? "var(--cyan)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem" }}>
-                <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.68rem", background: active ? "var(--cyan)" : "rgba(255,255,255,0.06)", color: active ? "var(--bg)" : "var(--dim)" }}>{i + 1}</span>
+              <button key={s} type="button" data-testid={`wiz-step-${i}`} onClick={() => setStep(i)} style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.55rem 0.65rem", borderRadius: 9, cursor: "pointer", textAlign: "left", border: active ? "1px solid var(--border-hi)" : "1px solid transparent", background: active ? "var(--wash)" : "transparent", color: active ? "var(--cyan)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem" }}>
+                <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.68rem", background: active ? "var(--cyan)" : "var(--wash)", color: active ? "var(--bg)" : "var(--dim)" }}>{i + 1}</span>
                 <span style={{ flex: 1 }}>{s}</span>
                 {stepDone[i] && i !== step && <span style={{ color: "var(--green)", display: "inline-flex" }}><Ic name="check" size={14} sw={2.2} /></span>}
               </button>
@@ -196,7 +197,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {OP_TYPES.map((t) => {
                       const on = opType === t.key;
-                      return <button key={t.key} type="button" data-testid={`wiz-type-${t.key}`} onClick={() => setOpType(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? `1px solid rgb(${t.rgb})` : "1px solid rgba(255,255,255,0.12)", background: on ? `rgba(${t.rgb},0.13)` : "transparent", color: on ? `rgb(${t.rgb})` : "var(--dim)" }}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>;
+                      return <button key={t.key} type="button" data-testid={`wiz-type-${t.key}`} onClick={() => setOpType(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? `1px solid ${t.color}` : "1px solid var(--wash)", background: on ? tint(t.color, 13) : "transparent", color: on ? t.color : "var(--dim)" }}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>;
                     })}
                   </div>
                 </div>
@@ -207,7 +208,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                     data-testid="wiz-stream"
                     aria-pressed={isStreamEvent}
                     onClick={() => setIsStreamEvent((v) => !v)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: isStreamEvent ? "1px solid rgba(145,70,255,0.55)" : "1px solid rgba(255,255,255,0.12)", background: isStreamEvent ? "rgba(145,70,255,0.15)" : "transparent", color: isStreamEvent ? "var(--purple)" : "var(--dim)" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: isStreamEvent ? "1px solid rgba(145,70,255,0.55)" : "1px solid var(--wash)", background: isStreamEvent ? "rgba(145,70,255,0.15)" : "transparent", color: isStreamEvent ? "var(--purple)" : "var(--dim)" }}
                   >
                     <Ic name="stream" size={14} sw={1.7} />{isStreamEvent ? "Als Stream-Event markiert" : "Kein Stream-Event"}
                   </button>
@@ -233,7 +234,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {VIS.map((v) => {
                       const on = visibility === v.key;
-                      return <button key={v.key} type="button" data-testid={`wiz-vis-${v.key}`} onClick={() => setVisibility(v.key)} style={{ padding: "0.34rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid var(--border-hi)" : "1px solid rgba(255,255,255,0.12)", background: on ? "rgba(43, 49, 53, 0.14)" : "transparent", color: on ? "var(--cyan)" : "var(--dim)" }}>{v.label}</button>;
+                      return <button key={v.key} type="button" data-testid={`wiz-vis-${v.key}`} onClick={() => setVisibility(v.key)} style={{ padding: "0.34rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: on ? "var(--wash)" : "transparent", color: on ? "var(--cyan)" : "var(--dim)" }}>{v.label}</button>;
                     })}
                   </div>
                 </div>
@@ -257,7 +258,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                                 data-testid={`wiz-partner-${p.guildId}`}
                                 aria-pressed={on}
                                 onClick={() => setPartnerTargets((prev) => on ? prev.filter((x) => x !== p.guildId) : [...prev, p.guildId])}
-                                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.65rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid rgba(91, 185, 138,0.5)" : "1px solid rgba(255,255,255,0.12)", background: on ? "rgba(91, 185, 138,0.13)" : "transparent", color: on ? "var(--green)" : "var(--dim)" }}
+                                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.65rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid var(--edge-green)" : "1px solid var(--wash)", background: on ? "var(--tint-green)" : "transparent", color: on ? "var(--green)" : "var(--dim)" }}
                               >
                                 <Ic name={on ? "check" : "link"} size={13} sw={1.8} />{p.name}
                               </button>
@@ -282,7 +283,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {SHIP_TYPES.map((s) => {
                       const on = ships.includes(s.slug);
-                      return <button key={s.slug} type="button" data-testid={`wiz-ship-${s.slug}`} onClick={() => setShips((p) => on ? p.filter((x) => x !== s.slug) : [...p, s.slug])} style={{ padding: "0.32rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem", border: on ? "1px solid var(--border-hi)" : "1px solid rgba(43, 49, 53, 0.2)", background: on ? "rgba(43, 49, 53, 0.14)" : "rgba(43, 49, 53, 0.04)", color: on ? "var(--cyan)" : "var(--dim)" }}>{s.label}</button>;
+                      return <button key={s.slug} type="button" data-testid={`wiz-ship-${s.slug}`} onClick={() => setShips((p) => on ? p.filter((x) => x !== s.slug) : [...p, s.slug])} style={{ padding: "0.32rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem", border: on ? "1px solid var(--border-hi)" : "1px solid var(--border)", background: on ? "var(--wash)" : "var(--wash)", color: on ? "var(--cyan)" : "var(--dim)" }}>{s.label}</button>;
                     })}
                   </div>
                 </div>
@@ -297,7 +298,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
             {step === 4 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
                 {review.map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", padding: "0.5rem 0.7rem", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", padding: "0.5rem 0.7rem", borderBottom: "1px solid var(--wash)" }}>
                     <span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.04em", color: "var(--dim2)" }}>{k}</span>
                     <span style={{ fontSize: "0.88rem", color: "var(--text-hi)", textAlign: "right" }}>{v}</span>
                   </div>
@@ -307,10 +308,10 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
 
             {step === 5 && !createdId && (
               <div style={{ textAlign: "center", padding: "1rem 0.5rem" }}>
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(91, 185, 138,0.1)", border: "1px solid rgba(91, 185, 138,0.3)", color: "var(--green)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "0.9rem" }}><Ic name="check" size={24} sw={1.7} /></div>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--tint-green)", border: "1px solid var(--edge-green)", color: "var(--green)", display: "inline-flex", alignItems: "center", justifyContent: "center", marginBottom: "0.9rem" }}><Ic name="check" size={24} sw={1.7} /></div>
                 <div style={{ fontWeight: 700, fontSize: "1.2rem", color: "var(--text-hi)", marginBottom: "0.4rem" }}>Bereit zum Erstellen</div>
                 <p style={{ fontSize: "0.84rem", color: "var(--dim)", maxWidth: "42ch", margin: "0 auto 1rem", lineHeight: 1.5 }}>Die Operation wird als Entwurf angelegt. Bedarfe und Wiederholung werden direkt übernommen.</p>
-                <button type="button" data-testid="wiz-create" disabled={busy || !csrf} onClick={create} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid rgba(91, 185, 138,0.5)", background: "rgba(91, 185, 138,0.14)", color: "var(--green)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}><Ic name="plus" size={15} sw={1.8} /> Operation erstellen</button>
+                <button type="button" data-testid="wiz-create" disabled={busy || !csrf} onClick={create} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid var(--edge-green)", background: "var(--tint-green)", color: "var(--green)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}><Ic name="plus" size={15} sw={1.8} /> Operation erstellen</button>
               </div>
             )}
 
@@ -326,16 +327,16 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                 <YoutubeField opId={createdId} csrf={csrf} onNotice={setNotice} />
                 <DocumentsPanel opId={createdId} csrf={csrf} canManage initialDocs={[]} onNotice={setNotice} />
                 <ShareChannel opId={createdId} guildId={guildId} csrf={csrf} onNotice={setNotice} />
-                <button type="button" data-testid="wiz-to-op" onClick={() => nav(`/ops/${createdId}`)} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.14)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}>{t("cover.toOp")}<Ic name="arrow" size={14} sw={1.8} /></button>
+                <button type="button" data-testid="wiz-to-op" onClick={() => nav(`/ops/${createdId}`)} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}>{t("cover.toOp")}<Ic name="arrow" size={14} sw={1.8} /></button>
               </div>
             )}
           </section>
 
           {/* nav */}
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginTop: "1rem" }}>
-            <button type="button" data-testid="wiz-back" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1rem", border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: step === 0 ? "var(--dim3)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: step === 0 ? "default" : "pointer" }}><Ic name="back" size={14} sw={1.8} /> Zurück</button>
+            <button type="button" data-testid="wiz-back" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1rem", border: "1px solid var(--wash)", background: "transparent", color: step === 0 ? "var(--dim3)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: step === 0 ? "default" : "pointer" }}><Ic name="back" size={14} sw={1.8} /> Zurück</button>
             <span style={{ flex: 1 }} />
-            {step < 5 && <button type="button" data-testid="wiz-next" onClick={() => setStep((s) => Math.min(5, s + 1))} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.2rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.14)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>Weiter<Ic name="arrow" size={14} sw={1.8} /></button>}
+            {step < 5 && <button type="button" data-testid="wiz-next" onClick={() => setStep((s) => Math.min(5, s + 1))} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.2rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>Weiter<Ic name="arrow" size={14} sw={1.8} /></button>}
           </div>
         </div>
 
@@ -366,7 +367,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 1080, background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: 14, padding: "1.4rem 1.5rem", boxShadow: "0 24px 70px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: "0.6rem" }}>
               <span style={{ flex: 1, fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim3)" }}>AUS VORLAGE STARTEN</span>
-              <button type="button" data-testid="template-picker-close" onClick={() => setPicker(false)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "transparent", color: "var(--dim)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Ic name="x" size={14} sw={2} /></button>
+              <button type="button" data-testid="template-picker-close" onClick={() => setPicker(false)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Ic name="x" size={14} sw={2} /></button>
             </div>
             <TemplatesPage session={session} />
           </div>
@@ -406,7 +407,7 @@ function YoutubeField({ opId, csrf, onNotice }: { opId: string; csrf: string | n
       </div>
       <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
         <input data-testid="youtube-url" type="url" value={url} onChange={(e) => { setUrl(e.target.value); setAdded(false); }} placeholder="https://youtu.be/… oder youtube.com/watch?v=…" style={{ ...inp, width: "auto", minWidth: 220, flex: "1 1 220px" }} />
-        <button type="button" data-testid="youtube-add" disabled={busy || !csrf || !url.trim()} onClick={add} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.14)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>
+        <button type="button" data-testid="youtube-add" disabled={busy || !csrf || !url.trim()} onClick={add} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>
           {added ? <><Ic name="check" size={14} sw={2} /> Hinterlegt</> : <><Ic name="plus" size={14} sw={1.7} /> Hinterlegen</>}
         </button>
       </div>
@@ -455,7 +456,7 @@ function ShareChannel({ opId, guildId, csrf, onNotice }: { opId: string; guildId
             <option value="">Kanal wählen…</option>
             {channels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
           </select>
-          <button type="button" data-testid="share-channel-post" disabled={busy || !channel || !csrf} onClick={post} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.14)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>
+          <button type="button" data-testid="share-channel-post" disabled={busy || !channel || !csrf} onClick={post} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>
             {posted ? <><Ic name="check" size={14} sw={2} /> Gepostet</> : <><Ic name="chat" size={14} sw={1.7} /> In Kanal posten</>}
           </button>
         </div>

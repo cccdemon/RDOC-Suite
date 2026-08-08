@@ -92,7 +92,7 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
             <div key={s.id} className="fpw-seat" data-testid={`need-row-${s.id}`}>
               <RenameInput value={s.label} disabled={busy || !csrf} onRename={(name) => run(() => renameNeed(opId, s.id, csrf!, name))} />
               <span className="fpw-meta">{s.shipType}</span>
-              <button type="button" data-testid={`need-remove-${s.id}`} title="Bedarf entfernen" disabled={busy || !csrf} onClick={() => run(() => removeNeed(opId, s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid rgba(228, 115, 106,0.4)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button type="button" data-testid={`need-remove-${s.id}`} title="Bedarf entfernen" disabled={busy || !csrf} onClick={() => run(() => removeNeed(opId, s.id, csrf!))} style={{ flexShrink: 0, width: 22, height: 22, borderRadius: 6, border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <Ic name="x" size={12} sw={2} />
               </button>
             </div>
@@ -108,8 +108,8 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
             onClick={() => togglePick(t.slug)}
             style={{
               padding: "0.32rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem",
-              border: picked.includes(t.slug) ? "1px solid var(--border-hi)" : "1px solid rgba(43, 49, 53, 0.2)",
-              background: picked.includes(t.slug) ? "rgba(43, 49, 53, 0.14)" : "rgba(43, 49, 53, 0.04)",
+              border: picked.includes(t.slug) ? "1px solid var(--border-hi)" : "1px solid var(--border)",
+              background: picked.includes(t.slug) ? "var(--wash)" : "var(--wash)",
               color: picked.includes(t.slug) ? "var(--cyan)" : "var(--dim)",
             }}
           >

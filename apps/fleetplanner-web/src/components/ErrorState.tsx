@@ -1,18 +1,19 @@
 import { Link } from "react-router-dom";
 import { Ic } from "./Icons";
+import { tint } from "./ui";
 import { useT } from "../i18n";
 
 // Shared system splash (401/403/404/503) — design §140-141: centered max 560px,
 // tinted icon wrap by severity, large status code, title, body, one primary button.
 const MONO = "var(--mono)";
 
-type Sev = { tone: string; rgb: string; icon: string; labelKey: string };
+type Sev = { tone: string; icon: string; labelKey: string };
 
 function severity(code: number): Sev {
-  if (code === 401) return { tone: "var(--gold)", rgb: "240,165,0", icon: "lock", labelKey: "error.401" };
-  if (code === 403) return { tone: "var(--red2)", rgb: "255,107,107", icon: "ban", labelKey: "error.403" };
-  if (code === 503) return { tone: "var(--gold)", rgb: "240,165,0", icon: "wrench", labelKey: "error.503" };
-  return { tone: "var(--red2)", rgb: "255,107,107", icon: "alert", labelKey: "error.404" };
+  if (code === 401) return { tone: "var(--gold)", icon: "lock", labelKey: "error.401" };
+  if (code === 403) return { tone: "var(--red2)", icon: "ban", labelKey: "error.403" };
+  if (code === 503) return { tone: "var(--gold)", icon: "wrench", labelKey: "error.503" };
+  return { tone: "var(--red2)", icon: "alert", labelKey: "error.404" };
 }
 
 export function ErrorState({ code, message }: { code: number; message: string }) {
@@ -23,7 +24,7 @@ export function ErrorState({ code, message }: { code: number; message: string })
       <span
         style={{
           width: 60, height: 60, borderRadius: 15, display: "inline-flex", alignItems: "center", justifyContent: "center",
-          background: `rgba(${s.rgb},0.1)`, border: `1px solid rgba(${s.rgb},0.3)`, color: s.tone, marginBottom: "1.1rem",
+          background: tint(s.tone, 10), border: `1px solid ${tint(s.tone, 30)}`, color: s.tone, marginBottom: "1.1rem",
         }}
       >
         <Ic name={s.icon} size={28} sw={1.6} />

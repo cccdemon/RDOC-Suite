@@ -91,7 +91,7 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
               data-testid={`ship-${s.id}`}
               onClick={s.imageUrl ? () => setLightbox(s.imageUrl ?? null) : undefined}
               title={s.imageUrl ? tr("ships.zoomTitle") : undefined}
-              style={{ display: "grid", gridTemplateColumns: COLS, gap: 0, padding: "0.6rem 1rem", borderBottom: "1px solid rgba(255,255,255,0.04)", alignItems: "center", fontSize: "0.9rem", cursor: s.imageUrl ? "zoom-in" : "default" }}
+              style={{ display: "grid", gridTemplateColumns: COLS, gap: 0, padding: "0.6rem 1rem", borderBottom: "1px solid var(--wash)", alignItems: "center", fontSize: "0.9rem", cursor: s.imageUrl ? "zoom-in" : "default" }}
             >
               <span style={{ display: "inline-flex", alignItems: "center" }}>
                 {s.imageUrl ? (
@@ -133,7 +133,7 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
           onClick={() => setLightbox(null)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, cursor: "zoom-out" }}
         >
-          <img src={lightbox} alt="" style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 8, boxShadow: "0 0 40px rgba(0,0,0,0.6)" }} />
+          <img src={lightbox} alt="" style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 8, border: "1px solid var(--border)" }} />
         </div>
       )}
     </div>

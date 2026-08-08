@@ -71,7 +71,7 @@ export function SquadLinkPanel({ opId }: { opId: string }) {
       ) : null}
 
       {state.storeUrl && (
-        <div style={{ marginTop: "0.8rem", paddingTop: "0.8rem", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ marginTop: "0.8rem", paddingTop: "0.8rem", borderTop: "1px solid var(--wash)" }}>
           <span style={{ display: "block", color: "var(--dim)", fontSize: "0.74rem", marginBottom: "0.4rem" }}>
             App noch nicht installiert?
           </span>

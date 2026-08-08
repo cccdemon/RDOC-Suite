@@ -28,7 +28,14 @@ export const cardHead: CSSProperties = {
   color: "var(--text-hi)",
 };
 
-export function chip(rgb: string, color: string): CSSProperties {
+/** Theme-aware wash over any CSS colour. Brandkit v2.2 derives every tint
+ * with color-mix() instead of a frozen rgba() triple, so it follows the light
+ * palette (which is measured, not inverted). */
+export function tint(color: string, pct: number): string {
+  return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
+}
+
+export function chip(color: string): CSSProperties {
   return {
     width: 28,
     height: 28,
@@ -37,8 +44,8 @@ export function chip(rgb: string, color: string): CSSProperties {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    background: `rgba(${rgb},0.12)`,
-    border: `1px solid rgba(${rgb},0.3)`,
+    background: tint(color, 12),
+    border: `1px solid ${tint(color, 30)}`,
     color,
   };
 }
@@ -70,7 +77,7 @@ export const inp: CSSProperties = {
 export const ta: CSSProperties = { ...inp, minHeight: 180, lineHeight: 1.55, resize: "vertical", fontSize: "0.82rem" };
 
 /** segmented chip (op-type / system / etc.) */
-export function segChip(active: boolean, color: string, rgb: string): CSSProperties {
+export function segChip(active: boolean, color: string): CSSProperties {
   return {
     display: "inline-flex",
     alignItems: "center",
@@ -82,27 +89,29 @@ export function segChip(active: boolean, color: string, rgb: string): CSSPropert
     borderRadius: 8,
     cursor: "pointer",
     transition: "all .12s",
-    border: active ? `1px solid ${color}` : "1px solid rgba(255,255,255,0.1)",
-    background: active ? `rgba(${rgb},0.14)` : "transparent",
+    border: active ? `1px solid ${color}` : "1px solid var(--wash)",
+    background: active ? tint(color, 14) : "transparent",
     color: active ? color : "var(--dim)",
   };
 }
 
-const CHIP_COLORS: Record<string, [string, string]> = {
-  cyan: ["118, 130, 141", "var(--cyan)"],
-  violet: ["160,100,255", "var(--purple)"],
-  green: ["0,255,136", "var(--green)"],
-  gold: ["240,165,0", "var(--gold)"],
-  red: ["255,68,68", "var(--red)"],
+// Tone names kept for the call sites; `violet` has had no brand equivalent
+// since the palette closed and resolves to Steel like the other retired hues.
+const CHIP_COLORS: Record<string, string> = {
+  cyan: "var(--cyan)",
+  violet: "var(--dim)",
+  green: "var(--green)",
+  gold: "var(--gold)",
+  red: "var(--red)",
 };
 
 /** Card section header: icon chip + mono label. */
 export function CardHead({ icon, label, tone = "cyan", right }: { icon: string; label: string; tone?: keyof typeof CHIP_COLORS; right?: ReactNode }) {
-  const [rgb, color] = CHIP_COLORS[tone];
+  const color = CHIP_COLORS[tone];
   return (
     <div style={right ? { ...cardHead, justifyContent: "space-between" } : cardHead}>
       <span style={{ display: "inline-flex", alignItems: "center", gap: "0.55rem" }}>
-        <span style={chip(rgb, color)}><Ic name={icon} size={15} sw={1.6} /></span>
+        <span style={chip(color)}><Ic name={icon} size={15} sw={1.6} /></span>
         {label}
       </span>
       {right}
@@ -119,7 +128,7 @@ export function PageHead({ icon, kicker, title, right }: { icon: string; kicker:
           <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name={icon} size={17} sw={1.7} /></span>
           <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>{kicker}</span>
         </div>
-        <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: 0 }}>{title}</h1>
+        <h1 style={{ fontFamily: "var(--display)", fontWeight: 400, fontSize: "1.4rem", lineHeight: 1.2, color: "var(--text-hi)", margin: 0 }}>{title}</h1>
       </div>
       {right}
     </div>
@@ -144,11 +153,11 @@ export const actionBar: CSSProperties = {
 
 export const btnPrimary: CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.3rem",
-  border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.14)", color: "var(--cyan)",
+  border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)",
   fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.03em", borderRadius: 9, cursor: "pointer",
 };
 export const btnGhost: CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 1.1rem",
-  border: "1px solid rgba(255,255,255,0.14)", background: "transparent", color: "var(--dim)",
+  border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)",
   fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer",
 };

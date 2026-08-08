@@ -84,17 +84,17 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
 
   const pill = (on: boolean): React.CSSProperties => ({
     flex: 1, minWidth: 150, padding: "0.7rem 0.8rem", borderRadius: 10, cursor: "pointer",
-    border: `1px solid ${on ? "rgba(43, 49, 53, 0.4)" : "rgba(43, 49, 53, 0.16)"}`,
-    background: on ? "rgba(43, 49, 53, 0.08)" : "var(--bg)",
+    border: `1px solid ${on ? "var(--border)" : "var(--wash)"}`,
+    background: on ? "var(--wash)" : "var(--bg)",
   });
   const Toggle = ({ on, set, label, hint }: { on: boolean; set: (v: boolean) => void; label: string; hint: string }) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0.6rem 0", borderBottom: "1px solid var(--border)" }}>
       <span style={{ fontWeight: 600, color: "var(--text)" }}>{label}<small style={{ display: "block", color: "var(--dim2)", fontWeight: 400, fontSize: "0.82rem" }}>{hint}</small></span>
       <span
         onClick={() => set(!on)}
-        style={{ width: 42, height: 24, borderRadius: 14, flexShrink: 0, cursor: "pointer", position: "relative", background: on ? "rgba(91, 185, 138,0.18)" : "var(--bg3)", border: `1px solid ${on ? "rgba(91, 185, 138,0.5)" : "rgba(43, 49, 53, 0.16)"}` }}
+        style={{ width: 42, height: 24, borderRadius: 14, flexShrink: 0, cursor: "pointer", position: "relative", background: on ? "var(--tint-green)" : "var(--bg3)", border: `1px solid ${on ? "var(--edge-green)" : "var(--wash)"}` }}
       >
-        <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: on ? "var(--green)" : "var(--dim2)", transition: "left 0.15s", boxShadow: on ? "0 0 8px var(--green)" : "none" }} />
+        <span style={{ position: "absolute", top: 2, left: on ? 20 : 2, width: 18, height: 18, borderRadius: "50%", background: on ? "var(--green)" : "var(--dim2)", transition: "left 0.15s" }} />
       </span>
     </div>
   );
@@ -130,7 +130,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
               <div key={i} style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "0.5rem" }}>
                 <input style={inputStyle} value={o} onChange={(e) => setOption(i, e.target.value)} placeholder={`Option ${i + 1}`} maxLength={200} />
                 {options.length > 2 && (
-                  <button onClick={() => removeOption(i)} title="Entfernen" style={{ color: "var(--red)", border: "1px solid rgba(228, 115, 106,0.3)", background: "rgba(228, 115, 106,0.06)", borderRadius: 7, padding: "0.5rem 0.6rem", cursor: "pointer" }}><Ic name="x" size={13} /></button>
+                  <button onClick={() => removeOption(i)} title="Entfernen" style={{ color: "var(--red)", border: "1px solid var(--edge-red)", background: "var(--tint-red)", borderRadius: 7, padding: "0.5rem 0.6rem", cursor: "pointer" }}><Ic name="x" size={13} /></button>
                 )}
               </div>
             ))}
@@ -203,7 +203,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
               onClick={() => void submit(false)}
               disabled={!canSubmit}
               className="fpw-btn"
-              style={{ borderColor: "rgba(91, 185, 138,0.5)", background: "rgba(91, 185, 138,0.12)", color: "var(--green)", opacity: canSubmit ? 1 : 0.4 }}
+              style={{ borderColor: "var(--edge-green)", background: "var(--tint-green)", color: "var(--green)", opacity: canSubmit ? 1 : 0.4 }}
             >
               {saving ? "Speichere…" : "Umfrage erstellen"}
             </button>
@@ -211,7 +211,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
               onClick={() => void submit(true)}
               disabled={!canSubmit}
               className="fpw-btn"
-              style={{ borderColor: "rgba(118, 130, 141,0.3)", color: "var(--dim)", opacity: canSubmit ? 1 : 0.4 }}
+              style={{ borderColor: "var(--border-hi)", color: "var(--dim)", opacity: canSubmit ? 1 : 0.4 }}
             >
               Als Entwurf speichern
             </button>

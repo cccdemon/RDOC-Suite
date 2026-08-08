@@ -96,7 +96,7 @@ export function VoicePanel({
           <div style={{ fontSize: "0.8rem", color: "var(--dim)", lineHeight: 1.45, marginTop: 3 }}>Einsatzleitung &amp; zugewiesene Crew bekommen ab Op-Start einen Direktlink in den CommandNet-Sprachraum.</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          <button type="button" data-testid="voice-master-toggle" aria-pressed={voiceEnabled} onClick={onToggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", padding: "0.55rem 0.9rem", borderRadius: 10, cursor: "pointer", border: voiceEnabled ? "1px solid var(--purple)" : "1px solid rgba(255,255,255,0.14)", background: voiceEnabled ? `${PURPLE},0.12)` : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.04em" }}>
+          <button type="button" data-testid="voice-master-toggle" aria-pressed={voiceEnabled} onClick={onToggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: "0.6rem", padding: "0.55rem 0.9rem", borderRadius: 10, cursor: "pointer", border: voiceEnabled ? "1px solid var(--purple)" : "1px solid var(--wash)", background: voiceEnabled ? `${PURPLE},0.12)` : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.04em" }}>
             <span style={{ width: 34, height: 18, borderRadius: 10, background: voiceEnabled ? "var(--purple)" : "#23303f", position: "relative", flexShrink: 0, transition: "background .15s" }}>
               <span style={{ position: "absolute", top: 2, left: voiceEnabled ? 18 : 2, width: 14, height: 14, borderRadius: "50%", background: "var(--text-hi)", transition: "left .15s" }} />
             </span>
@@ -112,7 +112,7 @@ export function VoicePanel({
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         {header}
-        <div style={{ padding: "1.4rem 1rem", textAlign: "center", color: "var(--dim2)", fontFamily: MONO, fontSize: "0.8rem", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 12 }}>SquadLink ist deaktiviert — oben aktivieren, um Sprach-Links zu vergeben.</div>
+        <div style={{ padding: "1.4rem 1rem", textAlign: "center", color: "var(--dim2)", fontFamily: MONO, fontSize: "0.8rem", border: "1px dashed var(--wash)", borderRadius: 12 }}>SquadLink ist deaktiviert — oben aktivieren, um Sprach-Links zu vergeben.</div>
       </div>
     );
   }
@@ -124,7 +124,7 @@ export function VoicePanel({
         {head("link", "var(--cyan)", "COMMANDNET-SPRACHRAUM")}
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
           <code style={{ flex: "1 1 240px", minWidth: 0, fontFamily: MONO, fontSize: "0.8rem", color: "var(--cyan)", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 8, padding: "0.55rem 0.7rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{room}</code>
-          <button type="button" data-testid="voice-copy" onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.8rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.1)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 8, cursor: "pointer" }}><Ic name="copy" size={13} /> Kopieren</button>
+          <button type="button" data-testid="voice-copy" onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.8rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 8, cursor: "pointer" }}><Ic name="copy" size={13} /> Kopieren</button>
           <SaveDot id="voice-copy" />
         </div>
       </section>
@@ -143,14 +143,14 @@ export function VoicePanel({
             {recipients.map((p) => {
               const has = !!links[p.id];
               return (
-                <div key={p.id} data-testid={`voice-recipient-${p.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", borderRadius: 9, border: `1px solid ${has ? "rgba(91, 185, 138,0.22)" : "rgba(255,255,255,0.07)"}`, background: has ? "rgba(91, 185, 138,0.04)" : "transparent" }}>
+                <div key={p.id} data-testid={`voice-recipient-${p.id}`} style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.5rem 0.65rem", borderRadius: 9, border: `1px solid ${has ? "var(--edge-green)" : "var(--wash)"}`, background: has ? "var(--tint-green)" : "transparent" }}>
                   <Avatar name={p.name} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <strong style={{ fontSize: "0.86rem", color: "var(--text-hi)" }}>{p.name}</strong>
                     <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.04em", color: "var(--dim2)", marginTop: 1 }}>{p.role}</div>
                   </div>
                   <SaveDot id={"voice-" + p.id} />
-                  <button type="button" data-testid={`voice-toggle-${p.id}`} onClick={() => toggle(p.id)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.66rem", border: has ? "1px solid rgba(91, 185, 138,0.45)" : "1px solid rgba(255,255,255,0.14)", background: has ? "rgba(91, 185, 138,0.1)" : "transparent", color: has ? "var(--green)" : "var(--dim)" }}>
+                  <button type="button" data-testid={`voice-toggle-${p.id}`} onClick={() => toggle(p.id)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.4rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.66rem", border: has ? "1px solid var(--edge-green)" : "1px solid var(--wash)", background: has ? "var(--tint-green)" : "transparent", color: has ? "var(--green)" : "var(--dim)" }}>
                     <Ic name={has ? "check" : "link"} size={13} /> {has ? "Link vergeben" : "Link senden"}
                   </button>
                 </div>

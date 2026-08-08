@@ -82,7 +82,7 @@ export function FeedbackPage({ session }: { session: SessionResponse | null }) {
         <div>
           <label style={label}>{t("feedback.attach")}</label>
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.6rem" }}>
-            <label data-testid="feedback-attach-btn" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.06)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: files.length >= MAX_FILES ? "not-allowed" : "pointer", opacity: files.length >= MAX_FILES ? 0.5 : 1 }}>
+            <label data-testid="feedback-attach-btn" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.8rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: files.length >= MAX_FILES ? "not-allowed" : "pointer", opacity: files.length >= MAX_FILES ? 0.5 : 1 }}>
               <Ic name="plus" size={13} sw={1.9} /> {t("feedback.attachAdd")}
               <input data-testid="feedback-files" type="file" accept={ALLOWED.join(",")} multiple disabled={files.length >= MAX_FILES} onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} style={{ display: "none" }} />
             </label>

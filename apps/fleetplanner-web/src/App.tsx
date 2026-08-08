@@ -64,7 +64,7 @@ export function App() {
   return (
     <LocaleProvider preferred={session?.user?.locale}>
     <div className="app-root" style={{ filter: theme.filter === "none" ? undefined : theme.filter }}>
-      <div className="crt-scanlines" />
+      {theme.id === "crt" && <div className="crt-scanlines" />}
       <ChangelogPopup session={session} />
       <div className="app-shell">
         <Sidebar session={session} theme={theme} setThemeId={setThemeId} />

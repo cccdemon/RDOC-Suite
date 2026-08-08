@@ -16,6 +16,7 @@ import {
 } from "../api/client";
 import type { AdminGuild, AdminSettingsResponse, AdminUser, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { tint } from "../components/ui";
 
 const MONO = "'Share Tech Mono',ui-monospace,monospace";
 const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
@@ -166,7 +167,6 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
     title: string,
     icon: string,
     accent: string,
-    rgb: string,
     state: AdminSettingsResponse["shipCatalog"],
     interval: number,
     setInterval: (n: number) => void,
@@ -175,7 +175,7 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
     return (
       <section style={{ border: "1px solid var(--border)", borderRadius: 13, background: "var(--bg2)", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid var(--border)" }}>
-          <span style={{ width: 30, height: 30, borderRadius: 8, background: `rgba(${rgb},0.12)`, border: `1px solid rgba(${rgb},0.3)`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={icon} size={16} sw={1.6} /></span>
+          <span style={{ width: 30, height: 30, borderRadius: 8, background: `${tint(accent, 12)}`, border: `1px solid ${tint(accent, 30)}`, color: accent, display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name={icon} size={16} sw={1.6} /></span>
           <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "var(--text-hi)" }}>{title}</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.55rem 0.8rem", marginBottom: "0.85rem" }}>
@@ -238,19 +238,19 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
 
       {/* CONTROL GRID */}
       <div style={{ display: "grid", gridTemplateColumns: ctrlCols, gap: "0.9rem", marginBottom: "1.1rem" }}>
-        {settings && catalogCard("ships", "SCHIFFSKATALOG", "ship", "var(--gold)", "240,165,0", settings.shipCatalog, shipInterval, setShipInterval)}
-        {settings && catalogCard("locations", "STANDORTKATALOG", "pin", "var(--purple)", "160,100,255", settings.locationCatalog, locInterval, setLocInterval)}
+        {settings && catalogCard("ships", "SCHIFFSKATALOG", "ship", "var(--cyan)", settings.shipCatalog, shipInterval, setShipInterval)}
+        {settings && catalogCard("locations", "STANDORTKATALOG", "pin", "var(--cyan)", settings.locationCatalog, locInterval, setLocInterval)}
         <section style={{ border: "1px solid var(--border)", borderRadius: 13, background: "var(--bg2)", padding: "1.05rem 1.15rem", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.85rem", paddingBottom: "0.7rem", borderBottom: "1px solid var(--border)" }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(43, 49, 53, 0.1)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="chat" size={16} sw={1.6} /></span>
+            <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--wash)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="chat" size={16} sw={1.6} /></span>
             <div style={{ fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.06em", color: "var(--text-hi)" }}>FEEDBACK-KANAL</div>
           </div>
           <div style={monoSub({ marginBottom: "0.3rem" })}>DISCORD-KANAL-ID</div>
           <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.9rem" }}>
             <input type="text" inputMode="numeric" data-testid="feedback-channel" value={feedbackInput} placeholder="leer = aus" onChange={(e) => setFeedbackInput(e.target.value)} style={{ ...field, flex: 1, minWidth: 0 }} />
-            <button type="button" data-testid="feedback-save" disabled={busy || !csrf} onClick={() => run(() => setFeedbackChannel(csrf!, feedbackInput.trim()), "Feedback-Kanal gespeichert.")} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, padding: "0 0.7rem", border: "1px solid var(--border-hi)", background: "rgba(43, 49, 53, 0.06)", color: "var(--dim)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 6, cursor: "pointer" }}><Ic name="save" size={13} sw={1.7} /> Speichern</button>
+            <button type="button" data-testid="feedback-save" disabled={busy || !csrf} onClick={() => run(() => setFeedbackChannel(csrf!, feedbackInput.trim()), "Feedback-Kanal gespeichert.")} style={{ display: "inline-flex", alignItems: "center", gap: 5, flexShrink: 0, padding: "0 0.7rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--dim)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 6, cursor: "pointer" }}><Ic name="save" size={13} sw={1.7} /> Speichern</button>
           </div>
-          <div style={{ marginTop: "auto", paddingTop: "0.8rem", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <div style={{ marginTop: "auto", paddingTop: "0.8rem", borderTop: "1px solid var(--wash)", display: "flex", alignItems: "center", gap: "0.6rem" }}>
             <span style={{ color: "var(--dim3)", flexShrink: 0, display: "inline-flex" }}><Ic name="alert" size={15} sw={1.6} /></span>
             <span style={{ fontSize: "0.76rem", color: "var(--dim2)", lineHeight: 1.35 }}>Feedback aus dem Web wird an diesen Kanal gepostet. Leer lassen, um Weiterleitung zu deaktivieren.</span>
           </div>
@@ -287,7 +287,7 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
                           {u.discordId ? (
                             <><div style={{ fontFamily: MONO, fontSize: "0.74rem", color: "var(--text)" }}>{u.discordId}</div><div style={{ fontSize: "0.72rem", color: "var(--dim2)" }}>{u.discordName ? `@${u.discordName}` : ""}</div></>
                           ) : (
-                            <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.05em", borderRadius: 4, border: "1px solid rgba(228, 115, 106,0.38)", background: "rgba(228, 115, 106,0.08)", color: "var(--red)" }}>NICHT VERKNÜPFT</span>
+                            <span style={{ display: "inline-flex", alignItems: "center", padding: "2px 7px", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.05em", borderRadius: 4, border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)" }}>NICHT VERKNÜPFT</span>
                           )}
                         </td>
                         <td style={cell}>
@@ -355,7 +355,7 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", minWidth: 0 }}>
                         <span style={{ fontSize: "0.88rem", color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.name}</span>
-                        {mostActive && <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.06em", color: "var(--green)", border: "1px solid rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.08)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase" }}>Aktivster</span>}
+                        {mostActive && <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.06em", color: "var(--green)", border: "1px solid var(--edge-green)", background: "var(--tint-green)", borderRadius: 3, padding: "1px 5px", textTransform: "uppercase" }}>Aktivster</span>}
                       </div>
                       <div style={{ fontFamily: MONO, fontSize: "0.62rem", color: "var(--dim3)" }}>{fmtNum(s.memberCount)} Mitglieder · <span style={{ color: s.eventCount > 0 ? "var(--cyan)" : "var(--dim3)" }}>{fmtNum(s.eventCount)} Events</span></div>
                     </div>
@@ -363,9 +363,9 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexShrink: 0 }}>
                     <span style={statusChip(!banned && s.active)}>{banned ? "GEBANNT" : s.active ? "AKTIV" : "INAKTIV"}</span>
                     {banned ? (
-                      <button type="button" data-testid={`admin-unban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => unbanGuild(s.id, csrf!), `${s.name} entbannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(91, 185, 138,0.4)", background: "rgba(91, 185, 138,0.08)", color: "var(--green)" }}><Ic name="check" size={12} sw={1.8} /> Entbannen</button>
+                      <button type="button" data-testid={`admin-unban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => unbanGuild(s.id, csrf!), `${s.name} entbannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid var(--edge-green)", background: "var(--tint-green)", color: "var(--green)" }}><Ic name="check" size={12} sw={1.8} /> Entbannen</button>
                     ) : (
-                      <button type="button" data-testid={`admin-ban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => banGuild(s.id, csrf!), `${s.name} gebannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid rgba(228, 115, 106,0.32)", background: "rgba(228, 115, 106,0.07)", color: "var(--red)" }}><Ic name="ban" size={12} sw={1.8} /> Bannen</button>
+                      <button type="button" data-testid={`admin-ban-${s.id}`} disabled={busy || !csrf} onClick={() => run(() => banGuild(s.id, csrf!), `${s.name} gebannt.`)} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.3rem 0.55rem", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 6, cursor: "pointer", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)" }}><Ic name="ban" size={12} sw={1.8} /> Bannen</button>
                     )}
                   </div>
                 </div>
