@@ -1,6 +1,6 @@
 # RDOC Suite Merge Log
 
-## Queued / In Progress - 2026-08-08: Brandkit v2.2 uebernehmen (Michroma, Patina, Light-Mode)
+## Completed - 2026-08-08: Brandkit v2.2 uebernommen (Michroma, Patina, Light-Mode) (c56921b)
 
 Quelle: `RDOC-Brandkit/brandkit` (BrandGuide v2.2, 2026-08-08). Das Restyling vom 2026-08-07
 (aac6b60) setzte v2.0 um; v2.1/2.2 haben vier Dinge geaendert, die im Code noch fehlen:
@@ -63,6 +63,19 @@ Ausgabe aendern, nicht die Marke schaerfen.
 Verifikation: `tsc --noEmit` gruen fuer `fleetplanner` und `fleetplanner-web`, `vite build` gruen.
 Unit-Tests unveraendert gegenueber dem Stand vor der Aenderung (SPA 6, Backend 8 Failures - alle
 schon vorher rot, mit `git stash` gegengeprueft).
+
+**Deployed** auf LXC 103: `fleetplanner`, `fleetplanner-web`, `error-page` neu gebaut, alle drei
+Container laufen, Migrationen ohne pending. Prod-Smoke `scripts/prod-e2e-readonly.sh` gruen.
+
+Dabei aufgefallen und mitgefixt: der Smoke-Test prueft `api docs` noch unter `$API/docs`. Die
+Swagger-UI ist mit dem Cutover in die SPA gewandert (`/fleetplanner/api-docs`, rendert
+`openapi.json` selbst); das Backend ist API-only und hat dort keine Route. Der Check zeigt jetzt auf
+die SPA - der `swagger-ui`-Marker ist im Bundle, nicht im HTML-Shell, deshalb faellt die
+Inhaltspruefung weg.
+
+**Offen, nicht Teil dieser Aenderung:** auf Prod ist `E2E_TEST_LOGIN_SECRET` gesetzt - der
+Fleetplanner loggt beim Start `E2E test-login seam ENABLED`. Laut CLAUDE.md gehoert die Variable
+nach einem E2E-Lauf wieder entfernt.
 
 ## Completed - 2026-08-07: Aufraeumen (gitignore-Luecke, CLAUDE.md-Drift, Companion-Reste)
 

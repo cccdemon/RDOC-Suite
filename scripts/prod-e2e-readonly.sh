@@ -33,9 +33,11 @@ for secret in DISCORD_RDOCRTC_BOT_TOKEN FLEETPLANNER_DB_PASSWORD LIVEKIT_API_SEC
   not_contains "openapi no secret: $secret" "$openapi" "$secret"
 done
 
-docs_code="$(curl -s -o /tmp/e2e_docs -w '%{http_code}' "$API/docs")"
+# Swagger UI lives in the SPA at /api-docs and renders openapi.json itself; the
+# backend is API-only and has no /api/v1/docs route. The SPA is a bundle, so the
+# served HTML is the shell - the swagger-ui marker is in the JS, not the page.
+docs_code="$(curl -s -o /dev/null -w '%{http_code}' "$NEXT/api-docs")"
 check "api docs 200" "200" "$docs_code"
-contains "api docs swagger ui" "$(cat /tmp/e2e_docs)" "swagger-ui"
 
 session="$(curl -fsS "$API/session")"
 check "session anonymous" '{"user":null,"memberships":[],"csrfToken":null}' "$session"
