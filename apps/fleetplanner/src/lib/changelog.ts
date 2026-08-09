@@ -34,6 +34,15 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-09",
+    title: "Recurring events are visible again",
+    changes: [
+      "An operation that belongs to a recurring series now says so: a SERIE badge on the card and a panel on the detail page showing the pattern and the next dates.",
+      "Dates that already exist as an operation link straight to them; the later ones are marked as not created yet, so you can see the rhythm without waiting.",
+      "The next date is created as a real, joinable operation 21 days ahead instead of 7 — a fortnightly series now always has its follow-up ready.",
+    ],
+  },
+  {
     date: "2026-08-08",
     title: "New look",
     changes: [

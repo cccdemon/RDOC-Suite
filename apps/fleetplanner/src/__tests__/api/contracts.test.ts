@@ -27,6 +27,7 @@ const summaryFixture = {
   filledSeats: 3,
   totalSeats: 8,
   isStreamEvent: false,
+  isRecurring: false,
 };
 
 describe("contracts", () => {
@@ -50,6 +51,7 @@ describe("contracts", () => {
       ...summaryFixture,
       description: "Bring quant.",
       maxParticipants: 24,
+      recurrence: null,
       guild: { ...summaryFixture.guild, timezone: "Europe/Berlin" },
       leaders: [{ id: "user_1", username: "Lead" }],
       units: [

@@ -96,6 +96,34 @@ function matchesDay(
   }
 }
 
+/**
+ * The next `limit` occurrences strictly after `after`, earliest first.
+ *
+ * The Fleetplanner only materialises an occurrence once it is inside the spawn
+ * horizon, so the UI needs the computed dates to show a series at all — Discord
+ * stores the pattern natively and lists every future date from the moment the
+ * event is created.
+ *
+ * Honours seriesEnd; seriesCount is left to the caller, which knows how many
+ * occurrences have already been spawned.
+ */
+export function upcomingOccurrences(
+  rec: RecurrenceLike & { seriesEnd?: Date | null },
+  after: Date,
+  limit: number,
+): Date[] {
+  const out: Date[] = [];
+  let cursor = after;
+  for (let i = 0; i < limit; i++) {
+    const next = nextOccurrence(rec, cursor);
+    if (!next) break;
+    if (rec.seriesEnd && next.getTime() > rec.seriesEnd.getTime()) break;
+    out.push(next);
+    cursor = next;
+  }
+  return out;
+}
+
 /** Map to Discord's constrained `recurrence_rule`, or null if not representable. */
 export function discordRecurrenceRule(
   rec: RecurrenceLike,
@@ -290,7 +318,7 @@ export async function createSeriesForOp(opts: {
       seriesEnd: opts.seriesEnd ?? null,
       seriesCount: opts.seriesCount ?? null,
       spawnedCount: 1, // the op we just created is occurrence #1
-      leadTimeHours: opts.leadTimeHours ?? 168,
+      leadTimeHours: opts.leadTimeHours ?? 504,
       nextRunAt: second ?? opts.op.scheduledAt,
       active: !!second,
       templateJson,

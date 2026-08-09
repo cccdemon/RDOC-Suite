@@ -160,9 +160,57 @@ export const OperationSummarySchema = z
     totalSeats: z.number().int(),
     /** FR-P3: op is a streamed event → own icon in list/detail/Discord + list filter. */
     isStreamEvent: z.boolean(),
+    /** Op is one occurrence of a recurring series → series badge on the card.
+     *  The pattern itself only travels on the detail DTO. */
+    isRecurring: z.boolean(),
   })
   .meta({ id: "OperationSummary" });
 export type OperationSummary = z.infer<typeof OperationSummarySchema>;
+
+/**
+ * The recurring series an operation belongs to. Discord stores the pattern as a
+ * native `recurrence_rule` and therefore shows every future date immediately;
+ * the Fleetplanner only materialises an occurrence once it is inside the spawn
+ * horizon, so `upcoming` carries the computed dates that have no Operation row
+ * yet. Without it a series is invisible in the product while Discord shows it.
+ */
+export const OperationRecurrenceInfoSchema = z
+  .object({
+    id: z.string(),
+    freq: z.enum(["weekly", "biweekly", "monthly_nth", "yearly"]),
+    /** 0=Mon … 6=Sun. Null for yearly. */
+    byWeekday: z.number().int().nullable(),
+    /** 1..5, nth weekday of the month. Only for monthly_nth. */
+    nthWeek: z.number().int().nullable(),
+    /** 1..12. Only for yearly. */
+    byMonth: z.number().int().nullable(),
+    /** 1..31. Only for yearly. */
+    byMonthDay: z.number().int().nullable(),
+    /** "HH:MM" in `timezone`. */
+    timeOfDay: z.string(),
+    timezone: z.string(),
+    active: z.boolean(),
+    /** Occurrences materialised so far, the first op included. */
+    spawnedCount: z.number().int(),
+    /** Stop after this many occurrences; null = open-ended. */
+    seriesCount: z.number().int().nullable(),
+    /** Stop after this date; null = open-ended. */
+    seriesEnd: z.iso.datetime().nullable(),
+    /** The next occurrence the scheduler will materialise. */
+    nextRunAt: z.iso.datetime().nullable(),
+    /** How far ahead an occurrence is turned into a real operation. */
+    leadTimeHours: z.number().int(),
+    /** Computed future occurrences, earliest first. `opId` is set once the
+     *  occurrence exists as an operation. */
+    upcoming: z.array(
+      z.object({
+        at: z.iso.datetime(),
+        opId: z.string().nullable(),
+      }),
+    ),
+  })
+  .meta({ id: "OperationRecurrenceInfo" });
+export type OperationRecurrenceInfo = z.infer<typeof OperationRecurrenceInfoSchema>;
 
 export const OperationListResponseSchema = z
   .object({ operations: z.array(OperationSummarySchema) })
@@ -286,6 +334,9 @@ export type GroupMember = z.infer<typeof GroupMemberSchema>;
 
 export const OperationDetailSchema = OperationSummarySchema.extend({
   description: z.string(),
+  /** The series this op belongs to, including its next dates; null when the op
+   *  is a one-off. */
+  recurrence: OperationRecurrenceInfoSchema.nullable(),
   /** Optional participant cap (null = no cap). */
   maxParticipants: z.number().int().nullable(),
   guild: z.object({

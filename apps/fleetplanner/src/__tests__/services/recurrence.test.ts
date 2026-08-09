@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { nextOccurrence, discordRecurrenceRule, type RecurrenceLike } from "../../services/recurrence.js";
+import {
+  nextOccurrence,
+  upcomingOccurrences,
+  discordRecurrenceRule,
+  type RecurrenceLike,
+} from "../../services/recurrence.js";
 import { parseDateLocalTz, fmtDateLocalTz } from "../../lib/timezone.js";
 
 const TZ = "Europe/Berlin";
@@ -47,6 +52,30 @@ describe("nextOccurrence", () => {
     const oct = parseDateLocalTz("2026-10-24T20:00", TZ)!; // Saturday before DST end
     const n = nextOccurrence({ ...base("weekly"), anchorAt: oct }, oct)!;
     expect(fmtDateLocalTz(n, TZ)).toBe("2026-10-31T20:00");
+  });
+});
+
+describe("upcomingOccurrences", () => {
+  it("returns the next dates in order, 14 days apart for biweekly", () => {
+    const dates = upcomingOccurrences(base("biweekly"), anchor, 3);
+    expect(dates.map((d) => fmtDateLocalTz(d, TZ))).toEqual([
+      "2026-06-20T20:00",
+      "2026-07-04T20:00",
+      "2026-07-18T20:00",
+    ]);
+  });
+
+  it("stops at seriesEnd instead of filling the limit", () => {
+    const rec = { ...base("weekly"), seriesEnd: parseDateLocalTz("2026-06-21T00:00", TZ)! };
+    const dates = upcomingOccurrences(rec, anchor, 5);
+    expect(dates.map((d) => fmtDateLocalTz(d, TZ))).toEqual([
+      "2026-06-13T20:00",
+      "2026-06-20T20:00",
+    ]);
+  });
+
+  it("returns nothing for a zero limit", () => {
+    expect(upcomingOccurrences(base("weekly"), anchor, 0)).toEqual([]);
   });
 });
 

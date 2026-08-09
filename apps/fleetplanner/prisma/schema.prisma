@@ -510,7 +510,7 @@ model OperationRecurrence {
   seriesEnd     DateTime? // stop spawning after this (Fleetplanner-enforced)
   seriesCount   Int? // stop after N occurrences
   spawnedCount  Int      @default(0)
-  leadTimeHours Int      @default(168) // spawn the next instance this many hours ahead
+  leadTimeHours Int      @default(504) // spawn the next instance this many hours ahead (21 days)
   nextRunAt     DateTime // next occurrence to spawn
   lastSpawnedAt DateTime?
   active        Boolean  @default(true)

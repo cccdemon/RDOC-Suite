@@ -1,5 +1,52 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-09: Wiederkehrende Serien im Fleetplanner sichtbar gemacht
+
+**Fund.** Op `cmsf3j45s002zo507bd0glbve` ("LET`S PLAY // Community Event", Guild
+389133028531634176) ist als 14-taegige Serie angelegt. Auf Discord erscheint sie korrekt
+wiederkehrend, im Fleetplanner sieht man nichts davon. Zwei unabhaengige Ursachen, beide *kein*
+Rechenfehler - die Serie `cmsf3j49p0039o507yr60j6jp` ist sauber: `freq=biweekly`, `byWeekday=6`
+(Sonntag), `timeOfDay=20:00`, `timezone=Europe/Berlin`, `anchorAt=2026-08-09`,
+`nextRunAt=2026-08-23`, `active=t`. 09.08. und 23.08. sind beide Sonntag, Abstand 14 Tage.
+
+1. **Rolling-Spawn-Horizont.** `leadTimeHours=168` - der Scheduler materialisiert eine Occurrence
+   erst 7 Tage vorher als echte Operation, hier also am 16.08. fuer den 23.08. Discord kennt
+   dagegen eine native `recurrence_rule` und zeigt sofort jeden kuenftigen Termin.
+2. **Die Serie ist in der API unsichtbar.** Weder `presenters.ts` noch die Contracts liefern
+   `recurrenceId`, `occurrenceAt` oder Serieninfos aus. Die SPA hat nur "Serie erstellen" /
+   "Serie stoppen" in der Operator-Konsole und kann gar nicht anzeigen, dass eine Op zu einer
+   Serie gehoert. Fuer den Nutzer sieht es aus, als sei nichts angelegt worden.
+
+**Entscheidung des Users:** Serien-Info + Terminvorschau **und** Rolling-Spawn auf 21 Tage.
+
+Umfang:
+
+- `packages/fleetplanner-contracts`: `OperationSummary.isRecurring` (Flag fuer die Liste),
+  `OperationDetail.recurrence` mit Muster, Zeitzone, Status und den naechsten berechneten Terminen.
+- `apps/fleetplanner/src/services/recurrence.ts`: `upcomingOccurrences()` als reine Funktion neben
+  `nextOccurrence()`; Default-Lead 168 -> 504 Stunden.
+- `apps/fleetplanner/src/api/presenters.ts` + `openapi.ts`: Mapping und Schema-Registry.
+  `getOperation()` laedt `recurrence` bereits, der Listen-Loader liefert `recurrenceId` als Skalar -
+  keine Query-Aenderung noetig.
+- `apps/fleetplanner/prisma/schema.prisma` + Migration: `leadTimeHours` Default 504, und die
+  Bestandsserien von 168 auf 504 ziehen. Der Wert ist ueber keine Route setzbar, alle Zeilen
+  tragen also den alten Default.
+- `apps/fleetplanner-web`: Serien-Badge auf Karte und Detailseite, Block "Naechste Termine" mit den
+  berechneten Folgeterminen und der Kennzeichnung, welche davon noch nicht angelegt sind. i18n
+  de/en.
+
+Nicht Teil dieser Aenderung: die naechsten Termine als echte Ops vorausspawnen, ueber die 21 Tage
+hinaus. Jede materialisierte Op zieht ein eigenes Discord-Event und eine eigene Flotte nach sich;
+die Vorschau kostet nichts und faellt nicht auseinander, wenn die Serie gestoppt wird.
+
+Verifikation: `tsc --noEmit` gruen fuer beide Workspaces, `vite build` gruen, drei neue Unit-Tests
+fuer `upcomingOccurrences` (Reihenfolge, `seriesEnd`-Abbruch, Limit 0). Uebrige Test-Failures
+unveraendert gegenueber dem Stand davor (SPA 6, Backend 8).
+
+Nebenbefund mitgefixt: `tagStyle()` in `CalendarPage.tsx` baute Transparenz als `${color}55`
+zusammen. Die Haelfte der Aufrufer uebergibt ein Token, und `var(--green)55` ist keine Farbe -
+Rahmen und Hintergrund fielen dort still weg. Laeuft jetzt ueber `tint()`.
+
 ## Completed - 2026-08-08: Brandkit v2.2 uebernommen (Michroma, Patina, Light-Mode) (c56921b)
 
 Quelle: `RDOC-Brandkit/brandkit` (BrandGuide v2.2, 2026-08-08). Das Restyling vom 2026-08-07

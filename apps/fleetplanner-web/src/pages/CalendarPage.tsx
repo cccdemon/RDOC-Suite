@@ -47,6 +47,7 @@ type Ev = {
   ts: number;
   status: string;
   stream: boolean;
+  recurring: boolean;
 };
 
 const tagStyle = (color: string): React.CSSProperties => ({
@@ -57,8 +58,11 @@ const tagStyle = (color: string): React.CSSProperties => ({
   fontSize: "9px",
   letterSpacing: "0.06em",
   borderRadius: 3,
-  border: `1px solid ${color}55`,
-  background: `${color}1a`,
+  // tint() rather than `${color}55`: half the callers pass a token, and
+  // "var(--green)55" is not a colour — border and background were silently
+  // dropping there.
+  border: `1px solid ${tint(color, 33)}`,
+  background: tint(color, 10),
   color,
   whiteSpace: "nowrap",
 });
@@ -146,6 +150,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         ts: d.getTime(),
         status: op.status,
         stream: op.isStreamEvent ?? false,
+        recurring: op.isRecurring ?? false,
       });
     }
     return out;
@@ -243,6 +248,11 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             <Ic name={ty.icon} size={15} sw={1.6} />
           </span>
           <span style={{ flex: 1 }} />
+          {e.recurring && (
+            <span data-testid={`cal-series-${e.id}`} title="Teil einer wiederkehrenden Serie" style={{ ...tagStyle("var(--cyan)"), gap: 4 }}>
+              <Ic name="swap" size={11} sw={1.7} /> SERIE
+            </span>
+          )}
           {e.stream && (
             <span data-testid={`cal-stream-${e.id}`} style={{ ...tagStyle("#9146ff"), gap: 4 }}>
               <Ic name="stream" size={11} sw={1.7} /> STREAM

@@ -78,7 +78,7 @@ import {
   mintPartnerToken,
   revokePartnership,
 } from "../services/partnerships.js";
-import { createSeriesForOp } from "../services/recurrence.js";
+import { createSeriesForOp, upcomingOccurrences } from "../services/recurrence.js";
 import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
 import {
@@ -202,6 +202,51 @@ function sendError(
 ) {
   const body: ApiError = { error: { code, message, requestId: req.id } };
   return reply.code(status).type("application/json").send(body);
+}
+
+/** How many future dates the op detail previews. Enough to make a fortnightly
+ *  series read as a series (~3 months) without turning into a calendar. */
+const RECURRENCE_PREVIEW_COUNT = 6;
+
+type RecurrenceRow = {
+  id: string;
+  freq: string;
+  byWeekday: number | null;
+  nthWeek: number | null;
+  byMonth: number | null;
+  byMonthDay: number | null;
+  timeOfDay: string;
+  timezone: string;
+  anchorAt: Date;
+  seriesEnd: Date | null;
+  seriesCount: number | null;
+  spawnedCount: number;
+  active: boolean;
+};
+
+/**
+ * The series' next dates, each carrying the operation that materialises it when
+ * one exists. Occurrences past seriesCount are dropped: the scheduler stops
+ * there, so previewing them would promise dates that never happen.
+ */
+async function upcomingForSeries(
+  rec: RecurrenceRow,
+): Promise<Array<{ at: Date; opId: string | null }>> {
+  const remaining =
+    rec.seriesCount == null
+      ? RECURRENCE_PREVIEW_COUNT
+      : Math.max(0, Math.min(RECURRENCE_PREVIEW_COUNT, rec.seriesCount - rec.spawnedCount));
+  if (remaining === 0) return [];
+
+  const dates = upcomingOccurrences(rec, new Date(), remaining);
+  if (dates.length === 0) return [];
+
+  const existing = await prisma.operation.findMany({
+    where: { recurrenceId: rec.id, occurrenceAt: { in: dates } },
+    select: { id: true, occurrenceAt: true },
+  });
+  const byTime = new Map(existing.map((o) => [o.occurrenceAt!.getTime(), o.id]));
+  return dates.map((at) => ({ at, opId: byTime.get(at.getTime()) ?? null }));
 }
 
 /** Per-op signup state of one user — same rule as the SSR home page:
@@ -402,8 +447,21 @@ export async function apiV1Routes(app: FastifyInstance) {
       !!myId &&
       ((op as { hangarShares?: Array<{ userId: string }> }).hangarShares ?? []).some((h) => h.userId === myId);
     const row = { ...op, guild } as unknown as Parameters<typeof presentOperationDetail>[0];
+    // A series is invisible in the product until its next occurrence enters the
+    // spawn horizon, while Discord lists every future date from the start. Send
+    // the computed dates along, flagging the ones that already exist as ops.
+    const rec = (op as { recurrence?: RecurrenceRow | null }).recurrence ?? null;
+    const upcoming = rec?.active ? await upcomingForSeries(rec) : [];
+
     return reply.type("application/json").send(
-      presentOperationDetail(row, { role: viewerRole, canManage, signupState, cqbSignedUp, hangarShared }),
+      presentOperationDetail(row, {
+        role: viewerRole,
+        canManage,
+        signupState,
+        cqbSignedUp,
+        hangarShared,
+        upcomingOccurrences: upcoming,
+      }),
     );
   });
 

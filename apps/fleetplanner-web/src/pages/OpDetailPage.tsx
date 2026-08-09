@@ -55,6 +55,23 @@ function fmtShort(iso: string, tz: string | null): string {
   }).format(new Date(iso));
 }
 
+const WEEKDAYS_MON0 = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
+
+/**
+ * "alle 2 Wochen — So 20:00 Uhr". Discord shows a recurring event with every
+ * future date attached; the Fleetplanner only materialises an occurrence once
+ * it is inside the spawn horizon, so the pattern has to be spelled out or the
+ * series looks like a one-off.
+ */
+function seriesPattern(
+  rec: NonNullable<import("../api/types").OperationDetail["recurrence"]>,
+  t: (k: string, p?: Record<string, string | number>) => string,
+): string {
+  const freq = t(`series.freq.${rec.freq}`);
+  const weekday = rec.byWeekday != null ? WEEKDAYS_MON0[rec.byWeekday] : "";
+  return t("series.pattern", { freq, weekday, time: rec.timeOfDay }).replace("  ", " ");
+}
+
 // design: category lanes with accent color + rgb (for borders/washes)
 const LANES = [
   { type: "ship", label: "SCHIFFE & CREW", icon: "ship", accent: "var(--cyan)" },
@@ -744,6 +761,28 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             >
               {op.visibility}
             </span>
+            {op.recurrence && (
+              <span
+                data-testid="op-series-badge"
+                title={seriesPattern(op.recurrence, t)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  border: `1px solid ${tint("var(--cyan)", 45)}`,
+                  color: "var(--cyan)",
+                  background: tint("var(--cyan)", 10),
+                  fontFamily: MONO,
+                  fontSize: "0.66rem",
+                  letterSpacing: "0.07em",
+                  padding: "0.2rem 0.55rem",
+                  borderRadius: 4,
+                  textTransform: "uppercase",
+                }}
+              >
+                <Ic name="swap" size={13} sw={1.7} /> {t("series.badge")}
+              </span>
+            )}
             {op.isStreamEvent && (
               <span
                 data-testid="op-stream-badge"
@@ -1286,6 +1325,60 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             )}
           </div>
         </>
+      )}
+
+      {/* The series this op belongs to. Only the occurrences inside the spawn
+          horizon exist as operations; the rest are computed by the backend and
+          marked as such, so the page tells the same story as the Discord event. */}
+      {op.recurrence && (
+        <section data-testid="op-series" style={{ border: `1px solid ${tint("var(--cyan)", 30)}`, borderRadius: 14, background: "var(--bg2)", padding: "1.1rem 1.3rem", marginTop: "1.6rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexWrap: "wrap", marginBottom: "0.7rem" }}>
+            <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="swap" size={16} sw={1.7} /></span>
+            <span style={{ ...monoLabel(), color: "var(--text-hi)" }}>{t("series.title").toUpperCase()}</span>
+            <span style={{ color: "var(--cyan)", fontSize: "0.86rem" }}>{seriesPattern(op.recurrence, t)}</span>
+            {!op.recurrence.active && (
+              <span style={{ color: "var(--dim)", fontSize: "0.8rem" }}>{t("series.stopped")}</span>
+            )}
+          </div>
+
+          {op.recurrence.upcoming.length > 0 && (
+            <>
+              <div style={{ ...monoLabel(), color: "var(--dim2)", marginBottom: "0.45rem" }}>{t("series.upcoming").toUpperCase()}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                {op.recurrence.upcoming.map((u) =>
+                  u.opId ? (
+                    <Link
+                      key={u.at}
+                      to={`/ops/${u.opId}`}
+                      data-testid={`series-date-${u.at}`}
+                      style={{ display: "flex", alignItems: "baseline", gap: "0.6rem", fontSize: "0.86rem", color: "var(--text)", textDecoration: "none", borderBottom: "1px solid var(--wash)", paddingBottom: "0.28rem" }}
+                    >
+                      <span style={{ fontFamily: MONO, fontSize: "0.78rem", color: "var(--text-hi)" }}>{fmtDate(u.at, op.guild.timezone)}</span>
+                      <span style={{ color: "var(--cyan)", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.07em" }}>OPEN →</span>
+                    </Link>
+                  ) : (
+                    <div
+                      key={u.at}
+                      data-testid={`series-date-${u.at}`}
+                      style={{ display: "flex", alignItems: "baseline", gap: "0.6rem", fontSize: "0.86rem", color: "var(--dim)", borderBottom: "1px solid var(--wash)", paddingBottom: "0.28rem" }}
+                    >
+                      <span style={{ fontFamily: MONO, fontSize: "0.78rem" }}>{fmtDate(u.at, op.guild.timezone)}</span>
+                      <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.07em", color: "var(--dim3)" }}>{t("series.planned").toUpperCase()}</span>
+                    </div>
+                  ),
+                )}
+              </div>
+            </>
+          )}
+
+          <div style={{ marginTop: "0.7rem", display: "flex", flexWrap: "wrap", gap: "0.3rem 1rem", color: "var(--dim2)", fontSize: "0.76rem" }}>
+            <span>{t("series.leadHint", { days: Math.round(op.recurrence.leadTimeHours / 24) })}</span>
+            {op.recurrence.seriesEnd && <span>{t("series.endsOn", { date: fmtShort(op.recurrence.seriesEnd, op.guild.timezone) })}</span>}
+            {op.recurrence.seriesCount != null && (
+              <span>{t("series.countLeft", { n: Math.max(0, op.recurrence.seriesCount - op.recurrence.spawnedCount), total: op.recurrence.seriesCount })}</span>
+            )}
+          </div>
+        </section>
       )}
 
       {/* Mission log — deliberately NOT operator-gated. Every roster change is

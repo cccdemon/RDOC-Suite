@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Wiederkehrende Serien waren im Fleetplanner unsichtbar (2026-08-09)
+
+Gemeldet an Op `cmsf3j45s002zo507bd0glbve`: 14-taegige Serie, auf Discord korrekt wiederkehrend, im
+Fleetplanner nicht. Die Serie selbst war fehlerfrei (`biweekly`, Sonntag, 20:00 Europe/Berlin,
+`nextRunAt` 14 Tage nach dem Anker) - sichtbar war sie trotzdem nirgends, aus zwei Gruenden.
+
+**1. Die Serie kam nie aus der API heraus.** Weder `presenters.ts` noch die Contracts lieferten
+`recurrenceId`, `occurrenceAt` oder Serieninfos. Die SPA konnte "Serie erstellen" und "Serie
+stoppen" ausloesen, aber nicht anzeigen, dass eine Op zu einer Serie gehoert. Neu:
+`OperationSummary.isRecurring` fuer die Liste und `OperationDetail.recurrence` mit Muster,
+Zeitzone, Serienstatus und den naechsten Terminen. `getOperation()` laedt die Relation laengst,
+der Listen-Loader liefert `recurrenceId` als Skalar - keine Query-Aenderung noetig.
+
+**2. Der Spawn-Horizont war zu kurz fuer den Rhythmus.** `leadTimeHours` stand auf 168 (7 Tage);
+eine Occurrence wurde erst eine Woche vorher zur echten Operation. Bei einer 14-taegigen Serie
+heisst das: die Haelfte der Zeit existiert kein Folgetermin. Jetzt 504 Stunden (21 Tage), inkl.
+Migration fuer die Bestandsserien - der Wert ist ueber keine Route setzbar, alle Zeilen trugen den
+alten Default.
+
+Neu im Backend: `upcomingOccurrences()` neben `nextOccurrence()` (rein, mit Tests fuer Reihenfolge,
+`seriesEnd`-Abbruch und Limit 0). Die Detail-Route berechnet daraus bis zu sechs Folgetermine und
+markiert je Termin, ob er schon als Operation existiert; Termine jenseits von `seriesCount` fallen
+raus, weil der Scheduler dort aufhoert. Die Occurrence-Mathematik bleibt beim Scheduler,
+`presenters.ts` bleibt frei von Prisma - die Route reicht das Ergebnis durch.
+
+In der SPA: SERIE-Badge auf Karte und Detailkopf, dazu ein Block "Naechste Termine" - angelegte
+Termine verlinken auf ihre Op, die uebrigen stehen als "noch nicht angelegt" da, mit Hinweis auf den
+Vorlauf. i18n de/en.
+
+Nebenbei: `tagStyle()` in `CalendarPage.tsx` baute Transparenz als `${color}55` zusammen. Die
+Haelfte der Aufrufer uebergibt ein Token, und `var(--green)55` ist keine Farbe - Rahmen und
+Hintergrund fielen dort still weg. Laeuft jetzt ueber `tint()`.
+
 ### Changed - Brandkit v2.2 uebernommen: Michroma, Patina, gemessener Light-Mode (2026-08-08)
 
 Quelle: `RDOC-Brandkit/brandkit`, BrandGuide v2.2. Das Restyling vom Vortag setzte v2.0 um; v2.1/2.2

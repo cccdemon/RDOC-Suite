@@ -60,6 +60,7 @@ type OpListRow = {
   meetingLocation: string;
   minParticipants: number;
   isStreamEvent?: boolean;
+  recurrenceId?: string | null;
   guild: { id: string; name: string; iconHash: string | null; discordInviteUrl?: string | null };
   units?: Array<{ id?: string; status: string; seats?: Array<{ userId: string | null }> }>;
 };
@@ -84,6 +85,23 @@ type OpDetailRow = OpListRow & {
   cqbSignups?: Array<{ userId: string; status: string; assignedGroupId: string | null; slotIndex?: number | null; lateEta?: string | null; user: { id: string; username: string } }>;
   auditLogs?: Array<{ actor: string; action: string; detail: string; createdAt: Date }>;
   cover?: { url: string } | null;
+  recurrenceId?: string | null;
+  recurrence?: {
+    id: string;
+    freq: string;
+    byWeekday: number | null;
+    nthWeek: number | null;
+    byMonth: number | null;
+    byMonthDay: number | null;
+    timeOfDay: string;
+    timezone: string;
+    active: boolean;
+    spawnedCount: number;
+    seriesCount: number | null;
+    seriesEnd: Date | null;
+    nextRunAt: Date;
+    leadTimeHours: number;
+  } | null;
 };
 
 // `redact` hides player identities — anonymous (not-logged-in) viewers of a
@@ -174,7 +192,17 @@ export function presentOperationSummary(
     filledSeats,
     totalSeats,
     isStreamEvent: op.isStreamEvent ?? false,
+    isRecurring: !!op.recurrenceId,
   };
+}
+
+// The column is a plain string; the contract is a union. Anything unknown maps
+// to "weekly" rather than emitting a value the schema rejects — a wrong label on
+// a badge beats a 500 on the detail route.
+type RecurrenceFreq = NonNullable<OperationDetail["recurrence"]>["freq"];
+const RECURRENCE_FREQS: readonly RecurrenceFreq[] = ["weekly", "biweekly", "monthly_nth", "yearly"];
+function recurrenceFreq(v: string): RecurrenceFreq {
+  return (RECURRENCE_FREQS as readonly string[]).includes(v) ? (v as RecurrenceFreq) : "weekly";
 }
 
 export function presentOperationDetail(
@@ -185,6 +213,10 @@ export function presentOperationDetail(
     signupState: "joined" | "waitlist" | null;
     cqbSignedUp?: boolean;
     hangarShared?: boolean;
+    /** Future occurrences of the series, computed by the caller. This module
+     *  stays free of prisma, and the occurrence math lives next to the
+     *  scheduler that owns it. */
+    upcomingOccurrences?: Array<{ at: Date; opId: string | null }>;
   },
 ): OperationDetail {
   // Anonymous viewers (public op, not logged in) never see player identities.
@@ -194,6 +226,28 @@ export function presentOperationDetail(
     viewerCqbSignedUp: viewer.cqbSignedUp ?? false,
     viewerHangarShared: viewer.hangarShared ?? false,
     description: op.description,
+    recurrence: op.recurrence
+      ? {
+          id: op.recurrence.id,
+          freq: recurrenceFreq(op.recurrence.freq),
+          byWeekday: op.recurrence.byWeekday,
+          nthWeek: op.recurrence.nthWeek,
+          byMonth: op.recurrence.byMonth,
+          byMonthDay: op.recurrence.byMonthDay,
+          timeOfDay: op.recurrence.timeOfDay,
+          timezone: op.recurrence.timezone,
+          active: op.recurrence.active,
+          spawnedCount: op.recurrence.spawnedCount,
+          seriesCount: op.recurrence.seriesCount,
+          seriesEnd: op.recurrence.seriesEnd?.toISOString() ?? null,
+          nextRunAt: op.recurrence.active ? op.recurrence.nextRunAt.toISOString() : null,
+          leadTimeHours: op.recurrence.leadTimeHours,
+          upcoming: (viewer.upcomingOccurrences ?? []).map((u) => ({
+            at: u.at.toISOString(),
+            opId: u.opId,
+          })),
+        }
+      : null,
     maxParticipants: op.maxParticipants,
     guild: {
       id: op.guild.id,

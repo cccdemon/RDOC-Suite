@@ -25,10 +25,12 @@ export const opSummaryFixture: OperationSummary = {
   filledSeats: 1,
   totalSeats: 2,
   isStreamEvent: false,
+  isRecurring: false,
 };
 
 export const opDetailFixture: OperationDetail = {
   ...opSummaryFixture,
+  recurrence: null,
   description: "Bring quant. Stay sharp.",
   maxParticipants: null,
   guild: { id: "guild_1", name: "RDOC", iconHash: null, timezone: "Europe/Berlin", discordInviteUrl: "https://discord.gg/example" },
