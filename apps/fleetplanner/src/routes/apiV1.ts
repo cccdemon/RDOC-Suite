@@ -451,7 +451,11 @@ export async function apiV1Routes(app: FastifyInstance) {
     // spawn horizon, while Discord lists every future date from the start. Send
     // the computed dates along, flagging the ones that already exist as ops.
     const rec = (op as { recurrence?: RecurrenceRow | null }).recurrence ?? null;
-    const upcoming = rec?.active ? await upcomingForSeries(rec) : [];
+    // The op's own occurrence is still "upcoming" until its start time passes;
+    // listing the page you are on among its own next dates reads as a bug.
+    const upcoming = (rec?.active ? await upcomingForSeries(rec) : []).filter(
+      (u) => u.opId !== op.id,
+    );
 
     return reply.type("application/json").send(
       presentOperationDetail(row, {
