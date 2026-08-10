@@ -95,7 +95,9 @@ const schema = z.object({
   // the editor link the operator's browser is redirected to.
   MISSIONCOVER_PUBLIC_URL: httpUrl.default("https://suite.raumdock.org/cover"),
 
-  // RDOC SquadLink Lite deep-link (FR SquadLink-CommandNet). Operationscommandanten
+  // Subraum deep-link (subraum.cc, formerly RDOC SquadLink; FR SquadLink-CommandNet).
+  // The SQUADLINK_* names and the squadlink:// scheme are the wire contract with the
+  // app and stay as they are. Operationscommandanten
   // get a `squadlink://connect` link from the op detail UI that joins the op voice
   // room without PIN/code. The token is HMAC-SHA256(secret, room) hex and MUST stay
   // byte-for-byte identical to the init-server's `ROOM_AUTH_SECRET` (RDOC-SACompanion
@@ -103,7 +105,7 @@ const schema = z.object({
   SQUADLINK_ROOM_AUTH_SECRET: z.string().optional(),
   // Signaling server WebSocket URL the link points at (init-server /ws).
   SQUADLINK_WS_URL: z.string().default("wss://squadlink.raumdock.org/ws"),
-  // Microsoft Store listing for SquadLink Lite. When set, the op voice panel offers
+  // Microsoft Store listing for Subraum. When set, the op voice panel offers
   // an "install the app" link next to the join link. Unset → install link hidden
   // (the Store listing may not be published yet).
   SQUADLINK_STORE_URL: z.string().optional(),

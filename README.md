@@ -6,7 +6,7 @@ It integrates with Discord through the official Bot API and OAuth2 only — no s
 
 > **The voice stack is gone.** Earlier versions shipped cross-channel push-to-talk (a Discord bot with `/cc` commands, a bridge backend, a LiveKit SFU and Discord relay bots). That stack was removed in `dbd2c3f`; LiveKit followed on 2026-06-18. Archives: [docs/VOICE-ARCHIVE-2026-06.md](docs/VOICE-ARCHIVE-2026-06.md), [docs/LIVEKIT-ARCHIVE-2026-06.md](docs/LIVEKIT-ARCHIVE-2026-06.md).
 >
-> What remains is a **link**: for a running operation the Fleetplanner mints a signed `squadlink://connect` deep link into the operation's command voice room for the people the operator picks. The audio itself belongs to [RDOC SquadLink](https://squadlink.raumdock.org/), a separate app. This service carries no audio and no relay bots.
+> What remains is a **link**: for a running operation the Fleetplanner mints a signed `squadlink://connect` deep link into the operation's command voice room for the people the operator picks. The audio itself belongs to [Subraum](https://subraum.cc/), a separate app. This service carries no audio and no relay bots.
 
 ## What it does
 

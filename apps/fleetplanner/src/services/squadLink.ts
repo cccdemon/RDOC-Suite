@@ -2,7 +2,9 @@ import crypto from "node:crypto";
 
 import { getEnv } from "../config/env.js";
 
-// RDOC SquadLink Lite deep-link (FR SquadLink-CommandNet).
+// Subraum deep-link (subraum.cc, formerly RDOC SquadLink).
+// The squadlink:// scheme, SQUADLINK_* env and this file name are the wire contract
+// with the app — renaming the product does not rename those.
 //
 // The Fleetplanner hands operation commanders a `squadlink://connect` link that
 // joins the operation's CommandNet voice room without PIN/code entry. SquadLink

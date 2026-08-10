@@ -11,7 +11,7 @@ RDOC-Suite — **Fleetplanner** für Star-Citizen-Orgs (Event-/Op-Planung, Disco
 > `apps/relay-bots`, LiveKit) wurde entfernt (`dbd2c3f chore: remove legacy voice/CC stack`;
 > LiveKit 2026-06-18). Restore-Referenz nur noch als Doku: `docs/LIVEKIT-ARCHIVE-2026-06.md`.
 > `apps/companion` (Tauri-Desktop-App) + `packages/shared` wurden 2026-08-07 entfernt — Voice läuft
-> über **RDOC-SACompanion / SquadLink** (eigenes Repo, Windows Store; im Fleetplanner nur über die
+> über **Subraum** (subraum.cc, frueher RDOC SquadLink; eigenes Repo, Windows Store; im Fleetplanner nur über die
 > `SQUADLINK_*`-Env angebunden).
 > **Verwaiste Reste, Löschkandidaten:** `packages/db` + Root-`prisma/` + die
 > `pnpm db:*`-Skripte (waren das Bridge/Bot-Schema — kein lebender Consumer mehr).
@@ -248,7 +248,7 @@ Prod-Only-Services ohne eigenes TS-Workspace: `alertmanager`, `postgres-exporter
 
 7. **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Die Guild-Rolle in `GuildMembership.role` kennt genau **zwei** Stufen: `fleetoperator | crew` (`GuildRole` in [services/guilds.ts](apps/fleetplanner/src/services/guilds.ts)). Eine Guild-Rolle „captain" gibt es **nicht** — „Captain" ist der Kapitän einer Einheit (`FleetUnit.captainId`), also eine Rolle innerhalb einer Operation. Middleware: `requireSuperadmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role`. Discord-Mapping: **nur** `admiralRoleId` → `fleetoperator`. Ein `captainRoleId` existiert nicht. Default bei neuem Member: `crew`.
 
-8. **SquadLink-Voice (Deep-Link, kein Audio):** [services/squadLink.ts](apps/fleetplanner/src/services/squadLink.ts) baut `squadlink://connect` mit `HMAC-SHA256(SQUADLINK_ROOM_AUTH_SECRET, room)`. Das Secret muss **byte-für-byte** dem `ROOM_AUTH_SECRET` des SquadLink-Init-Servers entsprechen, sonst verbindet kein Client. Unset → Funktion ist in der Oberfläche nicht vorhanden. Der Fleetplanner überträgt selbst kein Audio.
+8. **Subraum-Voice (Deep-Link, kein Audio):** [services/squadLink.ts](apps/fleetplanner/src/services/squadLink.ts) baut `squadlink://connect` mit `HMAC-SHA256(SQUADLINK_ROOM_AUTH_SECRET, room)`. Das Secret muss **byte-für-byte** dem `ROOM_AUTH_SECRET` des Subraum-Init-Servers entsprechen, sonst verbindet kein Client. Unset → Funktion ist in der Oberfläche nicht vorhanden. Der Fleetplanner überträgt selbst kein Audio.
 
 9. **`apps/mission-cover` = Vite-Frontend + Engine** (`@rdoc-suite/mission-cover`). Generiert Mission-Cover-Grafiken; eigenes Volume (`mission_cover_data`). Route: `suite.raumdock.org` (siehe Caddyfile).
 

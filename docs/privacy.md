@@ -38,7 +38,7 @@ sign-in and are **never** persisted or logged.
 | Attached **PDF documents** | `OperationDocument` row + file on the server volume | Briefing material | Deleted with the document or the operation |
 | Stream links | `OperationStream` | Who broadcasts | Cascade-deleted with the operation |
 | Shared hangar for an operation | `OperationHangarShare` | Lets the operator see which hulls are available | Cascade-deleted with the operation |
-| Voice link recipients | `OperationVoiceRecipient` | Who may see the SquadLink join link | Cascade-deleted with the operation |
+| Voice link recipients | `OperationVoiceRecipient` | Who may see the Subraum join link | Cascade-deleted with the operation |
 | Cover image | `OpCover` + file in the cover service | Banner, link preview, Discord event image | Auto-purged 14 days after an operation is completed or cancelled |
 
 ## Discord side
@@ -73,7 +73,7 @@ else leaves the instance.
 
 ## What is **never** collected
 
-- **Audio.** The Fleetplanner carries no voice traffic. It builds a link into a SquadLink room and
+- **Audio.** The Fleetplanner carries no voice traffic. It builds a link into a Subraum room and
   nothing more — no recording, no mixing, no presence in a Discord voice channel.
 - **Passwords.** Login is OAuth only.
 - **Discord message content, presence, or member lists** beyond the role ids needed for the

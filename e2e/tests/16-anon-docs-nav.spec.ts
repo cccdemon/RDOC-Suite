@@ -59,9 +59,10 @@ test("the start page describes only features that exist", async () => {
     expect(text, `start page still claims "${gone}"`).not.toContain(gone);
   }
 
-  // Voice is a link into a separate app, and it says so.
+  // Voice is a link into a separate app, and it says so under its current name.
   const voice = pg.getByTestId("start-feature-voice");
-  await expect(voice).toContainText("SquadLink");
+  await expect(voice).toContainText("Subraum");
+  await expect(voice).not.toContainText("SquadLink");
 
   // Every feature block must render a title and a body — a missing translation
   // key would show up as the raw key.

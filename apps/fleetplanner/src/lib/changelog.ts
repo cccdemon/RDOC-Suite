@@ -34,6 +34,14 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-15",
+    title: "SquadLink is now Subraum",
+    changes: [
+      "The voice app is called Subraum now (subraum.cc). Everywhere the Fleetplanner named it, it says Subraum.",
+      "The join link and the voice panel work exactly as before — only the name changed.",
+    ],
+  },
+  {
     date: "2026-08-14",
     title: "Show your org on the start page",
     changes: [
@@ -47,7 +55,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: "The start page now matches the tool",
     changes: [
       "The start page claimed radio relay bots carried a second voice net into your Discord channels. That has not been true for a while — the text is gone.",
-      "Voice is one thing now: for a running operation the commanders get a join link into the operation's voice room, and the talking happens in RDOC SquadLink.",
+      "Voice is one thing now: for a running operation the commanders get a join link into the operation's voice room, and the talking happens in Subraum (subraum.cc).",
       "Three things the tool has always done were missing from the page: templates, stream links and ground teams with mission Q&A.",
     ],
   },

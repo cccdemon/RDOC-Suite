@@ -82,7 +82,7 @@ aufgeräumt.
 ### 8. Sprach-Integration (Voice)
 Der Fleetplanner überträgt **kein Audio** und bewegt niemanden in Discord-Sprachkanäle. Er baut für
 eine **laufende** Operation einen signierten Deep-Link (`squadlink://connect`) in den CommandNet-Raum
-der Operation; gesprochen wird in **RDOC SquadLink**, einer eigenständigen App. Der Operator wählt
+der Operation; gesprochen wird in **Subraum** (subraum.cc), einer eigenständigen App. Der Operator wählt
 aus, welche zugewiesenen Teilnehmer den Link sehen. Ohne konfiguriertes Raum-Secret ist die Funktion
 in der Oberfläche schlicht nicht vorhanden.
 
@@ -136,6 +136,6 @@ Inaktivitäts-Alarm. Verworfen: Federation Voice. Blockiert: Item-/Loot-Datenban
 
 ## Abgrenzung
 Der Fleetplanner ist **kein Voice-Werkzeug**. Er kennt den Namen eines Sprachraums und mintet einen
-Link dorthin — mehr nicht. Audio, Push-to-Talk und Mischung liegen vollständig bei **RDOC SquadLink**
-(eigenes Repo, eigene App). Discord wird ausschließlich über die offizielle Bot-/OAuth-API genutzt
+Link dorthin — mehr nicht. Audio, Push-to-Talk und Mischung liegen vollständig bei **Subraum**
+(subraum.cc, eigenes Repo, eigene App). Discord wird ausschließlich über die offizielle Bot-/OAuth-API genutzt
 (keine Selfbots, keine Client-Mods, keine heimlichen Aufnahmen, keine Gateway-Verbindung).

@@ -917,7 +917,7 @@ export const en: Record<string, string> = {
 
   // Why unsigned page
   "wu.title": "WHY OUR BINARY IS NOT SIGNED",
-  "wu.intro": "When you install <strong>RDOC Squad Link</strong>, Windows SmartScreen may warn that the publisher is unknown. That is because the installer is not (yet) code-signed. Code signing for a small, non-commercial squad tool is surprisingly expensive and bureaucratic. Here is an honest rundown of every option we evaluated and where we currently stand.",
+  "wu.intro": "When you install <strong>Subraum</strong>, Windows SmartScreen may warn that the publisher is unknown. That is because the installer is not (yet) code-signed. Code signing for a small, non-commercial squad tool is surprisingly expensive and bureaucratic. Here is an honest rundown of every option we evaluated and where we currently stand.",
   "wu.o1t": "Azure Trusted Signing — best value (~$10/month)",
   "wu.o1b": "Microsoft's own cloud signing service. Gives <strong>instant SmartScreen reputation</strong> (no warmup), no hardware token. Integrates with <code>signtool</code> and ships a GitHub Action → straight into our <code>companion-build.yml</code>.<br /><span class=\"text-dim\">Catch:</span> the organization must be verifiable (ideally 3+ years old; otherwise extra validation), or an individual account. Currently the cheapest legitimate route.",
   "wu.o2t": "EV Code Signing Certificate (~$300–600/year)",

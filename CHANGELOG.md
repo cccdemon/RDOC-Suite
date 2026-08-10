@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Voice-App heisst jetzt Subraum (2026-08-13)
+
+"RDOC SquadLink" heisst **Subraum** (subraum.cc). Umbenannt wurde ueberall, wo der Name sichtbar
+ist: Startseite (de/en), Handbuch (Voice-Abschnitt, Add-on-Tabelle, unsignierte Anwendung),
+Op-Konsole und Eckdaten-Schalter, SC-Tools-Karte (Ziel jetzt subraum.cc), Datenschutz,
+`docs/ARCHITEKTUR.md`, `docs/FLEETPLANNER-UEBERBLICK.md`, `CLAUDE.md`, `README.md`.
+
+**Nicht umbenannt**, weil es der Vertrag mit der App ist und nicht der Produktname: das URL-Schema
+`squadlink://connect`, die `SQUADLINK_*`-Umgebungsvariablen, `services/squadLink.ts`, die
+Datenbankspalte `squadLinkVoiceEnabled` und die i18n-Schluessel. Falls die App ihr Schema oder ihren
+Signaling-Host mitgeaendert hat, ist das ein eigener Schritt — `SQUADLINK_WS_URL` zeigt weiter auf
+`wss://squadlink.raumdock.org/ws`, was laut Mergelog noch antwortet.
+
+### Changed - Startseite nutzt die volle Breite (2026-08-13)
+
+Die Startseite war auf 1080 px gedeckelt, waehrend der Inhaltsbereich 1600 px breit ist — auf einem
+1856-px-Fenster lagen **488 px rechts brach**, und das Org-Panel klebte mitten im Raster statt am
+rechten Rand. Der Deckel steht jetzt bei 1600 px (der Shell `.app-content` setzt keinen eigenen).
+Damit: vier Funktionsspalten plus Panel als fuenfte Spalte am rechten Rand, ab 1024 px rutscht das
+Panel unter das Raster, bei 390 px volle Breite. Fliesstext behaelt seine eigenen `ch`-Grenzen.
+
+
 ### Fixed - Discord-Ratelimit: die Instanz lief in 429er (2026-08-13)
 
 Beim Nachsehen, warum der neue Guild-Sweep das Raumdock-Icon nicht aktualisiert hat, standen die

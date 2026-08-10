@@ -1,5 +1,42 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-13: Startseite auf volle Breite + Voice-App heisst Subraum
+
+**Breite.** Der User hat markiert, dass rechts neben dem Org-Panel viel Platz leer bleibt. Gemessen
+auf einem 1856-px-Fenster: `.app-content` ist 1600 breit, die Startseite deckelte sich selbst auf
+1080 — **488 px ungenutzt**. Der Deckel steht jetzt auf 1600. Ergebnis (gemessen ueber mehrere
+Breiten):
+
+| Viewport | Seite | Luecke rechts | Funktionsspalten | Panel |
+|---|---|---|---|---|
+| 1856 | 1536 | 32 (Shell-Padding) | 4 | rechte Spalte |
+| 1440 | 1120 | 32 | 3 | rechte Spalte |
+| 1280 | 960 | 32 | 2 | rechte Spalte |
+| 1024 | 704 | 32 | 2 | unter dem Raster |
+| 390 | 364 | 13 | 1 | volle Breite |
+
+Kein Seitwaerts-Scrollen in keiner Breite. Fliesstext behaelt seine `ch`-Grenzen, die Zeilenlaenge
+aendert sich also nicht.
+
+**Umbenennung.** "RDOC SquadLink" heisst jetzt **Subraum** (subraum.cc). Geaendert wurde nur, was
+sichtbar ist: Startseite (de/en), Handbuch (Voice, Add-on-Tabelle, unsignierte Anwendung),
+Op-Konsole und Eckdaten-Schalter, SC-Tools-Karte (Ziel jetzt `https://subraum.cc/`), Datenschutz,
+ARCHITEKTUR, UEBERBLICK, CLAUDE.md, README.
+
+**Bewusst nicht umbenannt** — das ist der Vertrag mit der App, nicht der Produktname:
+`squadlink://connect`, `SQUADLINK_*`, `services/squadLink.ts`, `Operation.squadLinkVoiceEnabled`,
+die i18n-Schluessel. `SQUADLINK_WS_URL` zeigt weiter auf `wss://squadlink.raumdock.org/ws`; laut
+Mergelog vom 2026-08 antwortet der Host noch. **Offen:** falls Subraum Schema oder Signaling-Host
+gewechselt hat, muessen Env und ggf. das Schema nachgezogen werden — geraten wird das nicht.
+
+Beim lokalen Test fiel nebenbei auf, dass der neue Guild-Sweep die zu Testzwecken eingefuegten
+Guilds sofort deaktiviert, weil der Discord-Simulator sie nicht kennt. Loesung fuer den Test: die
+Guilds zusaetzlich per `POST /__mock/seed` im Simulator anlegen — danach bleiben sie aktiv und der
+Sweep zieht sogar den Icon-Hash aus dem Simulator. Der Simulator deckt damit auch diesen Pfad ab.
+
+572 Unit, 115 E2E gruen. Der E2E-Test pinnt den neuen Namen: der Voice-Block muss "Subraum" nennen
+und darf "SquadLink" nicht mehr enthalten.
+
 ## Completed - 2026-08-13: Server-Icons frisch halten + Used-by-Panel als Seitenspalte
 
 Meldung des Users: das Raumdock-Icon im neuen Panel bleibt leer.

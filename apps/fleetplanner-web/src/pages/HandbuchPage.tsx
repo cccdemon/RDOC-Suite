@@ -13,7 +13,7 @@ const SECTION_DESC: Record<string, string> = {
   anleitung: "Anleitung: So planst du Star-Citizen-Operationen, vergibst Flotten-Slots und meldest Crew im RDOC Fleetplanner an.",
   roadmap: "Roadmap des RDOC Fleetplanner — geplante Features für die Star-Citizen-Operationsplanung.",
   changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
-  unsigniert: "Warum die RDOC Squad Link Companion-Binary unsigniert ausgeliefert wird.",
+  unsigniert: "Warum die Subraum-Anwendung unsigniert ausgeliefert wird.",
 };
 
 // IA merge B: the 6 help/info docs become sections of one Handbuch hub instead of

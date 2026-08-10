@@ -82,7 +82,7 @@ export function SquadLinkPanel({ opId }: { opId: string }) {
             data-testid="squadlink-store"
             style={{ ...btnGhost, textDecoration: "none" }}
           >
-            <Ic name="arrow" size={14} sw={1.7} /> SquadLink Lite installieren (Microsoft Store)
+            <Ic name="arrow" size={14} sw={1.7} /> Subraum installieren (Microsoft Store)
           </a>
         </div>
       )}

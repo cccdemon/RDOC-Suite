@@ -164,7 +164,7 @@ function OperatorConsoleInner({
           <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{op.title}</div>
         </div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
-          <button type="button" data-testid="voice-quickswitch" title="SquadLink Voice" onClick={toggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.36rem 0.65rem", borderRadius: 8, cursor: "pointer", border: voiceEnabled ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: voiceEnabled ? "var(--wash)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim2)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em" }}>
+          <button type="button" data-testid="voice-quickswitch" title="Subraum Voice" onClick={toggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.36rem 0.65rem", borderRadius: 8, cursor: "pointer", border: voiceEnabled ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: voiceEnabled ? "var(--wash)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim2)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em" }}>
             <Ic name="mic" size={13} /> {voiceEnabled ? "VOICE AN" : "VOICE AUS"}
           </button>
           <SaveDot id="op-voice" />

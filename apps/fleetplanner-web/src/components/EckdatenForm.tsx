@@ -202,7 +202,7 @@ export function EckdatenForm({
             >
               <Ic name={voiceEnabled ? "check" : "mic"} size={15} sw={1.7} />
               <span style={{ flex: 1 }}>
-                <span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>SquadLink Voice</span>
+                <span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>Subraum Voice</span>
                 <span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>Commandanten bekommen ab Op-Start einen Direktlink in den CommandNet-Sprachraum.</span>
               </span>
             </button>

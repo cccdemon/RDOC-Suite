@@ -185,7 +185,13 @@ export function StartPage({ session }: { session: SessionResponse | null }) {
   });
 
   return (
-    <div data-testid="start-page" style={{ maxWidth: 1080 }}>
+    // 1080 used to cut the page off well before the content area ends — on a
+    // 1856px window 488px sat unused to the right of the org panel. The shell
+    // (.app-content) sets no width of its own, so the bound lives here: wide
+    // enough to fill a normal desktop, tight enough that an ultrawide does not
+    // stretch the hero across the whole screen. Body text keeps its own ch
+    // limits, so line length is unaffected.
+    <div data-testid="start-page" style={{ maxWidth: 1600 }}>
       {/* Hero. Flat surface, one Copper action — the brand guide allows exactly
           one primary action per view. */}
       <section

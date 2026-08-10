@@ -25,7 +25,7 @@ graph LR
     Discord["Discord<br/>REST v10 + OAuth2 + Interactions"]
     SCWiki["star-citizen.wiki<br/>Schiffskatalog"]
     Fleetyards["Fleetyards.net<br/>Silhouetten + Hangar-Import"]
-    SquadLink["RDOC SquadLink<br/>(eigene App, Voice)"]
+    SquadLink["Subraum (subraum.cc)<br/>(eigene App, Voice)"]
 
     Spieler --> FP
     Bot --> FP
@@ -716,7 +716,7 @@ signierte Interactions zurück.
   `--filter @rdoc-suite/fleetplanner db:*` verwenden.
 - **`routes/api.ts`** ist der ältere Layer neben `/api/v1`. Er wird bedient, nicht erweitert.
 - **Der Voice-Stack ist weg** (LiveKit 2026-06-18, Companion 2026-08-07). Der Fleetplanner überträgt
-  kein Audio; er mintet nur einen Deep-Link in RDOC SquadLink. Die früheren **Funkrelais-Bots
+  kein Audio; er mintet nur einen Deep-Link in Subraum (subraum.cc). Die früheren **Funkrelais-Bots
   existieren nicht mehr** — kein Modell, kein Service, keine Route. Übrig sind einige
   `FLEETPLANNER_VOICE_*`-Variablen, die absichtlich tolerant validiert werden.
 - **`MANAGE_ROLES` wird im Bot-Invite angefordert, aber nirgends benutzt.** Der Bot vergibt keine

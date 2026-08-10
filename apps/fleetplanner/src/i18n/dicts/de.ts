@@ -885,7 +885,7 @@ export const de: Record<string, string> = {
   "misc.source": "Quelle",
 
   "wu.title": "WARUM UNSERE BINARY NICHT SIGNIERT IST",
-  "wu.intro": "Wenn du <strong>RDOC Squad Link</strong> installierst, warnt Windows SmartScreen eventuell, dass der Herausgeber unbekannt ist. Das liegt daran, dass der Installer (noch) nicht code-signiert ist. Code-Signing für ein kleines, nicht-kommerzielles Squad-Tool ist überraschend teuer und bürokratisch. Hier ein ehrlicher Überblick über jede geprüfte Option und unseren aktuellen Stand.",
+  "wu.intro": "Wenn du <strong>Subraum</strong> installierst, warnt Windows SmartScreen eventuell, dass der Herausgeber unbekannt ist. Das liegt daran, dass der Installer (noch) nicht code-signiert ist. Code-Signing für ein kleines, nicht-kommerzielles Squad-Tool ist überraschend teuer und bürokratisch. Hier ein ehrlicher Überblick über jede geprüfte Option und unseren aktuellen Stand.",
   "wu.o1t": "Azure Trusted Signing — bestes Preis-Leistungs-Verhältnis (~$10/Monat)",
   "wu.o1b": "Microsofts eigener Cloud-Signing-Dienst. Liefert <strong>sofortige SmartScreen-Reputation</strong> (kein Warmup), kein Hardware-Token. Integriert sich mit <code>signtool</code> und bringt eine GitHub Action → direkt in unsere <code>companion-build.yml</code>.<br /><span class=\"text-dim\">Haken:</span> die Organisation muss verifizierbar sein (idealerweise 3+ Jahre alt; sonst Zusatzprüfung), oder ein Einzelkonto. Aktuell die günstigste legitime Route.",
   "wu.o2t": "EV-Code-Signing-Zertifikat (~$300–600/Jahr)",

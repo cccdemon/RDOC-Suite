@@ -409,7 +409,7 @@ export function whatIsBody(bp: string, de: boolean): SafeHtml {
 
 // Technical counterpart to whatIsBody — deliberately jargon-dense, for the
 // tech-savvy reader (and it captures technical long-tail search terms). Keep in
-// sync with the actual stack. Voice is a deep-link into RDOC SquadLink (a separate
+// sync with the actual stack. Voice is a deep-link into Subraum (a separate
 // app); the Fleetplanner itself carries no audio and has no relay bots.
 export function whatIsTechBody(bp: string): SafeHtml {
   const card = "card";
@@ -470,7 +470,8 @@ export function whatIsTechBody(bp: string): SafeHtml {
           Der Fleetplanner überträgt <strong>kein Audio</strong>. Er mintet ausschließlich einen
           signierten Deep-Link (<code>squadlink://connect</code>, HMAC-SHA256 über den Raumnamen) in
           den CommandNet-Raum einer laufenden Operation; gesprochen wird in
-          <strong>RDOC SquadLink</strong>, einer eigenständigen Anwendung. Der Operator wählt aus,
+          <strong>Subraum</strong> (<a href="https://subraum.cc" target="_blank" rel="noopener">subraum.cc</a>),
+          einer eigenständigen Anwendung. Der Operator wählt aus,
           welche zugewiesenen Teilnehmer den Link sehen. Ohne <code>SQUADLINK_ROOM_AUTH_SECRET</code>
           ist die Funktion in der Oberfläche nicht vorhanden. Kein Discord-Audio-Hook, kein Mithören.
         </p>
@@ -600,10 +601,10 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
               </td>
             </tr>
             <tr>
-              <td><span class="tag tag-cyan">SquadLink voice</span></td>
+              <td><span class="tag tag-cyan">Subraum voice</span></td>
               <td>
                 A join link into the operation's command voice room for the people the operator picks.
-                The audio itself runs in RDOC SquadLink, a separate app — the Fleetplanner only mints
+                The audio itself runs in Subraum (subraum.cc), a separate app — the Fleetplanner only mints
                 the link. Not configured on this instance means the panel is simply absent.
               </td>
             </tr>

@@ -336,7 +336,7 @@ export async function webRoutes(app: FastifyInstance) {
     anleitung: "Anleitung: Star-Citizen-Operationen planen, Flotten-Slots vergeben und Crew anmelden im RDOC Fleetplanner.",
     changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
     "sc-tools": "Star-Citizen-Tools rund um Flotten- und Operationsplanung im RDOC Fleetplanner.",
-    unsigniert: "Warum die RDOC Squad Link Companion-Binary unsigniert ausgeliefert wird.",
+    unsigniert: "Warum die Subraum-Anwendung unsigniert ausgeliefert wird.",
   };
   const RECHT_SLUG: Record<string, string> = { lizenz: "license", impressum: "impressum", datenschutz: "datenschutz" };
 
