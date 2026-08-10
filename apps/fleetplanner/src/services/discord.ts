@@ -11,6 +11,26 @@ import { discordRecurrenceRule, type RecurrenceLike } from "./recurrence.js";
 
 export type DiscordEventResult = { id: string } | null;
 
+/**
+ * fetch() that honours Discord's rate limit instead of walking into it.
+ *
+ * The interest sync walks every open operation and asks for its interested
+ * users; without this the instance produced a burst of 429s on every tick, and
+ * anything else talking to Discord in that window (the guild refresh sweep, for
+ * one) got a 429 too and silently did nothing. Discord sends `Retry-After` in
+ * seconds; wait that long, twice at most, then give the caller the response it
+ * would have had anyway.
+ */
+async function discordFetch(url: string, init: RequestInit, retries = 2): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
+    if (res.status !== 429 || attempt >= retries) return res;
+    const retryAfterSec = Number(res.headers.get("retry-after"));
+    const waitMs = Math.min((Number.isFinite(retryAfterSec) ? retryAfterSec : 1) * 1000 + 250, 6000);
+    await new Promise((r) => setTimeout(r, waitMs));
+  }
+}
+
 const OP_IMAGE_TYPES = new Set([
   "combat", "pve", "mining", "salvage", "training",
   "mixed", "exploration", "transport", "social",
@@ -131,7 +151,7 @@ export async function fetchGuildPresence(guildId: string): Promise<{
   const token = fleetplannerBotToken();
   if (!token) return { presence: "unknown", basic: null };
   try {
-    const res = await fetch(`${discordApiBase()}/guilds/${guildId}`, {
+    const res = await discordFetch(`${discordApiBase()}/guilds/${guildId}`, {
       headers: { Authorization: `Bot ${token}` },
       signal: AbortSignal.timeout(8000),
     });
@@ -528,7 +548,7 @@ export async function listScheduledEventUsers(
     url.searchParams.set("with_member", "true");
     if (after) url.searchParams.set("after", after);
 
-    const res = await fetch(url, {
+    const res = await discordFetch(url.toString(), {
       headers: { Authorization: `Bot ${token}` },
       signal: AbortSignal.timeout(8000),
     });

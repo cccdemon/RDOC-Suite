@@ -35,7 +35,27 @@ Seitenspalte rechts neben dem Funktionsraster statt darunter — Cyan-Rahmen, ab
 
 Tests: die E2E-Pruefung verlangt jetzt pro Org-Karte ein Zeichen (Icon **oder** Fallback). Bewusst
 **keine** Pixelpruefung — die Icons kommen von Discords CDN, und die Suite muss ohne Internet
-durchlaufen. 570 Unit, 115 E2E gruen.
+durchlaufen.
+
+### Nachtrag: warum der Sweep in Prod trotzdem nichts tat
+
+Nach dem Deploy blieb der Hash stehen. Discord liefert per Bot `icon=eec7e5c78cd3312db26da7723704cfba`,
+die DB hielt weiter `410a4ac4…` — der Sweep hatte also nicht aktualisiert. Ursache in den Prod-Logs:
+
+```
+[interest] sync failed for op … Discord scheduled-event users fetch failed (429):
+{"message": "You are being rate limited.", "retry_after": 2.492}   (x viele)
+```
+
+Der Interest-Tick feuert die Anfrage fuer **jede** offene Operation ohne Pause. Discord drosselt, und
+`fetchGuildPresence` faengt sich im selben Fenster ebenfalls eine 429 → `presence: "unknown"`,
+`basic: null` → kein Refresh. Der Icon-Bug hat einen zweiten, groesseren Fehler sichtbar gemacht:
+**die Instanz laeuft dauerhaft ins Ratelimit.**
+
+Fix: `discordFetch()` respektiert `Retry-After` (max. zwei Versuche, gedeckelt bei 6 s) in der
+Interest-Abfrage und im Guild-Refresh; der Interest-Tick laesst 250 ms zwischen den Operationen und
+erzeugt den Burst gar nicht erst. Zwei Unit-Tests decken beides ab (Retry nach 429, Aufgeben mit
+sauberem Fehler). 572 Unit, 115 E2E gruen.
 
 ## Completed - 2026-08-13: Deploy `b8a968a` (Testsuite, Architekturdoku, Audit, Used-by-Panel)
 

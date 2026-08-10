@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Discord-Ratelimit: die Instanz lief in 429er (2026-08-13)
+
+Beim Nachsehen, warum der neue Guild-Sweep das Raumdock-Icon nicht aktualisiert hat, standen die
+Prod-Logs voller `429 You are being rate limited` aus `listScheduledEventUsers`. Der Interest-Tick
+feuerte die Anfrage fuer **jede** offene Operation ohne Pause hintereinander. Folge: Discord drosselt,
+und alles andere, was in diesem Fenster mit Discord spricht, faengt sich ebenfalls eine 429 —
+darunter der Sweep, der daraufhin `presence: unknown` sah und schlicht nichts tat. Der Icon-Bug hat
+den zweiten Fehler also nur sichtbar gemacht.
+
+- `discordFetch()` respektiert `Retry-After` und versucht es hoechstens zweimal erneut (gedeckelt bei
+  6 s), verwendet in der Interest-Abfrage und im Guild-Refresh.
+- Der Interest-Tick laesst 250 ms zwischen den Operationen — er erzeugt den Burst gar nicht mehr.
+
 ### Fixed - Server-Icons veralteten fuer immer (2026-08-13)
 
 Auf der Startseite blieb das Icon von "Das Raumdock" leer. Ursache: `Guild.iconHash` (und `name`)

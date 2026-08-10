@@ -149,8 +149,14 @@ export async function runInterestSync(log: Logger): Promise<void> {
       },
       select: { id: true, guildId: true, discordEventId: true },
     });
+    // Space the ops out. The tick used to fire every op's request back to back,
+    // which is what produced the 429 bursts in the first place — the retry in
+    // discordFetch cleans up after that, this stops causing it.
+    let first = true;
     for (const op of ops) {
       if (!op.discordEventId) continue;
+      if (!first) await new Promise((r) => setTimeout(r, 250));
+      first = false;
       try {
         const r = await syncOpInterest({
           id: op.id,

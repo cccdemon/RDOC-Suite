@@ -197,6 +197,47 @@ describe("bot REST reads", () => {
   });
 });
 
+describe("rate limiting", () => {
+  it("waits out a 429 and retries instead of failing the caller", async () => {
+    const seen: number[] = [];
+    let call = 0;
+    mockFetch(() => {
+      call++;
+      seen.push(call);
+      if (call === 1) {
+        return {
+          ok: false,
+          status: 429,
+          statusText: "429",
+          headers: { get: (k: string) => (k.toLowerCase() === "retry-after" ? "0" : null) },
+          json: async () => ({ message: "You are being rate limited." }),
+          text: async () => "rate limited",
+        } as unknown as Response;
+      }
+      return ok([{ user: { id: "1", username: "a" } }]);
+    });
+
+    const users = await listScheduledEventUsers("g1", "e1");
+    expect(seen.length).toBeGreaterThanOrEqual(2); // retried
+    expect(users).toEqual([{ discordUserId: "1", displayName: "a" }]);
+  });
+
+  it("gives up after the retries and reports the 429 to the caller", async () => {
+    mockFetch(
+      () =>
+        ({
+          ok: false,
+          status: 429,
+          statusText: "429",
+          headers: { get: () => "0" },
+          json: async () => ({}),
+          text: async () => "rate limited",
+        }) as unknown as Response,
+    );
+    await expect(listScheduledEventUsers("g1", "e1")).rejects.toThrow(/429/);
+  });
+});
+
 describe("createScheduledEvent", () => {
   const op = {
     id: "op1",
