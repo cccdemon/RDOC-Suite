@@ -92,6 +92,17 @@ test("the used-by panel shows consented orgs, or nothing at all", async () => {
   await expect(panel).toBeVisible();
   const cards = pg.getByTestId("start-usedby-org");
   await expect(cards).toHaveCount(orgs.length);
+
+  // Every card carries a mark: the guild icon, or the neutral fallback when the
+  // stored icon hash has gone stale on Discord's CDN. Never a broken image.
+  for (let i = 0; i < orgs.length; i++) {
+    const card = cards.nth(i);
+    const marks = (await card.locator("img").count()) + (await card.locator("svg").count());
+    expect(marks, `org card ${i} has no logo and no fallback`).toBeGreaterThan(0);
+    // Deliberately no assertion on the pixels: the icon comes from Discord's
+    // CDN, and this suite must pass without internet access. Whether the image
+    // loads is exactly what the onError fallback is for.
+  }
   for (const org of orgs) {
     await expect(panel).toContainText(org.name);
     // Every card links somewhere, and outbound links carry noopener.

@@ -3,7 +3,7 @@
 // active guild for a request.
 
 import { prisma } from "../db.js";
-import { checkGuildBotPresence, discordUserIdForFleetplannerUser, fetchGuildBasic, fetchGuildMemberRoles } from "./discord.js";
+import { checkGuildBotPresence, discordUserIdForFleetplannerUser, fetchGuildBasic, fetchGuildMemberRoles, fetchGuildPresence } from "./discord.js";
 import { getActivePartnerGuildIds } from "./partnerships.js";
 
 export type GuildRole = "fleetoperator" | "crew";
@@ -102,13 +102,41 @@ export async function sweepGuildPresence(force = false): Promise<void> {
 
   const guilds = await prisma.guild.findMany({
     where: { active: true, bannedAt: null },
-    select: { id: true },
+    select: { id: true, name: true, iconHash: true },
   });
   for (const g of guilds) {
     if (E2E_GUILD_IDS.includes(g.id)) continue;
-    const presence = await checkGuildBotPresence(g.id);
-    if (presence === "absent") await deactivateGuild(g.id);
+    const { presence, basic } = await fetchGuildPresence(g.id);
+    if (presence === "absent") {
+      await deactivateGuild(g.id);
+      continue;
+    }
+    // Name and icon are otherwise written only at install time, so a server
+    // that renames itself or changes its icon keeps the old values forever —
+    // and a stale icon hash 404s on Discord's CDN. The call above already
+    // carries the current values; use them.
+    if (basic && (basic.name !== g.name || basic.icon !== g.iconHash)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (prisma.guild.update as any)({
+        where: { id: g.id },
+        data: { name: basic.name, iconHash: basic.icon },
+      }).catch(() => { /* a refresh must never break the sweep */ });
+    }
   }
+}
+
+/**
+ * Keep guild names, icons and presence fresh on their own schedule. Before this
+ * the sweep only ran when a superadmin happened to open the admin console, so a
+ * changed server icon stayed broken on the public start page indefinitely.
+ */
+export function startGuildRefreshScheduler(log: { info: (msg: string) => void; error: (e: unknown, msg: string) => void }): void {
+  const tick = () =>
+    void sweepGuildPresence(true).catch((e) => log.error(e, "[guilds] presence/refresh sweep failed"));
+  setTimeout(() => {
+    tick();
+    setInterval(tick, 6 * 60 * 60 * 1000);
+  }, 30_000);
 }
 
 /** SuperAdmin ban: force inactive + set bannedAt so it cannot be re-added. */

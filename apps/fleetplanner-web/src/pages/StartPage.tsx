@@ -62,7 +62,43 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
  * this file: an org appears only after its own operators tick the opt-in in the
  * guild settings, so the consent lives with the org and can be withdrawn there.
  * Failure and "nobody consented" are the same case — the panel stays away.
+ *
+ * Rendered as a sidebar beside the feature grid, so it is read as social proof
+ * next to the capabilities rather than as a footnote below them.
  */
+function OrgLogo({ org }: { org: PublicOrg }) {
+  // A guild icon hash is written at install time and can go stale (the server
+  // changed its icon), which makes Discord's CDN answer 404. A broken-image
+  // glyph is worse than no image, so fall back to the neutral server mark.
+  const [broken, setBroken] = useState(false);
+  if (!org.iconUrl || broken) {
+    return (
+      <span
+        style={{
+          width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+          display: "inline-flex", alignItems: "center", justifyContent: "center",
+          border: `1px solid ${tint("var(--cyan)", 35)}`,
+          background: tint("var(--cyan)", 12),
+          color: "var(--cyan)",
+        }}
+      >
+        <Ic name="server" size={18} sw={1.7} />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={org.iconUrl}
+      alt=""
+      width={36}
+      height={36}
+      loading="lazy"
+      onError={() => setBroken(true)}
+      style={{ borderRadius: 9, flexShrink: 0, objectFit: "cover" }}
+    />
+  );
+}
+
 function UsedBy() {
   const t = useT();
   const [orgs, setOrgs] = useState<PublicOrg[]>([]);
@@ -78,9 +114,29 @@ function UsedBy() {
   if (orgs.length === 0) return null;
 
   return (
-    <section style={{ marginBottom: "2rem" }} data-testid="start-usedby">
-      <SectionTitle>{t("start.usedby.title")}</SectionTitle>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
+    <aside
+      data-testid="start-usedby"
+      style={{
+        flex: "1 1 260px",
+        maxWidth: "100%",
+        alignSelf: "flex-start",
+        position: "sticky",
+        top: 84,
+        border: `1px solid ${tint("var(--cyan)", 35)}`,
+        borderRadius: "var(--r-card)",
+        background: tint("var(--cyan)", 7),
+        padding: "1.1rem 1.2rem",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.09em",
+          textTransform: "uppercase", color: "var(--cyan)", marginBottom: "0.9rem",
+        }}
+      >
+        {t("start.usedby.title")}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
         {orgs.map((o) => (
           <a
             key={o.inviteUrl}
@@ -92,40 +148,27 @@ function UsedBy() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "0.75rem",
+              gap: "0.7rem",
               border: "1px solid var(--border)",
               borderRadius: "var(--r-card)",
               background: "var(--bg2)",
-              padding: "0.95rem 1.1rem",
+              padding: "0.7rem 0.85rem",
               textDecoration: "none",
             }}
           >
-            {o.iconUrl ? (
-              <img
-                src={o.iconUrl}
-                alt=""
-                width={32}
-                height={32}
-                loading="lazy"
-                style={{ borderRadius: 8, flexShrink: 0 }}
-              />
-            ) : (
-              <span style={{ color: "var(--cyan)", display: "inline-flex", flexShrink: 0 }}>
-                <Ic name="server" size={18} sw={1.7} />
-              </span>
-            )}
+            <OrgLogo org={o} />
             <span style={{ minWidth: 0 }}>
-              <span style={{ color: "var(--text-hi)", fontSize: "0.95rem", display: "block", overflowWrap: "anywhere" }}>
+              <span style={{ color: "var(--text-hi)", fontSize: "0.92rem", display: "block", overflowWrap: "anywhere" }}>
                 {o.name}
               </span>
-              <span style={{ color: "var(--dim)", fontFamily: MONO, fontSize: "0.68rem" }}>
+              <span style={{ color: "var(--cyan)", fontFamily: MONO, fontSize: "0.66rem" }}>
                 {t("start.usedby.join")}
               </span>
             </span>
           </a>
         ))}
       </div>
-    </section>
+    </aside>
   );
 }
 
@@ -225,10 +268,12 @@ export function StartPage({ session }: { session: SessionResponse | null }) {
         </div>
       </section>
 
-      {/* Feature blocks. */}
+      {/* Feature blocks, with the "used by" panel as a sidebar beside them. On a
+          narrow screen the sidebar wraps underneath (flex-wrap). */}
       <section style={{ marginBottom: "2rem" }}>
         <SectionTitle>{t("start.features.title")}</SectionTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: "1rem" }}>
+        <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ flex: "999 1 520px", minWidth: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
           {FEATURES.map((f) => (
             <div
               key={f.key}
@@ -245,10 +290,9 @@ export function StartPage({ session }: { session: SessionResponse | null }) {
             </div>
           ))}
         </div>
+        <UsedBy />
+        </div>
       </section>
-
-      {/* Who runs it. Data-driven: see UsedBy above. */}
-      <UsedBy />
 
       {/* Roles. */}
       <section style={{ marginBottom: "2rem" }}>

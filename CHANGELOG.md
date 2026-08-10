@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Server-Icons veralteten fuer immer (2026-08-13)
+
+Auf der Startseite blieb das Icon von "Das Raumdock" leer. Ursache: `Guild.iconHash` (und `name`)
+wurden **nur bei der Bot-Installation** geschrieben und danach nie wieder. Der Server hat sein Icon
+seither geaendert, also zeigte der gespeicherte Hash auf eine 404 der Discord-CDN — geprueft:
+`cdn.discordapp.com/icons/1431307397842079777/410a…png` antwortet 404, die beiden anderen Orgs 200.
+
+- `fetchGuildPresence()` liefert Praesenz **und** Guild-Objekt in einem Aufruf. `sweepGuildPresence`
+  hat den Body bisher weggeworfen — jetzt frischt derselbe Aufruf Name und Icon auf. Keine
+  zusaetzliche Discord-Anfrage.
+- Der Sweep lief nur, wenn ein Superadmin die Admin-Konsole oeffnete. Neu:
+  `startGuildRefreshScheduler` — 30 s nach dem Start, danach alle 6 Stunden. Ein umbenannter Server
+  oder ein neues Icon zieht damit von selbst nach.
+- Die Startseite faellt bei einem kaputten Bild auf das neutrale Server-Zeichen zurueck
+  (`onError`), statt das Broken-Image-Symbol zu zeigen.
+
+### Changed - "Wird genutzt von"-Panel neben die Funktionsbloecke (2026-08-13)
+
+Auf Wunsch praesenter platziert: das Panel steht jetzt als Seitenspalte **rechts neben** dem
+Funktionsraster statt darunter, mit Cyan-Rahmen und Fond abgesetzt und beim Scrollen mitlaufend.
+Auf schmalen Bildschirmen rutscht es unter das Raster (Flex-Wrap), Breite bleibt innerhalb des
+Viewports.
+
+
 ### Added - "Wird genutzt von"-Panel auf der Startseite (2026-08-13)
 
 Die Startseite zeigt jetzt, welche Orgs den Fleetplanner einsetzen. **Datengetrieben mit Opt-in**

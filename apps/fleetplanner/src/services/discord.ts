@@ -119,6 +119,33 @@ export async function checkGuildBotPresence(
   }
 }
 
+/**
+ * Presence AND the guild payload in one call. `checkGuildBotPresence` throws the
+ * body away, which is why guild names and icons went stale forever after the
+ * install — this lets the sweep refresh them without a second request.
+ */
+export async function fetchGuildPresence(guildId: string): Promise<{
+  presence: "present" | "absent" | "unknown";
+  basic: { id: string; name: string; icon: string | null } | null;
+}> {
+  const token = fleetplannerBotToken();
+  if (!token) return { presence: "unknown", basic: null };
+  try {
+    const res = await fetch(`${discordApiBase()}/guilds/${guildId}`, {
+      headers: { Authorization: `Bot ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (res.ok) {
+      const basic = (await res.json()) as { id: string; name: string; icon: string | null };
+      return { presence: "present", basic };
+    }
+    if (res.status === 403 || res.status === 404) return { presence: "absent", basic: null };
+    return { presence: "unknown", basic: null };
+  } catch {
+    return { presence: "unknown", basic: null };
+  }
+}
+
 /** Fetch a member's Discord role ids in a guild (for role→fleet-role mapping). */
 export async function fetchGuildMemberRoles(guildId: string, userId: string): Promise<string[] | null> {
   const token = fleetplannerBotToken();

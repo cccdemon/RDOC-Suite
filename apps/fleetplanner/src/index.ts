@@ -6,6 +6,7 @@ import { startReminderScheduler } from "./services/reminderScheduler.js";
 import { startCoverCleanupScheduler } from "./services/coverCleanup.js";
 import { startRecurrenceScheduler } from "./services/recurrence.js";
 import { startEventInterestScheduler } from "./services/eventInterest.js";
+import { startGuildRefreshScheduler } from "./services/guilds.js";
 import { ensureFleetyardsFresh } from "./services/fleetyards.js";
 
 const env = getEnv();
@@ -43,6 +44,13 @@ try {
   });
   // FR-P2: poll Discord scheduled-event "Interested" → needs-assignment (5 min).
   startEventInterestScheduler({
+    info: (msg) => app.log.info(msg),
+    error: (e, msg) => app.log.error(e, msg),
+  });
+  // Keep guild names and icons in step with Discord. Without this they were
+  // written once at install and never again — a changed server icon then 404s
+  // on the CDN and shows up as a broken image on the public start page.
+  startGuildRefreshScheduler({
     info: (msg) => app.log.info(msg),
     error: (e, msg) => app.log.error(e, msg),
   });

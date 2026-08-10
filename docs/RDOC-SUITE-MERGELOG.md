@@ -1,5 +1,42 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-13: Server-Icons frisch halten + Used-by-Panel als Seitenspalte
+
+Meldung des Users: das Raumdock-Icon im neuen Panel bleibt leer.
+
+**Ursache** (verifiziert, nicht geraten): `Guild.iconHash` und `Guild.name` werden ausschliesslich in
+`installGuild()` geschrieben, also einmal bei der Bot-Installation. Danach nie wieder. Raumdock hat
+sein Server-Icon seither gewechselt, der gespeicherte Hash zeigt auf eine 404:
+
+```
+404  cdn.discordapp.com/icons/1431307397842079777/410a4ac4….png?size=64   (Das Raumdock)
+200  cdn.discordapp.com/icons/389133028531634176/a_e071c9e9….png?size=64  (Hexenwerk)
+200  cdn.discordapp.com/icons/770349097433169981/45e819d3….png?size=64    (Voidforge)
+```
+
+Nicht die CSP, nicht das Panel — die gespeicherten Daten.
+
+**Fix in drei Teilen:**
+
+1. `fetchGuildPresence()` in `services/discord.ts` gibt Praesenz **und** Guild-Objekt zurueck.
+   `sweepGuildPresence` warf den Body bisher weg; jetzt aktualisiert derselbe Aufruf Name und Icon,
+   wenn sie sich geaendert haben. Keine zusaetzliche Discord-Anfrage.
+2. `startGuildRefreshScheduler` (30 s nach Start, danach alle 6 h). Vorher lief der Sweep nur, wenn
+   ein Superadmin `/api/v1/admin/guilds` aufrief — fuer eine oeffentliche Seite viel zu selten.
+3. `OrgLogo` auf der Startseite faellt per `onError` auf das neutrale Server-Zeichen zurueck. Ein
+   veralteter Hash sieht damit nie wieder nach kaputtem Bild aus.
+
+Beim lokalen Test hat der neue Sweep prompt die drei Fake-Guilds deaktiviert, weil der
+Discord-Simulator sie nicht kennt (404 → "absent"). Genau das erwartete Verhalten.
+
+**Panel-Platzierung** (Wunsch des User, mitten im Lauf): das Used-by-Panel steht jetzt als
+Seitenspalte rechts neben dem Funktionsraster statt darunter — Cyan-Rahmen, abgesetzter Fond,
+`position: sticky`. Auf schmalen Bildschirmen wrappt es unter das Raster; kein Seitwaerts-Scrollen.
+
+Tests: die E2E-Pruefung verlangt jetzt pro Org-Karte ein Zeichen (Icon **oder** Fallback). Bewusst
+**keine** Pixelpruefung — die Icons kommen von Discords CDN, und die Suite muss ohne Internet
+durchlaufen. 570 Unit, 115 E2E gruen.
+
 ## Completed - 2026-08-13: Deploy `b8a968a` (Testsuite, Architekturdoku, Audit, Used-by-Panel)
 
 Auf Anweisung des Users deployed. `master` af629a5 -> **b8a968a**, LXC 103, `fleetplanner` +
