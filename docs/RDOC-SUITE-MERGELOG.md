@@ -1,5 +1,46 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-13: Deploy `b8a968a` (Testsuite, Architekturdoku, Audit, Used-by-Panel)
+
+Auf Anweisung des Users deployed. `master` af629a5 -> **b8a968a**, LXC 103, `fleetplanner` +
+`fleetplanner-web` neu gebaut.
+
+- Migration `20260813090000_guild_landing_opt_in` beim Container-Start angewandt (57 Migrationen
+  gefunden, eine neu). Keine bestehende Guild wurde dabei veroeffentlicht — das Feld ist Opt-in.
+- Opt-in danach fuer die drei vom User genannten Orgs gesetzt; Hexenwerk hatte keinen Invite
+  hinterlegt, der wurde als `https://` nachgetragen (der Validator lehnt `http://` ab):
+
+  | Org | Guild-ID | Invite |
+  |---|---|---|
+  | Das Raumdock | `1431307397842079777` | `https://discord.gg/raumdock` (war vorhanden) |
+  | Hexenwerk Gaming | `389133028531634176` | `https://discord.gg/H7wrrEgGMd` (neu gesetzt) |
+  | Voidforge Armaments | `770349097433169981` | `https://discord.gg/vfar` (war vorhanden) |
+
+- Verifiziert: `/api/v1/health` ok, `/api/v1/public/orgs` liefert die drei Orgs mit Icons, die
+  Startseite rendert 15 Funktionsbloecke + das Panel, `/handbuch/architektur` rendert drei Diagramme,
+  keine JS-Fehler. `scripts/prod-e2e-readonly.sh`: **ALL CHECKS PASSED**.
+
+### Sicherheitsbefund aus dem Boot-Log
+
+Der Fleetplanner protokolliert beim Start `E2E test-login seam ENABLED`. Nachgesehen:
+
+```
+NODE_ENV=production
+E2E_ALLOW_IN_PROD=1
+E2E_TEST_LOGIN_SECRET=SET
+E2E_TEST_LOGIN_EXPIRES=   (leer)
+```
+
+Die Test-Backdoor steht in **Produktion offen**, unbefristet — jemand hat sie nach einem E2E-Lauf
+nicht wieder geschlossen, obwohl der Seam genau das vorschreibt. Sie kann nur synthetische
+`e2e-*`-Nutzer in den synthetischen Guilds anlegen, also keine echten Konten uebernehmen; ein
+Geheimnisleck erlaubt aber dauerhaft Sitzungen auf der oeffentlichen Instanz.
+
+Seit heute gibt es dafuer keinen Grund mehr: die E2E-Suite laeuft gegen den lokalen Stack und
+braucht keine Live-Instanz. **Empfehlung:** `E2E_TEST_LOGIN_SECRET` und `E2E_ALLOW_IN_PROD` aus der
+Prod-`.env` entfernen und den Container neu starten. Nicht eigenmaechtig gemacht — Aenderung an der
+Prod-Konfiguration.
+
 ## Completed - 2026-08-13: "Wird genutzt von"-Panel auf der Startseite (Opt-in aus der DB)
 
 Wunsch des Users: die Startseite soll zeigen, welche Orgs den Fleetplanner einsetzen — Hexenwerk
