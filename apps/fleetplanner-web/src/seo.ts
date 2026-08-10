@@ -36,9 +36,14 @@ export type SeoInput = {
   canonical?: string;
   /** Marks the page noindex,nofollow (e.g. login). */
   noindex?: boolean;
+  /** Absolute preview image URL. Falls back to the site-wide og.png from
+   *  index.html, so a route only sets this when it has a better picture. */
+  image?: string;
+  /** Alt text for the preview image. Required whenever `image` is set. */
+  imageAlt?: string;
 };
 
-export function useSeo({ title, description, canonical, noindex }: SeoInput) {
+export function useSeo({ title, description, canonical, noindex, image, imageAlt }: SeoInput) {
   useEffect(() => {
     const full = title.includes(SITE) ? title : `${title} — ${SITE}`;
     document.title = full;
@@ -56,8 +61,17 @@ export function useSeo({ title, description, canonical, noindex }: SeoInput) {
       upsertMeta("name", "twitter:description", description);
     }
 
+    if (image) {
+      upsertMeta("property", "og:image", image);
+      upsertMeta("name", "twitter:image", image);
+      if (imageAlt) {
+        upsertMeta("property", "og:image:alt", imageAlt);
+        upsertMeta("name", "twitter:image:alt", imageAlt);
+      }
+    }
+
     upsertMeta("name", "robots", noindex ? "noindex, nofollow" : "index, follow");
-  }, [title, description, canonical, noindex]);
+  }, [title, description, canonical, noindex, image, imageAlt]);
 }
 
 /** Collapse markdown/whitespace and clamp for a meta description. */

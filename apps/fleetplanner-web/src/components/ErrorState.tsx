@@ -35,7 +35,7 @@ export function ErrorState({ code, message }: { code: number; message: string })
       {code === 401 ? (
         <Link className="btn" to="/login"><Ic name="lock" size={14} sw={1.7} /> {t("common.login")}</Link>
       ) : (
-        <Link className="btn" to="/"><Ic name="board" size={14} sw={1.7} /> {t("common.toOverview")}</Link>
+        <Link className="btn" to="/operationen"><Ic name="board" size={14} sw={1.7} /> {t("common.toOverview")}</Link>
       )}
     </div>
   );

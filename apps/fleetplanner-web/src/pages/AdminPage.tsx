@@ -124,7 +124,7 @@ export function AdminPage({ session }: { session: SessionResponse | null }) {
     return (
       <div className="fpw-state" data-testid="admin-forbidden">
         <span style={label}>NUR SUPERADMIN</span>
-        <Link className="fpw-btn" to="/">Zur Übersicht</Link>
+        <Link className="fpw-btn" to="/operationen">Zur Übersicht</Link>
       </div>
     );
 

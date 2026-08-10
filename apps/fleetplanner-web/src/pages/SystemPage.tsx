@@ -109,7 +109,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
     return (
       <div className="fpw-state" data-testid="system-forbidden">
         <span style={label}>NUR SUPERADMIN</span>
-        <Link className="fpw-btn" to="/">Zur Übersicht</Link>
+        <Link className="fpw-btn" to="/operationen">Zur Übersicht</Link>
       </div>
     );
 

@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Startseite fuer den Fleetplanner (2026-08-10)
+
+Bisher landete jeder Besucher auf `/` in der Operationsliste. Wer den Fleetplanner nicht kennt, sah
+eine fremde oder leere Liste und keinen Satz darueber, was das Werkzeug tut.
+
+Neu: `apps/fleetplanner-web/src/pages/StartPage.tsx` mit Lead, drei Schritten (Server verbinden,
+Operation anlegen, anmelden und fliegen), zwoelf Funktionsbloecken, den Rollen und einem
+Login-Aufruf.
+
+**Textregeln:** ASD-STE100 Simplified Technical English, Modus "STE-flavored" (Quelle:
+`CC-Giveaway/blog/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md`). Kurze Aussagesaetze,
+Aktiv, ein Gedanke pro Satz, hoechstens 20 Woerter, keine Semikola, keine Marketing-Adjektive,
+keine Gedankenstriche. Die englische Fassung laeuft mit `ste-lint.py` bei **0,00 Verstoessen pro
+100 Woerter** und null Gedankenstrichen. Das deckt sich mit der Copy-Doktrin des Brandkits:
+beschreibend statt aspirativ.
+
+**Inhalt gegen den Code geprueft, nicht gegen die Doku.** `docs/FLEETPLANNER-UEBERBLICK.md` ist vom
+2026-06-07 und beschreibt an zwei Stellen den entfernten LiveKit-Stack. Auf der Seite steht
+stattdessen, was Routen, `nav.ts` und die Env hergeben. Konkret korrigiert: der Login zieht nur den
+Scope `identify` (`routes/auth.ts`), die Seite behauptet also nicht, sie frage Server ab.
+
+**Routing.** `/` zeigt Ausgeloggten die Startseite und leitet Eingeloggte auf die Operationsliste.
+Die Liste hat mit `/operationen` eine eigene Adresse bekommen, damit die Nav aus beiden Zustaenden
+darauf zeigen kann und ein Gast weiterhin an die oeffentlichen Operationen kommt. `/start` ist
+immer erreichbar, auch eingeloggt. Solange die Session-Abfrage laeuft, rendert `/` nichts - sonst
+blitzt bei jedem Reload die Startseite auf. Mitgezogen: `/calendar`, die "Zur Uebersicht"-Links in
+ErrorState, AdminPage, SystemPage, LoginPage, ServerListPage und das Ziel nach dem Loeschen einer Op.
+
+**OG/SEO.** `useSeo` setzt jetzt auch `og:image` und `twitter:image` - vorher kam das Bild
+ausschliesslich aus dem statischen `index.html`. Die Startseite meldet Titel, Beschreibung, Canonical
+und Bild. `index.html` traegt dieselbe Beschreibung fuer Crawler, die kein JS ausfuehren; Titel und
+Beschreibung dort waren noch die alten Marketing-Zeilen mit Gedankenstrich und wurden nach denselben
+Regeln neu geschrieben. `/start` steht in der `sitemap.xml`.
+
+Als Vorschaubild bleibt das `og.png` aus dem Brandkit-Build. Ein eigenes Fleetplanner-OG von Hand
+waere Markenmaterial ausserhalb von `npm run build`, was Kapitel 16 des BrandGuide ausschliesst.
+
+Drei neue Tests: Gast auf `/` sieht die Startseite, Mitglied auf `/` landet auf den Operationen,
+`/start` bleibt eingeloggt erreichbar.
+
 ### Fixed - Wiederkehrende Serien waren im Fleetplanner unsichtbar (2026-08-09)
 
 Gemeldet an Op `cmsf3j45s002zo507bd0glbve`: 14-taegige Serie, auf Discord korrekt wiederkehrend, im

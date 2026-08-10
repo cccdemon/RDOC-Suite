@@ -36,7 +36,7 @@ export function LoginPage() {
           </a>
         ))}
       </div>
-      <p style={{ color: "var(--dim)", fontSize: "0.8rem" }}>{t("login.publicPre")}<Link to="/" style={{ color: "var(--cyan)" }}>{t("login.publicLink")}</Link>.</p>
+      <p style={{ color: "var(--dim)", fontSize: "0.8rem" }}>{t("login.publicPre")}<Link to="/operationen" style={{ color: "var(--cyan)" }}>{t("login.publicLink")}</Link>.</p>
     </div>
   );
 }

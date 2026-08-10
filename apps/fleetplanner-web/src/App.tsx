@@ -7,6 +7,7 @@ import { LocaleProvider } from "./i18n";
 import { Sidebar, MobileNav } from "./components/Sidebar";
 import { ToastHost } from "./components/Toast";
 import { OperationenPage } from "./pages/CalendarPage";
+import { StartPage } from "./pages/StartPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
 import { WizardPage } from "./pages/WizardPage";
 import { KontoPage } from "./pages/KontoPage";
@@ -76,10 +77,29 @@ export function App() {
             </div>
           )}
           <Routes>
-            {/* IA merge A: Operationen = Liste / Kalender / Agenda in one screen */}
-            <Route path="/" element={<OperationenPage session={session} />} />
+            {/* `/` is the front door for visitors and the work list for members.
+                A signed-out visitor gets the start page; a member goes straight
+                to the operations. The operation list keeps its own URL so the
+                nav can point at it from either state, and so a guest can still
+                reach the public operations.
+
+                `session === null` means the session request has not answered
+                yet, so nothing renders until it does. Without that, a member
+                would see the start page flash on every reload. */}
+            <Route
+              path="/"
+              element={
+                session === null && !sessionFailed ? null : session?.user ? (
+                  <Navigate to="/operationen" replace />
+                ) : (
+                  <StartPage session={session} />
+                )
+              }
+            />
+            {/* Always reachable, including when signed in. */}
+            <Route path="/start" element={<StartPage session={session} />} />
             <Route path="/operationen" element={<OperationenPage session={session} />} />
-            <Route path="/calendar" element={<Navigate to="/?view=kalender" replace />} />
+            <Route path="/calendar" element={<Navigate to="/operationen?view=kalender" replace />} />
             <Route path="/ops/new" element={<WizardPage session={session} />} />
             <Route path="/ships" element={<ShipsPage session={session} />} />
             <Route path="/polls" element={<PollsPage session={session} />} />

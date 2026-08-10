@@ -34,6 +34,16 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-10",
+    title: "A real start page",
+    changes: [
+      "The Fleetplanner now has a start page. It explains what the tool does, lists the functions and shows the three steps from a Discord server to a flown operation.",
+      "Visitors who are not signed in land there. Members go straight to their operations as before.",
+      "The operation list has its own address now. You reach it from the nav at any time, signed in or not.",
+      "Shared links show a proper title, description and preview image.",
+    ],
+  },
+  {
     date: "2026-08-09",
     title: "Recurring events are visible again",
     changes: [

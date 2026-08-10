@@ -100,7 +100,7 @@ export function EckdatenForm({
     setBusy(true);
     try {
       await deleteOperation(op.id, csrf);
-      navigate("/");
+      navigate("/operationen");
     } catch (e) {
       onNotice(e instanceof ApiError ? e.message : "Löschen fehlgeschlagen.");
       setBusy(false);

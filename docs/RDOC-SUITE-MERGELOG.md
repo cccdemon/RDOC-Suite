@@ -1,5 +1,48 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-10: Startseite fuer den Fleetplanner
+
+Bisher landet jeder Besucher auf `/` in der Operationsliste. Wer den Fleetplanner nicht kennt, sieht
+eine leere oder fremde Liste und keinen Satz darueber, was das Werkzeug tut.
+
+**Textregeln:** ASD-STE100 Simplified Technical English, Modus "STE-flavored", aus
+`CC-Giveaway/blog/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md`. Kurze Aussagesaetze,
+Aktiv, ein Gedanke pro Satz, hoechstens 20 Woerter, keine Semikola, keine Marketing-Adjektive,
+keine Gedankenstriche. Der Linter `ste-lint.py` aus demselben Verzeichnis prueft die englische
+Fassung gegen. Das deckt sich mit der Copy-Doktrin des Brandkits (`scripts/brands/rdoc.js`):
+beschreibend statt aspirativ, sagt was das Ding tut statt was es verspricht.
+
+**Inhalt** kommt aus dem Code und aus `docs/FLEETPLANNER-UEBERBLICK.md`, nicht aus der Vorstellung.
+Der Ueberblick ist vom 2026-06-07 und an zwei Stellen ueberholt (LiveKit-Bridge und Companion sind
+raus, Voice laeuft ueber SquadLink), also wird gegen `nav.ts`, die Routen und die Env geprueft, bevor
+eine Funktion auf der Seite behauptet wird.
+
+Umfang:
+
+- `apps/fleetplanner-web/src/pages/StartPage.tsx`: was der Fleetplanner tut, die Funktionen in
+  Bloecken, drei Schritte "wie es laeuft", ein Login-Aufruf.
+- Routing (Entscheidung des Users): `/` zeigt Ausgeloggten die Startseite, Eingeloggten weiter die
+  Operationsliste. Zusaetzlich eine feste Route, damit die Seite auch eingeloggt erreichbar bleibt.
+- i18n de/en fuer alle Texte.
+- OG/SEO: `useSeo` kann jetzt `og:image` und `twitter:image` setzen - vorher kam das Bild
+  ausschliesslich aus dem statischen `index.html`. Startseite bekommt Titel, Beschreibung, Bild und
+  JSON-LD; `index.html` behaelt die Crawler-Variante, weil Bots kein JS zuverlaessig rendern.
+  Als Bild bleibt das `og.png` aus dem Brandkit-Build - ein eigenes Fleetplanner-OG von Hand waere
+  Markenmaterial ausserhalb von `npm run build`, was Kapitel 16 des BrandGuide ausschliesst.
+
+**Waehrend der Arbeit dazugekommen.** `/` war fuer Gaeste bisher der Weg zu den oeffentlichen
+Operationen, und die Nav zeigte dorthin. Mit der Startseite auf `/` haette ein Gast die Ops nicht
+mehr erreicht. Die Liste hat deshalb mit `/operationen` eine eigene Adresse bekommen; Nav,
+`/calendar` und alle "Zur Uebersicht"-Links zeigen jetzt dorthin. `/` leitet Eingeloggte dorthin
+weiter.
+
+Gegen den Code geprueft statt aus der Doku uebernommen: der Login zieht nur den Scope `identify`
+(`routes/auth.ts`), die Seite behauptet also nicht, sie frage Discord-Server ab.
+
+Verifikation: `tsc --noEmit` gruen, `vite build` gruen, drei neue Tests (Gast auf `/`, Mitglied auf
+`/`, `/start` eingeloggt). Uebrige Failures unveraendert gegenueber dem Stand davor (SPA 6).
+Die englische Fassung der Texte laeuft mit `ste-lint.py` bei 0,00 Verstoessen pro 100 Woerter.
+
 ## Completed - 2026-08-09: Wiederkehrende Serien im Fleetplanner sichtbar gemacht
 
 **Fund.** Op `cmsf3j45s002zo507bd0glbve` ("LET`S PLAY // Community Event", Guild

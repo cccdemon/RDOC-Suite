@@ -51,7 +51,7 @@ export function ServerListPage({ session }: { session: SessionResponse | null })
           </p>
           <a href="/fleetplanner/guilds/add" className="btn" data-testid="servers-none-add"><Ic name="plus" size={14} sw={1.9} /> Bot hinzufügen</a>
           <p style={{ color: "var(--dim2)", fontSize: "0.82rem", marginTop: "1.3rem" }}>
-            Öffentliche Operationen kannst du auch ohne Server <Link to="/" style={{ color: "var(--cyan)" }}>ansehen</Link>.
+            Öffentliche Operationen kannst du auch ohne Server <Link to="/operationen" style={{ color: "var(--cyan)" }}>ansehen</Link>.
           </p>
         </div>
       ) : (

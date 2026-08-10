@@ -20,7 +20,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: "nav.group.ops",
     items: [
-      { to: "/", labelKey: "nav.ops", icon: "board" },
+      { to: "/operationen", labelKey: "nav.ops", icon: "board" },
       { to: "/ops/new", labelKey: "nav.opsNew", icon: "plus", auth: true },
       { to: "/polls", labelKey: "nav.polls", icon: "check" },
       { to: "/ships", labelKey: "nav.ships", icon: "ship" },
@@ -53,6 +53,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: "nav.group.info",
     items: [
+      { to: "/start", labelKey: "nav.start", icon: "globe" },
       { to: "/handbuch", labelKey: "nav.handbuch", icon: "doc" },
       { to: "/sc-tools", labelKey: "nav.scTools", icon: "wrench" },
       { to: "/api-docs", labelKey: "nav.apiDocs", icon: "doc" },

@@ -18,7 +18,7 @@ function renderAt(path: string) {
 
 describe("Overview", () => {
   it("guest: renders public op cards and the login CTA", async () => {
-    renderAt("/");
+    renderAt("/operationen");
     expect(await screen.findByText("Xenothreat Logistics")).toBeInTheDocument();
     expect(screen.getByTestId("login-cta")).toBeInTheDocument();
     // guest footer offers the login link (rendered in both the desktop sidebar
@@ -33,7 +33,7 @@ describe("Overview", () => {
         HttpResponse.json({ operations: [{ ...opSummaryFixture, signupState: "joined" }] }),
       ),
     );
-    renderAt("/?view=liste"); // the joined "DABEI" badge is a list-view card feature
+    renderAt("/operationen?view=liste"); // the joined "DABEI" badge is a list-view card feature
     // username now appears in the sidebar footer (and possibly the page)
     expect((await screen.findAllByText("Crew One")).length).toBeGreaterThanOrEqual(1);
     expect(await screen.findByText("DABEI")).toBeInTheDocument();
@@ -48,7 +48,7 @@ describe("Overview", () => {
         ),
       ),
     );
-    renderAt("/");
+    renderAt("/operationen");
     expect(await screen.findByTestId("error-503")).toBeInTheDocument();
   });
 });
@@ -497,6 +497,28 @@ describe("Op detail — operator panel", () => {
   });
 });
 
+describe("Start page", () => {
+  it("guest on / gets the start page, not the operation list", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
+    const { findByTestId } = renderAt("/");
+    expect(await findByTestId("start-page")).toBeInTheDocument();
+    expect(await findByTestId("start-cta-login")).toBeInTheDocument();
+  });
+
+  it("member on / lands on the operations", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)));
+    const { findByTestId } = renderAt("/");
+    expect(await findByTestId("calendar-page")).toBeInTheDocument();
+  });
+
+  it("/start stays reachable when signed in", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)));
+    const { findByTestId } = renderAt("/start");
+    expect(await findByTestId("start-page")).toBeInTheDocument();
+    expect(await findByTestId("start-cta-ops")).toBeInTheDocument();
+  });
+});
+
 describe("Operations calendar", () => {
   it("renders the current month, an op in its day cell, and links to the op", async () => {
     const today = new Date();
@@ -534,7 +556,7 @@ describe("Operations calendar", () => {
       http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
       http.get(`${API}/operations`, () => HttpResponse.json({ operations: [pastEv, futureEv] })),
     );
-    const { findByTestId, queryAllByText } = renderAt("/?view=agenda");
+    const { findByTestId, queryAllByText } = renderAt("/operationen?view=agenda");
     await findByTestId("calendar-page");
     await new Promise((r) => setTimeout(r, 30));
     // default: only upcoming events in the agenda
