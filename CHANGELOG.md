@@ -7,6 +7,190 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - "Wird genutzt von"-Panel auf der Startseite (2026-08-13)
+
+Die Startseite zeigt jetzt, welche Orgs den Fleetplanner einsetzen. **Datengetrieben mit Opt-in**
+statt fest im Code (Entscheidung des Users): fremde Discord-Invite-Links im Quelltext waeren eine
+Zustimmung, die nirgends dokumentiert ist, und jede weitere Org waere ein Deploy.
+
+- `Guild.landingOptIn` + Migration `20260813090000_guild_landing_opt_in`. Opt-in, nie Opt-out — die
+  Migration veroeffentlicht keine bestehende Guild.
+- Schalter in den Guild-Einstellungen ("Auf der Startseite zeigen"), deaktiviert solange kein
+  Einladungslink hinterlegt ist. Die Org entscheidet selbst und kann es zurueckziehen.
+- `GET /api/v1/public/orgs` (anonym): Name, Server-Icon, Einladungslink jeder Guild, die zugestimmt
+  hat, aktiv und nicht gesperrt ist **und** einen Invite hinterlegt hat. Nichts Personenbezogenes.
+  Die synthetischen E2E-Guilds sind ausgeschlossen — in Prod hat `E2E-Testserver` naemlich sowohl
+  `orgName` als auch einen Invite gesetzt und waere sonst auf der oeffentlichen Seite gelandet.
+- Panel rendert **gar nichts**, wenn niemand zugestimmt hat oder der Abruf scheitert: eine frische
+  Instanz zeigt keinen leeren Kasten, und ein dekoratives Panel darf die Landingpage nicht kippen.
+
+### Tests
+
+- `guilds.test.ts`: Filterbedingungen, `orgName` vor Servername, Icon-URL nur mit Icon-Hash,
+  Null-Invite faellt raus.
+- `apiV1.inject`: Route registriert, dokumentiert, **ohne** Session-Anforderung.
+- DB-Suite: leer → Opt-in ohne Invite bleibt leer → mit Invite sichtbar → Bann blendet sofort aus.
+- E2E: Panel deckt sich mit dem Endpunkt, jede Karte verlinkt und traegt `rel="noopener"`.
+
+
+### Fixed - Funktionsumfang gegen den Quelltext geprueft (2026-08-12)
+
+Meldung des Users: die Startseite behauptete unter "Sprache" noch Funkrelais-Bots. Die gibt es im
+Code nicht mehr — also nicht nur den Satz gestrichen, sondern den kompletten Funktionsumfang gegen
+`nav.ts`, die Routen, die Services und das Prisma-Schema gehalten. Die vollstaendige Tabelle
+(behauptet / im Code / Massnahme) steht im Mergelog.
+
+**Falsche Aussagen entfernt:**
+
+- "Funkrelais-Bots tragen ein zweites Netz in eure Discord-Sprachkanaele" — es gibt kein
+  `GuildVoiceBot`-Modell, keinen Service, keine Route, keine Oberflaeche.
+- "Er vergibt Sprachrollen waehrend der Operation" — der Bot **liest** `admiralRoleId`, er vergibt
+  keine Discord-Rollen.
+- Guild-Rolle `captain` und `captainRoleId` — `GuildRole` kennt genau `fleetoperator | crew`.
+  "Captain" ist der Kapitaen einer Einheit *innerhalb* einer Operation. Betraf `CLAUDE.md`,
+  `docs/ARCHITEKTUR.md` und `README.md`.
+- "Relay voice-bot tokens are stored encrypted" auf der Datenschutzseite.
+- "Mission voice is currently being rebuilt ... unavailable" im englischen Handbuch — widersprach
+  der deutschen Fassung im selben File.
+- "Discord.js" in der Stack-Kurzfassung — keine Abhaengigkeit, Discord laeuft ueber `fetch` gegen
+  die REST-API v10.
+- Gateway-Intents in `CLAUDE.md` — der Bot haelt keine Gateway-Verbindung.
+
+**Toter Code entfernt:** `services/secrets.ts` (`encryptSecret`/`decryptSecret`) hatte null
+Konsumenten, `VOICEBOT_ENCRYPTION_KEY` verschluesselte damit nichts mehr, und der i18n-Schluessel
+`gs.tokensNote` wurde von keiner Oberflaeche gerendert. Modul, Test, Env-Eintrag und
+`.env.example`-Block sind raus.
+
+**Startseite ergaenzt:** Vorlagen, Streams sowie Bodentruppe/Q&A fehlten ganz; Serien und
+Nachbereitung waren ungenau (12 → 15 Bloecke).
+
+**Neu geschrieben:** `docs/privacy.md` beschrieb `CommanderSession`, `GuildConfig`, ein
+Companion-JWT und LiveKit-Tokens — ein System, das es nicht mehr gibt. Jetzt ein Inventar gegen das
+aktuelle Schema, inklusive der Schattenzeilen aus `EventInterest` (Daten von Leuten ohne Konto).
+
+**Offener Befund:** `BOT_PERMISSIONS` fordert `MANAGE_CHANNELS`, `CONNECT`, `MOVE_MEMBERS` und
+`MANAGE_ROLES` an, die kein Code benutzt (Voice-Aera-Reste). Sie gehoeren aus der Invite-URL —
+das aendert die Installations-URL und ist deshalb im Mergelog als Entscheidung notiert, nicht
+nebenbei gemacht.
+
+### Tests
+
+- `16-anon-docs-nav`: die Startseite darf keinen Begriff der entfernten Voice-Aera mehr enthalten
+  (`Funkrelais`, `LiveKit`, `Companion`, `vergibt Sprachrollen`, `relay bot`), der Voice-Block muss
+  SquadLink nennen, und jeder Funktionsblock muss Text statt eines rohen i18n-Schluessels zeigen.
+
+
+### Added - Architekturdokumentation (Repo + Handbuch-Seite) (2026-08-11)
+
+Es gab keine Architekturbeschreibung: `README.md` hatte ein Grobdiagramm, `CLAUDE.md` einen
+Arbeits-Pickup, die Handbuch-Sektion "Technobabble" zwei Absaetze Stack-Nennung. Wer wissen wollte,
+welche Module es gibt, wie das Datenmodell aussieht oder was beim Veroeffentlichen einer Operation
+passiert, musste den Code lesen.
+
+- **`docs/ARCHITEKTUR.md`** — Kontext- und Laufzeitsicht, Schichtenmodell, Modulinventar (Routen,
+  Services, Contracts, SPA), vollstaendiges Datenmodell aus dem Prisma-Schema (40 Entitaeten in
+  sieben Gruppen, Beziehungen, Loeschverhalten) und Programmablaufplaene fuer die tragenden Fluesse:
+  Anfrage-Pipeline mit Auth/CSRF/Rate-Limit, Discord-OAuth, Op-Lebenszyklus inkl. Discord-Event,
+  Partnerverteilung mit signiertem Approval-Button, Interest-Polling, Serien-Spawn. Dazu
+  Querschnitt (Rollen, Hintergrundlaeufe, Geheimnisse) und eine Liste der Altlasten. Mermaid.
+- **Handbuch-Sektion "Softwarearchitektur"** unter `/handbuch/architektur` — dieselbe Sache fuer die
+  Website, mit den Diagrammen als **inline SVG**: die App-CSP verbietet Inline-Script, ein
+  Diagramm-Renderer im Browser ist damit ausgeschlossen. Neuer Builder `architectureBody`
+  (`web/pages.ts`), Slug `architecture` in `api/docContent.ts`, Sektion in `HandbuchPage.tsx`,
+  i18n de/en, Crawler-Route und Startseiten-Linkliste in `routes/web.ts`.
+- Querverweise aus `README.md` und `CLAUDE.md`.
+
+### Tests
+
+- `apiV1.inject`: alle zehn Doc-Slugs werden ausgeliefert, ein unbekannter Slug ist 404 — ein Tippfehler
+  in der Registry faellt sonst nur als leere Seite im Browser auf. Zusaetzlich: die Architekturseite
+  enthaelt genau drei SVGs, kein `<script>` und keine Inline-Event-Handler.
+- `16-anon-docs-nav`: die Sektion rendert ihre Diagramme, und die Seite scrollt weder auf dem Desktop
+  noch bei 390px Breite seitwaerts. Der Test hat zwei Ueberlaeufe gefunden (nicht umbrechende
+  Button-Zeile, nicht trennbare Ueberschrift), beide behoben.
+
+
+### Added - Echte Testsuite auf lokalem Docker-Stack mit Discord-Simulator (2026-08-10)
+
+Vorher testete nichts den echten Stack: die Playwright-Suite lief gegen die LIVE-Instanz (und
+brauchte dafuer eine offene Login-Backdoor in Produktion), Discord war in Tests gar nicht abgedeckt,
+und `scripts/test-integration.sh` prueft noch Container des 2026-06 entfernten Voice-Stacks.
+
+- **`docker-compose.test.yml` ist jetzt ein lokaler Stack** statt eines Smoke-Containers gegen Prod:
+  Postgres (tmpfs) + `discord-mock` + `fleetplanner` + `fleetplanner-web` (nginx-Frontdoor wie Prod)
+  + `mission-cover`. Ports: web `8099`, api `3299`, discord-mock `4400`, mission-cover `3399`,
+  Postgres `55432`. Konfiguration in `tests/stack/env.test` (Testsecrets bewusst eingecheckt).
+- **`tests/discord-mock/`** — Discord-Simulator ohne Fremdabhaengigkeiten: OAuth2, Bot-REST
+  (Guilds/Members/Roles/Channels, Scheduled-Events-CRUD inkl. paginierter `/users`, DMs, Messages
+  mit Multipart-Upload) plus Kontrollebene `/__mock/*` (reset, seed, state, calls, login-as,
+  interest, faults). `POST /__mock/interaction` signiert eine Discord-Interaction mit Ed25519 und
+  schickt sie an `/discord/interactions` — damit ist auch der Rueckweg testbar.
+- **`scripts/test-stack.sh`** als eine Eintrittstuer: `up|down|reset|logs|smoke|unit|unit:local|db|e2e|all`.
+- **Unit- UND DB-Tests laufen in Docker** (`tests/Dockerfile.unit`). Ein halb geschriebener lokaler
+  pnpm-Store bricht sonst die Modulaufloesung und sieht aus wie ein echter Testfehler.
+  Die DB-Ebene nimmt jetzt ein externes Postgres per `TEST_DATABASE_URL` (eigene Datenbank
+  `fleetplanner_test` auf dem Stack-Server, `db push --force-reset` pro Lauf); vorher startete
+  `globalSetup` selbst einen Container ueber die Docker-CLI - was in einem Container nicht geht.
+  `db:local` behaelt den alten Weg.
+- **Playwright zeigt per Default auf den lokalen Stack** (`http://localhost:8099`) statt auf Prod.
+  Der Pfad-Prefix ist ueber `E2E_BASE_PATH` konfigurierbar (lokal leer, Prod `/fleetplanner`),
+  Session-Cookies werden nur ueber HTTPS als `secure` gesetzt.
+- **Neue E2E-Specs `30`-`34`** fuer die Discord-Flows: Scheduled Event bei Publish/Edit/Cancel/Delete
+  (inkl. Stream-Prefix und 429-Ausfall, der die Op nicht blockieren darf), Event-Distribution mit
+  Approval-DM und signiertem Button (plus abgelehnter Faelschung), Feedback-Ticket mit
+  Screenshot-Upload, Announcement, Interest-Sync und der Discord-OAuth-Login.
+- **Neue Unit-Tests** fuer bisher ungetestete Services: `discord`, `eventDistribution`,
+  `eventInterest`, `streams`, `squadLink`, `systemEvents`, `lateArrival`, `maintenance`/`settings`,
+  `opDocuments`, `reminderScheduler`.
+
+### Changed
+
+- **Discord-Endpunkte sind env-aufgeloest** (`DISCORD_API_BASE`, `DISCORD_AUTHORIZE_BASE`,
+  `DISCORD_SITE_BASE` in `config/env.ts`). Defaults sind die bisherigen Hardcodes, Produktion
+  aendert sich nicht. Weicht ein Wert ab, warnt die App beim Boot laut (`assertDiscordEndpoints`) —
+  eine umgebogene Discord-Base darf nie unbemerkt in Prod stehen.
+- **`EVENT_INTEREST_INTERVAL_MS`** macht das "Interested"-Polling tunebar (Default weiter 5 Minuten,
+  Untergrenze 2s). Der lokale Stack pollt alle 3s, damit ein Test ein Discord-RSVP ankommen sieht.
+- **E2E-Seam kann eine synthetische Discord-Identitaet anhaengen** (`discordId`, nur `/^3\d{17}$/`).
+  Ohne sie sind DM-, Button- und Interest-Pfade nicht erreichbar.
+
+### Fixed
+
+- **Deep-Links auf `/` verloren ihre Query.** Seit der Startseite (`af629a5`) schickt `/` eingeloggte
+  Nutzer per `<Navigate to="/operationen">` weiter - ohne Query und Hash. `/?view=liste` (und jeder
+  andere Deep-Link auf die Liste) landete damit in der Default-Ansicht. `RootRedirect` in
+  `apps/fleetplanner-web/src/App.tsx` haengt `search` + `hash` wieder an. Vom lokalen Stack gefunden.
+- **Partnerschaft nach Revoke = HTTP 500.** `acceptPartnerToken` pruefte nur auf eine *aktive*
+  Doppelung; `(guildAId, guildBId)` ist aber unique, also lief ein neuer Token zwischen einem bereits
+  (auch revoked) verbundenen Paar in einen rohen Prisma-P2002 und einen 500er. Jetzt: `pair_revoked`
+  -> 409 mit klarer Meldung. Ebenfalls vom lokalen Stack gefunden.
+- Zwei veraltete Tests, die seit dem API-only-Refactor (2026-06-12) rot waren: `app.inject` erwartete
+  die geloeschten SSR-Seiten `/privacy`, `/license`, `/impressum`, `/how-to`, `/changelog` — jetzt
+  wird das Crawler-HTML geprueft und zusaetzlich, dass die alten Routen 404 bleiben. `units.test`
+  fehlte der `fleetUnit.findFirst`-Mock, den `setUnitStatus("accepted")` ueber die
+  Fighter-Auto-Zuweisung braucht.
+- `apiV1.inject` erwartete beim Feedback-Endpoint 400 fuer einen anonymen Request mit kaputtem Body;
+  geprueft wird zuerst Auth, also ist die richtige Antwort 401.
+- `02-admin` testete Rollenwechsel und Ban an einem `e2e-*`-User bzw. einer E2E-Guild - beides
+  blendet die Admin-API bewusst aus (`listAllGuildsForAdmin`, `username notStartsWith "e2e-"`).
+  Die Specs pruefen jetzt genau diese Unsichtbarkeit statt an Testdaten zu ruetteln.
+- `21-board` und `11-op-detail-player` brauchten einen gefuellten Schiffskatalog. Neuer Seam-Endpunkt
+  `POST /e2e/seed-ships` legt fuenf deterministische Schiffe an (`seedShips()` im Helper), statt auf
+  den SC-Wiki-Sync zu warten.
+- `/e2e/cleanup` raeumt zusaetzlich Partnerschaften und Share-Policies der synthetischen Guilds ab -
+  eine revoked Partnerschaft ist endgueltig und machte den Distribution-Spec sonst einmalig.
+- **Die beiden DB-Integrationssuites waren seit dem API-only-Refactor (2026-06-12) tot**: sie fuhren
+  gegen SSR-Formularrouten (`POST /ops/new`, `/api/ops/:id/status`, `/ops/:id/delete`), die es nicht
+  mehr gibt - 404 statt 302. Neu geschrieben gegen `/api/v1`, dabei von 12 auf 19 Tests erweitert
+  (Auth-Gate, CSRF-Gate, op-fremde Seat-Ids, Anonym-Sicht auf public Ops).
+
+### Removed
+
+- `scripts/test-integration.sh`, `tests/integration/suite.test.mjs` und `tests/Dockerfile.integration`
+  — sie prueften Bridge-, Bot- und LiveKit-Container, die es seit 2026-06 nicht mehr gibt. Ersetzt
+  durch den lokalen Stack (`./scripts/test-stack.sh smoke`).
+
+
 ### Added - Startseite fuer den Fleetplanner (2026-08-10)
 
 Bisher landete jeder Besucher auf `/` in der Operationsliste. Wer den Fleetplanner nicht kennt, sah

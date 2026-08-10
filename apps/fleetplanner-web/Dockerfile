@@ -14,6 +14,10 @@ COPY packages/fleetplanner-contracts packages/fleetplanner-contracts
 # Phase 4 serves the SPA under the shadow path; assets must resolve there.
 ARG BASE_PATH=/fleetplanner-next/
 ENV BASE_PATH=${BASE_PATH}
+# API prefix baked into the bundle (src/api/client.ts). Production is served
+# under /fleetplanner; the local test stack sits at the root and passes /api/v1.
+ARG VITE_API_BASE=/fleetplanner/api/v1
+ENV VITE_API_BASE=${VITE_API_BASE}
 RUN pnpm --filter @rdoc-suite/fleetplanner-contracts run build \
  && pnpm --filter @rdoc-suite/fleetplanner-web run build
 

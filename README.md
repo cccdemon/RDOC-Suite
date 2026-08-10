@@ -4,7 +4,9 @@ RDOC-Suite is a self-hosted fleet operations planner for Star Citizen orgs that 
 
 It integrates with Discord through the official Bot API and OAuth2 only — no selfbots, no client modifications, no audio capture.
 
-> **Voice is gone.** Earlier versions shipped a cross-channel push-to-talk stack (Discord bot with `/cc` commands, a bridge backend, LiveKit SFU and Discord relay bots). That stack was removed in `dbd2c3f`; LiveKit followed on 2026-06-18. The archives are in [docs/VOICE-ARCHIVE-2026-06.md](docs/VOICE-ARCHIVE-2026-06.md) and [docs/LIVEKIT-ARCHIVE-2026-06.md](docs/LIVEKIT-ARCHIVE-2026-06.md).
+> **The voice stack is gone.** Earlier versions shipped cross-channel push-to-talk (a Discord bot with `/cc` commands, a bridge backend, a LiveKit SFU and Discord relay bots). That stack was removed in `dbd2c3f`; LiveKit followed on 2026-06-18. Archives: [docs/VOICE-ARCHIVE-2026-06.md](docs/VOICE-ARCHIVE-2026-06.md), [docs/LIVEKIT-ARCHIVE-2026-06.md](docs/LIVEKIT-ARCHIVE-2026-06.md).
+>
+> What remains is a **link**: for a running operation the Fleetplanner mints a signed `squadlink://connect` deep link into the operation's command voice room for the people the operator picks. The audio itself belongs to [RDOC SquadLink](https://squadlink.raumdock.org/), a separate app. This service carries no audio and no relay bots.
 
 ## What it does
 
@@ -20,7 +22,7 @@ It integrates with Discord through the official Bot API and OAuth2 only — no s
 
 **Discord**
 
-- Discord OAuth login; guild membership and roles map to fleet operator / captain / crew per guild.
+- Discord OAuth login; a configured Discord role maps to **fleet operator**, everyone else is **crew** (the two per-guild roles). "Captain" is the commander of a unit inside an operation, not a server role.
 - Operations publish as Discord scheduled events. Clicking "Interested" there enrolls the pilot in the operation automatically, even before their first login.
 - Cross-post operations to partner orgs' Discords, with per-partner auto-share or an approval inbox.
 - Feedback tickets and DMs through the Fleetplanner bot.
@@ -47,6 +49,11 @@ It integrates with Discord through the official Bot API and OAuth2 only — no s
 | `packages/db`                    | Prisma client wrapper. Belongs to the removed bridge/bot schema; effectively vestigial.         |
 
 ## Architecture
+
+> The diagram below is the 30-second version. The detailed architecture — layers, module inventory,
+> the full data model and the flow charts behind publishing an operation, the Discord event and
+> partner distribution — is in **[docs/ARCHITEKTUR.md](docs/ARCHITEKTUR.md)**, and on the site under
+> `/handbuch/architektur`.
 
 ```mermaid
 graph LR
@@ -244,6 +251,8 @@ The root `prisma/` directory and the root `pnpm db:generate` / `db:migrate` / `d
 | File                                                             | Contents                                                   |
 | ---------------------------------------------------------------- | ---------------------------------------------------------- |
 | [docs/RDOC-SUITE-MERGELOG.md](docs/RDOC-SUITE-MERGELOG.md)       | **Primary source.** Queued, completed and open decisions.  |
+| [docs/ARCHITEKTUR.md](docs/ARCHITEKTUR.md)                       | **Detailed architecture**: layers, modules, data model, flow charts. |
+| [docs/TESTING.md](docs/TESTING.md)                               | Test suite: local Docker stack, Discord simulator, the four levels. |
 | [docs/ROADMAP.md](docs/ROADMAP.md)                               | Planned features with priorities and dependencies.         |
 | [CHANGELOG.md](CHANGELOG.md)                                     | Developer changelog.                                       |
 | [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md)     | Feature backlog.                                           |

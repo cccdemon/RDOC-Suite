@@ -1,7 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
-import { actorContext, cleanup, login, type TestActor } from "../helpers/auth.js";
-
-const BASE = process.env.E2E_BASE_URL ?? "https://suite.raumdock.org";
+import { API, actorContext, cleanup, login, SPA, type TestActor } from "../helpers/auth.js";
 
 // Logged-out gates, public doc surfaces, the login page, and shell controls
 // (theme, footer, nav, logout). No mutations.
@@ -11,7 +9,7 @@ let anon: BrowserContext;
 let pg: Page;
 
 test.beforeAll(async ({ browser }) => {
-  anon = await browser.newContext({ baseURL: `${BASE}/fleetplanner/`, ignoreHTTPSErrors: true });
+  anon = await browser.newContext({ baseURL: `${SPA}/`, ignoreHTTPSErrors: true });
   pg = await anon.newPage();
 });
 
@@ -47,6 +45,80 @@ test("public doc surfaces render", async () => {
     await pg.goto(route);
     await expect(pg.getByTestId(id)).toBeVisible({ timeout: 10_000 });
   }
+});
+
+test("the start page describes only features that exist", async () => {
+  await pg.goto("start");
+  const page = pg.getByTestId("start-page");
+  await expect(page).toBeVisible({ timeout: 10_000 });
+  const text = await page.innerText();
+
+  // Removed with the voice stack (2026-06/08): there are no relay bots, and the
+  // bot never grants Discord roles — it only reads the configured one.
+  for (const gone of ["Funkrelais", "Relais", "LiveKit", "Companion", "vergibt Sprachrollen", "relay bot"]) {
+    expect(text, `start page still claims "${gone}"`).not.toContain(gone);
+  }
+
+  // Voice is a link into a separate app, and it says so.
+  const voice = pg.getByTestId("start-feature-voice");
+  await expect(voice).toContainText("SquadLink");
+
+  // Every feature block must render a title and a body — a missing translation
+  // key would show up as the raw key.
+  const blocks = pg.locator('[data-testid^="start-feature-"]');
+  const count = await blocks.count();
+  expect(count).toBeGreaterThanOrEqual(15);
+  for (let i = 0; i < count; i++) {
+    const t = await blocks.nth(i).innerText();
+    expect(t.length, `feature block ${i} is empty`).toBeGreaterThan(40);
+    expect(t, `feature block ${i} shows a raw i18n key`).not.toMatch(/start\.f\./);
+  }
+});
+
+test("the used-by panel shows consented orgs, or nothing at all", async () => {
+  const res = await pg.request.get(`${API}/public/orgs`);
+  await expect(res).toBeOK();
+  const orgs = (await res.json()).orgs as Array<{ name: string; inviteUrl: string }>;
+
+  await pg.goto("start");
+  const panel = pg.getByTestId("start-usedby");
+
+  if (orgs.length === 0) {
+    // A fresh instance must not render an empty box.
+    await expect(panel).toHaveCount(0);
+    return;
+  }
+
+  await expect(panel).toBeVisible();
+  const cards = pg.getByTestId("start-usedby-org");
+  await expect(cards).toHaveCount(orgs.length);
+  for (const org of orgs) {
+    await expect(panel).toContainText(org.name);
+    // Every card links somewhere, and outbound links carry noopener.
+    const link = pg.locator(`[data-testid="start-usedby-org"][href="${org.inviteUrl}"]`);
+    await expect(link).toHaveCount(1);
+    expect(await link.getAttribute("rel")).toContain("noopener");
+  }
+});
+
+test("the architecture section renders its diagrams and stays inside the viewport", async () => {
+  await pg.goto("handbuch/architektur");
+  const doc = pg.getByTestId("doc-architecture");
+  await expect(doc).toBeVisible({ timeout: 10_000 });
+  // Inline SVG, because the app CSP forbids the inline script a diagram
+  // renderer would need. Three diagrams: runtime, data model, flow chart.
+  expect(await doc.locator("svg").count()).toBe(3);
+  expect(await doc.locator("table").count()).toBeGreaterThanOrEqual(4);
+
+  // Wide content (diagrams, tables) must scroll inside its own container — the
+  // page itself must never scroll sideways, least of all on a phone.
+  const noPageScroll = () =>
+    pg.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
+  expect(await noPageScroll()).toBe(true);
+  await pg.setViewportSize({ width: 390, height: 800 });
+  await expect(doc).toBeVisible();
+  expect(await noPageScroll()).toBe(true);
+  await pg.setViewportSize({ width: 1280, height: 900 });
 });
 
 test("shell controls: theme switch, footer legal, login affordance", async () => {

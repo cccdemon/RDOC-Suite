@@ -3,7 +3,7 @@
 // fleetplanner-web SPA renders it in its DocPage. No page rendering happens here
 // — this is trusted first-party HTML content returned as a string.
 import { html, rawHtml, type SafeHtml } from "../web/render.js";
-import { whyUnsignedBody, whatIsBody, whatIsTechBody, howToBody, datenschutzBody, changelogBody, scToolsBody } from "../web/pages.js";
+import { whyUnsignedBody, whatIsBody, whatIsTechBody, architectureBody, howToBody, datenschutzBody, changelogBody, scToolsBody } from "../web/pages.js";
 import { setLocale, t } from "../i18n/index.js";
 import { basePath, getEnv } from "../config/env.js";
 import { getScToolCards } from "../services/scTools.js";
@@ -115,6 +115,13 @@ const whatisTech: Builder = () => ({
   body: whatIsTechBody(basePath()),
 });
 
+// Long form: docs/ARCHITEKTUR.md. This is the same content for the website;
+// the diagrams are inline SVG because the app CSP forbids inline script.
+const architecture: Builder = () => ({
+  title: "Softwarearchitektur",
+  body: architectureBody(basePath()),
+});
+
 const datenschutz: Builder = () => ({ title: "Privacy", body: datenschutzBody(basePath()) });
 
 const changelog: Builder = (lang) => {
@@ -135,6 +142,7 @@ const BUILDERS: Record<string, Builder> = {
   "how-to": howTo,
   whatis,
   "whatis-tech": whatisTech,
+  architecture,
   datenschutz,
   changelog,
   "sc-tools": scTools,

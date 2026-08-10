@@ -283,6 +283,7 @@ export async function webRoutes(app: FastifyInstance) {
       `<h2>Star-Citizen-Operationen planen</h2><ul>` +
       `<li><a href="${base}/handbuch/was-ist-das">Was ist der RDOC Fleetplanner?</a></li>` +
       `<li><a href="${base}/handbuch/technobabble">Was ist das, in Technobabble (technischer Überblick)</a></li>` +
+      `<li><a href="${base}/handbuch/architektur">Softwarearchitektur: Bausteine, Datenmodell, Abläufe</a></li>` +
       `<li><a href="${base}/handbuch/anleitung">Anleitung</a></li></ul>` +
       (items ? `<h2>Kommende öffentliche Operationen</h2><ul>${items}</ul>` : "");
     const jsonLd = jsonLdScript({
@@ -322,6 +323,7 @@ export async function webRoutes(app: FastifyInstance) {
   const HANDBUCH_SLUG: Record<string, string> = {
     "was-ist-das": "whatis",
     technobabble: "whatis-tech",
+    architektur: "architecture",
     anleitung: "how-to",
     changelog: "changelog",
     "sc-tools": "sc-tools",
@@ -330,6 +332,7 @@ export async function webRoutes(app: FastifyInstance) {
   const HANDBUCH_DESC: Record<string, string> = {
     "was-ist-das": "Was ist der RDOC Fleetplanner? Operationsplanung für Star-Citizen-Organisationen — Events, Flotten-Slots, Crew und Voice.",
     technobabble: "RDOC Fleetplanner unter der Haube: React-SPA, Fastify, Prisma, PostgreSQL, Discord-OAuth, P2P-WebRTC-Voice — der technische Überblick.",
+    architektur: "Softwarearchitektur des RDOC Fleetplanner: Bausteine, Schichten, Datenmodell und die Abläufe hinter Operation, Discord-Event und Partnerverteilung.",
     anleitung: "Anleitung: Star-Citizen-Operationen planen, Flotten-Slots vergeben und Crew anmelden im RDOC Fleetplanner.",
     changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
     "sc-tools": "Star-Citizen-Tools rund um Flotten- und Operationsplanung im RDOC Fleetplanner.",

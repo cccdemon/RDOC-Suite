@@ -9,6 +9,7 @@ import { useT } from "../i18n";
 const SECTION_DESC: Record<string, string> = {
   "was-ist-das": "Was ist der RDOC Fleetplanner? Operationsplanung für Star-Citizen-Organisationen — Events, Flotten-Slots, Crew und Voice.",
   technobabble: "RDOC Fleetplanner unter der Haube: React-SPA, Fastify, Prisma, PostgreSQL, Discord-OAuth, P2P-WebRTC-Voice — der technische Überblick.",
+  architektur: "Softwarearchitektur des RDOC Fleetplanner: Bausteine, Schichten, Datenmodell und die Abläufe hinter Operation, Discord-Event und Partnerverteilung.",
   anleitung: "Anleitung: So planst du Star-Citizen-Operationen, vergibst Flotten-Slots und meldest Crew im RDOC Fleetplanner an.",
   roadmap: "Roadmap des RDOC Fleetplanner — geplante Features für die Star-Citizen-Operationsplanung.",
   changelog: "Changelog des RDOC Fleetplanner — neue Funktionen und Änderungen.",
@@ -21,6 +22,7 @@ const SECTION_DESC: Record<string, string> = {
 const SECTIONS = [
   { key: "was-ist-das", label: "Was ist das?", icon: "eye" },
   { key: "technobabble", label: "Was ist das (Technobabble)", icon: "wrench" },
+  { key: "architektur", label: "Softwarearchitektur", icon: "board" },
   { key: "anleitung", label: "Anleitung", icon: "doc" },
   { key: "roadmap", label: "Roadmap", icon: "board" },
   { key: "changelog", label: "Changelog", icon: "doc" },
@@ -31,6 +33,7 @@ function sectionContent(key: string) {
   switch (key) {
     case "was-ist-das": return <DocPage slug="whatis" lang="de" />;
     case "technobabble": return <DocPage slug="whatis-tech" lang="de" />;
+    case "architektur": return <DocPage slug="architecture" lang="de" />;
     case "anleitung": return <DocPage slug="how-to" />;
     case "roadmap": return <RoadmapPage />;
     case "changelog": return <DocPage slug="changelog" />;

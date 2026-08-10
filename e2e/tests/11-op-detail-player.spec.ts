@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
-import { actorContext, cleanup, login, type TestActor } from "../helpers/auth.js";
+import { actorContext, cleanup, login, type TestActor, seedShips } from "../helpers/auth.js";
 
 // Player-facing op detail: the offer-ship mode switch (ship / vehicle / squad),
 // the Q&A ask flow, and the operator's "view as" perspective switch. Scoped to
@@ -19,6 +19,8 @@ function futureLocal(days: number): string {
 }
 
 test.beforeAll(async ({ browser }) => {
+  // The local stack starts with an empty ship catalog (no SC-wiki sync).
+  await seedShips();
   await cleanup();
   operator = await login("e2e-operator", "fleetoperator", "fleetoperator");
   player = await login("e2e-player", "crew", "crew");

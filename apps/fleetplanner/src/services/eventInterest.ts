@@ -171,9 +171,24 @@ export async function runInterestSync(log: Logger): Promise<void> {
   }
 }
 
+const DEFAULT_INTERVAL_MS = 5 * 60 * 1000;
+const MIN_INTERVAL_MS = 2000;
+
+/**
+ * Poll interval. Tunable via EVENT_INTEREST_INTERVAL_MS so the local test stack
+ * can watch a Discord RSVP land within a test's lifetime instead of five
+ * minutes. Floored at 2s and defaulted to the production 5 min.
+ */
+export function interestSyncIntervalMs(): number {
+  const raw = Number(process.env.EVENT_INTEREST_INTERVAL_MS);
+  if (!Number.isFinite(raw) || raw <= 0) return DEFAULT_INTERVAL_MS;
+  return Math.max(MIN_INTERVAL_MS, Math.floor(raw));
+}
+
 export function startEventInterestScheduler(log: Logger): void {
+  const interval = interestSyncIntervalMs();
   setTimeout(() => {
     void runInterestSync(log);
-    setInterval(() => void runInterestSync(log), 5 * 60 * 1000);
-  }, 15000);
+    setInterval(() => void runInterestSync(log), interval);
+  }, Math.min(15000, interval));
 }

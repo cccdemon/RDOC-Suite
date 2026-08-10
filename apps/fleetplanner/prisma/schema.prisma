@@ -61,6 +61,10 @@ model Guild {
   reminderOffsetMin      Int       @default(15) // minutes before scheduledAt to send reminder DMs
   timezone               String    @default("Europe/Berlin") // IANA tz for scheduling UI (e.g. "America/New_York")
   discordInviteUrl       String?   // permanent Discord invite (e.g. https://discord.gg/raumdock) shown to non-member guests
+  // Consent to appear in the public "used by" panel on the start page. The guild
+  // decides for itself and can revoke it; without a discordInviteUrl the entry is
+  // skipped anyway (a card with no destination is pointless). Never default true.
+  landingOptIn           Boolean   @default(false)
   botInstalledAt         DateTime?
   active                 Boolean   @default(true)
   bannedAt               DateTime? // SuperAdmin ban: blocks (re)install + hides everywhere. null = not banned.

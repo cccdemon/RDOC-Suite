@@ -56,21 +56,42 @@ Prod-Services (aus `docker-compose.prod.yml`): `caddy-rdoc`, `fleetplanner`, `fl
 
 Alle Infra-/Deploy-Informationen liegen in [`docs/`](docs/) — kein STAND.md mehr.
 
-## Discord Bots — NIE verwechseln
+## Discord Bots
 
-Es gibt **nur noch einen** Bot-Typ + die Funkrelais-Bots. Der frühere RDOC-RTC-Voice-Bridge-Bot
-(App `1507722962919227452`, `/cc`, Bridge-OAuth) + die Companion-OAuth-App sind entfernt.
+Es gibt **genau einen** Bot. Der frühere RDOC-RTC-Voice-Bridge-Bot (App `1507722962919227452`,
+`/cc`, Bridge-OAuth), die Companion-OAuth-App und die **Funkrelais-Bots** sind entfernt — letztere
+restlos: kein `GuildVoiceBot`-Modell, kein Service, keine Route, keine Oberfläche (geprüft
+2026-08-12).
 
 | Bot | Env-Vars | Zweck |
 |---|---|---|
-| **RDOC-Fleetplanner Bot** (Prod App `1509191397264064689`, Portal-Name `RDOC-Fleetplanner`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID` | Discord-Events, Feedback-Tickets, DMs, Event-Rollen |
-| **Funkrelais Bots** (6×, in `GuildVoiceBot`-Tabelle) | pro Bot eigenes Token, verschlüsselt in DB | „Launch Voice Channels" — jeder Bot joined einen Discord-Voice-Channel |
+| **RDOC-Fleetplanner Bot** (Prod App `1509191397264064689`, Portal-Name `RDOC-Fleetplanner`) | `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_CLIENT_ID`, `DISCORD_FLEETPLANNER_PUBLIC_KEY` | Scheduled Events, Feedback-Tickets, Ankündigungen, DMs, Interest-Abgleich, Interaction-Buttons |
 
-### Erforderliche Bot-Permissions
+**REST-only.** Der Bot hält keine Gateway-Verbindung und nutzt keine Client-Bibliothek (kein
+discord.js) — nur `fetch` gegen `DISCORD_API_BASE` plus Ed25519-verifizierte HTTP-Interactions.
+Gateway-**Intents sind damit irrelevant**; die frühere Angabe „Intents: Guilds, GuildVoiceStates"
+war Voice-Ära-Rest.
 
-**Fleetplanner Bot** — Scopes: `bot applications.commands`
-- Permissions: `VIEW_CHANNEL`, `SEND_MESSAGES`, `READ_MESSAGE_HISTORY`, `MANAGE_ROLES`, `MANAGE_EVENTS`
-- Intents: `Guilds`, `GuildVoiceStates`
+### Bot-Permissions
+
+Angefordert werden in `BOT_PERMISSIONS` ([routes/guilds.ts](apps/fleetplanner/src/routes/guilds.ts))
+neun Bits. Tatsächlich benutzt werden fünf:
+
+| Permission | Bit | Benutzt? |
+|---|---|---|
+| `VIEW_CHANNEL` | 10 | ja — Kanäle lesen |
+| `SEND_MESSAGES` | 11 | ja — Tickets, Ankündigungen |
+| `READ_MESSAGE_HISTORY` | 16 | ja |
+| `MANAGE_EVENTS` | 33 | ja — Scheduled Events |
+| `ADD_EVENTS` | 44 | ja |
+| `MANAGE_CHANNELS` | 4 | **nein** |
+| `CONNECT` | 20 | **nein** |
+| `MOVE_MEMBERS` | 24 | **nein** |
+| `MANAGE_ROLES` | 28 | **nein** — der Bot *liest* nur `admiralRoleId`, er vergibt keine Rollen |
+
+Die vier unbenutzten sind Reste des Voice-Stacks. Sie gehören aus der Invite-URL entfernt (Least
+Privilege); das ändert die Installations-URL, deshalb eine bewusste Entscheidung und kein
+Nebenbei-Fix.
 
 **Token 401 → immer:** Discord Developer Portal → richtige App → Bot → Reset Token → `.env` updaten → Container neu starten.
 
@@ -132,30 +153,50 @@ pnpm --filter @rdoc-suite/fleetplanner test -- <datei>     # nur eine Test-Datei
 pnpm --filter @rdoc-suite/fleetplanner test -- -t "name"   # einzelner it("name", ...) Block
 ```
 
-**Es gibt vier Test-Ebenen, `pnpm test` deckt nur die erste ab:**
+**Testsuite: alles laeuft lokal gegen den Docker-Stack, Discord wird simuliert.**
+Eine Wahrheit dazu: [`docs/TESTING.md`](docs/TESTING.md).
 
 ```bash
-# 1. Unit (vitest, Prisma gemockt) — src/__tests__/{api,auth,services,web}
-pnpm --filter @rdoc-suite/fleetplanner test
+./scripts/test-stack.sh up      # lokalen Stack bauen + starten (web :8099, api :3299, discord-mock :4400)
+./scripts/test-stack.sh all     # up -> unit -> db -> smoke -> e2e -> down
+./scripts/test-stack.sh down    # alles stoppen und loeschen
+
+# 1. Unit (vitest, Prisma gemockt) - IN DOCKER, damit ein kaputter lokaler
+#    pnpm-Store nicht wie ein Testfehler aussieht.
+./scripts/test-stack.sh unit
+./scripts/test-stack.sh unit:local        # gleiche Tests mit lokalem pnpm
 
 # 2. DB-Integration: echtes Postgres in Docker via globalSetup, prisma db push,
-#    App über Fastify .inject(). Läuft sequenziell (fileParallelism: false).
-pnpm --filter @rdoc-suite/fleetplanner test:db
+#    App ueber Fastify .inject(). Sequenziell (fileParallelism: false).
+./scripts/test-stack.sh db
 
-# 3. Playwright-E2E gegen eine LIVE-Instanz. Eigenes npm-Projekt, NICHT im
-#    pnpm-Workspace. Seam: apps/fleetplanner/src/routes/e2eAuth.ts
-cd e2e && npm install && npx playwright install chromium
-E2E_TEST_LOGIN_SECRET=<Instanz-Secret> E2E_BASE_URL=https://suite.raumdock.org npx playwright test
-#    Nur e2e-*-User in der E2E-Guild 100000000000000001.
-#    NACH DEM LAUF E2E_TEST_LOGIN_SECRET auf der Instanz wieder entfernen.
+# 3. Playwright-E2E gegen den LOKALEN Stack (Default). Eigenes npm-Projekt,
+#    NICHT im pnpm-Workspace. Seam: apps/fleetplanner/src/routes/e2eAuth.ts
+./scripts/test-stack.sh e2e
 
-# 4. Prod-Smoke (GET-only, read-only, jederzeit sicher)
+# 4. Smoke gegen den lokalen Stack (HTTP, Security-Header, Auth-Gate)
+./scripts/test-stack.sh smoke
+
+# Prod-Smoke (GET-only, read-only, jederzeit sicher)
 E2E_BASE_URL=https://suite.raumdock.org ./scripts/prod-e2e-readonly.sh
-bash scripts/test-integration.sh          # oder docker-compose.test.yml
 
-# Dead-Code-Gate (knip.json existiert, es gibt kein package.json-Skript dafür)
+# Dead-Code-Gate (knip.json existiert, es gibt kein package.json-Skript dafuer)
 npx knip
 ```
+
+**Discord im Test = Simulator, nicht Skip.** `tests/discord-mock/` spricht genau die Discord-REST-
+Teilmenge, die die App nutzt, zeichnet jeden Request auf und schickt **Ed25519-signierte**
+Interactions zurueck an die App. Die App findet ihn ueber `DISCORD_API_BASE` /
+`DISCORD_AUTHORIZE_BASE` / `DISCORD_SITE_BASE` (Defaults = echtes Discord; jede Abweichung wird beim
+Boot laut geloggt). E2E-Specs `e2e/tests/30-34` decken Scheduled Events, Event-Distribution inkl.
+signiertem Approval-Button, Feedback/Announcement, Interest-Sync und den OAuth-Login ab.
+
+E2E gegen eine LIVE-Instanz geht weiter, ist aber explizit und oeffnet dort eine Backdoor:
+`E2E_BASE_URL=https://suite.raumdock.org E2E_BASE_PATH=/fleetplanner E2E_TEST_LOGIN_SECRET=<Secret> npx playwright test`
+- nur `e2e-*`-User in der E2E-Guild `100000000000000001`.
+**NACH DEM LAUF `E2E_TEST_LOGIN_SECRET` auf der Instanz wieder entfernen.**
+
+Einzelne Tests: `pnpm --filter @rdoc-suite/fleetplanner test -- <datei>` bzw. `-- -t "name"`.
 
 Es gibt keinen `ts-node`-Runner. **Für Production wird ausschließlich in Docker gebaut** — kein lokaler pnpm/npm/cargo auf dem Server.
 
@@ -205,9 +246,9 @@ Prod-Only-Services ohne eigenes TS-Workspace: `alertmanager`, `postgres-exporter
 
 6. **API-Typen: `@rdoc-suite/fleetplanner-contracts` ist Single Source of Truth.** Zod-Schemas in [packages/fleetplanner-contracts/src/index.ts](packages/fleetplanner-contracts/src/index.ts); Backend (`fleetplanner`) und SPA (`fleetplanner-web`) importieren dieselben Typen (SPA type-only via [apps/fleetplanner-web/src/api/types.ts](apps/fleetplanner-web/src/api/types.ts), damit zod nicht ins Bundle wandert). Neue/erweiterte API-Felder → **zuerst hier**, dann Consumer.
 
-7. **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Per-Guild-Rollen (`fleetoperator | captain | crew`) leben in `GuildMembership.role`. Middleware: `requireSuperAdmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role` für die aktive Guild. Discord-Mapping: `admiralRoleId` → `fleetoperator`, `captainRoleId` → `captain` (aus Guild-Settings). Default bei neuem Member: `crew`.
+7. **Rollen-Scoping (wichtig):** `User.role` ist **global** — nur `superadmin` lebt dort. Die Guild-Rolle in `GuildMembership.role` kennt genau **zwei** Stufen: `fleetoperator | crew` (`GuildRole` in [services/guilds.ts](apps/fleetplanner/src/services/guilds.ts)). Eine Guild-Rolle „captain" gibt es **nicht** — „Captain" ist der Kapitän einer Einheit (`FleetUnit.captainId`), also eine Rolle innerhalb einer Operation. Middleware: `requireSuperadmin()` prüft `User.role`; Guild-Aktionen prüfen `GuildMembership.role`. Discord-Mapping: **nur** `admiralRoleId` → `fleetoperator`. Ein `captainRoleId` existiert nicht. Default bei neuem Member: `crew`.
 
-8. **Funkrelais-Token-Verschlüsselung:** [apps/fleetplanner/src/services/secrets.ts](apps/fleetplanner/src/services/secrets.ts) nutzt `VOICEBOT_ENCRYPTION_KEY` (BYOK, stabil). Fallback auf `SESSION_SECRET` wenn nicht gesetzt — dann müssen die 6 Bot-Tokens nach jeder Session-Secret-Rotation neu eingegeben werden. `VOICEBOT_ENCRYPTION_KEY` NIEMALS ändern ohne alle Bot-Tokens neu einzugeben.
+8. **SquadLink-Voice (Deep-Link, kein Audio):** [services/squadLink.ts](apps/fleetplanner/src/services/squadLink.ts) baut `squadlink://connect` mit `HMAC-SHA256(SQUADLINK_ROOM_AUTH_SECRET, room)`. Das Secret muss **byte-für-byte** dem `ROOM_AUTH_SECRET` des SquadLink-Init-Servers entsprechen, sonst verbindet kein Client. Unset → Funktion ist in der Oberfläche nicht vorhanden. Der Fleetplanner überträgt selbst kein Audio.
 
 9. **`apps/mission-cover` = Vite-Frontend + Engine** (`@rdoc-suite/mission-cover`). Generiert Mission-Cover-Grafiken; eigenes Volume (`mission_cover_data`). Route: `suite.raumdock.org` (siehe Caddyfile).
 
@@ -224,8 +265,7 @@ Autoritative Env-Referenz: das Zod-Schema in [apps/fleetplanner/src/config/env.t
 - **Lokales `tsc --noEmit` in `fleetplanner-web` schlägt fehl, wenn `packages/fleetplanner-contracts/dist` veraltet ist.** Die SPA importiert Typen aus dem gebauten `dist`, nicht aus `src` — neue Contract-Felder (z.B. `isStreamEvent`, `streams`) fehlen dann mit `TS2305`/`TS2339`, obwohl der Code korrekt ist. Docker baut Contracts vor der SPA neu → Prod-Build ist grün. Lokal vor Typecheck erst `pnpm --filter @rdoc-suite/fleetplanner-contracts build` laufen lassen (oder die Fehler ignorieren, wenn sie nur Contract-Felder betreffen).
 - **pnpm-Workspaces im Runtime-Image: jedes** Workspace-`node_modules/` muss mit-kopiert werden. Vorlage: [apps/fleetplanner/Dockerfile](apps/fleetplanner/Dockerfile).
 - **Fleetplanner `__tests__/` aus TSC-Build ausgeschlossen.** `apps/fleetplanner/tsconfig.json` excludet `src/__tests__` — Vitest kompiliert Tests separat. Nie den exclude entfernen, sonst bricht Docker-Build wegen Mock-Typ-Inkompatibilität.
-- **`VOICEBOT_ENCRYPTION_KEY` stabil halten.** Fleetplanner verschlüsselt Funkrelais-Bot-Tokens mit diesem Key. Wird er geändert (oder ist nicht gesetzt → Fallback auf `SESSION_SECRET`), müssen alle 6 Bot-Tokens in den Guild-Einstellungen neu eingegeben werden. Key einmal setzen, nie wieder anfassen.
-- **"Unsupported state or unable to authenticate data" bei "Launch Voice Channels"** = `VOICEBOT_ENCRYPTION_KEY` hat sich geändert oder fehlt. Fix: alle Funkrelais-Tokens in `/guilds/settings` neu eingeben.
+- **`SQUADLINK_ROOM_AUTH_SECRET` muss exakt mit dem Init-Server übereinstimmen.** Der Join-Token ist `HMAC-SHA256(secret, room)` als Hex; eine Abweichung um ein Byte heißt: der Link öffnet SquadLink, aber der Raum weist ab. Nicht gesetzt → die Voice-Karte ist gar nicht da (kein Fehler, sondern Absicht).
 
 ### Wo welche Doku liegt
 
@@ -233,11 +273,13 @@ Autoritative Env-Referenz: das Zod-Schema in [apps/fleetplanner/src/config/env.t
 |---|---|
 | [docs/RDOC-SUITE-MERGELOG.md](docs/RDOC-SUITE-MERGELOG.md) | **Primäre Quelle** — Queued/Completed/Decisions. Vor jeder Änderung lesen und schreiben. |
 | [docs/MERGELOG-archive-pre-2026-06-02.md](docs/MERGELOG-archive-pre-2026-06-02.md) | Archiv (nicht pflegen): topic-basierte Früh-Historie inkl. Tenant-Overhaul + erster Fleetplanner-Feature-Dump. |
+| [docs/ARCHITEKTUR.md](docs/ARCHITEKTUR.md) | **Detaillierte Architektur** — Schichten, Modulinventar, Datenmodell (40 Entitäten), Programmablaufpläne. Website-Fassung: `/handbuch/architektur`. |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | **Roadmap-Übersicht** — alle FR-P* mit Prio/Deps/Reihenfolge + Bug-/Feedback-Liste + „needs sighting". Forward-looking (Changelog = Vergangenheit). |
 | [docs/FLEETPLANNER-BACKLOG.md](docs/FLEETPLANNER-BACKLOG.md) | Feature-Backlog Fleetplanner — was done, was fehlt. |
 | [docs/privacy.md](docs/privacy.md) | Daten-Inventar |
 | [docs/api/fleetplanner-v1.md](docs/api/fleetplanner-v1.md) | `/api/v1`-Vertrag, Fehler-Envelope, Auth/CSRF |
 | [docs/api/fleetplanner-route-inventory.md](docs/api/fleetplanner-route-inventory.md) | Vollständige Routen-Liste (welcher Layer bedient was) |
+| [docs/TESTING.md](docs/TESTING.md) | **Testsuite** — lokaler Docker-Stack, Discord-Simulator, die vier Ebenen |
 | [docs/Testing-Checklist.md](docs/Testing-Checklist.md) | Manuelle Abnahme vor Deploy |
 | [docs/FLEETPLANNER-UEBERBLICK.md](docs/FLEETPLANNER-UEBERBLICK.md) | Feature-Überblick für Nicht-Entwickler |
 | [docs/archiv/](docs/archiv/) | Umgesetzte FR-Docs — Design-Referenz, keine offenen Aufgaben |

@@ -1,5 +1,5 @@
 import { buildApp } from "./app.js";
-import { getEnv } from "./config/env.js";
+import { assertDiscordEndpoints, getEnv } from "./config/env.js";
 import { startShipSyncScheduler } from "./services/shipSync.js";
 import { startLocationSyncScheduler } from "./services/locations.js";
 import { startReminderScheduler } from "./services/reminderScheduler.js";
@@ -10,6 +10,10 @@ import { ensureFleetyardsFresh } from "./services/fleetyards.js";
 
 const env = getEnv();
 const app = await buildApp();
+
+// Loud warning if DISCORD_API_BASE/DISCORD_SITE_BASE point away from Discord
+// (only the local test stack should ever do that).
+assertDiscordEndpoints(app.log);
 
 try {
   await app.listen({ host: env.HOST, port: env.PORT });

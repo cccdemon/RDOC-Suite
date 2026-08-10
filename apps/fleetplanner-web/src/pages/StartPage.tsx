@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { SessionResponse } from "../api/types";
+import { getPublicOrgs } from "../api/client";
+import type { PublicOrg, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { tint } from "../components/ui";
 import { useT } from "../i18n";
@@ -28,8 +30,11 @@ const FEATURES = [
   { key: "ships", icon: "ship" },
   { key: "cover", icon: "doc" },
   { key: "polls", icon: "check" },
+  { key: "templates", icon: "save" },
+  { key: "streams", icon: "eye" },
+  { key: "ground", icon: "fps" },
   { key: "tenants", icon: "server" },
-  { key: "after", icon: "doc" },
+  { key: "after", icon: "cal" },
   { key: "open", icon: "link" },
 ] as const;
 
@@ -49,6 +54,78 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     >
       {children}
     </h2>
+  );
+}
+
+/**
+ * The orgs that run the Fleetplanner. Comes from the API, not from a list in
+ * this file: an org appears only after its own operators tick the opt-in in the
+ * guild settings, so the consent lives with the org and can be withdrawn there.
+ * Failure and "nobody consented" are the same case — the panel stays away.
+ */
+function UsedBy() {
+  const t = useT();
+  const [orgs, setOrgs] = useState<PublicOrg[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPublicOrgs()
+      .then((r) => { if (!cancelled) setOrgs(r.orgs); })
+      .catch(() => { /* landing page must not break over a decorative panel */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (orgs.length === 0) return null;
+
+  return (
+    <section style={{ marginBottom: "2rem" }} data-testid="start-usedby">
+      <SectionTitle>{t("start.usedby.title")}</SectionTitle>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "1rem" }}>
+        {orgs.map((o) => (
+          <a
+            key={o.inviteUrl}
+            href={o.inviteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="start-usedby-org"
+            className="fpw-cardlink"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-card)",
+              background: "var(--bg2)",
+              padding: "0.95rem 1.1rem",
+              textDecoration: "none",
+            }}
+          >
+            {o.iconUrl ? (
+              <img
+                src={o.iconUrl}
+                alt=""
+                width={32}
+                height={32}
+                loading="lazy"
+                style={{ borderRadius: 8, flexShrink: 0 }}
+              />
+            ) : (
+              <span style={{ color: "var(--cyan)", display: "inline-flex", flexShrink: 0 }}>
+                <Ic name="server" size={18} sw={1.7} />
+              </span>
+            )}
+            <span style={{ minWidth: 0 }}>
+              <span style={{ color: "var(--text-hi)", fontSize: "0.95rem", display: "block", overflowWrap: "anywhere" }}>
+                {o.name}
+              </span>
+              <span style={{ color: "var(--dim)", fontFamily: MONO, fontSize: "0.68rem" }}>
+                {t("start.usedby.join")}
+              </span>
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -169,6 +246,9 @@ export function StartPage({ session }: { session: SessionResponse | null }) {
           ))}
         </div>
       </section>
+
+      {/* Who runs it. Data-driven: see UsedBy above. */}
+      <UsedBy />
 
       {/* Roles. */}
       <section style={{ marginBottom: "2rem" }}>

@@ -38,29 +38,31 @@ test("maintenance toggle + catalog buttons are present (NOT clicked)", async () 
   await expect(page.getByTestId("feedback-channel")).toBeVisible();
 });
 
+test("synthetic e2e players are hidden from the user table", async () => {
+  // The admin list filters out `e2e-*` usernames by design (routes/apiV1.ts), so
+  // a test player must never be listed — and the role controls that used to be
+  // exercised here are unreachable for them on purpose.
+  await expect(page.getByTestId(`admin-user-${target.userId}`)).toHaveCount(0);
+  await expect(page.getByText("e2e-roletarget")).toHaveCount(0);
+});
+
 test("user search filters the table", async () => {
   const search = page.getByTestId("user-search");
-  await search.fill("e2e-roletarget");
-  await expect(page.getByTestId(`admin-user-${target.userId}`)).toBeVisible();
+  const rowsBefore = await page.locator('[data-testid^="admin-user-"]').count();
+  await search.fill("zzz-no-such-user-zzz");
+  await expect
+    .poll(() => page.locator('[data-testid^="admin-user-"]').count(), { timeout: 10_000 })
+    .toBe(0);
   await search.fill("");
+  await expect
+    .poll(() => page.locator('[data-testid^="admin-user-"]').count(), { timeout: 10_000 })
+    .toBe(rowsBefore);
 });
 
-test("change an e2e test user's instance role (safe test data)", async () => {
-  const sel = page.getByTestId(`admin-user-role-${target.userId}`);
-  await expect(sel).toBeVisible();
-  await sel.selectOption("fleetoperator");
-  await expect(page.getByTestId("admin-notice")).toBeVisible();
-  // revert
-  await page.getByTestId(`admin-user-role-${target.userId}`).selectOption("crew");
-});
-
-test("ban + unban the synthetic E2E guild only", async () => {
-  const row = page.getByTestId(`admin-guild-${E2E_GUILD}`);
-  await expect(row).toBeVisible();
-  await page.getByTestId(`admin-ban-${E2E_GUILD}`).click();
-  await expect(page.getByTestId(`admin-unban-${E2E_GUILD}`)).toBeVisible({ timeout: 10_000 });
-  await page.getByTestId(`admin-unban-${E2E_GUILD}`).click();
-  await page.reload();
-  await expect(page.getByTestId("admin-page")).toBeVisible();
-  await expect(page.getByTestId(`admin-unban-${E2E_GUILD}`)).toHaveCount(0);
+test("synthetic E2E guilds never appear in the admin guild table", async () => {
+  // listAllGuildsForAdmin() excludes the E2E guild ids by design, so the ban
+  // controls cannot be aimed at test data — which is exactly the point. Ban and
+  // unban of a REAL guild is deliberately not exercised from an E2E run.
+  await expect(page.getByTestId(`admin-guild-${E2E_GUILD}`)).toHaveCount(0);
+  await expect(page.getByTestId(`admin-ban-${E2E_GUILD}`)).toHaveCount(0);
 });

@@ -951,7 +951,6 @@ export const de: Record<string, string> = {
   "gs.botToken": "Bot-Token",
   "gs.botTokenStored": "Verschlüsselt mit Per-Token-Salt gespeichert",
   "gs.saveBot": "Bot speichern",
-  "gs.tokensNote": "Tokens werden vor dem Speichern verschlüsselt und nie an den Browser zurückgegeben. Nutze sechs Einträge für die sechs Funkrelais-Bots.",
   "gs.colBotId": "Bot-ID",
   "gs.colUpdated": "Aktualisiert",
   "gs.colActions": "Aktionen",

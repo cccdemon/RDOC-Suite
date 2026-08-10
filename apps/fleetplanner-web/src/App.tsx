@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { getSession } from "./api/client";
 import type { SessionResponse } from "./api/types";
 import { useTheme } from "./theme";
@@ -51,6 +51,14 @@ function EditRedirect() {
   return <Navigate to={`/ops/${id}?op=eckdaten`} replace />;
 }
 
+// `/` sends a signed-in member to the operation list. The query string and hash
+// have to travel with them: `/?view=liste` (and every other deep link onto the
+// list) would otherwise silently lose its parameters.
+function RootRedirect() {
+  const { search, hash } = useLocation();
+  return <Navigate to={`/operationen${search}${hash}`} replace />;
+}
+
 export function App() {
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [sessionFailed, setSessionFailed] = useState(false);
@@ -90,7 +98,7 @@ export function App() {
               path="/"
               element={
                 session === null && !sessionFailed ? null : session?.user ? (
-                  <Navigate to="/operationen" replace />
+                  <RootRedirect />
                 ) : (
                   <StartPage session={session} />
                 )

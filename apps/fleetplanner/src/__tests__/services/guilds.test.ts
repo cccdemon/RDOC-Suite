@@ -26,6 +26,7 @@ import { prisma } from "../../db.js";
 import {
   guildRoleAtLeast,
   effectiveOpRole,
+  listPublicOrgs,
   resolveActiveGuild,
 } from "../../services/guilds.js";
 
@@ -190,5 +191,50 @@ describe("resolveActiveGuild", () => {
     });
     const result = await resolveActiveGuild("user-1", "guild-unknown");
     expect(result).toMatchObject({ guildId: "guild-first" });
+  });
+});
+
+describe("listPublicOrgs", () => {
+  it("only asks for guilds that consented, are live and have an invite", async () => {
+    db.guild.findMany.mockResolvedValue([]);
+    await listPublicOrgs();
+    const where = db.guild.findMany.mock.calls[0][0].where;
+    expect(where).toMatchObject({
+      landingOptIn: true,
+      active: true,
+      bannedAt: null,
+      discordInviteUrl: { not: null },
+    });
+    // Synthetic test guilds must never reach a public page.
+    expect(where.id.notIn).toContain("100000000000000001");
+  });
+
+  it("prefers the org name over the Discord server name", async () => {
+    db.guild.findMany.mockResolvedValue([
+      { id: "1", name: "Server", orgName: "Voidforge Armaments", iconHash: null, discordInviteUrl: "https://discord.gg/a" },
+      { id: "2", name: "Nur Server", orgName: null, iconHash: null, discordInviteUrl: "https://discord.gg/b" },
+      { id: "3", name: "Leer", orgName: "   ", iconHash: null, discordInviteUrl: "https://discord.gg/c" },
+    ]);
+    const orgs = await listPublicOrgs();
+    expect(orgs.map((o) => o.name)).toEqual(["Voidforge Armaments", "Nur Server", "Leer"]);
+  });
+
+  it("builds an icon URL only when the guild has an icon", async () => {
+    db.guild.findMany.mockResolvedValue([
+      { id: "42", name: "A", orgName: null, iconHash: "abc", discordInviteUrl: "https://discord.gg/a" },
+      { id: "43", name: "B", orgName: null, iconHash: null, discordInviteUrl: "https://discord.gg/b" },
+    ]);
+    const orgs = await listPublicOrgs();
+    expect(orgs[0].iconUrl).toBe("https://cdn.discordapp.com/icons/42/abc.png?size=64");
+    expect(orgs[1].iconUrl).toBeNull();
+  });
+
+  it("drops a row whose invite vanished between query and mapping", async () => {
+    // Defensive: the column is nullable, so a null must never become a card
+    // that links nowhere.
+    db.guild.findMany.mockResolvedValue([
+      { id: "1", name: "A", orgName: null, iconHash: null, discordInviteUrl: null },
+    ]);
+    expect(await listPublicOrgs()).toEqual([]);
   });
 });

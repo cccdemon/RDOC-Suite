@@ -392,6 +392,7 @@ export function presentGuildSettings(g: {
   admiralRoleId: string | null;
   ownerUserId: string | null;
   canRemove: boolean;
+  landingOptIn: boolean;
 }): GuildSettings {
   return {
     id: g.id,
@@ -402,6 +403,7 @@ export function presentGuildSettings(g: {
     admiralRoleId: g.admiralRoleId,
     ownerUserId: g.ownerUserId,
     canRemove: g.canRemove,
+    landingOptIn: g.landingOptIn,
   };
 }
 

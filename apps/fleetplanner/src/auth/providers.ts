@@ -2,7 +2,7 @@
 // Each provider implements OAuthProvider; the auth routes use the
 // generic flow and provider-specific credential helpers.
 
-import { getEnv } from "../config/env.js";
+import { discordApiBase, discordAuthorizeBase, getEnv } from "../config/env.js";
 
 export type OAuthProvider = "discord" | "github" | "google";
 
@@ -65,11 +65,11 @@ export function discordAuthorizeUrl(state: string, redirectUri: string): string 
     scope: "identify guilds",
     state,
   });
-  return `https://discord.com/api/v10/oauth2/authorize?${p}`;
+  return `${discordAuthorizeBase()}/oauth2/authorize?${p}`;
 }
 
 export async function discordExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
-  const tokenRes = await fetch("https://discord.com/api/v10/oauth2/token", {
+  const tokenRes = await fetch(`${discordApiBase()}/oauth2/token`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -83,7 +83,7 @@ export async function discordExchange(code: string, redirectUri: string): Promis
   if (!tokenRes.ok) throw new Error(`Discord token exchange: ${tokenRes.status}`);
   const tokens = (await tokenRes.json()) as { access_token: string };
 
-  const userRes = await fetch("https://discord.com/api/v10/users/@me", {
+  const userRes = await fetch(`${discordApiBase()}/users/@me`, {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   });
   if (!userRes.ok) throw new Error(`Discord user fetch: ${userRes.status}`);
@@ -95,7 +95,7 @@ export async function discordExchange(code: string, redirectUri: string): Promis
   // Fetch the user's guild list (guilds scope) so we can scope access.
   let discordGuildIds: string[] = [];
   try {
-    const guildsRes = await fetch("https://discord.com/api/v10/users/@me/guilds", {
+    const guildsRes = await fetch(`${discordApiBase()}/users/@me/guilds`, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
     if (guildsRes.ok) {

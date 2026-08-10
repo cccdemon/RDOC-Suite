@@ -13,11 +13,16 @@ vi.mock("../../db.js", () => ({
     fleetUnit: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      // setUnitStatus("accepted") runs the fighter auto-assign in formations.ts,
+      // which reads the unit through findFirst — without it the mock throws.
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       delete: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
     },
+    compositionGroup: { findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
+    compositionMember: { findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn(), create: vi.fn(), update: vi.fn() },
     user: { findUnique: vi.fn() },
     crewAssignmentRequest: { upsert: vi.fn() },
     $transaction: vi.fn(),

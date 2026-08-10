@@ -139,12 +139,62 @@ describe("templates marketplace", () => {
   });
 });
 
+describe("public orgs panel", () => {
+  it("is registered, documented and needs no session", async () => {
+    // This harness has no database, so the handler itself cannot be exercised
+    // here (the DB suite covers the filtering). What matters at this level: the
+    // route exists and is NOT behind a session — a landing page is read by
+    // signed-out visitors.
+    const res = await app.inject({ method: "GET", url: "/api/v1/public/orgs" });
+    expect(res.statusCode).not.toBe(404);
+    expect(res.statusCode).not.toBe(401);
+
+    const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
+    const spec = doc.paths["/api/v1/public/orgs"].get;
+    expect(spec).toBeTruthy();
+    expect(spec.security).toBeUndefined();
+  });
+});
+
+describe("doc content", () => {
+  it("serves every handbook/legal slug and 404s an unknown one", async () => {
+    // The SPA's Handbuch + Rechtliches hubs render exactly these slugs; a typo
+    // in the registry would only show up as an empty page in the browser.
+    const slugs = [
+      "whatis", "whatis-tech", "architecture", "how-to",
+      "changelog", "why-unsigned", "sc-tools", "license", "impressum", "datenschutz",
+    ];
+    for (const slug of slugs) {
+      const res = await app.inject({ method: "GET", url: `/api/v1/content/${slug}` });
+      expect(res.statusCode, slug).toBe(200);
+      const body = res.json();
+      expect(body.title, slug).toBeTruthy();
+      expect(body.html.length, slug).toBeGreaterThan(200);
+    }
+    const missing = await app.inject({ method: "GET", url: "/api/v1/content/does-not-exist" });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json().error.code).toBe("not_found");
+  });
+
+  it("the architecture page ships diagrams as inline SVG, never as script", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/v1/content/architecture" });
+    const html = res.json().html as string;
+    // A diagram renderer would need inline script, which the app CSP forbids —
+    // so the diagrams have to be markup.
+    expect((html.match(/<svg/g) ?? []).length).toBe(3);
+    expect(html).not.toMatch(/<script/i);
+    expect(html).not.toMatch(/ on[a-z]+=/i); // no inline event handlers either
+  });
+});
+
 describe("feedback", () => {
   it("anonymous → 401, invalid body → 400, documented", async () => {
     const anon = await app.inject({ method: "POST", url: "/api/v1/feedback", headers: { "content-type": "application/json", "x-forwarded-for": "10.6.6.1" }, payload: JSON.stringify({ subject: "Hi", message: "test" }) });
     expect(anon.statusCode).toBe(401);
     const bad = await app.inject({ method: "POST", url: "/api/v1/feedback", headers: { "content-type": "application/json", "x-forwarded-for": "10.6.6.2" }, payload: JSON.stringify({ subject: "" }) });
-    expect(bad.statusCode).toBe(400);
+    // Auth is checked BEFORE the body, so an anonymous caller cannot probe the
+    // schema: a malformed anonymous request is still a 401.
+    expect(bad.statusCode).toBe(401);
     const doc = (await app.inject({ method: "GET", url: "/api/v1/openapi.json" })).json();
     expect(doc.paths["/api/v1/feedback"].post).toBeTruthy();
   });

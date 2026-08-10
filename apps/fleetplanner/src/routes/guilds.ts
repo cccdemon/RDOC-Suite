@@ -1,5 +1,5 @@
 import type { FastifyInstance, FastifyReply } from "fastify";
-import { basePath, getEnv } from "../config/env.js";
+import { basePath, discordSiteBase, getEnv } from "../config/env.js";
 import { requireAuth } from "../auth/middleware.js";
 import { installGuild } from "../services/guilds.js";
 
@@ -45,7 +45,7 @@ export async function guildRoutes(app: FastifyInstance) {
       redirect_uri: redirectUri,
       response_type: "code",
     });
-    return reply.redirect(`https://discord.com/oauth2/authorize?${p}`, 302);
+    return reply.redirect(`${discordSiteBase()}/oauth2/authorize?${p}`, 302);
   });
 
   // ── Bot-added callback (Discord redirects with ?guild_id=) ─────────

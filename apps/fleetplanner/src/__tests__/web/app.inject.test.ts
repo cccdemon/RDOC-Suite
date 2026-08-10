@@ -15,13 +15,36 @@ afterAll(async () => {
   await app.close();
 });
 
-describe("static pages", () => {
-  for (const path of ["/privacy", "/license", "/impressum", "/how-to", "/changelog"]) {
+// The backend renders zero HTML for humans (API-only refactor, 2026-06-12): the
+// info/legal pages are SPA routes fed by /api/v1/content/:slug, and the only
+// server-rendered HTML left is the crawler-facing meta document that nginx
+// routes bots to. Both are asserted here — the old /privacy-style SSR routes are
+// gone on purpose and must stay gone.
+describe("crawler HTML (bot-only, served behind the nginx user-agent switch)", () => {
+  for (const path of ["/", "/handbuch", "/rechtliches"]) {
     it(`GET ${path} → 200 html`, async () => {
       const res = await app.inject({ method: "GET", url: path });
       expect(res.statusCode).toBe(200);
       expect(res.headers["content-type"]).toContain("text/html");
       expect(res.body.length).toBeGreaterThan(0);
+    });
+  }
+
+  it("carries only JSON-LD, never executable inline script", async () => {
+    // The crawler doc is pure markup plus structured data. A real inline script
+    // would be blocked by the app CSP (nginx: script-src 'self') and silently
+    // break the page for bots.
+    const res = await app.inject({ method: "GET", url: "/" });
+    const scripts = res.body.match(/<script[^>]*>/gi) ?? [];
+    expect(scripts.every((tag) => /type=["']application\/ld\+json["']/i.test(tag))).toBe(true);
+    expect(res.body).toContain('"@context":"https://schema.org"');
+  });
+});
+
+describe("former SSR page routes are gone", () => {
+  for (const path of ["/privacy", "/license", "/impressum", "/how-to", "/changelog"]) {
+    it(`GET ${path} → 404 (SPA route, not a backend page)`, async () => {
+      expect((await app.inject({ method: "GET", url: path })).statusCode).toBe(404);
     });
   }
 });

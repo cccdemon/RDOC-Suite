@@ -50,6 +50,24 @@ describe("acceptPartnerToken", () => {
     expect(res).toEqual({ ok: false, reason: "revoked" });
   });
 
+  it("refuses a pair that was revoked before, instead of crashing on the unique index", async () => {
+    // (guildAId, guildBId) is unique, so a revoked row for the same pair would
+    // make the atomic claim fail with a raw P2002 → HTTP 500.
+    db.guildPartnership.findUnique.mockResolvedValue({ id: "p2", guildAId: "guild-A", status: "pending" });
+    db.guildPartnership.findFirst.mockResolvedValue({ id: "p1", status: "revoked" });
+    const res = await acceptPartnerToken("tok", "guild-B");
+    expect(res).toEqual({ ok: false, reason: "pair_revoked" });
+    expect(db.guildPartnership.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses a pair that is already active", async () => {
+    db.guildPartnership.findUnique.mockResolvedValue({ id: "p2", guildAId: "guild-A", status: "pending" });
+    db.guildPartnership.findFirst.mockResolvedValue({ id: "p1", status: "active" });
+    const res = await acceptPartnerToken("tok", "guild-B");
+    expect(res).toEqual({ ok: false, reason: "already_partners" });
+    expect(db.guildPartnership.updateMany).not.toHaveBeenCalled();
+  });
+
   it("refuses self-partnering", async () => {
     db.guildPartnership.findUnique.mockResolvedValue({
       id: "p1",

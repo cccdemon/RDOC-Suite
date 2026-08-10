@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { basePath, getEnv } from "../config/env.js";
+import { basePath, discordAuthorizeBase, getEnv } from "../config/env.js";
 import {
   issueState,
   consumeState,
@@ -112,7 +112,7 @@ export async function authRoutes(app: FastifyInstance) {
       scope: "identify",
       state,
     });
-    return reply.redirect(`https://discord.com/api/v10/oauth2/authorize?${p}`, 302);
+    return reply.redirect(`${discordAuthorizeBase()}/oauth2/authorize?${p}`, 302);
   });
 
   // ── Discord link callback ──────────────────────────────────────────

@@ -8,7 +8,7 @@ import {
   TIMEZONE_OPTIONS,
   DEFAULT_TIMEZONE,
 } from "../lib/timezone.js";
-import { getEnv } from "../config/env.js";
+import { discordSiteBase, getEnv } from "../config/env.js";
 import { t, LOCALES, LOCALE_NAMES } from "../i18n/index.js";
 import { CHANGELOG } from "../lib/changelog.js";
 import { ROADMAP, type RoadmapStatus } from "../lib/roadmap.js";
@@ -177,7 +177,7 @@ function discordBotInviteUrl(clientId: string, permissions: string): string {
     scope: "bot applications.commands",
     permissions,
   });
-  return `https://discord.com/oauth2/authorize?${params.toString()}`;
+  return `${discordSiteBase()}/oauth2/authorize?${params.toString()}`;
 }
 
 const SYSTEMS = ["stanton", "nyx", "pyro"] as const;
@@ -409,7 +409,8 @@ export function whatIsBody(bp: string, de: boolean): SafeHtml {
 
 // Technical counterpart to whatIsBody — deliberately jargon-dense, for the
 // tech-savvy reader (and it captures technical long-tail search terms). Keep in
-// sync with the actual stack; voice is RDOC SquadLink Lite (P2P), NOT LiveKit.
+// sync with the actual stack. Voice is a deep-link into RDOC SquadLink (a separate
+// app); the Fleetplanner itself carries no audio and has no relay bots.
 export function whatIsTechBody(bp: string): SafeHtml {
   const card = "card";
   return html` <div class="page-header">
@@ -466,10 +467,12 @@ export function whatIsTechBody(bp: string): SafeHtml {
       <div class="section-title">Voice</div>
       <div class="${card}" style="padding:1.1rem;max-width:54rem">
         <p style="margin:0">
-          Voice läuft über <strong>RDOC SquadLink Lite</strong> — ein serverloses
-          <strong>P2P-WebRTC-Voice-Mesh</strong>. Der Fleetplanner mintet nur einen signierten
-          Deep-Link (<code>squadlink://connect</code>, HMAC-Token) in den CommandNet-Raum der Operation.
-          Kein Discord-Audio-Hook, kein Mithören — ToS-konform.
+          Der Fleetplanner überträgt <strong>kein Audio</strong>. Er mintet ausschließlich einen
+          signierten Deep-Link (<code>squadlink://connect</code>, HMAC-SHA256 über den Raumnamen) in
+          den CommandNet-Raum einer laufenden Operation; gesprochen wird in
+          <strong>RDOC SquadLink</strong>, einer eigenständigen Anwendung. Der Operator wählt aus,
+          welche zugewiesenen Teilnehmer den Link sehen. Ohne <code>SQUADLINK_ROOM_AUTH_SECRET</code>
+          ist die Funktion in der Oberfläche nicht vorhanden. Kein Discord-Audio-Hook, kein Mithören.
         </p>
       </div>
     </div>
@@ -488,11 +491,16 @@ export function whatIsTechBody(bp: string): SafeHtml {
       <div class="${card}" style="padding:1.1rem;max-width:54rem;border-left:3px solid var(--cyan,#22d3ee)">
         <p style="margin:0">
           <strong>Stack-Kurzfassung:</strong> TypeScript · React/Vite · Fastify · Prisma · PostgreSQL ·
-          WebRTC (SquadLink Lite) · Discord.js · Docker-Compose · Caddy. Quelloffen (PolyForm
+          Zod-Contracts · Docker-Compose · Caddy. Discord wird über die REST-API v10 angesprochen —
+          ohne Client-Bibliothek und ohne Gateway-Verbindung. Quelloffen (PolyForm
           Noncommercial): <a href="https://github.com/cccdemon/RDOC-Suite" target="_blank" rel="noopener">github.com/cccdemon/RDOC-Suite</a>.
         </p>
         <p style="margin-top:.6rem"><strong>TL;DR:</strong> Discord-natives Event- und Flotten-Management
-          für Star-Citizen-Ops, mit eigener P2P-Voice-Bridge — ohne im Spiel irgendetwas anzufassen. 🚀</p>
+          für Star-Citizen-Ops — ohne im Spiel irgendetwas anzufassen. 🚀</p>
+        <p style="margin-top:.6rem" class="text-dim text-sm">
+          Ausführlich: <a href="${bp}/handbuch/architektur">Softwarearchitektur</a> —
+          Schichten, Datenmodell und Ablaufpläne.
+        </p>
       </div>
     </div>
 
@@ -569,8 +577,6 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
       <div class="card" style="padding:1rem;max-width:52rem">
         <p style="margin-top:0">
           These extend the Fleetplanner but are not required to plan and run operations.
-          (Mission voice is currently being rebuilt from scratch and is unavailable for now;
-          planning and Discord events work independently of it.)
         </p>
         <table class="user-table" style="width:100%;margin-top:.75rem">
           <thead>
@@ -591,6 +597,14 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
                 A generator for cinematic briefing-cover images per operation (banner, share preview,
                 Discord-event image). If the cover service isn't configured, the op simply uses no
                 custom cover.
+              </td>
+            </tr>
+            <tr>
+              <td><span class="tag tag-cyan">SquadLink voice</span></td>
+              <td>
+                A join link into the operation's command voice room for the people the operator picks.
+                The audio itself runs in RDOC SquadLink, a separate app — the Fleetplanner only mints
+                the link. Not configured on this instance means the panel is simply absent.
               </td>
             </tr>
             <tr>
@@ -950,12 +964,8 @@ export function datenschutzBody(bp: string): SafeHtml {
           <li>Operations, fleet units / ships, seat assignments and crew requests you create or join.</li>
           <li>Ships you save to your hangar.</li>
           <li>
-            For servers you administer: Discord guild, role and channel IDs, timezone and voice
-            settings, and server partnerships.
-          </li>
-          <li>
-            Relay voice-bot tokens you enter are stored <strong>encrypted</strong> (AES with a
-            per-token salt) and are never shown back in the browser.
+            For servers you administer: Discord guild, role and channel IDs, timezone, reminder
+            lead time and server partnerships.
           </li>
         </ul>
       </div>
@@ -1021,3 +1031,356 @@ export function datenschutzBody(bp: string): SafeHtml {
     </div>`;
 }
 
+
+// ── Handbuch: Architektur ──────────────────────────────────────────────
+// The long form lives in docs/ARCHITEKTUR.md (Mermaid, rendered by GitHub).
+// This is the same content for the website, with the diagrams as INLINE SVG:
+// the app CSP forbids inline script, so a browser-side diagram renderer is not
+// an option. Colours come from the theme variables so both themes work.
+export function architectureBody(bp: string): SafeHtml {
+  const card = "card";
+  const svgBox = "width:100%;height:auto;max-width:56rem;display:block";
+  const scroll = "overflow-x:auto";
+  return html` <div class="page-header">
+      <h1 class="page-title" style="overflow-wrap:anywhere">SOFTWARE&shy;ARCHITEKTUR</h1>
+      <p class="page-subtitle">
+        Wie der Fleetplanner gebaut ist: Bausteine, Datenmodell, Abläufe. Die Langfassung mit allen
+        Diagrammen liegt im Repository unter <code>docs/ARCHITEKTUR.md</code>.
+      </p>
+      <div style="margin-top:.4rem;display:flex;flex-wrap:wrap;gap:.4rem">
+        <a href="${bp}/handbuch/technobabble" class="btn btn-sm">← Kurzfassung</a>
+        <a href="${bp}/api-docs" class="btn btn-sm">API-Doku →</a>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Worum es geht</div>
+      <div class="${card}" style="max-width:56rem">
+        <p style="margin:0">
+          Der Fleetplanner plant Star-Citizen-Operationen für Discord-Organisationen: Termin,
+          Flottenbedarf, Sitzplätze, Anmeldung, Voice. Ein <strong>Mandant</strong> ist genau eine
+          Discord-Guild — jede Operation, jede Umfrage und jede Vorlage gehört einem Server.
+        </p>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          Der Bot spricht Discord ausschließlich über die offizielle REST-Schnittstelle mit Bot-Token
+          plus signierte Interaktionen. Keine Nutzer-Tokens, kein veränderter Client, kein
+          Dauer-Socket. Das erklärt eine Eigenheit weiter unten: „Interessiert"-Klicks werden
+          abgefragt, nicht empfangen.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Bausteine zur Laufzeit</div>
+      <div class="${card}" style="max-width:56rem">
+        <div style="${scroll}">
+          <svg viewBox="0 0 720 300" role="img" aria-label="Laufzeitdiagramm: Browser, Caddy, nginx, Fastify-Backend, PostgreSQL, Discord, Mission-Cover, Prometheus" style="${svgBox}">
+            <g font-family="ui-monospace, monospace" font-size="11">
+              <rect x="8" y="118" width="96" height="46" rx="8" fill="none" stroke="var(--border-hi, #555)"></rect>
+              <text x="56" y="139" text-anchor="middle" fill="var(--text, #eee)">Browser</text>
+              <text x="56" y="153" text-anchor="middle" fill="var(--dim, #999)" font-size="9">/ Crawler</text>
+
+              <rect x="136" y="118" width="104" height="46" rx="8" fill="none" stroke="var(--accent, #c48a4a)"></rect>
+              <text x="188" y="139" text-anchor="middle" fill="var(--text, #eee)">Caddy</text>
+              <text x="188" y="153" text-anchor="middle" fill="var(--dim, #999)" font-size="9">TLS :443</text>
+
+              <rect x="272" y="106" width="124" height="70" rx="8" fill="none" stroke="var(--accent, #c48a4a)"></rect>
+              <text x="334" y="130" text-anchor="middle" fill="var(--text, #eee)">fleetplanner-web</text>
+              <text x="334" y="146" text-anchor="middle" fill="var(--dim, #999)" font-size="9">nginx + React</text>
+              <text x="334" y="162" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Security-Header</text>
+
+              <rect x="428" y="106" width="120" height="70" rx="8" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="488" y="130" text-anchor="middle" fill="var(--text, #eee)">fleetplanner</text>
+              <text x="488" y="146" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Fastify + Prisma</text>
+              <text x="488" y="162" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Port 3200</text>
+
+              <rect x="586" y="118" width="118" height="46" rx="8" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="645" y="139" text-anchor="middle" fill="var(--text, #eee)">PostgreSQL</text>
+              <text x="645" y="153" text-anchor="middle" fill="var(--dim, #999)" font-size="9">40 Entitäten</text>
+
+              <rect x="428" y="26" width="120" height="42" rx="8" fill="none" stroke="var(--dim, #777)"></rect>
+              <text x="488" y="43" text-anchor="middle" fill="var(--text, #eee)">Discord</text>
+              <text x="488" y="57" text-anchor="middle" fill="var(--dim, #999)" font-size="9">REST · OAuth2</text>
+
+              <rect x="272" y="216" width="124" height="42" rx="8" fill="none" stroke="var(--dim, #777)"></rect>
+              <text x="334" y="233" text-anchor="middle" fill="var(--text, #eee)">mission-cover</text>
+              <text x="334" y="247" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Grafik-Renderer</text>
+
+              <rect x="586" y="216" width="118" height="42" rx="8" fill="none" stroke="var(--dim, #777)"></rect>
+              <text x="645" y="233" text-anchor="middle" fill="var(--text, #eee)">Prometheus</text>
+              <text x="645" y="247" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Messwerte</text>
+
+              <g stroke="var(--dim, #888)" fill="none" stroke-width="1.2">
+                <path d="M104 141 H136"></path>
+                <path d="M240 141 H272"></path>
+                <path d="M396 141 H428"></path>
+                <path d="M548 141 H586"></path>
+                <path d="M488 106 V68"></path>
+                <path d="M428 168 H410 V237 H396"></path>
+                <path d="M645 216 V186 H556 V176"></path>
+              </g>
+              <text x="412" y="134" text-anchor="middle" fill="var(--dim, #999)" font-size="9">proxy</text>
+            </g>
+          </svg>
+        </div>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          <strong>nginx ist die Haustür, nicht nur ein Dateiserver.</strong> Es entscheidet pro Pfad
+          zwischen Anwendung, statischer Datei und Backend — und setzt als einzige Schicht die
+          Security-Header. Link-Vorschau-Bots bekommen statt der Anwendung das lesbare HTML des
+          Backends; deshalb erzeugt das Backend überhaupt noch HTML.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Schichten im Backend</div>
+      <div class="${card}" style="max-width:56rem">
+        <div style="${scroll}">
+          <table class="user-table">
+            <tr><th>Schicht</th><th>Ort</th><th>Aufgabe</th></tr>
+            <tr><td>Routen</td><td><code>routes/</code></td><td>HTTP, Prüfung der Eingaben, Statuscodes</td></tr>
+            <tr><td>Verträge</td><td><code>fleetplanner-contracts</code></td><td>eine Typquelle für Backend und Oberfläche</td></tr>
+            <tr><td>Darstellung</td><td><code>api/presenters.ts</code></td><td>Abbildung nach außen, Redaktion für anonyme Betrachter</td></tr>
+            <tr><td>Fachlogik</td><td><code>services/</code> (43 Module)</td><td>kennt kein HTTP, liefert Ergebnisobjekte statt Statuscodes</td></tr>
+            <tr><td>Datenzugriff</td><td>Prisma</td><td>eine Instanz für den ganzen Prozess</td></tr>
+            <tr><td>Adapter</td><td><code>discord</code>, <code>scwiki</code>, <code>fleetyards</code></td><td>alles Externe</td></tr>
+          </table>
+        </div>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          Der Code ist bewusst modul-funktional, nicht objektorientiert: die Fachlogik besteht aus
+          Funktionen über Datensätze. Echte Klassen gibt es drei — den Rate-Limiter, den Fehlertyp
+          der Oberfläche und den erzeugten Datenbank-Client. Die fachlichen „Klassen" sind die
+          Entitäten des Datenmodells.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Datenmodell — der Kern</div>
+      <div class="${card}" style="max-width:56rem">
+        <div style="${scroll}">
+          <svg viewBox="0 0 720 320" role="img" aria-label="Datenmodell: Guild, Operation, Bedarf, Einheit, Sitzplatz, Nutzer, Verteilung, Interesse" style="${svgBox}">
+            <g font-family="ui-monospace, monospace" font-size="11">
+              <rect x="16" y="20" width="130" height="40" rx="8" fill="none" stroke="var(--accent, #c48a4a)"></rect>
+              <text x="81" y="45" text-anchor="middle" fill="var(--text, #eee)">Server (Guild)</text>
+
+              <rect x="16" y="110" width="130" height="58" rx="8" fill="none" stroke="var(--accent, #c48a4a)"></rect>
+              <text x="81" y="132" text-anchor="middle" fill="var(--text, #eee)">Operation</text>
+              <text x="81" y="147" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Status</text>
+              <text x="81" y="159" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Sichtbarkeit</text>
+
+              <rect x="222" y="110" width="140" height="58" rx="8" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="292" y="132" text-anchor="middle" fill="var(--text, #eee)">Bedarf</text>
+              <text x="292" y="147" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Gruppe, Anforderung</text>
+              <text x="292" y="159" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Anzahl</text>
+
+              <rect x="438" y="110" width="140" height="58" rx="8" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="508" y="132" text-anchor="middle" fill="var(--text, #eee)">Einheit</text>
+              <text x="508" y="147" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Schiff, Squad, Fahrzeug</text>
+              <text x="508" y="159" text-anchor="middle" fill="var(--dim, #999)" font-size="9">offen bis angenommen</text>
+
+              <rect x="438" y="222" width="140" height="56" rx="8" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="508" y="244" text-anchor="middle" fill="var(--text, #eee)">Sitzplatz</text>
+              <text x="508" y="259" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Pilot, Gunner, FPS</text>
+              <text x="508" y="271" text-anchor="middle" fill="var(--dim, #999)" font-size="9">frei oder besetzt</text>
+
+              <rect x="612" y="20" width="96" height="40" rx="8" fill="none" stroke="var(--gold, #ebcf52)"></rect>
+              <text x="660" y="45" text-anchor="middle" fill="var(--text, #eee)">Nutzer</text>
+
+              <rect x="222" y="222" width="140" height="56" rx="8" fill="none" stroke="var(--dim, #777)"></rect>
+              <text x="292" y="244" text-anchor="middle" fill="var(--text, #eee)">Interesse</text>
+              <text x="292" y="259" text-anchor="middle" fill="var(--dim, #999)" font-size="9">aus Discord</text>
+              <text x="292" y="271" text-anchor="middle" fill="var(--dim, #999)" font-size="9">auch ohne Konto</text>
+
+              <rect x="16" y="222" width="130" height="56" rx="8" fill="none" stroke="var(--dim, #777)"></rect>
+              <text x="81" y="244" text-anchor="middle" fill="var(--text, #eee)">Verteilung</text>
+              <text x="81" y="259" text-anchor="middle" fill="var(--dim, #999)" font-size="9">an Partner</text>
+              <text x="81" y="271" text-anchor="middle" fill="var(--dim, #999)" font-size="9">offen bis geteilt</text>
+
+              <g stroke="var(--dim, #888)" fill="none" stroke-width="1.2">
+                <path d="M81 60 V110"></path>
+                <path d="M146 139 H222"></path>
+                <path d="M362 139 H438"></path>
+                <path d="M508 168 V222"></path>
+                <path d="M660 60 V139 H578"></path>
+                <path d="M660 60 V250 H578"></path>
+                <path d="M81 168 V222"></path>
+                <path d="M146 250 H222"></path>
+              </g>
+              <text x="90" y="90" fill="var(--dim, #999)" font-size="9">1 : n</text>
+              <text x="170" y="132" fill="var(--dim, #999)" font-size="9">fordert</text>
+              <text x="382" y="132" fill="var(--dim, #999)" font-size="9">erfüllt</text>
+              <text x="516" y="200" fill="var(--dim, #999)" font-size="9">hat Sitze</text>
+              <text x="592" y="104" fill="var(--dim, #999)" font-size="9">Kapitän</text>
+              <text x="592" y="290" fill="var(--dim, #999)" font-size="9">besetzt</text>
+            </g>
+          </svg>
+        </div>
+        <div style="${scroll}">
+          <table class="user-table" style="margin-top:.9rem">
+            <tr><th>Gruppe</th><th>Entitäten</th></tr>
+            <tr><td>Mandant und Identität</td><td>Server, Mitgliedschaft, Nutzer, Identität, Sitzung, Partnerschaft, Freigaberegel</td></tr>
+            <tr><td>Operation</td><td>Operation, Serie, Kommandant, Fragen, Protokoll, Cover, Dokument, Link, Stream, Hangar-Freigabe</td></tr>
+            <tr><td>Flotte</td><td>Gruppe, Anforderung, Einheit, Sitzplatz, Hauptschiff, Bodentruppe</td></tr>
+            <tr><td>Discord</td><td>Verteilung, Interesse, Voice-Empfänger</td></tr>
+            <tr><td>Kataloge</td><td>Schiff, Ort, Fleetyards-Schiff, Sync-Zustände</td></tr>
+            <tr><td>Community</td><td>Umfrage, Option, Stimme, Vorlage</td></tr>
+            <tr><td>Betrieb</td><td>Einstellung, Systemereignis</td></tr>
+          </table>
+        </div>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          Zwei Regeln tragen das ganze Modell. <strong>Erstens:</strong> die globale Rolle trägt nur
+          den Superadmin — Operator, Kapitän und Crew gelten <em>pro Server</em>. <strong>Zweitens:</strong>
+          Status und Sichtbarkeit sind unabhängig; eine veröffentlichte Operation kann trotzdem nur
+          intern sichtbar sein.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ablauf: eine Operation veröffentlichen</div>
+      <div class="${card}" style="max-width:56rem">
+        <div style="${scroll}">
+          <svg viewBox="0 0 720 430" role="img" aria-label="Ablaufplan: Operation veröffentlichen, Discord-Event anlegen, an Partner verteilen" style="${svgBox}">
+            <defs>
+              <marker id="arch-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--dim, #888)"></path>
+              </marker>
+            </defs>
+            <g font-family="ui-monospace, monospace" font-size="11" stroke-width="1.2">
+              <rect x="250" y="14" width="220" height="34" rx="17" fill="none" stroke="var(--dim, #777)"></rect>
+              <text x="360" y="35" text-anchor="middle" fill="var(--text, #eee)">Status auf „offen" setzen</text>
+
+              <path d="M360 78 L446 104 L360 130 L274 104 Z" fill="none" stroke="var(--gold, #ebcf52)"></path>
+              <text x="360" y="108" text-anchor="middle" fill="var(--text, #eee)">Operator?</text>
+              <text x="470" y="100" fill="var(--red, #ee6e76)" font-size="9">nein: abgelehnt</text>
+
+              <rect x="250" y="152" width="220" height="34" rx="6" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="360" y="173" text-anchor="middle" fill="var(--text, #eee)">Status und Protokoll speichern</text>
+
+              <path d="M360 216 L470 242 L360 268 L250 242 Z" fill="none" stroke="var(--gold, #ebcf52)"></path>
+              <text x="360" y="238" text-anchor="middle" fill="var(--text, #eee)">Discord-Event</text>
+              <text x="360" y="251" text-anchor="middle" fill="var(--dim, #999)" font-size="9">schon vorhanden?</text>
+
+              <rect x="18" y="290" width="200" height="46" rx="6" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="118" y="310" text-anchor="middle" fill="var(--text, #eee)">Event bei Discord anlegen</text>
+              <text x="118" y="325" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Fehler nur protokollieren</text>
+
+              <path d="M360 300 L470 326 L360 352 L250 326 Z" fill="none" stroke="var(--gold, #ebcf52)"></path>
+              <text x="360" y="322" text-anchor="middle" fill="var(--text, #eee)">Sichtbarkeit</text>
+              <text x="360" y="335" text-anchor="middle" fill="var(--dim, #999)" font-size="9">Partner oder öffentlich?</text>
+
+              <rect x="502" y="290" width="200" height="46" rx="6" fill="none" stroke="var(--cyan, #4fb5b5)"></rect>
+              <text x="602" y="310" text-anchor="middle" fill="var(--text, #eee)">an Partner verteilen</text>
+              <text x="602" y="325" text-anchor="middle" fill="var(--dim, #999)" font-size="9">automatisch oder auf Anfrage</text>
+
+              <rect x="250" y="382" width="220" height="34" rx="17" fill="none" stroke="var(--green, #63c271)"></rect>
+              <text x="360" y="403" text-anchor="middle" fill="var(--text, #eee)">Operation ist offen</text>
+
+              <g stroke="var(--dim, #888)" fill="none" marker-end="url(#arch-arrow)">
+                <path d="M360 48 V74"></path>
+                <path d="M446 104 H466"></path>
+                <path d="M360 130 V148"></path>
+                <path d="M360 186 V212"></path>
+                <path d="M250 242 H118 V286"></path>
+                <path d="M118 336 V326 H246"></path>
+                <path d="M470 242 H602 V286"></path>
+                <path d="M470 326 H498"></path>
+                <path d="M360 352 V378"></path>
+              </g>
+              <path d="M602 336 V362 H470 V378" stroke="var(--dim, #888)" fill="none"></path>
+              <text x="176" y="236" fill="var(--dim, #999)" font-size="9">nein</text>
+              <text x="478" y="236" fill="var(--dim, #999)" font-size="9">ja</text>
+              <text x="366" y="374" fill="var(--dim, #999)" font-size="9">nein</text>
+              <text x="478" y="320" fill="var(--dim, #999)" font-size="9">ja</text>
+            </g>
+          </svg>
+        </div>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          Alle Discord-Schritte sind <strong>bestmöglich, nicht zwingend</strong>. Fällt Discord aus,
+          bleibt die Operation trotzdem offen — ein fehlendes Discord-Event lässt sich nachholen, eine
+          verlorene Operation nicht. Beim Absagen läuft derselbe Weg rückwärts: Event löschen,
+          verteilte Partner-Events abbauen.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ablauf: jede Anfrage an die Schnittstelle</div>
+      <div class="${card}" style="max-width:56rem">
+        <div style="${scroll}">
+          <table class="user-table">
+            <tr><th>Schritt</th><th>Prüfung</th><th>Antwort bei Ablehnung</th></tr>
+            <tr><td>1</td><td>Wartungsmodus aktiv?</td><td>Wartungsseite, außer für den Superadmin</td></tr>
+            <tr><td>2</td><td>Sind Pfad und Inhalt formal gültig?</td><td>400 — fehlerhafte Anfrage</td></tr>
+            <tr><td>3</td><td>Ist eine Sitzung vorhanden?</td><td>401 — nicht angemeldet</td></tr>
+            <tr><td>4</td><td>Bei Änderungen: passende Schutzkennung?</td><td>403 — abgelehnt</td></tr>
+            <tr><td>5</td><td>Rolle im richtigen Server ausreichend?</td><td>403 — abgelehnt</td></tr>
+            <tr><td>6</td><td>Ist das Anfragelimit frei?</td><td>429 — zu viele Anfragen</td></tr>
+          </table>
+        </div>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          Die Reihenfolge ist Absicht: erst Anmeldung, dann Fachprüfung. So verrät kein Fehlertext
+          einem nicht angemeldeten Aufrufer, welche Felder ein Endpunkt erwartet. Fehler verlassen
+          das System nur in einer Form — Kennung, bereinigte Meldung und eine Anfragenummer, mit der
+          sich der Vorgang im Protokoll wiederfindet.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ablauf: „Interessiert" aus Discord</div>
+      <div class="${card}" style="max-width:56rem">
+        <p style="margin:0">
+          Discord meldet Zusagen nur über einen Dauer-Socket mit besonderer Berechtigung. Den nutzt
+          der Fleetplanner bewusst nicht, also <strong>fragt er nach</strong>: alle fünf Minuten
+          werden die Interessierten jedes offenen Events geladen und mit dem eigenen Stand
+          abgeglichen.
+        </p>
+        <ul class="text-sm" style="margin:.6rem 0 0;padding-left:1.1rem;line-height:1.7">
+          <li>Bekanntes Konto: wird direkt zugeordnet.</li>
+          <li>Kein Konto: erscheint als Platzhalter und wird beim ersten Login übernommen.</li>
+          <li>Zusage zurückgezogen: Eintrag wird stillgelegt, ein belegter Sitzplatz wieder frei.</li>
+        </ul>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          Der Sitzplatz geht zurück, weil für bloßes Interesse die Discord-Zusage die Wahrheit ist.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Hintergrundläufe</div>
+      <div class="${card}" style="max-width:56rem">
+        <div style="${scroll}">
+          <table class="user-table">
+            <tr><th>Lauf</th><th>Takt</th><th>Aufgabe</th></tr>
+            <tr><td>Erinnerungen</td><td>jede Minute</td><td>Nachrichten vor dem Start, Vorlauf je Server einstellbar</td></tr>
+            <tr><td>Interesse</td><td>alle 5 Minuten</td><td>Discord-Zusagen abgleichen</td></tr>
+            <tr><td>Serien</td><td>regelmäßig</td><td>wiederkehrende Operationen erzeugen</td></tr>
+            <tr><td>Schiffs- und Ortskatalog</td><td>wöchentlich</td><td>Daten aus dem SC-Wiki</td></tr>
+            <tr><td>Cover aufräumen</td><td>regelmäßig</td><td>Grafiken abgeschlossener Operationen nach 14 Tagen</td></tr>
+          </table>
+        </div>
+        <p class="text-dim text-sm mt-1" style="margin-bottom:0">
+          Die Läufe laufen im Anwendungsprozess. Deshalb läuft der Fleetplanner als eine Instanz —
+          zwei würden dieselbe Arbeit doppelt machen.
+        </p>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Warum es so gebaut ist</div>
+      <div class="${card}" style="max-width:56rem">
+        <div style="${scroll}">
+          <table class="user-table">
+            <tr><th>Entscheidung</th><th>Grund</th><th>Preis</th></tr>
+            <tr><td>Discord nur über die REST-Schnittstelle</td><td>keine besonderen Berechtigungen nötig</td><td>Zusagen kommen verzögert an</td></tr>
+            <tr><td>Discord-Schritte bestmöglich</td><td>eine Operation darf nicht an Discord scheitern</td><td>Stände können auseinanderlaufen</td></tr>
+            <tr><td>Rollen je Server</td><td>ein Konto bedient mehrere Organisationen</td><td>jede Prüfung braucht den Serverbezug</td></tr>
+            <tr><td>Sitzungskennung nur als Prüfsumme</td><td>ein Datenbankleck ist nicht wiederverwendbar</td><td>Sitzungen sind aus der Datenbank nicht lesbar</td></tr>
+            <tr><td>Security-Header nur im Proxy</td><td>zwei Quellen widersprachen sich</td><td>das Backend allein ist ungeschützt</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}

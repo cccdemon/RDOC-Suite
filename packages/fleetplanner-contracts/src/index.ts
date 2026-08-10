@@ -1061,6 +1061,8 @@ export const GuildSettingsSchema = z
     admiralRoleId: z.string().nullable(),
     ownerUserId: z.string().nullable(),
     canRemove: z.boolean(),
+    /** Consent to appear in the public "used by" panel on the start page. */
+    landingOptIn: z.boolean(),
   })
   .meta({ id: "GuildSettings" });
 export type GuildSettings = z.infer<typeof GuildSettingsSchema>;
@@ -1081,9 +1083,26 @@ export const UpdateGuildSettingsRequestSchema = z
     timezone: z.string().optional(),
     discordInviteUrl: z.string().nullable().optional(),
     admiralRoleId: z.string().nullable().optional(),
+    landingOptIn: z.boolean().optional(),
   })
   .meta({ id: "UpdateGuildSettingsRequest" });
 export type UpdateGuildSettingsRequest = z.infer<typeof UpdateGuildSettingsRequestSchema>;
+
+/** One org in the public "used by" panel on the start page. Public and
+ *  anonymous: name plus the guild's own Discord invite, nothing else. */
+export const PublicOrgSchema = z
+  .object({
+    name: z.string(),
+    inviteUrl: z.string(),
+    iconUrl: z.string().nullable(),
+  })
+  .meta({ id: "PublicOrg" });
+export type PublicOrg = z.infer<typeof PublicOrgSchema>;
+
+export const PublicOrgsResponseSchema = z
+  .object({ orgs: z.array(PublicOrgSchema) })
+  .meta({ id: "PublicOrgsResponse" });
+export type PublicOrgsResponse = z.infer<typeof PublicOrgsResponseSchema>;
 
 export const SetMemberRoleRequestSchema = z
   .object({ role: z.enum(["fleetoperator", "crew"]) })

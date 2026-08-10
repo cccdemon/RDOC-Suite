@@ -1,64 +1,95 @@
-# Privacy
+# Privacy — data inventory
 
-This document describes exactly what data the Channel Commander system collects, where it lives, and how to delete it. It is meant as a starting point for a formal privacy notice — please have legal counsel review before deploying publicly.
+What the **RDOC Fleetplanner** stores, where it lives and how long. This is the engineering
+inventory behind the user-facing privacy page (`/rechtliches/datenschutz`, built in
+`apps/fleetplanner/src/web/pages.ts`). Have legal counsel review before publishing a formal notice.
 
-## What is collected
+Stand 2026-08-12, checked against `apps/fleetplanner/prisma/schema.prisma`.
 
-| Data | Where it lives | Why | Retention |
+> **Was rewritten on 2026-08-12.** The previous version documented the Channel Commander voice
+> bridge — `CommanderSession`, `GuildConfig`, a Companion session JWT, LiveKit tokens and bridge
+> logs. None of that exists any more (voice stack removed 2026-06, Companion 2026-08). It described
+> a system that was gone.
+
+## Identity and access
+
+| Data | Where | Why | Retention |
 | --- | --- | --- | --- |
-| Discord **user IDs** of commanders | SQLite/Postgres `CommanderSession.userId` | So the bridge knows who started/stopped a PTT session | Until the admin deletes it |
-| **Guild IDs** of participating servers | SQLite/Postgres `GuildConfig.guildId` | So config and audit entries are tied to a server | Until the admin deletes the row |
-| **Role IDs and channel IDs** marked as commander-related | SQLite/Postgres `GuildConfig.commanderRoleIds` / `allowedVoiceChannelIds` | So permission checks can be done without Discord round-trips on every event | Until the admin removes them |
-| Session **start/stop timestamps** | SQLite/Postgres `CommanderSession.startedAt` / `endedAt` | Audit log | Until the admin deletes the row |
-| Companion **session JWT** | On the commander's PC, in `%APPDATA%\com.head87x.dccc.companion\settings.json` (or platform equivalent) | So the commander does not have to sign in on every app restart | Until the commander clicks **Sign out** or the token expires (15 min default) |
-| **Bridge logs** (pino, console) | Stderr of the bridge process | Operational debugging | Whatever the operator chooses to keep |
-| Discord **event-interest RSVPs** (snowflake + display name per operation) | Postgres `EventInterest` (Fleetplanner) | FR-P2: a pilot who clicks "Interested" on an op's Discord scheduled event is surfaced to the operator as a participant needing assignment | Deleted with the operation (FK cascade); set to `withdrawn` when the pilot un-clicks Interested |
+| Discord (or GitHub/Google) **account id + username** | `UserIdentity.providerId` / `.username` | Links the login to the account; the Discord id is also how DMs and RSVPs are matched | Until the identity is unlinked or the account is deleted |
+| **Display name, avatar hash, language, layout preference** | `User` | Shows who is who and renders the UI in the chosen language | Until the account is deleted |
+| **Instance role, active flag, joined / last-seen timestamps** | `User` | Permission checks; the last-seen date shows operators who is still around | Until the account is deleted |
+| **Session** | `UserSession.tokenHash` (SHA-256), `csrfToken`, `expiresAt` | Keeps you signed in | 30 days, or until logout |
+| **Server membership + role** | `GuildMembership` | Decides what you may do *in that server* | Until the membership is removed or the server is deleted |
+
+The session cookie carries a random token; the database stores **only its SHA-256**. A database or
+backup leak therefore cannot be replayed as a session. OAuth access tokens are used once during
+sign-in and are **never** persisted or logged.
+
+## Operations
+
+| Data | Where | Why | Retention |
+| --- | --- | --- | --- |
+| Operation content (title, briefing, date, meeting point, visibility) | `Operation` | The plan itself | Until the operation is deleted |
+| Fleet units, seats, crew requests, primary ship | `FleetUnit`, `SeatAssignment`, `CrewAssignmentRequest`, `OpPrimaryUnit` | Who flies what and sits where | Cascade-deleted with the operation |
+| Ground-team sign-ups | `CqbSignup` | Ground roster | Cascade-deleted with the operation |
+| Questions and answers | `OpQuestion` | Mission Q&A | Cascade-deleted with the operation |
+| **Mission log** (actor name, action, timestamp) | `AuditLog` | Who changed the roster and when | Cascade-deleted with the operation |
+| Commanders | `OperationLeader` | Command chain | Cascade-deleted with the operation |
+| Attached **PDF documents** | `OperationDocument` row + file on the server volume | Briefing material | Deleted with the document or the operation |
+| Stream links | `OperationStream` | Who broadcasts | Cascade-deleted with the operation |
+| Shared hangar for an operation | `OperationHangarShare` | Lets the operator see which hulls are available | Cascade-deleted with the operation |
+| Voice link recipients | `OperationVoiceRecipient` | Who may see the SquadLink join link | Cascade-deleted with the operation |
+| Cover image | `OpCover` + file in the cover service | Banner, link preview, Discord event image | Auto-purged 14 days after an operation is completed or cancelled |
+
+## Discord side
+
+| Data | Where | Why | Retention |
+| --- | --- | --- | --- |
+| **"Interested" RSVPs** — Discord id + display name | `EventInterest` | A pilot who clicks Interested on the Discord event appears on the operation. **Also stored for people without a Fleetplanner account** (`userId = null`, claimed on their first login) | Cascade-deleted with the operation; set to `withdrawn` when the pilot un-clicks |
+| Server configuration — guild id, name, org name, role id, channel ids, timezone, reminder lead time, invite URL | `Guild` | So events, tickets and permission mapping work without a Discord round-trip per request | Until the server is removed |
+| Partnerships and share policies | `GuildPartnership`, `PartnerSharePolicy`, `EventDistribution` | Cross-server sharing and its decisions | Until revoked / deleted with the operation |
+
+Sent **to** Discord: scheduled events (title, description, time, op link, cover image), reminder and
+assignment DMs, feedback tickets and announcements you trigger, and the partner-approval DM. Nothing
+else leaves the instance.
+
+## Community and catalogue
+
+| Data | Where | Retention |
+| --- | --- | --- |
+| Hangar (which catalogue ships you own) | `UserShip` | Until you remove them or delete the account |
+| Fleetyards username, org-hangar opt-in | `User` | Until you change it |
+| Polls, options and **votes** (tied to your account) | `Poll`, `PollOption`, `PollVote` | Until the poll is deleted |
+| Operation templates | `OperationTemplate` | Until deleted |
+| Ship / location catalogue | `Ship`, `Location`, `FleetyardsShip` | Not personal data — synced from public sources |
+
+## Operations of the instance
+
+| Data | Where | Retention |
+| --- | --- | --- |
+| System events (level, category, message, detail) | `SystemEvent` | **10 days**, then pruned |
+| Request logs (pino: method, path, status, request id, client IP) | Container stderr | Whatever the operator keeps |
+| Metrics | Prometheus | Aggregate only, no personal data |
 
 ## What is **never** collected
 
-- **Audio.** The bridge does not see audio at all — it routes signaling only. The LiveKit server is configured with no recording egress, and the access tokens the bridge mints explicitly set `roomRecord: false`.
-- **Discord OAuth access tokens** beyond a single in-memory use during the sign-in flow. They are not logged, not persisted, not handed to anyone.
-- **Microphone permissions** beyond what the operating system manages on the commander's PC.
-- **Chat messages**, voice channel membership history, presence, or any other Discord data beyond what is needed for the role check.
+- **Audio.** The Fleetplanner carries no voice traffic. It builds a link into a SquadLink room and
+  nothing more — no recording, no mixing, no presence in a Discord voice channel.
+- **Passwords.** Login is OAuth only.
+- **Discord message content, presence, or member lists** beyond the role ids needed for the
+  permission mapping.
+- **Persisted OAuth access tokens.** Used once during sign-in, then dropped.
+- **Payment data.** There is none.
 
-## Logs
+## Deleting data
 
-Pino logs in the bridge include:
-- `userId` (Discord snowflake)
-- `guildId` (Discord snowflake)
-- WS protocol event codes (`bridge:joined`, `ptt:start`, error codes)
-- Connection-level events (`heartbeat timeout`, `ws client connected`, `permission recheck failed`)
-- Timestamps
+- **An operation** takes everything attached to it (see the cascade table in
+  [ARCHITEKTUR.md §6.4](ARCHITEKTUR.md#64-löschverhalten)).
+- **A server** takes its operations, memberships, polls, templates and partnerships.
+- **An account**: there is no self-service delete button today — deletion is an operator action on
+  the instance. Sessions and identities cascade; authored content (operations, questions, audit
+  entries) is written with the display name of the time and must be handled by the operator.
 
-Logs **never** include:
-- Bearer tokens, session tokens, or `SESSION_SECRET` (redacted by pino at the field level).
-- The contents of any user message (we don't get any).
-- Audio frames.
+## Contact
 
-## How to delete data
-
-### As a commander
-
-- **Sign out** in the companion → deletes the stored session JWT on your machine.
-- Optionally delete `%APPDATA%\com.head87x.dccc.companion\settings.json` to remove the hotkey choice too.
-
-### As an admin
-
-- Open Prisma Studio: `pnpm db:studio`
-- Delete rows from `GuildConfig` (removes the entire server config) or `CommanderSession` (removes audit entries) as needed.
-- Or, for a clean wipe, stop the bridge + bot and delete `prisma/dev.db`.
-
-## Discord ToS compliance
-
-This system follows Discord's [Developer Terms](https://discord.com/developers/docs/policies-and-agreements/developer-terms-of-service):
-
-- No user tokens, no client modification, no selfbots, no scraping.
-- Only the official Bot API and OAuth2 are used.
-- Bot identity, audio routing, and server configuration are all visible to the server admin.
-- Commanders explicitly authorize the app via OAuth2.
-
-If you are operating this for a third party, you should also publish a privacy notice that includes:
-- The legal basis for processing (legitimate interest / consent).
-- The data controller's contact information.
-- The data subject's rights under your jurisdiction (GDPR, CCPA, etc.).
-- The retention policy you actually implement.
+The instance operator is named in the imprint (`/rechtliches/impressum`).

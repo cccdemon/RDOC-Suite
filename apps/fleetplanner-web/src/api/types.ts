@@ -18,6 +18,8 @@ export type {
   OperatorView,
   TemplateSummary,
   RoadmapItem,
+  PublicOrg,
+  PublicOrgsResponse,
   GuildSettings,
   GuildSettingsMember,
   GuildSettingsResponse,

@@ -1,7 +1,7 @@
 # RDOC Fleetplanner — Was er kann und wofür er gedacht ist
 
-*Vollständiger deutscher Überblick. Stand: 2026-06-07. Erreichbar unter
-`https://suite.raumdock.org/fleetplanner`.*
+*Vollständiger deutscher Überblick. Stand: 2026-08-12 (Funktionsumfang gegen den Quelltext geprüft).
+Erreichbar unter `https://suite.raumdock.org/fleetplanner`.*
 
 ## Wofür ist der Fleetplanner gedacht?
 
@@ -12,9 +12,9 @@ wieder auftauchen:
 - **Was machen wir, wann, und wo treffen wir uns?**
 - **Welche Schiffe und welche FPS-Teams brauchen wir?**
 - **Wer fliegt was, und wer sitzt auf welchem Sitzplatz (Pilot, Gunner, Engineer, …)?**
-- **Wie kommen alle ins richtige Sprach-Setup (Discord + Voice)?**
+- **Wie kommen die Kommandanten in denselben Sprachkanal?**
 
-Er ist eng an **Discord** angebunden (Events, Benachrichtigungen, Rollen, Sprachkanäle) und
+Er ist eng an **Discord** angebunden (Events, Benachrichtigungen, Rollen-Zuordnung) und
 mandantenfähig: **ein Discord-Server = eine Guild = ein Mandant**. Mehrere Orgs nutzen dieselbe
 Instanz, ohne sich gegenseitig in die Daten zu sehen.
 
@@ -80,18 +80,22 @@ Link-Vorschaubild beim Teilen und als **Discord-Event-Bild**. Mit Editor zum Fei
 aufgeräumt.
 
 ### 8. Sprach-Integration (Voice)
-Zwei getrennte Sprach-Pfade während einer Live-Operation:
-- **Command Net** — PTT für Captains/Leader in einem LiveKit-Commander-Raum.
-- **Global Radio Net** — PTT, das über Relay-Bots in die Discord-Sprachkanäle sendet.
+Der Fleetplanner überträgt **kein Audio** und bewegt niemanden in Discord-Sprachkanäle. Er baut für
+eine **laufende** Operation einen signierten Deep-Link (`squadlink://connect`) in den CommandNet-Raum
+der Operation; gesprochen wird in **RDOC SquadLink**, einer eigenständigen App. Der Operator wählt
+aus, welche zugewiesenen Teilnehmer den Link sehen. Ohne konfiguriertes Raum-Secret ist die Funktion
+in der Oberfläche schlicht nicht vorhanden.
 
-Der Fleetplanner kann pro Einheit **Crew in den richtigen Discord-Voice-Channel ziehen** und
-Mehrfach-Zugewiesenen **einen Haupt-Sprachkanal** zuweisen. (Voice ist pro Guild durch den
-SuperAdmin freizuschalten.)
+> Die früheren **Funkrelais-Bots** ("Global Radio Net") und der LiveKit-Commander-Raum sind
+> **entfernt** — im Code existiert davon nichts mehr.
 
 ### 9. Discord-Anbindung
 - **Geplante Discord-Events** werden beim Öffnen einer Op erzeugt (inkl. Cover-Bild, wiederkehrend).
 - **DMs/Erinnerungen** an Teilnehmer (z.B. Reminder vor Start, Sitzplatz-/Captain-Hinweise).
-- **Rollen** für Mission-Voice werden während der Op vergeben/entzogen.
+- **„Interessiert"** in Discord landet als Eintrag an der Operation (Abgleich alle fünf Minuten).
+- **Ankündigungen** lassen sich einmalig in einen Textkanal posten.
+- **Partner-Verteilung**: eine Operation geht auf Wunsch als Event in befreundete Server, dort
+  entschieden per Button in der Direktnachricht oder über das Web-Postfach.
 - **Feedback-Tickets** aus dem Feedback-Tab landen im Discord.
 
 ### 10. Mehrmandantenfähigkeit, Sichtbarkeit & Partnerschaften
@@ -128,10 +132,10 @@ SuperAdmin freizuschalten.)
 ## Was (noch) nicht / in Planung
 Siehe **Roadmap** (`/roadmap` im Tool, bzw. [ROADMAP.md](ROADMAP.md)). Geplant u.a.: Event-Verteilung
 an Partner-Discords, Org-Flotte (wer hat welches Schiff), Sprachumschaltung (DE/EN/FR/ES),
-Inaktivitäts-Alarm, Federation Voice. Blockiert: Item-/Loot-Datenbank (keine API).
+Inaktivitäts-Alarm. Verworfen: Federation Voice. Blockiert: Item-/Loot-Datenbank (keine API).
 
 ## Abgrenzung
-Der Fleetplanner ist **nicht** der Voice-Bridge-/Companion-Teil selbst — er *orchestriert* nur das
-Sprach-Setup. Audio läuft über die separate LiveKit-Bridge + Companion-App + Relay-Bots der
-RDOC-Suite. Discord wird ausschließlich über die offizielle Bot-/OAuth-API genutzt (keine Selfbots,
-keine Client-Mods, keine heimlichen Aufnahmen).
+Der Fleetplanner ist **kein Voice-Werkzeug**. Er kennt den Namen eines Sprachraums und mintet einen
+Link dorthin — mehr nicht. Audio, Push-to-Talk und Mischung liegen vollständig bei **RDOC SquadLink**
+(eigenes Repo, eigene App). Discord wird ausschließlich über die offizielle Bot-/OAuth-API genutzt
+(keine Selfbots, keine Client-Mods, keine heimlichen Aufnahmen, keine Gateway-Verbindung).

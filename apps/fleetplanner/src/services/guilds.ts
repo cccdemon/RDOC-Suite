@@ -249,6 +249,7 @@ export async function getGuildSettingsData(guildId: string): Promise<{
     admiralRoleId: string | null;
     discordInviteUrl: string | null;
     timezone: string;
+    landingOptIn: boolean;
   };
   members: Array<{ userId: string; username: string; role: string; isOwner: boolean }>;
 } | null> {
@@ -258,11 +259,12 @@ export async function getGuildSettingsData(guildId: string): Promise<{
       where: { id: guildId },
       select: {
         id: true, name: true, orgName: true, ownerUserId: true,
-        admiralRoleId: true, discordInviteUrl: true, timezone: true,
+        admiralRoleId: true, discordInviteUrl: true, timezone: true, landingOptIn: true,
       },
     }) as Promise<{
       id: string; name: string; orgName: string | null; ownerUserId: string | null;
       admiralRoleId: string | null; discordInviteUrl: string | null; timezone: string;
+      landingOptIn: boolean;
     } | null>,
     prisma.guildMembership.findMany({
       where: { guildId },
@@ -290,10 +292,47 @@ export async function updateGuildSettings(
     timezone?: string;
     discordInviteUrl?: string | null;
     admiralRoleId?: string | null;
+    landingOptIn?: boolean;
   },
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (prisma.guild.update as any)({ where: { id: guildId }, data });
+}
+
+/**
+ * Orgs for the public "used by" panel on the start page.
+ *
+ * Three conditions, all required: the guild consented (`landingOptIn`), it is
+ * live (active, not banned), and it has a Discord invite — a card with no
+ * destination is pointless. Nothing personal is returned, and the synthetic E2E
+ * guilds are excluded so test data can never end up on the landing page.
+ */
+export async function listPublicOrgs(): Promise<
+  Array<{ name: string; inviteUrl: string; iconUrl: string | null }>
+> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rows = (await (prisma.guild.findMany as any)({
+    where: {
+      landingOptIn: true,
+      active: true,
+      bannedAt: null,
+      discordInviteUrl: { not: null },
+      id: { notIn: E2E_GUILD_IDS },
+    },
+    select: { id: true, name: true, orgName: true, iconHash: true, discordInviteUrl: true },
+    orderBy: [{ orgName: "asc" }, { name: "asc" }],
+  })) as Array<{
+    id: string; name: string; orgName: string | null;
+    iconHash: string | null; discordInviteUrl: string | null;
+  }>;
+
+  return rows
+    .filter((g): g is typeof g & { discordInviteUrl: string } => Boolean(g.discordInviteUrl))
+    .map((g) => ({
+      name: g.orgName?.trim() || g.name,
+      inviteUrl: g.discordInviteUrl,
+      iconUrl: g.iconHash ? `https://cdn.discordapp.com/icons/${g.id}/${g.iconHash}.png?size=64` : null,
+    }));
 }
 
 /** Set a member's per-guild role. Never demotes the guild owner below

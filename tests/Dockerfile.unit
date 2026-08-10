@@ -1,0 +1,29 @@
+# Unit + contract tests for @rdoc-suite/fleetplanner, run inside Docker.
+#
+# The point is that `./scripts/test-stack.sh unit` works on any machine with
+# Docker — no local pnpm, no local node, and no dependence on the state of a
+# developer's pnpm store (a half-written store entry silently breaks resolution).
+# Same install path as apps/fleetplanner/Dockerfile, but devDependencies stay.
+FROM node:20-alpine
+
+RUN apk add --no-cache libc6-compat openssl
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+ENV CI=true
+WORKDIR /app
+
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+COPY apps/fleetplanner/package.json apps/fleetplanner/
+COPY packages/fleetplanner-contracts/package.json packages/fleetplanner-contracts/
+RUN pnpm install --frozen-lockfile --filter @rdoc-suite/fleetplanner...
+
+COPY apps/fleetplanner apps/fleetplanner
+COPY packages/fleetplanner-contracts packages/fleetplanner-contracts
+
+# The Prisma client must exist before tsc/vitest resolve it, or every prisma
+# callback degrades to `any` and the type-level tests lose their meaning.
+RUN pnpm --filter @rdoc-suite/fleetplanner exec prisma generate \
+ && pnpm --filter @rdoc-suite/fleetplanner-contracts run build
+
+# Unit tests only: the DB-integration suite starts its own Postgres via the
+# docker CLI and belongs on the host (./scripts/test-stack.sh db).
+CMD ["pnpm", "--filter", "@rdoc-suite/fleetplanner", "test"]

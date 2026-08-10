@@ -19,9 +19,6 @@ const schema = z.object({
   TRUST_PROXY: z.string().default("127.0.0.1/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"),
   DATABASE_URL: z.string().default("file:./data/fleetplanner.db"),
   SESSION_SECRET: z.string().min(32),
-  // Dedicated encryption key for GuildVoiceBot tokens. Set this once and keep it stable.
-  // If unset, falls back to SESSION_SECRET (which causes re-entry on every rotate).
-  VOICEBOT_ENCRYPTION_KEY: z.string().min(32).optional(),
   PUBLIC_BASE_PATH: z.string().default(""),
   // Force maintenance mode on regardless of the superadmin toggle (1/true/on).
   // Useful during deploys; leave unset for normal operation.
@@ -52,6 +49,17 @@ const schema = z.object({
   DISCORD_FLEETPLANNER_CLIENT_ID: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_SECRET: z.string().optional(),
   DISCORD_FLEETPLANNER_BOT_TOKEN: z.string().optional(),
+  // Discord endpoints. Defaults are the real ones; the ONLY reason to override
+  // is the local test stack, which points them at the discord-mock simulator
+  // (tests/discord-mock). A non-default value is logged loudly at boot
+  // (assertDiscordEndpoints below) so a redirected Discord can never sit
+  // unnoticed in production.
+  DISCORD_API_BASE: httpUrl.default("https://discord.com/api/v10"),
+  // Browser-facing OAuth authorize base. Identical to DISCORD_API_BASE in prod;
+  // the test stack splits them because the simulator has one hostname inside the
+  // docker network (discord-mock) and another for the browser (localhost).
+  DISCORD_AUTHORIZE_BASE: httpUrl.optional(),
+  DISCORD_SITE_BASE: httpUrl.default("https://discord.com"),
   // Ed25519 public key of the Fleetplanner Discord app — required to verify
   // incoming HTTP interactions (FR-P1 event-distribution approval buttons).
   // Set the app's "Interactions Endpoint URL" to <WEB_PUBLIC_URL>/discord/interactions.
@@ -119,4 +127,41 @@ export function getEnv(): Env {
 
 export function basePath(suffix = ""): string {
   return `${getEnv().PUBLIC_BASE_PATH}${suffix}`;
+}
+
+export const DEFAULT_DISCORD_API_BASE = "https://discord.com/api/v10";
+export const DEFAULT_DISCORD_SITE_BASE = "https://discord.com";
+
+/** REST + OAuth token/authorize base (`…/api/v10`), overridable for the test stack. */
+export function discordApiBase(): string {
+  return getEnv().DISCORD_API_BASE.replace(/\/+$/, "");
+}
+
+/** Browser-facing OAuth authorize base — defaults to the REST base. */
+export function discordAuthorizeBase(): string {
+  const env = getEnv();
+  return (env.DISCORD_AUTHORIZE_BASE ?? env.DISCORD_API_BASE).replace(/\/+$/, "");
+}
+
+/** Discord web base (`https://discord.com`) — bot-invite / authorize links. */
+export function discordSiteBase(): string {
+  return getEnv().DISCORD_SITE_BASE.replace(/\/+$/, "");
+}
+
+/**
+ * Shout if Discord is pointed somewhere other than Discord. Called once at boot.
+ * Redirecting the API base sends bot tokens and OAuth secrets to that host, so a
+ * stray override in production has to be visible in the very first log lines.
+ */
+export function assertDiscordEndpoints(log: { warn: (msg: string) => void }): void {
+  const env = getEnv();
+  const redirected: string[] = [];
+  if (discordApiBase() !== DEFAULT_DISCORD_API_BASE) redirected.push(`DISCORD_API_BASE=${env.DISCORD_API_BASE}`);
+  if (discordAuthorizeBase() !== DEFAULT_DISCORD_API_BASE) redirected.push(`DISCORD_AUTHORIZE_BASE=${discordAuthorizeBase()}`);
+  if (discordSiteBase() !== DEFAULT_DISCORD_SITE_BASE) redirected.push(`DISCORD_SITE_BASE=${env.DISCORD_SITE_BASE}`);
+  if (redirected.length === 0) return;
+  log.warn(
+    `Discord endpoints are REDIRECTED (${redirected.join(", ")}). This is only valid for the local ` +
+      `test stack — bot tokens and OAuth secrets are sent to that host.`,
+  );
 }

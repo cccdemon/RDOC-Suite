@@ -985,7 +985,6 @@ export const en: Record<string, string> = {
   "gs.botToken": "Bot token",
   "gs.botTokenStored": "Stored encrypted with per-token salt",
   "gs.saveBot": "Save Bot",
-  "gs.tokensNote": "Tokens are encrypted before storage and never rendered back to the browser. Use six entries for the six Funkrelais bots.",
   "gs.colBotId": "Bot ID",
   "gs.colUpdated": "Updated",
   "gs.colActions": "Actions",

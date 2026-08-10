@@ -81,6 +81,7 @@ import {
 import { createSeriesForOp, upcomingOccurrences } from "../services/recurrence.js";
 import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
 import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
+import { listPublicOrgs } from "../services/guilds.js";
 import {
   addShipNeeds,
   getOperationNeeds,
@@ -328,6 +329,15 @@ export async function apiV1Routes(app: FastifyInstance) {
   // Public, static player-facing roadmap.
   app.get("/api/v1/roadmap", async (_req, reply) => {
     return reply.type("application/json").send({ items: ROADMAP });
+  });
+
+  // Public: the orgs that consented to appear in the start page's "used by"
+  // panel. Anonymous by design — it feeds a logged-out landing page. Returns
+  // only what a visitor would see on the Discord invite anyway (org name, icon,
+  // invite link); never member counts, ids or anything personal.
+  app.get("/api/v1/public/orgs", async (_req, reply) => {
+    const orgs = await listPublicOrgs();
+    return reply.type("application/json").send({ orgs });
   });
 
   // Interactive API docs (Swagger UI) live in the fleetplanner-web SPA at
@@ -632,6 +642,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         timezone?: string;
         discordInviteUrl?: string | null;
         admiralRoleId?: string | null;
+        landingOptIn?: boolean;
       } = {};
       if (body.data.orgName !== undefined)
         data.orgName = body.data.orgName ? body.data.orgName.trim().slice(0, 80) || null : null;
@@ -641,6 +652,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         data.discordInviteUrl = inviteUrl(body.data.discordInviteUrl);
       if (body.data.admiralRoleId !== undefined)
         data.admiralRoleId = snowflake(body.data.admiralRoleId);
+      if (body.data.landingOptIn !== undefined) data.landingOptIn = body.data.landingOptIn;
 
       await updateGuildSettings(p.data.id, data);
       return reply.type("application/json").send({ ok: true as const });
@@ -999,6 +1011,7 @@ export async function apiV1Routes(app: FastifyInstance) {
       const msg =
         result.reason === "self_partner" ? "Cannot partner with your own Discord."
           : result.reason === "already_partners" ? "Already partnered with that Discord."
+            : result.reason === "pair_revoked" ? "This partnership was revoked and cannot be re-established."
             : result.reason === "already_used" ? "This token was already used."
               : result.reason === "revoked" ? "This token was revoked."
                 : "Invalid token.";

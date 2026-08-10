@@ -1,12 +1,136 @@
+# LOCAL TEST STACK — the full RDOC-Suite on one machine, with Discord simulated.
+#
+# This is what the E2E suite runs against. It mirrors production's shape (nginx
+# front door → fastify backend → postgres, plus mission-cover) but replaces
+# Discord with tests/discord-mock and swaps Caddy out — TLS is not under test.
+#
+#   ./scripts/test-stack.sh up      # build + start + wait for readiness
+#   ./scripts/test-stack.sh e2e     # run Playwright against it
+#   ./scripts/test-stack.sh down    # stop and delete the volumes
+#
+# Published ports (host):
+#   8099  fleetplanner-web  ← the app (front door, what the browser uses)
+#   3299  fleetplanner      ← backend directly (API-level tests, log tailing)
+#   4400  discord-mock      ← Discord simulator + /__mock control plane
+#   3399  mission-cover
+#  55432  postgres
+#
+# Never point this at a real Discord token — env.test wires the simulator.
+name: rdoc-suite-test
+
 services:
-  integration-test:
+  fleetplanner-db-test:
+    image: postgres:16-alpine
+    container_name: rdoc-test-db
+    environment:
+      POSTGRES_USER: "fleetplanner"
+      POSTGRES_PASSWORD: "testpassword"
+      POSTGRES_DB: "fleetplanner"
+    # tmpfs, not a volume: a test database must be gone when the stack stops.
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:55432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fleetplanner -d fleetplanner"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  discord-mock:
     build:
       context: .
-      dockerfile: tests/Dockerfile.integration
-    image: rdoc-suite-test:latest
-    container_name: rdoc-suite-test
-    env_file: .env
+      dockerfile: tests/discord-mock/Dockerfile
+    image: rdoc-suite-discord-mock:test
+    container_name: rdoc-test-discord-mock
     environment:
-      SUITE_URL: "${SUITE_URL:-https://suite.raumdock.org}"
-      VOICE_URL: "${VOICE_URL:-https://voice.raumdock.org}"
-    network_mode: host
+      PORT: "4400"
+      # Must match DISCORD_FLEETPLANNER_BOT_TOKEN so a wrong token is a 401,
+      # exactly like Discord.
+      DISCORD_MOCK_BOT_TOKEN: "mock-bot-token"
+      DISCORD_MOCK_APP_INTERACTIONS_URL: "http://fleetplanner:3200/discord/interactions"
+    ports:
+      - "127.0.0.1:4400:4400"
+
+  fleetplanner:
+    build:
+      context: .
+      dockerfile: apps/fleetplanner/Dockerfile
+    image: rdoc-suite-fleetplanner:test
+    container_name: rdoc-test-fleetplanner
+    env_file: tests/stack/env.test
+    ports:
+      - "127.0.0.1:3299:3200"
+    depends_on:
+      fleetplanner-db-test:
+        condition: service_healthy
+      discord-mock:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3200/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  fleetplanner-web:
+    build:
+      context: .
+      dockerfile: apps/fleetplanner-web/Dockerfile
+      args:
+        # No /fleetplanner prefix locally: nginx is reached directly, so the SPA
+        # is served from the root (PUBLIC_BASE_PATH is empty in env.test) and the
+        # API prefix baked into the bundle has to lose the prefix too.
+        BASE_PATH: "/"
+        VITE_API_BASE: "/api/v1"
+    image: rdoc-suite-fleetplanner-web:test
+    container_name: rdoc-test-fleetplanner-web
+    depends_on:
+      fleetplanner:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8099:80"
+
+  # Unit/contract tests in a container — `./scripts/test-stack.sh unit`.
+  # Under a profile so `up` never starts it; it is a one-shot `run --rm` target.
+  unit-tests:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.unit
+    image: rdoc-suite-unit-tests:test
+    profiles: ["tools"]
+
+  # DB-integration tests — `./scripts/test-stack.sh db`. Same image; it points at
+  # the stack's Postgres (separate `fleetplanner_test` database) instead of
+  # spawning its own container, which is what makes it runnable from inside one.
+  db-tests:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.unit
+    image: rdoc-suite-unit-tests:test
+    profiles: ["tools"]
+    environment:
+      TEST_DATABASE_URL: "postgresql://fleetplanner:testpassword@fleetplanner-db-test:5432/fleetplanner_test?schema=public"
+    depends_on:
+      fleetplanner-db-test:
+        condition: service_healthy
+    command: ["pnpm", "--filter", "@rdoc-suite/fleetplanner", "test:db"]
+
+  # Cover rendering pulls a ~800 MB headless-Chromium base image, so it is NOT
+  # part of the default `up` — only the cover specs need it:
+  #   docker compose -f docker-compose.test.yml --profile cover up -d mission-cover
+  mission-cover:
+    profiles: ["cover"]
+    build:
+      context: .
+      dockerfile: apps/mission-cover/Dockerfile
+    image: rdoc-suite-mission-cover:test
+    container_name: rdoc-test-mission-cover
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3300"
+      DATA_DIR: "/app/data/covers"
+      MISSIONCOVER_PUBLIC_URL: "http://localhost:3399"
+      MISSIONCOVER_SERVICE_SECRET: "test-missioncover-service-secret-0123456789"
+    ports:
+      - "127.0.0.1:3399:3300"

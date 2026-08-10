@@ -26,6 +26,11 @@ const E2E_GUILDS: Record<string, string> = {
   [E2E_GUILD_ID_2]: "E2E-Testserver-2",
 };
 const USERNAME_RE = /^e2e-[a-z0-9-]{1,40}$/;
+// A test player may also carry a synthetic Discord identity, so the Discord-side
+// flows (DM delivery, interaction buttons, interest → member resolution) are
+// reachable. Restricted to the synthetic 3xx… range the Discord simulator seeds —
+// a real snowflake could otherwise be bound to a test account.
+const E2E_DISCORD_ID_RE = /^3\d{17}$/;
 const INSTANCE_ROLES = new Set(["crew", "fleetoperator", "superadmin"]);
 const GUILD_ROLES = new Set(["crew", "fleetoperator"]);
 
@@ -113,19 +118,74 @@ export async function e2eAuthRoutes(app: FastifyInstance) {
       update: { role: guildRole },
     });
 
+    // Optional synthetic Discord identity (see E2E_DISCORD_ID_RE).
+    const discordId = typeof body.discordId === "string" && E2E_DISCORD_ID_RE.test(body.discordId)
+      ? body.discordId
+      : null;
+    if (discordId) {
+      const owner = await prisma.userIdentity.findUnique({
+        where: { provider_providerId: { provider: "discord", providerId: discordId } },
+        select: { userId: true },
+      });
+      if (!owner) {
+        await prisma.userIdentity.create({
+          data: { userId, provider: "discord", providerId: discordId, username },
+        });
+      } else if (owner.userId !== userId) {
+        return reply.code(409).send({ error: "discordId already linked to another test user" });
+      }
+    }
+
     const session = await createSession(userId);
     setSessionCookie(reply, session.token, session.expiresAt);
-    return reply.send({ ok: true, userId, guildId, csrfToken: session.csrfToken });
+    return reply.send({ ok: true, userId, guildId, discordId, csrfToken: session.csrfToken });
   });
 
-  // ── Wipe E2E test operations (scoped to the synthetic guilds only) ──
+  // ── Seed a tiny ship catalog ───────────────────────────────────────
+  // The real catalog is filled by the SC-wiki sync, which needs the internet and
+  // minutes of runtime. Specs that pick a ship (offer-ship, fleet board, needs)
+  // only need a handful of deterministic entries, so the local stack seeds them
+  // here instead of depending on a network sync.
+  const SEED_SHIPS = [
+    { slug: "constellation-andromeda", name: "Constellation Andromeda", manufacturer: "RSI", size: "Large", career: "Combat", role: "Freighter", minCrew: 1, maxCrew: 4, weaponCrew: 2, operationCrew: 0 },
+    { slug: "cutlass-black", name: "Cutlass Black", manufacturer: "Drake", size: "Medium", career: "Combat", role: "Multi-Role", minCrew: 1, maxCrew: 3, weaponCrew: 1, operationCrew: 0 },
+    { slug: "prospector", name: "Prospector", manufacturer: "MISC", size: "Small", career: "Industrial", role: "Mining", minCrew: 1, maxCrew: 1, weaponCrew: 0, operationCrew: 0 },
+    { slug: "polaris", name: "Polaris", manufacturer: "RSI", size: "Capital", career: "Combat", role: "Corvette", minCrew: 4, maxCrew: 10, weaponCrew: 4, operationCrew: 2 },
+    { slug: "gladius", name: "Gladius", manufacturer: "Aegis", size: "Small", career: "Combat", role: "Fighter", minCrew: 1, maxCrew: 1, weaponCrew: 0, operationCrew: 0 },
+  ];
+
+  app.post("/e2e/seed-ships", async (req, reply) => {
+    if (seamExpired() || !secretOk(req.headers["x-e2e-secret"], secret)) return reply.code(404).send();
+    for (const ship of SEED_SHIPS) {
+      await prisma.ship.upsert({ where: { slug: ship.slug }, create: ship, update: ship });
+    }
+    return reply.send({ ok: true, ships: SEED_SHIPS.length });
+  });
+
+  // ── Wipe E2E test state (scoped to the synthetic guilds only) ──────
+  // Operations AND the cross-guild state they hang off. Partnerships in
+  // particular are permanent once revoked, so a spec that partners the two
+  // synthetic guilds could never run twice if they were left behind.
   app.post("/e2e/cleanup", async (req, reply) => {
     if (seamExpired() || !secretOk(req.headers["x-e2e-secret"], secret)) return reply.code(404).send();
-    const ops = await prisma.operation.findMany({ where: { guildId: { in: Object.keys(E2E_GUILDS) } }, select: { id: true } });
+    const guildIds = Object.keys(E2E_GUILDS);
+    const ops = await prisma.operation.findMany({ where: { guildId: { in: guildIds } }, select: { id: true } });
     let deleted = 0;
     for (const o of ops) {
       await prisma.operation.delete({ where: { id: o.id } }).then(() => { deleted++; }).catch(() => {});
     }
-    return reply.send({ ok: true, deletedOperations: deleted, guilds: Object.keys(E2E_GUILDS) });
+    const partnerships = await prisma.guildPartnership.deleteMany({
+      where: { OR: [{ guildAId: { in: guildIds } }, { guildBId: { in: guildIds } }] },
+    });
+    const policies = await prisma.partnerSharePolicy.deleteMany({
+      where: { OR: [{ ownerGuildId: { in: guildIds } }, { partnerGuildId: { in: guildIds } }] },
+    });
+    return reply.send({
+      ok: true,
+      deletedOperations: deleted,
+      deletedPartnerships: partnerships.count,
+      deletedSharePolicies: policies.count,
+      guilds: guildIds,
+    });
   });
 }

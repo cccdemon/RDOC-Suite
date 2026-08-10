@@ -43,6 +43,7 @@ import {
   HangarShipRequestSchema,
   OperatorViewSchema,
   RoadmapResponseSchema,
+  PublicOrgsResponseSchema,
   TemplateListResponseSchema,
   UnitDecisionRequestSchema,
   ClaimSeatResponseSchema,
@@ -148,6 +149,7 @@ const SCHEMAS = {
   TemplateListResponse: TemplateListResponseSchema,
   ApplyTemplateRequest: ApplyTemplateRequestSchema,
   RoadmapResponse: RoadmapResponseSchema,
+  PublicOrgsResponse: PublicOrgsResponseSchema,
   OrgFleetResponse: OrgFleetResponseSchema,
   AssignCqbRequest: AssignCqbRequestSchema,
   FormationRequest: FormationRequestSchema,
@@ -1560,6 +1562,18 @@ export function buildOpenApiDocument(): JsonObject {
           summary: "Player-facing roadmap (public)",
           tags: ["meta"],
           responses: { "200": { description: "OK", ...jsonContent(ref("RoadmapResponse")) } },
+        },
+      },
+      "/api/v1/public/orgs": {
+        get: {
+          operationId: "listPublicOrgs",
+          summary: "Orgs that consented to appear on the public start page",
+          description:
+            "Anonymous. Returns only what the Discord invite itself would show — org name, icon and " +
+            "invite URL — for guilds that ticked the opt-in, are active and not banned, and have an " +
+            "invite configured. Empty array when nobody consented.",
+          tags: ["meta"],
+          responses: { "200": { description: "OK", ...jsonContent(ref("PublicOrgsResponse")) } },
         },
       },
       "/api/v1/templates": {

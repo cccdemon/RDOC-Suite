@@ -145,6 +145,11 @@ export function getRoadmap(): Promise<{ items: import("./types").RoadmapItem[] }
   return get<{ items: import("./types").RoadmapItem[] }>("/roadmap");
 }
 
+/** Orgs that consented to appear in the start page's "used by" panel. Public. */
+export function getPublicOrgs(): Promise<import("./types").PublicOrgsResponse> {
+  return get<import("./types").PublicOrgsResponse>("/public/orgs");
+}
+
 export function claimSeat(opId: string, seatId: string, csrfToken: string): Promise<{ ok: true; seatId: string }> {
   return mutate("POST", `/operations/${encodeURIComponent(opId)}/seats/${encodeURIComponent(seatId)}/claim`, csrfToken);
 }
@@ -733,7 +738,13 @@ export function announceOperation(opId: string, csrfToken: string, channelId: st
 export function updateGuildSettings(
   guildId: string,
   csrfToken: string,
-  input: { orgName?: string | null; timezone?: string; discordInviteUrl?: string | null; admiralRoleId?: string | null },
+  input: {
+    orgName?: string | null;
+    timezone?: string;
+    discordInviteUrl?: string | null;
+    admiralRoleId?: string | null;
+    landingOptIn?: boolean;
+  },
 ): Promise<{ ok: true }> {
   return mutate("PATCH", `/guilds/${encodeURIComponent(guildId)}/settings`, csrfToken, input);
 }

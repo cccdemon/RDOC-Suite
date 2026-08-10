@@ -4,28 +4,36 @@ import { buildApp } from "../../app.js";
 import { prisma } from "../../db.js";
 import { createSession } from "../../auth/session.js";
 
-// Skipped automatically when Docker (and thus the test Postgres) is unavailable.
+// Skipped automatically when no test Postgres is available.
 const dbReady = inject("dbReady");
 
-// Real route integration against the Docker test Postgres: an authenticated
-// fleet operator drives an operation through its lifecycle via .inject().
+// Real route integration against a real Postgres: an authenticated fleet
+// operator drives an operation through its lifecycle over /api/v1 (the only
+// layer that still exists — the backend renders no HTML forms since the
+// API-only refactor). Discord is unconfigured here, so the scheduled-event side
+// effects are no-ops; e2e/tests/30-* cover them against the simulator.
 let app: FastifyInstance;
 let cookie: string;
 let csrf: string;
 let userId: string;
 const guildId = "100000000000000777";
 
-function form(fields: Record<string, string>): string {
-  return Object.entries(fields)
-    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
-    .join("&");
-}
-async function post(url: string, fields: Record<string, string>) {
+async function api(
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
+  url: string,
+  body?: unknown,
+) {
   return app.inject({
-    method: "POST",
+    method,
     url,
-    headers: { "content-type": "application/x-www-form-urlencoded", cookie },
-    payload: form({ _csrf: csrf, ...fields }),
+    headers: {
+      cookie,
+      "x-csrf-token": csrf,
+      // Fastify rejects an empty body that claims to be JSON, so the header is
+      // only set when there is one.
+      ...(body === undefined ? {} : { "content-type": "application/json" }),
+    },
+    payload: body === undefined ? undefined : JSON.stringify(body),
   });
 }
 
@@ -54,72 +62,127 @@ describe.skipIf(!dbReady)("operation lifecycle (real DB)", () => {
   });
 
   it("creates an operation", async () => {
-    const res = await post("/ops/new", {
+    const res = await api("POST", "/api/v1/operations", {
       guildId,
       title: "__HARNESS_OP__",
-      scheduledAt: "2026-09-01T18:00",
+      scheduledAt: "2026-09-01T18:00:00.000Z",
       opType: "combat",
       visibility: "private",
     });
-    expect(res.statusCode).toBe(302);
-    const op = await prisma.operation.findFirst({
-      where: { title: "__HARNESS_OP__", createdById: userId },
-    });
-    expect(op).not.toBeNull();
-    opId = op!.id;
+    expect(res.statusCode).toBe(200);
+    opId = res.json().id as string;
+    const op = await prisma.operation.findUnique({ where: { id: opId } });
+    expect(op).toMatchObject({ title: "__HARNESS_OP__", createdById: userId, status: "draft" });
   });
 
   it("opens the operation", async () => {
-    const res = await post(`/api/ops/${opId}/status`, { status: "open" });
-    expect(res.statusCode).toBe(302);
-    const op = await prisma.operation.findUnique({ where: { id: opId } });
-    expect(op?.status).toBe("open");
+    const res = await api("POST", `/api/v1/operations/${opId}/status`, { status: "open" });
+    expect(res.statusCode).toBe(200);
+    expect((await prisma.operation.findUnique({ where: { id: opId } }))?.status).toBe("open");
   });
 
-  it("adds a composition group + requirement", async () => {
-    await post(`/api/ops/${opId}/groups`, { name: "Wing" });
-    const group = await prisma.compositionGroup.findFirst({
-      where: { operationId: opId, name: "Wing" },
+  it("adds ship needs and lists them back", async () => {
+    const res = await api("POST", `/api/v1/operations/${opId}/needs/ships`, {
+      shipTypes: ["subcapital", "subcapital", "support"],
+      name: "Wing",
     });
-    expect(group).not.toBeNull();
-    const res = await post(`/api/ops/${opId}/groups/${group!.id}/requirements`, {
-      label: "Fighters",
-      category: "fighter",
-      count: "4",
+    expect(res.statusCode).toBe(200);
+    expect(res.json().added).toBe(3);
+
+    const needs = await prisma.compositionRequirement.findMany({
+      where: { group: { operationId: opId } },
     });
-    expect(res.statusCode).toBe(302);
-    const req = await prisma.compositionRequirement.findFirst({ where: { groupId: group!.id } });
-    expect(req?.count).toBe(4);
+    expect(needs).toHaveLength(3);
+
+    const view = await app.inject({ method: "GET", url: `/api/v1/operations/${opId}/needs`, headers: { cookie } });
+    expect(view.statusCode).toBe(200);
+    expect(JSON.stringify(view.json())).toContain("subcapital");
+  });
+
+  it("removes a single ship need without touching the others", async () => {
+    const need = await prisma.compositionRequirement.findFirst({ where: { group: { operationId: opId } } });
+    const res = await api("DELETE", `/api/v1/operations/${opId}/needs/${need!.id}`);
+    expect(res.statusCode).toBe(200);
+    expect(await prisma.compositionRequirement.count({ where: { group: { operationId: opId } } })).toBe(2);
   });
 
   it("signs the operator up as CQB and withdraws", async () => {
-    await post(`/api/ops/${opId}/cqb-signups`, { note: "harness" });
-    expect(await prisma.cqbSignup.count({ where: { operationId: opId, userId } })).toBe(1);
-    await post(`/api/ops/${opId}/cqb-signups/withdraw`, {});
-    expect(await prisma.cqbSignup.count({ where: { operationId: opId, userId } })).toBe(0);
+    const signup = await api("POST", `/api/v1/operations/${opId}/cqb/signup`, { note: "harness" });
+    expect(signup.statusCode).toBe(200);
+    expect(await prisma.cqbSignup.count({ where: { operationId: opId, userId, status: { not: "rejected" } } })).toBe(1);
+
+    const withdraw = await api("DELETE", `/api/v1/operations/${opId}/cqb/signup`);
+    expect(withdraw.statusCode).toBe(200);
+    expect(await prisma.cqbSignup.count({ where: { operationId: opId, userId, status: { not: "rejected" } } })).toBe(0);
   });
 
-  it("renders the op page for the authed operator", async () => {
-    const res = await app.inject({ method: "GET", url: `/ops/${opId}`, headers: { cookie } });
+  it("serves the operation detail to the authenticated operator", async () => {
+    const res = await app.inject({ method: "GET", url: `/api/v1/operations/${opId}`, headers: { cookie } });
     expect(res.statusCode).toBe(200);
-    expect(res.body).toContain("__HARNESS_OP__");
+    const body = res.json();
+    expect(body.title).toBe("__HARNESS_OP__");
+    expect(body.canManage).toBe(true);
+  });
+
+  it("hides a private operation from anonymous callers", async () => {
+    const res = await app.inject({ method: "GET", url: `/api/v1/operations/${opId}` });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
   });
 
   it("rejects an unauthenticated mutation", async () => {
     const res = await app.inject({
       method: "POST",
-      url: `/api/ops/${opId}/status`,
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      payload: form({ status: "locked" }),
+      url: `/api/v1/operations/${opId}/status`,
+      headers: { "content-type": "application/json" },
+      payload: JSON.stringify({ status: "locked" }),
     });
-    expect(res.statusCode).toBeGreaterThanOrEqual(300); // redirect-to-login or 4xx, never 2xx
-    const op = await prisma.operation.findUnique({ where: { id: opId } });
-    expect(op?.status).toBe("open"); // unchanged
+    expect(res.statusCode).toBe(401);
+    expect((await prisma.operation.findUnique({ where: { id: opId } }))?.status).toBe("open"); // unchanged
+  });
+
+  it("rejects a session without the CSRF header", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/v1/operations/${opId}/status`,
+      headers: { "content-type": "application/json", cookie },
+      payload: JSON.stringify({ status: "locked" }),
+    });
+    expect(res.statusCode).toBe(403);
+    expect((await prisma.operation.findUnique({ where: { id: opId } }))?.status).toBe("open");
+  });
+
+  it("publishes only guilds that consented to the public orgs panel", async () => {
+    const empty = await app.inject({ method: "GET", url: "/api/v1/public/orgs" });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json().orgs).toEqual([]); // the harness guild has not opted in
+
+    // Opt in without an invite → still hidden: a card with no destination is
+    // pointless, so the invite is part of the condition, not a nicety.
+    await prisma.guild.update({ where: { id: guildId }, data: { landingOptIn: true } });
+    expect((await app.inject({ method: "GET", url: "/api/v1/public/orgs" })).json().orgs).toEqual([]);
+
+    await prisma.guild.update({
+      where: { id: guildId },
+      data: { discordInviteUrl: "https://discord.gg/harness", orgName: "Harness Org" },
+    });
+    const listed = (await app.inject({ method: "GET", url: "/api/v1/public/orgs" })).json().orgs;
+    expect(listed).toEqual([
+      { name: "Harness Org", inviteUrl: "https://discord.gg/harness", iconUrl: null },
+    ]);
+
+    // Banning a guild takes it off the public page immediately.
+    await prisma.guild.update({ where: { id: guildId }, data: { bannedAt: new Date() } });
+    expect((await app.inject({ method: "GET", url: "/api/v1/public/orgs" })).json().orgs).toEqual([]);
+    await prisma.guild.update({ where: { id: guildId }, data: { bannedAt: null, landingOptIn: false } });
   });
 
   it("deletes the operation", async () => {
-    const res = await post(`/ops/${opId}/delete`, {});
-    expect(res.statusCode).toBe(302);
+    const res = await api("DELETE", `/api/v1/operations/${opId}`);
+    expect(res.statusCode).toBe(200);
     expect(await prisma.operation.findUnique({ where: { id: opId } })).toBeNull();
+    // The cascade must take the needs with it — an orphaned requirement would
+    // keep showing up in the guild's composition queries.
+    expect(await prisma.compositionRequirement.count({ where: { group: { operationId: opId } } })).toBe(0);
   });
 });

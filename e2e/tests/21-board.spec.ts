@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
-import { actorContext, cleanup, login, type TestActor } from "../helpers/auth.js";
+import { actorContext, cleanup, login, type TestActor, seedShips } from "../helpers/auth.js";
 
 // Fleet board, full flow. A ship requirement only yields crew seats once an
 // offered ship is accepted. A player offers a multi-crew ship; the operator
@@ -21,6 +21,8 @@ function futureLocal(days: number): string {
 }
 
 test.beforeAll(async ({ browser }) => {
+  // The local stack starts with an empty ship catalog (no SC-wiki sync).
+  await seedShips();
   await cleanup();
   operator = await login("e2e-operator", "fleetoperator", "fleetoperator");
   player = await login("e2e-shipcaptain", "crew", "crew"); // offers the ship → becomes its captain

@@ -59,7 +59,8 @@ export type AcceptResult =
         | "already_used"
         | "revoked"
         | "self_partner"
-        | "already_partners";
+        | "already_partners"
+        | "pair_revoked";
     };
 
 /**
@@ -80,17 +81,20 @@ export async function acceptPartnerToken(
   if (row.status === "revoked") return { ok: false, reason: "revoked" };
   if (row.guildAId === guildBId) return { ok: false, reason: "self_partner" };
 
-  // Guard against a duplicate active partnership between the same pair
-  // (either direction), independent of this specific token.
+  // Guard against ANY existing row for this pair (either direction) — not just
+  // an active one. (guildAId, guildBId) is unique in the schema, so a revoked
+  // pair would otherwise make the claim below fail with a raw P2002 and a 500.
+  // Revocation is permanent by design, so a revoked pair is a refusal, not a
+  // crash.
   const existing = await prisma.guildPartnership.findFirst({
     where: {
-      status: "active",
       OR: [
         { guildAId: row.guildAId, guildBId },
         { guildAId: guildBId, guildBId: row.guildAId },
       ],
     },
   });
+  if (existing?.status === "revoked") return { ok: false, reason: "pair_revoked" };
   if (existing) return { ok: false, reason: "already_partners" };
 
   // Atomic claim: only flip pending → active if still pending.

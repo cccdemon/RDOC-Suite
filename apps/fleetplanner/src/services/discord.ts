@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import { createPublicKey, verify as cryptoVerify } from "node:crypto";
 import sharp from "sharp";
-import { getEnv } from "../config/env.js";
+import { discordApiBase, discordSiteBase, getEnv } from "../config/env.js";
 import { prisma } from "../db.js";
 import { discordRecurrenceRule, type RecurrenceLike } from "./recurrence.js";
 
-const DISCORD_API = "https://discord.com/api/v10";
+// The Discord base URL is resolved per call (not captured at module load) so the
+// local test stack can point the whole Discord surface at the simulator via
+// DISCORD_API_BASE without reloading modules.
 
 export type DiscordEventResult = { id: string } | null;
 
@@ -56,7 +58,7 @@ export function discordInviteUrl(input: {
     params.set("guild_id", input.guildId);
     params.set("disable_guild_select", "true");
   }
-  return `https://discord.com/oauth2/authorize?${params.toString()}`;
+  return `${discordSiteBase()}/oauth2/authorize?${params.toString()}`;
 }
 
 export async function discordUserIdForFleetplannerUser(userId: string): Promise<string> {
@@ -83,7 +85,7 @@ export async function fetchGuildBasic(
 ): Promise<{ id: string; name: string; icon: string | null } | null> {
   const token = fleetplannerBotToken();
   if (!token) return null;
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}`, {
+  const res = await fetch(`${discordApiBase()}/guilds/${guildId}`, {
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
   });
@@ -105,7 +107,7 @@ export async function checkGuildBotPresence(
   const token = fleetplannerBotToken();
   if (!token) return "unknown";
   try {
-    const res = await fetch(`${DISCORD_API}/guilds/${guildId}`, {
+    const res = await fetch(`${discordApiBase()}/guilds/${guildId}`, {
       headers: { Authorization: `Bot ${token}` },
       signal: AbortSignal.timeout(8000),
     });
@@ -121,7 +123,7 @@ export async function checkGuildBotPresence(
 export async function fetchGuildMemberRoles(guildId: string, userId: string): Promise<string[] | null> {
   const token = fleetplannerBotToken();
   if (!token) return null;
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
+  const res = await fetch(`${discordApiBase()}/guilds/${guildId}/members/${userId}`, {
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
   });
@@ -136,7 +138,7 @@ export async function fetchGuildMemberByBot(
 ): Promise<{ user?: { id?: string; username?: string; bot?: boolean }; roles?: string[] } | null> {
   const token = fleetplannerBotToken();
   if (!token) return null;
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/members/${userId}`, {
+  const res = await fetch(`${discordApiBase()}/guilds/${guildId}/members/${userId}`, {
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
   });
@@ -147,7 +149,7 @@ export async function fetchGuildMemberByBot(
 export async function fetchGuildRolesByBot(guildId: string): Promise<Array<{ id: string; name: string; permissions: string }> | null> {
   const token = fleetplannerBotToken();
   if (!token) return null;
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/roles`, {
+  const res = await fetch(`${discordApiBase()}/guilds/${guildId}/roles`, {
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
   });
@@ -162,7 +164,7 @@ export async function fetchGuildTextChannels(
 ): Promise<Array<{ id: string; name: string }>> {
   const token = fleetplannerBotToken();
   if (!token) return [];
-  const res = await fetch(`${DISCORD_API}/guilds/${guildId}/channels`, {
+  const res = await fetch(`${discordApiBase()}/guilds/${guildId}/channels`, {
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
   });
@@ -177,7 +179,7 @@ export async function fetchGuildTextChannels(
 export async function fetchBotIdentity(token: string): Promise<{ id: string; username: string } | null> {
   const clean = token.trim();
   if (!clean) return null;
-  const res = await fetch(`${DISCORD_API}/users/@me`, {
+  const res = await fetch(`${discordApiBase()}/users/@me`, {
     headers: { Authorization: `Bot ${clean}` },
     signal: AbortSignal.timeout(8000),
   });
@@ -213,7 +215,7 @@ export async function updateScheduledEventImage(
   if (!token) return;
   const image = await coverImageDataUri(coverUrl);
   if (!image) return;
-  await fetch(`${DISCORD_API}/guilds/${guildId}/scheduled-events/${eventId}`, {
+  await fetch(`${discordApiBase()}/guilds/${guildId}/scheduled-events/${eventId}`, {
     method: "PATCH",
     headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ image }),
@@ -283,7 +285,7 @@ export async function createScheduledEvent(op: {
         ...(recurrenceRule ? { recurrence_rule: recurrenceRule } : {}),
       };
 
-  const res = await fetch(`${DISCORD_API}/guilds/${op.guildId}/scheduled-events`, {
+  const res = await fetch(`${discordApiBase()}/guilds/${op.guildId}/scheduled-events`, {
     method: "POST",
     headers: {
       Authorization: `Bot ${token}`,
@@ -307,7 +309,7 @@ export async function createScheduledEvent(op: {
   const updatedDescription = op.description
     ? `### Fleetplanner Link\n${eventUrl}\n### Missionsbeschreibung\n${op.description}`
     : `### Fleetplanner Link\n${eventUrl}`;
-  await fetch(`${DISCORD_API}/guilds/${op.guildId}/scheduled-events/${data.id}`, {
+  await fetch(`${discordApiBase()}/guilds/${op.guildId}/scheduled-events/${data.id}`, {
     method: "PATCH",
     headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ description: updatedDescription.slice(0, 1000) }),
@@ -373,7 +375,7 @@ export async function updateScheduledEvent(op: {
       };
 
   const res = await fetch(
-    `${DISCORD_API}/guilds/${op.guildId}/scheduled-events/${op.discordEventId}`,
+    `${discordApiBase()}/guilds/${op.guildId}/scheduled-events/${op.discordEventId}`,
     {
       method: "PATCH",
       headers: {
@@ -435,7 +437,7 @@ export async function createPartnerScheduledEvent(
     ?? (await opTypeImageDataUri(op.opType));
   const body = partnerEventBody(op, image);
 
-  const res = await fetch(`${DISCORD_API}/guilds/${targetGuildId}/scheduled-events`, {
+  const res = await fetch(`${discordApiBase()}/guilds/${targetGuildId}/scheduled-events`, {
     method: "POST",
     headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -463,7 +465,7 @@ export async function updatePartnerScheduledEvent(
   const body = partnerEventBody(op, image);
 
   const res = await fetch(
-    `${DISCORD_API}/guilds/${targetGuildId}/scheduled-events/${eventId}`,
+    `${discordApiBase()}/guilds/${targetGuildId}/scheduled-events/${eventId}`,
     {
       method: "PATCH",
       headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
@@ -493,7 +495,7 @@ export async function listScheduledEventUsers(
   // Safety bound: 100/page × 20 pages = 2000 interested users max.
   for (let page = 0; page < 20; page++) {
     const url = new URL(
-      `${DISCORD_API}/guilds/${guildId}/scheduled-events/${eventId}/users`,
+      `${discordApiBase()}/guilds/${guildId}/scheduled-events/${eventId}/users`,
     );
     url.searchParams.set("limit", "100");
     url.searchParams.set("with_member", "true");
@@ -529,7 +531,7 @@ export async function deleteScheduledEvent(guildId: string, eventId: string): Pr
   const token = fleetplannerBotToken();
   if (!token) return;
 
-  await fetch(`${DISCORD_API}/guilds/${guildId}/scheduled-events/${eventId}`, {
+  await fetch(`${discordApiBase()}/guilds/${guildId}/scheduled-events/${eventId}`, {
     method: "DELETE",
     headers: { Authorization: `Bot ${token}` },
     signal: AbortSignal.timeout(8000),
@@ -551,7 +553,7 @@ export async function sendDiscordChannelMessage(
   if (!token) throw new Error("Discord Fleetplanner Bot integration is not configured");
   if (!channelId.trim()) throw new Error("Feedback channel is not configured");
 
-  const url = `${DISCORD_API}/channels/${encodeURIComponent(channelId.trim())}/messages`;
+  const url = `${discordApiBase()}/channels/${encodeURIComponent(channelId.trim())}/messages`;
   const payload = {
     content: content.slice(0, 1900),
     allowed_mentions: { parse: [] as string[] },
@@ -598,7 +600,7 @@ export async function sendDiscordDm(userId: string, content: string): Promise<vo
   if (!token) throw new Error("Discord Fleetplanner Bot integration is not configured");
   const discordUserId = await discordRecipientIdForUser(userId);
 
-  const channelRes = await fetch(`${DISCORD_API}/users/@me/channels`, {
+  const channelRes = await fetch(`${discordApiBase()}/users/@me/channels`, {
     method: "POST",
     headers: {
       Authorization: `Bot ${token}`,
@@ -614,7 +616,7 @@ export async function sendDiscordDm(userId: string, content: string): Promise<vo
   }
 
   const channel = await channelRes.json() as { id: string };
-  const messageRes = await fetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+  const messageRes = await fetch(`${discordApiBase()}/channels/${channel.id}/messages`, {
     method: "POST",
     headers: {
       Authorization: `Bot ${token}`,
@@ -661,7 +663,7 @@ export async function sendDiscordDmComponents(
   if (!token) throw new Error("Discord Fleetplanner Bot integration is not configured");
   const discordUserId = await discordRecipientIdForUser(userId);
 
-  const channelRes = await fetch(`${DISCORD_API}/users/@me/channels`, {
+  const channelRes = await fetch(`${discordApiBase()}/users/@me/channels`, {
     method: "POST",
     headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ recipient_id: discordUserId }),
@@ -672,7 +674,7 @@ export async function sendDiscordDmComponents(
     throw new Error(`Discord DM channel creation failed (${channelRes.status}): ${err}`);
   }
   const channel = (await channelRes.json()) as { id: string };
-  const messageRes = await fetch(`${DISCORD_API}/channels/${channel.id}/messages`, {
+  const messageRes = await fetch(`${discordApiBase()}/channels/${channel.id}/messages`, {
     method: "POST",
     headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({

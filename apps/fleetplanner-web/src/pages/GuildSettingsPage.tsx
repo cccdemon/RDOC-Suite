@@ -37,7 +37,7 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
   const [guildId, setGuildId] = useState<string | null>(null);
   const [guild, setGuild] = useState<GuildSettings | null>(null);
   const [members, setMembers] = useState<GuildSettingsMember[]>([]);
-  const [form, setForm] = useState({ orgName: "", timezone: "Europe/Berlin", discordInviteUrl: "", admiralRoleId: "" });
+  const [form, setForm] = useState({ orgName: "", timezone: "Europe/Berlin", discordInviteUrl: "", admiralRoleId: "", landingOptIn: false });
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -59,6 +59,7 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
           orgName: r.guild.orgName ?? "",
           timezone: r.guild.timezone || "Europe/Berlin",
           discordInviteUrl: r.guild.discordInviteUrl ?? "",
+          landingOptIn: r.guild.landingOptIn,
           admiralRoleId: r.guild.admiralRoleId ?? "",
         });
       })
@@ -78,6 +79,7 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
         timezone: form.timezone,
         discordInviteUrl: form.discordInviteUrl.trim() || null,
         admiralRoleId: form.admiralRoleId.trim() || null,
+        landingOptIn: form.landingOptIn,
       });
       setNotice("Gespeichert.");
       reload(guildId);
@@ -174,6 +176,26 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
                 <span style={label}>ORGAMEMBER-ROLLE (DISCORD-ROLLEN-ID)</span>
                 <input data-testid="guild-admiralrole" type="text" inputMode="numeric" value={form.admiralRoleId} placeholder="z. B. 123456789012345678" onChange={(e) => setForm((f) => ({ ...f, admiralRoleId: e.target.value }))} style={field} />
                 <p className="fpw-meta" style={{ marginTop: "0.35rem", fontSize: "0.8rem" }}>Mitglieder mit dieser Discord-Rolle sind Orgamember: berechtigt zum Anlegen von Events etc. und Teil der Org-Flotte.</p>
+              </label>
+              <label style={{ display: "block" }}>
+                <span style={label}>AUF DER STARTSEITE ZEIGEN</span>
+                <span style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginTop: "0.35rem" }}>
+                  <input
+                    data-testid="guild-landing-optin"
+                    type="checkbox"
+                    checked={form.landingOptIn}
+                    disabled={!form.discordInviteUrl.trim()}
+                    onChange={(e) => setForm((f) => ({ ...f, landingOptIn: e.target.checked }))}
+                  />
+                  <span style={{ fontSize: "0.9rem" }}>
+                    Diese Org im Panel „Diese Orgs fliegen damit“ auf der öffentlichen Startseite listen.
+                  </span>
+                </span>
+                <p className="fpw-meta" style={{ marginTop: "0.35rem", fontSize: "0.8rem" }}>
+                  {form.discordInviteUrl.trim()
+                    ? "Gezeigt werden Org-Name, Server-Icon und der Einladungslink oben — sonst nichts. Jederzeit wieder abwählbar."
+                    : "Erst einen Einladungslink hinterlegen — ohne Ziel wäre der Eintrag sinnlos."}
+                </p>
               </label>
               <div>
                 <button type="button" data-testid="guild-save" className="fpw-btn" disabled={busy || !csrf} onClick={save}>

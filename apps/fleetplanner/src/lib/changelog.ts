@@ -34,6 +34,40 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-14",
+    title: "Show your org on the start page",
+    changes: [
+      "The start page can now list the orgs that fly with the Fleetplanner, with a link to their Discord.",
+      "Your org appears only if you want it to: tick \"Auf der Startseite zeigen\" in the server settings. You need a Discord invite link there first, and you can untick it at any time.",
+      "Nothing else is shown — the org name, the server icon and the invite link you set yourself.",
+    ],
+  },
+  {
+    date: "2026-08-13",
+    title: "The start page now matches the tool",
+    changes: [
+      "The start page claimed radio relay bots carried a second voice net into your Discord channels. That has not been true for a while — the text is gone.",
+      "Voice is one thing now: for a running operation the commanders get a join link into the operation's voice room, and the talking happens in RDOC SquadLink.",
+      "Three things the tool has always done were missing from the page: templates, stream links and ground teams with mission Q&A.",
+    ],
+  },
+  {
+    date: "2026-08-12",
+    title: "How the Fleetplanner is built",
+    changes: [
+      "The handbook has a new section: Software architecture. It shows the building blocks, the data model and what happens when you publish an operation.",
+      "It answers the questions people ask most: where the data lives, what Discord sees, and why an operation still opens when Discord does not answer.",
+    ],
+  },
+  {
+    date: "2026-08-11",
+    title: "Two fixes",
+    changes: [
+      "Links to the operation list keep their view again. A link like the list view no longer drops you into the default view when you are signed in.",
+      "Accepting a partner invite from a server you were partnered with before now gives a clear message instead of an error page.",
+    ],
+  },
+  {
     date: "2026-08-10",
     title: "A real start page",
     changes: [
