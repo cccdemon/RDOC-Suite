@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { announceOperation, ApiError, addResourceLink, addShipNeeds, createOperation, createRecurrence, getGuildChannels, getPartnerships, setCqbTeams, setFighterSquads } from "../api/client";
+import { ApiError, addResourceLink, addShipNeeds, createOperation, createRecurrence, getPartnerships, setCqbTeams, setFighterSquads } from "../api/client";
 import type { SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { CoverPanel } from "../components/CoverPanel";
 import { DocumentsPanel } from "../components/DocumentsPanel";
+import { AnnouncePanel } from "../components/AnnouncePanel";
 import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, coreValid, coreOpBody } from "../components/opForm";
 import { useT } from "../i18n";
 import { TemplatesPage } from "./TemplatesPage";
@@ -551,7 +552,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                     <CoverPanel opId={createdId} csrf={csrf} onNotice={setNotice} />
                     <YoutubeField opId={createdId} csrf={csrf} onNotice={setNotice} />
                     <DocumentsPanel opId={createdId} csrf={csrf} canManage initialDocs={[]} onNotice={setNotice} />
-                    <ShareChannel opId={createdId} guildId={guildId} csrf={csrf} onNotice={setNotice} />
+                    <AnnouncePanel opId={createdId} guildId={guildId} csrf={csrf} onNotice={setNotice} />
                   </div>
                 )}
               </div>
@@ -648,52 +649,3 @@ function YoutubeField({ opId, csrf, onNotice }: { opId: string; csrf: string | n
   );
 }
 
-// FR-C2: post a one-shot announcement (title, time, link) to a Discord channel
-// right after creating the op. Channels are the op guild's text channels.
-function ShareChannel({ opId, guildId, csrf, onNotice }: { opId: string; guildId: string; csrf: string | null; onNotice: (m: string) => void }) {
-  const [channels, setChannels] = useState<Array<{ id: string; name: string }> | null>(null);
-  const [channel, setChannel] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [posted, setPosted] = useState(false);
-
-  useEffect(() => {
-    getGuildChannels(guildId).then((r) => setChannels(r.channels)).catch(() => setChannels([]));
-  }, [guildId]);
-
-  async function post() {
-    if (!csrf || !channel || busy) return;
-    setBusy(true);
-    try {
-      await announceOperation(opId, csrf, channel);
-      setPosted(true);
-      onNotice("Ankündigung gepostet.");
-    } catch (e) {
-      onNotice(e instanceof ApiError ? e.message : "Posten fehlgeschlagen.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (channels !== null && channels.length === 0) return null; // bot not configured / no channels
-
-  return (
-    <section style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", padding: "1.1rem 1.2rem" }} data-testid="share-channel">
-      <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.06em", color: "var(--text-hi)", marginBottom: "0.9rem" }}>
-        <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="chat" size={15} sw={1.6} /></span> ANKÜNDIGUNG TEILEN
-      </div>
-      {channels === null ? (
-        <p style={{ ...lbl, marginBottom: 0 }}>LADE KANÄLE…</p>
-      ) : (
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-          <select data-testid="share-channel-select" value={channel} onChange={(e) => setChannel(e.target.value)} style={{ ...inp, width: "auto", minWidth: 200, flex: "1 1 200px" }}>
-            <option value="">Kanal wählen…</option>
-            {channels.map((c) => <option key={c.id} value={c.id}>#{c.name}</option>)}
-          </select>
-          <button type="button" data-testid="share-channel-post" disabled={busy || !channel || !csrf} onClick={post} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>
-            {posted ? <><Ic name="check" size={14} sw={2} /> Gepostet</> : <><Ic name="chat" size={14} sw={1.7} /> In Kanal posten</>}
-          </button>
-        </div>
-      )}
-    </section>
-  );
-}

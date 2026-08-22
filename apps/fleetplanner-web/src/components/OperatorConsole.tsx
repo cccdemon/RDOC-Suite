@@ -12,6 +12,7 @@ import { VoicePanel } from "./VoicePanel";
 import { ResourceLinksPanel } from "./ResourceLinksPanel";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { DangerPanel } from "./DangerPanel";
+import { ReleasePanel } from "./ReleasePanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 import { FieldSaveProvider, GlobalSaveBadge, SaveDot, useFieldSave } from "./fieldSave";
 import { OP_STATUSES } from "./opStatus";
@@ -36,6 +37,9 @@ const TABS = [
   // Eckdaten, but the links, the cover and the PDFs used to sit in three
   // different places — one of them the participant page itself (§7.1).
   { key: "briefing", label: "Briefing & Medien", icon: "image" },
+  // What the status means, how the operation reaches Discord a second time, and
+  // who outside this server sees it. None of the three had a place (§7.1).
+  { key: "freigabe", label: "Freigabe & Verteilung", icon: "bolt" },
   { key: "commanders", label: "Kommandanten", icon: "lead" },
   { key: "voice", label: "Voice", icon: "mic" },
   { key: "qa", label: "Fragen", icon: "chat" },
@@ -62,7 +66,7 @@ type TabKey = (typeof TABS)[number]["key"];
 // product decision, taken 2026-08-22 in favour of the daily job.
 const TAB_GROUPS = [
   { key: "flotte", label: "Besatzung & Flotte", icon: "ship", tabs: ["fleet", "needs", "cqb", "formations"] },
-  { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "briefing"] },
+  { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "briefing", "freigabe"] },
   // Questions are a communication job, not a detail of the Eckdaten (§7.3).
   { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["qa", "commanders", "voice"] },
   { key: "verwaltung", label: "Verwaltung", icon: "shield", tabs: ["admin", "danger"] },
@@ -415,6 +419,8 @@ function OperatorConsoleInner({
           {tab === "voice" && <VoicePanel op={op} csrf={csrf} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} onNotice={setNotice} />}
 
           {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
+
+          {tab === "freigabe" && <ReleasePanel op={op} opId={opId} csrf={csrf} onNotice={setNotice} />}
 
           {tab === "danger" && <DangerPanel op={op} opId={opId} csrf={csrf} reload={reload} onNotice={setNotice} />}
 

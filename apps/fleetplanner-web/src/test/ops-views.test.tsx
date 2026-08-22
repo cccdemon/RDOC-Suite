@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { http, HttpResponse } from "msw";
@@ -315,6 +315,72 @@ describe("operator console — URL aliases and badge labels", () => {
     const tab = await screen.findByTestId("manage-tab-qa");
     const badge = within(tab).getByRole("status");
     expect(badge).toHaveAttribute("aria-label", "1 offene Frage");
+  });
+});
+
+// ── Freigabe & Verteilung (§7.1) ─────────────────────────────────────────────
+describe("release and distribution", () => {
+  function useOp(over: Record<string, unknown> = {}) {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true, ...over })),
+    );
+  }
+
+  it("says what the current status means, not just what it is called", async () => {
+    useOp({ status: "locked" });
+    renderAt("/ops/op_1?op=freigabe");
+
+    expect(await screen.findByTestId("release-current-status")).toHaveTextContent("Gesperrt");
+    // The whole point of the sub-view: a status name is not an explanation.
+    expect(screen.getByTestId("release-status-meaning")).toHaveTextContent(/niemand kann sich noch anmelden/i);
+  });
+
+  it("announces the operation to a Discord channel after creation, not only during it", async () => {
+    const posted = vi.fn();
+    useOp();
+    server.use(
+      http.get(`${API}/guilds/guild_1/channels`, () => HttpResponse.json({ channels: [{ id: "chan_1", name: "einsaetze" }] })),
+      http.post(`${API}/operations/op_1/announce`, async ({ request }) => {
+        posted(await request.json());
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    renderAt("/ops/op_1?op=freigabe");
+
+    fireEvent.change(await screen.findByTestId("share-channel-select"), { target: { value: "chan_1" } });
+    fireEvent.click(screen.getByTestId("share-channel-post"));
+    await waitFor(() => expect(posted).toHaveBeenCalledWith({ channelId: "chan_1" }));
+  });
+
+  it("says the operation stays on this server when the visibility keeps it here", async () => {
+    useOp({ visibility: "private" });
+    server.use(
+      http.get(`${API}/guilds/guild_1/partnerships`, () =>
+        HttpResponse.json({ partnerships: [{ id: "p1", status: "active", partnerGuildId: "guild_9", partnerGuildName: "Void Corp" }] }),
+      ),
+    );
+    renderAt("/ops/op_1?op=freigabe");
+
+    const box = await screen.findByTestId("release-partners");
+    expect(box).toHaveTextContent(/verlässt RDOC nicht/i);
+    // A partner list here would suggest they receive it. They do not.
+    expect(screen.queryByTestId("release-partner-guild_9")).toBeNull();
+  });
+
+  it("names the partners once the visibility lets the operation travel", async () => {
+    useOp({ visibility: "partners" });
+    server.use(
+      http.get(`${API}/guilds/guild_1/partnerships`, () =>
+        HttpResponse.json({ partnerships: [{ id: "p1", status: "active", partnerGuildId: "guild_9", partnerGuildName: "Void Corp" }] }),
+      ),
+    );
+    renderAt("/ops/op_1?op=freigabe");
+
+    expect(await screen.findByTestId("release-partner-guild_9")).toHaveTextContent("Void Corp");
+    // The picker is create-only in the API; claiming it is editable here would
+    // be a control that silently does nothing.
+    expect(screen.getByTestId("release-partners")).toHaveTextContent(/beim Anlegen/i);
   });
 });
 

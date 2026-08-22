@@ -82,7 +82,7 @@ test("each console tab button opens its panel", async () => {
   // four work areas now, so select the area first — same as a user would.
   const areas: Array<[string, string[]]> = [
     ["flotte", ["fleet", "needs", "cqb", "formations"]],
-    ["planung", ["eckdaten", "briefing"]],
+    ["planung", ["eckdaten", "briefing", "freigabe"]],
     ["kommunikation", ["qa", "commanders", "voice"]],
     ["verwaltung", ["admin", "danger"]],
   ];
