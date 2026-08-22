@@ -100,6 +100,14 @@ services:
     image: rdoc-suite-unit-tests:test
     profiles: ["tools"]
 
+  # SPA unit tests (vitest + jsdom + msw) — `./scripts/test-stack.sh unit:web`.
+  web-unit-tests:
+    build:
+      context: .
+      dockerfile: tests/Dockerfile.web-unit
+    image: rdoc-suite-web-unit-tests:test
+    profiles: ["tools"]
+
   # DB-integration tests — `./scripts/test-stack.sh db`. Same image; it points at
   # the stack's Postgres (separate `fleetplanner_test` database) instead of
   # spawning its own container, which is what makes it runnable from inside one.

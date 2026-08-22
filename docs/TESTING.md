@@ -5,7 +5,7 @@ production, a live Discord app, or a backdoor open on a public host.
 
 ```bash
 ./scripts/test-stack.sh up      # build + start the local stack
-./scripts/test-stack.sh all     # up → unit → db → smoke → e2e → down
+./scripts/test-stack.sh all     # up → unit → unit:web → db → smoke → e2e → down
 ./scripts/test-stack.sh down    # stop and delete everything
 ```
 
@@ -13,10 +13,15 @@ production, a live Discord app, or a backdoor open on a public host.
 
 | Level | Command | What it proves | Needs |
 |---|---|---|---|
-| **1 Unit** | `./scripts/test-stack.sh unit` | Service logic in isolation (Prisma mocked, `fetch` stubbed) | Docker |
+| **1 Unit** | `./scripts/test-stack.sh unit` | Backend service logic in isolation (Prisma mocked, `fetch` stubbed) | Docker |
+| **1b SPA unit** | `./scripts/test-stack.sh unit:web` | SPA components, navigation model and routing (vitest + jsdom + msw) | Docker |
 | **2 DB integration** | `./scripts/test-stack.sh db` | Real Prisma against a real Postgres, app via Fastify `.inject()` | Docker |
 | **3 E2E** | `./scripts/test-stack.sh e2e` | The real SPA + backend + nginx + Discord simulator in a browser | running stack |
 | **4 Smoke** | `./scripts/test-stack.sh smoke` | HTTP surface, security headers, auth gate | running stack |
+
+`unit` covers `@rdoc-suite/fleetplanner`, `unit:web` covers `@rdoc-suite/fleetplanner-web` — two
+separate vitest projects, two images (`tests/Dockerfile.unit`, `tests/Dockerfile.web-unit`). `all`
+runs both.
 
 Unit and DB tests run **in Docker** by default. A half-written local pnpm store breaks module
 resolution in ways that look exactly like real test failures — the container removes that whole class

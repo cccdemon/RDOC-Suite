@@ -8,6 +8,7 @@
 #   ./scripts/test-stack.sh logs     follow all logs (or: logs fleetplanner)
 #   ./scripts/test-stack.sh smoke    fast HTTP + Discord-simulator sanity checks
 #   ./scripts/test-stack.sh unit     vitest unit tests in Docker (no stack needed)
+#   ./scripts/test-stack.sh unit:web SPA (fleetplanner-web) unit tests in Docker
 #   ./scripts/test-stack.sh unit:local   same, using the local pnpm install
 #   ./scripts/test-stack.sh db       DB-integration tests in Docker (stack postgres)
 #   ./scripts/test-stack.sh db:local     same, local pnpm + its own throwaway PG
@@ -132,6 +133,12 @@ cmd_unit() {
   "${COMPOSE[@]}" run --rm --build unit-tests "$@"
 }
 
+cmd_unit_web() {
+  require_docker
+  info "SPA unit tests (vitest + jsdom + msw) — in Docker"
+  "${COMPOSE[@]}" run --rm --build web-unit-tests "$@"
+}
+
 cmd_unit_local() {
   info "Unit tests (vitest, Prisma mocked) — local pnpm"
   pnpm --filter @rdoc-suite/fleetplanner test "$@"
@@ -166,6 +173,7 @@ cmd_e2e() {
 cmd_all() {
   cmd_up
   cmd_unit
+  cmd_unit_web
   cmd_db
   cmd_smoke
   cmd_e2e
@@ -179,6 +187,7 @@ case "${1:-}" in
   logs)   shift; cmd_logs "$@" ;;
   smoke)  shift; cmd_smoke "$@" ;;
   unit)       shift; cmd_unit "$@" ;;
+  unit:web)   shift; cmd_unit_web "$@" ;;
   unit:local) shift; cmd_unit_local "$@" ;;
   db)         shift; cmd_db "$@" ;;
   db:local)   shift; cmd_db_local "$@" ;;

@@ -1,0 +1,26 @@
+# Unit tests for @rdoc-suite/fleetplanner-web (the SPA), run inside Docker.
+#
+# Same reason as tests/Dockerfile.unit: `./scripts/test-stack.sh unit:web` has to
+# work on any machine with Docker, independent of the state of a developer's
+# local pnpm store. The SPA suite (vitest + jsdom + msw) had no Docker path
+# before — it could only be run with a healthy local install.
+FROM node:20-alpine
+
+RUN apk add --no-cache libc6-compat
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+ENV CI=true
+WORKDIR /app
+
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+COPY apps/fleetplanner-web/package.json apps/fleetplanner-web/
+COPY packages/fleetplanner-contracts/package.json packages/fleetplanner-contracts/
+RUN pnpm install --frozen-lockfile --filter @rdoc-suite/fleetplanner-web...
+
+COPY apps/fleetplanner-web apps/fleetplanner-web
+COPY packages/fleetplanner-contracts packages/fleetplanner-contracts
+
+# The SPA imports contract TYPES from the built dist, not from src — a stale or
+# missing dist shows up as TS2305/TS2339 on fields that exist in source.
+RUN pnpm --filter @rdoc-suite/fleetplanner-contracts run build
+
+CMD ["pnpm", "--filter", "@rdoc-suite/fleetplanner-web", "test"]
