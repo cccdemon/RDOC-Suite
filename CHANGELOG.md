@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Route- und Funktions-Erhaltungsmatrix für das UI/UX-Redesign (2026-08-22)
+
+`docs/UI-UX-REDESIGN-MATRIX.md` ist das Sicherungsnetz für den Umbau der SPA: alle 122 Exporte aus
+`apps/fleetplanner-web/src/api/client.ts` mit heutigem Träger, Soll-Ort und Test-Status, dazu die
+Route-zu-Navigation-Matrix inklusive aller Legacy-Redirects und der `?op=`-Aliase innerhalb
+`/ops/:id`, und die Testabdeckung je Träger gemessen an den `data-testid`, die ein Playwright-Spec
+tatsächlich ansteuert. Erzeugt aus dem Code, nicht aus der Spezifikation.
+
+Zwei Befunde: kein Client-Export ist ungenutzt, und die Testschulden sitzen genau in den
+Komponenten, die das Redesign verschiebt (`DocumentsPanel`, `SquadLinkPanel`, die
+Stream-Bedienelemente in `OpDetailPage`).
+
+Die fünf Funktionsrisiken, die der Redesign-Handoff vor dem Umbau zu beheben verlangt, waren im Code
+bereits behoben und getestet — nachgeprüft, keine Änderung nötig.
+
 ### Added - Vier Funktionen zurück in `/api/v1`, Kapitäns-DM wieder angeschlossen (2026-08-22)
 
 Die drei offenen Punkte aus dem Dead-Code-Durchgang, vom User entschieden.

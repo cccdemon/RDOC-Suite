@@ -1,5 +1,77 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-22 (13): Redesign Phase 0 + 1 — Inventar erzeugt, Phase 1 war bereits erledigt
+
+Erster Schritt aus Eintrag (12). Ergebnis: [`docs/UI-UX-REDESIGN-MATRIX.md`](UI-UX-REDESIGN-MATRIX.md).
+
+**Phase 0 — Inventar und Sicherungsnetz.** Aus dem Code erzeugt, nicht aus dem Handoff
+abgeschrieben: Route-zu-Navigation-Matrix inklusive aller 16 Legacy-Redirects und der Tab-Aliase
+innerhalb `/ops/:id`; Funktions-Erhaltungsmatrix ueber alle 122 Exporte aus `api/client.ts` mit
+heutigem Traeger, Soll-Ort nach Handoff-Paragraph 7 und Unit-Test-Status; Testabdeckung je Traeger,
+gemessen ueber die `data-testid`, die ein Playwright-Spec tatsaechlich ansteuert.
+
+Zwei Befunde daraus:
+
+- **Kein Export ist ungenutzt.** `getSession` haengt an `App.tsx`, die uebrigen 121 an einer Seite
+  oder Komponente. Es gibt also nichts, was beim Umbau stillschweigend wegfallen koennte, ohne dass
+  die Matrix es zeigt.
+- **Die Testschulden sitzen genau dort, wo das Redesign hinfasst.** `DocumentsPanel` (0 von 3),
+  `SquadLinkPanel` (0 von 4), die Stream-Bedienelemente in `OpDetailPage` (0 von 6) und die
+  Verbands-/CQB-Bloecke im `OperatorPanel` sind ungesichert und sollen alle einen neuen Ort
+  bekommen. Reihenfolge und Begruendung stehen in Abschnitt 6.1 der Matrix.
+
+**Phase 1 — Gates und Kontextfehler: keine Codeaenderung noetig.** Alle fuenf Funktionsrisiken aus
+Handoff-Paragraph 2.3 sind bereits im Code behoben und getestet. Nachgeprueft statt angenommen;
+Belege je Punkt in Abschnitt 1 der Matrix:
+
+- `PRIMARY_ACTION` und `/templates` tragen `needsManagedGuild` ([`nav.ts:51-67`](../apps/fleetplanner-web/src/nav.ts)).
+- Ein ungueltiges `?guild=` oszilliert nicht mehr: der `urlGuildKnown`-Guard prueft die
+  Mitgliedschaft vor der Uebernahme, ein abgelehnter Deep Link wird gemerkt und die URL kanonisch
+  ersetzt ([`serverContext.tsx:89-125`](../apps/fleetplanner-web/src/serverContext.tsx)).
+- Die absoluten `/fleetplanner/ops/...`-Links im `OperatorPanel` sind Router-`Link`s; der alte
+  Zustand steht nur noch im Kommentar.
+- `onUnhandledRequest: "error"` ist gesetzt, mit expliziten Defaults fuer die Hintergrund-Fetches.
+
+Der Handoff beschreibt in Paragraph 6 und 7 ausserdem mehreres, was schon steht: vier
+Arbeitsbereiche statt neun Tabs, nur *eine* `role="tablist"`, Roving Tabindex auf beiden Ebenen,
+Badges mit Bedeutung statt nackter Zahl, Bedarfe als eigener Ort, `viewas-bar` und `Breadcrumbs`.
+Der verbleibende Delta — Objektkopf mit Ansehen/Verwalten-Modus, „Offene Arbeit", „Briefing &
+Medien", „Freigabe & Verteilung", Gefahrenbereich — ist in Abschnitt 3.2 der Matrix aufgelistet und
+bleibt der Arbeitsvorrat der Phasen 2 bis 4.
+
+Vier Punkte brauchen vor dem Bau eine Produktentscheidung (Abschnitt 6.2): „Freigabe & Verteilung"
+als Verwaltungs-Unteransicht ist neue Oberflaeche ueber bestehender API, „Offene Arbeit" ebenso;
+die Reihenfolge der Arbeitsbereiche (Planung zuerst gegen Flotte zuerst) ist eine Entscheidung und
+keine Ableitung; und `deleteOperation` aus `EckdatenForm` herauszuloesen aendert, wo ein Nutzer das
+Loeschen erwartet.
+
+## Queued / Planned Step - 2026-08-22 (12): UI/UX-Workflow-Redesign umsetzen
+
+Umsetzung von [`docs/UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md`](UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md)
+in `apps/fleetplanner-web`. Oberste Bedingung des Handoffs: **keine heute erreichbare Funktion,
+Berechtigung, URL, Mutation oder alternative Bedienung darf verloren gehen.**
+
+Phasen nach §15 des Handoffs, nach jeder Phase build- und testfaehig:
+
+0. **Inventar + Sicherungsnetz** — Route-zu-Navigation-Matrix und Funktions-Erhaltungsmatrix aus dem
+   Code erzeugen (§8 verlangt sie *vor* der ersten Codeaenderung), Testluecken je Operator-Tab
+   schliessen.
+1. **Gates und Kontextfehler** (§2.3) — Operator-Gate fuer Create/Vorlagen, ungueltiges `?guild=`
+   stabilisieren, base-path-falsche Links im `OperatorPanel`, Server-/Rollenanzeige.
+2. **OperationShell** — permanenter Objektkopf, Ansehen/Verwalten als zwei eindeutige Modi,
+   Breadcrumb; alte URLs (`?op=`, `tab=`, `/edit`, `/manage`, `/cover`) loesen weiter auf.
+3. **Verwaltungs-IA** — Planung / Besatzung & Flotte / Kommunikation / Verwaltung; Bedarfe als
+   eigener Ort; Status- und Gefahrenbereich trennen.
+4. **Workflow + visuelle Hierarchie** — Open-Work-Dashboard, Kartentypen reduzieren, Typografie und
+   Kontrast, Aktionshierarchie, Wizard-Post-Create.
+5. **Responsive + Accessibility** — mobile Verwaltungsnavigation, Tabellen, Dialoge, Tastatur,
+   Reduced Motion.
+6. **Verifikation** — Contracts, SPA-Build, SPA-Unit, Backend-Unit/DB falls beruehrt, Smoke, E2E,
+   Rollenmatrix von Hand.
+
+Kein Backend-Umbau: `/api/v1` bleibt wie es ist, sofern der Handoff nicht ausdruecklich etwas
+anderes verlangt und es hier begruendet steht.
+
 ## Completed - 2026-08-22: Deploy `67ece2e` (Kapitaens-DM + vier wiederhergestellte Funktionen)
 
 Drei Commits von `feat/stream-event` als Fast-Forward auf `master` (`5d7ecb9..67ece2e`):
@@ -25,6 +97,23 @@ Nachkontrolle:
 **Manuell nachzuziehen** (braucht echte Discord-Nebenwirkungen, siehe Testcheckliste Phase 3+5):
 eine Einheit annehmen und pruefen, dass die DM beim Kapitaen ankommt; Auto-Buendeln, Squad
 aufloesen, Links sortieren und die Haupteinheit einmal in der echten Oberflaeche anfassen.
+
+## Completed - 2026-08-22 (10): UI/UX-Workflow-Redesign-Handoff fuer Claude Code Opus
+
+Auftrag: Die abgeschlossene UI/UX- und Menuepruefung als maximal detailliertes, umsetzungsfertiges
+Handoff fuer Claude Code Opus dokumentieren. Schwerpunkt sind ein durchgaengiger Event-Lebenszyklus,
+eine fachlich nachvollziehbare Event-Verwaltung, klare visuelle Hierarchie sowie Desktop-, Mobile-,
+Touch-, Tastatur- und Screenreader-Paritaet. Alle heute erreichbaren Funktionen, API-Vertraege,
+Berechtigungen, Deep Links und Legacy-Redirects bleiben erhalten. Das Brandkit darf innerhalb seiner
+Grundidentitaet gestalterisch weiterentwickelt werden; Backend-Semantik wird nicht nebenbei geaendert.
+
+Geplantes Artefakt: `docs/UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md` mit Rollen- und Route-Matrix,
+Soll-Informationsarchitektur, Event-Workflow, Funktions-Migrationsmatrix, Komponenten- und
+Responsive-Regeln, Accessibility-Anforderungen, Umsetzungsschritten und pruefbaren
+Akzeptanzkriterien. Nur Dokumentation; keine Produktivcode-Aenderung in diesem Schritt.
+
+Ergebnis: [`docs/UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md`](UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md).
+Die Umsetzung laeuft als Eintrag (12).
 
 ## Completed - 2026-08-22 (11): Kapitaens-DM angeschlossen, vier Altfunktionen in `/api/v1` nachgebaut
 
