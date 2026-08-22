@@ -11,6 +11,7 @@ import { EckdatenForm } from "./EckdatenForm";
 import { VoicePanel } from "./VoicePanel";
 import { ResourceLinksPanel } from "./ResourceLinksPanel";
 import { DocumentsPanel } from "./DocumentsPanel";
+import { DangerPanel } from "./DangerPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 import { FieldSaveProvider, GlobalSaveBadge, SaveDot, useFieldSave } from "./fieldSave";
 import { OP_STATUSES } from "./opStatus";
@@ -41,6 +42,10 @@ const TABS = [
   // The panel holds the template and the series; the status lives in the header
   // above every tab, so promising it here would describe a second place for it.
   { key: "admin", label: "Vorlage & Serie", icon: "shield" },
+  // Ending, cancelling and deleting get their own sub-view: §7.4 asks for the
+  // irreversible things to be spatially separate from the routine ones, and a
+  // section further down the same panel is not separate enough.
+  { key: "danger", label: "Gefahrenbereich", icon: "alert" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -60,7 +65,7 @@ const TAB_GROUPS = [
   { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "briefing"] },
   // Questions are a communication job, not a detail of the Eckdaten (§7.3).
   { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["qa", "commanders", "voice"] },
-  { key: "verwaltung", label: "Verwaltung", icon: "shield", tabs: ["admin"] },
+  { key: "verwaltung", label: "Verwaltung", icon: "shield", tabs: ["admin", "danger"] },
 ] as const;
 type GroupKey = (typeof TAB_GROUPS)[number]["key"];
 
@@ -410,6 +415,8 @@ function OperatorConsoleInner({
           {tab === "voice" && <VoicePanel op={op} csrf={csrf} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} onNotice={setNotice} />}
 
           {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
+
+          {tab === "danger" && <DangerPanel op={op} opId={opId} csrf={csrf} reload={reload} onNotice={setNotice} />}
 
           {tab === "admin" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>

@@ -141,13 +141,70 @@ describe("danger zone — kept away from the routine controls", () => {
       http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
       http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true })),
     );
-    renderAt("/ops/op_1?op=eckdaten");
+    renderAt("/ops/op_1?op=danger");
 
     const zone = await screen.findByTestId("op-danger-zone");
     expect(zone).toHaveAttribute("data-card", "danger");
-    expect(zone).toContainElement(screen.getByTestId("edit-delete"));
+    expect(zone).toContainElement(screen.getByTestId("op-delete"));
     // and nothing routine shares the box
     expect(zone.querySelectorAll("input, select").length).toBe(0);
+  });
+
+  it("will not delete until the operation's name has been typed out", async () => {
+    const deleted = vi.fn();
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true })),
+      http.delete(`${API}/operations/op_1`, () => { deleted(); return HttpResponse.json({ ok: true }); }),
+    );
+    renderAt("/ops/op_1?op=danger");
+
+    fireEvent.click(await screen.findByTestId("op-delete"));
+    // Armed, but a confirm button on its own is muscle memory.
+    expect(screen.getByTestId("op-delete-confirm")).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId("op-delete-name"), { target: { value: "Xenothreat" } });
+    expect(screen.getByTestId("op-delete-confirm")).toBeDisabled();
+
+    fireEvent.change(screen.getByTestId("op-delete-name"), { target: { value: "Xenothreat Logistics" } });
+    fireEvent.click(screen.getByTestId("op-delete-confirm"));
+    await waitFor(() => expect(deleted).toHaveBeenCalled());
+  });
+
+  it("keeps the reversible endings out of the irreversible box", async () => {
+    const status = vi.fn();
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true })),
+      http.post(`${API}/operations/op_1/status`, async ({ request }) => {
+        const body = (await request.json()) as { status: string };
+        status(body.status);
+        return HttpResponse.json({ ok: true, status: body.status });
+      }),
+    );
+    renderAt("/ops/op_1?op=danger");
+
+    // Ending and cancelling are status changes and stay outside the danger zone.
+    const zone = await screen.findByTestId("op-danger-zone");
+    const closeout = screen.getByTestId("op-closeout");
+    expect(zone).not.toContainElement(closeout);
+
+    fireEvent.click(screen.getByTestId("op-complete"));
+    await waitFor(() => expect(status).toHaveBeenCalledWith("completed"));
+
+    fireEvent.click(screen.getByTestId("op-cancel"));
+    await waitFor(() => expect(status).toHaveBeenCalledWith("cancelled"));
+  });
+
+  it("does not offer to cancel an operation that is already cancelled", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true, status: "cancelled" })),
+    );
+    renderAt("/ops/op_1?op=danger");
+
+    expect(await screen.findByTestId("op-cancel")).toBeDisabled();
+    expect(screen.getByTestId("op-cancel")).toHaveTextContent("Bereits abgesagt");
   });
 });
 

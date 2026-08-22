@@ -992,9 +992,12 @@ describe("Op editor (lifecycle)", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1/edit");
-    (await findByTestId("edit-delete")).click();
-    (await findByTestId("edit-delete-confirm")).click();
+    // /ops/:id/edit still resolves — but deleting moved out of the Eckdaten form
+    // into its own sub-view, and now costs the operation's name.
+    const { findByTestId } = renderAt("/ops/op_1?mode=manage&op=danger");
+    (await findByTestId("op-delete")).click();
+    fireEvent.change(await findByTestId("op-delete-name"), { target: { value: opEditable.title } });
+    (await findByTestId("op-delete-confirm")).click();
     // delete navigates to "/" → the Operationen screen header
     await screen.findByTestId("cal-month");
     expect(deleted).toBe(true);

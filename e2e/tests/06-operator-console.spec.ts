@@ -84,7 +84,7 @@ test("each console tab button opens its panel", async () => {
     ["flotte", ["fleet", "needs", "cqb", "formations"]],
     ["planung", ["eckdaten", "briefing"]],
     ["kommunikation", ["qa", "commanders", "voice"]],
-    ["verwaltung", ["admin"]],
+    ["verwaltung", ["admin", "danger"]],
   ];
   for (const [area, tabs] of areas) {
     await op.getByTestId(`manage-group-${area}`).click();

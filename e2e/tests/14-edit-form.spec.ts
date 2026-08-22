@@ -92,10 +92,12 @@ test("recurrence series create + stop", async () => {
 
 test("delete an operation through the confirm step", async () => {
   const throwaway = await makeOp(op, "E2E-Delete Me");
-  await op.goto(`ops/${throwaway}?op=eckdaten`);
-  await expect(op.getByTestId("edit-delete")).toBeVisible({ timeout: 10_000 });
-  await op.getByTestId("edit-delete").click();
-  await op.getByTestId("edit-delete-confirm").click();
+  await op.goto(`ops/${throwaway}?op=danger`);
+  await expect(op.getByTestId("op-delete")).toBeVisible({ timeout: 10_000 });
+  await op.getByTestId("op-delete").click();
+  // Deleting costs the operation's name — a bare confirm button is muscle memory.
+  await op.getByTestId("op-delete-name").fill("E2E-Delete Me");
+  await op.getByTestId("op-delete-confirm").click();
   // After deletion the SPA leaves the op detail (redirect to the overview).
   await expect(op).not.toHaveURL(/\/ops\/[^/]/, { timeout: 10_000 });
 });

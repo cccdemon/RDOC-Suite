@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ApiError, deleteOperation, editOperation, searchLocations, type LocationHit } from "../api/client";
+import { ApiError, editOperation, searchLocations, type LocationHit } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
 import { CardHead, ChoiceTile, MONO, card, inp, lbl, segChip, ta } from "./ui";
@@ -41,7 +40,6 @@ export function EckdatenForm({
   voiceEnabled: boolean;
   onToggleVoice: () => void;
 }) {
-  const navigate = useNavigate();
   const { touch, fail } = useFieldSave();
   const debounce = useDebouncer(600);
 
@@ -58,7 +56,6 @@ export function EckdatenForm({
   });
   const [form, setForm] = useState(seed);
   const [busy, setBusy] = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
   const [locHits, setLocHits] = useState<LocationHit[]>([]);
 
   // Rendezvous autocomplete from the synced location catalog, scoped to the system.
@@ -94,18 +91,6 @@ export function EckdatenForm({
     setForm((f) => ({ ...f, ...patch }));
     persist(fieldId, body);
   };
-
-  async function remove() {
-    if (!csrf) return;
-    setBusy(true);
-    try {
-      await deleteOperation(op.id, csrf);
-      navigate("/operationen");
-    } catch (e) {
-      onNotice(e instanceof ApiError ? e.message : "Löschen fehlgeschlagen.");
-      setBusy(false);
-    }
-  }
 
   const zone = tzAbbr(op.guild.timezone);
   const twoCol: React.CSSProperties = { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" };
@@ -229,20 +214,6 @@ export function EckdatenForm({
             </button>
           </section>
 
-          <div className="danger" data-card="danger" data-testid="op-danger-zone">
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", color: "var(--red)", marginBottom: "0.5rem" }}><Ic name="alert" size={14} sw={1.7} /> GEFAHRENZONE</div>
-            {confirmDel ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                <span style={{ color: "var(--text)", fontSize: "0.85rem" }}>Operation unwiderruflich löschen?</span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button type="button" data-testid="edit-delete-confirm" disabled={busy || !csrf} onClick={remove} style={{ flex: 1, padding: "0.5rem", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Endgültig löschen</button>
-                  <button type="button" disabled={busy} onClick={() => setConfirmDel(false)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1.1rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Abbrechen</button>
-                </div>
-              </div>
-            ) : (
-              <button type="button" data-testid="edit-delete" disabled={busy} onClick={() => setConfirmDel(true)} style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "0.55rem", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}><Ic name="x" size={14} sw={1.8} /> Operation löschen</button>
-            )}
-          </div>
         </div>
       </div>
 
