@@ -179,3 +179,27 @@ describe("wizard — creating", () => {
     expect(creates).toBe(0);
   });
 });
+
+// ── the template picker is a dialog (§10) ────────────────────────────────────
+describe("wizard — template picker", () => {
+  it("traps focus, closes on Escape and hands focus back", async () => {
+    server.use(http.get(`${API}/templates`, () => HttpResponse.json({ templates: [] })));
+    renderWizard();
+    await screen.findByTestId("create-page");
+
+    const opener = screen.getByTestId("templates-link");
+    expect(opener).toHaveAttribute("aria-haspopup", "dialog");
+    fireEvent.click(opener);
+
+    const dialog = await screen.findByTestId("template-picker");
+    expect(dialog).toHaveAttribute("role", "dialog");
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAttribute("aria-labelledby", "template-picker-title");
+    // focus moved into the dialog
+    await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByTestId("template-picker")).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("templates-link")).toHaveFocus());
+  });
+});

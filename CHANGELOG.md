@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - UI-Audit Feinschliff: die acht offenen Detailpunkte (2026-08-22)
+
+Nach den zehn Schritten aus §15 blieben beim Nachpruefen gegen den Bericht acht
+Detailanforderungen offen. Alle acht sind jetzt umgesetzt.
+
+- **Eine Statussprache** (neu: [src/opStatus.ts](apps/fleetplanner-web/src/opStatus.ts)). Die
+  Liste zeigte die rohen Enums (`open`, `private`), Kalender und Agenda deutsche Woerter fuer
+  dieselbe Sache. `opStatusBadge()`, `visibilityLabel()` und `SIGNUP_LABEL` sind jetzt die
+  einzige Quelle; die Listenkachel folgt ausserdem der Informationsreihenfolge aus §5
+  (Status -> Teilnahme -> Titel -> Datum -> Server -> Ort -> Belegung -> Sekundaeraktion) und
+  zeigt die freien Plaetze.
+- **Entwuerfe sind ein Filter** (`?status=draft`) mit `aria-pressed` statt eines Sprungknopfs;
+  der leere Zustand nennt ihn mit und raeumt ihn beim Zuruecksetzen weg.
+- **Vorlagenpicker ist ein echter Dialog**: `aria-modal`, `aria-labelledby`, Escape, Fokusfalle
+  und Rueckfokus auf den ausloesenden Knopf.
+- **Badges sagen, was sie zaehlen** — `aria-label`/`title` an Tab- und Gruppen-Badge der
+  Operator-Konsole ("1 offene Frage"). Gerade der Badge eines eingeklappten Arbeitsbereichs war
+  vorher eine kontextlose Zahl.
+- **Begriffe**: "Flotte & Board" heisst in der Gruppe *Flotte* nur noch "Board" (der Bericht
+  kritisiert genau die Doppelung neben "Verbaende"), "Commanders" -> "Kommandanten",
+  "Admin" -> "Status, Vorlage & Serie". "Voice" bleibt — so heisst die Funktion im Produkt.
+- **`?mode=manage&section=…&sub=…` wird akzeptiert** und loest auf denselben Tab auf; kanonisch
+  bleibt `?op=<leaf>`, und ein Tabwechsel raeumt die Aliase aus der URL.
+- **Serverkontext im Seitenkopf**: neue `ServerScope`-Komponente nennt auf den vier Serverseiten
+  Server **und** eigene Rolle (§2 verlangte beides, die Rolle stand nirgends).
+- **Breite Arbeitskarten**: das Flotten-Board der Detailseite stand auf `minmax(500px, 1fr)` und
+  zog damit auf dem Handy den Viewport auf — jetzt `minmax(min(100%, 500px), 1fr)`.
+
+Dazu ein Akzeptanzkriterium aus §14, das noch offen war: **Legacy-Redirects behalten Query und
+Hash.** Neue `KeepQuery`-Route-Komponente fuer `/calendar`, `/profile`, `/account`, `/feedback`
+und die Dokument-Redirects; `/ops/:id/cover` landet jetzt auf `?op=cover` statt pauschal auf
+`?op=admin` (§3.1).
+
+Tests: +10 (131 SPA-Unit gesamt) — Entwurfsfilter, Redirect-Query, Statusbegriffe,
+Dialogverhalten, Badge-Labels, URL-Aliase, Serverkontext.
+
 ### Changed - Kartentypen und Responsive (UI-Audit Schritte 6 + 9, 2026-08-22)
 
 **Kartentypen.** `fpw-card` war Sammelbegriff fuer sechs verschiedene Erwartungen. Neue

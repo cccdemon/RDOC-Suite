@@ -54,6 +54,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       "Deleting an operation or a poll now sits in its own marked danger box instead of next to the everyday buttons.",
       "On a phone the ship database and the org fleet scroll sideways inside their own frame — the page itself stays put and the name column stays visible.",
       "The manual's section list becomes a menu above the text on a phone instead of a second sidebar over the header.",
+      "An operation says the same thing everywhere now: the list showed \"open\" and \"private\" while the calendar said OFFEN and PRIVAT. One set of words, and the free seats sit right on the tile.",
+      "Drafts are a filter you can switch on and off and link to, not a button that jumps you somewhere.",
+      "\"Aus Vorlage starten\" is a proper dialog: Escape closes it, Tab stays inside it, and the focus goes back to the button you opened it with.",
+      "The counters on the operator tabs say what they count instead of showing a bare number.",
+      "Server pages say which server you are changing and what your role there is.",
+      "Old links keep their parameters — /calendar?typ=combat lands on the same filtered view it always did.",
     ],
   },
   {

@@ -114,6 +114,10 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const titleRef = useRef<HTMLInputElement>(null);
   const whenRef = useRef<HTMLInputElement>(null);
+  // §10: the template picker is a modal dialog, so it needs Escape, a focus trap
+  // and the focus handed back to the button that opened it.
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const pickerOpenerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => { if (!guildId && operatorGuilds[0]) setGuildId(operatorGuilds[0].guildId); }, [guildId, operatorGuilds]);
 
@@ -181,6 +185,33 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
     setNotice(null);
     setStep((v) => Math.min(5, v + 1));
   }
+
+  useEffect(() => {
+    if (!picker) return;
+    const box = pickerRef.current;
+    // No offsetParent check: jsdom has no layout, so it would report every element
+    // as hidden and the trap would have nothing to hold on to.
+    const focusable = () =>
+      Array.from(box?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [])
+        .filter((el) => !el.hasAttribute("hidden") && el.getAttribute("aria-hidden") !== "true");
+    focusable()[0]?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { e.preventDefault(); setPicker(false); return; }
+      if (e.key !== "Tab") return;
+      const items = focusable();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (active === first || !box?.contains(active))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      pickerOpenerRef.current?.focus();
+    };
+  }, [picker]);
 
   // Anything typed but not yet created is worth protecting.
   const dirty =
@@ -296,7 +327,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
           <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="plus" size={17} sw={1.7} /></span>
           <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim3)" }}>OPERATION // ERSTELLUNGS-ASSISTENT</span>
-          <button type="button" data-testid="templates-link" onClick={() => setPicker(true)} style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "var(--cyan)", background: "transparent", border: "1px solid var(--border-hi)", borderRadius: 7, padding: "0.3rem 0.7rem", cursor: "pointer" }}>Aus Vorlage starten</button>
+          <button type="button" ref={pickerOpenerRef} data-testid="templates-link" aria-haspopup="dialog" aria-expanded={picker} onClick={() => setPicker(true)} style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "var(--cyan)", background: "transparent", border: "1px solid var(--border-hi)", borderRadius: 7, padding: "0.3rem 0.7rem", cursor: "pointer" }}>Aus Vorlage starten</button>
         </div>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: 0 }}>Neue Operation</h1>
       </div>
@@ -565,10 +596,10 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
       {/* IA merge F: "Aus Vorlage starten" — the marketplace as a picker overlay
           inside the op-editor (applying navigates to the created op). */}
       {picker && (
-        <div role="dialog" data-testid="template-picker" style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(18, 20, 22,0.72)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "3vh 1rem" }} onClick={() => setPicker(false)}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 1080, background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: 14, padding: "1.4rem 1.5rem", boxShadow: "0 24px 70px rgba(0,0,0,0.6)" }}>
+        <div data-testid="template-picker-backdrop" style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(18, 20, 22,0.72)", display: "flex", alignItems: "flex-start", justifyContent: "center", overflowY: "auto", padding: "3vh 1rem" }} onClick={() => setPicker(false)}>
+          <div ref={pickerRef} role="dialog" aria-modal="true" aria-labelledby="template-picker-title" data-testid="template-picker" onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 1080, background: "var(--bg)", border: "1px solid var(--border-hi)", borderRadius: 14, padding: "1.4rem 1.5rem", boxShadow: "0 24px 70px rgba(0,0,0,0.6)" }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: "0.6rem" }}>
-              <span style={{ flex: 1, fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim3)" }}>AUS VORLAGE STARTEN</span>
+              <span id="template-picker-title" style={{ flex: 1, fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim3)" }}>AUS VORLAGE STARTEN</span>
               <button type="button" data-testid="template-picker-close" onClick={() => setPicker(false)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Ic name="x" size={14} sw={2} /></button>
             </div>
             <TemplatesPage session={session} />

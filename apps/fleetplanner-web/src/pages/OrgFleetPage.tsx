@@ -3,6 +3,7 @@ import { ApiError, getOrgFleet } from "../api/client";
 import type { OrgFleetEntry, OrgFleetResponse, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { useGuildSelection } from "../serverContext";
+import { ServerScope } from "../components/ui";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
@@ -142,9 +143,13 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="ship" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Org-Flotte</h1>
       </div>
-      <div style={{ color: "var(--dim)", fontSize: "0.9rem", marginBottom: "1.1rem" }}>
+      <div style={{ color: "var(--dim)", fontSize: "0.9rem", marginBottom: "0.8rem" }}>
         Schiffe der Orgamember (Mitglieder mit der Org-Rolle) — zum Ausleihen, Ansehen oder Anfragen.
       </div>
+      <ServerScope
+        guildName={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.guildName}
+        role={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.role}
+      />
 
       {/* server picker (only when on several servers) */}
       {orgaServers.length > 1 && (

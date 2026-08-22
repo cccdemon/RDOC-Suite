@@ -1130,7 +1130,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           </div>
 
           {/* CATEGORY BOARD — Schiffe / Jäger / CQB / Fahrzeuge as columns */}
-          <div ref={fleetRef} style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(500px, 1fr))", gap: "1.3rem", alignItems: "start" }}>
+          {/* §12: a hard 500px column overflows a phone. min() lets the column shrink
+              with the viewport and keeps the comfortable width everywhere else. */}
+          <div ref={fleetRef} style={{ width: "100%", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 500px), 1fr))", gap: "1.3rem", alignItems: "start" }}>
             {lanes.length === 0 && op.cqbTeams.length === 0 && <p style={{ color: "var(--dim2)" }}>Noch keine Einheiten.</p>}
             {lanes.map((lane) => {
               // Header count reflects CONFIRMED capacity only — pending units are

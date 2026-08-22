@@ -12,6 +12,7 @@ import {
 import type { IncomingDistribution, Partnership, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { useGuildSelection } from "../serverContext";
+import { ServerScope } from "../components/ui";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
@@ -122,6 +123,10 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Partnerschaften</h1>
       </div>
+      <ServerScope
+        guildName={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.guildName}
+        role={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.role}
+      />
       <p className="fpw-meta" style={{ marginBottom: "1.4rem" }}>
         <Link to="/guilds/settings">← Server-Einstellungen</Link>
       </p>

@@ -6,6 +6,7 @@ import { Ic } from "../components/Icons";
 import { MONO, card, lbl, tint } from "../components/ui";
 import { useT } from "../i18n";
 import { useGuildSelection } from "../serverContext";
+import { ServerScope } from "../components/ui";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 // Severity keeps its functional colour - that is exactly what the functional
@@ -60,6 +61,10 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
         <button type="button" data-testid="diag-retest" disabled={busy || !guildId} onClick={() => guildId && reload(guildId)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.5rem 1rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}><Ic name="refresh" size={14} sw={1.8} /> {t("diag.retest")}</button>
       </div>
 
+      <ServerScope
+        guildName={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.guildName}
+        role={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.role}
+      />
       {manageable.length > 1 && (
         <select data-testid="diag-guild" value={guildId ?? ""} onChange={(e) => setGuildId(e.target.value)} style={{ background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: MONO, fontSize: "0.8rem", padding: "0.5rem 0.6rem", borderRadius: 8, marginBottom: "1rem", minWidth: 220 }}>
           {manageable.map((m) => <option key={m.guildId} value={m.guildId}>{m.guildName}</option>)}

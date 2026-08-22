@@ -6,6 +6,7 @@ import { Ic } from "../components/Icons";
 import { ErrorState } from "../components/ErrorState";
 import { useSeo } from "../seo";
 import { ObjectTile, tint } from "../components/ui";
+import { SIGNUP_LABEL, opStatusBadge, visibilityLabel } from "../opStatus";
 
 const MONO = "var(--mono)";
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -123,6 +124,12 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   const showPast = params.get("past") === "1";
   const setShowPast = (v: boolean) => patchParams({ past: v ? "1" : null });
 
+  // §5: drafts are a saved view, not a button that teleports somewhere. They only
+  // exist in the list (the calendar and the agenda never show unpublished ops), so
+  // turning the filter on switches to the list as part of the same state change.
+  const draftsOnly = params.get("status") === "draft";
+  const setDraftsOnly = (v: boolean) => patchParams({ status: v ? "draft" : null, view: v ? "liste" : null });
+
   // ?m=YYYY-MM carries the visible month; anything unparseable falls back to now.
   const mMatch = /^(\d{4})-(\d{2})$/.exec(params.get("m") ?? "");
   const monthRaw = mMatch ? Number(mMatch[2]) - 1 : now.getMonth();
@@ -210,17 +217,10 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
     .slice()
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
-  const statusOf = (e: Ev) => {
-    // Explicit operation status wins over the time/capacity heuristic — a
-    // cancelled/locked/completed op must never read as "OFFEN".
-    if (e.status === "cancelled") return { key: "cancelled", label: "ABGESAGT", color: "var(--red)" };
-    if (e.status === "completed") return { key: "done", label: "ABGESCHLOSSEN", color: "var(--dim3)" };
-    if (e.status === "locked") return { key: "locked", label: "GESPERRT", color: "var(--gold)" };
-    if (e.ts < now.getTime()) return { key: "done", label: "ABGESCHLOSSEN", color: "var(--dim3)" };
-    if (e.cap > 0 && e.signed >= e.cap) return { key: "voll", label: "VOLL", color: "var(--cyan)" };
-    if (e.cap > 0 && e.signed / e.cap >= 0.8) return { key: "fast", label: "FAST VOLL", color: "var(--gold)" };
-    return { key: "offen", label: "OFFEN", color: "var(--green)" };
-  };
+  // Shared vocabulary (opStatus.ts) — the calendar, the agenda, the list and the
+  // detail page must not each invent their own word for the same state.
+  const statusOf = (e: Ev) =>
+    opStatusBadge({ status: e.status, scheduledAt: e.ts, filledSeats: e.signed, totalSeats: e.cap }, now.getTime());
 
   if (error) {
     const code = error.status === 401 ? 401 : 503;
@@ -261,7 +261,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   let statOffen = 0, statFast = 0;
   visible.forEach((e) => {
     const k = statusOf(e).key;
-    if (k === "offen") statOffen++;
+    if (k === "open") statOffen++;
     else if (k === "fast") statFast++;
   });
 
@@ -275,11 +275,12 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
 
   // ── empty state (§5: name the filters, offer the way out) ─────
   const activeFilters = [
+    draftsOnly ? "nur Entwürfe" : null,
     filter !== "alle" ? `Typ: ${TYPES[filter]?.label ?? filter}` : null,
     streamFilter === "only" ? "nur Stream-Events" : streamFilter === "off" ? "ohne Stream-Events" : null,
     !showPast ? "nur anstehende" : null,
   ].filter((x): x is string => !!x);
-  const filtersNarrowed = filter !== "alle" || streamFilter !== "all";
+  const filtersNarrowed = filter !== "alle" || streamFilter !== "all" || draftsOnly;
   const emptyState = (headline: string, offerPast: boolean) => (
     <div data-testid="cal-empty" style={{ padding: "2.4rem 1rem", textAlign: "center", border: "1px dashed var(--wash)", borderRadius: 12 }}>
       <div style={{ color: "var(--dim)", fontSize: "0.95rem" }}>{headline}</div>
@@ -290,7 +291,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
       )}
       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap", marginTop: "0.9rem" }}>
         {filtersNarrowed && (
-          <button type="button" data-testid="cal-filter-reset" onClick={() => patchParams({ typ: null, stream: null })} style={{ ...chipBase, border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)" }}>
+          <button type="button" data-testid="cal-filter-reset" onClick={() => patchParams({ typ: null, stream: null, status: null })} style={{ ...chipBase, border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)" }}>
             <Ic name="refresh" size={13} sw={1.7} /> Filter zurücksetzen
           </button>
         )}
@@ -494,8 +495,15 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
               );
             })}
           </div>
-          {draftCount > 0 && view !== "liste" && (
-            <button type="button" data-testid="cal-drafts" onClick={() => setView("liste")} title="Entwürfe sind in der Listen-Ansicht sichtbar" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", color: "var(--gold)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}>
+          {draftCount > 0 && (
+            <button
+              type="button"
+              data-testid="cal-drafts"
+              aria-pressed={draftsOnly}
+              onClick={() => setDraftsOnly(!draftsOnly)}
+              title={draftsOnly ? "Filter aufheben — wieder alle Operationen zeigen" : "Nur Entwürfe zeigen (Listen-Ansicht)"}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: draftsOnly ? "1px solid var(--gold)" : "1px solid var(--edge-gold)", background: draftsOnly ? "var(--gold)" : "var(--tint-gold)", color: draftsOnly ? "var(--bg)" : "var(--gold)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}
+            >
               <Ic name="edit" size={13} sw={1.7} /> {draftCount} {draftCount === 1 ? "Entwurf" : "Entwürfe"}
             </button>
           )}
@@ -576,6 +584,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
       ) : isListe ? (
         (() => {
           const list = ops
+            .filter((o) => (draftsOnly ? o.status === "draft" : true))
             .filter((o) => filter === "alle" || typeOf(o.opType).key === filter)
             .filter((o) => passStream(o.isStreamEvent ?? false))
             .filter((o) => showPast || new Date(o.scheduledAt).getTime() >= now.getTime())
@@ -588,23 +597,30 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             <div className="fpw-grid" data-testid="op-grid">
               {list.map((op) => (
                 <ObjectTile key={op.id} to={`/ops/${op.id}`} testid="op-card" ariaLabel={op.title}>
+                  {/* §5 information order: status and participation, title, date,
+                      server, place, capacity, then the secondary action. */}
                   <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
-                    <span className="fpw-tag green"><span className="fpw-dot" />{op.status}</span>
-                    <span className="fpw-tag cyan">{op.visibility}</span>
+                    {(() => {
+                      const st = opStatusBadge(op);
+                      return <span className="fpw-tag" data-testid="op-card-status" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: st.color, borderColor: tint(st.color, 40), background: tint(st.color, 12) }}><span className="fpw-dot" style={{ background: st.color }} />{st.label}</span>;
+                    })()}
+                    {op.signupState && SIGNUP_LABEL[op.signupState] && (
+                      <span className={`fpw-tag ${op.signupState === "joined" ? "green" : "gold"}`} data-testid="op-card-signup">{SIGNUP_LABEL[op.signupState]}</span>
+                    )}
+                    <span className="fpw-tag cyan">{visibilityLabel(op.visibility)}</span>
                     {op.isStreamEvent && (
                       <span className="fpw-tag" data-testid="op-card-stream" style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--purple)", borderColor: "rgba(145,70,255,0.4)", background: "rgba(145,70,255,0.1)" }}>
                         <Ic name="stream" size={11} sw={1.7} /> STREAM
                       </span>
                     )}
-                    {op.signupState === "joined" && <span className="fpw-tag green">DABEI</span>}
-                    {op.signupState === "waitlist" && <span className="fpw-tag gold">WARTELISTE</span>}
                   </div>
                   <div className="fpw-h2">{op.title}</div>
                   <div className="fpw-meta">
-                    {new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(op.scheduledAt))} · {op.meetingSystem} · {op.guild.name}
+                    {new Intl.DateTimeFormat("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(op.scheduledAt))} · {op.guild.name}
+                    {op.meetingSystem ? ` · ${op.meetingSystem}` : ""}{op.meetingLocation ? ` · ${op.meetingLocation}` : ""}
                   </div>
                   <div className="fpw-mono-label" style={{ marginTop: "0.6rem", fontSize: "0.62rem" }}>
-                    {op.acceptedUnitCount} EINHEITEN · {op.opType.toUpperCase()}
+                    {op.totalSeats > 0 ? `${op.filledSeats}/${op.totalSeats} PLÄTZE` : `${op.acceptedUnitCount} EINHEITEN`} · {op.opType.toUpperCase()}
                   </div>
                   {op.guild.discordInviteUrl && (
                     // Card itself is a <Link> (anchor); render the invite as a button

@@ -168,3 +168,34 @@ describe("tables scroll instead of squeezing", () => {
     expect(table).toHaveAttribute("data-card", "work");
   });
 });
+
+// ── one vocabulary for the state (§8) ────────────────────────────────────────
+describe("status badges say the same thing everywhere", () => {
+  it("the list tile shows the German status, not the raw enum", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/operations`, () =>
+        HttpResponse.json({ operations: [{ ...upcoming, status: "open", visibility: "public", filledSeats: 1, totalSeats: 4 }] }),
+      ),
+    );
+    renderAt("/operationen?view=liste");
+
+    const badge = await screen.findByTestId("op-card-status");
+    expect(badge).toHaveTextContent("OFFEN");
+    expect(screen.queryByText("open")).not.toBeInTheDocument();
+    expect(screen.getByText("ÖFFENTLICH")).toBeInTheDocument();
+    // capacity belongs on the tile (§5 information order)
+    expect(screen.getByText(/1\/4 PLÄTZE/)).toBeInTheDocument();
+  });
+
+  it("a full operation reads as VOLL in the list too", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/operations`, () =>
+        HttpResponse.json({ operations: [{ ...upcoming, status: "open", filledSeats: 4, totalSeats: 4 }] }),
+      ),
+    );
+    renderAt("/operationen?view=liste");
+    expect(await screen.findByTestId("op-card-status")).toHaveTextContent("VOLL");
+  });
+});

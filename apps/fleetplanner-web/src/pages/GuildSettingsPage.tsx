@@ -4,6 +4,7 @@ import { ApiError, getGuildSettings, setMemberRole, updateGuildSettings } from "
 import type { GuildSettings, GuildSettingsMember, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { useGuildSelection } from "../serverContext";
+import { ServerScope } from "../components/ui";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
@@ -130,6 +131,10 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Server-Einstellungen</h1>
       </div>
+      <ServerScope
+        guildName={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.guildName}
+        role={(session?.memberships ?? []).find((m) => m.guildId === guildId)?.role}
+      />
       <p className="fpw-meta" style={{ marginBottom: "1.2rem", display: "flex", gap: "1.2rem", flexWrap: "wrap" }}>
         <Link to="/guilds/partnerships" data-testid="partnerships-link">Partnerschaften verwalten →</Link>
         <Link to="/guilds/diagnostics" data-testid="diagnostics-link">Discord-Diagnose →</Link>

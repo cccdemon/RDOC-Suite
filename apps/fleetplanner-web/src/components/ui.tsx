@@ -383,3 +383,43 @@ export function DangerZone({
     </section>
   );
 }
+
+// ── whose server am I changing, and as what? ────────────────────────────────
+// UI audit §2: "Bei serverbezogenen Mutationen immer Servername und
+// gegebenenfalls Rolle im Seitenkopf anzeigen." The server name was already in
+// the breadcrumb; the role was nowhere, so a crew member and an operator saw the
+// same header on a page whose buttons behave differently for them.
+const ROLE_LABEL: Record<string, string> = {
+  fleetoperator: "Fleetoperator",
+  crew: "Crew",
+};
+
+export function ServerScope({
+  guildName,
+  role,
+  testid = "server-scope",
+}: {
+  guildName?: string | null;
+  role?: string | null;
+  testid?: string;
+}) {
+  if (!guildName) return null;
+  const roleLabel = role ? ROLE_LABEL[role] ?? role : null;
+  return (
+    <p
+      data-testid={testid}
+      style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", margin: "0 0 1.1rem", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", color: "var(--dim2)" }}
+    >
+      <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="server" size={13} sw={1.7} /></span>
+      <span style={{ color: "var(--text-hi)" }}>{guildName}</span>
+      {roleLabel && (
+        <>
+          <span aria-hidden="true">·</span>
+          <span data-testid={`${testid}-role`} style={{ border: "1px solid var(--border-hi)", borderRadius: 5, padding: "0.1rem 0.4rem" }}>
+            DEINE ROLLE: {roleLabel.toUpperCase()}
+          </span>
+        </>
+      )}
+    </p>
+  );
+}

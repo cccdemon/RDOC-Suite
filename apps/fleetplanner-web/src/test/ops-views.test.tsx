@@ -4,7 +4,8 @@ import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { App } from "../App";
 import { server } from "./setup";
-import { opSummaryFixture, sessionGuest } from "./fixtures";
+import { opDetailFixture, opSummaryFixture, sessionCrew, sessionGuest } from "./fixtures";
+import type { SessionResponse } from "../api/types";
 
 // Operations overview + tab semantics (UI audit §5 and §9). These pin that the
 // screen is reproducible from its URL and that every tab strip is a real tablist.
@@ -18,6 +19,7 @@ const upcoming = { ...opSummaryFixture, id: "op_up", title: "Kommende Op", opTyp
 const mining = { ...opSummaryFixture, id: "op_min", title: "Mining Op", opType: "mining", scheduledAt: at(now.getDate(), 23, 58) };
 const streamOp = { ...opSummaryFixture, id: "op_str", title: "Stream Op", opType: "combat", isStreamEvent: true, scheduledAt: at(now.getDate(), 23, 57) };
 const past = { ...opSummaryFixture, id: "op_past", title: "Vergangene Op", opType: "combat", scheduledAt: at(now.getDate(), 0, 1) };
+const draft = { ...opSummaryFixture, id: "op_draft", title: "Entwurf Op", status: "draft", scheduledAt: at(now.getDate(), 23, 56) };
 
 function useOps(ops: unknown[]) {
   server.use(
@@ -213,5 +215,116 @@ describe("Konto and Rechtliches use the same tab model", () => {
     fireEvent.keyDown(tab, { key: "ArrowRight" });
     await waitFor(() => expect(url()).toContain("/rechtliches/"));
     await waitFor(() => expect(url()).not.toContain("/rechtliches/lizenz"));
+  });
+});
+
+// ── drafts are a filter (§5) ─────────────────────────────────────────────────
+describe("overview — drafts are a saved view, not a jump", () => {
+  it("filters to drafts through the URL and back out again", async () => {
+    useOps([upcoming, draft]);
+    renderAt("/operationen?view=liste");
+    await screen.findByTestId("op-grid");
+    expect(screen.getByText("Kommende Op")).toBeInTheDocument();
+
+    const chip = screen.getByTestId("cal-drafts");
+    expect(chip).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(chip);
+
+    await waitFor(() => expect(url()).toContain("status=draft"));
+    expect(url()).toContain("view=liste");
+    await waitFor(() => expect(screen.queryByText("Kommende Op")).not.toBeInTheDocument());
+    expect(screen.getByText("Entwurf Op")).toBeInTheDocument();
+    expect(screen.getByTestId("cal-drafts")).toHaveAttribute("aria-pressed", "true");
+
+    fireEvent.click(screen.getByTestId("cal-drafts"));
+    await waitFor(() => expect(url()).not.toContain("status=draft"));
+  });
+
+  it("applies the draft filter from a cold deep link", async () => {
+    useOps([upcoming, draft]);
+    renderAt("/operationen?view=liste&status=draft");
+    await screen.findByTestId("op-grid");
+    expect(screen.getByText("Entwurf Op")).toBeInTheDocument();
+    expect(screen.queryByText("Kommende Op")).not.toBeInTheDocument();
+  });
+});
+
+// ── legacy redirects (§14) ───────────────────────────────────────────────────
+describe("legacy redirects keep query and hash", () => {
+  it("/calendar carries its parameters into the new URL", async () => {
+    useOps([upcoming]);
+    renderAt("/calendar?typ=combat&past=1");
+    await screen.findByTestId("calendar-page");
+    expect(url()).toContain("/operationen");
+    expect(url()).toContain("typ=combat");
+    expect(url()).toContain("past=1");
+    expect(url()).toContain("view=kalender");
+  });
+
+  it("/profile keeps its query on the way to /konto/profil", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
+    renderAt("/profile?flash=hi");
+    await waitFor(() => expect(url()).toContain("/konto/profil"));
+    expect(url()).toContain("flash=hi");
+  });
+});
+
+// ── console: accepted URL forms, and badges that say what they count ─────────
+const sessionOperator: SessionResponse = {
+  ...sessionCrew,
+  memberships: [{ guildId: "guild_1", guildName: "RDOC", role: "fleetoperator" }],
+};
+
+describe("operator console — URL aliases and badge labels", () => {
+  it("accepts the recommended ?section/?sub form and opens the same tab", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true })),
+    );
+    renderAt("/ops/op_1?mode=manage&section=planung&sub=cover");
+    const tab = await screen.findByTestId("manage-tab-cover");
+    expect(tab).toHaveAttribute("aria-selected", "true");
+
+    // Switching writes the canonical form and drops the aliases.
+    fireEvent.click(screen.getByTestId("manage-tab-eckdaten"));
+    await waitFor(() => expect(url()).toContain("op=eckdaten"));
+    expect(url()).not.toContain("sub=");
+    expect(url()).not.toContain("section=");
+  });
+
+  it("a badge says what it counts", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () =>
+        HttpResponse.json({
+          ...opDetailFixture,
+          canManage: true,
+          questions: [{ id: "q1", asker: "Crew One", body: "Wann?", answer: null, answeredBy: null, createdAt: new Date().toISOString() }],
+        }),
+      ),
+    );
+    // Sub-tabs only render for the open work area, so the collapsed area carries
+    // the count — that is exactly the case where a bare number says nothing.
+    renderAt("/ops/op_1?op=cover");
+    const group = await screen.findByTestId("manage-group-kommunikation");
+    const groupBadge = within(group).getByRole("status");
+    expect(groupBadge).toHaveTextContent("1");
+    expect(groupBadge).toHaveAttribute("aria-label", "1 offene Frage");
+
+    fireEvent.click(group);
+    const tab = await screen.findByTestId("manage-tab-qa");
+    const badge = within(tab).getByRole("status");
+    expect(badge).toHaveAttribute("aria-label", "1 offene Frage");
+  });
+});
+
+// ── §2: which server, and as what ────────────────────────────────────────────
+describe("server pages name the server and the viewer's role", () => {
+  it("shows both in the page head", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)));
+    renderAt("/guilds/settings?guild=guild_1");
+    const scope = await screen.findByTestId("server-scope");
+    expect(scope).toHaveTextContent("RDOC");
+    expect(screen.getByTestId("server-scope-role")).toHaveTextContent("FLEETOPERATOR");
   });
 });

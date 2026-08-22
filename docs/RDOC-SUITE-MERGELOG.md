@@ -1,5 +1,57 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-08-22 (4): UI-Audit Feinschliff — die acht offenen Detailpunkte
+
+Die zehn Schritte aus §15 sind umgesetzt; beim Nachpruefen gegen den Bericht blieben acht
+Detailanforderungen offen. Diese acht werden hier abgeraeumt.
+
+1. **§5 Entwuerfe als Filter, nicht als Sprungbutton.** `?status=draft` filtert die Liste auf
+   Entwuerfe; der bisherige Sprungknopf (`cal-drafts`) wird zum Filter mit `aria-pressed`.
+2. **§5/§8/P2-5 Status- und Badge-Begriffe.** Neues Modul `src/opStatus.ts` als einzige Quelle
+   fuer Statuswort, Farbe, Sichtbarkeit und Teilnahmezustand. Die Liste zeigte bisher die rohen
+   Enums (`open`, `private`), Kalender und Agenda deutsche Labels. Die Listenkachel bekommt
+   ausserdem die im Audit geforderte Informationsreihenfolge: Status -> Titel -> Datum ->
+   Server -> Ort -> Belegung -> Sekundaeraktion.
+3. **§10 Vorlagenpicker als echter Dialog.** Escape, Fokusfalle, Rueckfokus auf den ausloesenden
+   Knopf, `aria-modal` und `aria-labelledby`.
+4. **§9 Badges mit zugaenglichem Label.** Die nackten Zahlen an den Konsolen-Tabs sagen jetzt,
+   was sie zaehlen ("3 offene Fragen"), per `aria-label` und `title`.
+5. **§9 Begriffsregeln.** "Flotte & Board" heisst in der Gruppe *Flotte* nur noch "Board" (der
+   Bericht kritisiert genau die Doppelung neben "Verbaende"), "Commanders" -> "Kommandanten",
+   "Admin" -> "Status, Vorlage & Serie". "Voice" bleibt: so heisst die Funktion im Produkt
+   (Subraum) und in Discord.
+6. **§6 empfohlenes URL-Modell zusaetzlich akzeptieren.** `?mode=manage&section=…&sub=…` loest
+   auf denselben Tab auf wie `?op=`; kanonisch bleibt `?op=<leaf>`.
+7. **§2 Rolle im Seitenkopf.** Die vier Serverseiten nennen neben dem Server auch die eigene
+   Rolle darin (Fleetoperator / Crew).
+8. **§12 breite Arbeitskarten.** Das Flotten-Board der Detailseite stand auf
+   `minmax(500px, 1fr)` und zog damit auf dem Handy den Viewport auf — jetzt
+   `minmax(min(100%, 500px), 1fr)`.
+
+Dazu ein Akzeptanzkriterium aus §14, das noch nicht abgedeckt war: **Legacy-Redirects behalten
+Query und Hash.** `/calendar`, `/profile`, `/account`, `/feedback` und die Dokument-Redirects
+haben sie bisher verworfen.
+
+Bewahrt: alle Testids, alle Routen, `?op=`-Deeplinks, Rollen-Gates.
+
+Tests: Erweiterung von `src/test/ops-views.test.tsx` (Entwurfsfilter, Redirect-Query,
+URL-Aliase, Badge-Labels, Serverkontext), `src/test/cards.test.tsx` (Statusbegriffe) und
+`src/test/wizard.test.tsx` (Dialogverhalten).
+
+Status: umgesetzt, noch nicht committed.
+
+Ergebnis (2026-08-22):
+- `./scripts/test-stack.sh unit:web` — 131 gruen (+10).
+- `./scripts/test-stack.sh unit` (Backend) — 572 gruen.
+- `./scripts/test-stack.sh e2e` — 119 gruen, weiterhin nur `19-cover` rot (opt-in Service
+  `mission-cover`, `--profile cover`).
+- `tsc --noEmit` fuer die SPA im Test-Image: sauber.
+
+Damit ist der Bericht `docs/UI-UX-FUNKTIONS-AUDIT-CLAUDE-OPUS.md` vollstaendig abgearbeitet —
+die zehn Schritte aus §15 und die Detailanforderungen aus §2, §5, §6, §9, §10, §12 und §14.
+Eine bewusste Abweichung bleibt: kanonisch ist `?op=<leaf>` statt des in §6 vorgeschlagenen
+`?mode/section/sub`; die vorgeschlagene Form wird zusaetzlich akzeptiert.
+
 ## Completed - 2026-08-22: "Needs sighting" aus der Roadmap entfernt
 
 Der Eintrag "silentknight: Paul Content nachliefern" war Unsinn (User 2026-08-22) und ist raus.

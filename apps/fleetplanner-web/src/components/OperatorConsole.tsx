@@ -23,16 +23,21 @@ const STATUSES: Array<[string, string, string]> = [
   ["completed", "Abgeschlossen", "var(--dim)"], ["cancelled", "Abgesagt", "var(--red2)"],
 ];
 
+// Wording (UI audit §9): inside the "Flotte" area a tab called "Flotte & Board"
+// next to "Verbände" reads as if the two were different tasks — it is just the
+// board. "Commanders" and "Admin" were the only English words in a German menu
+// with a plain German equivalent. "Voice" stays: that is what the feature is
+// called in the product (Subraum) and in Discord.
 const TABS = [
-  { key: "fleet", label: "Flotte & Board", icon: "ship" },
+  { key: "fleet", label: "Board", icon: "ship" },
   { key: "formations", label: "Verbände", icon: "board" },
   { key: "cqb", label: "CQB", icon: "fps" },
   { key: "eckdaten", label: "Eckdaten", icon: "edit" },
   { key: "cover", label: "Cover", icon: "image" },
-  { key: "commanders", label: "Commanders", icon: "lead" },
+  { key: "commanders", label: "Kommandanten", icon: "lead" },
   { key: "voice", label: "Voice", icon: "mic" },
   { key: "qa", label: "Fragen", icon: "chat" },
-  { key: "admin", label: "Admin", icon: "shield" },
+  { key: "admin", label: "Status, Vorlage & Serie", icon: "shield" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -55,6 +60,13 @@ function tabsOf(group: GroupKey): TabKey[] {
 }
 function tabMeta(tab: TabKey) {
   return TABS.find((t) => t.key === tab)!;
+}
+
+// §6 recommends `?mode=manage&section=…&sub=…`. The canonical form here stays
+// `?op=<leaf>` (shorter, and every existing deep link already uses it), but the
+// recommended form resolves to the same tab so those links work too.
+function tabFromParams(sp: URLSearchParams): string | null {
+  return sp.get("op") ?? sp.get("sub") ?? sp.get("section") ?? null;
 }
 
 function resolveTab(raw: string | null): TabKey {
@@ -109,12 +121,15 @@ function OperatorConsoleInner({
   // The active work area lives in the URL, not in component state: reload,
   // deep link and browser-back all have to land on the same tab (IA goal 8).
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = resolveTab(searchParams.get("op"));
+  const tab = resolveTab(tabFromParams(searchParams));
   const group = groupOf(tab);
   function setTab(next: TabKey) {
     if (next === tab) return;
     const sp = new URLSearchParams(searchParams);
     sp.set("op", next);
+    // ?op is the canonical form; drop the accepted aliases so the URL cannot
+    // end up carrying two different tabs at once.
+    sp.delete("sub"); sp.delete("section"); sp.delete("mode");
     sp.delete("flash"); // a one-shot notice must not survive a tab switch
     setSearchParams(sp); // push — so browser-back returns to the previous tab
   }
@@ -239,19 +254,25 @@ function OperatorConsoleInner({
     </div>
   );
 
-  const tabBadge = (k: TabKey): { n: number; color: string } | null => {
-    if (k === "fleet" && free > 0) return { n: free, color: "var(--cyan)" };
-    if (k === "voice" && voiceEnabled && recipientCount > 0) return { n: recipientCount, color: "var(--purple)" };
-    if (k === "qa" && openQ > 0) return { n: openQ, color: "var(--gold)" };
+  // §9: a badge counts open work, and it says so — a bare number next to a tab
+  // is unreadable for anyone who cannot see which tab it sits on.
+  const tabBadge = (k: TabKey): { n: number; color: string; what: string } | null => {
+    if (k === "fleet" && free > 0) return { n: free, color: "var(--cyan)", what: free === 1 ? "freier Platz" : "freie Plätze" };
+    if (k === "voice" && voiceEnabled && recipientCount > 0) return { n: recipientCount, color: "var(--purple)", what: recipientCount === 1 ? "Voice-Teilnehmer" : "Voice-Teilnehmer" };
+    if (k === "qa" && openQ > 0) return { n: openQ, color: "var(--gold)", what: openQ === 1 ? "offene Frage" : "offene Fragen" };
     return null;
   };
   const accentOf = (k: TabKey) => (k === "voice" ? "var(--purple)" : k === "qa" ? "var(--gold)" : "var(--cyan)");
   const firstTabOf = (g: GroupKey) => tabsOf(g)[0];
   // A collapsed area still has to show that something inside it needs attention.
-  const groupBadge = (g: GroupKey): { n: number; color: string } | null => {
-    const parts = tabsOf(g).map(tabBadge).filter((b): b is { n: number; color: string } => b !== null);
+  const groupBadge = (g: GroupKey): { n: number; color: string; what: string } | null => {
+    const parts = tabsOf(g).map(tabBadge).filter((b): b is { n: number; color: string; what: string } => b !== null);
     if (parts.length === 0) return null;
-    return { n: parts.reduce((sum, b) => sum + b.n, 0), color: parts[0].color };
+    return {
+      n: parts.reduce((sum, b) => sum + b.n, 0),
+      color: parts[0].color,
+      what: parts.map((b) => `${b.n} ${b.what}`).join(", "),
+    };
   };
 
   return (
@@ -301,7 +322,7 @@ function OperatorConsoleInner({
                 }}
                 onClick={() => setTab(firstTabOf(g.key))} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 9, padding: "0.6rem 1rem", borderRadius: 10, cursor: "pointer", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid var(--wash)", background: on ? "var(--cyan)" : "var(--wash)", color: on ? "var(--bg)" : "var(--dim)", transition: "all .12s" }}>
                 <span style={{ display: "inline-flex", color: on ? "var(--bg)" : "var(--cyan)" }}><Ic name={g.icon} size={16} /></span>{g.label}
-                {badge && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 19, height: 19, padding: "0 5px", borderRadius: 10, fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700, background: on ? "rgba(18, 20, 22,0.22)" : badge.color, color: "var(--bg)" }}>{badge.n}</span>}
+                {badge && <span role="status" aria-label={badge.what} title={badge.what} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 19, height: 19, padding: "0 5px", borderRadius: 10, fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700, background: on ? "rgba(18, 20, 22,0.22)" : badge.color, color: "var(--bg)" }}>{badge.n}</span>}
               </button>
             );
           })}
@@ -333,7 +354,7 @@ function OperatorConsoleInner({
                 }}
                 onClick={() => setTab(k)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.42rem 0.8rem", borderRadius: 8, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid var(--border)", background: on ? "var(--wash)" : "transparent", color: on ? "var(--cyan)" : "var(--dim)", transition: "all .12s" }}>
                 <span style={{ display: "inline-flex", color: on ? "var(--cyan)" : acc }}><Ic name={meta.icon} size={14} /></span>{meta.label}
-                {badge && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, fontFamily: MONO, fontSize: "0.6rem", fontWeight: 700, background: badge.color, color: "var(--bg)" }}>{badge.n}</span>}
+                {badge && <span role="status" aria-label={`${badge.n} ${badge.what}`} title={`${badge.n} ${badge.what}`} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, fontFamily: MONO, fontSize: "0.6rem", fontWeight: 700, background: badge.color, color: "var(--bg)" }}>{badge.n}</span>}
               </button>
             );
           })}
