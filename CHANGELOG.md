@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Operationen haben jetzt eine Ansicht und einen Arbeitsplatz (2026-08-22)
+
+Die Operator-Konsole lag bisher unterhalb der kompletten Teilnehmerseite; wer eine Operation
+verwalten wollte, scrollte erst an allem vorbei, was auch ein Gast sieht. Ansehen und Verwalten sind
+jetzt zwei Modi derselben Seite, dazwischen wird oben umgeschaltet.
+
+Darüber steht in beiden Modi ein Objektkopf mit Titel, Server, Termin, Treffpunkt, Status, Belegung
+und — für Einsatzleitungen — der Zahl der offenen Aufgaben. Damit bleibt im Arbeitsplatz sichtbar,
+welche Operation gerade bearbeitet wird.
+
+Alle bisherigen Links funktionieren unverändert: `?op=…`, `?sub=`, `?section=`, `/ops/:id/manage`,
+`/ops/:id/edit` und `/ops/:id/cover` öffnen weiterhin ihren Tab, jetzt im Verwaltungsmodus. Der
+Modus steht in der URL, überlebt also Reload und Zurück-Taste. Wer nicht verwalten darf, sieht den
+Umschalter nicht und kann ihn auch nicht über die URL erzwingen.
+
 ### Added - Tests für die Bedienelemente, die das UI-Redesign verschiebt (2026-08-22)
 
 `apps/fleetplanner-web/src/test/preserved-controls.test.tsx` sichert 25 Bedienwege ab, die vorher

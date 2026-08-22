@@ -34,6 +34,17 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-23",
+    title: "An operation page you can work on",
+    changes: [
+      "Running an operation used to mean scrolling past the whole public page to reach the controls. There are now two views of an operation — the one everybody sees, and your workspace — and a switch at the top between them.",
+      "The workspace keeps the operation's name, server, date, status and how many seats are filled in view, so you always know what you are editing.",
+      "If you lead the operation, the header also counts what is waiting for you: units you have not decided on yet, and questions nobody has answered.",
+      "Every link you already have still works and now opens the right side of the page — including bookmarks straight to the board, the cover or the details.",
+      "Which view you are on lives in the address, so reloading or pressing Back keeps you where you were.",
+    ],
+  },
+  {
     date: "2026-08-22",
     title: "Assigning crew, and creating an operation",
     changes: [

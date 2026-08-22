@@ -121,7 +121,7 @@ die eigentliche Arbeit der Phasen 2–4.
 
 | Soll (Handoff) | Ist | Zu tun |
 |---|---|---|
-| Objektkopf plus Modi „Ansehen" / „Verwalten" | Konsole hängt mit `marginTop: 2.5rem` **unter** der vollständigen Teilnehmerseite | `OperationShell`, Moduswechsel, Sticky-Kopf |
+| ~~Objektkopf plus Modi „Ansehen" / „Verwalten"~~ | **erledigt 2026-08-22 (Phase 2)** — `OperationShell` + `operationMode.ts`; Modus in der URL, alle Alt-Links loesen weiter auf | — |
 | Bereich „Besatzung & Flotte" | heisst „Flotte" und steht an erster Stelle | Benennung und Reihenfolge nach §7 |
 | Unteransicht „Offene Arbeit" | existiert nicht | `OpenWorkDashboard` als Standardziel für Operatoren |
 | „Fragen" unter Kommunikation | `qa` sitzt unter **Planung** | Tab verschieben, Alias `?op=qa` erhalten |

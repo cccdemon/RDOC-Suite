@@ -357,6 +357,122 @@ describe("IA — operator console tabs live in the URL", () => {
   });
 });
 
+// ── 6b. Viewing and managing are two modes of one route (§6) ─────────────────
+describe("IA — an operation has a view mode and a manage mode", () => {
+  const operatorView = {
+    crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [],
+    eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [], fighterSquads: [], assignablePeople: [],
+  };
+  const emptyNeeds = { shipTypes: [], cqbTeamMax: 8, cqbTeamDefault: 4, fighterSquadSize: 2, shipNeeds: [], fighterSquads: 0, cqbTeams: { count: 0, size: 4 }, requirements: [] };
+
+  function manageableOp(canManage = true) {
+    useSession(sessionCrew);
+    server.use(
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage })),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(operatorView)),
+      http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(emptyNeeds)),
+      http.get(`${API}/operations/:id/squadlink`, () => HttpResponse.json({ enabled: false, configured: false, started: false, link: null, storeUrl: null })),
+      http.get(`${API}/operations/:id/voice/recipients`, () => HttpResponse.json({ userIds: [] })),
+    );
+  }
+
+  it("opens on the participant view, with the console out of the way", async () => {
+    manageableOp();
+    renderAt("/ops/op_1");
+    // What a participant sees is what a manager sees first — the console used to
+    // sit underneath all of it and had to be scrolled to.
+    expect(await screen.findByTestId("join-card")).toBeInTheDocument();
+    expect(screen.queryByTestId("operator-console")).toBeNull();
+    expect(screen.getByTestId("op-mode-view")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("op-mode-manage")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("switches to the workspace, records it in the URL, and Back returns", async () => {
+    manageableOp();
+    renderAt("/ops/op_1");
+    fireEvent.click(await screen.findByTestId("op-mode-manage"));
+
+    expect(await screen.findByTestId("operator-console")).toBeInTheDocument();
+    expect(screen.queryByTestId("join-card")).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_1?mode=manage"));
+
+    fireEvent.click(screen.getByTestId("probe-back"));
+    expect(await screen.findByTestId("join-card")).toBeInTheDocument();
+    expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_1");
+  });
+
+  it("a legacy ?op= deep link still lands in the workspace, on its tab", async () => {
+    manageableOp();
+    renderAt("/ops/op_1?op=commanders");
+    expect(await screen.findByTestId("manage-tab-commanders")).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByTestId("join-card")).toBeNull();
+  });
+
+  it("stays in the workspace when the operator changes tab", async () => {
+    // Regression guard: the console used to strip `mode` from the URL along with
+    // the tab aliases, which threw the operator back to the participant view on
+    // the first tab click.
+    manageableOp();
+    renderAt("/ops/op_1?mode=manage");
+    fireEvent.click(await screen.findByTestId("manage-group-kommunikation"));
+
+    expect(await screen.findByTestId("manage-tab-voice")).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("mode=manage"));
+    expect(screen.getByTestId("operator-console")).toBeInTheDocument();
+  });
+
+  it("returning to the view drops the tab, so a copied link is not a console link", async () => {
+    manageableOp();
+    renderAt("/ops/op_1?op=cqb");
+    fireEvent.click(await screen.findByTestId("op-mode-view"));
+
+    expect(await screen.findByTestId("join-card")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_1"));
+    expect(screen.getByTestId("probe-url")).not.toHaveTextContent("op=cqb");
+  });
+
+  it("a crew member gets no switch, and cannot conjure one from the URL", async () => {
+    manageableOp(false);
+    renderAt("/ops/op_1?mode=manage");
+    expect(await screen.findByTestId("join-card")).toBeInTheDocument();
+    expect(screen.queryByTestId("op-mode-manage")).toBeNull();
+    expect(screen.queryByTestId("operator-console")).toBeNull();
+  });
+
+  it("the object header names the operation and its state in both modes", async () => {
+    manageableOp();
+    const { unmount } = renderAt("/ops/op_1");
+    expect(await screen.findByTestId("op-title")).toHaveTextContent("Xenothreat Logistics");
+    expect(screen.getByTestId("op-status-chip")).toHaveTextContent("Offen");
+    expect(screen.getByTestId("op-kpi-seats")).toHaveTextContent("1/2 Plätze");
+    unmount();
+
+    manageableOp();
+    renderAt("/ops/op_1?mode=manage");
+    // Losing the title on the way into the workspace is exactly the "which
+    // operation am I editing?" problem the header exists to answer (§19).
+    expect(await screen.findByTestId("op-title")).toHaveTextContent("Xenothreat Logistics");
+    expect(screen.getByTestId("op-status-chip")).toHaveTextContent("Offen");
+  });
+
+  it("counts open work for a manager, and says what it counts", async () => {
+    useSession(sessionCrew);
+    server.use(
+      http.get(`${API}/operations/op_1`, () =>
+        HttpResponse.json({
+          ...opDetailFixture,
+          canManage: true,
+          units: [...opDetailFixture.units, { ...opDetailFixture.units[0], id: "unit_p", status: "pending", seats: [] }],
+          questions: [{ id: "q1", asker: "Crew One", body: "Wann?", answer: null, answeredBy: null, createdAt: "2026-08-01T10:00:00.000Z" }],
+        }),
+      ),
+    );
+    renderAt("/ops/op_1");
+    // One pending unit + one unanswered question — a bare "2" would be unreadable.
+    expect(await screen.findByTestId("op-kpi-open-work")).toHaveTextContent("2 offene Aufgaben");
+  });
+});
+
 // ── 7. An unusable ?guild= must not fight the fallback (review 2026-08-22) ───
 describe("IA — server context rejects a guild the viewer is not in", () => {
   it("falls back to a real membership and canonicalises the URL", async () => {

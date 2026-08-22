@@ -1,5 +1,46 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-22 (15): Redesign Phase 2 — OperationShell, Ansehen gegen Verwalten
+
+Handoff-Paragraph 6 und 15 Phase 2. Die Operator-Konsole hing mit `marginTop: 2.5rem` **unter** der
+vollstaendigen Teilnehmerseite: verwalten hiess erst an allem vorbeiscrollen, was ein Gast sieht.
+Jetzt sind es zwei Modi derselben Route unter einem permanenten Objektkopf.
+
+**Neu.** [`src/operationMode.ts`](../apps/fleetplanner-web/src/operationMode.ts) loest den Modus aus
+der URL — als eigenes Modul, weil daran jeder alte Deep Link haengt und das einzeln testbar sein
+muss. [`components/OperationShell.tsx`](../apps/fleetplanner-web/src/components/OperationShell.tsx)
+traegt Breadcrumb, Titel, Guild, Termin, System, Treffpunkt, Status, Belegung, offene Arbeit und den
+Moduswechsel. [`components/opStatus.ts`](../apps/fleetplanner-web/src/components/opStatus.ts) haelt
+das Statusvokabular an einer Stelle; die Konsole hatte eine eigene Kopie.
+
+**Regeln der Modusaufloesung.** `?mode=view` und `?mode=manage` sind explizit. Ein vorhandenes
+`?op=`, `?sub=` oder `?section=` bedeutet weiterhin Verwaltung — jeder Konsolen-Tablink und der
+`/ops/:id/manage`-Redirect nennen einen Tab, also meinen sie die Verwaltung, auch wenn sie den Modus
+nicht aussprechen. Ohne alles gilt Ansehen. `manage` nur bei `canManage`: ein Crew-Mitglied, das
+`?mode=manage` tippt, bekommt die Teilnehmeransicht, keine leere Konsole. Das ist Oberflaeche, nicht
+Autorisierung — jede Mutation dahinter prueft der Server ohnehin. Zurueck ins Ansehen faellt der Tab
+mit aus der URL, sonst waere ein kopierter Link fuer den Empfaenger ein Konsolenlink.
+
+**Zwei Regressionen, die dabei entstanden waeren, sind mitgefixt.** Die Konsole raeumte beim
+Tabwechsel `sub`, `section` und `mode` aus der URL; sobald `mode=manage` etwas bedeutet, haette das
+den Operator beim ersten Tabklick aus der Verwaltung geworfen. Und ihr Kopf zeigte den
+Operationstitel — direkt unter dem neuen `h1` stand er damit zweimal.
+
+**Ein `h1` pro Seite** (Paragraph 12): der Titel ist aus dem Hero in den Objektkopf gezogen, das
+`data-testid="op-title"` mit ihm, damit die bestehenden Titelpruefungen weiter etwas pruefen.
+
+**Bewusster Zwischenstand.** `DocumentsPanel`, Streams und `SquadLinkPanel` liegen weiterhin in der
+Teilnehmeransicht. Ein Operator erreicht sie also ueber „Operation ansehen" statt nebenbei — einen
+Klick weiter, nicht verloren. Phase 3 holt die Dokumente nach „Planung › Briefing & Medien"; bis
+dahin ist das der ehrliche Stand und keine Auslassung.
+
+Verifikation: `unit:web` **169 Tests gruen** (8 neue in `nav.test.tsx` fuer die Modi, darunter ein
+Regressionstest gegen das `mode`-Loeschen); Playwright gegen den lokalen Stack **119 passed, 3
+skipped** (nur `19-cover`, das den Renderer braucht); Smoke gruen; `tsc --noEmit` und `vite build`
+gruen. Fuenf Tests in `app.test.tsx` zeigen jetzt auf `?op=fleet` statt auf die nackte
+Operations-URL — sie pruefen die Operator-Oberflaeche, und die liegt jetzt im Verwaltungsmodus. Der
+Alias-Weg ist damit nebenbei mitgetestet.
+
 ## Completed - 2026-08-22 (14): Redesign Phase 0.4 — die ungesicherten Bedienelemente getestet
 
 Handoff-Paragraph 15 Phase 0.4, Arbeitsliste aus Abschnitt 6.1 der

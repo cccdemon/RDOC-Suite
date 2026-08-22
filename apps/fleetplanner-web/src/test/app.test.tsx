@@ -336,7 +336,7 @@ describe("Op detail — operator panel", () => {
 
   it("renders pending units, flex signups, questions and hangar shares", async () => {
     useOperatorHandlers();
-    const { findByTestId, findByText, findAllByText } = renderAt("/ops/op_1");
+    const { findByTestId, findByText, findAllByText } = renderAt("/ops/op_1?op=fleet");
     await openFleetTab(findByTestId);
     expect(await findByTestId("operator-panel")).toBeInTheDocument();
     // The console lives inside the detail page, so a pending unit shows twice on
@@ -360,7 +360,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    const { findByTestId, findByText } = renderAt("/ops/op_1?op=fleet");
     await openFleetTab(findByTestId);
     (await findByTestId("op-place-user_flex")).click();
     // place-mode banner appears, open seats become green targets
@@ -379,7 +379,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    const { findByTestId, findByText } = renderAt("/ops/op_1?op=fleet");
     await openFleetTab(findByTestId);
     (await findByTestId("op-target-seat_2")).click(); // no place-mode → picker
     expect(await findByText("WER SOLL HIER REIN?")).toBeInTheDocument();
@@ -418,7 +418,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1");
+    const { findByTestId } = renderAt("/ops/op_1?op=fleet");
     await openFleetTab(findByTestId);
     // drag the flex person onto the open seat
     const person = await findByTestId("op-place-user_flex");
@@ -493,7 +493,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1");
+    const { findByTestId } = renderAt("/ops/op_1?op=fleet");
     await openFleetTab(findByTestId);
     (await findByTestId("accept-unit_p")).click();
     await new Promise((r) => setTimeout(r, 50));

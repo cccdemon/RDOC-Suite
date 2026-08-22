@@ -12,16 +12,12 @@ import { VoicePanel } from "./VoicePanel";
 import { ResourceLinksPanel } from "./ResourceLinksPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 import { FieldSaveProvider, GlobalSaveBadge, SaveDot, useFieldSave } from "./fieldSave";
+import { OP_STATUSES } from "./opStatus";
 
 // IA merge D + Operator-Console redesign (Variante A "Tabs + Live"): one screen,
 // adaptive section of the op-detail page (op.canManage). Persistent status header
 // over the tabs; everything autosaves with per-field status; no full reload on
 // each action.
-const STATUSES: Array<[string, string, string]> = [
-  ["draft", "Entwurf", "var(--dim2)"], ["open", "Offen", "var(--green)"], ["locked", "Gesperrt", "var(--gold)"],
-  ["starting", "Startet", "var(--cyan)"], ["in_progress", "Läuft", "var(--cyan)"],
-  ["completed", "Abgeschlossen", "var(--dim)"], ["cancelled", "Abgesagt", "var(--red2)"],
-];
 
 // Wording (UI audit §9): inside the "Flotte" area a tab called "Flotte & Board"
 // next to "Verbände" reads as if the two were different tasks — it is just the
@@ -133,9 +129,12 @@ function OperatorConsoleInner({
     if (next === tab) return;
     const sp = new URLSearchParams(searchParams);
     sp.set("op", next);
-    // ?op is the canonical form; drop the accepted aliases so the URL cannot
-    // end up carrying two different tabs at once.
-    sp.delete("sub"); sp.delete("section"); sp.delete("mode");
+    // ?op is the canonical form; drop the accepted tab aliases so the URL cannot
+    // end up carrying two different tabs at once. `mode` is NOT an alias any
+    // more — it says which half of the page we are on, so clearing it here
+    // would throw the operator back into the participant view on the first tab
+    // click (see operationMode.ts).
+    sp.delete("sub"); sp.delete("section");
     sp.delete("flash"); // a one-shot notice must not survive a tab switch
     setSearchParams(sp); // push — so browser-back returns to the previous tab
   }
@@ -223,10 +222,10 @@ function OperatorConsoleInner({
     <div style={{ border: "1px solid var(--border-hi)", borderRadius: 14, background: "var(--bg2)", padding: "0.9rem 1rem", marginBottom: "1rem" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "0.8rem" }}>
         <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--wash)", border: "1px solid var(--border-hi)", color: "var(--cyan)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic name="board" size={17} /></span>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATOR-KONSOLE · NUR EINSATZLEITUNG</div>
-          <div style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{op.title}</div>
-        </div>
+        {/* The object header directly above already carries the title, the guild
+            and the date (§6.1) — repeating them here would put the same line on
+            screen twice. What stays is what this box is for. */}
+        <div style={{ minWidth: 0, flex: 1, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>OPERATOR-KONSOLE · NUR EINSATZLEITUNG</div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
           <button type="button" data-testid="voice-quickswitch" title="Subraum Voice" onClick={toggleVoice} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.36rem 0.65rem", borderRadius: 8, cursor: "pointer", border: voiceEnabled ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: voiceEnabled ? "var(--wash)" : "transparent", color: voiceEnabled ? "var(--purple)" : "var(--dim2)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em" }}>
             <Ic name="mic" size={13} /> {voiceEnabled ? "VOICE AN" : "VOICE AUS"}
@@ -239,7 +238,7 @@ function OperatorConsoleInner({
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.1em", color: "var(--dim2)" }}>STATUS</span>
           <div data-testid="manage-status" style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "rgba(0,0,0,0.3)", border: "1px solid var(--border)", flexWrap: "wrap" }}>
-            {STATUSES.map(([v, l, col]) => {
+            {OP_STATUSES.map(({ value: v, label: l, color: col }) => {
               const on = status === v;
               return (
                 <button key={v} type="button" data-testid={`status-seg-${v}`} onClick={() => changeStatus(v)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.32rem 0.7rem", borderRadius: 7, cursor: "pointer", border: on ? `1px solid ${col}` : "1px solid transparent", background: on ? "var(--wash)" : "transparent", color: on ? col : "var(--dim2)", fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.04em" }}>
