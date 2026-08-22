@@ -14,6 +14,34 @@ Soll-Informationsarchitektur, Event-Workflow, Funktions-Migrationsmatrix, Kompon
 Responsive-Regeln, Accessibility-Anforderungen, Umsetzungsschritten und pruefbaren
 Akzeptanzkriterien. Dokumentation בלבד; keine Produktivcode-Aenderung in diesem Schritt.
 
+## Completed - 2026-08-22: Deploy `3be2db2` (Dead-Code-Aufraeumen + Legacy-Layer + Doku)
+
+Auf Produktion (LXC 103, `/opt/RDOC-Suite`). Drei Commits von `feat/stream-event` als
+Fast-Forward auf `master` gepusht (`6ff2a86..3be2db2`):
+
+| Commit | Inhalt |
+|---|---|
+| `5a841be` | verwaiste Pakete/Konfiguration, tote Env-Keys, ungenutzte Exporte, knip-Konfiguration |
+| `e3f025d` | Legacy-Form-POST-Layer `routes/api.ts` + `@fastify/formbody` raus, Helfer umgezogen |
+| `3be2db2` | Doku am Quelltext ausgerichtet |
+
+`docker compose -f docker-compose.prod.yml up -d --build fleetplanner fleetplanner-web
+mission-cover` — alle drei Images gebaut, Container neu erzeugt. Prisma: "No pending migrations to
+apply" (57 Migrationen, kein Schema-Change in diesem Deploy).
+
+Nachkontrolle:
+- `scripts/prod-e2e-readonly.sh` — **ALL CHECKS PASSED** (Auth-Gates, Fehler-Envelope,
+  SPA-Bundle gegen `/api/v1`, `/metrics` gesperrt, SSR-Fallback, Legacy-Redirect).
+- `/fleetplanner/` 200, `/fleetplanner/api/v1/health` 200, `/fleetplanner/ops` 200.
+- Die geloeschte Legacy-Oberflaeche ist auch live weg: `/fleetplanner/api/ships` und
+  `/fleetplanner/api/seats/x/unassign` antworten **404**.
+- Genau ein CSP-Header.
+- Backend-Log sauber, Server lauscht, Prometheus scrapt (`/metrics` 200 intern).
+
+Offen aus diesem Durchgang (nichts davon deploy-blockierend): die Kapitaens-DM beim Annehmen einer
+Einheit feuert weiterhin nicht (bewusste Produktentscheidung, Backlog #2), die vier Altfunktionen
+ohne v1-Zwilling, und der Interest-Sync, der geloeschte Discord-Events pollt.
+
 ## Completed - 2026-08-22 (9): Legacy-Layer `routes/api.ts` geloescht
 
 **Die Pruefung, die der User verlangt hat.** 45 Routen, alle nach demselben Muster: CSRF pruefen,
