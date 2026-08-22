@@ -1,6 +1,14 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-08-22 (3): UI-Audit Schritte 6 + 9 — Kartentypen und Responsive
+## Completed - 2026-08-22: Testsuite der SPA laeuft in Docker (`0c1bbe9`)
+
+`./scripts/test-stack.sh unit:web` baut `tests/Dockerfile.web-unit` und faehrt die
+vitest+jsdom+msw-Suite der SPA im Container — bis dahin ging das nur mit einem gesunden lokalen
+pnpm-Store, und genau der ist im Zweifel nicht von einem echten Testfehler zu unterscheiden. Das
+Image baut vorher `@rdoc-suite/fleetplanner-contracts` neu, weil die SPA ihre Typen aus `dist`
+zieht. `all` faehrt jetzt beide Unit-Suiten.
+
+## Completed - 2026-08-22: UI-Audit Schritte 6 + 9 — Kartentypen und Responsive (`c5d77ca`)
 
 **6. Kartentypen.** `fpw-card` ist heute Sammelbegriff fuer klickbare Objektkachel,
 Auswahlkachel, Statuspanel, Formularcontainer, Tabelle und Verwaltungssektion — 27 Fundstellen,
@@ -34,7 +42,7 @@ Tests: `src/test/cards.test.tsx` (Kartenregeln: ein Primaerziel, Sekundaeraktion
 Auswahlzustand, Info-Karte nicht klickbar) und Ergaenzungen in
 `e2e/tests/03-surfaces.spec.ts` fuer die mobilen Tabellen und die Handbuch-Navigation.
 
-Status: umgesetzt, noch nicht committed.
+Status: committed in `c5d77ca` (Branch `feat/stream-event`), noch nicht deployed.
 
 Ergebnis (2026-08-22):
 - `./scripts/test-stack.sh unit:web` — 121 gruen.
@@ -51,7 +59,7 @@ Aenderung gewesen — und die war ausdruecklich nicht Auftrag.
 Damit sind alle zehn Schritte des Implementierungsauftrags aus
 `docs/UI-UX-FUNKTIONS-AUDIT-CLAUDE-OPUS.md` abgearbeitet.
 
-## Queued / Planned Step - 2026-08-22 (2): rote SPA-Tests + UI-Audit Schritt 4-Rest
+## Completed - 2026-08-22: rote SPA-Tests + UI-Audit Schritt 4-Rest (`c5d77ca`)
 
 Zwei Teile.
 
@@ -89,7 +97,7 @@ Bewahrt: alle Testids, `?view=`-Werte inkl. `kalender`, `/calendar`-Redirect, Ro
 Tests: `src/test/ops-views.test.tsx` (URL-Filter, Tastatur-Tabs, leerer Zustand) plus
 Erweiterung von `e2e/tests/07-calendar-overview.spec.ts`.
 
-Status: umgesetzt, noch nicht committed.
+Status: committed in `c5d77ca` (Branch `feat/stream-event`), noch nicht deployed.
 
 Ergebnis (2026-08-22):
 - `./scripts/test-stack.sh unit:web` — 115 gruen, 0 rot (vorher 6 rot).
@@ -102,9 +110,9 @@ Nicht in diesem Schritt (Audit-Reihenfolge 6 und 9, weiterhin offen): die Karten
 (Objekt-/Auswahl-/Info-/Arbeits-/Formular-/Gefahrenkarte) und die responsiven Loesungen fuer
 Tabellen, breite Flotten-Karten und die Handbuch-Navigation auf schmalen Bildschirmen.
 
-## Queued / Planned Step - 2026-08-22: UI-Audit P0-Rest — Drag-and-drop + Wizard
+## Completed - 2026-08-22: UI-Audit P0-Rest — Drag-and-drop + Wizard (`c5d77ca`)
 
-Status: umgesetzt, Tests gruen (siehe Ergebnis unten), noch nicht committed.
+Status: committed in `c5d77ca` (Branch `feat/stream-event`), noch nicht deployed.
 
 Auftrag aus `docs/UI-UX-FUNKTIONS-AUDIT-CLAUDE-OPUS.md`, Schritte 7 und 8 (P0 5 + 6). Nur
 Interaktionslogik, kein Brandkit — ausschliesslich bestehende Tokens/Klassen.
@@ -151,7 +159,7 @@ Ergebnis (2026-08-22):
 - `tsc --noEmit` fuer die SPA im Test-Image: sauber.
 
 
-## Queued / Planned Step - 2026-08-21: Informationsarchitektur + Menuefuehrung (nur IA, kein Brandkit)
+## Completed - 2026-08-21: Informationsarchitektur + Menuefuehrung (nur IA, kein Brandkit) (`c5d77ca`)
 
 Auftrag: ausschliesslich Informationsarchitektur und Menuefuehrung ueberarbeiten. Brandkit und
 visuelles Erscheinungsbild bleiben unveraendert - neue Struktur benutzt ausschliesslich bestehende
