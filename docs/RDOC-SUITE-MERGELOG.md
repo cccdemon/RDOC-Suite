@@ -1,16 +1,42 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-08-22 (19): Redesign Phase 4, Rest — Kartentypen und Typografie
+## Completed - 2026-08-23 (19): Redesign Phase 4b — Aktionsrang, Kartentypen, Monospace
 
-Offen aus Eintrag (18), nachdem der Wizard-Erfolgszustand und der Textkontrast erledigt sind:
+**Aktionshierarchie** (Paragraph 10.4). `btnPrimary` und `btnGhost` unterschieden sich durch eine
+Randfarbe und sonst nichts: beide Monospace, gleiche Groesse, einmal cyan auf `--wash`, einmal dim
+auf transparent. Auf einer Flaeche mit sechs Bedienelementen ist das keine Hierarchie, sondern sechs
+gleiche Knoepfe. Primary ist jetzt gefuellt, die leisen bleiben leise. Zentral in `ui.tsx`, also
+wirken beide Aenderungen auf alle 26 Fundstellen gleichzeitig.
 
-- **Kartentypen** (Paragraph 10.3). Objekt, Formular, Erklaerung, Statistik und Arbeitsflaeche sehen
-  gleich aus. `ui.tsx` hat `ObjectTile`, `ChoiceTile`, `WorkCard` und `DangerZone`; sie werden nicht
-  ueberall benutzt. Das `data-card`-Attribut macht den Typ pruefbar — dieselbe Mechanik wie beim
-  Kontrast: messen statt erinnern.
-- **Monospace-Disziplin** (Paragraph 10.1). Monospace nur fuer Status, Zeit, IDs und kurze Eyebrows;
-  heute stehen auch ganze Erklaerungssaetze und Buttonbeschriftungen darin.
-- **Aktionshierarchie** (Paragraph 10.4). Pro Kontext genau eine Primaeraktion.
+**Monospace** (Paragraph 10.1). Buttonbeschriftungen und Formularfelder waren Monospace. Monospace
+gehoert auf Status, Zeit, IDs und kurze Eyebrows — „Operation erstellen" ist keins davon, und was
+jemand in ein Feld tippt (Titel, Briefing, Kanalname) ist Fliesstext. `btnPrimary`, `btnGhost` und
+`inp` fuehren jetzt `var(--body)`; `lbl` bleibt Monospace, weil ein kurzes Versalien-Label genau der
+erlaubte Fall ist.
+
+**Kartentypen** (Paragraph 10.3). `data-card` ist ein echter Styling-Vertrag in `styles.css`
+(`object`, `choice`, `info`, `work`, `form`, `danger`), aber die in Phase 2 und 3 gebauten Panels
+deklarierten keinen. Nachgezogen: „Offene Arbeit" und „Operation beenden" sind `work`, die
+Statuserklaerung und die Partneruebersicht sind `info` — sie erklaeren etwas, es gibt nichts zu
+druecken —, die Ankuendigung ist `form`.
+
+**Der Vorlage-und-Serie-Tab ist zwei Karten.** Er hielt beides in einer Box, was nach der
+Primary-Aenderung zwei gefuellte Knoepfe nebeneinander ergab. Zwei Aufgaben, zwei Karten, je eine
+naechste Aktion — und jede sagt jetzt in einem Satz, was sie tut („Serie stoppen" beendet nur die
+Wiederholung, die bereits erzeugten Operationen bleiben).
+
+Gesichert in `cards.test.tsx`: jeder benutzte `data-card`-Wert ist einer, den das Stylesheet kennt;
+die Verwaltungs-Unteransichten deklarieren den richtigen Typ; und Primary und Ghost unterscheiden
+sich in Hintergrund, Textfarbe und Gewicht, nicht nur im Rand.
+
+**Was bewusst offen bleibt.** Der Monospace-Durchgang ist an der Quelle gemacht, nicht an allen
+rund 350 Fundstellen — `OperatorPanel` (92) und `OpDetailPage` (64) haben weiterhin
+Inline-`MONO`-Stellen, darunter Erklaerungssaetze. Das ist ein Handdurchgang ohne Testabdeckung und
+gehoert in denselben Schritt wie die Responsive-Arbeit in Phase 5, wo diese beiden Dateien ohnehin
+angefasst werden.
+
+Verifikation: SPA-Unit **208 Tests, 8 Dateien**; Backend-Unit **591**; Playwright **119 passed, 3
+skipped**; Smoke gruen; `tsc --noEmit` und `vite build` gruen.
 
 ## Completed - 2026-08-22 (18): Redesign Phase 4a — vier Wege aus dem Wizard, und lesbarer Text
 

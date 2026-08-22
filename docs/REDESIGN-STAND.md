@@ -4,7 +4,7 @@
 > ist: löschen. Die Historie steht im [Mergelog](RDOC-SUITE-MERGELOG.md), die inhaltliche Wahrheit in
 > der [Matrix](UI-UX-REDESIGN-MATRIX.md) (CLAUDE.md Regel 7).
 >
-> **Stand:** 2026-08-22, nach Phase 4a.
+> **Stand:** 2026-08-23, nach Phase 4b.
 
 ---
 
@@ -20,8 +20,8 @@ Phasenmodell aus dessen §15.
 | 1 — Gates und Kontextfehler | **fertig ohne Codeänderung** — alle fünf §2.3-Risiken waren schon behoben und getestet |
 | 2 — OperationShell, Ansehen gegen Verwalten | **fertig** (`8f9f48a`) |
 | 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
-| 4 — Workflow und visuelle Hierarchie | **teilweise** — Wizard-Erfolgszustand und Textkontrast erledigt; Kartentypen, Monospace-Disziplin und Aktionshierarchie offen |
-| 5 — Responsive und Accessibility | offen |
+| 4 — Workflow und visuelle Hierarchie | **fertig bis auf einen Handdurchgang** — Wizard, Kontrast, Aktionsrang, Kartentypen erledigt; Inline-Monospace in `OperatorPanel`/`OpDetailPage` offen |
+| 5 — Responsive und Accessibility | **offen, als Nächstes** |
 | 6 — Verifikation | offen |
 
 ---
@@ -117,30 +117,50 @@ Zwei Dinge, die beim Weiterbauen zählen:
   `@types/node` würde dem Browser-Paket eine viel zu breite Typfläche geben.
 - `WizardPage` — vier benannte Wege aus dem Erfolgszustand; alle alten Testids erhalten.
 
+
+### 4.3 Was Phase 4b geändert hat
+
+- `ui.tsx` ist die Quelle: `btnPrimary` gefüllt, `btnGhost` leise, beide plus `inp` in
+  `var(--body)`. Eine Datei, 26 Buttons und 40 Felder.
+- Die Panels aus Phase 2 und 3 deklarieren ihren `data-card`-Typ. `cards.test.tsx` prüft die
+  Vokabel gegen das, was `styles.css` tatsächlich stylt.
+- „Vorlage & Serie" ist zwei Karten mit je einer Hauptaktion.
+
+**Der Handdurchgang ist bewusst nicht gemacht.** Rund 350 `MONO`-Fundstellen liegen inline in
+`OperatorPanel` und `OpDetailPage`. Ohne Testabdeckung ist das reine Handarbeit; sie gehört in
+denselben Schritt wie Phase 5, weil beide Dateien dort ohnehin angefasst werden.
+
 ---
 
-## 5. Phase 4 — was noch fehlt
+## 5. Phase 5 — der nächste Schritt
 
-Erledigt: der Wizard-Erfolgszustand (§9.3) und der Textkontrast (§10.2, siehe
-`src/test/contrast.test.ts`). Offen:
+Handoff §11 und §12. Aus Phase 4 bleibt ein Posten liegen, der hierher gehört, weil dieselben zwei
+Dateien angefasst werden:
 
-1. **Kartentypen** (§10.3). Objekt, Formular, Erklärung, Statistik und Arbeitsfläche sehen gleich
-   aus. `ui.tsx` hat `ObjectTile`, `ChoiceTile`, `WorkCard` und `DangerZone` — sie werden nur nicht
-   überall benutzt. Das `data-card`-Attribut macht den Typ prüfbar; dieselbe Mechanik wie beim
-   Kontrast: messen statt erinnern.
-2. **Monospace-Disziplin** (§10.1). Monospace gehört auf Status, Zeit, IDs und kurze Eyebrows. Heute
-   stehen auch ganze Erklärungssätze und Buttonbeschriftungen darin.
-3. **Aktionshierarchie** (§10.4). Pro Kontext genau eine Primäraktion.
+0. **Inline-Monospace** in `OperatorPanel` (92 Stellen) und `OpDetailPage` (64). Die Quelle ist
+   sauber (`ui.tsx`), diese beiden Dateien setzen `MONO` direkt — auch auf Erklärungssätzen. Ein
+   Handdurchgang ohne Testabdeckung; deshalb zusammen mit der Responsive-Arbeit an denselben Dateien.
 
-Danach Phase 5 (Responsive, Accessibility) und Phase 6 (Verifikation, manuelle Rollenmatrix).
+Dann Phase 5 selbst:
+
+1. **Mobile Verwaltungsnavigation** — die Bereichsleiste und die Tab-Reihe sind auf einem Telefon
+   zwei gequetschte Zeilen (§11).
+2. **Board und Warteliste** einspaltig unter ~700 px, Tabellen als Karten statt erzwungenem
+   Horizontalscroll.
+3. **Dialoge und Drawer** — Fokusfalle, Escape, Rückfokus sind im Drawer da; Modals sollen auf
+   Mobile Bottom-Sheet oder Vollbild sein.
+4. **Mindestzielgröße 44 × 44 px** für interaktive Flächen auf Mobile.
+5. **`prefers-reduced-motion`** respektieren.
+
+Danach Phase 6 (Verifikation, manuelle Rollenmatrix).
 
 ## 6. Verifikation — was zuletzt grün war
 
-Alles am 22.08. nach dem letzten Phase-4a-Commit gelaufen:
+Alles am 23.08. nach dem letzten Phase-4b-Commit gelaufen:
 
 ```bash
 ./scripts/test-stack.sh unit          # Backend  591 Tests, 40 Dateien
-./scripts/test-stack.sh unit:web      # SPA      203 Tests, 8 Dateien
+./scripts/test-stack.sh unit:web      # SPA      208 Tests, 8 Dateien
 ./scripts/test-stack.sh up            # Stack hoch (web :8099, api :3299, mock :4400)
 ./scripts/test-stack.sh e2e           # Playwright 119 passed, 3 skipped
 ./scripts/test-stack.sh smoke         # grün

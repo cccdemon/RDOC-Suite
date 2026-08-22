@@ -116,7 +116,7 @@ export function OpenWorkPanel({ op, opId, onOpenTab }: { op: OperationDetail; op
   const items = openWork(op, view);
 
   return (
-    <section style={card} data-testid="open-work">
+    <section style={card} data-card="work" data-testid="open-work">
       <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.9rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="alert" size={16} sw={1.7} /></span>
         <span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.1em", color: "var(--text-hi)" }}>OFFENE ARBEIT</span>

@@ -67,9 +67,12 @@ export const inp: CSSProperties = {
   background: "var(--bg3)",
   border: "1px solid var(--border)",
   color: "var(--text-hi)",
-  fontFamily: MONO,
-  fontSize: "0.84rem",
-  padding: "0.58rem 0.7rem",
+  // What a user types into these is prose — an operation title, a briefing, a
+  // channel name. Monospace belongs on status, time and IDs (§10.1), not on
+  // everything that happens to sit in a box.
+  fontFamily: "var(--body)",
+  fontSize: "0.9rem",
+  padding: "0.55rem 0.7rem",
   borderRadius: 8,
   outline: "none",
   transition: "border-color .12s",
@@ -120,15 +123,33 @@ export function CardHead({ icon, label, tone = "cyan", right }: { icon: string; 
   );
 }
 
-export const btnPrimary: CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.3rem",
-  border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)",
-  fontFamily: MONO, fontSize: "0.74rem", letterSpacing: "0.03em", borderRadius: 9, cursor: "pointer",
+// §10.4 — three ranks that are told apart at a glance, not by reading them.
+//
+// Primary and ghost used to differ by an outline colour and nothing else: both
+// monospace, both the same size, one cyan-on-wash and one dim-on-transparent.
+// On a screen with six controls that is not a hierarchy, it is six equal
+// buttons. Primary is filled now; the quiet ones stay quiet.
+//
+// The label is body type, not monospace: §10.1 keeps monospace for status,
+// time, IDs and short eyebrows. "Operation erstellen" is none of those.
+const btnBase: CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7,
+  fontFamily: "var(--body)", fontSize: "0.86rem", fontWeight: 600,
+  borderRadius: 9, cursor: "pointer", minHeight: 38, whiteSpace: "nowrap",
 };
+
+/** The one next action in a context. Filled, so it wins without being loud. */
+export const btnPrimary: CSSProperties = {
+  ...btnBase,
+  padding: "0.5rem 1.3rem",
+  border: "1px solid var(--cyan)", background: "var(--cyan)", color: "var(--bg)",
+};
+
+/** Reversible alternatives and navigation. Present, not competing. */
 export const btnGhost: CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 1.1rem",
-  border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)",
-  fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer",
+  ...btnBase,
+  padding: "0.5rem 1.1rem", fontWeight: 500,
+  border: "1px solid var(--border)", background: "transparent", color: "var(--dim)",
 };
 
 // ── one tab implementation for independently addressable views ──────────────

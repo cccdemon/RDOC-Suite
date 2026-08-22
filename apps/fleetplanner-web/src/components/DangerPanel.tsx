@@ -83,7 +83,7 @@ export function DangerPanel({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-      <section style={card} data-testid="op-closeout">
+      <section style={card} data-card="work" data-testid="op-closeout">
         <CardHead icon="check" label="OPERATION BEENDEN" tone="gold" />
         <p style={{ margin: "0 0 0.9rem", color: "var(--dim)", fontSize: "0.85rem", lineHeight: 1.5 }}>
           Beides ist ein Statuswechsel und bleibt umkehrbar — die Operation und ihre Aufstellung

@@ -433,10 +433,16 @@ function OperatorConsoleInner({
 
           {tab === "admin" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-              <section style={card}>
-                <CardHead icon="shield" label="VORLAGE & SERIE" tone="gold" />
-                <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>ALS VORLAGE VERÖFFENTLICHEN</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem", marginBottom: "1.2rem" }}>
+              {/* Two tasks, two cards. They shared one box, which put two equally
+                  weighted primary buttons next to each other — §10.4 wants one
+                  next action per context, and these are two contexts. */}
+              <section style={card} data-card="form">
+                <CardHead icon="doc" label="ALS VORLAGE VERÖFFENTLICHEN" tone="gold" />
+                <p style={{ margin: "0 0 0.9rem", color: "var(--dim)", fontSize: "0.85rem", lineHeight: 1.5 }}>
+                  Legt eine Kopie der Eckdaten und Bedarfe ab, aus der sich neue Operationen anlegen
+                  lassen. Die laufende Operation bleibt unberührt.
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                   <input data-testid="tpl-name" type="text" maxLength={120} value={tpl.name} placeholder={`Name (Standard: ${op.title})`} onChange={(e) => setTpl((t) => ({ ...t, name: e.target.value }))} style={inp} />
                   <input data-testid="tpl-summary" type="text" maxLength={500} value={tpl.summary} placeholder="Kurzbeschreibung" onChange={(e) => setTpl((t) => ({ ...t, summary: e.target.value }))} style={inp} />
                   <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
@@ -446,7 +452,14 @@ function OperatorConsoleInner({
                     <button type="button" data-testid="tpl-publish" style={btnPrimary} disabled={busy || !csrf} onClick={publish}><Ic name="board" size={13} sw={2} /> Veröffentlichen</button>
                   </div>
                 </div>
-                <div style={{ ...lbl, fontSize: "0.6rem", marginBottom: "0.5rem" }}>WIEDERKEHRENDE SERIE</div>
+              </section>
+
+              <section style={card} data-card="form">
+                <CardHead icon="cal" label="WIEDERKEHRENDE SERIE" tone="gold" />
+                <p style={{ margin: "0 0 0.9rem", color: "var(--dim)", fontSize: "0.85rem", lineHeight: 1.5 }}>
+                  Erzeugt weitere Operationen im gewählten Takt. „Serie stoppen" beendet nur die
+                  Wiederholung — bereits erzeugte Operationen bleiben bestehen.
+                </p>
                 <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center", marginBottom: "0.6rem" }}>
                   <select data-testid="recur-freq" value={recur.freq} onChange={(e) => setRecur((r) => ({ ...r, freq: e.target.value }))} style={{ ...inp, width: "auto", minWidth: 150 }}>
                     <option value="weekly">Wöchentlich</option><option value="biweekly">Zweiwöchentlich</option><option value="monthly_nth">Monatlich</option><option value="yearly">Jährlich</option>

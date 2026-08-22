@@ -53,7 +53,7 @@ export function ReleasePanel({ op, opId, csrf, onNotice }: { op: OperationDetail
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
-      <section style={card} data-testid="release-status">
+      <section style={card} data-card="info" data-testid="release-status">
         <CardHead icon="bolt" label="STATUS UND SEINE FOLGEN" tone="cyan" />
         <p style={{ margin: "0 0 0.9rem", display: "flex", alignItems: "center", gap: "0.55rem", flexWrap: "wrap" }}>
           <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.1em", color: "var(--dim2)" }}>AKTUELL</span>
@@ -83,7 +83,7 @@ export function ReleasePanel({ op, opId, csrf, onNotice }: { op: OperationDetail
 
       <AnnouncePanel opId={opId} guildId={op.guild.id} csrf={csrf} onNotice={onNotice} />
 
-      <section style={card} data-testid="release-partners">
+      <section style={card} data-card="info" data-testid="release-partners">
         <CardHead icon="link" label="PARTNER-VERTEILUNG" tone="cyan" />
         {!partnerReach ? (
           <p style={{ margin: 0, color: "var(--dim)", fontSize: "0.86rem", lineHeight: 1.55 }}>

@@ -6,6 +6,7 @@ import { App } from "../App";
 import { server } from "./setup";
 import { opDetailFixture, opSummaryFixture, sessionCrew, sessionGuest } from "./fixtures";
 import type { SessionResponse } from "../api/types";
+import { btnGhost, btnPrimary } from "../components/ui";
 
 // Card types (UI audit §8). Each type makes one promise; these tests pin the
 // promises rather than the looks: one primary target per object tile, secondary
@@ -254,5 +255,60 @@ describe("status badges say the same thing everywhere", () => {
     );
     renderAt("/operationen?view=liste");
     expect(await screen.findByTestId("op-card-status")).toHaveTextContent("VOLL");
+  });
+});
+
+// ── §10.3 / §10.4: the card is typed, and the ranks are told apart ───────────
+describe("surface and action vocabulary", () => {
+  // styles.css styles on [data-card="…"], so an unknown value is a card that
+  // silently gets no type at all.
+  const ALLOWED = ["object", "choice", "info", "work", "form", "danger"];
+
+  function useOperatorOp(over: Record<string, unknown> = {}) {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true, ...over })),
+    );
+  }
+
+  it("every typed surface uses a type the stylesheet knows", async () => {
+    useOperatorOp();
+    const { container } = renderAt("/ops/op_1?op=danger");
+    await screen.findByTestId("op-danger-zone");
+
+    const used = [...container.querySelectorAll("[data-card]")].map((el) => el.getAttribute("data-card"));
+    expect(used.length).toBeGreaterThan(0);
+    for (const t of used) expect(ALLOWED).toContain(t);
+  });
+
+  it("the management sub-views say which kind of surface they are", async () => {
+    useOperatorOp();
+    renderAt("/ops/op_1?op=danger");
+    // Two status changes that can be undone: work, not danger.
+    expect(await screen.findByTestId("op-closeout")).toHaveAttribute("data-card", "work");
+    expect(screen.getByTestId("op-danger-zone")).toHaveAttribute("data-card", "danger");
+  });
+
+  it("an explanation is not dressed as something to operate", async () => {
+    useOperatorOp();
+    server.use(http.get(`${API}/guilds/guild_1/partnerships`, () => HttpResponse.json({ partnerships: [] })));
+    renderAt("/ops/op_1?op=freigabe");
+    // The status card tells you what the state means; there is nothing to press.
+    expect(await screen.findByTestId("release-status")).toHaveAttribute("data-card", "info");
+  });
+
+  it("the primary action is distinguishable from the quiet one without reading it", () => {
+    // These two used to differ by an outline colour only — both monospace, both
+    // the same weight. On a panel with six controls that is not a hierarchy.
+    expect(btnPrimary.background).not.toBe(btnGhost.background);
+    expect(btnPrimary.color).not.toBe(btnGhost.color);
+    expect(btnPrimary.fontWeight).not.toBe(btnGhost.fontWeight);
+  });
+
+  it("labels on buttons are body type, not monospace (§10.1)", () => {
+    // Monospace is for status, time, IDs and short eyebrows. "Operation
+    // erstellen" is a sentence a person reads.
+    expect(btnPrimary.fontFamily).toBe("var(--body)");
+    expect(btnGhost.fontFamily).toBe("var(--body)");
   });
 });

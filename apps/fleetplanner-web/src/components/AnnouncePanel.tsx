@@ -46,7 +46,7 @@ export function AnnouncePanel({
   if (channels !== null && channels.length === 0) return null; // bot not configured / no channels
 
   return (
-    <section style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", padding: "1.1rem 1.2rem" }} data-testid="share-channel">
+    <section style={{ border: "1px solid var(--border)", borderRadius: 14, background: "var(--bg2)", padding: "1.1rem 1.2rem" }} data-card="form" data-testid="share-channel">
       <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.06em", color: "var(--text-hi)", marginBottom: "0.9rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="chat" size={15} sw={1.6} /></span> ANKÜNDIGUNG TEILEN
       </div>

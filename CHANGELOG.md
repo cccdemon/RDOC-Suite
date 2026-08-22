@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Eine erkennbare Hauptaktion, und weniger Monospace (2026-08-23)
+
+`btnPrimary` und `btnGhost` unterschieden sich nur durch eine Randfarbe — beide Monospace, gleiche
+Größe. Primary ist jetzt gefüllt; die leisen Aktionen bleiben leise. Buttonbeschriftungen und
+Eingabefelder verwenden die Fließtextschrift statt Monospace, das bleibt Status, Zeit, IDs und
+kurzen Eyebrows vorbehalten.
+
+Die in Phase 2 und 3 gebauten Panels deklarieren jetzt ihren `data-card`-Typ, den `styles.css`
+ohnehin stylt: „Offene Arbeit" und „Operation beenden" sind Arbeitskarten, Statuserklärung und
+Partnerübersicht sind Infokarten, die Ankündigung ist ein Formular. `cards.test.tsx` prüft, dass
+kein Panel einen Typ benutzt, den das Stylesheet nicht kennt.
+
+Der Tab „Vorlage & Serie" ist in zwei Karten geteilt — zwei Aufgaben, je eine Hauptaktion, und jede
+erklärt in einem Satz, was sie bewirkt.
+
 ### Changed - Vier benannte Wege aus dem Wizard, und lesbarer Sekundärtext (2026-08-22)
 
 Nach dem Anlegen einer Operation bot der Wizard „Zur Operation" und einen Umschalter. Jetzt stehen
