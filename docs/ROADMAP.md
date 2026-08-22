@@ -55,7 +55,3 @@ Single overview of planned FeatureRequests (FR), their priority (1 highest … 5
 | Stream-Event-Markierung + Filter + optionale Streamer-Links | Feedback (exrelax) | ✓ Done 2026-06-29 (Phase A + B1; Live-Status verworfen) |
 | Spieler-Verfügbarkeiten im Profil + Operator-Heatmap | Feedback (exrelax) | ✗ **Abgelehnt** (User 2026-06-29) |
 | Org-Operator vs Operator-Light (jeder legt Light-Ops an) | Feedback (exrelax) | Plan — [FR-P2-fleetplanner-light.md](FR-P2-fleetplanner-light.md) (kein Code) |
-
-## Needs sighting / clarification (no doc yet)
-- ~~**"Vi5E Tools"**~~ — ✓ resolved 2026-06-24: = the Mission-Cover service (FR-P4, done + deployed).
-- **"silentknight: Paul Content nachliefern"** — unclear; needs clarification before it can be triaged.

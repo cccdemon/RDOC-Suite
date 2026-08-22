@@ -1,5 +1,12 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-22: "Needs sighting" aus der Roadmap entfernt
+
+Der Eintrag "silentknight: Paul Content nachliefern" war Unsinn (User 2026-08-22) und ist raus.
+Damit blieb in "Needs sighting / clarification" nur noch die laengst aufgeloeste "Vi5E
+Tools"-Zeile stehen — der Abschnitt faellt komplett weg. Die Roadmap ist forward-looking;
+Aufgeloestes gehoert in Changelog und Mergelog, nicht in eine Sichtungsliste.
+
 ## Completed - 2026-08-22: Testsuite der SPA laeuft in Docker (`0c1bbe9`)
 
 `./scripts/test-stack.sh unit:web` baut `tests/Dockerfile.web-unit` und faehrt die
