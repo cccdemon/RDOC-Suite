@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
@@ -336,10 +336,12 @@ describe("Op detail — operator panel", () => {
 
   it("renders pending units, flex signups, questions and hangar shares", async () => {
     useOperatorHandlers();
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    const { findByTestId, findByText, findAllByText } = renderAt("/ops/op_1");
     await openFleetTab(findByTestId);
     expect(await findByTestId("operator-panel")).toBeInTheDocument();
-    expect(await findByText("Hammerhead")).toBeInTheDocument();
+    // The console lives inside the detail page, so a pending unit shows twice on
+    // purpose: once in the public fleet lane, once in the operator triage block.
+    expect((await findAllByText("Hammerhead")).length).toBeGreaterThanOrEqual(1);
     expect(await findByText("Flexi")).toBeInTheDocument();
     // questions now live in their own "Fragen" tab (redesign IA)
     // hangar shares live in the collapsible tools drawer (design)
@@ -394,8 +396,10 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     ]);
-    const { findByTestId } = renderAt("/ops/op_1");
-    (await findByTestId("manage-tab-qa")).click(); // questions are their own tab now
+    // Questions are their own tab inside the "Kommunikation" work area — the URL
+    // is what selects it (IA 2026-08-21).
+    const { findByTestId } = renderAt("/ops/op_1?op=qa");
+    (await findByTestId("manage-tab-qa")).click();
     const input = (await findByTestId("answer-input-q1")) as HTMLTextAreaElement;
     Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value")!.set!.call(input, "Everus Harbor, 19:00");
     input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -458,7 +462,7 @@ describe("Op detail — operator panel", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1");
+    const { findByTestId } = renderAt("/ops/op_1?op=commanders");
     (await findByTestId("manage-tab-commanders")).click();
     (await findByTestId("leader-cand-user_part")).click();
     await new Promise((r) => setTimeout(r, 50));
@@ -475,7 +479,7 @@ describe("Op detail — operator panel", () => {
         HttpResponse.json({ guild: { id: "guild_1", name: "RDOC", orgName: "RDOC", timezone: "Europe/Berlin", discordInviteUrl: null, admiralRoleId: null, ownerUserId: "x", canRemove: false }, members: [] }),
       ),
     );
-    const { findByTestId, findByText } = renderAt("/ops/op_1");
+    const { findByTestId, findByText } = renderAt("/ops/op_1?op=commanders");
     (await findByTestId("manage-tab-commanders")).click();
     await findByTestId("commanders-panel");
     expect(await findByText("MITGLIED ERNENNEN")).toBeInTheDocument();
@@ -914,7 +918,7 @@ describe("Op editor admin (template + recurrence)", () => {
         return HttpResponse.json({ ok: true, id: "tpl_1" });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const { findByTestId } = renderAt("/ops/op_1?op=admin");
     (await findByTestId("manage-tab-admin")).click();
     const name = (await findByTestId("tpl-name")) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(name, "Xeno Blueprint");
@@ -934,7 +938,7 @@ describe("Op editor admin (template + recurrence)", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const { findByTestId } = renderAt("/ops/op_1?op=admin");
     (await findByTestId("manage-tab-admin")).click();
     (await findByTestId("recur-create")).click();
     expect(await findByTestId("manage-notice")).toHaveTextContent("Serie erstellt");
@@ -951,11 +955,13 @@ describe("Op editor admin (template + recurrence)", () => {
         return HttpResponse.json({ ok: true, stopped: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { findByTestId } = renderAt("/ops/op_1?op=admin");
     (await findByTestId("manage-tab-admin")).click();
     (await findByTestId("recurrence-stop")).click();
     expect(await findByTestId("manage-notice")).toHaveTextContent("gestoppt");
     expect(hit).toBe(true);
+    confirmSpy.mockRestore();
   });
 });
 
@@ -987,7 +993,7 @@ describe("Op needs editor (Bedarfe)", () => {
         return HttpResponse.json({ ok: true, added: 1 });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const { findByTestId } = renderAt("/ops/op_1?op=fleet");
     (await findByTestId("manage-tab-fleet")).click();
     // the need name is now an inline-editable input (value, not text content)
     const needRow = await findByTestId("need-row-req_1");
@@ -1010,7 +1016,7 @@ describe("Op needs editor (Bedarfe)", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1/edit");
+    const { findByTestId } = renderAt("/ops/op_1?op=fleet");
     (await findByTestId("manage-tab-fleet")).click();
     const count = (await findByTestId("fighters-count")) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(count, "3");

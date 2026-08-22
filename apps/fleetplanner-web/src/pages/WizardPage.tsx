@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { announceOperation, ApiError, addResourceLink, addShipNeeds, createOperation, createRecurrence, getGuildChannels, getPartnerships, setCqbTeams, setFighterSquads } from "../api/client";
 import type { SessionResponse } from "../api/types";
@@ -8,7 +8,8 @@ import { DocumentsPanel } from "../components/DocumentsPanel";
 import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, coreValid, coreOpBody } from "../components/opForm";
 import { useT } from "../i18n";
 import { TemplatesPage } from "./TemplatesPage";
-import { tint } from "../components/ui";
+import { ChoiceTile, tint } from "../components/ui";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
 
@@ -28,8 +29,45 @@ const SHIP_TYPES = [
   { slug: "salvage", label: "Salvage" },
   { slug: "exploration", label: "Exploration" },
 ];
-const STEPS = ["Eckdaten", "Briefing", "Treffpunkt", "Flotte", "Prüfen", "Erstellen"];
+// Steps are named after what the operator is doing, not after the form section
+// (UI audit §10). Step 2 also carries visibility + partner distribution, step 5
+// creates AND offers the share/cover follow-ups.
+const STEPS = ["Eckdaten", "Briefing", "Treffpunkt & Freigabe", "Bedarf", "Prüfen", "Erstellen & Teilen"];
 const STEP_ICONS = ["plus", "chat", "pin", "ship", "board", "check"];
+// Which step owns which summary/review row — every row jumps back to its step.
+const ROW_STEP: Record<string, number> = {
+  Name: 0, Typ: 0, Start: 0, Wiederholung: 0, "Stream-Event": 0,
+  Briefing: 1,
+  Treffpunkt: 2, Sichtbarkeit: 2, "Partner-Discords": 2,
+  Bedarfe: 3, Flotte: 3,
+};
+
+// §10 "Entwurf bleibt erhalten": the unsent form lives in localStorage until the
+// op is created. Partner targets are deliberately NOT stored — they are re-derived
+// per guild and must never leak across a guild switch.
+const DRAFT_KEY = "fpw.wizard.draft.v1";
+type WizardDraft = {
+  guildId: string; title: string; scheduledAt: string; freq: string; opType: string;
+  description: string; meetingSystem: string; meetingLocation: string; visibility: string;
+  isStreamEvent: boolean; ships: string[]; fighters: number; cqb: number; cqbSize: number;
+};
+function readDraft(): WizardDraft | null {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw) as Partial<WizardDraft>;
+    const has = !!(d.title?.trim() || d.description?.trim() || d.meetingLocation?.trim() || d.scheduledAt || (d.ships?.length ?? 0) || d.fighters || d.cqb);
+    if (!has) return null;
+    return {
+      guildId: d.guildId ?? "", title: d.title ?? "", scheduledAt: d.scheduledAt ?? "", freq: d.freq ?? "",
+      opType: d.opType ?? "combat", description: d.description ?? "", meetingSystem: d.meetingSystem ?? "Stanton",
+      meetingLocation: d.meetingLocation ?? "", visibility: d.visibility ?? "private", isStreamEvent: !!d.isStreamEvent,
+      ships: Array.isArray(d.ships) ? d.ships : [], fighters: Number(d.fighters) || 0, cqb: Number(d.cqb) || 0,
+      cqbSize: Number(d.cqbSize) || 4,
+    };
+  } catch { return null; }
+}
+function clearDraft() { try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* private mode */ } }
 
 const inp: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" };
 const lbl: React.CSSProperties = { fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.1em", color: "var(--dim)", marginBottom: "0.4rem", display: "block" };
@@ -40,29 +78,42 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const operatorGuilds = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
   const csrf = session?.csrfToken ?? null;
 
-  const [guildId, setGuildId] = useState(operatorGuilds[0]?.guildId ?? "");
+  // Read the stored draft exactly once, before the first render seeds the fields.
+  const draft = useMemo(readDraft, []);
+  const [restored, setRestored] = useState(!!draft);
+
+  const [guildId, setGuildId] = useState(
+    draft?.guildId && operatorGuilds.some((g) => g.guildId === draft.guildId) ? draft.guildId : operatorGuilds[0]?.guildId ?? "",
+  );
   const [step, setStep] = useState(0);
-  const [title, setTitle] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
-  const [freq, setFreq] = useState("");
-  const [opType, setOpType] = useState("combat");
-  const [description, setDescription] = useState("");
-  const [meetingSystem, setMeetingSystem] = useState("Stanton");
-  const [meetingLocation, setMeetingLocation] = useState("");
-  const [visibility, setVisibility] = useState("private");
-  const [isStreamEvent, setIsStreamEvent] = useState(false);
+  const [title, setTitle] = useState(draft?.title ?? "");
+  const [scheduledAt, setScheduledAt] = useState(draft?.scheduledAt ?? "");
+  const [freq, setFreq] = useState(draft?.freq ?? "");
+  const [opType, setOpType] = useState(draft?.opType ?? "combat");
+  const [description, setDescription] = useState(draft?.description ?? "");
+  const [meetingSystem, setMeetingSystem] = useState(draft?.meetingSystem ?? "Stanton");
+  const [meetingLocation, setMeetingLocation] = useState(draft?.meetingLocation ?? "");
+  const [visibility, setVisibility] = useState(draft?.visibility ?? "private");
+  const [isStreamEvent, setIsStreamEvent] = useState(!!draft?.isStreamEvent);
   // FR-P1: active partners of the selected guild + the host-picked subset to
   // distribute to. Default empty → nothing auto-posts to partner Discords.
   const [partners, setPartners] = useState<Array<{ guildId: string; name: string }>>([]);
   const [partnerTargets, setPartnerTargets] = useState<string[]>([]);
-  const [ships, setShips] = useState<string[]>([]);
-  const [fighters, setFighters] = useState(0);
-  const [cqb, setCqb] = useState(0);
-  const [cqbSize, setCqbSize] = useState(4);
+  const [ships, setShips] = useState<string[]>(draft?.ships ?? []);
+  const [fighters, setFighters] = useState(draft?.fighters ?? 0);
+  const [cqb, setCqb] = useState(draft?.cqb ?? 0);
+  const [cqbSize, setCqbSize] = useState(draft?.cqbSize ?? 4);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [picker, setPicker] = useState(false); // "Aus Vorlage starten" overlay
   const [createdId, setCreatedId] = useState<string | null>(null); // FR-C1: hold after create for the cover step
+  // §10: after creating, opening the op and post-processing it are two named ways,
+  // not one long page — the follow-up panels only appear once they are chosen.
+  const [postMode, setPostMode] = useState<"decide" | "edit">("decide");
+  // Per-field validation of the current step; cleared whenever the field changes.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const titleRef = useRef<HTMLInputElement>(null);
+  const whenRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (!guildId && operatorGuilds[0]) setGuildId(operatorGuilds[0].guildId); }, [guildId, operatorGuilds]);
 
@@ -90,6 +141,83 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
   const eckdatenDone = coreValid({ title, scheduledAt });
   const stepDone = useMemo(() => [eckdatenDone, true, true, true, true, false], [eckdatenDone]);
 
+  // §10: "Weiter" validates the current step. Only step 0 carries required fields;
+  // the rest are optional by design, and that stays explicit here rather than
+  // implicit in the absence of a check.
+  type FieldIssue = { field: "title" | "when"; msg: string };
+  function stepIssues(i: number): FieldIssue[] {
+    if (i !== 0) return [];
+    const out: FieldIssue[] = [];
+    if (!title.trim()) out.push({ field: "title", msg: "Event-Name ist ein Pflichtfeld." });
+    if (!scheduledAt) out.push({ field: "when", msg: "Startzeit ist ein Pflichtfeld." });
+    return out;
+  }
+  // A step is reachable when every step before it validates — a jump can never
+  // skip an incomplete required step unnoticed.
+  function reachable(i: number): boolean {
+    for (let k = 0; k < i; k++) if (stepIssues(k).length > 0) return false;
+    return true;
+  }
+  function goStep(i: number) {
+    if (!reachable(i)) {
+      setNotice("Zuerst die Eckdaten ausfüllen — Name und Startzeit fehlen.");
+      setErrors(Object.fromEntries(stepIssues(0).map((x) => [x.field, x.msg])));
+      setStep(0);
+      titleRef.current?.focus();
+      return;
+    }
+    setErrors({});
+    setStep(i);
+  }
+  function goNext() {
+    const issues = stepIssues(step);
+    if (issues.length > 0) {
+      setErrors(Object.fromEntries(issues.map((x) => [x.field, x.msg])));
+      setNotice(issues.map((x) => x.msg).join(" "));
+      (issues[0].field === "title" ? titleRef : whenRef).current?.focus();
+      return;
+    }
+    setErrors({});
+    setNotice(null);
+    setStep((v) => Math.min(5, v + 1));
+  }
+
+  // Anything typed but not yet created is worth protecting.
+  const dirty =
+    !createdId &&
+    (title.trim() !== "" || scheduledAt !== "" || description.trim() !== "" || meetingLocation.trim() !== "" ||
+      ships.length > 0 || fighters > 0 || cqb > 0 || freq !== "" || isStreamEvent);
+
+  // Keep the draft in localStorage while the form is dirty; drop it as soon as the
+  // form is empty again or the op exists.
+  useEffect(() => {
+    if (createdId) { clearDraft(); return; }
+    if (!dirty) { clearDraft(); return; }
+    try {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        guildId, title, scheduledAt, freq, opType, description, meetingSystem, meetingLocation,
+        visibility, isStreamEvent, ships, fighters, cqb, cqbSize,
+      } satisfies WizardDraft));
+    } catch { /* private mode: the unload guard still warns */ }
+  }, [dirty, createdId, guildId, title, scheduledAt, freq, opType, description, meetingSystem, meetingLocation, visibility, isStreamEvent, ships, fighters, cqb, cqbSize]);
+
+  // Second line of defence for a hard reload / tab close.
+  useEffect(() => {
+    if (!dirty) return;
+    const onUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [dirty]);
+
+  function discardDraft() {
+    clearDraft();
+    setRestored(false);
+    setTitle(""); setScheduledAt(""); setFreq(""); setOpType("combat"); setDescription("");
+    setMeetingSystem("Stanton"); setMeetingLocation(""); setVisibility("private"); setIsStreamEvent(false);
+    setShips([]); setFighters(0); setCqb(0); setCqbSize(4);
+    setErrors({}); setNotice(null); setStep(0);
+  }
+
   if (session === null) return <div className="fpw-state"><span style={lbl}>LADE…</span></div>;
   if (operatorGuilds.length === 0)
     return (
@@ -102,7 +230,14 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
 
   async function create() {
     if (!csrf || busy) return;
-    if (!eckdatenDone) { setStep(0); setNotice("Name und Startzeit sind erforderlich."); return; }
+    const issues = stepIssues(0);
+    if (issues.length > 0) {
+      setStep(0);
+      setErrors(Object.fromEntries(issues.map((x) => [x.field, x.msg])));
+      setNotice(issues.map((x) => x.msg).join(" "));
+      titleRef.current?.focus();
+      return;
+    }
     setBusy(true);
     setNotice(null);
     try {
@@ -123,6 +258,9 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
       // FR-C1: stay on the wizard's final step so the operator can optionally add a
       // mission cover (the cover editor needs the new op id). "Zur Operation" leaves.
       setCreatedId(r.id);
+      setPostMode("decide");
+      clearDraft();
+      setRestored(false);
       setNotice(t("cover.created"));
     } catch (err) {
       setNotice(err instanceof ApiError ? err.message : "Erstellen fehlgeschlagen.");
@@ -140,6 +278,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
     ["Name", title || "—"],
     ["Typ", OP_TYPES.find((t) => t.key === opType)?.label ?? opType],
     ["Start", scheduledAt ? new Date(scheduledAt).toLocaleString("de-DE") : "—"],
+    ["Briefing", description.trim() ? `${description.trim().length} Zeichen` : "—"],
     ["Wiederholung", RECUR.find((r) => r.key === freq)?.label ?? "Nie"],
     ["Treffpunkt", `${meetingSystem}${meetingLocation ? " · " + meetingLocation : ""}`],
     ["Sichtbarkeit", VIS.find((v) => v.key === visibility)?.label ?? visibility],
@@ -152,6 +291,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
 
   return (
     <div data-testid="create-page" style={{ width: "100%" }}>
+      <Breadcrumbs items={[{ label: "Operationen", to: "/operationen" }, { label: "Neue Operation" }]} />
       <div style={{ marginBottom: "1.2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
           <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="plus" size={17} sw={1.7} /></span>
@@ -161,14 +301,32 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.12, color: "var(--text-hi)", margin: 0 }}>Neue Operation</h1>
       </div>
       {notice && <p className="fpw-tag gold" role="alert" data-testid="create-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
+      {restored && !createdId && (
+        <div data-testid="wiz-draft-restored" role="status" style={{ display: "flex", alignItems: "center", gap: "0.7rem", flexWrap: "wrap", border: "1px solid var(--border-hi)", background: "var(--wash)", borderRadius: 10, padding: "0.6rem 0.85rem", marginBottom: "1rem" }}>
+          <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="save" size={15} sw={1.7} /></span>
+          <span style={{ flex: 1, minWidth: 0, fontSize: "0.85rem", color: "var(--text)" }}>Nicht abgeschickter Entwurf wiederhergestellt.</span>
+          <button type="button" data-testid="wiz-draft-discard" onClick={discardDraft} style={{ padding: "0.35rem 0.75rem", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, cursor: "pointer" }}>Verwerfen</button>
+          <button type="button" data-testid="wiz-draft-keep" onClick={() => setRestored(false)} style={{ padding: "0.35rem 0.75rem", border: "1px solid var(--border-hi)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.68rem", borderRadius: 7, cursor: "pointer" }}>Weiterarbeiten</button>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0,200px) minmax(0,1fr) minmax(0,240px)", gap: "1.2rem", alignItems: "start" }} className="fpw-wizard-grid">
         {/* step rail */}
         <aside style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
           {STEPS.map((s, i) => {
             const active = i === step;
+            const open = reachable(i);
             return (
-              <button key={s} type="button" data-testid={`wiz-step-${i}`} onClick={() => setStep(i)} style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.55rem 0.65rem", borderRadius: 9, cursor: "pointer", textAlign: "left", border: active ? "1px solid var(--border-hi)" : "1px solid transparent", background: active ? "var(--wash)" : "transparent", color: active ? "var(--cyan)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem" }}>
+              <button
+                key={s}
+                type="button"
+                data-testid={`wiz-step-${i}`}
+                aria-current={active ? "step" : undefined}
+                aria-disabled={open ? undefined : true}
+                title={open ? undefined : "Zuerst die Eckdaten ausfüllen"}
+                onClick={() => goStep(i)}
+                style={{ display: "flex", alignItems: "center", gap: "0.55rem", padding: "0.55rem 0.65rem", borderRadius: 9, cursor: open ? "pointer" : "not-allowed", textAlign: "left", border: active ? "1px solid var(--border-hi)" : "1px solid transparent", background: active ? "var(--wash)" : "transparent", color: active ? "var(--cyan)" : open ? "var(--dim)" : "var(--dim3)", fontFamily: MONO, fontSize: "0.74rem" }}
+              >
                 <span style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: "0.68rem", background: active ? "var(--cyan)" : "var(--wash)", color: active ? "var(--bg)" : "var(--dim)" }}>{i + 1}</span>
                 <span style={{ flex: 1 }}>{s}</span>
                 {stepDone[i] && i !== step && <span style={{ color: "var(--green)", display: "inline-flex" }}><Ic name="check" size={14} sw={2.2} /></span>}
@@ -187,9 +345,17 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                 {operatorGuilds.length > 1 && (
                   <div><label style={lbl}>GUILD</label><select data-testid="wiz-guild" value={guildId} onChange={(e) => setGuildId(e.target.value)} style={inp}>{operatorGuilds.map((g) => <option key={g.guildId} value={g.guildId}>{g.guildName}</option>)}</select></div>
                 )}
-                <div><label style={lbl}>Event-Name <span style={{ color: "var(--gold)" }}>*</span></label><input data-testid="wiz-title" type="text" maxLength={160} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Operation Darkstar" style={inp} /></div>
+                <div>
+                  <label style={lbl} htmlFor="wiz-title-input">Event-Name <span style={{ color: "var(--gold)" }}>*</span></label>
+                  <input id="wiz-title-input" ref={titleRef} data-testid="wiz-title" type="text" maxLength={160} value={title} aria-invalid={!!errors.title} aria-describedby={errors.title ? "wiz-title-err" : undefined} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: "" })); }} placeholder="Operation Darkstar" style={{ ...inp, borderColor: errors.title ? "var(--edge-red)" : "var(--border)" }} />
+                  {errors.title && <span id="wiz-title-err" data-testid="wiz-err-title" style={{ display: "block", marginTop: "0.3rem", color: "var(--red)", fontFamily: MONO, fontSize: "0.66rem" }}>{errors.title}</span>}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" }}>
-                  <div><label style={lbl}>Startzeit <span style={{ color: "var(--gold)" }}>*</span></label><input data-testid="wiz-when" type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} style={inp} /></div>
+                  <div>
+                    <label style={lbl} htmlFor="wiz-when-input">Startzeit <span style={{ color: "var(--gold)" }}>*</span></label>
+                    <input id="wiz-when-input" ref={whenRef} data-testid="wiz-when" type="datetime-local" value={scheduledAt} aria-invalid={!!errors.when} aria-describedby={errors.when ? "wiz-when-err" : undefined} onChange={(e) => { setScheduledAt(e.target.value); setErrors((p) => ({ ...p, when: "" })); }} style={{ ...inp, borderColor: errors.when ? "var(--edge-red)" : "var(--border)" }} />
+                    {errors.when && <span id="wiz-when-err" data-testid="wiz-err-when" style={{ display: "block", marginTop: "0.3rem", color: "var(--red)", fontFamily: MONO, fontSize: "0.66rem" }}>{errors.when}</span>}
+                  </div>
                   <div><label style={lbl}>Wiederholung</label><select data-testid="wiz-recur" value={freq} onChange={(e) => setFreq(e.target.value)} style={inp}>{RECUR.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></div>
                 </div>
                 <div>
@@ -197,7 +363,11 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {OP_TYPES.map((t) => {
                       const on = opType === t.key;
-                      return <button key={t.key} type="button" data-testid={`wiz-type-${t.key}`} onClick={() => setOpType(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? `1px solid ${t.color}` : "1px solid var(--wash)", background: on ? tint(t.color, 13) : "transparent", color: on ? t.color : "var(--dim)" }}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>;
+                      return (
+                        <ChoiceTile key={t.key} testid={`wiz-type-${t.key}`} selected={on} onSelect={() => setOpType(t.key)} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? `1px solid ${t.color}` : "1px solid var(--wash)", background: on ? tint(t.color, 13) : "transparent", color: on ? t.color : "var(--dim)" }}>
+                          <Ic name={t.icon} size={14} sw={1.7} />{t.label}
+                        </ChoiceTile>
+                      );
                     })}
                   </div>
                 </div>
@@ -234,7 +404,11 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {VIS.map((v) => {
                       const on = visibility === v.key;
-                      return <button key={v.key} type="button" data-testid={`wiz-vis-${v.key}`} onClick={() => setVisibility(v.key)} style={{ padding: "0.34rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: on ? "var(--wash)" : "transparent", color: on ? "var(--cyan)" : "var(--dim)" }}>{v.label}</button>;
+                      return (
+                        <ChoiceTile key={v.key} testid={`wiz-vis-${v.key}`} selected={on} onSelect={() => setVisibility(v.key)} title={v.desc} style={{ padding: "0.34rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", border: on ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: on ? "var(--wash)" : "transparent", color: on ? "var(--cyan)" : "var(--dim)" }}>
+                          {v.label}
+                        </ChoiceTile>
+                      );
                     })}
                   </div>
                 </div>
@@ -283,7 +457,11 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
                     {SHIP_TYPES.map((s) => {
                       const on = ships.includes(s.slug);
-                      return <button key={s.slug} type="button" data-testid={`wiz-ship-${s.slug}`} onClick={() => setShips((p) => on ? p.filter((x) => x !== s.slug) : [...p, s.slug])} style={{ padding: "0.32rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem", border: on ? "1px solid var(--border-hi)" : "1px solid var(--border)", background: on ? "var(--wash)" : "var(--wash)", color: on ? "var(--cyan)" : "var(--dim)" }}>{s.label}</button>;
+                      return (
+                        <ChoiceTile key={s.slug} testid={`wiz-ship-${s.slug}`} selected={on} onSelect={() => setShips((p) => on ? p.filter((x) => x !== s.slug) : [...p, s.slug])} style={{ padding: "0.32rem 0.6rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.68rem", border: on ? "1px solid var(--border-hi)" : "1px solid var(--border)", background: "var(--wash)", color: on ? "var(--cyan)" : "var(--dim)" }}>
+                          {s.label}
+                        </ChoiceTile>
+                      );
                     })}
                   </div>
                 </div>
@@ -297,11 +475,20 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
 
             {step === 4 && (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {review.map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", padding: "0.5rem 0.7rem", borderBottom: "1px solid var(--wash)" }}>
+                {/* §10: every review row is a way back to the step that owns it. */}
+                {review.map(([k, v], i) => (
+                  <button
+                    key={k}
+                    type="button"
+                    data-testid={`wiz-review-${i}`}
+                    data-step={ROW_STEP[k] ?? 0}
+                    onClick={() => goStep(ROW_STEP[k] ?? 0)}
+                    title={`Zu Schritt ${(ROW_STEP[k] ?? 0) + 1} · ${STEPS[ROW_STEP[k] ?? 0]}`}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem", width: "100%", padding: "0.5rem 0.7rem", border: "none", borderBottom: "1px solid var(--wash)", background: "transparent", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
+                  >
                     <span style={{ fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.04em", color: "var(--dim2)" }}>{k}</span>
-                    <span style={{ fontSize: "0.88rem", color: "var(--text-hi)", textAlign: "right" }}>{v}</span>
-                  </div>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.88rem", color: "var(--text-hi)", textAlign: "right" }}>{v}<Ic name="edit" size={13} sw={1.7} /></span>
+                  </button>
                 ))}
               </div>
             )}
@@ -323,11 +510,19 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)" }}>{t("cover.created")}</span>
                 </div>
                 <p style={{ fontSize: "0.84rem", color: "var(--dim)", margin: 0, lineHeight: 1.5 }}>{t("cover.wizardHint")}</p>
-                <CoverPanel opId={createdId} csrf={csrf} onNotice={setNotice} />
-                <YoutubeField opId={createdId} csrf={csrf} onNotice={setNotice} />
-                <DocumentsPanel opId={createdId} csrf={csrf} canManage initialDocs={[]} onNotice={setNotice} />
-                <ShareChannel opId={createdId} guildId={guildId} csrf={csrf} onNotice={setNotice} />
-                <button type="button" data-testid="wiz-to-op" onClick={() => nav(`/ops/${createdId}`)} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}>{t("cover.toOp")}<Ic name="arrow" size={14} sw={1.8} /></button>
+                {/* Two named ways out, side by side — not one long page. */}
+                <div data-testid="wiz-post-decision" style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+                  <button type="button" data-testid="wiz-to-op" onClick={() => nav(`/ops/${createdId}`)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}>{t("cover.toOp")}<Ic name="arrow" size={14} sw={1.8} /></button>
+                  <button type="button" data-testid="wiz-post-edit" aria-pressed={postMode === "edit"} onClick={() => setPostMode("edit")} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: postMode === "edit" ? "1px solid var(--edge-green)" : "1px solid var(--border)", background: postMode === "edit" ? "var(--tint-green)" : "transparent", color: postMode === "edit" ? "var(--green)" : "var(--dim)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}><Ic name="edit" size={14} sw={1.7} /> Cover &amp; Freigabe ergänzen</button>
+                </div>
+                {postMode === "edit" && (
+                  <div data-testid="wiz-post-panels" style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
+                    <CoverPanel opId={createdId} csrf={csrf} onNotice={setNotice} />
+                    <YoutubeField opId={createdId} csrf={csrf} onNotice={setNotice} />
+                    <DocumentsPanel opId={createdId} csrf={csrf} canManage initialDocs={[]} onNotice={setNotice} />
+                    <ShareChannel opId={createdId} guildId={guildId} csrf={csrf} onNotice={setNotice} />
+                  </div>
+                )}
               </div>
             )}
           </section>
@@ -336,7 +531,7 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginTop: "1rem" }}>
             <button type="button" data-testid="wiz-back" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1rem", border: "1px solid var(--wash)", background: "transparent", color: step === 0 ? "var(--dim3)" : "var(--dim)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: step === 0 ? "default" : "pointer" }}><Ic name="back" size={14} sw={1.8} /> Zurück</button>
             <span style={{ flex: 1 }} />
-            {step < 5 && <button type="button" data-testid="wiz-next" onClick={() => setStep((s) => Math.min(5, s + 1))} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.2rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>Weiter<Ic name="arrow" size={14} sw={1.8} /></button>}
+            {step < 5 && <button type="button" data-testid="wiz-next" onClick={goNext} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.2rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>Weiter<Ic name="arrow" size={14} sw={1.8} /></button>}
           </div>
         </div>
 
@@ -345,15 +540,22 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
           <div style={{ fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "var(--dim3)", marginBottom: "0.8rem" }}>ZUSAMMENFASSUNG</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}>
             {[
-              { label: "Eckdaten", ok: eckdatenDone },
-              { label: "Briefing", ok: description.trim().length > 0 },
-              { label: "Treffpunkt", ok: meetingLocation.trim().length > 0 },
-              { label: "Flotte", ok: ships.length > 0 || fighters > 0 || cqb > 0 },
+              { label: "Eckdaten", ok: eckdatenDone, step: 0, required: true },
+              { label: "Briefing", ok: description.trim().length > 0, step: 1, required: false },
+              { label: "Treffpunkt", ok: meetingLocation.trim().length > 0, step: 2, required: false },
+              { label: "Bedarf", ok: ships.length > 0 || fighters > 0 || cqb > 0, step: 3, required: false },
             ].map((r) => (
-              <div key={r.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
-                <span style={{ fontSize: "0.82rem", color: "var(--text)" }}>{r.label}</span>
-                <span style={tag(r.ok)}>{r.ok ? "OK" : "offen"}</span>
-              </div>
+              <button
+                key={r.label}
+                type="button"
+                data-testid={`wiz-summary-${r.step}`}
+                onClick={() => goStep(r.step)}
+                title={`Zu Schritt ${r.step + 1} · ${STEPS[r.step]}`}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem", width: "100%", padding: 0, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+              >
+                <span style={{ fontSize: "0.82rem", color: "var(--text)" }}>{r.label}{r.required && <span style={{ color: "var(--gold)" }}> *</span>}</span>
+                <span style={tag(r.ok)}>{r.ok ? "OK" : r.required ? "fehlt" : "optional"}</span>
+              </button>
             ))}
           </div>
         </aside>

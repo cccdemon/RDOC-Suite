@@ -44,7 +44,7 @@ export function RoadmapPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
                 {list.map((r, i) => (
-                  <div key={i} className="fpw-card" data-testid={`roadmap-${g.key}-${i}`}>
+                  <div key={i} className="fpw-card" data-card="info" data-testid={`roadmap-${g.key}-${i}`}>
                     <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.5rem", flexWrap: "wrap" }}>
                       <span style={{ flex: 1, fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)" }}>{r.title}</span>
                       <span className={`fpw-tag ${g.cls}`}>{t(`roadmap.status.${g.key}`)}</span>

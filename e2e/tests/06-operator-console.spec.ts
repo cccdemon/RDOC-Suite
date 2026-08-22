@@ -61,24 +61,53 @@ test("each console tab button opens its panel", async () => {
   await op.goto(`ops/${opId}?op=fleet`);
   await expect(op.getByTestId("operator-console")).toBeVisible();
 
-  // Tabs with a known representative child element.
-  const known: Array<[string, string]> = [
-    ["fleet", "operator-panel"],
-    ["eckdaten", "edit-title"],
-    ["voice", "voice-master-toggle"],
+  // Tabs with a known representative child element. IA 2026-08-21: a tab lives
+  // inside a work area, so select the area first — same as a user would.
+  const known: Array<[string, string, string]> = [
+    ["flotte", "fleet", "operator-panel"],
+    ["planung", "eckdaten", "edit-title"],
+    ["kommunikation", "voice", "voice-master-toggle"],
   ];
-  for (const [tab, child] of known) {
+  for (const [area, tab, child] of known) {
+    await op.getByTestId(`manage-group-${area}`).click();
     await op.getByTestId(`manage-tab-${tab}`).click();
     await expect(op.getByTestId(child)).toBeVisible({ timeout: 10_000 });
     // The console itself must stay mounted across tab switches.
     await expect(op.getByTestId("operator-console")).toBeVisible();
   }
 
-  // Remaining tabs: clicking must not crash the console (panel content varies).
-  for (const tab of ["cqb", "formations", "qa", "cover", "commanders", "admin"]) {
-    await op.getByTestId(`manage-tab-${tab}`).click();
-    await expect(op.getByTestId("operator-console")).toBeVisible();
+  // Remaining tabs: reachable via their work area, and clicking must not crash
+  // the console (panel content varies). IA 2026-08-21: the nine flat tabs are
+  // four work areas now, so select the area first — same as a user would.
+  const areas: Array<[string, string[]]> = [
+    ["flotte", ["fleet", "formations", "cqb"]],
+    ["planung", ["eckdaten", "cover", "commanders"]],
+    ["kommunikation", ["voice", "qa"]],
+    ["verwaltung", ["admin"]],
+  ];
+  for (const [area, tabs] of areas) {
+    await op.getByTestId(`manage-group-${area}`).click();
+    for (const tab of tabs) {
+      await op.getByTestId(`manage-tab-${tab}`).click();
+      await expect(op.getByTestId("operator-console")).toBeVisible();
+      // The tab is the URL: a reload has to come back to the same panel.
+      await expect(op).toHaveURL(new RegExp(`op=${tab}`));
+    }
   }
+});
+
+// ── The work area survives reload and browser-back ───────────────────────────
+test("console tabs are addressable: reload and back keep the work area", async () => {
+  await op.goto(`ops/${opId}?op=fleet`);
+  await expect(op.getByTestId("manage-tab-fleet")).toHaveAttribute("aria-selected", "true");
+
+  await op.getByTestId("manage-group-kommunikation").click();
+  await expect(op).toHaveURL(/op=voice/);
+  await op.reload();
+  await expect(op.getByTestId("manage-tab-voice")).toHaveAttribute("aria-selected", "true", { timeout: 10_000 });
+
+  await op.goBack();
+  await expect(op.getByTestId("manage-tab-fleet")).toHaveAttribute("aria-selected", "true", { timeout: 10_000 });
 });
 
 // ── Cross-panel: header Voice quick-switch <-> Voice tab master-toggle ─────────

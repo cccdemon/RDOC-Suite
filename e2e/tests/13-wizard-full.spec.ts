@@ -66,9 +66,50 @@ test("wizard accepts every field across all steps and creates the op", async () 
   await op.getByTestId("wiz-step-4").click();
   await op.getByTestId("wiz-step-5").click();
   await op.getByTestId("wiz-create").click();
-  await expect(op.getByTestId("wiz-to-op")).toBeVisible({ timeout: 15_000 });
+  await expect(op.getByTestId("wiz-post-decision")).toBeVisible({ timeout: 15_000 });
+
+  // Two named ways on — the cover/share panels only appear once chosen.
+  await expect(op.getByTestId("wiz-to-op")).toBeVisible();
+  await expect(op.getByTestId("wiz-post-panels")).toHaveCount(0);
+  await op.getByTestId("wiz-post-edit").click();
+  await expect(op.getByTestId("wiz-post-panels")).toBeVisible();
+
   await op.getByTestId("wiz-to-op").click();
   await expect(op.getByTestId("op-title")).toHaveText(/E2E-Wizard Full/);
+});
+
+test("Weiter validates the step, the rail cannot skip it, the draft survives a reload", async () => {
+  await op.goto("ops/new");
+  await expect(op.getByTestId("create-page")).toBeVisible();
+
+  // Empty required step: no progress, both fields flagged, reason stated.
+  await op.getByTestId("wiz-next").click();
+  await expect(op.getByTestId("wiz-err-title")).toBeVisible();
+  await expect(op.getByTestId("wiz-err-when")).toBeVisible();
+  await expect(op.getByTestId("create-notice")).toContainText("Pflichtfeld");
+
+  // A later step is not offered at all while the required one is incomplete —
+  // Playwright refuses to click it, which is exactly the point.
+  await expect(op.getByTestId("wiz-step-3")).toHaveAttribute("aria-disabled", "true");
+
+  // Draft protection: what was typed comes back after a reload, and can be dropped.
+  await op.getByTestId("wiz-title").fill("E2E-Wizard Entwurf");
+  await op.getByTestId("wiz-when").fill(futureLocal(9));
+  await expect(op.getByTestId("wiz-step-3")).not.toHaveAttribute("aria-disabled", "true");
+  await op.reload();
+  await expect(op.getByTestId("wiz-draft-restored")).toBeVisible({ timeout: 10_000 });
+  await expect(op.getByTestId("wiz-title")).toHaveValue("E2E-Wizard Entwurf");
+  await op.getByTestId("wiz-draft-discard").click();
+  await expect(op.getByTestId("wiz-title")).toHaveValue("");
+
+  // Summary rows are the way back into a step.
+  await op.getByTestId("wiz-title").fill("E2E-Wizard Entwurf 2");
+  await op.getByTestId("wiz-when").fill(futureLocal(9));
+  await op.getByTestId("wiz-summary-2").click();
+  await expect(op.getByTestId("wiz-location")).toBeVisible();
+  // Leave no draft behind for the next test in this context.
+  await op.reload();
+  await op.getByTestId("wiz-draft-discard").click();
 });
 
 test("wiz-back is disabled on the first step", async () => {

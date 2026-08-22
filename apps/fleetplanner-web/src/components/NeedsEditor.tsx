@@ -68,7 +68,7 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
 
   if (needs === null)
     return (
-      <section className="fpw-card" data-testid="needs-editor" style={{ marginBottom: "1.2rem" }}>
+      <section className="fpw-card" data-card="work" data-testid="needs-editor" style={{ marginBottom: "1.2rem" }}>
         <div style={label}>BEDARFE</div>
         <p className="fpw-meta">Lade Bedarfe…</p>
       </section>
@@ -78,7 +78,7 @@ export function NeedsEditor({ opId, csrf }: { opId: string; csrf: string | null 
     setPicked((p) => (p.includes(slug) ? p.filter((s) => s !== slug) : [...p, slug]));
 
   return (
-    <section className="fpw-card" data-testid="needs-editor" style={{ marginBottom: "1.2rem" }}>
+    <section className="fpw-card" data-card="work" data-testid="needs-editor" style={{ marginBottom: "1.2rem" }}>
       <div style={label}>BEDARFE</div>
       {notice && <p className="fpw-tag gold" role="alert" data-testid="needs-notice" style={{ display: "inline-flex", marginBottom: "0.8rem" }}>{notice}</p>}
 

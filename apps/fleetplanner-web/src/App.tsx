@@ -4,6 +4,7 @@ import { getSession } from "./api/client";
 import type { SessionResponse } from "./api/types";
 import { useTheme } from "./theme";
 import { LocaleProvider } from "./i18n";
+import { ServerContextProvider } from "./serverContext";
 import { Sidebar, MobileNav } from "./components/Sidebar";
 import { ToastHost } from "./components/Toast";
 import { OperationenPage } from "./pages/CalendarPage";
@@ -72,6 +73,7 @@ export function App() {
 
   return (
     <LocaleProvider preferred={session?.user?.locale}>
+    <ServerContextProvider session={session}>
     <div className="app-root" style={{ filter: theme.filter === "none" ? undefined : theme.filter }}>
       {theme.id === "crt" && <div className="crt-scanlines" />}
       <ChangelogPopup session={session} />
@@ -156,6 +158,7 @@ export function App() {
       </div>
       <ToastHost />
     </div>
+    </ServerContextProvider>
     </LocaleProvider>
   );
 }

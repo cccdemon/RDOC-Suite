@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { ApiError, getOrgFleet } from "../api/client";
 import type { OrgFleetEntry, OrgFleetResponse, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
-import { useSearchParams } from "react-router-dom";
+import { useGuildSelection } from "../serverContext";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
 
@@ -45,8 +46,7 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
   // Org-Flotte is Orgamember-only: members with the configured Discord role
   // (admiralRoleId → fleetoperator), who may create events + are in the fleet.
   const orgaServers = memberships.filter((m) => m.role === "fleetoperator");
-  const [searchParams] = useSearchParams();
-  const [guildId, setGuildId] = useState<string | null>(null);
+  const [guildId, setGuildId] = useGuildSelection(orgaServers);
   const [data, setData] = useState<OrgFleetResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -54,13 +54,6 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
   const [q, setQ] = useState("");
   const [openShips, setOpenShips] = useState<Set<string>>(new Set());
   const [lightbox, setLightbox] = useState<string | null>(null);
-
-  // Pick guild from ?guild= if a membership, else the first server.
-  useEffect(() => {
-    if (guildId !== null || orgaServers.length === 0) return;
-    const wanted = searchParams.get("guild");
-    setGuildId(orgaServers.find((m) => m.guildId === wanted)?.guildId ?? orgaServers[0].guildId);
-  }, [orgaServers, guildId, searchParams]);
 
   useEffect(() => {
     if (!guildId) return;
@@ -136,6 +129,15 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
 
   return (
     <div data-testid="org-fleet-page" style={{ width: "100%" }}>
+      {/* The server context is part of the address: which server these
+          settings belong to must never be a guess (IA goal 4). */}
+      <Breadcrumbs
+        items={[
+          { label: "Discord-Server", to: "/guilds" },
+          { label: orgaServers.find((m) => m.guildId === guildId)?.guildName ?? "Server", to: guildId ? `/guilds?guild=${encodeURIComponent(guildId)}` : "/guilds" },
+          { label: "Org-Flotte" },
+        ]}
+      />
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.25rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="ship" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Org-Flotte</h1>
@@ -189,8 +191,8 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
         <p className="fpw-meta">Noch keine Schiffe hinterlegt. Mitglieder pflegen ihren Hangar im Konto-Tab (oder per Flotten-Import).</p>
       ) : pivot === "ship" ? (
         /* ── BY SHIP ── */
-        <div className="fpw-card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)", padding: "0.7rem 1rem", borderBottom: "1px solid var(--border)", textTransform: "uppercase" }}>
+        <div className="fpw-card fpw-table" data-card="work" data-testid="fleet-by-ship">
+          <div className="fpw-trow" style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)", padding: "0.7rem 1rem", borderBottom: "1px solid var(--border)", textTransform: "uppercase" }}>
             <span>Schiff</span><span>Hersteller</span><span>Klasse</span><span style={{ textAlign: "right" }}>Anzahl</span><span style={{ textAlign: "right" }}>Besitzer</span>
           </div>
           {byShip.map((g) => {
@@ -199,6 +201,7 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
               <div key={g.shipId} style={{ borderBottom: "1px solid var(--wash)" }}>
                 <div
                   data-testid={`ship-grp-${g.shipId}`}
+                  className="fpw-trow"
                   onClick={() => toggleShip(g.shipId)}
                   style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, padding: "0.62rem 1rem", alignItems: "center", fontSize: "0.92rem", cursor: "pointer" }}
                 >
@@ -231,7 +234,7 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
                 {open && (
                   <div style={{ background: "var(--bg)" }}>
                     {g.owners.map((o) => (
-                      <div key={o.user.id} style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, padding: "0.5rem 1rem 0.5rem 2.1rem", alignItems: "center", borderTop: "1px solid var(--wash)", fontSize: "0.88rem" }}>
+                      <div key={o.user.id} className="fpw-trow fpw-trow-sub" style={{ display: "grid", gridTemplateColumns: "1.7fr 0.9fr 0.8fr 0.7fr 1.1fr", gap: 0, padding: "0.5rem 1rem 0.5rem 2.1rem", alignItems: "center", borderTop: "1px solid var(--wash)", fontSize: "0.88rem" }}>
                         <span style={{ color: "var(--text)" }}>{o.user.username}</span>
                         <span className="fpw-meta" style={{ gridColumn: "2 / 4" }}>{o.nickname ? `„${o.nickname}“` : "—"}</span>
                         <span style={{ fontFamily: MONO, color: "var(--gold)", textAlign: "right" }}>×{o.quantity}</span>
@@ -246,12 +249,12 @@ export function OrgFleetPage({ session }: { session: SessionResponse | null }) {
         </div>
       ) : (
         /* ── BY MEMBER ── */
-        <div className="fpw-card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1.6fr 2.4fr 0.7fr 1.2fr", gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)", padding: "0.7rem 1rem", borderBottom: "1px solid var(--border)", textTransform: "uppercase" }}>
+        <div className="fpw-card fpw-table" data-card="work" data-testid="fleet-by-member">
+          <div className="fpw-trow" style={{ display: "grid", gridTemplateColumns: "1.6fr 2.4fr 0.7fr 1.2fr", gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)", padding: "0.7rem 1rem", borderBottom: "1px solid var(--border)", textTransform: "uppercase" }}>
             <span>Mitglied</span><span>Schiffe</span><span style={{ textAlign: "right" }}>Hulls</span><span style={{ textAlign: "right" }}>Kontakt</span>
           </div>
           {byMember.map((g) => (
-            <div key={g.userId} data-testid={`member-row-${g.userId}`} style={{ display: "grid", gridTemplateColumns: "1.6fr 2.4fr 0.7fr 1.2fr", gap: 0, padding: "0.62rem 1rem", alignItems: "center", borderBottom: "1px solid var(--wash)", fontSize: "0.92rem" }}>
+            <div key={g.userId} data-testid={`member-row-${g.userId}`} className="fpw-trow" style={{ display: "grid", gridTemplateColumns: "1.6fr 2.4fr 0.7fr 1.2fr", gap: 0, padding: "0.62rem 1rem", alignItems: "center", borderBottom: "1px solid var(--wash)", fontSize: "0.92rem" }}>
               <span style={{ color: "var(--text-hi)", fontWeight: 600 }}>{g.username}</span>
               <span className="fpw-meta">{g.ships.map((s) => `${s.shipName}·${s.quantity}`).join(" · ")}</span>
               <span style={{ fontFamily: MONO, color: "var(--gold)", textAlign: "right" }}>{g.totalHulls}</span>

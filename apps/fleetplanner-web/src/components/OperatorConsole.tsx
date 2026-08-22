@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ApiError, createRecurrence, editOperation, getOperatorView, publishTemplate, setOperationStatus, stopRecurrence } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
@@ -24,21 +25,45 @@ const STATUSES: Array<[string, string, string]> = [
 
 const TABS = [
   { key: "fleet", label: "Flotte & Board", icon: "ship" },
-  { key: "eckdaten", label: "Eckdaten", icon: "edit" },
-  { key: "voice", label: "Voice", icon: "mic" },
-  { key: "cqb", label: "CQB", icon: "fps" },
   { key: "formations", label: "Verbände", icon: "board" },
-  { key: "qa", label: "Fragen", icon: "chat" },
+  { key: "cqb", label: "CQB", icon: "fps" },
+  { key: "eckdaten", label: "Eckdaten", icon: "edit" },
   { key: "cover", label: "Cover", icon: "image" },
   { key: "commanders", label: "Commanders", icon: "lead" },
+  { key: "voice", label: "Voice", icon: "mic" },
+  { key: "qa", label: "Fragen", icon: "chat" },
   { key: "admin", label: "Admin", icon: "shield" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
+
+// IA 2026-08-21: nine equal tabs were a wall. They are now four work areas, each
+// holding the tabs that belong together. The leaf tab still IS the URL (`?op=`),
+// so every existing deep link keeps working and the group follows from the leaf.
+const TAB_GROUPS = [
+  { key: "flotte", label: "Flotte", icon: "ship", tabs: ["fleet", "formations", "cqb"] },
+  { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "cover", "commanders"] },
+  { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["voice", "qa"] },
+  { key: "verwaltung", label: "Verwaltung", icon: "shield", tabs: ["admin"] },
+] as const;
+type GroupKey = (typeof TAB_GROUPS)[number]["key"];
+
+function groupOf(tab: TabKey): GroupKey {
+  return (TAB_GROUPS.find((g) => (g.tabs as readonly string[]).includes(tab)) ?? TAB_GROUPS[0]).key;
+}
+function tabsOf(group: GroupKey): TabKey[] {
+  return [...(TAB_GROUPS.find((g) => g.key === group) ?? TAB_GROUPS[0]).tabs] as TabKey[];
+}
+function tabMeta(tab: TabKey) {
+  return TABS.find((t) => t.key === tab)!;
+}
 
 function resolveTab(raw: string | null): TabKey {
   if (TABS.some((t) => t.key === raw)) return raw as TabKey;
   if (raw === "overview") return "eckdaten";
   if (raw === "needs") return "fleet";
+  // A group name in `?op=` is legitimate too — it opens that area's first tab.
+  const grp = TAB_GROUPS.find((g) => g.key === raw);
+  if (grp) return grp.tabs[0] as TabKey;
   return "fleet";
 }
 
@@ -58,7 +83,6 @@ export function OperatorConsole(props: {
   opId: string;
   csrf: string | null;
   reload: () => void;
-  initialTab: string | null;
   initialFlash: string | null;
 }) {
   return (
@@ -73,21 +97,40 @@ function OperatorConsoleInner({
   opId,
   csrf,
   reload,
-  initialTab,
   initialFlash,
 }: {
   op: OperationDetail;
   opId: string;
   csrf: string | null;
   reload: () => void;
-  initialTab: string | null;
   initialFlash: string | null;
 }) {
   const { touch, fail } = useFieldSave();
-  const [tab, setTab] = useState<TabKey>(resolveTab(initialTab));
+  // The active work area lives in the URL, not in component state: reload,
+  // deep link and browser-back all have to land on the same tab (IA goal 8).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = resolveTab(searchParams.get("op"));
+  const group = groupOf(tab);
+  function setTab(next: TabKey) {
+    if (next === tab) return;
+    const sp = new URLSearchParams(searchParams);
+    sp.set("op", next);
+    sp.delete("flash"); // a one-shot notice must not survive a tab switch
+    setSearchParams(sp); // push — so browser-back returns to the previous tab
+  }
   const [status, setStatusValue] = useState(op.status);
   const [voiceEnabled, setVoiceEnabled] = useState(op.squadLinkVoiceEnabled);
   const [notice, setNotice] = useState<string | null>(() => decodeFlash(initialFlash));
+  // §9: both tab levels get a roving tabindex and arrow-key movement, and both
+  // point at the single panel they control.
+  const groupRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const arrowIndex = (key: string, i: number, len: number): number =>
+    key === "ArrowRight" || key === "ArrowDown" ? (i + 1) % len
+    : key === "ArrowLeft" || key === "ArrowUp" ? (i - 1 + len) % len
+    : key === "Home" ? 0
+    : key === "End" ? len - 1
+    : -1;
   const [busy, setBusy] = useState(false);
   const [tpl, setTpl] = useState({ name: "", summary: "", visibility: "guild" });
   const [recur, setRecur] = useState({ freq: "weekly", seriesCount: "", seriesEnd: "" });
@@ -203,6 +246,13 @@ function OperatorConsoleInner({
     return null;
   };
   const accentOf = (k: TabKey) => (k === "voice" ? "var(--purple)" : k === "qa" ? "var(--gold)" : "var(--cyan)");
+  const firstTabOf = (g: GroupKey) => tabsOf(g)[0];
+  // A collapsed area still has to show that something inside it needs attention.
+  const groupBadge = (g: GroupKey): { n: number; color: string } | null => {
+    const parts = tabsOf(g).map(tabBadge).filter((b): b is { n: number; color: string } => b !== null);
+    if (parts.length === 0) return null;
+    return { n: parts.reduce((sum, b) => sum + b.n, 0), color: parts[0].color };
+  };
 
   return (
     <section
@@ -220,20 +270,70 @@ function OperatorConsoleInner({
       <div style={{ padding: "1.2rem 1.3rem 1.5rem" }}>
         {statusHeader}
 
-        {/* tab navigation — prominent pills + counter badges */}
+        {/* Two-level work-area navigation: four areas, then that area's tabs.
+            Both levels write the leaf tab into the URL. */}
         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cyan)" }} />
           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>ARBEITSBEREICH</span>
         </div>
-        <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "1.2rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid var(--border)" }}>
-          {TABS.map((t) => {
-            const on = tab === t.key;
-            const badge = tabBadge(t.key);
-            const acc = accentOf(t.key);
+        <div role="tablist" aria-label="Arbeitsbereich" style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "0.6rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid var(--border)" }}>
+          {TAB_GROUPS.map((g, gi) => {
+            const on = g.key === group;
+            const badge = groupBadge(g.key);
             return (
-              <button key={t.key} type="button" data-testid={`manage-tab-${t.key}`} onClick={() => setTab(t.key)} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 9, padding: "0.6rem 1rem", borderRadius: 10, cursor: "pointer", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid var(--wash)", background: on ? "var(--cyan)" : "var(--wash)", color: on ? "var(--bg)" : "var(--dim)", transition: "all .12s" }}>
-                <span style={{ display: "inline-flex", color: on ? "var(--bg)" : acc }}><Ic name={t.icon} size={16} /></span>{t.label}
+              <button
+                key={g.key}
+                type="button"
+                role="tab"
+                id={`manage-group-tab-${g.key}`}
+                aria-selected={on}
+                aria-controls="manage-panel"
+                tabIndex={on ? 0 : -1}
+                ref={(el) => { groupRefs.current[g.key] = el; }}
+                data-testid={`manage-group-${g.key}`}
+                onKeyDown={(e) => {
+                  const j = arrowIndex(e.key, gi, TAB_GROUPS.length);
+                  if (j < 0) return;
+                  e.preventDefault();
+                  const next = TAB_GROUPS[j];
+                  setTab(firstTabOf(next.key));
+                  groupRefs.current[next.key]?.focus();
+                }}
+                onClick={() => setTab(firstTabOf(g.key))} style={{ position: "relative", display: "inline-flex", alignItems: "center", gap: 9, padding: "0.6rem 1rem", borderRadius: 10, cursor: "pointer", fontFamily: MONO, fontSize: "0.76rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid var(--wash)", background: on ? "var(--cyan)" : "var(--wash)", color: on ? "var(--bg)" : "var(--dim)", transition: "all .12s" }}>
+                <span style={{ display: "inline-flex", color: on ? "var(--bg)" : "var(--cyan)" }}><Ic name={g.icon} size={16} /></span>{g.label}
                 {badge && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 19, height: 19, padding: "0 5px", borderRadius: 10, fontFamily: MONO, fontSize: "0.62rem", fontWeight: 700, background: on ? "rgba(18, 20, 22,0.22)" : badge.color, color: "var(--bg)" }}>{badge.n}</span>}
+              </button>
+            );
+          })}
+        </div>
+        <div role="tablist" aria-label="Bereich" data-testid="manage-subtabs" style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "1.2rem", paddingLeft: "0.15rem" }}>
+          {tabsOf(group).map((k, ti) => {
+            const meta = tabMeta(k);
+            const on = tab === k;
+            const badge = tabBadge(k);
+            const acc = accentOf(k);
+            const siblings = tabsOf(group);
+            return (
+              <button
+                key={k}
+                type="button"
+                role="tab"
+                id={`manage-tab-id-${k}`}
+                aria-selected={on}
+                aria-controls="manage-panel"
+                tabIndex={on ? 0 : -1}
+                ref={(el) => { tabRefs.current[k] = el; }}
+                data-testid={`manage-tab-${k}`}
+                onKeyDown={(e) => {
+                  const j = arrowIndex(e.key, ti, siblings.length);
+                  if (j < 0) return;
+                  e.preventDefault();
+                  setTab(siblings[j]);
+                  tabRefs.current[siblings[j]]?.focus();
+                }}
+                onClick={() => setTab(k)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.42rem 0.8rem", borderRadius: 8, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid var(--border)", background: on ? "var(--wash)" : "transparent", color: on ? "var(--cyan)" : "var(--dim)", transition: "all .12s" }}>
+                <span style={{ display: "inline-flex", color: on ? "var(--cyan)" : acc }}><Ic name={meta.icon} size={14} /></span>{meta.label}
+                {badge && <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, fontFamily: MONO, fontSize: "0.6rem", fontWeight: 700, background: badge.color, color: "var(--bg)" }}>{badge.n}</span>}
               </button>
             );
           })}
@@ -241,7 +341,7 @@ function OperatorConsoleInner({
 
         {notice && <p className="tag tag-gold" role="alert" data-testid="manage-notice" style={{ marginBottom: "1rem" }}>{notice}</p>}
 
-        <div className="fpw-popin">
+        <div className="fpw-popin" role="tabpanel" id="manage-panel" aria-labelledby={`manage-tab-id-${tab}`} tabIndex={-1}>
           {tab === "eckdaten" && (
             <>
               <EckdatenForm op={op} csrf={csrf} onNotice={setNotice} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} />

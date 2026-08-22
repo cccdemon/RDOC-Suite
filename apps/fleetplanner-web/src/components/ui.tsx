@@ -2,7 +2,8 @@
 // "Fleetplanner-App"). Solid colours map to the repo's var(--*) palette; the
 // translucent borders/backgrounds reuse the same hues via rgba(), exactly as
 // the design source does. Reuse these instead of hardcoding hex per page.
-import type { CSSProperties, ReactNode } from "react";
+import { useRef, type CSSProperties, type ReactNode } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Ic } from "./Icons";
 
 export const MONO = "var(--mono)";
@@ -161,3 +162,224 @@ export const btnGhost: CSSProperties = {
   border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)",
   fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer",
 };
+
+// ── one tab implementation for independently addressable views ──────────────
+// UI audit §9: Konto, Rechtliches and every other "these are views of the same
+// object" strip used to be plain links with a coloured underline. They are links
+// on purpose (each view has its own URL), but they carry full tab semantics:
+// tablist/tab/aria-selected/aria-controls, a roving tabindex, and arrow-key
+// movement. The active tab is marked by more than colour (aria-selected +
+// aria-current), so it survives a high-contrast or monochrome theme.
+const linkTabBase: CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.9rem",
+  fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", cursor: "pointer",
+  whiteSpace: "nowrap", borderBottom: "2px solid transparent", color: "var(--dim)",
+  textDecoration: "none",
+};
+const linkTabActive: CSSProperties = { ...linkTabBase, color: "var(--cyan)", borderBottomColor: "var(--cyan)", fontWeight: 700 };
+
+export type LinkTabItem = { key: string; label: string; to: string; icon?: string };
+
+export function LinkTabs({
+  ariaLabel,
+  panelId,
+  activeKey,
+  items,
+  testid,
+}: {
+  ariaLabel: string;
+  /** id of the <div role="tabpanel"> these tabs control. */
+  panelId: string;
+  activeKey: string;
+  items: LinkTabItem[];
+  testid?: (key: string) => string;
+}) {
+  const navigate = useNavigate();
+  const refs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  return (
+    <div
+      role="tablist"
+      aria-label={ariaLabel}
+      style={{ display: "flex", gap: "0.3rem", overflowX: "auto", borderBottom: "1px solid var(--border)", marginBottom: "1.4rem" }}
+    >
+      {items.map((it, i) => {
+        const on = it.key === activeKey;
+        return (
+          <Link
+            key={it.key}
+            to={it.to}
+            role="tab"
+            id={`${panelId}-tab-${it.key}`}
+            aria-selected={on}
+            aria-controls={panelId}
+            aria-current={on ? "page" : undefined}
+            tabIndex={on ? 0 : -1}
+            ref={(el) => { refs.current[it.key] = el; }}
+            data-testid={testid ? testid(it.key) : undefined}
+            onKeyDown={(e) => {
+              const j = e.key === "ArrowRight" || e.key === "ArrowDown" ? (i + 1) % items.length
+                : e.key === "ArrowLeft" || e.key === "ArrowUp" ? (i - 1 + items.length) % items.length
+                : e.key === "Home" ? 0
+                : e.key === "End" ? items.length - 1
+                : -1;
+              if (j < 0) return;
+              e.preventDefault();
+              navigate(items[j].to);
+              refs.current[items[j].key]?.focus();
+            }}
+            style={on ? linkTabActive : linkTabBase}
+          >
+            {it.icon && <Ic name={it.icon} size={14} sw={1.7} />}
+            {it.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── card types (UI audit §8) ────────────────────────────────────────────────
+// "fpw-card" used to mean six different things. These six components each carry
+// one promise, and each stamps a data-card attribute so the type is visible in
+// the DOM, in a test and in a review — not inferred from what is inside it.
+
+/** Whole tile opens exactly ONE target. Interactive children must call
+ *  stopPropagation/preventDefault themselves — see the Discord button on the op
+ *  card for the pattern. */
+export function ObjectTile({
+  to, children, testid, ariaLabel, style, className,
+}: {
+  to: string;
+  children: ReactNode;
+  testid?: string;
+  ariaLabel?: string;
+  style?: CSSProperties;
+  className?: string;
+}) {
+  return (
+    <Link
+      to={to}
+      data-card="object"
+      data-testid={testid}
+      aria-label={ariaLabel}
+      className={`fpw-card fpw-cardlink${className ? " " + className : ""}`}
+      style={style}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/** A choice, not a destination: pressed state instead of navigation. */
+export function ChoiceTile({
+  selected, onSelect, children, testid, title, style, disabled,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  children: ReactNode;
+  testid?: string;
+  title?: string;
+  style?: CSSProperties;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      data-card="choice"
+      data-testid={testid}
+      aria-pressed={selected}
+      title={title}
+      disabled={disabled}
+      onClick={onSelect}
+      style={style}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Says something, does nothing: no hover, no pointer, no click target. */
+export function InfoCard({
+  children, testid, style, className,
+}: {
+  children: ReactNode;
+  testid?: string;
+  style?: CSSProperties;
+  className?: string;
+}) {
+  return (
+    <div data-card="info" data-testid={testid} className={`fpw-card${className ? " " + className : ""}`} style={style}>
+      {children}
+    </div>
+  );
+}
+
+/** Holds its own local actions; the card itself is not a target. */
+export function WorkCard({
+  children, testid, style, className,
+}: {
+  children: ReactNode;
+  testid?: string;
+  style?: CSSProperties;
+  className?: string;
+}) {
+  return (
+    <section data-card="work" data-testid={testid} className={`fpw-card${className ? " " + className : ""}`} style={style}>
+      {children}
+    </section>
+  );
+}
+
+/** Grouped inputs: heading, optional description, fields, actions at the end. */
+export function FormSection({
+  title, description, children, actions, testid, style, headIcon,
+}: {
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+  actions?: ReactNode;
+  testid?: string;
+  style?: CSSProperties;
+  headIcon?: string;
+}) {
+  return (
+    <section data-card="form" data-testid={testid} className="fpw-card" style={style}>
+      <div style={{ ...cardHead, marginBottom: description ? "0.35rem" : "1rem" }}>
+        {headIcon && <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name={headIcon} size={15} sw={1.6} /></span>}
+        {title}
+      </div>
+      {description && (
+        <p style={{ margin: "0 0 1rem", color: "var(--dim)", fontSize: "0.84rem", lineHeight: 1.5 }}>{description}</p>
+      )}
+      {children}
+      {actions && <div className="fpw-form-actions">{actions}</div>}
+    </section>
+  );
+}
+
+/** Destructive work, kept away from the routine controls. */
+export function DangerZone({
+  title = "Gefahrenbereich",
+  description,
+  children,
+  testid,
+  style,
+}: {
+  title?: string;
+  description?: ReactNode;
+  children: ReactNode;
+  testid?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <section data-card="danger" data-testid={testid} className="fpw-card" style={style}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: MONO, fontSize: "0.68rem", letterSpacing: "0.1em", color: "var(--red)" }}>
+        <Ic name="alert" size={15} sw={1.7} /> {title.toUpperCase()}
+      </div>
+      {description && (
+        <p style={{ margin: 0, color: "var(--dim)", fontSize: "0.84rem", lineHeight: 1.5 }}>{description}</p>
+      )}
+      {children}
+    </section>
+  );
+}

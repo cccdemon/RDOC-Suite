@@ -1,6 +1,14 @@
 // Test fixtures — shapes match docs/api/fleetplanner-v1.md (FR-P2 §Mockups).
 import type { OperationDetail, OperationSummary, SessionResponse } from "../api/types";
 
+// The overview hides past operations by default, so a hard-coded date turns every
+// list/agenda assertion into a time bomb. Late today: still the current month (the
+// calendar views are month-scoped) and still upcoming.
+function laterToday(): string {
+  const t = new Date();
+  return new Date(t.getFullYear(), t.getMonth(), t.getDate(), 23, 59, 0).toISOString();
+}
+
 export const sessionGuest: SessionResponse = { user: null, memberships: [], csrfToken: null };
 
 export const sessionCrew: SessionResponse = {
@@ -15,7 +23,7 @@ export const opSummaryFixture: OperationSummary = {
   opType: "combat",
   status: "open",
   visibility: "public",
-  scheduledAt: "2026-06-20T18:00:00.000Z",
+  scheduledAt: laterToday(),
   meetingSystem: "Stanton",
   meetingLocation: "Everus Harbor",
   minParticipants: 8,

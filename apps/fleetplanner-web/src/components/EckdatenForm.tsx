@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, deleteOperation, editOperation, searchLocations, type LocationHit } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { Ic } from "./Icons";
-import { CardHead, MONO, card, inp, lbl, segChip, ta } from "./ui";
+import { CardHead, ChoiceTile, MONO, card, inp, lbl, segChip, ta } from "./ui";
 import { SaveDot, useDebouncer, useFieldSave } from "./fieldSave";
 import { OP_TYPES, VIS_OPTIONS as VIS, SYSTEMS, normalizeVisibility } from "./opForm";
 
@@ -142,7 +142,11 @@ export function EckdatenForm({
               <div>
                 <L id="op-type">Operationstyp</L>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                  {OP_TYPES.map((t) => <button key={t.key} type="button" data-testid={`edit-type-${t.key}`} onClick={() => setNow("op-type", { opType: t.key }, { opType: t.key })} style={segChip(form.opType === t.key, t.color)}><Ic name={t.icon} size={14} sw={1.7} />{t.label}</button>)}
+                  {OP_TYPES.map((t) => (
+                    <ChoiceTile key={t.key} testid={`edit-type-${t.key}`} selected={form.opType === t.key} onSelect={() => setNow("op-type", { opType: t.key }, { opType: t.key })} style={segChip(form.opType === t.key, t.color)}>
+                      <Ic name={t.icon} size={14} sw={1.7} />{t.label}
+                    </ChoiceTile>
+                  ))}
                 </div>
               </div>
             </div>
@@ -181,11 +185,11 @@ export function EckdatenForm({
               {VIS.map((v) => {
                 const active = form.visibility === v.key;
                 return (
-                  <button key={v.key} type="button" data-testid={`edit-vis-${v.key}`} onClick={() => setNow("op-vis", { visibility: v.key }, { visibility: normalizeVisibility(v.key) })} style={{ display: "flex", alignItems: "center", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: active ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: active ? "var(--wash)" : "transparent", color: active ? "var(--cyan)" : "var(--dim)" }}>
+                  <ChoiceTile key={v.key} testid={`edit-vis-${v.key}`} selected={active} onSelect={() => setNow("op-vis", { visibility: v.key }, { visibility: normalizeVisibility(v.key) })} style={{ display: "flex", alignItems: "center", gap: "0.6rem", width: "100%", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "pointer", textAlign: "left", transition: "all .12s", border: active ? "1px solid var(--border-hi)" : "1px solid var(--wash)", background: active ? "var(--wash)" : "transparent", color: active ? "var(--cyan)" : "var(--dim)" }}>
                     <Ic name={v.icon} size={15} sw={1.6} />
                     <span style={{ flex: 1 }}><span style={{ display: "block", fontSize: "0.84rem", color: "var(--text-hi)" }}>{v.label}</span><span style={{ display: "block", fontSize: "0.72rem", color: "var(--dim)" }}>{v.desc}</span></span>
                     {active && <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={15} sw={2} /></span>}
-                  </button>
+                  </ChoiceTile>
                 );
               })}
             </div>
@@ -225,7 +229,7 @@ export function EckdatenForm({
             </button>
           </section>
 
-          <div className="danger">
+          <div className="danger" data-card="danger" data-testid="op-danger-zone">
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", color: "var(--red)", marginBottom: "0.5rem" }}><Ic name="alert" size={14} sw={1.7} /> GEFAHRENZONE</div>
             {confirmDel ? (
               <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>

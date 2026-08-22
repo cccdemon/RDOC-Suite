@@ -165,3 +165,47 @@ test("logged-in shell: nav links present and logout works", async ({ browser }) 
     await ctx.close();
   }
 });
+
+// ── Information architecture (2026-08-21) ────────────────────────────────────
+test("IA: action, groups, developer foot and mobile parity", async ({ browser }) => {
+  await cleanup();
+  const actor: TestActor = await login("e2e-iauser", "crew", "crew");
+  const ctx = await actorContext(browser, actor);
+  const p = await ctx.newPage();
+  try {
+    await p.goto("./");
+    await expect(p.getByTestId("profile-link").first()).toBeVisible({ timeout: 10_000 });
+
+    // "Neue Operation" is an action above the groups, not a group entry.
+    const action = p.getByTestId("nav-/ops/new");
+    await expect(action).toBeVisible();
+    expect(await action.evaluate((el) => el.closest(".nav-group") === null)).toBe(true);
+
+    // API docs sit in the developer foot, outside the primary groups.
+    await expect(p.getByTestId("nav-developer")).toBeVisible();
+    expect(await p.getByTestId("nav-/api-docs").evaluate((el) => el.closest(".nav-group") === null)).toBe(true);
+
+    // An operation detail page keeps "Operationen" the active entry.
+    await p.goto("operationen");
+    const firstOp = p.getByTestId("op-card").first();
+    if (await firstOp.count()) {
+      await firstOp.click();
+      await expect(p.getByTestId("nav-/operationen")).toHaveClass(/is-active/, { timeout: 10_000 });
+      await expect(p.getByTestId("breadcrumbs-back")).toBeVisible();
+    }
+
+    // Mobile: the same groups in a drawer, no flat <select> any more.
+    await p.setViewportSize({ width: 420, height: 900 });
+    await p.goto("operationen");
+    await expect(p.getByTestId("mobile-screen-select")).toHaveCount(0);
+    await p.getByTestId("mobile-nav-toggle").click();
+    const drawer = p.getByTestId("mobile-nav-drawer");
+    await expect(drawer).toBeVisible({ timeout: 10_000 });
+    await expect(p.getByTestId("mnav-group-ops")).toBeVisible();
+    await expect(p.getByTestId("mnav-/ops/new")).toBeVisible();
+    await p.getByTestId("mnav-/handbuch").click();
+    await expect(drawer).toHaveCount(0);
+  } finally {
+    await ctx.close();
+  }
+});

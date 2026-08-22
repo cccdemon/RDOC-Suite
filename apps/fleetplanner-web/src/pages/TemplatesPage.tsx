@@ -3,6 +3,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { applyTemplate, ApiError, listTemplates } from "../api/client";
 import type { SessionResponse, TemplateSummary } from "../api/types";
 import { Ic } from "../components/Icons";
+import { Breadcrumbs } from "../components/Breadcrumbs";
+import { WorkCard } from "../components/ui";
 
 const MONO = "var(--mono)";
 const TYPE_LABEL: Record<string, string> = {
@@ -68,6 +70,7 @@ export function TemplatesPage({ session }: { session: SessionResponse | null }) 
 
   return (
     <div data-testid="templates-page" style={{ width: "100%" }}>
+      <Breadcrumbs items={[{ label: "Operationen", to: "/operationen" }, { label: "Vorlagen" }]} />
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="board" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Vorlagen-Marktplatz</h1>
@@ -88,7 +91,7 @@ export function TemplatesPage({ session }: { session: SessionResponse | null }) 
       ) : (
         <div className="fpw-grid">
           {templates.map((t) => (
-            <div key={t.id} className="fpw-card" data-testid={`template-${t.id}`}>
+            <WorkCard key={t.id} testid={`template-${t.id}`}>
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
                 <span className="fpw-tag cyan">{TYPE_LABEL[t.opType] ?? t.opType}</span>
                 <span className="fpw-tag dim">{t.visibility}</span>
@@ -107,7 +110,7 @@ export function TemplatesPage({ session }: { session: SessionResponse | null }) 
                   <Ic name="plus" size={13} sw={2} /> Anwenden
                 </button>
               )}
-            </div>
+            </WorkCard>
           ))}
         </div>
       )}

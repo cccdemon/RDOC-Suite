@@ -5,6 +5,8 @@ import type { DiagnosticsResponse, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { MONO, card, lbl, tint } from "../components/ui";
 import { useT } from "../i18n";
+import { useGuildSelection } from "../serverContext";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 // Severity keeps its functional colour - that is exactly what the functional
 // set exists for - but the tint is derived instead of frozen.
@@ -18,12 +20,10 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
   const t = useT();
   const me = session?.user ?? null;
   const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
-  const [guildId, setGuildId] = useState<string | null>(null);
+  const [guildId, setGuildId] = useGuildSelection(manageable);
   const [diag, setDiag] = useState<DiagnosticsResponse | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => { if (guildId === null && manageable.length > 0) setGuildId(manageable[0].guildId); }, [manageable, guildId]);
 
   function reload(id: string) {
     setBusy(true); setNotice(null); setDiag(null);
@@ -40,6 +40,15 @@ export function DiagnosticsPage({ session }: { session: SessionResponse | null }
 
   return (
     <div data-testid="diagnostics-page" style={{ width: "100%" }}>
+      {/* The server context is part of the address: which server these
+          settings belong to must never be a guess (IA goal 4). */}
+      <Breadcrumbs
+        items={[
+          { label: "Discord-Server", to: "/guilds" },
+          { label: manageable.find((m) => m.guildId === guildId)?.guildName ?? "Server", to: guildId ? `/guilds?guild=${encodeURIComponent(guildId)}` : "/guilds" },
+          { label: "Diagnose" },
+        ]}
+      />
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "0.8rem", marginBottom: "1.3rem" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>

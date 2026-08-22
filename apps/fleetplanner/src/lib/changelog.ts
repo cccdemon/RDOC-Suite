@@ -34,6 +34,42 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-22",
+    title: "Assigning crew, and creating an operation",
+    changes: [
+      "Dragging a waiting person onto a seat now tells you exactly where they land, and free seats light up while you drag.",
+      "A taken or switched-off seat says why it will not take anyone instead of doing nothing.",
+      "You can do the whole thing without dragging: press \"Einteilen\", pick a seat with the keyboard or a tap, Escape backs out.",
+      "If saving fails the board goes back to how it was and the error appears at that seat.",
+      "Someone who already holds a seat is marked, so a second assignment is a deliberate extra one.",
+      "The creation wizard checks the step you are on before letting you move on, and jumps you to the field that is missing.",
+      "A half-finished operation is kept — come back later and it is still there, or throw it away in one click.",
+      "After creating you choose: open the operation, or add cover and sharing first.",
+      "The operations screen now keeps everything in the address bar — view, type, stream filter, past events, month and the day you picked. Reload it, share it, or press Back: you get the same screen.",
+      "The stream filter is a plain choice (all / only streams / without streams) instead of a button whose label kept changing.",
+      "When a filter hides everything, the empty screen says which filters are on and offers to clear them.",
+      "On a phone the month calendar is shown as unavailable with the reason, instead of quietly turning into the agenda.",
+      "List, Calendar, Agenda and the account and legal tabs can be operated with the arrow keys.",
+      "Cards behave the way they look: a tile that opens something opens exactly one thing, a Discord button no longer drags you to the operation, and a choice like the mission type says out loud that it is selected.",
+      "Deleting an operation or a poll now sits in its own marked danger box instead of next to the everyday buttons.",
+      "On a phone the ship database and the org fleet scroll sideways inside their own frame — the page itself stays put and the name column stays visible.",
+      "The manual's section list becomes a menu above the text on a phone instead of a second sidebar over the header.",
+    ],
+  },
+  {
+    date: "2026-08-21",
+    title: "Clearer menus",
+    changes: [
+      "\"New operation\" is a button now, not a menu entry — the menu stays about where you are, not what you do.",
+      "Opening an operation keeps \"Operations\" highlighted, so you always see where you are.",
+      "On the phone the menu shows the same groups as on the desktop instead of one long list.",
+      "Server screens remember which Discord server you picked, and the page says which one it is.",
+      "The operator console has four work areas (Fleet, Planning, Comms, Admin) instead of nine tabs — and the tab you are on stays after a reload or a back click.",
+      "Templates are listed under Operations, feedback moved to the help section.",
+      "Detail pages show a trail back to where you came from.",
+    ],
+  },
+  {
     date: "2026-08-15",
     title: "SquadLink is now Subraum",
     changes: [

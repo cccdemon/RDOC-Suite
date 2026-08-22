@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { ApiError, getGuildSettings, setMemberRole, updateGuildSettings } from "../api/client";
 import type { GuildSettings, GuildSettingsMember, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { useGuildSelection } from "../serverContext";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
 const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
@@ -28,27 +30,19 @@ const TIMEZONES: Array<[string, string]> = [
 export function GuildSettingsPage({ session }: { session: SessionResponse | null }) {
   const me = session?.user ?? null;
   const csrf = session?.csrfToken ?? null;
-  const [searchParams] = useSearchParams();
   // Only a guild's OWN fleet operators manage its settings here — being a partner
   // (or instance superadmin) must not expose another guild's config. (Superadmins
   // use the Admin console for instance-wide actions.)
   const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
 
-  const [guildId, setGuildId] = useState<string | null>(null);
+  // Shared, persistent server context: whichever server was picked in the nav or
+  // on another server screen is the one this page opens on (IA goal 4).
+  const [guildId, setGuildId] = useGuildSelection(manageable);
   const [guild, setGuild] = useState<GuildSettings | null>(null);
   const [members, setMembers] = useState<GuildSettingsMember[]>([]);
   const [form, setForm] = useState({ orgName: "", timezone: "Europe/Berlin", discordInviteUrl: "", admiralRoleId: "", landingOptIn: false });
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-
-  // Respect the guild picked on the server list (?guild=…) if it's actually
-  // manageable; otherwise fall back to the first manageable guild.
-  useEffect(() => {
-    if (guildId !== null || manageable.length === 0) return;
-    const wanted = searchParams.get("guild");
-    const pick = manageable.find((m) => m.guildId === wanted)?.guildId ?? manageable[0].guildId;
-    setGuildId(pick);
-  }, [manageable, guildId, searchParams]);
 
   function reload(id: string) {
     getGuildSettings(id)
@@ -123,6 +117,15 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
 
   return (
     <div data-testid="guild-settings-page" style={{ width: "100%" }}>
+      {/* The server context is part of the address: which server these
+          settings belong to must never be a guess (IA goal 4). */}
+      <Breadcrumbs
+        items={[
+          { label: "Discord-Server", to: "/guilds" },
+          { label: manageable.find((m) => m.guildId === guildId)?.guildName ?? "Server", to: guildId ? `/guilds?guild=${encodeURIComponent(guildId)}` : "/guilds" },
+          { label: "Server-Einstellungen" },
+        ]}
+      />
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.2rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Server-Einstellungen</h1>
@@ -133,7 +136,7 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
       </p>
 
       {manageable.length > 1 && (
-        <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>
+        <section className="fpw-card" data-card="form" style={{ marginBottom: "1.2rem" }}>
           <div style={label}>SERVER</div>
           <select
             data-testid="guild-select"
@@ -154,7 +157,7 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
         <p className="fpw-meta">Lade Server…</p>
       ) : (
         <>
-          <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>
+          <section className="fpw-card" data-card="form" style={{ marginBottom: "1.2rem" }}>
             <div style={label}>{guild.name.toUpperCase()}</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
               <label style={{ display: "block" }}>
@@ -205,7 +208,7 @@ export function GuildSettingsPage({ session }: { session: SessionResponse | null
             </div>
           </section>
 
-          <section className="fpw-card">
+          <section className="fpw-card" data-card="work">
             <div style={label}>MITGLIEDER ({members.length})</div>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
               {members.map((m) => (

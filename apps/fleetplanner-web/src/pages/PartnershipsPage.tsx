@@ -11,6 +11,8 @@ import {
 } from "../api/client";
 import type { IncomingDistribution, Partnership, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { useGuildSelection } from "../serverContext";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
 const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
@@ -24,7 +26,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
   const csrf = session?.csrfToken ?? null;
   const manageable = (session?.memberships ?? []).filter((m) => m.role === "fleetoperator");
 
-  const [guildId, setGuildId] = useState<string | null>(null);
+  const [guildId, setGuildId] = useGuildSelection(manageable);
   const [partnerships, setPartnerships] = useState<Partnership[]>([]);
   const [incoming, setIncoming] = useState<IncomingDistribution[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -45,10 +47,6 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
       /* clipboard blocked — token still selectable in the code block */
     }
   }
-
-  useEffect(() => {
-    if (guildId === null && manageable.length > 0) setGuildId(manageable[0].guildId);
-  }, [manageable, guildId]);
 
   function reload(id: string) {
     getPartnerships(id)
@@ -111,6 +109,15 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
 
   return (
     <div data-testid="partnerships-page" style={{ width: "100%" }}>
+      {/* The server context is part of the address: which server these
+          settings belong to must never be a guess (IA goal 4). */}
+      <Breadcrumbs
+        items={[
+          { label: "Discord-Server", to: "/guilds" },
+          { label: manageable.find((m) => m.guildId === guildId)?.guildName ?? "Server", to: guildId ? `/guilds?guild=${encodeURIComponent(guildId)}` : "/guilds" },
+          { label: "Partnerschaften" },
+        ]}
+      />
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.3rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="users" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Partnerschaften</h1>
@@ -120,7 +127,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
       </p>
 
       {manageable.length > 1 && (
-        <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>
+        <section className="fpw-card" data-card="form" style={{ marginBottom: "1.2rem" }}>
           <div style={label}>SERVER</div>
           <select data-testid="partner-guild-select" value={guildId ?? ""} onChange={(e) => setGuildId(e.target.value)} style={{ ...field, width: "100%" }}>
             {manageable.map((m) => <option key={m.guildId} value={m.guildId}>{m.guildName}</option>)}
@@ -132,7 +139,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
 
       {/* Incoming inbox */}
       {incoming.length > 0 && (
-        <section className="fpw-card" style={{ marginBottom: "1.2rem", border: "1px solid var(--edge-gold)" }}>
+        <section className="fpw-card" data-card="work" style={{ marginBottom: "1.2rem", border: "1px solid var(--edge-gold)" }}>
           <div style={{ ...label, color: "var(--gold)" }}>EINGEHENDE EVENTS ({incoming.length})</div>
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             {incoming.map((d) => (
@@ -150,7 +157,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
       )}
 
       {/* Partner list */}
-      <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>
+      <section className="fpw-card" data-card="form" style={{ marginBottom: "1.2rem" }}>
         <div style={label}>PARTNER</div>
         {!loaded ? (
           <p className="fpw-meta">Lade…</p>
@@ -180,7 +187,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
       </section>
 
       {/* Mint invite */}
-      <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>
+      <section className="fpw-card" data-card="form" style={{ marginBottom: "1.2rem" }}>
         <div style={label}>PARTNER EINLADEN</div>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <input data-testid="invite-label" type="text" maxLength={80} value={inviteLabel} placeholder="Label (z. B. Allianz XYZ)" onChange={(e) => setInviteLabel(e.target.value)} style={{ ...field, flex: "1 1 200px" }} />
@@ -200,7 +207,7 @@ export function PartnershipsPage({ session }: { session: SessionResponse | null 
       </section>
 
       {/* Accept invite */}
-      <section className="fpw-card">
+      <section className="fpw-card" data-card="work">
         <div style={label}>EINLADUNG EINLÖSEN</div>
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
           <input data-testid="accept-token" type="text" maxLength={200} value={acceptToken} placeholder="Partner-Token einfügen" onChange={(e) => setAcceptToken(e.target.value)} style={{ ...field, flex: "1 1 240px" }} />

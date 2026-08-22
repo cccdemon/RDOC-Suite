@@ -1,0 +1,170 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
+import { http, HttpResponse } from "msw";
+import { App } from "../App";
+import { server } from "./setup";
+import { opDetailFixture, opSummaryFixture, sessionCrew, sessionGuest } from "./fixtures";
+import type { SessionResponse } from "../api/types";
+
+// Card types (UI audit §8). Each type makes one promise; these tests pin the
+// promises rather than the looks: one primary target per object tile, secondary
+// actions that do not navigate, inert info cards, and destructive work that is
+// never mixed into a routine row.
+const API = "/fleetplanner/api/v1";
+
+const sessionOperator: SessionResponse = {
+  ...sessionCrew,
+  memberships: [{ guildId: "guild_1", guildName: "RDOC", role: "fleetoperator" }],
+};
+
+const now = new Date();
+const upcoming = {
+  ...opSummaryFixture,
+  scheduledAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 0).toISOString(),
+};
+
+function Probe() {
+  const loc = useLocation();
+  return <span data-testid="probe-url">{loc.pathname + loc.search}</span>;
+}
+
+function renderAt(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+      <Probe />
+    </MemoryRouter>,
+  );
+}
+
+const url = () => screen.getByTestId("probe-url").textContent ?? "";
+
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
+// ── object tile ──────────────────────────────────────────────────────────────
+describe("object tile — exactly one primary target", () => {
+  it("the whole operation tile is one link, and Discord is not it", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/operations`, () => HttpResponse.json({ operations: [upcoming] })),
+    );
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    renderAt("/operationen?view=liste");
+
+    const tile = await screen.findByTestId("op-card");
+    expect(tile).toHaveAttribute("data-card", "object");
+    expect(tile.tagName).toBe("A");
+    expect(tile).toHaveAttribute("href", "/ops/op_1");
+    // Exactly one primary target: no second link nested inside the tile.
+    expect(tile.querySelectorAll("a").length).toBe(0);
+
+    // The secondary action does its own thing and leaves the page alone.
+    fireEvent.click(screen.getByTestId("discord-join"));
+    expect(open).toHaveBeenCalled();
+    expect(url()).toBe("/operationen?view=liste");
+    open.mockRestore();
+  });
+
+  it("a poll tile follows the same contract", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/polls`, () =>
+        HttpResponse.json({
+          polls: [{
+            id: "poll_1", title: "Wann fliegen wir?", description: null, status: "open",
+            visibility: "guild", mode: "single", maxChoices: null, optionCount: 2, totalVotes: 0,
+            anonymous: false, resultsVisibility: "always", viewerHasVoted: false,
+            createdBy: { id: "user_crew", username: "Crew One" },
+            closesAt: null, createdAt: new Date().toISOString(), guild: { id: "guild_1", name: "RDOC" },
+          }],
+        }),
+      ),
+    );
+    renderAt("/polls");
+    const tile = await screen.findByTestId("poll-card-poll_1");
+    expect(tile).toHaveAttribute("data-card", "object");
+    expect(tile).toHaveAttribute("href", "/polls/poll_1");
+  });
+});
+
+// ── choice tile ──────────────────────────────────────────────────────────────
+describe("choice tile — a selection, not a destination", () => {
+  it("mission type and visibility report their pressed state", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)));
+    server.use(http.get(`${API}/guilds/:id/partnerships`, () => HttpResponse.json({ partnerships: [] })));
+    renderAt("/ops/new");
+
+    const combat = await screen.findByTestId("wiz-type-combat");
+    expect(combat).toHaveAttribute("data-card", "choice");
+    expect(combat).toHaveAttribute("aria-pressed", "true");
+
+    const mining = screen.getByTestId("wiz-type-mining");
+    expect(mining).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(mining);
+    await waitFor(() => expect(mining).toHaveAttribute("aria-pressed", "true"));
+    expect(combat).toHaveAttribute("aria-pressed", "false");
+    // A choice never navigates.
+    expect(url()).toBe("/ops/new");
+  });
+});
+
+// ── info card ────────────────────────────────────────────────────────────────
+describe("info card — says something, does nothing", () => {
+  it("roadmap entries are typed as info and carry no action", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/roadmap`, () =>
+        HttpResponse.json({ items: [{ id: "r1", title: "Org-Modul", status: "planned", body: "…", sortOrder: 0 }] }),
+      ),
+    );
+    renderAt("/handbuch/roadmap");
+    const cards = await waitFor(() => {
+      const found = document.querySelectorAll('[data-card="info"]');
+      expect(found.length).toBeGreaterThan(0);
+      return found;
+    });
+    cards.forEach((c) => {
+      expect(c.tagName).not.toBe("A");
+      expect(c.tagName).not.toBe("BUTTON");
+      expect(c).not.toHaveAttribute("href");
+    });
+  });
+});
+
+// ── danger zone ──────────────────────────────────────────────────────────────
+describe("danger zone — kept away from the routine controls", () => {
+  it("deleting an operation lives in its own typed zone", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true })),
+    );
+    renderAt("/ops/op_1?op=eckdaten");
+
+    const zone = await screen.findByTestId("op-danger-zone");
+    expect(zone).toHaveAttribute("data-card", "danger");
+    expect(zone).toContainElement(screen.getByTestId("edit-delete"));
+    // and nothing routine shares the box
+    expect(zone.querySelectorAll("input, select").length).toBe(0);
+  });
+});
+
+// ── tables ───────────────────────────────────────────────────────────────────
+describe("tables scroll instead of squeezing", () => {
+  it("the ship database keeps a readable minimum width", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)),
+      http.get(`${API}/ships/search`, () =>
+        HttpResponse.json({
+          ships: [{ id: "sh1", name: "Perseus", manufacturer: "RSI", size: "large", role: "combat", minCrew: 2, maxCrew: 4, imageUrl: null, sourceUrl: null }],
+        }),
+      ),
+    );
+    renderAt("/ships");
+    const table = await screen.findByTestId("ships-table");
+    expect(table.className).toContain("fpw-table");
+    expect(table).toHaveAttribute("data-card", "work");
+  });
+});

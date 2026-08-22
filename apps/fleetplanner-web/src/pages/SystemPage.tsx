@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ApiError, getSystemEvents, getSystemHealth, syncCatalog } from "../api/client";
 import type { ServiceHealth, SessionResponse, SyncHealth, SystemEvent } from "../api/types";
 import { Ic } from "../components/Icons";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "'Share Tech Mono',ui-monospace,monospace";
 const label: React.CSSProperties = { fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.12em", color: "var(--dim)", marginBottom: "0.7rem" };
@@ -135,6 +136,7 @@ export function SystemPage({ session }: { session: SessionResponse | null }) {
 
   return (
     <div data-testid="system-page" style={{ width: "100%", color: "var(--text)" }}>
+      <Breadcrumbs items={[{ label: "Admin-Konsole", to: "/admin" }, { label: "System & Logs" }]} />
       <style>{`@keyframes fpw-spin{to{transform:rotate(360deg)}}`}</style>
 
       {/* HEADER */}

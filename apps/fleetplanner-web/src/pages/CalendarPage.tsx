@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ApiError, listOperations } from "../api/client";
 import type { OperationSummary, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { ErrorState } from "../components/ErrorState";
 import { useSeo } from "../seo";
-import { tint } from "../components/ui";
+import { ObjectTile, tint } from "../components/ui";
 
 const MONO = "var(--mono)";
 const MONTHS = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
@@ -50,6 +50,14 @@ type Ev = {
   recurring: boolean;
 };
 
+// The three views of one dataset. Same order on every screen size; the month
+// view is disabled (not removed) where it does not fit.
+const VIEW_TABS = [
+  { v: "liste", testid: "op-view-liste", label: "Liste", icon: "board" },
+  { v: "monat", testid: "cal-view-monat", label: "Kalender", icon: "cal" },
+  { v: "agenda", testid: "cal-view-agenda", label: "Agenda", icon: "chat" },
+] as const;
+
 const tagStyle = (color: string): React.CSSProperties => ({
   display: "inline-flex",
   alignItems: "center",
@@ -79,27 +87,58 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   });
   const now = new Date();
   const [params, setParams] = useSearchParams();
+
+  // UI audit §5: everything that makes this screen look the way it looks lives in
+  // the URL — view, type filter, stream filter, past toggle, visible month and the
+  // selected day. Reload, deep link and Back therefore reproduce the same page.
+  const patchParams = (patch: Record<string, string | null>, replace = false) =>
+    setParams(
+      (p) => {
+        const n = new URLSearchParams(p);
+        for (const [k, v] of Object.entries(patch)) {
+          if (v === null) n.delete(k);
+          else n.set(k, v);
+        }
+        return n;
+      },
+      { replace },
+    );
+
   const viewParam = params.get("view");
   const view: "liste" | "monat" | "agenda" =
     viewParam === "kalender" || viewParam === "monat" ? "monat"
     : viewParam === "liste" ? "liste"
     : "agenda"; // default = agenda
-  const setView = (v: "liste" | "monat" | "agenda") =>
-    setParams(
-      (p) => {
-        const n = new URLSearchParams(p);
-        n.set("view", v === "monat" ? "kalender" : v);
-        return n;
-      },
-      { replace: true },
-    );
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth());
-  const [filter, setFilter] = useState("alle");
+  // Push, not replace: switching the view is navigation, and Back must undo it.
+  const setView = (v: "liste" | "monat" | "agenda") => patchParams({ view: v === "monat" ? "kalender" : v });
+
+  const filter = params.get("typ") ?? "alle";
+  const setFilter = (k: string) => patchParams({ typ: k === "alle" ? null : k });
+
   // FR-P3 stream filter: all → show everything, only → stream events, off → hide stream events.
-  const [streamFilter, setStreamFilter] = useState<"all" | "only" | "off">("all");
-  const [showPast, setShowPast] = useState(false);
-  const [selDay, setSelDay] = useState(now.getDate());
+  const streamParam = params.get("stream");
+  const streamFilter: "all" | "only" | "off" = streamParam === "only" || streamParam === "off" ? streamParam : "all";
+  const setStreamFilter = (v: "all" | "only" | "off") => patchParams({ stream: v === "all" ? null : v });
+
+  const showPast = params.get("past") === "1";
+  const setShowPast = (v: boolean) => patchParams({ past: v ? "1" : null });
+
+  // ?m=YYYY-MM carries the visible month; anything unparseable falls back to now.
+  const mMatch = /^(\d{4})-(\d{2})$/.exec(params.get("m") ?? "");
+  const monthRaw = mMatch ? Number(mMatch[2]) - 1 : now.getMonth();
+  const year = mMatch ? Number(mMatch[1]) : now.getFullYear();
+  const month = monthRaw >= 0 && monthRaw <= 11 ? monthRaw : now.getMonth();
+  const gotoMonth = (y: number, m: number, day?: number) =>
+    patchParams({ m: `${y}-${String(m + 1).padStart(2, "0")}`, d: day === undefined ? null : String(day) });
+
+  const dParam = Number(params.get("d"));
+  const monthIsNow = year === now.getFullYear() && month === now.getMonth();
+  const selDay = dParam >= 1 && dParam <= 31 ? dParam : monthIsNow ? now.getDate() : 1;
+  // Picking a day refines the current view rather than navigating away from it.
+  const setSelDay = (d: number) => patchParams({ d: String(d) }, true);
+
+  // Roving focus for the view tablist.
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [vw, setVw] = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
   const [ops, setOps] = useState<OperationSummary[] | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
@@ -232,6 +271,36 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   const chipBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "0.34rem 0.7rem", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em", borderRadius: 7, cursor: "pointer", whiteSpace: "nowrap" };
   const chips = [{ key: "alle", label: "Alle", color: "var(--dim)" }].concat(
     Object.keys(TYPES).map((k) => ({ key: k, label: TYPES[k].label, color: TYPES[k].color })),
+  );
+
+  // ── empty state (§5: name the filters, offer the way out) ─────
+  const activeFilters = [
+    filter !== "alle" ? `Typ: ${TYPES[filter]?.label ?? filter}` : null,
+    streamFilter === "only" ? "nur Stream-Events" : streamFilter === "off" ? "ohne Stream-Events" : null,
+    !showPast ? "nur anstehende" : null,
+  ].filter((x): x is string => !!x);
+  const filtersNarrowed = filter !== "alle" || streamFilter !== "all";
+  const emptyState = (headline: string, offerPast: boolean) => (
+    <div data-testid="cal-empty" style={{ padding: "2.4rem 1rem", textAlign: "center", border: "1px dashed var(--wash)", borderRadius: 12 }}>
+      <div style={{ color: "var(--dim)", fontSize: "0.95rem" }}>{headline}</div>
+      {activeFilters.length > 0 && (
+        <div data-testid="cal-empty-filters" style={{ marginTop: "0.5rem", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.04em", color: "var(--dim3)" }}>
+          AKTIVE FILTER: {activeFilters.join(" · ")}
+        </div>
+      )}
+      <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap", marginTop: "0.9rem" }}>
+        {filtersNarrowed && (
+          <button type="button" data-testid="cal-filter-reset" onClick={() => patchParams({ typ: null, stream: null })} style={{ ...chipBase, border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)" }}>
+            <Ic name="refresh" size={13} sw={1.7} /> Filter zurücksetzen
+          </button>
+        )}
+        {offerPast && !showPast && (
+          <button type="button" data-testid="cal-show-past-inline" onClick={() => setShowPast(true)} style={{ ...chipBase, border: "1px solid var(--border)", background: "transparent", color: "var(--dim)" }}>
+            <Ic name="eye" size={13} sw={1.7} /> Vergangene anzeigen
+          </button>
+        )}
+      </div>
+    </div>
   );
 
   // ── op card (selected day + agenda) ───────────────────────────
@@ -374,19 +443,56 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.6rem" }}>
           {!isListe && (
             <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--border)", borderRadius: 9, background: "var(--bg2)", overflow: "hidden" }}>
-              <button type="button" data-testid="cal-prev" onClick={() => setMonth((m) => { if (m === 0) { setYear((y) => y - 1); return 11; } return m - 1; })} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "var(--dim)", cursor: "pointer" }}>
+              <button type="button" data-testid="cal-prev" aria-label="Vorheriger Monat" onClick={() => gotoMonth(month === 0 ? year - 1 : year, month === 0 ? 11 : month - 1)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "var(--dim)", cursor: "pointer" }}>
                 <Ic name="back" size={16} sw={1.9} />
               </button>
-              <button type="button" data-testid="cal-today" onClick={() => { setYear(T.y); setMonth(T.m); setSelDay(T.d); }} style={{ padding: "0 0.9rem", height: 36, border: "none", borderLeft: "1px solid var(--border)", borderRight: "1px solid var(--border)", background: "transparent", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.04em", cursor: "pointer", whiteSpace: "nowrap" }}>HEUTE</button>
-              <button type="button" data-testid="cal-next" onClick={() => setMonth((m) => { if (m === 11) { setYear((y) => y + 1); return 0; } return m + 1; })} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "var(--dim)", cursor: "pointer" }}>
+              <button type="button" data-testid="cal-today" onClick={() => gotoMonth(T.y, T.m, T.d)} style={{ padding: "0 0.9rem", height: 36, border: "none", borderLeft: "1px solid var(--border)", borderRight: "1px solid var(--border)", background: "transparent", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.04em", cursor: "pointer", whiteSpace: "nowrap" }}>HEUTE</button>
+              <button type="button" data-testid="cal-next" aria-label="Nächster Monat" onClick={() => gotoMonth(month === 11 ? year + 1 : year, month === 11 ? 0 : month + 1)} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 38, height: 36, border: "none", background: "transparent", color: "var(--dim)", cursor: "pointer" }}>
                 <Ic name="arrow" size={16} sw={1.9} />
               </button>
             </div>
           )}
-          <div style={{ display: "inline-flex", border: "1px solid var(--border)", borderRadius: 9, padding: 3, background: "var(--bg2)", gap: 3 }}>
-            <button type="button" data-testid="op-view-liste" onClick={() => setView("liste")} style={view === "liste" ? tabActive : tabBase}><Ic name="board" size={14} /> Liste</button>
-            {!mobile && <button type="button" data-testid="cal-view-monat" onClick={() => setView("monat")} style={view === "monat" ? tabActive : tabBase}><Ic name="cal" size={14} /> Kalender</button>}
-            <button type="button" data-testid="cal-view-agenda" onClick={() => setView("agenda")} style={view === "agenda" ? tabActive : tabBase}><Ic name="chat" size={14} /> Agenda</button>
+          {/* §9: a real tablist — arrow keys, Home/End, roving tabindex, aria-selected,
+              and one panel it controls. The month view is not silently swapped on a
+              narrow screen; it is offered as disabled with the reason. */}
+          <div role="tablist" aria-label="Ansicht" data-testid="op-view-tabs" style={{ display: "inline-flex", border: "1px solid var(--border)", borderRadius: 9, padding: 3, background: "var(--bg2)", gap: 3 }}>
+            {VIEW_TABS.map((tb) => {
+              const on = view === tb.v;
+              const off = tb.v === "monat" && mobile;
+              return (
+                <button
+                  key={tb.v}
+                  type="button"
+                  role="tab"
+                  id={`op-view-tab-${tb.v}`}
+                  aria-selected={on}
+                  aria-controls="op-view-panel"
+                  aria-disabled={off || undefined}
+                  tabIndex={on ? 0 : -1}
+                  ref={(el) => { tabRefs.current[tb.v] = el; }}
+                  data-testid={tb.testid}
+                  title={off ? "Der Monatskalender braucht mehr Breite als dieser Bildschirm hat." : undefined}
+                  onClick={() => { if (!off) setView(tb.v); }}
+                  onKeyDown={(e) => {
+                    const open = VIEW_TABS.filter((x) => !(x.v === "monat" && mobile));
+                    const i = open.findIndex((x) => x.v === tb.v);
+                    if (i < 0) return;
+                    const j = e.key === "ArrowRight" || e.key === "ArrowDown" ? (i + 1) % open.length
+                      : e.key === "ArrowLeft" || e.key === "ArrowUp" ? (i - 1 + open.length) % open.length
+                      : e.key === "Home" ? 0
+                      : e.key === "End" ? open.length - 1
+                      : -1;
+                    if (j < 0) return;
+                    e.preventDefault();
+                    setView(open[j].v);
+                    tabRefs.current[open[j].v]?.focus();
+                  }}
+                  style={{ ...(on ? tabActive : tabBase), opacity: off ? 0.45 : 1, cursor: off ? "not-allowed" : "pointer" }}
+                >
+                  <Ic name={tb.icon} size={14} /> {tb.label}
+                </button>
+              );
+            })}
           </div>
           {draftCount > 0 && view !== "liste" && (
             <button type="button" data-testid="cal-drafts" onClick={() => setView("liste")} title="Entwürfe sind in der Listen-Ansicht sichtbar" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", color: "var(--gold)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 9, cursor: "pointer" }}>
@@ -420,23 +526,31 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             </button>
           );
         })}
-        <button
-          type="button"
-          data-testid="cal-filter-stream"
-          title="Stream-Events: Alle → nur Stream → ohne Stream"
-          onClick={() => setStreamFilter((s) => (s === "all" ? "only" : s === "only" ? "off" : "all"))}
-          style={streamFilter === "all"
-            ? { ...chipBase, border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)" }
-            : { ...chipBase, border: "1px solid #9146ff", background: "rgba(145,70,255,0.15)", color: "var(--purple)" }}
+        {/* §5: a three-state button whose label keeps changing hides its own state.
+            The same three states as a named choice. */}
+        <span style={streamFilter === "all"
+          ? { ...chipBase, cursor: "default", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)" }
+          : { ...chipBase, cursor: "default", border: "1px solid #9146ff", background: "rgba(145,70,255,0.15)", color: "var(--purple)" }}
         >
           <Ic name="stream" size={13} sw={1.7} />
-          {streamFilter === "only" ? "Nur Stream" : streamFilter === "off" ? "Ohne Stream" : "Stream"}
-        </button>
+          <select
+            data-testid="cal-filter-stream"
+            aria-label="Stream-Events"
+            value={streamFilter}
+            onChange={(e) => setStreamFilter(e.target.value as "all" | "only" | "off")}
+            style={{ border: "none", background: "transparent", color: "inherit", font: "inherit", cursor: "pointer", outline: "none" }}
+          >
+            <option value="all">Alle</option>
+            <option value="only">Nur Streams</option>
+            <option value="off">Ohne Streams</option>
+          </select>
+        </span>
         {!isMonat && (
           <button
             type="button"
             data-testid="cal-toggle-past"
-            onClick={() => setShowPast((v) => !v)}
+            aria-pressed={showPast}
+            onClick={() => setShowPast(!showPast)}
             style={{
               ...chipBase,
               marginLeft: "auto",
@@ -451,6 +565,12 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         )}
       </div>
 
+      <div role="tabpanel" id="op-view-panel" aria-labelledby={`op-view-tab-${view}`} tabIndex={-1}>
+      {mobile && view === "monat" && (
+        <p data-testid="cal-mobile-note" style={{ margin: "0 0 1rem", padding: "0.6rem 0.8rem", border: "1px solid var(--border)", borderRadius: 9, background: "var(--wash)", color: "var(--dim)", fontSize: "0.82rem", lineHeight: 1.45 }}>
+          Der Monatskalender braucht mehr Breite als dieser Bildschirm hat — unten steht die Agenda desselben Monats.
+        </p>
+      )}
       {ops === null ? (
         <div className="fpw-state"><span style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "var(--dim)" }}>LADE OPERATIONEN…</span></div>
       ) : isListe ? (
@@ -461,12 +581,13 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
             .filter((o) => showPast || new Date(o.scheduledAt).getTime() >= now.getTime())
             .slice()
             .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+          const anyPast = ops.some((o) => o.status !== "draft" && new Date(o.scheduledAt).getTime() < now.getTime());
           return list.length === 0 ? (
-            <p className="fpw-meta" style={{ color: "var(--dim)" }}>Keine Operationen.</p>
+            emptyState("Keine Operationen in dieser Auswahl.", anyPast)
           ) : (
             <div className="fpw-grid" data-testid="op-grid">
               {list.map((op) => (
-                <Link key={op.id} to={`/ops/${op.id}`} className="fpw-card fpw-cardlink" data-testid="op-card">
+                <ObjectTile key={op.id} to={`/ops/${op.id}`} testid="op-card" ariaLabel={op.title}>
                   <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.6rem" }}>
                     <span className="fpw-tag green"><span className="fpw-dot" />{op.status}</span>
                     <span className="fpw-tag cyan">{op.visibility}</span>
@@ -519,7 +640,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
                       Discord
                     </button>
                   )}
-                </Link>
+                </ObjectTile>
               ))}
             </div>
           );
@@ -613,16 +734,12 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
         <div style={mobile ? { display: "flex", flexDirection: "column", gap: "1.1rem" } : { display: "flex", gap: "1.3rem", alignItems: "flex-start" }}>
           <div style={mobile ? { width: "100%", minWidth: 0 } : { flex: "1 1 0", minWidth: 0 }}>
             {agenda.length === 0 ? (
-              <div style={{ padding: "3rem 1rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.92rem", border: "1px dashed var(--wash)", borderRadius: 12 }}>
-                {!showPast && hasPast ? (
-                  <>
-                    Keine anstehenden Operationen in diesem Monat.{" "}
-                    <button type="button" data-testid="cal-show-past-inline" onClick={() => setShowPast(true)} style={{ background: "none", border: "none", color: "var(--cyan)", cursor: "pointer", font: "inherit", textDecoration: "underline", padding: 0 }}>Vergangene anzeigen</button>.
-                  </>
-                ) : (
-                  "Keine Operationen in diesem Monat — wähle einen anderen Monat oder lockere den Filter."
-                )}
-              </div>
+              emptyState(
+                !showPast && hasPast
+                  ? "Keine anstehenden Operationen in diesem Monat."
+                  : "Keine Operationen in diesem Monat — wähle einen anderen Monat oder lockere den Filter.",
+                hasPast,
+              )
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "1.3rem" }}>
                 {agenda.map((g) => (
@@ -641,6 +758,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
           <aside style={mobile ? { width: "100%" } : { flex: "0 0 326px", maxWidth: "100%", position: "sticky", top: 84, alignSelf: "flex-start" }}>{statsCard(false)}</aside>
         </div>
       )}
+      </div>
     </div>
   );
 }

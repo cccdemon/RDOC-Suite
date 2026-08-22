@@ -1,7 +1,8 @@
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import { DocPage } from "./DocPage";
-import { MONO } from "../components/ui";
+import { LinkTabs } from "../components/ui";
 import { useSeo } from "../seo";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 // IA merge B: license/imprint/privacy move out of the primary nav into a
 // footer-level "Rechtliches" page. Same /api/v1/content/:slug source.
@@ -19,25 +20,17 @@ export function RechtlichesPage() {
 
   return (
     <div data-testid="rechtliches-page" style={{ width: "100%" }}>
-      <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", borderBottom: "1px solid var(--border)", marginBottom: "1.4rem", paddingBottom: "0.2rem" }}>
-        {SECTIONS.map((s) => (
-          <Link
-            key={s.key}
-            to={`/rechtliches/${s.key}`}
-            data-testid={`rechtliches-sec-${s.key}`}
-            style={{
-              display: "inline-flex", alignItems: "center", padding: "0.5rem 0.9rem",
-              fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 0,
-              textDecoration: "none", borderBottom: "2px solid transparent",
-              color: s.key === active.key ? "var(--cyan)" : "var(--dim)",
-              borderBottomColor: s.key === active.key ? "var(--cyan)" : "transparent",
-            }}
-          >
-            {s.label}
-          </Link>
-        ))}
+      <Breadcrumbs items={[{ label: "Rechtliches", to: "/rechtliches" }, { label: active.label }]} />
+      <LinkTabs
+        ariaLabel="Rechtliche Dokumente"
+        panelId="rechtliches-panel"
+        activeKey={active.key}
+        testid={(k) => `rechtliches-sec-${k}`}
+        items={SECTIONS.map((x) => ({ key: x.key, label: x.label, to: `/rechtliches/${x.key}` }))}
+      />
+      <div role="tabpanel" id="rechtliches-panel" aria-labelledby={`rechtliches-panel-tab-${active.key}`} tabIndex={-1}>
+        <DocPage slug={active.slug} />
       </div>
-      <DocPage slug={active.slug} />
     </div>
   );
 }

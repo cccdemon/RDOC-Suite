@@ -14,6 +14,8 @@ import type { PollDetail, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { visibilityTag } from "./PollsPage";
 import { useT } from "../i18n";
+import { Breadcrumbs } from "../components/Breadcrumbs";
+import { DangerZone } from "../components/ui";
 
 const MONO = "var(--mono)";
 type ResultsVis = "always" | "after_vote" | "after_close";
@@ -155,11 +157,9 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
 
   return (
     <div data-testid="poll-detail-page" style={{ width: "100%", maxWidth: 760 }}>
-      <button onClick={() => nav("/polls")} className="fpw-btn" style={{ fontSize: "0.72rem", padding: "0.4rem 0.7rem", marginBottom: "1rem", borderColor: "var(--border-hi)", color: "var(--dim)", background: "transparent" }}>
-        <Ic name="back" size={13} /> Alle Umfragen
-      </button>
+      <Breadcrumbs items={[{ label: "Umfragen", to: "/polls" }, { label: poll.title }]} />
 
-      <div className="fpw-card">
+      <div className="fpw-card" data-card="work">
         <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.7rem" }}>
           {poll.status === "open" ? (
             <Tag label="Offen" color="var(--green)" bg="var(--tint-green)" bd="var(--edge-green)" />
@@ -276,7 +276,7 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
 
       {/* ── manager controls ── */}
       {poll.canManage && (
-        <div className="fpw-card" style={{ marginTop: "1rem" }}>
+        <div className="fpw-card" data-card="work" style={{ marginTop: "1rem" }}>
           <div style={{ fontFamily: MONO, fontSize: "0.64rem", letterSpacing: "0.1em", color: "var(--dim)", textTransform: "uppercase", marginBottom: "0.7rem" }}>Verwaltung</div>
 
           {edit ? (
@@ -292,16 +292,24 @@ export function PollDetailPage({ session }: { session: SessionResponse | null })
                     <Ic name="lock" size={13} /> Umfrage schließen
                   </button>
                 )}
-                <button
-                  data-testid="poll-delete"
-                  onClick={() => { if (window.confirm("Umfrage wirklich löschen? Das kann nicht rückgängig gemacht werden.")) void run(async () => { await deletePoll(poll.id, csrf!); nav("/polls"); }); }}
-                  disabled={busy}
-                  className="fpw-btn"
-                  style={{ borderColor: "var(--edge-red)", background: "var(--tint-red)", color: "var(--red2)" }}
-                >
-                  <Ic name="x" size={13} /> Löschen
-                </button>
               </div>
+              <DangerZone
+                testid="poll-danger-zone"
+                description="Eine gelöschte Umfrage ist samt aller Stimmen weg — das lässt sich nicht rückgängig machen."
+                style={{ marginTop: "0.9rem" }}
+              >
+                <div>
+                  <button
+                    data-testid="poll-delete"
+                    onClick={() => { if (window.confirm("Umfrage wirklich löschen? Das kann nicht rückgängig gemacht werden.")) void run(async () => { await deletePoll(poll.id, csrf!); nav("/polls"); }); }}
+                    disabled={busy}
+                    className="fpw-btn"
+                    style={{ borderColor: "var(--edge-red)", background: "var(--tint-red)", color: "var(--red2)" }}
+                  >
+                    <Ic name="x" size={13} /> Umfrage löschen
+                  </button>
+                </div>
+              </DangerZone>
               {poll.totalVotes > 0 && (
                 <p className="fpw-meta" style={{ fontSize: "0.82rem", marginTop: "0.7rem" }}>
                   Bearbeiten ist nicht mehr möglich — es wurden bereits Stimmen abgegeben. Du kannst die Umfrage nur noch schließen oder löschen.

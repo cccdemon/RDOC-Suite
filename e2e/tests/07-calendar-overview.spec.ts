@@ -81,6 +81,51 @@ test("month navigation, filters and past toggle keep the view stable", async () 
   }
 });
 
+test("view, filters, month and day survive reload and Back", async () => {
+  await pg.goto("./?view=liste");
+  await expect(pg.getByTestId("op-grid")).toBeVisible({ timeout: 10_000 });
+
+  // Every filter dimension lands in the URL (UI audit 5).
+  await pg.getByTestId("cal-filter-combat").click();
+  await expect(pg).toHaveURL(/typ=combat/);
+  await pg.getByTestId("cal-filter-stream").selectOption("only");
+  await expect(pg).toHaveURL(/stream=only/);
+  await pg.getByTestId("cal-toggle-past").click();
+  await expect(pg).toHaveURL(/past=1/);
+
+  // A reload reproduces the same screen from the URL alone.
+  await pg.reload();
+  await expect(pg.getByTestId("calendar-page")).toBeVisible({ timeout: 10_000 });
+  await expect(pg.getByTestId("cal-filter-stream")).toHaveValue("only");
+  await expect(pg.getByTestId("cal-toggle-past")).toHaveAttribute("aria-pressed", "true");
+
+  // Switching the view is navigation, so Back undoes it.
+  await pg.getByTestId("cal-view-agenda").click();
+  await expect(pg).toHaveURL(/view=agenda/);
+  await pg.goBack();
+  await expect(pg).toHaveURL(/view=liste/);
+
+  // The month view addresses its month and its selected day.
+  await pg.goto("./?view=kalender");
+  await pg.getByTestId("cal-next").click();
+  await expect(pg).toHaveURL(/m=\d{4}-\d{2}/);
+  await pg.locator('[data-testid^="cal-day-"]').nth(3).click();
+  await expect(pg).toHaveURL(/d=\d+/);
+});
+
+test("the view switch is a keyboard-operable tablist", async () => {
+  await pg.goto("./?view=liste");
+  await expect(pg.getByTestId("op-view-tabs")).toHaveAttribute("role", "tablist");
+  const liste = pg.getByTestId("op-view-liste");
+  await expect(liste).toHaveAttribute("aria-selected", "true");
+  await expect(liste).toHaveAttribute("aria-controls", "op-view-panel");
+  await liste.focus();
+  await pg.keyboard.press("ArrowRight");
+  await expect(pg).toHaveURL(/view=kalender/);
+  await pg.keyboard.press("End");
+  await expect(pg).toHaveURL(/view=agenda/);
+});
+
 test("create link routes to the op wizard", async () => {
   await pg.goto("./?view=liste");
   await pg.getByTestId("create-link").first().click();

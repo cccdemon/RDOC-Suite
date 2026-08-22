@@ -232,6 +232,28 @@ a { color: var(--cyan); }
 .fpw-cardlink { display: block; text-decoration: none; color: inherit; transition: border-color 0.15s; }
 .fpw-cardlink:hover { border-color: var(--border-hi); }
 
+/* Card TYPES (UI audit §8). Same frame, different promise — and the promise is
+   readable in the markup via data-card, not guessed from the contents.
+     object → the whole tile opens exactly one target
+     choice → a selection, never navigation
+     info   → says something, does nothing
+     work   → holds its own local actions
+     form   → grouped inputs with their actions at the end
+     danger → destructive, set apart from routine work */
+[data-card="object"] { display: block; text-decoration: none; color: inherit; transition: border-color 0.15s; }
+[data-card="object"]:hover { border-color: var(--border-hi); }
+[data-card="info"] { cursor: default; }
+[data-card="work"] { display: flex; flex-direction: column; gap: 0.7rem; }
+/* An action row at the end of a form section keeps comparable cards aligned. */
+[data-card="form"] > .fpw-form-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.2rem; }
+[data-card="danger"] {
+  border-color: var(--edge-red);
+  background: var(--tint-red);
+  display: flex; flex-direction: column; gap: 0.7rem;
+}
+/* Work cards must not force a viewport wider than the phone (UI audit §12). */
+[data-card="work"], [data-card="form"] { min-width: 0; max-width: 100%; }
+
 .fpw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
 
 /* board lanes: 4 → 2 → 1 (design bundle v2) */
@@ -477,6 +499,18 @@ a { color: var(--cyan); }
 .nav-item.is-active { background: var(--tint-accent); border-color: var(--edge-accent); color: var(--accent); }
 .nav-item.is-active .nav-icon { color: var(--accent); }
 .nav-item .done-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+/* "Neue Operation" is an action, not a destination: same rail geometry, a quiet
+   outline instead of a group slot. Existing tokens only. */
+.nav-action { padding: 0 0 0.55rem; margin-bottom: 0.55rem; border-bottom: 1px solid var(--border); }
+.nav-item-action { border-color: var(--border); color: var(--text); }
+.nav-item-action:hover { background: var(--wash); color: var(--text-hi); }
+/* active-server picker, inside the server group */
+.nav-server-picker { width: 100%; margin-bottom: 0.35rem; font-size: 0.72rem; padding: 0.35rem 0.5rem; }
+/* secondary (developer / legal) links — sidebar foot and drawer foot */
+.nav-foot-links { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; padding: 0 0.25rem; }
+.nav-dev { display: inline-flex; align-items: center; gap: 0.6rem; }
+.nav-dev-link { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: var(--dim2); text-decoration: none; }
+.nav-dev-link:hover { color: var(--text); }
 .sidebar-foot { border-top: 1px solid var(--border); padding: 0.8rem; display: flex; flex-direction: column; gap: 0.6rem; }
 .theme-pick { display: flex; align-items: center; gap: 0.5rem; }
 .theme-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
@@ -486,9 +520,15 @@ a { color: var(--cyan); }
 
 .app-content { flex: 1; min-width: 0; padding: 1.6rem 2rem 5rem; }
 
-/* mobile head (shown < 880px instead of the sidebar) */
+/* mobile head + drawer (shown < 880px instead of the sidebar). The drawer holds
+   the same groups as the rail, so desktop and mobile share one IA. */
 .mobile-head { display: none; align-items: center; gap: 0.8rem; padding: 0.8rem 0 1rem; border-bottom: 1px solid var(--border); margin-bottom: 1.2rem; }
-.mobile-screen-select { display: none; margin-bottom: 1.2rem; }
+.mobile-nav-toggle {
+  display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+  border: 1px solid var(--border); background: transparent; color: var(--dim);
+  border-radius: 7px; padding: 0.35rem; cursor: pointer;
+}
+.mobile-drawer { display: none; border: 1px solid var(--border); border-radius: 10px; background: var(--chrome); padding: 0.8rem 0.7rem; margin-bottom: 1.2rem; }
 
 /* toast */
 .toast { position: fixed; left: 50%; bottom: 1.4rem; transform: translateX(-50%); z-index: 10000; background: var(--bg2); border: 1px solid var(--border-hi); border-radius: 10px; padding: 0.7rem 1.1rem; font-family: var(--mono); font-size: 0.78rem; color: var(--text); }
@@ -511,7 +551,7 @@ a { color: var(--cyan); }
   .sidebar { display: none; }
   .app-content { padding: 1rem clamp(0.8rem, 3vw, 1.4rem) 4rem; }
   .mobile-head { display: flex; }
-  .mobile-screen-select { display: block; }
+  .mobile-drawer { display: block; }
 }
 
 /* Focus ring (BrandGuide §8): visible, brand-coloured, and never only a colour
@@ -519,4 +559,62 @@ a { color: var(--cyan); }
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* Screen-reader-only live region (operator board drag/place announcements). Kept
+   in the layout as a 1px box so assistive tech still reads updates. */
+.fpw-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── responsive: tables, wide work cards, second-level navigation (audit §12) ──
+   The grid "tables" (ship database, org fleet) used to squeeze five columns into
+   a phone width until every one of them was a sliver. They now keep a readable
+   minimum and scroll horizontally inside their own frame, and the column that
+   identifies the row stays put while the rest scrolls past it. */
+.fpw-table {
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+}
+.fpw-table > * { min-width: var(--fpw-table-min, 680px); }
+@media (max-width: 760px) {
+  .fpw-trow > :first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bg2);
+  }
+  .fpw-trow-sub > :first-child { background: var(--bg); }
+}
+
+/* The manual's section list is a second permanent sidebar on the desktop and a
+   content menu above the text on a phone — never a sticky column competing with
+   the header for the same 320 px. */
+@media (max-width: 860px) {
+  .handbuch-nav {
+    position: static !important;
+    top: auto !important;
+    flex: 1 1 100% !important;
+  }
+  .handbuch-nav > nav {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 0.3rem;
+  }
+}
+
+/* No work card may force the page itself to scroll sideways. */
+@media (max-width: 760px) {
+  [data-card], .fpw-card { max-width: 100%; }
 }

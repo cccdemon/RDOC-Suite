@@ -98,6 +98,27 @@ test("operator opens the seat picker and toggles a seat", async () => {
   }
 });
 
+test("a free seat is a keyboard target, the captain seat is marked, Escape cancels", async () => {
+  await op.goto(`ops/${opId}?op=fleet`);
+  const target = op.locator('[data-testid^="op-target-"]').first();
+  await expect(target).toBeVisible({ timeout: 15_000 });
+
+  // §7.3: the same seat a mouse can drop on is reachable by keyboard.
+  await expect(target).toHaveAttribute("tabindex", "0");
+  await expect(target).toHaveAttribute("aria-label", /Sitz /);
+  // §7.4: a captain seat never looks like an ordinary one.
+  await expect(op.locator('[data-testid^="op-seat-captain-"]').first()).toBeVisible();
+
+  // Place mode is the touch/keyboard alternative and Escape gets out of it.
+  const place = op.locator('[data-testid^="op-place-"]').first();
+  if (await place.count()) {
+    await place.click();
+    await expect(op.getByTestId("place-cancel")).toBeVisible();
+    await op.keyboard.press("Escape");
+    await expect(op.getByTestId("place-cancel")).toHaveCount(0);
+  }
+});
+
 test("a non-captain player claims an open crew seat then releases it", async () => {
   // The ship's captain (e2e-shipcaptain) manages their own seats; a *different*
   // player claims the open Gunner seat.

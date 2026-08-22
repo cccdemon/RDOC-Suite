@@ -157,7 +157,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
       )}
       {notice && <p className="fpw-tag gold" role="alert" data-testid="profile-notice" style={{ display: "inline-flex", marginBottom: "1rem" }}>{notice}</p>}
 
-      <section className="fpw-card" style={{ marginBottom: "1.2rem" }}>
+      <section className="fpw-card" data-card="work" style={{ marginBottom: "1.2rem" }}>
         <div style={label}>MEIN HANGAR</div>
         {hangar === null ? (
           <p className="fpw-meta">Lade Hangar…</p>
@@ -190,7 +190,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
         )}
       </section>
 
-      <section className="fpw-card">
+      <section className="fpw-card" data-card="form">
         <div style={label}>SCHIFF HINZUFÜGEN</div>
         <input
           type="search"
@@ -219,7 +219,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
         )}
       </section>
 
-      <section className="fpw-card" style={{ marginTop: "1.2rem" }} data-testid="fleetyards-import">
+      <section className="fpw-card" data-card="form" style={{ marginTop: "1.2rem" }} data-testid="fleetyards-import">
         <div style={label}>FLOTTE VON FLEETYARDS IMPORTIEREN</div>
         <p className="fpw-meta" style={{ margin: "0 0 0.7rem", fontSize: "0.85rem" }}>
           Dein <a href="https://fleetyards.net/" target="_blank" rel="noreferrer noopener">Fleetyards.net</a>-Benutzername
@@ -259,7 +259,7 @@ export function ProfilePage({ session }: { session: SessionResponse | null }) {
         )}
       </section>
 
-      <section className="fpw-card" style={{ marginTop: "1.2rem" }} data-testid="fleet-import">
+      <section className="fpw-card" data-card="form" style={{ marginTop: "1.2rem" }} data-testid="fleet-import">
         <div style={label}>FLOTTE IMPORTIEREN</div>
         <p className="fpw-meta" style={{ margin: "0 0 0.7rem", fontSize: "0.85rem" }}>
           CCU-Game-Flotten-Export (JSON) einfügen — passende Schiffe landen automatisch im Hangar.

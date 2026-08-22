@@ -7,6 +7,158 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Kartentypen und Responsive (UI-Audit Schritte 6 + 9, 2026-08-22)
+
+**Kartentypen.** `fpw-card` war Sammelbegriff fuer sechs verschiedene Erwartungen. Neue
+Bausteine in [components/ui.tsx](apps/fleetplanner-web/src/components/ui.tsx) — `ObjectTile`,
+`ChoiceTile`, `InfoCard`, `WorkCard`, `FormSection`, `DangerZone` — plus die zugehoerigen
+CSS-Regeln in `styles.css`. Jede Karte traegt jetzt ein `data-card`-Attribut, der Typ ist damit
+im DOM, im Test und im Review sichtbar statt aus dem Inhalt geraten.
+
+- **Objektkachel**: Operations- und Umfragekacheln sind `ObjectTile` — genau ein Primaerziel,
+  keine verschachtelten Links, Sekundaeraktionen wie der Discord-Knopf navigieren nicht mit.
+- **Auswahlkachel**: Missionstyp, Sichtbarkeit und Schiffsbedarf im Wizard sowie Typ und
+  Sichtbarkeit im Eckdaten-Formular sind `ChoiceTile` mit `aria-pressed` — vorher war der
+  Auswahlzustand nur Farbe.
+- **Gefahrenbereich**: "Umfrage loeschen" stand zwischen "Bearbeiten" und "Schliessen" und ist
+  jetzt eine eigene `DangerZone`; die bestehende Gefahrenzone im Eckdaten-Formular ist als
+  solche typisiert (`op-danger-zone`).
+- Info-, Arbeits- und Formularkarten in Roadmap, Vorlagen, Bedarfen, Partnerschaften, Profil,
+  Server-Einstellungen, Feedback und Umfragen sind typisiert; ihr Markup bleibt unveraendert,
+  damit die Migration nichts umstylt.
+
+**Responsive.**
+
+- Die Grid-"Tabellen" (Schiffsdatenbank, Org-Flotte nach Schiff und nach Mitglied) quetschten
+  fuenf Spalten in eine Handybreite. Sie behalten jetzt eine lesbare Mindestbreite und scrollen
+  horizontal **im eigenen Rahmen** (`.fpw-table`); die identifizierende erste Spalte bleibt
+  unter 760 px stehen (`.fpw-trow`). Die Seite selbst scrollt nicht mehr seitlich.
+- Die Handbuch-Sektionsliste ist unter 860 px kein sticky Zweit-Sidebar mehr, sondern ein
+  Inhaltsmenue ueber dem Text — sie kann den mobilen Header nicht mehr ueberdecken.
+- Karten bekommen `max-width: 100%`, damit keine Arbeitskarte den Viewport aufzieht.
+
+Tests: neue `src/test/cards.test.tsx` (6), erweiterte `e2e/tests/03-surfaces.spec.ts`
+(schmaler Viewport: Tabelle scrollt, Seite nicht; Handbuch-Menue ist kein Sidebar mehr).
+
+### Changed - Ansichts-URL und Tab-Semantik (UI-Audit Schritt 4-Rest, 2026-08-22)
+
+**Operationsuebersicht** ([CalendarPage.tsx](apps/fleetplanner-web/src/pages/CalendarPage.tsx))
+
+- Jede Ansichtsdimension steht in der URL: `view`, `typ`, `stream`, `past`, `m` (`YYYY-MM`) und
+  `d`. Kein lokaler Zustand mehr fuer Filter, Monat oder ausgewaehlten Tag — Reload, Deep Link
+  und Browser-Zurueck ergeben dieselbe Seite. Ansichtswechsel pusht jetzt (statt `replace`),
+  Tagauswahl ersetzt.
+- Der Ansichtsschalter ist ein echter Tablist: `role="tablist"`/`role="tab"`, `aria-selected`,
+  `aria-controls` auf ein `role="tabpanel"`, Roving-Tabindex, Pfeiltasten plus Home/End.
+- "Kalender" wird auf schmalen Bildschirmen sichtbar deaktiviert und begruendet; wer per URL
+  trotzdem im Monat landet, bekommt einen Hinweis statt einer stillen Umwandlung in die Agenda.
+- Streamfilter ist eine benannte Auswahl (Alle / Nur Streams / Ohne Streams) statt eines
+  Drei-Zustands-Knopfs mit wechselnder Beschriftung.
+- Leerer Zustand nennt die aktiven Filter und bietet "Filter zuruecksetzen" beziehungsweise
+  "Vergangene anzeigen" — in Liste und Agenda derselbe Baustein.
+
+**Tab-Semantik ueberall gleich**
+
+- Neue Komponente `LinkTabs` ([components/ui.tsx](apps/fleetplanner-web/src/components/ui.tsx)):
+  URL-Tabs als Links mit vollstaendiger Tab-Semantik und Pfeiltasten-Navigation. Konto und
+  Rechtliches benutzen sie; beide bekommen ein `role="tabpanel"`.
+- Operator-Konsole: beide Ebenen (Arbeitsbereich + Unter-Tab) haben jetzt `aria-controls`,
+  Roving-Tabindex und Pfeiltasten; das Inhaltsfeld ist das zugehoerige Panel.
+- Handbuch-Seitennavigation markiert den aktiven Eintrag zusaetzlich mit `aria-current="page"`.
+
+**Testsuite gruen gemacht.** Die 6 roten Tests in `app.test.tsx` stammten aus der IA-Arbeit vom
+2026-08-21: das geteilte Fixture-Datum war inzwischen Vergangenheit (Liste und Agenda blenden es
+aus), jsdom meldet `navigator.language = "en-US"` gegen eine deutschsprachige Suite, eine
+anstehende Einheit steht seit der Konsolen-Einbettung absichtlich zweimal im DOM, und
+`stopSeries()` fragt ein `window.confirm`, das jsdom nicht beantwortet. Fixture relativ,
+Locale im Setup gepinnt, `findAllByText`, `confirm` gestubbt.
+
+Tests: neue `src/test/ops-views.test.tsx` (11), erweiterte
+`e2e/tests/07-calendar-overview.spec.ts`.
+
+### Changed - Drag-and-drop und Erstellungsflow (UI-Audit P0, 2026-08-22)
+
+Umsetzung der Schritte 7 und 8 aus `docs/UI-UX-FUNKTIONS-AUDIT-CLAUDE-OPUS.md`. Nur
+Interaktionslogik — keine neuen Farben, Klassen oder Tokens.
+
+**Board: Crew-zu-Sitz** (`components/OperatorPanel.tsx`)
+
+- Vollstaendiges Zustandsmodell (Audit 7.2): Griff-Affordanz und Hinweistext im Panel
+  "Flexibel"; beim Ziehen sind nur gueltige Ziele markiert; ueber einem gueltigen Ziel steht
+  "<Person> auf <Sitz> setzen"; ein Sitz mit laufender Zuweisung ist gesperrt (`pendingSeats`)
+  und zeigt "SPEICHERT…"; Erfolg, Fehler und Abbruch werden gemeldet.
+- Ungueltige Ziele erklaeren sich: belegt / deaktiviert / speichert gerade — als `title`, als
+  `aria-label` und beim Klick in der Live-Region. Kein stiller `return` mehr.
+- Fehler rollt optimistisch zurueck, meldet global **und** direkt am Sitz
+  (`op-seat-error-<id>`), und holt die Operator-Sicht neu.
+- Pflichtalternativen (7.3): freie Sitze sind `role="button"` mit `tabIndex=0`, Enter/Space
+  setzt, Escape bricht Platzier-, Drag- und Picker-Modus ab; eine `aria-live`-Region
+  (`board-live`) meldet jeden Zustandswechsel; Touch nutzt den Auswahlmodus.
+- Gruppierungsregeln (7.4): Kapitaenssitze sind als solche markiert (`op-seat-captain-<id>`),
+  Partner-Herkunft steht jetzt auch an der Flexibel-Liste, und wer schon einen Sitz hat, wird
+  als "BEREITS EINGETEILT" gefuehrt — die Aktion heisst dann "Zusaetzlich".
+- Erfolgreich eingeteilte Personen verschwinden sofort aus "Flexibel".
+- Unveraendert: anstehende Einheiten bleiben ueber "Annehmen" (Audit 7.1), keine neuen Drops.
+
+**Erstellungsflow** (`pages/WizardPage.tsx`)
+
+- "Weiter" validiert die Stufe, fokussiert das erste fehlende Pflichtfeld und begruendet den
+  Stopp; Rail-Spruenge nur zu erreichbaren Stufen (`aria-disabled` + Grund).
+- Zusammenfassung und Pruefen-Liste sind Ruecksprungpunkte; "Prüfen" zeigt jetzt auch das
+  Briefing.
+- Verlustschutz: Entwurf in `localStorage` (`fpw.wizard.draft.v1`) mit
+  Wiederherstellen-Hinweis und "Verwerfen", plus `beforeunload`-Warnung. Partner-Ziele werden
+  bewusst nicht gespeichert (sie haengen an der Guild).
+- Nach dem Erstellen zwei benannte Wege: "Zur Operation" oder "Cover & Freigabe ergaenzen" —
+  die Nachbearbeitungs-Panels erscheinen erst nach der Wahl.
+- Schrittnamen nach Nutzerziel: Eckdaten / Briefing / Treffpunkt & Freigabe / Bedarf /
+  Pruefen / Erstellen & Teilen.
+
+Tests: neue `apps/fleetplanner-web/src/test/board-dnd.test.tsx` (10) und
+`src/test/wizard.test.tsx` (9); `e2e/tests/13-wizard-full.spec.ts` und
+`e2e/tests/21-board.spec.ts` erweitert. `.fpw-sr-only` in `styles.css` fuer die Live-Region.
+
+### Changed - Informationsarchitektur und Menuefuehrung (2026-08-21)
+
+Nur Struktur, kein Brandkit: die Navigation benutzt weiterhin ausschliesslich die bestehenden
+Klassen und Farbtokens.
+
+- **"Neue Operation" ist eine Aktion**, kein Hauptmenuepunkt mehr (`PRIMARY_ACTION` in
+  `apps/fleetplanner-web/src/nav.ts`), sichtbar ueber den Gruppen und weiterhin nur fuer angemeldete
+  Nutzer.
+- **Jede `/ops/*`-Route markiert "Operationen"** — `NavItem.match` plus `bestMatch()` statt reinem
+  Prefixvergleich. `/calendar` gehoert ebenfalls dazu.
+- **Mobile Navigation = Desktop-Navigation.** Das flache `<select>` ist weg; ein Drawer zeigt
+  dieselben Gruppen, Gates und die Aktion (`MobileNav` in `components/Sidebar.tsx`).
+- **Persistenter Serverkontext** (`src/serverContext.tsx`): aktive Guild in `localStorage` und in
+  der URL (`?guild=`), Picker in der Server-Gruppe, `useGuildSelection()` in Org-Flotte,
+  Server-Einstellungen, Partnerschaften und Diagnose. Ein `?guild=`-Deeplink gewinnt immer.
+- **Feedback** ist Hilfe statt zweiter Konto-Eintrag; **API-Doku** ist aus der Primaernavigation in
+  den Entwickler-/Footer-Bereich der Sidebar gewandert; **Vorlagen** (`/templates`) stehen jetzt
+  sichtbar unter "Operationen".
+- **Operator-Konsole: 9 Tabs → 4 Arbeitsbereiche** (Flotte / Planung / Kommunikation / Verwaltung)
+  mit Unter-Tabs. Der aktive Tab steht in der URL (`?op=<tab>`, Push) — Reload, Deep Link und
+  Browser-Zurueck funktionieren. Alte `?op=`-Links, `overview`/`needs` und Bereichsnamen loesen
+  weiterhin auf.
+- **Praezisere Labels**: "Discord-Server", "Server-Einstellungen", "Schiffsdatenbank".
+- **Breadcrumbs** auf Detail- und Unterseiten (Operation, Wizard, Vorlagen, Umfragen, die vier
+  Serverseiten, Konto, Handbuch, Rechtliches, API-Doku, System) — der Zurueck-Knopf der
+  Umfragen-Detailseite ist darin aufgegangen.
+- Rollenabhaengige Sichtbarkeit ist jetzt Teil des Nav-Modells: Server-Verwaltung erscheint nur,
+  wenn der Nutzer irgendwo Fleetoperator ist (die serverseitigen Pruefungen bleiben unveraendert).
+
+Tests: neue `apps/fleetplanner-web/src/test/nav.test.tsx` (aktive Menuepunkte, Rollen-Gates,
+Serverkontext, Mobile-Drawer, URL-Tabs); `e2e/tests/06-operator-console.spec.ts` und
+`e2e/tests/16-anon-docs-nav.spec.ts` decken Arbeitsbereiche, Reload/Zurueck und die Mobile-Navigation
+ab.
+
+### Added - SPA-Unit-Tests laufen jetzt auch in Docker (2026-08-22)
+
+`./scripts/test-stack.sh unit` baute nur das Backend-Workspace; die Vitest-Suite der SPA lief
+ausschliesslich mit einem gesunden lokalen pnpm-Store. Neu: `tests/Dockerfile.web-unit`, der
+Compose-Service `web-unit-tests` und das Target `./scripts/test-stack.sh unit:web` (auch Teil von
+`all`), dokumentiert in `docs/TESTING.md`.
+
 ### Changed - Voice-App heisst jetzt Subraum (2026-08-13)
 
 "RDOC SquadLink" heisst **Subraum** (subraum.cc). Umbenannt wurde ueberall, wo der Name sichtbar

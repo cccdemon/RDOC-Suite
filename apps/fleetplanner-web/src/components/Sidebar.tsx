@@ -1,25 +1,22 @@
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { logout } from "../api/client";
 import type { SessionResponse } from "../api/types";
-import { NAV_GROUPS, isVisible, visibleItems, type NavItem, type Perspective } from "../nav";
+import {
+  DEVELOPER_LINKS,
+  PRIMARY_ACTION,
+  bestMatch,
+  isVisible,
+  navHref,
+  visibleGroups,
+  type NavItem,
+  type Perspective,
+} from "../nav";
+import { useServerContext } from "../serverContext";
 import { THEMES, type Theme } from "../theme";
 import { Ic } from "./Icons";
 import { Avatar } from "./Avatar";
 import { useT } from "../i18n";
-
-// The active nav item = the longest `to` that equals the path or is a path
-// prefix. This keeps deep routes like /handbuch/roadmap highlighting "Handbuch"
-// without also lighting up shorter siblings (e.g. /guilds vs /guilds/settings).
-function bestMatch(pathname: string): string {
-  let best = "";
-  for (const g of NAV_GROUPS) {
-    for (const it of g.items) {
-      const hit = it.to === "/" ? pathname === "/" : pathname === it.to || pathname.startsWith(it.to + "/");
-      if (hit && it.to.length > best.length) best = it.to;
-    }
-  }
-  return best;
-}
 
 function perspectiveOf(session: SessionResponse | null): Perspective | null {
   const r = session?.user?.role;
@@ -117,80 +114,194 @@ function Brand() {
   );
 }
 
-export function Sidebar({ session, theme, setThemeId }: { session: SessionResponse | null; theme: Theme; setThemeId: (id: string) => void }) {
-  const t = useT();
-  const { pathname } = useLocation();
-  const perspective = perspectiveOf(session);
-  const best = bestMatch(pathname);
 
-  return (
-    <aside className="sidebar">
-      <Brand />
-      <nav className="sidebar-nav">
-        {NAV_GROUPS.map((g) => {
-          const items = g.items.filter((it) => isVisible(it, perspective));
-          if (items.length === 0) return null;
-          return (
-            <div className="nav-group" key={g.labelKey}>
-              <div className="nav-group-label">{t(g.labelKey)}</div>
-              {items.map((it) => (
-                <NavLinkItem key={it.to} item={it} active={it.to === best} />
-              ))}
-            </div>
-          );
-        })}
-      </nav>
-      <div className="sidebar-foot">
-        <ThemePicker theme={theme} setThemeId={setThemeId} />
-        <Link to="/rechtliches" data-testid="footer-legal" style={{ fontFamily: "var(--mono)", fontSize: "0.6rem", letterSpacing: "0.06em", color: "var(--dim2)", textDecoration: "none", padding: "0 0.25rem" }}>
-          {t("sidebar.legal")}
-        </Link>
-        <UserChip session={session} />
-      </div>
-    </aside>
-  );
-}
+// ── One nav model, two shells ────────────────────────────────────────────────
+// Desktop rail and mobile drawer render the SAME groups through the SAME gates
+// (IA goal 3). The only difference is the wrapper and the testid prefix.
 
-function NavLinkItem({ item, active }: { item: NavItem; active: boolean }) {
+function NavLinkItem({
+  item,
+  active,
+  href,
+  prefix,
+  onNavigate,
+}: {
+  item: NavItem;
+  active: boolean;
+  href: string;
+  prefix: string;
+  onNavigate?: () => void;
+}) {
   const t = useT();
   return (
-    <Link to={item.to} className={`nav-item${active ? " is-active" : ""}`} data-testid={`nav-${item.to}`}>
+    <Link
+      to={href}
+      onClick={onNavigate}
+      className={`nav-item${active ? " is-active" : ""}`}
+      aria-current={active ? "page" : undefined}
+      data-testid={`${prefix}${item.to}`}
+    >
       <span className="nav-icon"><Ic name={item.icon} size={15} sw={1.6} /></span>
       <span className="nav-label">{t(item.labelKey)}</span>
     </Link>
   );
 }
 
-// Shown < 880px instead of the sidebar: brand + theme + avatar, plus a full-width
-// screen <select> to jump between top-level views.
+// The active server, right above the screens that belong to it — so "Org-Flotte"
+// and "Server-Einstellungen" are never ambiguous about *which* server (goal 4).
+function ServerPicker({ prefix }: { prefix: string }) {
+  const t = useT();
+  const { memberships, activeGuildId, setActiveGuildId } = useServerContext();
+  if (memberships.length === 0) return null;
+  return (
+    <select
+      className="select nav-server-picker"
+      data-testid={`${prefix}server-picker`}
+      value={activeGuildId ?? ""}
+      onChange={(e) => setActiveGuildId(e.target.value)}
+      aria-label={t("nav.serverContextAria")}
+    >
+      {memberships.map((m) => (
+        <option key={m.guildId} value={m.guildId}>{m.guildName}</option>
+      ))}
+    </select>
+  );
+}
+
+function NavTree({
+  session,
+  prefix,
+  onNavigate,
+}: {
+  session: SessionResponse | null;
+  prefix: string;
+  onNavigate?: () => void;
+}) {
+  const t = useT();
+  const { pathname } = useLocation();
+  const { access, activeGuildId } = useServerContext();
+  const perspective = perspectiveOf(session);
+  const best = bestMatch(pathname);
+  const groups = visibleGroups(perspective, access);
+
+  return (
+    <>
+      {isVisible(PRIMARY_ACTION, perspective, access) && (
+        <div className="nav-action">
+          <Link
+            to={PRIMARY_ACTION.to}
+            onClick={onNavigate}
+            className="nav-item nav-item-action"
+            data-testid={`${prefix}${PRIMARY_ACTION.to}`}
+          >
+            <span className="nav-icon"><Ic name={PRIMARY_ACTION.icon} size={15} sw={1.9} /></span>
+            <span className="nav-label">{t(PRIMARY_ACTION.labelKey)}</span>
+          </Link>
+        </div>
+      )}
+      {groups.map((g) => (
+        <div className="nav-group" key={g.id} data-testid={`${prefix}group-${g.id}`}>
+          <div className="nav-group-label">{t(g.labelKey)}</div>
+          {g.id === "server" && <ServerPicker prefix={prefix} />}
+          {g.items.map((it) => (
+            <NavLinkItem
+              key={it.to}
+              item={it}
+              href={navHref(it, activeGuildId)}
+              active={it.to === best}
+              prefix={prefix}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+// Developer surface — API docs left the primary navigation (IA goal 6).
+function DeveloperLinks({ prefix, onNavigate }: { prefix: string; onNavigate?: () => void }) {
+  const t = useT();
+  return (
+    <div className="nav-dev" data-testid={`${prefix}developer`}>
+      {DEVELOPER_LINKS.map((it) => (
+        <Link
+          key={it.to}
+          to={it.to}
+          onClick={onNavigate}
+          data-testid={`${prefix}${it.to}`}
+          className="nav-dev-link"
+        >
+          {t(it.labelKey)}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export function Sidebar({ session, theme, setThemeId }: { session: SessionResponse | null; theme: Theme; setThemeId: (id: string) => void }) {
+  const t = useT();
+  return (
+    <aside className="sidebar">
+      <Brand />
+      <nav className="sidebar-nav" data-testid="sidebar-nav">
+        <NavTree session={session} prefix="nav-" />
+      </nav>
+      <div className="sidebar-foot">
+        <ThemePicker theme={theme} setThemeId={setThemeId} />
+        <div className="nav-foot-links">
+          <DeveloperLinks prefix="nav-" />
+          <Link to="/rechtliches" data-testid="footer-legal" className="nav-dev-link">
+            {t("sidebar.legal")}
+          </Link>
+        </div>
+        <UserChip session={session} />
+      </div>
+    </aside>
+  );
+}
+
+// Shown < 880px instead of the sidebar. The old flat <select> could not express
+// groups, gates or the server context, so it is gone: this is the same tree in a
+// drawer (IA goal 3).
 export function MobileNav({ session, theme, setThemeId }: { session: SessionResponse | null; theme: Theme; setThemeId: (id: string) => void }) {
   const t = useT();
   const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const items = visibleItems(perspectiveOf(session));
-  const best = bestMatch(pathname);
-  const current = items.some((it) => it.to === best) ? best : "";
+  const [open, setOpen] = useState(false);
+
+  // Navigating always closes the drawer — including via browser back.
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   return (
     <>
       <div className="mobile-head">
+        <button
+          type="button"
+          className="nav-icon mobile-nav-toggle"
+          data-testid="mobile-nav-toggle"
+          aria-expanded={open}
+          aria-controls="mobile-nav-drawer"
+          aria-label={t("sidebar.menuAria")}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <Ic name={open ? "back" : "board"} size={16} sw={1.7} />
+        </button>
         <Brand />
         <span style={{ flex: 1 }} />
         <ThemePicker theme={theme} setThemeId={setThemeId} />
         <UserChip session={session} />
       </div>
-      <select
-        className="select mobile-screen-select"
-        data-testid="mobile-screen-select"
-        value={current}
-        onChange={(e) => navigate(e.target.value)}
-        aria-label={t("sidebar.screenAria")}
-      >
-        {!current && <option value="">{t("sidebar.viewPlaceholder")}</option>}
-        {items.map((it) => (
-          <option key={it.to} value={it.to}>{t(it.labelKey)}</option>
-        ))}
-      </select>
+      {open && (
+        <nav id="mobile-nav-drawer" className="mobile-drawer" data-testid="mobile-nav-drawer">
+          <NavTree session={session} prefix="mnav-" onNavigate={() => setOpen(false)} />
+          <div className="nav-foot-links">
+            <DeveloperLinks prefix="mnav-" onNavigate={() => setOpen(false)} />
+            <Link to="/rechtliches" data-testid="mnav-legal" className="nav-dev-link" onClick={() => setOpen(false)}>
+              {t("sidebar.legal")}
+            </Link>
+          </div>
+        </nav>
+      )}
     </>
   );
 }

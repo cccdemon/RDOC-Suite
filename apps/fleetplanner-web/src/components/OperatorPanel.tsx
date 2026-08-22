@@ -101,6 +101,14 @@ export function OperatorPanel({
   const [picker, setPicker] = useState<string | null>(null);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [dragUserId, setDragUserId] = useState<string | null>(null);
+  // Drag/place state model (UI audit §7.2). `dragOverSeat` is the seat the pointer
+  // currently hovers, `pendingSeats` locks a seat while its assignment is in flight,
+  // `seatError` keeps the failure next to the seat that caused it, and `live` feeds
+  // the single polite live region so the flow works without seeing the highlight.
+  const [dragOverSeat, setDragOverSeat] = useState<string | null>(null);
+  const [pendingSeats, setPendingSeats] = useState<Record<string, true>>({});
+  const [seatError, setSeatError] = useState<Record<string, string>>({});
+  const [live, setLive] = useState("");
   const [leaderPick, setLeaderPick] = useState(false);
 
   const [memberFilter, setMemberFilter] = useState("");
@@ -123,6 +131,19 @@ export function OperatorPanel({
   useEffect(reload, [op]); // eslint-disable-line react-hooks/exhaustive-deps
   // Keep the optimistic board copy in sync with server reloads.
   useEffect(() => { setUnits(op.units); }, [op]);
+
+  // §7.2 "Abbruch": Escape leaves place-mode, an active drag and the seat picker in
+  // a clean state — the same key works for mouse, touch and keyboard users.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (!placing && !dragUserId && !picker) return;
+      setPlacing(null); setDragUserId(null); setDragOverSeat(null); setPicker(null);
+      setLive("Einteilen abgebrochen.");
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [placing, dragUserId, picker]);
 
   // People the operator may assign. Comes from the operator view, so a partner
   // event also lists the partner guilds' members — not just the host guild's.
@@ -170,9 +191,37 @@ export function OperatorPanel({
   const mapSeat = (units: FleetUnit[], seatId: string, fn: (s: FleetUnit["seats"][number]) => FleetUnit["seats"][number]) =>
     units.map((u) => ({ ...u, seats: u.seats.map((s) => (s.id === seatId ? fn(s) : s)) }));
 
-  // Assign a user to a seat, optimistically (board action).
-  const assignSeatOptimistic = (seatId: string, userId: string, username: string) =>
-    boardAct(`seat-${seatId}`, (us) => mapSeat(us, seatId, (x) => ({ ...x, claimedBy: { id: userId, username } })), () => assignSeat(op.id, seatId, userId, csrf));
+  // Assign a user to a seat, optimistically. Unlike the generic boardAct this keeps
+  // a per-seat pending lock (§7.2 "Speichern" — no second, conflicting drop while
+  // the first is in flight), announces every transition, and on failure rolls the
+  // board back AND leaves the reason at the seat that produced it.
+  function assignSeatOptimistic(seatId: string, userId: string, username: string, seatLabel?: string) {
+    if (pendingSeats[seatId]) return;
+    const where = seatLabel ? ` auf ${seatLabel}` : "";
+    setPlacing(null); setPicker(null); setDragUserId(null); setDragOverSeat(null);
+    setSeatError((p) => { const n = { ...p }; delete n[seatId]; return n; });
+    setPendingSeats((p) => ({ ...p, [seatId]: true }));
+    setUnits((prev) => mapSeat(prev, seatId, (x) => ({ ...x, claimedBy: { id: userId, username } })));
+    // Seated people are no longer waiting: drop the crew request right away so the
+    // person leaves "Flexibel" with the same click that seats them. CQB-sourced
+    // entries fall out on their own (they key off the seated set). reload() on
+    // error puts the server truth back.
+    setView((v) => (v ? { ...v, crewRequests: v.crewRequests.filter((r) => r.userId !== userId) } : v));
+    setLive(`${username}${where} wird gespeichert…`);
+    assignSeat(op.id, seatId, userId, csrf)
+      .then(() => { touch(`seat-${seatId}`); setLive(`${username}${where} eingeteilt.`); })
+      .catch((e) => {
+        const msg = e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.";
+        fail(`seat-${seatId}`);
+        setSeatError((p) => ({ ...p, [seatId]: msg }));
+        onError(msg);
+        setLive(`Fehler: ${msg}`);
+        setUnits(op.units);
+        reload();
+        onChanged();
+      })
+      .finally(() => setPendingSeats((p) => { const n = { ...p }; delete n[seatId]; return n; }));
+  }
 
 
   const accepted = units.filter((u) => u.status === "accepted");
@@ -267,22 +316,68 @@ export function OperatorPanel({
 
   // ── operator seat row (board): place-mode target / picker / drop target ──
   const opSeatRow = (u: FleetUnit, s: FleetUnit["seats"][number]) => {
-    const isTarget = (!!placing || !!dragUserId) && !s.claimedBy && s.active;
+    // §7.2/§7.4: a seat is only a target when it is free, active and not already
+    // saving. Everything else says WHY instead of swallowing the interaction.
+    const busy = !!pendingSeats[s.id];
+    const err = seatError[s.id];
+    const free = !s.claimedBy && s.active;
+    const isCaptainSeat = s.order === 0;
+    // The "armed" person is whoever is currently being placed — via place-mode
+    // (click / keyboard / touch) or via an active HTML5 drag. Both feed one model.
+    const armed: { userId: string; name: string } | null =
+      placing ?? (dragUserId ? { userId: dragUserId, name: flexPeople.find((r) => r.userId === dragUserId)?.username ?? "Person" } : null);
+    const isTarget = !!armed && free && !busy;
+    const isOver = isTarget && dragOverSeat === s.id;
+    const reason = busy
+      ? "Sitz wird gerade gespeichert"
+      : s.claimedBy
+        ? `Sitz belegt von ${s.claimedBy.username}`
+        : !s.active
+          ? "Sitz ist deaktiviert"
+          : null;
+    // Someone who already holds a seat is not moved by a second drop — that is an
+    // ADDITIONAL assignment, and the target says so instead of pretending otherwise.
+    const extra = !!armed && seatedUserIds.has(armed.userId);
+    const verb = extra ? "zusätzlich einteilen" : "setzen";
+
+    // One activation path for pointer, Enter and Space.
+    const activate = () => {
+      if (reason) { setLive(`${reason}.`); return; }
+      if (placing) assignSeatOptimistic(s.id, placing.userId, placing.name, s.label);
+      else setPicker(picker === s.id ? null : s.id);
+    };
+
     return (
       <div key={s.id} style={{ border: isTarget ? "1px solid var(--edge-green)" : "1px solid var(--wash)", borderRadius: 9, overflow: "hidden", opacity: s.active ? 1 : 0.55, transition: "border-color .12s" }}>
         <div
-          data-testid={!s.claimedBy && s.active ? `op-target-${s.id}` : undefined}
-          onClick={() => {
-            if (s.claimedBy || !s.active) return;
-            if (placing) assignSeatOptimistic(s.id, placing.userId, placing.name);
-            else setPicker(picker === s.id ? null : s.id);
+          data-testid={free ? `op-target-${s.id}` : undefined}
+          role={free ? "button" : undefined}
+          tabIndex={free ? 0 : undefined}
+          aria-disabled={busy || undefined}
+          aria-label={
+            free
+              ? armed
+                ? `${armed.name} auf ${s.label} ${verb}`
+                : `Sitz ${s.label}${isCaptainSeat ? " (Kapitänssitz)" : ""} — Person einteilen`
+              : `Sitz ${s.label} — ${reason ?? "belegt"}`
+          }
+          title={reason ?? (isCaptainSeat ? "Kapitänssitz — wird beim Annehmen der Einheit automatisch besetzt" : undefined)}
+          onClick={activate}
+          onKeyDown={(e) => {
+            if (!free) return;
+            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); activate(); }
           }}
           onDragOver={(e) => {
-            if (!s.claimedBy && s.active && dragUserId) e.preventDefault();
-          }}
-          onDrop={(e) => {
-            if (s.claimedBy || !s.active) return;
+            // No drop cursor over an invalid target (§7.2 "Über ungültigem Ziel").
+            if (!isTarget) return;
             e.preventDefault();
+            if (dragOverSeat !== s.id) setDragOverSeat(s.id);
+          }}
+          onDragLeave={() => { if (dragOverSeat === s.id) setDragOverSeat(null); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOverSeat(null);
+            if (reason) { setLive(`${reason}.`); return; }
             // Only flex persons (CrewAssignmentRequest) drop onto seats. A pending
             // UNIT is a ship/squad whose captain auto-seats in its own seat on accept,
             // so it has no meaningful single-seat target — use "Annehmen" instead.
@@ -290,20 +385,20 @@ export function OperatorPanel({
             if (!uid) { try { uid = e.dataTransfer.getData("text/plain") || null; } catch { uid = null; } }
             if (!uid) return;
             const name = flexPeople.find((r) => r.userId === uid)?.username ?? "—";
-            assignSeatOptimistic(s.id, uid, name);
+            assignSeatOptimistic(s.id, uid, name, s.label);
           }}
           style={{
             display: "flex",
             alignItems: "center",
             gap: "0.7rem",
             padding: "0.55rem 0.65rem",
-            background: "var(--wash)",
+            background: isOver ? "var(--tint-green)" : "var(--wash)",
             minWidth: 0,
-            cursor: s.claimedBy ? "default" : "pointer",
+            cursor: busy ? "progress" : s.claimedBy ? "default" : "pointer",
             boxShadow: isTarget ? "0 0 0 1px var(--edge-green)" : "none",
           }}
         >
-          <span style={{ width: 28, height: 28, borderRadius: 7, background: "var(--bg3)", border: "1px solid var(--wash)", color: "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ width: 28, height: 28, borderRadius: 7, background: "var(--bg3)", border: isCaptainSeat ? "1px solid var(--edge-gold)" : "1px solid var(--wash)", color: isCaptainSeat ? "var(--gold)" : "var(--dim)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Ic name={seatIcon(u, s.order)} size={15} sw={1.6} />
           </span>
           <input
@@ -313,9 +408,12 @@ export function OperatorPanel({
             defaultValue={s.label}
             title="Sitz umbenennen (Enter)"
             onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); }}
+            onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") e.currentTarget.blur(); }}
             onBlur={(e) => { const v = e.currentTarget.value.trim(); if (v && v !== s.label) boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, label: v })), () => patchSeat(op.id, s.id, csrf, { label: v })); }}
           />
+          {isCaptainSeat && (
+            <span data-testid={`op-seat-captain-${s.id}`} title="Kapitänssitz" style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.52rem", letterSpacing: "0.08em", color: "var(--gold)", border: "1px solid var(--edge-gold)", borderRadius: 4, padding: "0.1rem 0.3rem" }}>KPT</span>
+          )}
           <span onClick={(e) => e.stopPropagation()}><SaveDot id={`seat-${s.id}`} /></span>
           {!s.claimedBy && (
             <button type="button" data-testid={`op-seat-toggle-${s.id}`} title={s.active ? "Sitz deaktivieren" : "Sitz aktivieren"} onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, active: !x.active })), () => patchSeat(op.id, s.id, csrf, { active: !s.active })); }} style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", padding: "0.18rem 0.42rem", borderRadius: 5, cursor: "pointer", border: s.active ? "1px solid var(--wash)" : "1px solid var(--edge-green)", background: s.active ? "transparent" : "var(--tint-green)", color: s.active ? "var(--dim2)" : "var(--green)" }}>{s.active ? "AUS" : "AN"}</button>
@@ -324,24 +422,32 @@ export function OperatorPanel({
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexShrink: 0 }}>
               <Avatar name={s.claimedBy.username} />
               <span style={{ fontSize: "0.8rem", color: "var(--text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "6.5rem" }}>{s.claimedBy.username}</span>
-              {s.order !== 0 && (
+              {busy && <span data-testid={`op-seat-pending-${s.id}`} style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", color: "var(--dim2)" }}>SPEICHERT…</span>}
+              {!busy && s.order !== 0 && (
                 <button type="button" data-testid={`op-free-${s.id}`} title="Platz freigeben" onClick={(e) => { e.stopPropagation(); boardAct(`seat-${s.id}`, (us) => mapSeat(us, s.id, (x) => ({ ...x, claimedBy: null })), () => unassignSeat(op.id, s.id, csrf)); }} style={{ flexShrink: 0, width: 21, height: 21, borderRadius: 6, border: "1px solid var(--wash)", background: "transparent", color: "var(--dim2)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                   <Ic name="x" size={11} sw={2} />
                 </button>
               )}
             </div>
-          ) : isTarget ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "var(--green)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.05em" }}>HIER <Ic name="arrow" size={13} sw={1.9} /></span>
+          ) : isOver && armed ? (
+            <span data-testid={`op-drop-hint-${s.id}`} style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "var(--green)", fontFamily: MONO, fontSize: "0.63rem", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{armed.name} auf {s.label} {verb} <Ic name="arrow" size={13} sw={1.9} /></span>
+          ) : isTarget && armed ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "var(--green)", fontFamily: MONO, fontSize: "0.63rem", letterSpacing: "0.02em", whiteSpace: "nowrap" }}>{extra ? "zusätzlich" : "hier"} <Ic name="arrow" size={13} sw={1.9} /></span>
+          ) : !s.active ? (
+            <span style={{ flexShrink: 0, fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.05em", color: "var(--dim3)" }}>DEAKTIVIERT</span>
           ) : (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flexShrink: 0, color: "var(--cyan)", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.03em" }}><Ic name="plus" size={13} sw={1.9} /> Einteilen</span>
           )}
         </div>
+        {err && (
+          <div data-testid={`op-seat-error-${s.id}`} role="alert" style={{ borderTop: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: MONO, fontSize: "0.62rem", padding: "0.35rem 0.6rem" }}>{err}</div>
+        )}
         {picker === s.id && !s.claimedBy && !placing && (
           <div style={{ borderTop: "1px solid var(--border)", padding: "0.6rem", display: "flex", flexDirection: "column", gap: "0.35rem", background: "var(--bg2)" }}>
             <div style={{ fontFamily: MONO, fontSize: "0.58rem", letterSpacing: "0.1em", color: "var(--dim)" }}>WER SOLL HIER REIN?</div>
             {flexPeople.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.78rem" }}>Keine flexiblen Anmeldungen.</div>}
             {flexPeople.map((r) => (
-              <button key={r.userId} type="button" data-testid={`op-pick-${r.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, r.userId, r.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
+              <button key={r.userId} type="button" data-testid={`op-pick-${r.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, r.userId, r.username, s.label); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit" }}>
                 <Avatar name={r.username} />
                 <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{r.username}</span>
                 <span style={{ fontFamily: MONO, fontSize: "0.6rem", color: "var(--gold)" }}>FLEX</span>
@@ -362,7 +468,7 @@ export function OperatorPanel({
                 .filter((m) => m.username.toLowerCase().includes(memberFilter.trim().toLowerCase()))
                 .slice(0, 8)
                 .map((m) => (
-                  <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, m.userId, m.username); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid var(--border)", background: "var(--wash)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
+                  <button key={m.userId} type="button" data-testid={`op-pick-member-${m.userId}`} onClick={(e) => { e.stopPropagation(); assignSeatOptimistic(s.id, m.userId, m.username, s.label); }} style={{ display: "flex", alignItems: "center", gap: "0.5rem", width: "100%", textAlign: "left", padding: "0.4rem 0.5rem", border: "1px solid var(--border)", background: "var(--wash)", borderRadius: 7, cursor: "pointer", color: "inherit", fontFamily: "inherit", marginBottom: "0.25rem" }}>
                     <Avatar name={m.username} />
                     <span style={{ flex: 1, fontSize: "0.84rem", color: "var(--text-hi)" }}>{m.username}</span>
                     {/* Partner-guild members are labelled with their org so the
@@ -379,30 +485,66 @@ export function OperatorPanel({
   };
 
   // ── panels (shared between layouts) ──────────────────────────
+  // Origin of a flex person: assignablePeople carries the partner org, so a
+  // partner member stays labelled as one in the waiting list too (§7.4).
+  const originOf = (userId: string) => members.find((m) => m.userId === userId);
+
   const flexPanel = (
     <section style={{ ...card, border: "1px solid var(--edge-gold)" }}>
       {panelHead("swap", "var(--gold)", "FLEXIBEL", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.66rem", color: "var(--dim3)" }}>{flexWaiting} wartet</span>)}
+      {flexPeople.length > 0 && (
+        <p id="flex-drag-hint" style={{ margin: "0 0 0.6rem", fontSize: "0.72rem", lineHeight: 1.45, color: "var(--dim2)" }}>
+          Ziehen auf einen freien Platz — oder <strong style={{ color: "var(--gold)" }}>Einteilen</strong> drücken und den Platz wählen (geht auch per Tastatur und auf dem Handy). Escape bricht ab.
+        </p>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {flexPeople.length === 0 ? (
           <div style={{ padding: "0.7rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Alle eingeteilt ✓</div>
         ) : (
           flexPeople.map((r) => {
             const isPlacing = placing?.userId === r.userId;
+            const origin = originOf(r.userId);
+            const alreadySeated = seatedUserIds.has(r.userId);
             return (
               <div
                 key={r.userId}
+                data-testid={`op-flex-${r.userId}`}
                 draggable
-                onDragStart={(e) => { setDragUserId(r.userId); setPlacing(null); setPicker(null); try { e.dataTransfer.setData("text/plain", r.userId); e.dataTransfer.effectAllowed = "move"; } catch { /* noop */ } }}
-                onDragEnd={() => setDragUserId(null)}
+                aria-describedby="flex-drag-hint"
+                onDragStart={(e) => { setDragUserId(r.userId); setPlacing(null); setPicker(null); setLive(`${r.username} aufgenommen — freie Plätze sind markiert.`); try { e.dataTransfer.setData("text/plain", r.userId); e.dataTransfer.effectAllowed = "move"; } catch { /* noop */ } }}
+                onDragEnd={() => { setDragUserId(null); setDragOverSeat(null); }}
                 style={{ display: "flex", alignItems: "center", gap: "0.6rem", padding: "0.6rem 0.7rem", borderRadius: 9, cursor: "grab", opacity: dragUserId === r.userId ? 0.45 : 1, border: isPlacing ? "1px solid var(--edge-gold)" : "1px solid var(--wash)", background: isPlacing ? "var(--tint-gold)" : "transparent" }}
               >
+                {/* visible grab affordance (§7.2 "Ruhend") */}
+                <span aria-hidden="true" title="Ziehen" style={{ flexShrink: 0, color: "var(--dim3)", display: "inline-flex", cursor: "grab" }}><Ic name="swap" size={13} sw={1.7} /></span>
                 <Avatar name={r.username} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <strong style={{ fontSize: "0.9rem", color: "var(--text-hi)" }}>{r.username}</strong>
-                  {r.note && <div style={{ color: "var(--dim2)", fontSize: "0.76rem", marginTop: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.note}</div>}
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", marginTop: 1 }}>
+                    {origin && !origin.isHost && (
+                      <span data-testid={`op-flex-origin-${r.userId}`} style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", color: "var(--gold)" }}>{(origin.guildName || "PARTNER").toUpperCase()}</span>
+                    )}
+                    {alreadySeated && (
+                      <span data-testid={`op-flex-seated-${r.userId}`} style={{ fontFamily: MONO, fontSize: "0.56rem", letterSpacing: "0.05em", color: "var(--dim2)" }}>BEREITS EINGETEILT</span>
+                    )}
+                    {r.note && <span style={{ color: "var(--dim2)", fontSize: "0.76rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.note}</span>}
+                  </div>
                 </div>
-                <button type="button" data-testid={`op-place-${r.userId}`} onClick={() => setPlacing(isPlacing ? null : { userId: r.userId, name: r.username })} style={{ flexShrink: 0, padding: "0.38rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.03em", border: isPlacing ? "1px solid var(--edge-red)" : "1px solid var(--edge-gold)", background: isPlacing ? "var(--tint-red)" : "var(--tint-gold)", color: isPlacing ? "var(--red)" : "var(--gold)" }}>
-                  {isPlacing ? "Abbrechen" : "Einteilen"}
+                <button
+                  type="button"
+                  data-testid={`op-place-${r.userId}`}
+                  aria-pressed={isPlacing}
+                  title={alreadySeated ? "Zusätzlich auf einen weiteren Platz einteilen" : "Platz auswählen"}
+                  onClick={() => {
+                    if (isPlacing) { setPlacing(null); setLive("Einteilen abgebrochen."); return; }
+                    setPlacing({ userId: r.userId, name: r.username });
+                    setDragUserId(null);
+                    setPicker(null);
+                    setLive(`${r.username} aufgenommen — wähle einen grün markierten Platz. Escape bricht ab.`);
+                  }}
+                  style={{ flexShrink: 0, padding: "0.38rem 0.7rem", borderRadius: 7, cursor: "pointer", fontFamily: MONO, fontSize: "0.7rem", letterSpacing: "0.03em", border: isPlacing ? "1px solid var(--edge-red)" : "1px solid var(--edge-gold)", background: isPlacing ? "var(--tint-red)" : "var(--tint-gold)", color: isPlacing ? "var(--red)" : "var(--gold)" }}
+                >
+                  {isPlacing ? "Abbrechen" : alreadySeated ? "Zusätzlich" : "Einteilen"}
                 </button>
               </div>
             );
@@ -1155,24 +1297,31 @@ export function OperatorPanel({
       <span style={{ color: "var(--gold)", display: "inline-flex", flexShrink: 0 }}><Ic name="swap" size={17} sw={1.8} /></span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.12em", color: "var(--gold)" }}>EINTEILEN-MODUS</span>
-        <div style={{ color: "var(--text-hi)", fontSize: "0.92rem", marginTop: 1 }}><strong>{placing.name}</strong> — wähle unten einen offenen Platz <span style={{ color: "var(--gold)" }}>(grün markiert)</span></div>
+        <div style={{ color: "var(--text-hi)", fontSize: "0.92rem", marginTop: 1 }}><strong>{placing.name}</strong> — wähle unten einen offenen Platz <span style={{ color: "var(--gold)" }}>(grün markiert)</span>. Tab springt von Platz zu Platz, Enter setzt, Escape bricht ab.</div>
       </div>
-      <button type="button" onClick={() => setPlacing(null)} style={{ flexShrink: 0, padding: "0.42rem 0.8rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
+      <button type="button" data-testid="place-cancel" onClick={() => { setPlacing(null); setLive("Einteilen abgebrochen."); }} style={{ flexShrink: 0, padding: "0.42rem 0.8rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
     </div>
+  );
+
+  // One polite live region per console: every place/drag transition, success and
+  // failure is announced here (§7.3) — the highlight alone is not the message.
+  const liveRegion = (
+    <div className="fpw-sr-only" role="status" aria-live="polite" data-testid="board-live">{live}</div>
   );
 
   // Redesign: each console tab renders one section. "fleet" = board + right rail;
   // the rest are their own tabs (CQB / Verbände / Fragen).
   if (section === "cqb")
-    return <div data-testid="operator-panel">{placeBanner}{pendingBlock}{fighterBlock}{cqbBlock || <section style={card}><div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div></section>}</div>;
+    return <div data-testid="operator-panel">{liveRegion}{placeBanner}{pendingBlock}{fighterBlock}{cqbBlock || <section style={card}><div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div></section>}</div>;
   if (section === "formations")
-    return <div data-testid="operator-panel">{formationBlock}</div>;
+    return <div data-testid="operator-panel">{liveRegion}{formationBlock}</div>;
   if (section === "qa")
-    return <div data-testid="operator-panel">{qaPanel}</div>;
+    return <div data-testid="operator-panel">{liveRegion}{qaPanel}</div>;
 
   // section === "fleet"
   return (
     <div data-testid="operator-panel">
+      {liveRegion}
       {placeBanner}
       <div style={{ display: "flex", gap: "1.3rem", alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 420px", minWidth: 0 }}>

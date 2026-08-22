@@ -31,6 +31,7 @@ import { DocumentsPanel } from "../components/DocumentsPanel";
 import { useSeo, metaText } from "../seo";
 import { roleLabel } from "../shipRoles";
 import { tint } from "../components/ui";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
 
@@ -684,6 +685,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
 
   return (
     <article>
+      <Breadcrumbs items={[{ label: "Operationen", to: "/operationen" }, { label: op.title }]} />
       {/* FR-A5: operator preview switcher — see the page as guest / crew / self. */}
       {op.canManage && (
         <div data-testid="viewas-bar" style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap", marginBottom: "1rem", padding: "0.55rem 0.75rem", border: "1px solid var(--border)", background: "var(--wash)", borderRadius: 10 }}>
@@ -1463,7 +1465,6 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
           opId={id}
           csrf={csrf}
           reload={load}
-          initialTab={searchParams.get("op")}
           initialFlash={searchParams.get("flash")}
         />
       )}

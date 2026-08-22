@@ -70,7 +70,7 @@ export function FeedbackPage({ session }: { session: SessionResponse | null }) {
           {notice.text}
         </p>
       )}
-      <form onSubmit={submit} className="fpw-card" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <form onSubmit={submit} className="fpw-card" data-card="form" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <div>
           <label style={label}>{t("feedback.subject")}</label>
           <input data-testid="feedback-subject" value={subject} onChange={(e) => setSubject(e.target.value)} maxLength={120} style={field} />

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, createPoll } from "../api/client";
 import type { CreatePollRequest, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const MONO = "var(--mono)";
 type Visibility = "private" | "partners" | "public";
@@ -101,13 +102,14 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
 
   return (
     <div data-testid="poll-create-page" style={{ width: "100%", maxWidth: 900 }}>
+      <Breadcrumbs items={[{ label: "Umfragen", to: "/polls" }, { label: "Neue Umfrage" }]} />
       <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "1.1rem" }}>
         <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name="check" size={20} /></span>
         <h1 style={{ fontWeight: 700, fontSize: "1.7rem", color: "var(--text-hi)", margin: 0 }}>Neue Umfrage</h1>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}>
-        <div className="fpw-card">
+        <div className="fpw-card" data-card="form">
           {memberships.length > 1 && (
             <div style={{ marginBottom: "1.1rem" }}>
               <label style={labelStyle}>Server</label>
@@ -138,7 +140,7 @@ export function PollCreatePage({ session }: { session: SessionResponse | null })
           </div>
         </div>
 
-        <div className="fpw-card">
+        <div className="fpw-card" data-card="form">
           <div style={{ marginBottom: "1.1rem" }}>
             <label style={labelStyle}>Modus</label>
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>

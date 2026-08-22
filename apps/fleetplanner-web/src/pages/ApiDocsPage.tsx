@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { API_BASE } from "../api/client";
 import "swagger-ui-dist/swagger-ui.css";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 // Interactive API reference. Swagger UI is bundled into the SPA (same-origin, so
 // it passes the strict app CSP — no unpkg CDN) and renders the live
@@ -28,10 +29,14 @@ export function ApiDocsPage() {
   }, []);
 
   return (
-    <div
-      data-testid="api-docs"
-      ref={ref}
-      style={{ background: "var(--text-hi)", borderRadius: 8, overflow: "hidden" }}
-    />
+    <div style={{ width: "100%" }}>
+      {/* Developer surface, reachable from the sidebar foot — not primary nav. */}
+      <Breadcrumbs items={[{ label: "Fleetplanner", to: "/" }, { label: "Entwickler" }, { label: "API-Doku" }]} />
+      <div
+        data-testid="api-docs"
+        ref={ref}
+        style={{ background: "var(--text-hi)", borderRadius: 8, overflow: "hidden" }}
+      />
+    </div>
   );
 }

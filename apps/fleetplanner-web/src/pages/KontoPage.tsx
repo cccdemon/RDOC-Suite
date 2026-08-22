@@ -1,11 +1,11 @@
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams } from "react-router-dom";
 import type { SessionResponse } from "../api/types";
 import { ProfilePage } from "./ProfilePage";
 import { AccountPage } from "./AccountPage";
 import { FeedbackPage } from "./FeedbackPage";
 import { PreferencesPanel } from "../components/PreferencesPanel";
-import { Ic } from "../components/Icons";
-import { MONO } from "../components/ui";
+import { LinkTabs } from "../components/ui";
+import { Breadcrumbs } from "../components/Breadcrumbs";
 
 // IA merge C: Profil & Hangar + verknüpfte Logins + Feedback become tabs of one
 // /konto screen. The existing page components stay the tab bodies (each keeps its
@@ -23,22 +23,22 @@ export function KontoPage({ session }: { session: SessionResponse | null }) {
   const active = TABS.find((t) => t.key === tab);
   if (!active) return <Navigate to="/konto/profil" replace />;
 
-  const tabBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "0.55rem 0.9rem", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", cursor: "pointer", whiteSpace: "nowrap", borderBottom: "2px solid transparent", color: "var(--dim)", textDecoration: "none" };
-  const tabActive: React.CSSProperties = { ...tabBase, color: "var(--cyan)", borderBottomColor: "var(--cyan)" };
-
   return (
     <div data-testid="konto-page">
-      <div style={{ display: "flex", gap: "0.3rem", overflowX: "auto", borderBottom: "1px solid var(--border)", marginBottom: "1.4rem" }}>
-        {TABS.map((t) => (
-          <Link key={t.key} to={`/konto/${t.key}`} data-testid={`konto-tab-${t.key}`} style={t.key === active.key ? tabActive : tabBase}>
-            <Ic name={t.icon} size={14} sw={1.7} />{t.label}
-          </Link>
-        ))}
+      <Breadcrumbs items={[{ label: "Konto", to: "/konto" }, { label: active.label }]} />
+      <LinkTabs
+        ariaLabel="Kontobereiche"
+        panelId="konto-panel"
+        activeKey={active.key}
+        testid={(k) => `konto-tab-${k}`}
+        items={TABS.map((t) => ({ key: t.key, label: t.label, to: `/konto/${t.key}`, icon: t.icon }))}
+      />
+      <div role="tabpanel" id="konto-panel" aria-labelledby={`konto-panel-tab-${active.key}`} tabIndex={-1}>
+        {active.key === "profil" && <ProfilePage session={session} />}
+        {active.key === "logins" && <AccountPage session={session} />}
+        {active.key === "prefs" && <PreferencesPanel session={session} />}
+        {active.key === "feedback" && <FeedbackPage session={session} />}
       </div>
-      {active.key === "profil" && <ProfilePage session={session} />}
-      {active.key === "logins" && <AccountPage session={session} />}
-      {active.key === "prefs" && <PreferencesPanel session={session} />}
-      {active.key === "feedback" && <FeedbackPage session={session} />}
     </div>
   );
 }

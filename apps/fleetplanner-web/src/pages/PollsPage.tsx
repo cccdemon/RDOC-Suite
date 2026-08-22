@@ -4,6 +4,7 @@ import { ApiError, listPolls } from "../api/client";
 import type { PollSummary, SessionResponse } from "../api/types";
 import { Ic } from "../components/Icons";
 import { useT } from "../i18n";
+import { ObjectTile } from "../components/ui";
 
 const MONO = "var(--mono)";
 
@@ -104,7 +105,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
             const vt = visibilityTag(p.visibility);
             const closes = fmtCloses(p.closesAt);
             return (
-              <Link key={p.id} data-testid={`poll-card-${p.id}`} to={`/polls/${p.id}`} className="fpw-card fpw-cardlink" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+              <ObjectTile key={p.id} testid={`poll-card-${p.id}`} to={`/polls/${p.id}`} ariaLabel={p.title} style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
                   {p.status === "open" ? (
                     <Tag label={t("poll.status.open")} color="var(--green)" bg="var(--tint-green)" bd="var(--edge-green)" />
@@ -126,7 +127,7 @@ export function PollsPage({ session }: { session: SessionResponse | null }) {
                   {p.viewerHasVoted && <span style={{ color: "var(--green)" }}>{t("poll.youVoted")}</span>}
                   <span>{t("poll.by", { who: p.createdBy.username })}</span>
                 </div>
-              </Link>
+              </ObjectTile>
             );
           })}
         </div>

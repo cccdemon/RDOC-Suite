@@ -1,5 +1,214 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-08-22 (3): UI-Audit Schritte 6 + 9 — Kartentypen und Responsive
+
+**6. Kartentypen.** `fpw-card` ist heute Sammelbegriff fuer klickbare Objektkachel,
+Auswahlkachel, Statuspanel, Formularcontainer, Tabelle und Verwaltungssektion — 27 Fundstellen,
+sechs verschiedene Erwartungen. Neue, wiederverwendbare Bausteine in
+[components/ui.tsx](apps/fleetplanner-web/src/components/ui.tsx) plus CSS-Klassen in
+`styles.css`, jeweils mit `data-card="…"` zur Pruefbarkeit:
+
+| Baustein | Regel |
+|---|---|
+| `ObjectTile` | ganze Kachel oeffnet genau EIN Primaerziel, sichtbarer Fokusring, Kindaktionen loesen sie nicht mit aus |
+| `ChoiceTile` | Auswahlzustand ueber `aria-pressed`, kein Navigationsziel |
+| `InfoCard` | nicht klickbar, kein Hover-/Pointer-Verhalten |
+| `WorkCard` | lokale Aktionen im Inneren, die Karte selbst ist kein Ziel |
+| `FormSection` | Ueberschrift, Beschreibung, Felder, Aktionen am Ende |
+| `DangerZone` | destruktive Aktionen, raeumlich abgesetzt, nie mit Routine gemischt |
+
+Migriert werden Operations-, Umfrage- und Server-Kacheln (Objekt), Missionstyp / Sichtbarkeit /
+Schiffsbedarf im Wizard und im Eckdaten-Formular (Auswahl), Roadmap- und Statuspanels (Info),
+Vorlagen, Bedarfe und Partnerzeilen (Arbeit), die Einstellungs- und Profil-Sektionen (Formular)
+sowie Operation loeschen, Umfrage loeschen und Server entfernen (Gefahr).
+
+**9. Responsive.** Tabellen (Schiffsdatenbank, Org-Flotte) bekommen kontrolliertes horizontales
+Scrollen mit fixierter erster Spalte statt eines ueberlaufenden Layouts; breite Arbeitskarten
+duerfen auf schmalen Viewports nicht mehr horizontal ueberlaufen; die Handbuch-Navigation wird
+mobil zum Inhaltsmenue statt zur zweiten permanenten Sidebar.
+
+Bewahrt: alle Testids, alle Aktionen, alle Ziele. Reine Struktur- und Semantikarbeit, kein
+Brandkit — die Bausteine benutzen dieselben Tokens wie die Karten vorher.
+
+Tests: `src/test/cards.test.tsx` (Kartenregeln: ein Primaerziel, Sekundaeraktion navigiert nicht,
+Auswahlzustand, Info-Karte nicht klickbar) und Ergaenzungen in
+`e2e/tests/03-surfaces.spec.ts` fuer die mobilen Tabellen und die Handbuch-Navigation.
+
+Status: umgesetzt, noch nicht committed.
+
+Ergebnis (2026-08-22):
+- `./scripts/test-stack.sh unit:web` — 121 gruen.
+- `./scripts/test-stack.sh unit` (Backend) — 572 gruen.
+- `./scripts/test-stack.sh e2e` — 119 gruen, weiterhin nur `19-cover` rot (braucht den opt-in
+  Service `mission-cover`, `--profile cover`).
+- `tsc --noEmit` fuer die SPA im Test-Image: sauber.
+
+Bewusste Grenze bei der Kartenmigration: Objekt-, Auswahl- und Gefahrenkarten sind auf die neuen
+Komponenten umgestellt; Info-, Arbeits- und Formularkarten behalten ihr Markup und bekommen nur
+das `data-card`-Attribut. Ein Umbau ihrer Ueberschriften auf `FormSection` waere eine optische
+Aenderung gewesen — und die war ausdruecklich nicht Auftrag.
+
+Damit sind alle zehn Schritte des Implementierungsauftrags aus
+`docs/UI-UX-FUNKTIONS-AUDIT-CLAUDE-OPUS.md` abgearbeitet.
+
+## Queued / Planned Step - 2026-08-22 (2): rote SPA-Tests + UI-Audit Schritt 4-Rest
+
+Zwei Teile.
+
+**A. Die 6 roten Tests in `apps/fleetplanner-web/src/test/app.test.tsx` gruen bekommen.**
+Alle stammen aus der IA-Arbeit vom 2026-08-21, keiner ist ein Produktfehler:
+
+1. + 2. `Overview > guest` / `authenticated`: `opSummaryFixture.scheduledAt` steht fest auf
+   2026-06-20 und liegt damit in der Vergangenheit — Agenda und Liste blenden es aus. Fixture
+   auf ein relatives Datum (heute 23:59) umstellen, wie es die Kalender-Tests schon machen.
+3. + 6. `Op detail 401` / `Login page`: jsdom meldet `navigator.language = "en-US"`, die Suite
+   behauptet aber deutsche Strings. Locale im Test-Setup deterministisch auf Deutsch pinnen.
+4. `operator panel`: seit die Konsole in der Detailseite lebt, steht eine anstehende Einheit
+   zweimal im DOM (oeffentliche Flotten-Lane + Operator-Triage) — das ist so gewollt, der Test
+   muss `findAllByText` benutzen.
+5. `stops a recurring series`: `stopSeries()` fragt `window.confirm`, das in jsdom nichts
+   zurueckgibt. Test stubbt `confirm` wie der Delete-Test.
+
+**B. UI-Audit Schritt 4-Rest — URL-Zustand und echte Tab-Semantik.**
+`?view=` existiert bereits ([CalendarPage.tsx](apps/fleetplanner-web/src/pages/CalendarPage.tsx));
+offen sind:
+
+1. Filter in die URL: Typ (`typ`), Stream (`stream`), vergangene Ops (`past`), Monat (`m`) und
+   ausgewaehlter Tag (`d`). Reload, Deep Link und Browser-Zurueck reproduzieren die Ansicht.
+2. Ansichtswechsel als echter Tablist (`role="tablist"`/`role="tab"`/`aria-selected`,
+   Pfeiltasten, Home/End) statt loser Buttons.
+3. Streamfilter als benannte Auswahl "Alle / Nur Streams / Ohne Streams" statt
+   Drei-Zustands-Knopf mit wechselndem Text.
+4. Mobile: "Kalender" sichtbar deaktiviert mit Begruendung statt stiller Umwandlung in Agenda.
+5. Leerer Zustand nennt die aktiven Filter und bietet "Filter zuruecksetzen".
+6. Dieselbe Tab-Semantik fuer Konto, Rechtliches, Handbuch-Navigation und die Operator-Konsole
+   (dort fehlen `tablist`-Rolle, `aria-controls` und Pfeiltasten-Navigation).
+
+Bewahrt: alle Testids, `?view=`-Werte inkl. `kalender`, `/calendar`-Redirect, Rollen-Gates.
+
+Tests: `src/test/ops-views.test.tsx` (URL-Filter, Tastatur-Tabs, leerer Zustand) plus
+Erweiterung von `e2e/tests/07-calendar-overview.spec.ts`.
+
+Status: umgesetzt, noch nicht committed.
+
+Ergebnis (2026-08-22):
+- `./scripts/test-stack.sh unit:web` — 115 gruen, 0 rot (vorher 6 rot).
+- `./scripts/test-stack.sh unit` (Backend) — 572 gruen.
+- `./scripts/test-stack.sh e2e` — 118 gruen, weiterhin nur `19-cover` rot (braucht den opt-in
+  Service `mission-cover`, `--profile cover`).
+- `tsc --noEmit` fuer die SPA im Test-Image: sauber.
+
+Nicht in diesem Schritt (Audit-Reihenfolge 6 und 9, weiterhin offen): die Kartentypen
+(Objekt-/Auswahl-/Info-/Arbeits-/Formular-/Gefahrenkarte) und die responsiven Loesungen fuer
+Tabellen, breite Flotten-Karten und die Handbuch-Navigation auf schmalen Bildschirmen.
+
+## Queued / Planned Step - 2026-08-22: UI-Audit P0-Rest — Drag-and-drop + Wizard
+
+Status: umgesetzt, Tests gruen (siehe Ergebnis unten), noch nicht committed.
+
+Auftrag aus `docs/UI-UX-FUNKTIONS-AUDIT-CLAUDE-OPUS.md`, Schritte 7 und 8 (P0 5 + 6). Nur
+Interaktionslogik, kein Brandkit — ausschliesslich bestehende Tokens/Klassen.
+
+**7. Drag-and-drop haerten** (`components/OperatorPanel.tsx`)
+1. Zustandsmodell nach 7.2: Ruhend (sichtbarer Griff + Hinweis), Aufgenommen, ueber gueltigem Ziel
+   ("<Person> auf <Sitz> setzen"), ueber ungueltigem Ziel (Grund statt Stille), Speichern
+   (Pending am Sitz, weitere Aktion gesperrt), Erfolg, Fehler (Rollback + Meldung am Sitz), Abbruch.
+2. Pflichtalternativen nach 7.3: Klickweg "Einteilen" -> Sitz bleibt; Sitze werden echte
+   Tastaturziele (`role=button`, `tabIndex`, Enter/Space); Escape bricht Platzier-/Dragmodus ab;
+   `aria-live`-Region meldet jeden Zustandswechsel; Touch nutzt den Auswahlmodus (HTML5-Drag bleibt
+   reine Beschleunigung).
+3. Gruppierungsregeln nach 7.4: belegte/deaktivierte Sitze sind keine Ziele und sagen warum;
+   Kapitaenssitze sind als solche gekennzeichnet; bereits eingeteilte Personen unterscheiden
+   "Verschieben" von "zusaetzlich einteilen"; Partner-Herkunft steht auch an der Flexibel-Liste.
+4. Keine neuen Drops: anstehende Einheiten bleiben ueber "Annehmen" (fachliche Grenze aus 7.1).
+
+**8. Wizard** (`pages/WizardPage.tsx`)
+1. "Weiter" validiert die aktuelle Stufe, fokussiert das erste fehlerhafte Feld, meldet den Fehler.
+2. Schrittsprung nur zu erreichbaren Stufen (alle vorherigen Pflichtstufen gueltig), Rest
+   `aria-disabled` mit Begruendung.
+3. Zusammenfassung + Pruefen-Liste sind Buttons zum jeweiligen Schritt.
+4. Verlustschutz: Entwurf in `localStorage` (Wiederherstellen-Hinweis + "Verwerfen") plus
+   `beforeunload`-Warnung, solange etwas eingegeben und noch nichts erstellt ist.
+5. Post-Create ist eine Entscheidung: "Operation oeffnen" oder "Cover & Freigabe ergaenzen"
+   (Panels erst nach Wahl). `wiz-to-op` bleibt als Testid erhalten.
+6. Schrittnamen nach Nutzerziel: Eckdaten / Briefing / Treffpunkt & Freigabe / Bedarf / Pruefen /
+   Erstellen & Teilen.
+
+Bewahrt: alle Testids (`op-target-*`, `op-pick-*`, `wiz-step-*`, `wiz-next`, `wiz-create`,
+`wiz-to-op`), alle API-Aufrufe, Rollen-Gates, Redirects. Backend unveraendert.
+
+Tests: neue `src/test/board-dnd.test.tsx` + `src/test/wizard.test.tsx` (Akzeptanzkriterien aus
+Audit 14 "Drag-and-drop" und "Wizard"), Ergaenzungen in `e2e/tests/13-wizard-full.spec.ts` und
+`e2e/tests/21-board.spec.ts`.
+
+Ergebnis (2026-08-22):
+- `./scripts/test-stack.sh unit:web` — 98 gruen, darunter die 19 neuen. Die 6 verbleibenden
+  Fehler liegen alle in `src/test/app.test.tsx` und stammen aus der IA-Arbeit vom 2026-08-21
+  (Overview-Karten, Login-CTA, 401-Zustand, doppeltes "Hammerhead", `manage-notice` bei
+  recurrence/stop) — nicht aus dieser Aenderung.
+- `./scripts/test-stack.sh e2e` — 116 gruen, 1 rot: `19-cover` braucht den opt-in Service
+  `mission-cover` (`--profile cover`), der im Standard-Stack nicht laeuft.
+- `tsc --noEmit` fuer die SPA im Test-Image: sauber.
+
+
+## Queued / Planned Step - 2026-08-21: Informationsarchitektur + Menuefuehrung (nur IA, kein Brandkit)
+
+Auftrag: ausschliesslich Informationsarchitektur und Menuefuehrung ueberarbeiten. Brandkit und
+visuelles Erscheinungsbild bleiben unveraendert - neue Struktur benutzt ausschliesslich bestehende
+Klassen und Tokens (`.nav-group`, `.nav-item`, `--dim2`, MONO ...).
+
+1. **"Neue Operation" ist eine Aktion, kein Hauptmenuepunkt.** Raus aus `NAV_GROUPS`, rein als
+   `PRIMARY_ACTION` ueber der Gruppenliste (Sidebar + Mobile), gleiche Auth-Regel.
+2. **`/ops/*` gehoert zu "Operationen".** `NavItem.match` traegt zusaetzliche Prefixe; `bestMatch`
+   beruecksichtigt sie. `/ops/:id`, `/ops/new`, `/calendar` markieren jetzt "Operationen".
+3. **Mobile Navigation = Desktop-Navigation.** Das flache `<select>` faellt weg; stattdessen ein
+   Drawer mit denselben Gruppen, denselben Gates und derselben Aktion.
+4. **Persistenter Serverkontext.** Neuer `ServerContextProvider` (`src/serverContext.tsx`):
+   aktive Guild in `localStorage` + `?guild=`-Query. Org-Flotte, Server-Einstellungen,
+   Partnerschaften und Diagnose haengen sichtbar an dieser Auswahl (Picker in der Sidebar-Gruppe,
+   Guild-Query an jedem serverbezogenen Link, `useGuildSelection` in den vier Seiten).
+5. **Feedback raus aus "Konto"**, rein in die Hilfe-Gruppe. Route `/konto/feedback` bleibt.
+6. **API-Doku raus aus der Primaernavigation** -> Entwickler-/Footer-Bereich der Sidebar.
+7. **`/templates` unter "Operationen"** sichtbar gemacht (war Route ohne Menuepunkt).
+8. **Operator-Konsole: 9 Tabs -> 4 fachliche Bereiche** (Flotte / Planung / Kommunikation /
+   Verwaltung) mit Unter-Tabs. Aktiver Tab steht in der URL (`?op=<leaf>`, Push statt State), damit
+   Reload, Deep Link und Browser-Zurueck funktionieren. Alte `?op=`-Deeplinks bleiben gueltig.
+9. **Praezisere Labels**: "Discord-Server", "Server-Einstellungen", "Schiffsdatenbank" (die Seite
+   ist die Datenbank mit Hangar-Schnellaufnahme, nicht "Meine Schiffe").
+10. **Breadcrumbs / Ruecksprung** auf Detail- und Unterseiten (Op-Detail, Wizard, Umfragen,
+    Vorlagen, die vier Serverseiten, Konto, Handbuch, Rechtliches, API-Doku, System).
+
+Bewahrt: alle bestehenden Routen (Redirects unveraendert), Rollenpruefungen serverseitig
+unangetastet, `nav-<to>`- und `manage-tab-<key>`-Testids stabil.
+
+Tests: neue `src/test/nav.test.tsx` (aktive Menuepunkte, rollenabhaengige Sichtbarkeit,
+Serverkontext, Mobile-Navigation, URL-Tabs) plus Anpassung der Konsolen-Tests auf Deep-Link-Einstieg.
+
+**Nebenbefund: die SPA-Unit-Suite hatte gar keinen Docker-Pfad.** `test-stack.sh unit` baut nur
+`@rdoc-suite/fleetplanner`; `@rdoc-suite/fleetplanner-web` lief nur mit gesundem lokalen pnpm-Store.
+Neu: `tests/Dockerfile.web-unit`, Compose-Service `web-unit-tests`, Target
+`./scripts/test-stack.sh unit:web` (auch Teil von `all`), dokumentiert in `docs/TESTING.md`.
+
+**Messergebnisse (2026-08-22, lokaler Docker-Stack):**
+
+| Suite | Ergebnis |
+|---|---|
+| Backend-Unit (`unit`) | 572 gruen |
+| SPA-Unit (`unit:web`) | 79 gruen / 6 rot |
+| SPA-Typecheck (`tsc --noEmit`) | sauber |
+| E2E (`e2e`) | 114 gruen / 1 rot |
+
+Die **6 roten SPA-Tests sind Altbestand**, kein Regress: derselbe Lauf gegen HEAD (`c7f164d`, per
+Worktree gebaut) liefert exakt dieselben 6 Fehler bei 55 gruenen — die 24 neuen IA-Tests laufen alle
+durch. Ursachen (unangetastet, eigener Schritt): `Overview`-Tests haengen an einer Fixture mit
+Datum 2026-06-20, das inzwischen Vergangenheit ist und darum aus der Standardliste faellt;
+`Login page` erwartet einen Text, der nicht mehr so lautet; `manage-notice` in
+"stops a recurring series"; "Found multiple elements: Hammerhead". Dazu ein fehlender
+`GET /changelog/unseen`-Handler in `src/test/handlers.ts`, der jeden angemeldeten Test anschreit.
+Der eine rote E2E-Test ist `19-cover` und braucht den `cover`-Profile-Service (mission-cover), der
+bewusst nicht Teil von `up` ist.
+
+
 ## Completed - 2026-08-13: Startseite auf volle Breite + Voice-App heisst Subraum
 
 **Breite.** Der User hat markiert, dass rechts neben dem Org-Panel viel Platz leer bleibt. Gemessen

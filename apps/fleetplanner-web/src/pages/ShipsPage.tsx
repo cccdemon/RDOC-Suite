@@ -81,7 +81,7 @@ export function ShipsPage({ session }: { session: SessionResponse | null }) {
       ) : ships.length === 0 ? (
         <p className="fpw-meta">{tr("ships.noHits")}</p>
       ) : (
-        <div className="fpw-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div className="fpw-card fpw-table" data-card="work" data-testid="ships-table">
           <div style={{ display: "grid", gridTemplateColumns: COLS, gap: 0, fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.08em", color: "var(--dim3)", padding: "0.7rem 1rem", borderBottom: "1px solid var(--border)" }}>
             <span /><span>{tr("ships.col.name")}</span><span>{tr("ships.col.manufacturer")}</span><span>{tr("ships.col.size")}</span><span>{tr("ships.col.role")}</span><span style={{ textAlign: "right" }}>{tr("ships.col.crew")}</span>{canAdd && <span />}
           </div>

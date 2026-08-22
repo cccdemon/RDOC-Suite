@@ -1,5 +1,5 @@
 import { test, expect, type BrowserContext, type Page } from "@playwright/test";
-import { actorContext, login, type TestActor } from "../helpers/auth.js";
+import { actorContext, login, seedShips, type TestActor } from "../helpers/auth.js";
 
 // Player-facing surfaces against a live instance. Mutations only touch the
 // e2e-* test user's own data (hangar). Feedback is NOT submitted (it would post
@@ -39,6 +39,45 @@ test("ships catalog search", async () => {
   await expect(page.getByTestId("ships-page")).toBeVisible();
   await page.getByTestId("ships-search").fill("aurora");
   await page.waitForTimeout(600);
+});
+
+test("narrow viewport: tables scroll inside their frame, the manual menu stops being a sidebar", async () => {
+  await page.setViewportSize({ width: 380, height: 820 });
+  try {
+    // Ship database: the table scrolls, the PAGE does not. The local stack starts
+    // with an empty catalog, so seed it first.
+    await seedShips();
+    await page.goto("ships");
+    await page.getByTestId("ships-search").fill("constellation");
+    await expect(page.getByTestId("ships-table")).toBeVisible({ timeout: 10_000 });
+    const ships = await page.evaluate(() => {
+      const t = document.querySelector('[data-testid="ships-table"]') as HTMLElement;
+      return {
+        tableScrolls: t.scrollWidth > t.clientWidth,
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(ships.tableScrolls).toBe(true);
+    expect(ships.pageOverflow).toBeLessThanOrEqual(1);
+
+    // Manual: the section list becomes a content menu above the text.
+    await page.goto("handbuch/was-ist-das");
+    await expect(page.getByTestId("handbuch-page")).toBeVisible({ timeout: 10_000 });
+    const nav = await page.evaluate(() => {
+      const a = document.querySelector(".handbuch-nav") as HTMLElement;
+      const list = a.querySelector("nav") as HTMLElement;
+      return {
+        position: getComputedStyle(a).position,
+        display: getComputedStyle(list).display,
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(nav.position).toBe("static");
+    expect(nav.display).toBe("grid");
+    expect(nav.pageOverflow).toBeLessThanOrEqual(1);
+  } finally {
+    await page.setViewportSize({ width: 1280, height: 900 });
+  }
 });
 
 test("roadmap renders", async () => {
