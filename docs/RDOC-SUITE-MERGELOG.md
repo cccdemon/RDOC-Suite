@@ -1,6 +1,6 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-08-22 (4): UI-Audit Feinschliff — die acht offenen Detailpunkte
+## Completed - 2026-08-22: UI-Audit Feinschliff — die acht offenen Detailpunkte (`c3ea46d`)
 
 Die zehn Schritte aus §15 sind umgesetzt; beim Nachpruefen gegen den Bericht blieben acht
 Detailanforderungen offen. Diese acht werden hier abgeraeumt.
@@ -38,7 +38,7 @@ Tests: Erweiterung von `src/test/ops-views.test.tsx` (Entwurfsfilter, Redirect-Q
 URL-Aliase, Badge-Labels, Serverkontext), `src/test/cards.test.tsx` (Statusbegriffe) und
 `src/test/wizard.test.tsx` (Dialogverhalten).
 
-Status: umgesetzt, noch nicht committed.
+Status: committed in `c3ea46d` (Branch `feat/stream-event`), noch nicht deployed.
 
 Ergebnis (2026-08-22):
 - `./scripts/test-stack.sh unit:web` — 131 gruen (+10).
