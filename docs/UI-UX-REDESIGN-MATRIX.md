@@ -341,6 +341,11 @@ Geschlossen:
   alle eingeteilt sind, Jäger-Auto-Fill.
 - **Teilnahmezustand in `OpDetailPage`** — „bereits angemeldet", Haupteinheit-Auswahl bei mehreren
   Einheiten, keine Auswahl bei einer, leere Bahn zeigt „KEIN BEDARF".
+- **`VoicePanel`** — nichts auszuteilen solange Voice aus ist, der kopierte Link ist der vom Server
+  und nicht der maskierte Platzhalter, einzelne Freigabe und „alle zuweisen", Rollback wenn der
+  Server die Empfängerliste ablehnt.
+- **`NeedsEditor`** — CQB-Anzahl und -Größe reisen gemeinsam, Speichern bleibt inert ohne Änderung,
+  ein abgelehnter Speichervorgang sagt warum, Bedarf umbenennen und entfernen.
 
 Nebenbefund: der CQB-Test hat ein falsches Testfixture aufgedeckt (`signupId` statt `id`), das die
 React-Key-Warnung ausgelöst hat. Ursache war ein `as never`-Cast, der die Vertragsabweichung vor dem
@@ -353,8 +358,6 @@ Weiterhin offen — bewusst, nicht vergessen:
 | `mission-log`, `mission-log-toggle` | Ansichtszustand ohne Mutation; das Redesign fasst ihn nicht an |
 | `calendar-export`, `op-series`, `op-series-badge`, `verband-chip`, `op-stream-badge` | Anzeigeelemente ohne eigenen Bedienweg |
 | `cqb-block`, `fighter-block`, `formation-block`, `pending-block`, `op-streams`, `interest-panel` | Container, deren Inhalt jetzt getestet ist |
-| `voice-copy`, `voice-assign-all` | `VoicePanel` — gehört zu „Kommunikation › Voice & Teilnehmer", noch nicht geschlossen |
-| `needs-notice`, `cqb-size` | `NeedsEditor` — Bedarfe bleiben ein eigener Ort, Umzugsrisiko gering |
 | `changelog-popup`, `changelog-ok`, `operator-loading`, `op-pick-search`, `leader-add-toggle` | ausserhalb der Operations-IA bzw. reine Suchfelder |
 
 ---
@@ -363,11 +366,11 @@ Weiterhin offen — bewusst, nicht vergessen:
 
 ### 6.1 Testschulden — Stand nach Phase 0.4
 
-Die fünf Posten dieser Liste sind abgearbeitet; die Begründung je Element steht in Abschnitt 5.1.
-Was bleibt, ist `VoicePanel` (`voice-copy`, `voice-assign-all`) und `NeedsEditor`
-(`needs-notice`, `cqb-size`). Beide ziehen zwar um, aber als geschlossene Panels an einen
-benannten Ort — das Risiko ist ein anderes als bei einem Bedienelement, das aus einer Seite in eine
-andere wandert. Sie gehören vor Phase 3 geschlossen, nicht vor Phase 2.
+Abgearbeitet. Die fünf Posten der ursprünglichen Liste sind seit `545c5df` abgedeckt, `VoicePanel`
+und `NeedsEditor` seit dem Vorlauf zu Phase 3. Was in Abschnitt 5.1 noch offen steht, sind Container
+und reine Anzeigeelemente; für jedes nennt die Tabelle dort den Grund.
+
+Damit ist kein Bedienelement mehr ungesichert, das das Redesign an einen anderen Ort bringt.
 
 ### 6.2 Produktentscheidungen, die der Handoff voraussetzt
 

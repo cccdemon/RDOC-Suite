@@ -1,5 +1,32 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-08-22 (17): Redesign Phase 3 — die Verwaltungs-IA
+
+Handoff-Paragraph 7 und 15 Phase 3, mit den vom User entschiedenen Abweichungen. Vorlauf: die zwei
+letzten Testluecken aus Abschnitt 6.1 der Matrix (`VoicePanel`, `NeedsEditor`) schliessen, bevor
+etwas umzieht.
+
+Arbeitsschritte, jeder einzeln commit- und testbar:
+
+1. **Planung › Briefing & Medien** — `CoverPanel` (heute eigener Tab `cover`), `ResourceLinksPanel`
+   (heute an Eckdaten angehaengt) und `DocumentsPanel` (heute in der **Teilnehmeransicht**) in eine
+   Unteransicht. Der Dokumenten-Umzug ist der riskanteste Einzelschritt; die Tests dafuer stehen
+   seit `545c5df`.
+2. **Planung › Freigabe & Verteilung** — neu. Status mit Folgenerklaerung, `announceOperation`,
+   `getGuildChannels`, Partnerverteilung. Alle vier existieren, aber nur im Wizard. Der Wizard
+   behaelt sie; das hier ist ein zweiter Ort, kein Umzug. Keine API-Aenderung.
+3. **Kommunikation › Fragen** — `qa` sitzt heute unter *Planung*, gehoert nach Paragraph 7.3 zu
+   Kommunikation. Alias `?op=qa` muss weiter aufloesen.
+4. **Besatzung & Flotte › Offene Arbeit** — neues Dashboard, Standardziel fuer Operatoren. Die Daten
+   liegen vollstaendig in `getOperatorView`.
+5. **Verwaltung › Gefahrenbereich** — `deleteOperation` aus `EckdatenForm` herausloesen, Absagen
+   danebenstellen, Loeschen mit Namensbestaetigung. `DangerZone` gibt es schon in `components/ui.tsx`.
+6. Bereich „Flotte" heisst „Besatzung & Flotte". **Reihenfolge bleibt** — Flotte zuerst, wie
+   entschieden: die taegliche Arbeit an einer laufenden Operation schlaegt den Lebenszyklus.
+
+Keine Funktion entfaellt, kein `/api/v1`-Vertrag aendert sich. Jeder bestehende `?op=`-Deep-Link
+muss weiter auf seinem Inhalt landen, auch wenn dessen Tab einen anderen Bereich bekommt.
+
 ## Completed - 2026-08-22 (16): Wiedereinstiegspunkt fuer das Redesign
 
 [`docs/REDESIGN-STAND.md`](REDESIGN-STAND.md) — Phasenstand, Git-Lage, die vier bereits gefallenen

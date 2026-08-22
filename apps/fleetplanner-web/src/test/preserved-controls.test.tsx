@@ -5,6 +5,8 @@ import { http, HttpResponse } from "msw";
 import { App } from "../App";
 import { DocumentsPanel } from "../components/DocumentsPanel";
 import { SquadLinkPanel } from "../components/SquadLinkPanel";
+import { VoicePanel } from "../components/VoicePanel";
+import { NeedsEditor } from "../components/NeedsEditor";
 import { OperatorPanel } from "../components/OperatorPanel";
 import { FieldSaveProvider } from "../components/fieldSave";
 import { server } from "./setup";
@@ -426,5 +428,166 @@ describe("preserved — the viewer's own participation state", () => {
 
     const empties = await screen.findAllByText("KEIN BEDARF");
     expect(empties.length).toBeGreaterThan(0);
+  });
+});
+
+
+// ── 6. Voice recipients and the needs editor (move as whole panels, phase 3) ──
+
+describe("preserved — voice recipients", () => {
+  const opWithCrew: OperationDetail = {
+    ...opDetailFixture,
+    canManage: true,
+    leaders: [{ id: "user_lead", username: "Lead" }],
+  };
+
+  function renderVoice(enabled = true) {
+    const onToggleVoice = vi.fn();
+    const onNotice = vi.fn();
+    render(
+      <FieldSaveProvider>
+        <VoicePanel op={opWithCrew} csrf="csrf-test-token" voiceEnabled={enabled} onToggleVoice={onToggleVoice} onNotice={onNotice} />
+      </FieldSaveProvider>,
+    );
+    return { onToggleVoice, onNotice };
+  }
+
+  it("offers nothing to hand out while voice is switched off", () => {
+    renderVoice(false);
+    expect(screen.getByTestId("voice-master-toggle")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByTestId("voice-copy")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("voice-assign-all")).not.toBeInTheDocument();
+  });
+
+  it("copies the room link the server handed out, not the placeholder", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    server.use(
+      http.get(`${API}/operations/op_1/squadlink`, () =>
+        HttpResponse.json({ enabled: true, configured: true, started: true, link: "squadlink://connect?room=op_1", storeUrl: null }),
+      ),
+      http.get(`${API}/operations/op_1/voice/recipients`, () => HttpResponse.json({ userIds: [] })),
+    );
+    renderVoice();
+
+    // The panel shows a masked placeholder until the real link arrives — copying
+    // that would hand somebody a string that connects to nothing.
+    await waitFor(() => expect(screen.getByText("squadlink://connect?room=op_1")).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId("voice-copy"));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("squadlink://connect?room=op_1"));
+  });
+
+  it("grants one participant the link, and grants everyone at once", async () => {
+    const put = vi.fn();
+    server.use(
+      http.get(`${API}/operations/op_1/squadlink`, () => HttpResponse.json({ enabled: true, configured: true, started: true, link: "squadlink://x", storeUrl: null })),
+      http.get(`${API}/operations/op_1/voice/recipients`, () => HttpResponse.json({ userIds: [] })),
+      http.put(`${API}/operations/op_1/voice/recipients`, async ({ request }) => {
+        const body = (await request.json()) as { userIds: string[] };
+        put(body.userIds);
+        return HttpResponse.json({ ok: true, userIds: body.userIds });
+      }),
+    );
+    renderVoice();
+
+    // Candidates are the leaders plus everyone holding a seat.
+    fireEvent.click(await screen.findByTestId("voice-toggle-user_lead"));
+    await waitFor(() => expect(put).toHaveBeenCalledWith(["user_lead"]));
+
+    fireEvent.click(screen.getByTestId("voice-assign-all"));
+    await waitFor(() => expect(put).toHaveBeenCalledTimes(2));
+    expect(put.mock.calls[1][0]).toContain("user_lead");
+  });
+
+  it("puts the grant list back when the server refuses it", async () => {
+    server.use(
+      http.get(`${API}/operations/op_1/squadlink`, () => HttpResponse.json({ enabled: true, configured: true, started: true, link: "squadlink://x", storeUrl: null })),
+      http.get(`${API}/operations/op_1/voice/recipients`, () => HttpResponse.json({ userIds: [] })),
+      http.put(`${API}/operations/op_1/voice/recipients`, () =>
+        HttpResponse.json({ error: { code: "forbidden", message: "Nein.", requestId: "r" } }, { status: 403 }),
+      ),
+    );
+    const { onNotice } = renderVoice();
+
+    fireEvent.click(await screen.findByTestId("voice-toggle-user_lead"));
+    await waitFor(() => expect(onNotice).toHaveBeenCalled());
+    // Optimistic display rolled back — the button must not claim a grant that
+    // never landed.
+    await waitFor(() => expect(screen.getByTestId("voice-toggle-user_lead")).toHaveTextContent("Link senden"));
+  });
+});
+
+describe("preserved — the needs editor", () => {
+  const needsFixture = {
+    shipTypes: [{ slug: "any", label: "Any ship" }, { slug: "capital", label: "Capital" }],
+    cqbTeamMax: 8,
+    cqbTeamDefault: 4,
+    fighterSquadSize: 2,
+    shipNeeds: [{ id: "req_1", label: "Tank", shipType: "capital" }],
+    fighterSquads: 0,
+    cqbTeams: { count: 0, size: 4 },
+    requirements: [],
+  };
+
+  function renderNeeds(over: Partial<typeof needsFixture> = {}) {
+    server.use(http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json({ ...needsFixture, ...over })));
+    render(<NeedsEditor opId="op_1" csrf="csrf-test-token" />);
+  }
+
+  it("saves the CQB team count and size together", async () => {
+    const saved = vi.fn();
+    server.use(
+      http.put(`${API}/operations/op_1/needs/cqb`, async ({ request }) => {
+        saved(await request.json());
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    renderNeeds();
+
+    fireEvent.change(await screen.findByTestId("cqb-count"), { target: { value: "3" } });
+    fireEvent.change(screen.getByTestId("cqb-size"), { target: { value: "6" } });
+    fireEvent.click(screen.getByTestId("cqb-save"));
+
+    // Size travels with the count — saving one without the other would silently
+    // reset the other to whatever the form last showed.
+    await waitFor(() => expect(saved).toHaveBeenCalledWith({ count: 3, size: 6 }));
+  });
+
+  it("keeps Save inert until something actually changed", async () => {
+    renderNeeds();
+    expect(await screen.findByTestId("cqb-save")).toBeDisabled();
+    expect(screen.getByTestId("fighters-save")).toBeDisabled();
+  });
+
+  it("says why a failed save failed instead of looking saved", async () => {
+    server.use(
+      http.put(`${API}/operations/op_1/needs/cqb`, () =>
+        HttpResponse.json({ error: { code: "conflict", message: "Team ist besetzt.", requestId: "r" } }, { status: 409 }),
+      ),
+    );
+    renderNeeds();
+
+    fireEvent.change(await screen.findByTestId("cqb-count"), { target: { value: "2" } });
+    fireEvent.click(screen.getByTestId("cqb-save"));
+
+    expect(await screen.findByTestId("needs-notice")).toHaveTextContent("Team ist besetzt.");
+  });
+
+  it("renames and removes a ship need", async () => {
+    const renamed = vi.fn();
+    const removed = vi.fn();
+    server.use(
+      http.patch(`${API}/operations/op_1/needs/req_1`, async ({ request }) => { renamed(await request.json()); return HttpResponse.json({ ok: true }); }),
+      http.delete(`${API}/operations/op_1/needs/req_1`, () => { removed(); return HttpResponse.json({ ok: true }); }),
+    );
+    renderNeeds();
+
+    const field = await screen.findByTestId("need-rename");
+    fireEvent.change(field, { target: { value: "Schwerer Tank" } });
+    fireEvent.blur(field);
+    await waitFor(() => expect(renamed).toHaveBeenCalledWith({ name: "Schwerer Tank" }));
+
+    fireEvent.click(screen.getByTestId("need-remove-req_1"));
+    await waitFor(() => expect(removed).toHaveBeenCalled());
   });
 });
