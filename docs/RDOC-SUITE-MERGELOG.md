@@ -1,5 +1,19 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-22 (16): Wiedereinstiegspunkt fuer das Redesign
+
+[`docs/REDESIGN-STAND.md`](REDESIGN-STAND.md) — Phasenstand, Git-Lage, die vier bereits gefallenen
+Produktentscheidungen, der Arbeitsvorrat von Phase 3 und die zuletzt gruenen Testlaeufe. Geschrieben,
+weil die Sitzung mit einem VS-Code-Neustart endet und ein kalter Wiedereinstieg sonst die
+Entscheidungen neu aufmachen wuerde.
+
+**Wegwerfdokument** nach CLAUDE.md Regel 7: loeschen, sobald das Redesign durch ist. Die Historie
+steht hier im Mergelog, die inhaltliche Wahrheit in [`UI-UX-REDESIGN-MATRIX.md`](UI-UX-REDESIGN-MATRIX.md).
+
+Git-Stand zum Zeitpunkt des Eintrags: `master` und `feat/stream-event` beide auf `8f9f48a`, nach
+GitHub gepusht (`642ccb3..8f9f48a`), Worktree sauber, nicht deployt. Der eigene Redesign-Branch
+fehlt noch — `git checkout -b feat/ui-ux-redesign` wurde vom auto-mode-Classifier blockiert.
+
 ## Completed - 2026-08-22 (15): Redesign Phase 2 — OperationShell, Ansehen gegen Verwalten
 
 Handoff-Paragraph 6 und 15 Phase 2. Die Operator-Konsole hing mit `marginTop: 2.5rem` **unter** der
