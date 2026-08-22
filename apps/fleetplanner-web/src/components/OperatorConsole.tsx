@@ -13,6 +13,7 @@ import { ResourceLinksPanel } from "./ResourceLinksPanel";
 import { DocumentsPanel } from "./DocumentsPanel";
 import { DangerPanel } from "./DangerPanel";
 import { ReleasePanel } from "./ReleasePanel";
+import { OpenWorkPanel } from "./OpenWorkPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 import { FieldSaveProvider, GlobalSaveBadge, SaveDot, useFieldSave } from "./fieldSave";
 import { OP_STATUSES } from "./opStatus";
@@ -28,6 +29,9 @@ import { OP_STATUSES } from "./opStatus";
 // with a plain German equivalent. "Voice" stays: that is what the feature is
 // called in the product (Subraum) and in Discord.
 const TABS = [
+  // The operator lands here: what is waiting for a decision, rather than how
+  // full the board is (§7.2).
+  { key: "work", label: "Offene Arbeit", icon: "alert" },
   { key: "fleet", label: "Board", icon: "ship" },
   { key: "needs", label: "Bedarfe", icon: "alert" },
   { key: "formations", label: "Verbände", icon: "board" },
@@ -65,7 +69,7 @@ type TabKey = (typeof TABS)[number]["key"];
 // first. The handoff proposes planning first, which follows the lifecycle — a
 // product decision, taken 2026-08-22 in favour of the daily job.
 const TAB_GROUPS = [
-  { key: "flotte", label: "Besatzung & Flotte", icon: "ship", tabs: ["fleet", "needs", "cqb", "formations"] },
+  { key: "flotte", label: "Besatzung & Flotte", icon: "ship", tabs: ["work", "fleet", "needs", "cqb", "formations"] },
   { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "briefing", "freigabe"] },
   // Questions are a communication job, not a detail of the Eckdaten (§7.3).
   { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["qa", "commanders", "voice"] },
@@ -99,7 +103,8 @@ function resolveTab(raw: string | null): TabKey {
   // A group name in `?op=` is legitimate too — it opens that area's first tab.
   const grp = TAB_GROUPS.find((g) => g.key === raw);
   if (grp) return grp.tabs[0] as TabKey;
-  return "fleet";
+  // No tab named: start where the work is, not on the board (§7.2).
+  return "work";
 }
 
 function decodeFlash(raw: string | null): string | null {
@@ -419,6 +424,8 @@ function OperatorConsoleInner({
           {tab === "voice" && <VoicePanel op={op} csrf={csrf} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} onNotice={setNotice} />}
 
           {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
+
+          {tab === "work" && <OpenWorkPanel op={op} opId={opId} onOpenTab={(t) => setTab(t as TabKey)} />}
 
           {tab === "freigabe" && <ReleasePanel op={op} opId={opId} csrf={csrf} onNotice={setNotice} />}
 

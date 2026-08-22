@@ -117,17 +117,17 @@ die eigentliche Arbeit der Phasen 2–4.
 - Vorschau-Umschalter der Teilnehmeransicht (`viewas-bar` in `OpDetailPage`) und `Breadcrumbs`.
 - Bedarfe sind bereits ein eigener Tab und nicht mehr am Board angehängt.
 
-### 3.2 Was fehlt — Arbeitsvorrat der Phasen 2–4
+### 3.2 Arbeitsvorrat der Phasen 2–4 — Stand nach Phase 3
 
 | Soll (Handoff) | Ist | Zu tun |
 |---|---|---|
 | ~~Objektkopf plus Modi „Ansehen" / „Verwalten"~~ | **erledigt 2026-08-22 (Phase 2)** — `OperationShell` + `operationMode.ts`; Modus in der URL, alle Alt-Links loesen weiter auf | — |
-| Bereich „Besatzung & Flotte" | heisst „Flotte" und steht an erster Stelle | Benennung und Reihenfolge nach §7 |
-| Unteransicht „Offene Arbeit" | existiert nicht | `OpenWorkDashboard` als Standardziel für Operatoren |
-| „Fragen" unter Kommunikation | `qa` sitzt unter **Planung** | Tab verschieben, Alias `?op=qa` erhalten |
-| „Briefing & Medien" | `cover` ist ein eigener Tab, `ResourceLinksPanel` hängt an Eckdaten, `DocumentsPanel` sitzt in der **Teilnehmeransicht** | drei Träger in eine Unteransicht zusammenziehen |
-| „Freigabe & Verteilung" | existiert nicht; Status nur im Kopf, `announceOperation` und Partnerverteilung nur im **Wizard** | neue Unteransicht; die Wizard-Funktionen zusätzlich hier anbieten |
-| „Verwaltung" mit Gefahrenbereich | Tab „Vorlage & Serie"; `deleteOperation` sitzt in `EckdatenForm` | Löschen und Absagen in einen abgesetzten Gefahrenbereich, Bestätigung mit Operationsname |
+| ~~Bereich „Besatzung & Flotte"~~ | **erledigt (Phase 3)** — umbenannt; Reihenfolge bleibt vorn, entschieden zugunsten der taeglichen Arbeit | — |
+| ~~Unteransicht „Offene Arbeit"~~ | **erledigt (Phase 3)** — `OpenWorkPanel`, Standardziel; `openWork` ist eine reine, testbare Funktion | — |
+| ~~„Fragen" unter Kommunikation~~ | **erledigt (Phase 3)** — Alias `?op=qa` unveraendert | — |
+| ~~„Briefing & Medien"~~ | **erledigt (Phase 3)** — Links, Cover und Dokumente in einer Unteransicht; Dokumente auf der Teilnehmerseite nur noch lesbar | — |
+| ~~„Freigabe & Verteilung"~~ | **erledigt (Phase 3)** — Statuserklaerung, Ankuendigung (jetzt geteilte Komponente mit dem Wizard), Partner-Reichweite als Anzeige, weil die API sie create-only fuehrt | — |
+| ~~„Verwaltung" mit Gefahrenbereich~~ | **erledigt (Phase 3)** — eigene Unteransicht; Loeschen verlangt den Operationsnamen | — |
 
 ---
 

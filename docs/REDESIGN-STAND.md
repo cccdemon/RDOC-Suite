@@ -4,7 +4,7 @@
 > ist: löschen. Die Historie steht im [Mergelog](RDOC-SUITE-MERGELOG.md), die inhaltliche Wahrheit in
 > der [Matrix](UI-UX-REDESIGN-MATRIX.md) (CLAUDE.md Regel 7).
 >
-> **Stand:** 2026-08-22, Ende der Sitzung.
+> **Stand:** 2026-08-22, nach Phase 3.
 
 ---
 
@@ -19,8 +19,8 @@ Phasenmodell aus dessen §15.
 | 0.4 — Tests für die umziehenden Bedienelemente | **fertig** (`545c5df`), 25 Tests |
 | 1 — Gates und Kontextfehler | **fertig ohne Codeänderung** — alle fünf §2.3-Risiken waren schon behoben und getestet |
 | 2 — OperationShell, Ansehen gegen Verwalten | **fertig** (`8f9f48a`) |
-| 3 — Verwaltungs-IA | **offen, als Nächstes** |
-| 4 — Workflow und visuelle Hierarchie | offen |
+| 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
+| 4 — Workflow und visuelle Hierarchie | **offen, als Nächstes** |
 | 5 — Responsive und Accessibility | offen |
 | 6 — Verifikation | offen |
 
@@ -28,21 +28,19 @@ Phasenmodell aus dessen §15.
 
 ## 2. Git
 
-- Aktueller Branch: **`feat/stream-event`** — die gesamte Redesign-Arbeit liegt hier.
-- `master` zeigt auf denselben Commit `8f9f48a`.
-- **Auf GitHub gepusht.** `origin/master` = `8f9f48a`, verifiziert.
-- Worktree sauber.
+Die gesamte Redesign-Arbeit liegt auf **`feat/stream-event`**; `master` wird jeweils per
+Fast-Forward nachgezogen und über den gh-Credential-Helper gepusht (CLAUDE.md Regel 4):
 
-Die drei Commits dieser Sitzung:
-
-```
-8f9f48a  feat(fleetplanner-web): split an operation into a view and a workspace
-545c5df  test: pin the controls the redesign is about to move
-bcd4006  docs: build the safety net before touching the redesign
+```bash
+git branch -f master feat/stream-event
+git -c credential.helper="!gh auth git-credential" push https://github.com/cccdemon/RDOC-Suite.git master
 ```
 
-**Noch nicht erledigt:** der eigene Redesign-Branch. Der auto-mode-Classifier hat
-`git checkout -b` blockiert, deshalb sitzt alles auf `feat/stream-event`:
+Aktuellen Stand mit `git log --oneline -12` lesen — Hashes hier zu pflegen veraltet mit jedem
+Commit. Die Commits tragen die Phase im Text.
+
+**Noch nicht erledigt:** der eigene Redesign-Branch. Der auto-mode-Classifier hat `git checkout -b`
+blockiert, deshalb sitzt alles auf `feat/stream-event`:
 
 ```bash
 git checkout -b feat/ui-ux-redesign
@@ -90,44 +88,53 @@ URL löschen. Sie räumte dort früher `sub`, `section` und `mode` weg; sobald `
 wirft das den Operator beim ersten Tabklick aus der Verwaltung. Regressionstest steht in
 `nav.test.tsx` („stays in the workspace when the operator changes tab").
 
----
 
-## 5. Phase 3 — der nächste Schritt
+### 4.1 Was Phase 3 gebaut hat
 
-Ziel: Handoff §7. Die Konsole hat heute vier Arbeitsbereiche
-([`OperatorConsole.tsx`](../apps/fleetplanner-web/src/components/OperatorConsole.tsx), `TAB_GROUPS`),
-aber nicht die Unteransichten, die §7 verlangt.
+Neue Komponenten, alle unter `apps/fleetplanner-web/src/components/`:
 
-Arbeitsvorrat, mit den gefallenen Entscheidungen eingearbeitet:
+- `OpenWorkPanel.tsx` — Standardziel der Verwaltung. Die Zählung ist die reine Funktion `openWork`
+  und ohne DOM testbar.
+- `ReleasePanel.tsx` — Statuserklärung, Ankündigung, Partner-Reichweite.
+- `AnnouncePanel.tsx` — aus dem Wizard extrahiert, jetzt an beiden Orten dieselbe Komponente.
+- `DangerPanel.tsx` — Abschließen/Absagen getrennt vom Löschen; Löschen verlangt den Namen.
 
-1. **Planung › Briefing & Medien** — `CoverPanel` (heute eigener Tab `cover`),
-   `ResourceLinksPanel` (heute an Eckdaten angehängt) und `DocumentsPanel` (heute in der
-   **Teilnehmeransicht**) in eine Unteransicht ziehen. Der Dokumenten-Umzug ist der riskanteste
-   Einzelschritt — Tests dafür existieren seit `545c5df`.
-2. **Planung › Freigabe & Verteilung** — neu. Status mit verständlicher Folgenerklärung,
-   `announceOperation`, `getGuildChannels`, Partnerverteilung. Alle vier existieren, aber nur im
-   Wizard. Keine API-Änderung.
-3. **Kommunikation › Fragen** — `qa` sitzt heute unter *Planung*, gehört nach §7.3 zu Kommunikation.
-   Alias `?op=qa` muss weiter auflösen.
-4. **Besatzung & Flotte › Offene Arbeit** — neues Dashboard, Standardziel für Operatoren. Die Daten
-   liegen komplett in `getOperatorView`.
-5. **Verwaltung › Gefahrenbereich** — `deleteOperation` aus `EckdatenForm` herauslösen, Absagen
-   danebenstellen, Löschen mit Namensbestätigung. `DangerZone` existiert bereits in
-   [`components/ui.tsx`](../apps/fleetplanner-web/src/components/ui.tsx).
-6. Bereichsname „Flotte" → „Besatzung & Flotte", **Reihenfolge bleibt**.
+Zwei Dinge, die beim Weiterbauen zählen:
 
-Vor Phase 3 fällig (Matrix §6.1): die zwei letzten Testlücken — `VoicePanel`
-(`voice-copy`, `voice-assign-all`) und `NeedsEditor` (`needs-notice`, `cqb-size`).
+- **`partnerTargetGuildIds` ist create-only.** Es gibt keinen PATCH-Pfad. Die Partnerverteilung wird
+  deshalb angezeigt und nicht angeboten. Wer sie editierbar machen will, braucht zuerst Contract,
+  Service und Route — das ist Backend-Arbeit und war nicht im Scope.
+- **Deutsche Anführungszeichen in JS-Stringliteralen** brauchen `„…“`. Ein `„…"` beendet den String;
+  das hat im `ReleasePanel` einmal zugeschlagen und produziert kryptische `TS1005`-Kaskaden.
 
 ---
+
+## 5. Phase 4 — der nächste Schritt
+
+Handoff §15 Phase 4. Phase 3 hat die Orte gebaut; Phase 4 macht sie lesbar.
+
+1. **Karten reduzieren** (§10.3). Es gibt heute genau eine Kartenoptik für Objekt, Formular,
+   Erklärung, Statistik und Arbeitsfläche. Erlaubt sind sieben semantische Typen; `ui.tsx` hat
+   `ObjectTile`, `ChoiceTile`, `WorkCard` und `DangerZone` bereits — sie werden nur nicht überall
+   benutzt.
+2. **Typografie und Kontrast** (§10.1/§10.2). Monospace nur für Status, Zeit, IDs und kurze
+   Eyebrows; keine Fließtexte in Monospace, keine Versalien für ganze Sätze. Mobile Fließtext
+   ~15–16 px.
+3. **Aktionshierarchie** (§10.4). Pro Kontext genau eine Primäraktion; `btnPrimary`/`btnGhost`
+   existieren, konkurrierende Akzentbuttons noch auch.
+4. **Wizard-Post-Create** (§9.3). Der Erfolgszustand soll vier benannte Wege anbieten statt zu
+   teleportieren. `AnnouncePanel` und `DocumentsPanel` hängen dort schon.
+5. **Statusabhängige Hinweise**, ohne Funktionen auszublenden.
+
+Danach Phase 5 (Responsive, Accessibility) und Phase 6 (Verifikation, manuelle Rollenmatrix).
 
 ## 6. Verifikation — was zuletzt grün war
 
-Alles am 22.08. nach `8f9f48a` gelaufen:
+Alles am 22.08. nach dem letzten Phase-3-Commit gelaufen:
 
 ```bash
 ./scripts/test-stack.sh unit          # Backend  591 Tests, 40 Dateien
-./scripts/test-stack.sh unit:web      # SPA      169 Tests, 7 Dateien
+./scripts/test-stack.sh unit:web      # SPA      189 Tests, 7 Dateien
 ./scripts/test-stack.sh up            # Stack hoch (web :8099, api :3299, mock :4400)
 ./scripts/test-stack.sh e2e           # Playwright 119 passed, 3 skipped
 ./scripts/test-stack.sh smoke         # grün
@@ -142,9 +149,9 @@ Die 3 übersprungenen E2E sind `19-cover` — die brauchen `./scripts/test-stack
 
 ## 7. Bewusste Zwischenstände — keine Auslassungen
 
-- **`DocumentsPanel`, Streams und `SquadLinkPanel` liegen weiter in der Teilnehmeransicht.** Ein
-  Operator erreicht sie über „Operation ansehen" statt nebenbei. Ein Klick weiter, nicht verloren;
-  Phase 3 Punkt 1 räumt das auf.
+- **Dokumente sind in Phase 3 umgezogen** und liegen jetzt in Verwalten › Briefing & Medien; auf der
+  Teilnehmerseite sind sie nur noch lesbar. Streams und `SquadLinkPanel` bleiben in der
+  Teilnehmeransicht — dort gehören sie fachlich hin.
 - **Baseline-Screenshots (§15 Phase 0.5) fehlen.** Sie sichern nichts, was die 25 Bedienweg-Tests
   nicht besser sichern, und kosten einen vollen E2E-Lauf.
 - **Fünf Tests in `app.test.tsx` zeigen jetzt auf `?op=fleet`** statt auf die nackte Operations-URL.

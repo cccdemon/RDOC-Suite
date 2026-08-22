@@ -1,31 +1,61 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-08-22 (17): Redesign Phase 3 — die Verwaltungs-IA
+## Completed - 2026-08-22 (17): Redesign Phase 3 — die Verwaltungs-IA
 
-Handoff-Paragraph 7 und 15 Phase 3, mit den vom User entschiedenen Abweichungen. Vorlauf: die zwei
-letzten Testluecken aus Abschnitt 6.1 der Matrix (`VoicePanel`, `NeedsEditor`) schliessen, bevor
-etwas umzieht.
+Handoff-Paragraph 7, in vier Commits plus einem Testvorlauf. Kein `/api/v1`-Vertrag wurde angefasst,
+keine Funktion ist verschwunden, und jeder bestehende `?op=`-Deep-Link landet weiter auf seinem
+Inhalt.
 
-Arbeitsschritte, jeder einzeln commit- und testbar:
+**Vorlauf `eb231e7`.** Die letzten zwei ungesicherten Traeger aus Abschnitt 6.1 der Matrix bekommen
+Tests, bevor irgendetwas umzieht: `VoicePanel` (nichts auszuteilen solange Voice aus ist, der
+kopierte Link ist der vom Server und nicht der maskierte Platzhalter, Einzel- und Sammelfreigabe,
+Rollback bei Ablehnung) und `NeedsEditor` (CQB-Anzahl und -Groesse reisen gemeinsam, Speichern bleibt
+inert ohne Aenderung, ein abgelehnter Speichervorgang sagt warum).
 
-1. **Planung › Briefing & Medien** — `CoverPanel` (heute eigener Tab `cover`), `ResourceLinksPanel`
-   (heute an Eckdaten angehaengt) und `DocumentsPanel` (heute in der **Teilnehmeransicht**) in eine
-   Unteransicht. Der Dokumenten-Umzug ist der riskanteste Einzelschritt; die Tests dafuer stehen
-   seit `545c5df`.
-2. **Planung › Freigabe & Verteilung** — neu. Status mit Folgenerklaerung, `announceOperation`,
-   `getGuildChannels`, Partnerverteilung. Alle vier existieren, aber nur im Wizard. Der Wizard
-   behaelt sie; das hier ist ein zweiter Ort, kein Umzug. Keine API-Aenderung.
-3. **Kommunikation › Fragen** — `qa` sitzt heute unter *Planung*, gehoert nach Paragraph 7.3 zu
-   Kommunikation. Alias `?op=qa` muss weiter aufloesen.
-4. **Besatzung & Flotte › Offene Arbeit** — neues Dashboard, Standardziel fuer Operatoren. Die Daten
-   liegen vollstaendig in `getOperatorView`.
-5. **Verwaltung › Gefahrenbereich** — `deleteOperation` aus `EckdatenForm` herausloesen, Absagen
-   danebenstellen, Loeschen mit Namensbestaetigung. `DangerZone` gibt es schon in `components/ui.tsx`.
-6. Bereich „Flotte" heisst „Besatzung & Flotte". **Reihenfolge bleibt** — Flotte zuerst, wie
-   entschieden: die taegliche Arbeit an einer laufenden Operation schlaegt den Lebenszyklus.
+**`028dee9` — Briefing & Medien.** Alles, was ein Teilnehmer vor der Operation liest, lag an drei
+Stellen: die Ressourcenlinks unten am Eckdaten-Formular, das Cover in einem eigenen Tab, die PDFs
+**nur auf der Teilnehmerseite** — dort also verwaltet, wo sie angezeigt werden. Jetzt eine
+Unteransicht unter Planung. Die Dokumente bleiben auf der Teilnehmerseite sichtbar, aber
+schreibgeschuetzt: derselbe Editor an zwei Orten ist genau das Zweitanzeige-Problem aus
+Paragraph 7.2. Ausserdem: Fragen von Planung nach Kommunikation, wo das Beantworten hingehoert, und
+der Bereich heisst „Besatzung & Flotte". Seine Position bleibt vorn — Entscheidung des Users:
+taegliche Arbeit schlaegt Lebenszyklus. `?op=cover` loest weiter auf und wird jetzt in der
+Unit-Suite und im Konsolen-Spec ausdruecklich geprueft.
 
-Keine Funktion entfaellt, kein `/api/v1`-Vertrag aendert sich. Jeder bestehende `?op=`-Deep-Link
-muss weiter auf seinem Inhalt landen, auch wenn dessen Tab einen anderen Bereich bekommt.
+**`6a61b8a` — Gefahrenbereich.** Loeschen sass im Eckdaten-Formular, einen Scroll unter Titel und
+Startzeit: die destruktivste Aktion des Produkts in derselben Box wie die gewoehnlichsten Aenderungen.
+Abschliessen und Absagen gab es nur als zwei weitere Segmente im Statusstreifen, wo sie aussehen wie
+ein Wechsel auf „Startet". Beides hat jetzt eine eigene Unteransicht: die umkehrbaren Enden in einer
+normalen Karte mit Folgenerklaerung, das Loeschen darunter im Gefahrenbereich — und es kostet den
+Namen der Operation. Ein Bestaetigungsknopf allein ist Muskelgedaechtnis.
+
+**`67bd7d4` — Freigabe & Verteilung.** Drei Fragen hatten nirgends eine Antwort: was der aktuelle
+Status fuer die Wartenden bedeutet, ob jemand ausserhalb des Servers die Operation sieht, und wie man
+Discord ein zweites Mal davon erzaehlt. Die Ankuendigung existierte genau einmal, als lokale
+Komponente im Wizard, erreichbar in der Minute nach dem Anlegen — jetzt eine geteilte Komponente an
+beiden Orten. Der Statusschalter bleibt bewusst im Konsolenkopf (Paragraph 7.1 erlaubt das und
+verlangt hier die Erklaerung, nicht eine zweite Kopie des Schalters). Die Partnerverteilung wird
+**gezeigt, nicht angeboten**: `partnerTargetGuildIds` ist create-only in der API, also nennt das
+Panel die aktiven Partnerschaften und sagt klar, dass die Auswahl beim Anlegen faellt. Ein
+editierbarer Picker ueber einem Endpunkt, der die Aenderung nicht annimmt, waere ein Bedienelement,
+das stillschweigend nichts tut.
+
+**`<work>` — Offene Arbeit.** Die Konsole zeigte Bestand: Fuellgrad, Sitzzahl. Sie zeigte nie, was auf
+eine Entscheidung wartet, also musste ein Operator die Tabs ablaufen, um herauszufinden, ob ihn etwas
+braucht. Das neue Standardziel zaehlt genau die Dinge, die andere Leute blockieren — wartende
+Einheiten, flexible Anmeldungen, freie Sitze auf angenommenen Einheiten, Discord-Interessenten ohne
+Platz, davon die ohne Konto, offene Fragen — und jede Zeile fuehrt in den Tab, der sie aufloest. Sie
+liest nur; gehandelt wird weiterhin dort, wo die Aktion implementiert ist. Die Zaehlung ist eine
+reine Funktion (`openWork`) und ohne DOM testbar.
+
+Verifikation nach dem letzten Commit: SPA-Unit **189 Tests, 7 Dateien**; Backend-Unit **591 Tests,
+40 Dateien**; Playwright **119 passed, 3 skipped** (nur `19-cover`, das den Renderer braucht); Smoke
+gruen; `tsc --noEmit` und `vite build` gruen.
+
+Zwei Nebenbefunde: eine `?op=`-Vorgabe ohne Tab landet jetzt auf „Offene Arbeit" statt auf dem Board
+(`/ops/:id/manage` nennt weiterhin ausdruecklich `fleet` und ist unberuehrt). Und im `ReleasePanel`
+hat ein deutsches Anfuehrungspaar in einem JS-String das Literal beendet — deutsche Zitate in
+Stringliteralen brauchen `„…“`, nicht `„…"`.
 
 ## Completed - 2026-08-22 (16): Wiedereinstiegspunkt fuer das Redesign
 

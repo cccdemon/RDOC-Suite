@@ -34,6 +34,17 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-24",
+    title: "Knowing what needs you",
+    changes: [
+      "Managing an operation now opens on what is waiting for you: units nobody has decided on, people without a seat, unanswered questions. Each line takes you straight to the place that settles it.",
+      "Briefing links, the cover image and the PDF documents share one place instead of three. Players still read the documents on the operation page.",
+      "You can announce an operation in a Discord channel whenever you like. Until now that was only possible in the minute after creating it.",
+      "Every operation status now says in plain words what it means for the people waiting on it.",
+      "Deleting an operation moved out of the details form into its own section, and asks you to type the operation's name first. Finishing and cancelling sit next to it, clearly marked as reversible.",
+    ],
+  },
+  {
     date: "2026-08-23",
     title: "An operation page you can work on",
     changes: [

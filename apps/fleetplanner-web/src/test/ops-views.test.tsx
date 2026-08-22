@@ -5,7 +5,8 @@ import { http, HttpResponse } from "msw";
 import { App } from "../App";
 import { server } from "./setup";
 import { opDetailFixture, opSummaryFixture, sessionCrew, sessionGuest } from "./fixtures";
-import type { SessionResponse } from "../api/types";
+import type { OperationDetail, OperatorView, SessionResponse } from "../api/types";
+import { openWork } from "../components/OpenWorkPanel";
 
 // Operations overview + tab semantics (UI audit §5 and §9). These pin that the
 // screen is reproducible from its URL and that every tab strip is a real tablist.
@@ -315,6 +316,80 @@ describe("operator console — URL aliases and badge labels", () => {
     const tab = await screen.findByTestId("manage-tab-qa");
     const badge = within(tab).getByRole("status");
     expect(badge).toHaveAttribute("aria-label", "1 offene Frage");
+  });
+});
+
+// ── Offene Arbeit (§7.2) ─────────────────────────────────────────────────────
+describe("open work", () => {
+  const emptyView: OperatorView = {
+    crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [],
+    eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [], fighterSquads: [],
+    assignablePeople: [],
+  };
+
+  it("counts only what is actually waiting for someone", () => {
+    // The fixture has one accepted unit with a free Gunner seat.
+    const items = openWork(opDetailFixture, emptyView);
+    expect(items.map((i) => i.key)).toEqual(["empty-seats"]);
+    expect(items[0].count).toBe(1);
+    // A count with no noun is unreadable for anyone who cannot see the row.
+    expect(items[0].label(1)).toBe("1 freier Sitz");
+    expect(items[0].label(3)).toBe("3 freie Sitze");
+  });
+
+  it("ignores seats on units nobody has accepted yet", () => {
+    const op: OperationDetail = {
+      ...opDetailFixture,
+      units: [
+        { ...opDetailFixture.units[0], id: "unit_p", status: "pending" },
+      ],
+    };
+    const keys = openWork(op, emptyView).map((i) => i.key);
+    // The unit itself is the open item; its seats are not holes in a roster
+    // that does not exist yet.
+    expect(keys).toContain("pending-units");
+    expect(keys).not.toContain("empty-seats");
+  });
+
+  it("separates Discord interest that cannot be assigned at all", () => {
+    const view: OperatorView = {
+      ...emptyView,
+      eventInterests: [
+        { id: "i1", displayName: "Seated", userId: "u1", seated: true },
+        { id: "i2", displayName: "Waiting", userId: "u2", seated: false },
+        { id: "i3", displayName: "No account", userId: null, seated: false },
+      ],
+    };
+    const items = openWork({ ...opDetailFixture, units: [] }, view);
+    const by = Object.fromEntries(items.map((i) => [i.key, i.count]));
+    expect(by["interested"]).toBe(2);
+    // Of those two, one has no account — a different problem with a different fix.
+    expect(by["unlinked"]).toBe(1);
+  });
+
+  it("stays silent when there is nothing to do", () => {
+    expect(openWork({ ...opDetailFixture, units: [] }, emptyView)).toEqual([]);
+  });
+
+  it("is where the workspace opens, and each row leads to the tab that fixes it", async () => {
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)),
+      http.get(`${API}/operations/op_1`, () =>
+        HttpResponse.json({
+          ...opDetailFixture,
+          canManage: true,
+          questions: [{ id: "q1", asker: "Crew One", body: "Wann?", answer: null, answeredBy: null, createdAt: new Date().toISOString() }],
+        }),
+      ),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(emptyView)),
+    );
+    // No tab named — an operator lands on the work, not on the board.
+    renderAt("/ops/op_1?mode=manage");
+    expect(await screen.findByTestId("manage-tab-work")).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(await screen.findByTestId("open-work-questions"));
+    await waitFor(() => expect(screen.getByTestId("manage-tab-qa")).toHaveAttribute("aria-selected", "true"));
+    expect(url()).toContain("op=qa");
   });
 });
 

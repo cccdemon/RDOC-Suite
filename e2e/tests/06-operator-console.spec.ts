@@ -81,7 +81,7 @@ test("each console tab button opens its panel", async () => {
   // the console (panel content varies). IA 2026-08-21: the nine flat tabs are
   // four work areas now, so select the area first — same as a user would.
   const areas: Array<[string, string[]]> = [
-    ["flotte", ["fleet", "needs", "cqb", "formations"]],
+    ["flotte", ["work", "fleet", "needs", "cqb", "formations"]],
     ["planung", ["eckdaten", "briefing", "freigabe"]],
     ["kommunikation", ["qa", "commanders", "voice"]],
     ["verwaltung", ["admin", "danger"]],

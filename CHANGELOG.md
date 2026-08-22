@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Die Event-Verwaltung folgt jetzt der Arbeit, nicht den Komponenten (2026-08-22)
+
+Die Operator-Konsole gruppierte vorhandene Panels. Jetzt gibt es Orte für die Schritte, die man
+tatsächlich geht:
+
+- **Offene Arbeit** ist das neue Standardziel und zählt, was auf eine Entscheidung wartet — wartende
+  Einheiten, flexible Anmeldungen, freie Sitze, Discord-Interessenten ohne Platz, offene Fragen. Jede
+  Zeile führt in den Tab, der sie auflöst.
+- **Briefing & Medien** fasst Ressourcenlinks, Cover und Dokumente zusammen. Die Dokumente waren
+  vorher nur über die Teilnehmerseite erreichbar; dort sind sie jetzt nur noch lesbar.
+- **Freigabe & Verteilung** erklärt, was der aktuelle Status für die Wartenden bedeutet, lässt die
+  Operation jederzeit in einem Discord-Kanal ankündigen (bisher nur einmalig beim Anlegen möglich)
+  und zeigt, welche Partnerserver sie erreicht.
+- **Gefahrenbereich** trennt Abschließen und Absagen vom Löschen. Löschen verlangt jetzt den Namen
+  der Operation; vorher stand es im selben Formular wie Titel und Startzeit.
+- Fragen sind von „Planung" nach „Kommunikation" gezogen, der Flottenbereich heißt „Besatzung &
+  Flotte".
+
+Alle bisherigen Links funktionieren unverändert, `?op=cover` eingeschlossen.
+
 ### Changed - Operationen haben jetzt eine Ansicht und einen Arbeitsplatz (2026-08-22)
 
 Die Operator-Konsole lag bisher unterhalb der kompletten Teilnehmerseite; wer eine Operation
