@@ -800,32 +800,36 @@ export function verifyDiscordInteraction(
   }
 }
 
-// NOT WIRED. The SSR route that called this went with routes/api.ts on
-// 2026-08-22; the /api/v1 accept endpoint sends no DM, so accepting a unit has
-// been silent since the SPA cutover. Kept on purpose: the docs promise this DM
-// and the decision whether to hook it into /api/v1 (and to rewrite its
-// voice-era wording) belongs to the product owner, not to a cleanup pass.
-export async function sendAcceptedCaptainVoiceDm(
+/**
+ * Tell a captain that their unit made it into an operation. Sent from the
+ * /api/v1 accept route, best effort — a Discord outage must never undo an
+ * accept that already happened in the database.
+ *
+ * The voice line is deliberately conditional: the Fleetplanner carries no
+ * audio, it only points at Subraum, and only when this instance has the client
+ * links configured. Without them the DM simply says nothing about voice
+ * instead of promising a "voice client" nobody can download.
+ */
+export async function sendUnitAcceptedDm(
   userId: string,
-  input: { operationTitle: string; unitName: string; operationUrl: string },
+  input: { operationTitle: string; unitName: string; operationUrl: string; startsAt?: Date | null },
 ): Promise<void> {
   const env = getEnv();
   const lines = [
-    "Hello Captain,",
-    `your unit "${input.unitName}" was accepted for "${input.operationTitle}".`,
-    "You now have captain voice rights for this event.",
-    "",
-    `Operation: ${input.operationUrl}`,
+    "Captain,",
+    `your unit "${input.unitName}" is in for "${input.operationTitle}".`,
   ];
-  if (env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL) {
-    lines.push(`Download voice client: ${env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL}`);
+  if (input.startsAt) {
+    lines.push(`Start: ${input.startsAt.toISOString().replace("T", " ").slice(0, 16)} UTC`);
   }
-  if (env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL) {
-    lines.push(`Voice client config: ${env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL}`);
-  }
-  if (!env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL && !env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL) {
-    lines.push("Voice client links are not configured yet. Ask your fleet lead for the current setup.");
-  }
+  lines.push("", `Operation: ${input.operationUrl}`);
+  lines.push("Crew your seats there — anyone still free can claim one.");
+
+  const voice = [
+    env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL && `Voice app: ${env.FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL}`,
+    env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL && `Voice setup: ${env.FLEETPLANNER_VOICE_CLIENT_CONFIG_URL}`,
+  ].filter(Boolean) as string[];
+  if (voice.length > 0) lines.push("", ...voice);
 
   await sendDiscordDm(userId, lines.join("\n"));
 }

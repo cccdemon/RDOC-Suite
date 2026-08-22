@@ -423,6 +423,9 @@ export const OperationDetailSchema = OperationSummarySchema.extend({
   viewerCqbSignedUp: z.boolean(),
   /** Caller shares their hangar with the operators for this op. */
   viewerHangarShared: z.boolean(),
+  /** Unit the caller picked as their main one when they hold places in several
+   *  (null = no explicit choice; the roster falls back to the default). */
+  viewerPrimaryUnitId: z.string().nullable(),
   /** FR SquadLink-CommandNet: op has the SquadLink Lite voice deep-link enabled. */
   squadLinkVoiceEnabled: z.boolean(),
 }).meta({ id: "OperationDetail" });
@@ -1020,6 +1023,24 @@ export const SetMemberSlotRequestSchema = z
     slot: z.number().int().min(0).max(23),
   })
   .meta({ id: "SetMemberSlotRequest" });
+
+/** New order of an op's resource links, top first. Ids that do not belong to
+ *  the operation are ignored server-side, so a stale list cannot reorder
+ *  somebody else's links. */
+export const ReorderResourceLinksRequestSchema = z
+  .object({ orderedIds: z.array(cuid).max(20) })
+  .meta({ id: "ReorderResourceLinksRequest" });
+
+/** Chunk the unassigned CQB pool into squads of `size` (2–8, default 4). */
+export const CqbAutoBundleRequestSchema = z
+  .object({ size: z.number().int().min(2).max(8).optional() })
+  .meta({ id: "CqbAutoBundleRequest" });
+
+/** Which of a person's units counts as their main one in this operation.
+ *  `userId` is optional: without it the caller sets their own. */
+export const SetPrimaryUnitRequestSchema = z
+  .object({ unitId: cuid, userId: cuid.optional() })
+  .meta({ id: "SetPrimaryUnitRequest" });
 
 /** FR-C2: post an op announcement to a Discord text channel (snowflake id). */
 export const AnnounceRequestSchema = z

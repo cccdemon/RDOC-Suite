@@ -9,6 +9,9 @@
 import { toOpenApiJsonSchema } from "@rdoc-suite/fleetplanner-contracts";
 import {
   AnswerQuestionRequestSchema,
+  CqbAutoBundleRequestSchema,
+  ReorderResourceLinksRequestSchema,
+  SetPrimaryUnitRequestSchema,
   ApiErrorSchema,
   AssignSeatRequestSchema,
   ApplyTemplateRequestSchema,
@@ -90,6 +93,9 @@ type JsonObject = Record<string, unknown>;
 
 const SCHEMAS = {
   ApiError: ApiErrorSchema,
+  ReorderResourceLinksRequest: ReorderResourceLinksRequestSchema,
+  CqbAutoBundleRequest: CqbAutoBundleRequestSchema,
+  SetPrimaryUnitRequest: SetPrimaryUnitRequestSchema,
   HealthResponse: HealthResponseSchema,
   SessionResponse: SessionResponseSchema,
   GuildListResponse: GuildListResponseSchema,
@@ -1161,6 +1167,82 @@ export function buildOpenApiDocument(): JsonObject {
           },
         },
       },
+      "/api/v1/operations/{id}/resource-links/order": {
+        put: {
+          operationId: "reorderResourceLinks",
+          summary: "Reorder the operator resource links (top first)",
+          description: "Ids that do not belong to the operation are ignored.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("ReorderResourceLinksRequest")) },
+          responses: {
+            "200": { description: "Reordered", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/cqb/auto-bundle": {
+        post: {
+          operationId: "autoBundleCqb",
+          summary: "Chunk the unassigned CQB pool into squads",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: false, ...jsonContent(ref("CqbAutoBundleRequest")) },
+          responses: {
+            "200": {
+              description: "Squads created",
+              ...jsonContent({
+                type: "object",
+                required: ["ok", "created"],
+                properties: { ok: { type: "boolean" }, created: { type: "integer" } },
+              }),
+            },
+            ...errorResponses,
+          },
+        },
+      },
+      "/api/v1/operations/{id}/primary-unit": {
+        put: {
+          operationId: "setPrimaryUnit",
+          summary: "Pick which unit a person counts as their main one",
+          description: "Everyone may set their own; an operator may pass userId to set someone else's.",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          requestBody: { required: true, ...jsonContent(ref("SetPrimaryUnitRequest")) },
+          responses: {
+            "200": { description: "Set", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+            "409": { description: "Person holds no place in that unit", ...jsonContent(ref("ApiError")) },
+          },
+        },
+        delete: {
+          operationId: "clearPrimaryUnit",
+          summary: "Drop the explicit primary-unit choice",
+          tags: ["operations"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "userId", in: "query", required: false, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Cleared", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+          },
+        },
+      },
       "/api/v1/operations/{id}/operator": {
         get: {
           operationId: "getOperatorView",
@@ -1348,6 +1430,21 @@ export function buildOpenApiDocument(): JsonObject {
         },
       },
       "/api/v1/operations/{id}/cqb-teams/{groupId}": {
+        delete: {
+          operationId: "dissolveCqbTeam",
+          summary: "Dissolve a CQB squad (members return to the flexible pool)",
+          tags: ["operator"],
+          security: [{ cookieSession: [] }],
+          parameters: [
+            { name: "id", in: "path", required: true, schema: { type: "string" } },
+            { name: "groupId", in: "path", required: true, schema: { type: "string" } },
+            { name: "x-csrf-token", in: "header", required: true, schema: { type: "string" } },
+          ],
+          responses: {
+            "200": { description: "Dissolved", ...jsonContent(ref("MutationOk")) },
+            ...errorResponses,
+          },
+        },
         patch: {
           operationId: "renameCqbTeam",
           summary: "Operator: rename a CQB squad",

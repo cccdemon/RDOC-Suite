@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { App } from "../App";
@@ -498,6 +498,113 @@ describe("Op detail — operator panel", () => {
     (await findByTestId("accept-unit_p")).click();
     await new Promise((r) => setTimeout(r, 50));
     expect(hit).toBe(true);
+  });
+});
+
+// The four capabilities that came back from the deleted form-POST layer
+// (2026-08-22). Each one is checked where a user actually reaches it — a route
+// nobody can click is exactly the state these were in before.
+describe("Op detail — restored capabilities", () => {
+  const emptyNeeds = { shipTypes: [], cqbTeamMax: 8, cqbTeamDefault: 4, fighterSquadSize: 2, shipNeeds: [], fighterSquads: 0, cqbTeams: { count: 0, size: 4 }, requirements: [] };
+  const baseOperatorView = {
+    crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [],
+    eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [], fighterSquads: [],
+    assignablePeople: [],
+  };
+
+  it("resource links can be reordered with buttons, not only by dragging", async () => {
+    const op = {
+      ...opDetailFixture,
+      canManage: true,
+      resourceLinks: [
+        { id: "link_1", title: "Briefing", url: "https://example.com/a", kind: "link", sortOrder: 0 },
+        { id: "link_2", title: "Karte", url: "https://example.com/b", kind: "link", sortOrder: 1 },
+      ],
+    };
+    let sent: string[] | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(op)),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(baseOperatorView)),
+      http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(emptyNeeds)),
+      http.put(`${API}/operations/op_1/resource-links/order`, async ({ request }) => {
+        sent = ((await request.json()) as { orderedIds: string[] }).orderedIds;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1?mode=manage&op=eckdaten");
+    // The first row cannot move up, the second can move up.
+    expect(await findByTestId("rlink-up-link_1")).toBeDisabled();
+    (await findByTestId("rlink-up-link_2")).click();
+    await waitFor(() => expect(sent).toEqual(["link_2", "link_1"]));
+  });
+
+  it("the CQB tab can auto-bundle the pool and dissolve a team", async () => {
+    const view = {
+      ...baseOperatorView,
+      cqbTeams: [{ id: "grp_1", name: "Squad 1", targetSize: 4, carrierUnitId: null, parentId: null, members: [] }],
+      cqbSoldiers: [
+        { id: "sig_1", userId: "u1", username: "Alpha", note: null, assignedGroupId: null, slotIndex: null, lateEta: null },
+        { id: "sig_2", userId: "u2", username: "Bravo", note: null, assignedGroupId: null, slotIndex: null, lateEta: null },
+      ],
+    };
+    let bundled: { size: number } | null = null;
+    let dissolved = false;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true })),
+      http.get(`${API}/operations/op_1/operator`, () => HttpResponse.json(view)),
+      http.get(`${API}/operations/op_1/needs`, () => HttpResponse.json(emptyNeeds)),
+      http.post(`${API}/operations/op_1/cqb/auto-bundle`, async ({ request }) => {
+        bundled = (await request.json()) as { size: number };
+        return HttpResponse.json({ ok: true, created: 1 });
+      }),
+      http.delete(`${API}/operations/op_1/cqb-teams/grp_1`, () => {
+        dissolved = true;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1?mode=manage&op=cqb");
+    (await findByTestId("cqb-auto-bundle")).click();
+    await waitFor(() => expect(bundled).toEqual({ size: 4 }));
+    (await findByTestId("cqb-team-dissolve-grp_1")).click();
+    await waitFor(() => expect(dissolved).toBe(true));
+  });
+
+  it("someone sitting in two units picks their main one", async () => {
+    // Captain of one ship AND seated on another → the choice is meaningful.
+    const op = {
+      ...opDetailFixture,
+      viewerRole: "crew",
+      signupState: "joined",
+      units: [
+        {
+          ...opDetailFixture.units[0]!,
+          id: "unit_a", status: "accepted", name: "Carrack", shipName: "Carrack",
+          captain: { id: "user_crew", username: "Crew" },
+          seats: [{ id: "seat_a", label: "Pilot", order: 0, active: true, claimedBy: { id: "user_crew", username: "Crew" }, lateEta: null }],
+        },
+        {
+          ...opDetailFixture.units[0]!,
+          id: "unit_b", status: "accepted", name: "Polaris", shipName: "Polaris",
+          captain: { id: "other", username: "Other" },
+          seats: [{ id: "seat_b", label: "Gunner", order: 1, active: true, claimedBy: { id: "user_crew", username: "Crew" }, lateEta: null }],
+        },
+      ],
+    };
+    let chosen: { unitId: string } | null = null;
+    server.use(
+      http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)),
+      http.get(`${API}/operations/op_1`, () => HttpResponse.json(op)),
+      http.put(`${API}/operations/op_1/primary-unit`, async ({ request }) => {
+        chosen = (await request.json()) as { unitId: string };
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { findByTestId } = renderAt("/ops/op_1");
+    const select = (await findByTestId("primary-unit-select")) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "unit_b" } });
+    await waitFor(() => expect(chosen).toEqual({ unitId: "unit_b" }));
   });
 });
 

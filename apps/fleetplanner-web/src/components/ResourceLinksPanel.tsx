@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { addResourceLink, ApiError, removeResourceLink } from "../api/client";
+import { addResourceLink, ApiError, removeResourceLink, reorderResourceLinks } from "../api/client";
 import type { OperationDetail } from "../api/types";
 import { useT } from "../i18n";
 import { CardHead, btnGhost, btnPrimary, card, inp } from "./ui";
@@ -8,7 +8,9 @@ import { Ic } from "./Icons";
 // FR-A1: operator-curated briefing / tutorial links. The player side renders these
 // read-only on the op-detail hero (op.resourceLinks); here the operator adds/removes
 // them. Backend validates URLs (http/https) and caps the count → conflicts surface
-// as a notice. Reorder (PATCH sortOrder) is not wired — backend has no PATCH route.
+// as a notice. Order matters (the player side renders them top-down), so each row
+// carries move-up/move-down buttons — buttons, not drag: this list is short, and a
+// keyboard or touch user must be able to do it too.
 export function ResourceLinksPanel({
   op,
   opId,
@@ -47,6 +49,28 @@ export function ResourceLinksPanel({
     }
   }
 
+  // Send the whole new order; the server ignores ids that are not ours.
+  async function move(index: number, dir: -1 | 1) {
+    if (!csrf || busy) return;
+    const ids = op.resourceLinks.map((l) => l.id);
+    const target = index + dir;
+    if (target < 0 || target >= ids.length) return;
+    const swapped = ids[index];
+    const other = ids[target];
+    if (!swapped || !other) return;
+    ids[index] = other;
+    ids[target] = swapped;
+    setBusy(true);
+    try {
+      await reorderResourceLinks(opId, csrf, ids);
+      onChanged();
+    } catch (e) {
+      onNotice(e instanceof ApiError ? e.message : "Aktion fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function remove(linkId: string) {
     if (!csrf || busy) return;
     setBusy(true);
@@ -71,7 +95,7 @@ export function ResourceLinksPanel({
         </p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", marginBottom: "1rem" }}>
-          {op.resourceLinks.map((l) => (
+          {op.resourceLinks.map((l, i) => (
             <div
               key={l.id}
               data-testid={`rlink-${l.id}`}
@@ -80,6 +104,28 @@ export function ResourceLinksPanel({
               <a href={l.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 0, color: "var(--cyan)", textDecoration: "none", fontSize: "0.9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {l.title || l.url} <span style={{ color: "var(--dim3)" }}>↗</span>
               </a>
+              <button
+                type="button"
+                data-testid={`rlink-up-${l.id}`}
+                aria-label={`${l.title || l.url} nach oben`}
+                title="Nach oben"
+                style={{ ...btnGhost, padding: "0.3rem 0.5rem", fontSize: "0.7rem" }}
+                disabled={busy || !csrf || i === 0}
+                onClick={() => move(i, -1)}
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                data-testid={`rlink-down-${l.id}`}
+                aria-label={`${l.title || l.url} nach unten`}
+                title="Nach unten"
+                style={{ ...btnGhost, padding: "0.3rem 0.5rem", fontSize: "0.7rem" }}
+                disabled={busy || !csrf || i === op.resourceLinks.length - 1}
+                onClick={() => move(i, 1)}
+              >
+                ↓
+              </button>
               <button
                 type="button"
                 data-testid={`rlink-remove-${l.id}`}

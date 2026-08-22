@@ -103,19 +103,28 @@ import { listSharedHangars } from "../services/hangarShare.js";
 import { importUserFleet } from "../services/fleetImport.js";
 import { importFleetFromFleetyards, FleetyardsUserNotFound } from "../services/fleetyards.js";
 import { sendSeatAssignmentDm } from "../services/discord.js";
-import { createSignup as createCqbSignup, placeInSquad as placeCqbMember, renameSquad as renameCqbSquad, withdrawSignup as withdrawCqbSignup } from "../services/cqb.js";
+import {
+  autoBundle as autoBundleCqb,
+  createSignup as createCqbSignup,
+  placeInSquad as placeCqbMember,
+  renameSquad as renameCqbSquad,
+  unbundle as unbundleCqb,
+  withdrawSignup as withdrawCqbSignup,
+} from "../services/cqb.js";
 import { cqbOwner, seatOwner, setCqbLateEta, setSeatLateEta, setUnitLateEta, unitOwner } from "../services/lateArrival.js";
 import { assignUnitToFormation, autoFillAllFighters, createFormation, deleteFormation, renameFormation, setGroupParent, setMemberSlot } from "../services/formations.js";
 import { effectiveShipClass } from "../services/composition.js";
 import { assignablePeople } from "../services/people.js";
 import { setHangarShare } from "../services/hangarShare.js";
-import { addResourceLink, removeResourceLink } from "../services/resourceLinks.js";
+import { addResourceLink, removeResourceLink, reorderResourceLinks } from "../services/resourceLinks.js";
+import { clearPrimaryUnit, setPrimaryUnit } from "../services/primaryUnits.js";
 import { addOpDocument, getOpDocument, openOpDocument, removeOpDocument, MAX_OP_DOCUMENTS } from "../services/opDocuments.js";
 import { addStream, removeStream, streamOwner } from "../services/streams.js";
-import { sendDiscordDm } from "../services/discord.js";
+import { discordUserIdForFleetplannerUser, sendDiscordDm, sendUnitAcceptedDm } from "../services/discord.js";
 import { searchLocalShips } from "../services/scwiki.js";
 import {
   AnswerQuestionRequestSchema,
+  CqbAutoBundleRequestSchema,
   ApplyTemplateRequestSchema,
   AssignSeatRequestSchema,
   AnnounceRequestSchema,
@@ -124,7 +133,9 @@ import {
   AssignCqbRequestSchema,
   SetLateArrivalRequestSchema,
   SetGroupParentRequestSchema,
+  ReorderResourceLinksRequestSchema,
   SetMemberSlotRequestSchema,
+  SetPrimaryUnitRequestSchema,
   AssignFormationRequestSchema,
   CqbSignupRequestSchema,
   FormationRequestSchema,
@@ -464,6 +475,16 @@ export async function apiV1Routes(app: FastifyInstance) {
     const hangarShared =
       !!myId &&
       ((op as { hangarShares?: Array<{ userId: string }> }).hangarShares ?? []).some((h) => h.userId === myId);
+    // Explicit primary-unit choice, only interesting for a logged-in viewer who
+    // could actually hold several places.
+    const primaryUnitId = myId
+      ? ((
+          await prisma.opPrimaryUnit.findUnique({
+            where: { operationId_userId: { operationId: op.id, userId: myId } },
+            select: { unitId: true },
+          })
+        )?.unitId ?? null)
+      : null;
     const row = { ...op, guild } as unknown as Parameters<typeof presentOperationDetail>[0];
     // A series is invisible in the product until its next occurrence enters the
     // spawn horizon, while Discord lists every future date from the start. Send
@@ -482,6 +503,7 @@ export async function apiV1Routes(app: FastifyInstance) {
         signupState,
         cqbSignedUp,
         hangarShared,
+        primaryUnitId,
         upcomingOccurrences: upcoming,
       }),
     );
@@ -1910,6 +1932,46 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // Chunk everyone still in the flexible CQB pool into squads of `size`. The
+  // squads are ordinary CQB teams afterwards — the operator can rename, move
+  // members or dissolve them like any other.
+  app.post<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/cqb/auto-bundle",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = CqbAutoBundleRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid squad size (2-8).");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const created = await autoBundleCqb(p.data.id, body.data.size ?? 4);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:auto-bundle", String(created));
+      return reply.type("application/json").send({ ok: true as const, created });
+    },
+  );
+
+  // Dissolve a CQB squad. Its members go back into the flexible pool rather
+  // than being dropped from the operation — deleting people is never implied
+  // by deleting a container.
+  app.delete<{ Params: { id: string; groupId: string } }>(
+    "/api/v1/operations/:id/cqb-teams/:groupId",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse({ id: req.params.id });
+      if (!p.success || !/^[a-z0-9]{20,32}$/i.test(req.params.groupId))
+        return sendError(reply, req, 400, "bad_request", "Invalid id.");
+      const ctx = await requireOperator(req, reply, p.data.id);
+      if (!ctx) return;
+      const group = await prisma.compositionGroup.findFirst({
+        where: { id: req.params.groupId, operationId: p.data.id, kind: "squad" },
+        select: { id: true },
+      });
+      if (!group) return sendError(reply, req, 404, "not_found", "Team not found.");
+      await unbundleCqb(p.data.id, req.params.groupId);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "cqb:dissolve", req.params.groupId);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   // #1 Late-arrival ("nachkommen"): set/clear an ETA on a unit, a seat, or a CQB/
   // pilot signup. Editable by the person themselves OR an operator. eta=null clears.
   app.patch<{ Params: { id: string; unitId: string }; Body: unknown }>(
@@ -2094,6 +2156,51 @@ export async function apiV1Routes(app: FastifyInstance) {
 
   // Roster-Fundament: move a member to an explicit slot inside its group.
   // Slot 0 is the Captain, so this is also "make X the Staffel-/Trupp-Captain".
+  // Which unit a person "belongs to" when they sit in several. Everyone may
+  // set their own; an operator may set it for someone else (that is what the
+  // optional userId is for). Without an explicit choice the roster falls back
+  // to defaultPrimaryUnit.
+  app.put<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/primary-unit",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = SetPrimaryUnitRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const target = body.data.userId ?? ctx.user.id;
+      if (target !== ctx.user.id && !(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+        return sendError(reply, req, 403, "forbidden", "Only an operator may set this for someone else.");
+      if (target === ctx.user.id && !(await effectiveOpRole(ctx.user.id, ctx.user.role, p.data.id)))
+        return sendError(reply, req, 404, "not_found", "Operation not found.");
+      try {
+        await setPrimaryUnit(p.data.id, target, body.data.unitId, ctx.user.id);
+      } catch {
+        return sendError(reply, req, 409, "conflict", "That person does not hold a place in this unit.");
+      }
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "primary-unit:set", `${target} → ${body.data.unitId}`);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
+  // Drop the explicit choice again (own, or somebody else's as an operator).
+  app.delete<{ Params: { id: string }; Querystring: { userId?: string } }>(
+    "/api/v1/operations/:id/primary-unit",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      const target = req.query.userId ?? ctx.user.id;
+      if (target !== ctx.user.id && !(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+        return sendError(reply, req, 403, "forbidden", "Only an operator may clear this for someone else.");
+      await clearPrimaryUnit(p.data.id, target);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "primary-unit:clear", target);
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   app.put<{ Params: { id: string }; Body: unknown }>(
     "/api/v1/operations/:id/member-slot",
     async (req, reply) => {
@@ -2451,6 +2558,25 @@ export async function apiV1Routes(app: FastifyInstance) {
     },
   );
 
+  // Reorder the link list (top first). The service ignores ids that do not
+  // belong to the op, so a stale client list can never move foreign rows.
+  app.put<{ Params: { id: string }; Body: unknown }>(
+    "/api/v1/operations/:id/resource-links/order",
+    async (req, reply) => {
+      const p = IdParamSchema.safeParse(req.params);
+      if (!p.success) return sendError(reply, req, 400, "bad_request", "Invalid operation id.");
+      const body = ReorderResourceLinksRequestSchema.safeParse(req.body);
+      if (!body.success) return sendError(reply, req, 400, "bad_request", "Invalid body.");
+      const ctx = await requireSessionJson(req, reply);
+      if (!ctx) return;
+      if (!(await canApproveUnits(ctx.user.id, ctx.user.role, p.data.id)))
+        return sendError(reply, req, 403, "forbidden", "Operator, creator or commander role required.");
+      await reorderResourceLinks(p.data.id, body.data.orderedIds);
+      await logAudit(p.data.id, ctx.user.id, ctx.user.username, "resource_link:reorder", String(body.data.orderedIds.length));
+      return reply.type("application/json").send({ ok: true as const });
+    },
+  );
+
   // ── op documents (PDF) ──────────────────────────────────────────────
   // Upload: multipart, one `document` PDF part. Any op manager. CSRF via the
   // x-csrf-token header (requireSessionJson works for multipart too).
@@ -2718,7 +2844,15 @@ export async function apiV1Routes(app: FastifyInstance) {
 
         const unit = await prisma.fleetUnit.findFirst({
           where: { id: p.data.unitId, operationId: p.data.id },
-          select: { id: true, unitType: true, shipId: true },
+          select: {
+            id: true,
+            unitType: true,
+            shipId: true,
+            captainId: true,
+            squadName: true,
+            ship: { select: { name: true } },
+            operation: { select: { title: true, scheduledAt: true } },
+          },
         });
         if (!unit) return sendError(reply, req, 404, "not_found", "Unit not found.");
 
@@ -2738,6 +2872,25 @@ export async function apiV1Routes(app: FastifyInstance) {
             }
           }
           await logAudit(p.data.id, ctx.user.id, ctx.user.username, `unit:${decision}`, "");
+
+          // Tell the captain — strictly best effort. Note the lookup is INSIDE
+          // the catch: discordUserIdForFleetplannerUser throws for a captain who
+          // never linked Discord (GitHub/Google login), and a missing DM must
+          // never turn an accept that already happened into a 409.
+          if (decision === "accept" && unit.captainId) {
+            const env = getEnv();
+            const captainId = unit.captainId;
+            const unitName = unit.ship?.name ?? unit.squadName ?? "Einheit";
+            void (async () => {
+              const discordId = await discordUserIdForFleetplannerUser(captainId);
+              await sendUnitAcceptedDm(discordId, {
+                operationTitle: unit.operation.title,
+                unitName,
+                operationUrl: `${env.WEB_PUBLIC_URL}${env.PUBLIC_BASE_PATH}/ops/${p.data.id}`,
+                startsAt: unit.operation.scheduledAt,
+              });
+            })().catch((err: unknown) => req.log.info({ err }, "unit-accepted DM not delivered"));
+          }
           return reply.type("application/json").send({ ok: true as const });
         } catch (err) {
           return mutationError(reply, req, err);

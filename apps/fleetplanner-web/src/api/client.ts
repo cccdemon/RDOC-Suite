@@ -218,6 +218,22 @@ export function renameFormation(opId: string, fid: string, csrfToken: string, na
 export function renameCqbTeam(opId: string, groupId: string, csrfToken: string, name: string): Promise<{ ok: true }> {
   return mutate("PATCH", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}`, csrfToken, { name });
 }
+/** Chunk everyone still unassigned into squads of `size`. */
+export function autoBundleCqb(opId: string, csrfToken: string, size: number): Promise<{ ok: true; created: number }> {
+  return mutate("POST", `/operations/${encodeURIComponent(opId)}/cqb/auto-bundle`, csrfToken, { size }) as Promise<{ ok: true; created: number }>;
+}
+/** Dissolve a squad — its members return to the flexible pool. */
+export function dissolveCqbTeam(opId: string, groupId: string, csrfToken: string): Promise<{ ok: true }> {
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/cqb-teams/${encodeURIComponent(groupId)}`, csrfToken);
+}
+/** Which unit counts as mine (or, as an operator, as someone else's). */
+export function setPrimaryUnit(opId: string, csrfToken: string, unitId: string, userId?: string): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/primary-unit`, csrfToken, userId ? { unitId, userId } : { unitId });
+}
+export function clearPrimaryUnit(opId: string, csrfToken: string, userId?: string): Promise<{ ok: true }> {
+  const q = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+  return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/primary-unit${q}`, csrfToken);
+}
 export function assignUnitFormation(opId: string, unitId: string, csrfToken: string, formationId: string | null): Promise<{ ok: true }> {
   return mutate("PUT", `/operations/${encodeURIComponent(opId)}/units/${encodeURIComponent(unitId)}/formation`, csrfToken, { formationId });
 }
@@ -313,6 +329,10 @@ export function addResourceLink(opId: string, csrfToken: string, input: { url: s
 }
 export function removeResourceLink(opId: string, linkId: string, csrfToken: string): Promise<{ ok: true }> {
   return mutate("DELETE", `/operations/${encodeURIComponent(opId)}/resource-links/${encodeURIComponent(linkId)}`, csrfToken);
+}
+/** New order, top first. The server ignores ids that are not part of the op. */
+export function reorderResourceLinks(opId: string, csrfToken: string, orderedIds: string[]): Promise<{ ok: true }> {
+  return mutate("PUT", `/operations/${encodeURIComponent(opId)}/resource-links/order`, csrfToken, { orderedIds });
 }
 
 // ── op documents (PDF) ──────────────────────────────────────────────

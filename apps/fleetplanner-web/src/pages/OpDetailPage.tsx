@@ -5,6 +5,7 @@ import {
   addStream,
   askQuestion,
   claimSeat,
+  clearPrimaryUnit,
   cqbSignup,
   cqbWithdraw,
   getNeeds,
@@ -12,6 +13,7 @@ import {
   patchSeat,
   removeStream,
   setHangarShare,
+  setPrimaryUnit,
   setSeatLateArrival,
   setUnitLateArrival,
   unclaimSeat,
@@ -1018,6 +1020,15 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             text: op.signupState === "joined" ? <>Du bist Teilnehmer</> : <>Angemeldet — wird vom Operator bestätigt</>,
           });
         const signedUp = items.length > 0;
+        // Someone can hold places in several accepted units (their own ship AND
+        // a seat on someone else's, say). The roster needs to know which one
+        // counts as theirs; without a choice the server picks a default, and
+        // this control makes that choice explicit and changeable.
+        const myUnits = op.units.filter(
+          (u) =>
+            u.status === "accepted" &&
+            (u.captain?.id === me.id || u.seats.some((st) => st.claimedBy?.id === me.id)),
+        );
         return (
           <div style={{ marginBottom: "1.8rem" }}>
             {signedUp && (
@@ -1031,6 +1042,35 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                     </div>
                   ))}
                 </div>
+                {myUnits.length > 1 && (
+                  <div
+                    data-testid="primary-unit"
+                    style={{ display: "flex", alignItems: "center", gap: "0.55rem", flexWrap: "wrap", marginTop: "0.8rem", paddingTop: "0.7rem", borderTop: "1px solid var(--wash)" }}
+                  >
+                    <label htmlFor="primary-unit-select" style={{ fontSize: "0.86rem", color: "var(--dim)" }}>
+                      Deine Haupteinheit
+                    </label>
+                    <select
+                      id="primary-unit-select"
+                      data-testid="primary-unit-select"
+                      value={op.viewerPrimaryUnitId ?? ""}
+                      disabled={!csrf}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        run(() => (v ? setPrimaryUnit(id!, csrf!, v) : clearPrimaryUnit(id!, csrf!)));
+                      }}
+                      style={{ background: "var(--bg3)", border: "1px solid var(--border-hi)", color: "var(--text)", fontSize: "0.84rem", padding: "0.3rem 0.5rem", borderRadius: 7, outline: "none" }}
+                    >
+                      <option value="">— automatisch —</option>
+                      {myUnits.map((u) => (
+                        <option key={u.id} value={u.id}>{u.shipName ?? u.name}</option>
+                      ))}
+                    </select>
+                    <span style={{ fontSize: "0.78rem", color: "var(--dim2)" }}>
+                      Zählt für Aufstellung und Ansprache, wenn du in mehreren Einheiten steckst.
+                    </span>
+                  </div>
+                )}
               </section>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: "1.2rem", flexWrap: "wrap" }}>

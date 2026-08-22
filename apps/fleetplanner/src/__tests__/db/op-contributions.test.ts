@@ -85,6 +85,9 @@ describe.skipIf(!dbReady)("operation contributions (real DB)", () => {
     expect(unit).not.toBeNull();
     expect(unit?.status).toBe("pending");
 
+    // Accepting also fires the captain DM. The test captain has no linked
+    // Discord identity, which makes that lookup throw — the accept must survive
+    // it anyway (it did not, until 2026-08-22: the 409 came from the DM path).
     const acc = await api("POST", `/api/v1/operations/${opId}/units/${unit!.id}/accept`, {});
     expect(acc.statusCode).toBe(200);
     expect(await prisma.fleetUnit.findUnique({ where: { id: unit!.id } })).toMatchObject({ status: "accepted" });

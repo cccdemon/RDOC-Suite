@@ -118,3 +118,19 @@ export async function addResourceLink(
 export async function removeResourceLink(operationId: string, linkId: string): Promise<void> {
   await prisma.operationResourceLink.deleteMany({ where: { id: linkId, operationId } });
 }
+
+/** Persist a new order. Ids not belonging to the op are ignored. */
+export async function reorderResourceLinks(operationId: string, orderedIds: string[]): Promise<void> {
+  const links = await prisma.operationResourceLink.findMany({
+    where: { operationId },
+    select: { id: true },
+  });
+  const valid = new Set(links.map((l) => l.id));
+  await prisma.$transaction(
+    orderedIds
+      .filter((id) => valid.has(id))
+      .map((id, i) =>
+        prisma.operationResourceLink.update({ where: { id }, data: { sortOrder: i } }),
+      ),
+  );
+}

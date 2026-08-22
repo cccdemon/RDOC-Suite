@@ -5,6 +5,8 @@ import {
   ApiError,
   answerQuestion,
   addCqbTeamMember,
+  autoBundleCqb,
+  dissolveCqbTeam,
   assignCqbSoldier,
   autoFillFighters,
   setCqbLateArrival,
@@ -115,6 +117,8 @@ export function OperatorPanel({
   const [memberFilter, setMemberFilter] = useState("");
   // #5: per-CQB-team "add any person" picker — teamId whose picker is open + search.
   const [addMemberTeam, setAddMemberTeam] = useState<string | null>(null);
+  // Squad size the CQB auto-bundle uses; the backend clamps to 2..8 anyway.
+  const [bundleSize, setBundleSize] = useState(4);
   const [addMemberFilter, setAddMemberFilter] = useState("");
   // Per-pending-unit chosen Bedarf at accept time (defaults to a suggested slot).
   const [acceptReq, setAcceptReq] = useState<Record<string, string>>({});
@@ -841,7 +845,32 @@ export function OperatorPanel({
   };
   const cqbBlock = (cqbTeams.length > 0 || cqbSoldiers.length > 0) && (
     <section style={{ ...card, marginBottom: "1.6rem", border: "1px solid var(--edge-gold)" }} data-testid="cqb-block">
-      {panelHead("fps", "var(--gold)", "CQB-TEAMS · SOLDATEN EINTEILEN", <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim3)" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>)}
+      {panelHead("fps", "var(--gold)", "CQB-TEAMS · SOLDATEN EINTEILEN", (
+        <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: "0.5rem" }}>
+          {/* Chunk everyone still unassigned into squads of the chosen size. The
+              teams are ordinary CQB teams afterwards — rename, move, dissolve. */}
+          <select
+            data-testid="cqb-bundle-size"
+            aria-label="Squad-Größe für das automatische Bündeln"
+            value={bundleSize}
+            onChange={(e) => setBundleSize(Number(e.target.value))}
+            style={{ background: "var(--bg3)", border: "1px solid var(--edge-gold)", color: "var(--text)", fontFamily: MONO, fontSize: "0.6rem", padding: "0.18rem 0.3rem", borderRadius: 6, outline: "none" }}
+          >
+            {[2, 3, 4, 5, 6, 7, 8].map((n) => <option key={n} value={n}>{n}er</option>)}
+          </select>
+          <button
+            type="button"
+            data-testid="cqb-auto-bundle"
+            title="Alle noch nicht eingeteilten Soldaten in Squads der gewählten Größe aufteilen"
+            disabled={cqbSoldiers.every((s) => s.assignedGroupId)}
+            onClick={() => run(() => autoBundleCqb(op.id, csrf, bundleSize))}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", color: "var(--gold)", fontFamily: MONO, fontSize: "0.6rem", borderRadius: 6, cursor: "pointer" }}
+          >
+            <Ic name="swap" size={11} sw={2} /> Auto-Bündeln
+          </button>
+          <span style={{ fontFamily: MONO, fontSize: "0.64rem", color: "var(--dim3)" }}>{cqbSoldiers.filter((s) => s.assignedGroupId).length}/{cqbSoldiers.length} eingeteilt</span>
+        </span>
+      ))}
       {/* FR-B6 rename + FR-B3 carrier: list teams (carrier dropdown when ships exist). */}
       {cqbTeams.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", marginBottom: "0.9rem", paddingBottom: "0.8rem", borderBottom: "1px solid var(--wash)" }}>
@@ -873,6 +902,18 @@ export function OperatorPanel({
                   {accepted.filter((c) => c.unitType === "ship").map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
                 {parentSelect(tm.id, tm.parentId, `cqb-team-parent-${tm.id}`)}
+                {/* Dissolving a team frees its members back into the pool — it
+                    never removes anyone from the operation. */}
+                <button
+                  type="button"
+                  data-testid={`cqb-team-dissolve-${tm.id}`}
+                  title="Squad auflösen — die Soldaten gehen zurück in den Pool"
+                  aria-label={`Squad ${tm.name} auflösen`}
+                  onClick={() => run(() => dissolveCqbTeam(op.id, tm.id, csrf))}
+                  style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                >
+                  <Ic name="x" size={12} sw={2} />
+                </button>
               </div>
               {pickOpen && memberPicker(tm.id)}
             </div>

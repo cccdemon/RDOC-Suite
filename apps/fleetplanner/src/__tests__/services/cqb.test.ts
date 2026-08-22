@@ -1,9 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
 // Mock the Prisma client — cqb.ts is thin DB logic, so we assert the calls it
-// builds. The manual bundling helpers (bundleSquad/autoBundle/unbundle/
-// assignToSquad) went with routes/api.ts on 2026-08-22: teams are materialised
-// from the CQB need now, and /api/v1 drives them through the cqb-teams routes.
+// builds, plus the one piece of real logic (autoBundle chunking).
 vi.mock("../../db.js", () => ({
   prisma: {
     cqbSignup: {
@@ -31,7 +29,7 @@ vi.mock("../../db.js", () => ({
   },
 }));
 
-import { createSignup, withdrawSignup, placeInSquad, renameSquad } from "../../services/cqb.js";
+import { autoBundle, createSignup, placeInSquad, renameSquad, unbundle, withdrawSignup } from "../../services/cqb.js";
 import { prisma } from "../../db.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,5 +108,43 @@ describe("renameSquad", () => {
   it("ignores an empty name", async () => {
     await renameSquad("op1", "grp", "   ");
     expect(p.compositionGroup.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("autoBundle", () => {
+  it("chunks the unassigned pool into squads of N", async () => {
+    p.cqbSignup.findMany.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }]);
+    const created = await autoBundle("op1", 2);
+    // 5 soldiers at 2 per squad → 3 squads, the last one half full.
+    expect(created).toBe(3);
+    expect(p.compositionGroup.create).toHaveBeenCalledTimes(3);
+  });
+
+  it("clamps the squad size into 2..8", async () => {
+    p.cqbSignup.findMany.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }]);
+    await autoBundle("op1", 99);
+    // Everyone fits into a single squad once the size is clamped to 8.
+    expect(p.compositionGroup.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates nothing for an empty pool", async () => {
+    p.cqbSignup.findMany.mockResolvedValue([]);
+    expect(await autoBundle("op1", 4)).toBe(0);
+    expect(p.compositionGroup.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("unbundle", () => {
+  it("frees the members before deleting the squad", async () => {
+    await unbundle("op1", "grp");
+    // The members must land back in the pool — dissolving a container never
+    // removes people from the operation.
+    expect(p.cqbSignup.updateMany).toHaveBeenCalledWith({
+      where: { operationId: "op1", assignedGroupId: "grp" },
+      data: { assignedGroupId: null, status: "pending", slotIndex: null },
+    });
+    expect(p.compositionGroup.deleteMany).toHaveBeenCalledWith({
+      where: { id: "grp", operationId: "op1", kind: "squad" },
+    });
   });
 });

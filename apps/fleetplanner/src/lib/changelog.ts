@@ -37,6 +37,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: "2026-08-22",
     title: "Assigning crew, and creating an operation",
     changes: [
+      "Captains get a Discord message again when their unit is accepted — with the operation, the start time and a link. That message had gone silent months ago.",
+      "Briefing links can be sorted: every link has an up and a down button, so the order players see is the order you want.",
+      "Ground teams: one button splits everyone still waiting into squads of the size you pick, and a team can be dissolved again — its soldiers go back into the pool instead of out of the operation.",
+      "If you hold places in more than one unit, you can now say which one is your main one. Left alone, the roster keeps choosing for you as before.",
       "Dragging a waiting person onto a seat now tells you exactly where they land, and free seats light up while you drag.",
       "A taken or switched-off seat says why it will not take anyone instead of doing nothing.",
       "You can do the whole thing without dragging: press \"Einteilen\", pick a seat with the keyboard or a tap, Escape backs out.",

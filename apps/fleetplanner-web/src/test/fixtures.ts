@@ -81,5 +81,6 @@ export const opDetailFixture: OperationDetail = {
   canManage: false,
   viewerCqbSignedUp: false,
   viewerHangarShared: false,
+  viewerPrimaryUnitId: null,
   squadLinkVoiceEnabled: false,
 };

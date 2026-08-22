@@ -213,6 +213,8 @@ export function presentOperationDetail(
     signupState: "joined" | "waitlist" | null;
     cqbSignedUp?: boolean;
     hangarShared?: boolean;
+    /** The viewer's explicit primary-unit choice, resolved by the caller. */
+    primaryUnitId?: string | null;
     /** Future occurrences of the series, computed by the caller. This module
      *  stays free of prisma, and the occurrence math lives next to the
      *  scheduler that owns it. */
@@ -225,6 +227,7 @@ export function presentOperationDetail(
     ...presentOperationSummary(op, viewer.signupState),
     viewerCqbSignedUp: viewer.cqbSignedUp ?? false,
     viewerHangarShared: viewer.hangarShared ?? false,
+    viewerPrimaryUnitId: viewer.primaryUnitId ?? null,
     description: op.description,
     recurrence: op.recurrence
       ? {

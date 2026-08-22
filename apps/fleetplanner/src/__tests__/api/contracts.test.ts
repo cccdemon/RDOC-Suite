@@ -101,6 +101,7 @@ describe("contracts", () => {
       canManage: false,
       viewerCqbSignedUp: false,
       viewerHangarShared: true,
+      viewerPrimaryUnitId: null,
       squadLinkVoiceEnabled: false,
     };
     const parsed = OperationDetailSchema.safeParse(detail);
