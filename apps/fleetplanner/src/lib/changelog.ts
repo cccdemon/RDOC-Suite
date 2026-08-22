@@ -34,6 +34,14 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-25",
+    title: "Easier to read, clearer to finish",
+    changes: [
+      "Grey secondary text was too dark to read comfortably, especially on a phone. It is brighter now across the whole site, without changing the colours the Fleetplanner is built from.",
+      "After creating an operation you get four named next steps instead of one button and a toggle: plan the fleet, add cover and documents, announce it in Discord, or just look at it.",
+    ],
+  },
+  {
     date: "2026-08-24",
     title: "Knowing what needs you",
     changes: [

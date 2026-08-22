@@ -73,6 +73,26 @@ function clearDraft() { try { window.localStorage.removeItem(DRAFT_KEY); } catch
 const inp: React.CSSProperties = { width: "100%", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.95rem", padding: "0.55rem 0.7rem", borderRadius: 8, outline: "none" };
 const lbl: React.CSSProperties = { fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.1em", color: "var(--dim)", marginBottom: "0.4rem", display: "block" };
 
+// One named way on from the success state (§9.3). A tile, not a button row:
+// each carries what it is for, so the choice is readable without guessing.
+function postStep(testid: string, icon: string, title: string, hint: string, onClick: () => void) {
+  return (
+    <button
+      key={testid}
+      type="button"
+      data-testid={testid}
+      onClick={onClick}
+      style={{ display: "flex", alignItems: "flex-start", gap: "0.6rem", textAlign: "left", padding: "0.8rem 0.9rem", borderRadius: 11, cursor: "pointer", border: "1px solid var(--border)", background: "var(--wash)", color: "var(--text)" }}
+    >
+      <span style={{ color: "var(--cyan)", display: "inline-flex", flexShrink: 0, marginTop: 2 }}><Ic name={icon} size={17} sw={1.7} /></span>
+      <span style={{ minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: "0.92rem", fontWeight: 600, color: "var(--text-hi)" }}>{title}</span>
+        <span style={{ display: "block", fontSize: "0.8rem", color: "var(--dim)", marginTop: 3, lineHeight: 1.45 }}>{hint}</span>
+      </span>
+    </button>
+  );
+}
+
 export function WizardPage({ session }: { session: SessionResponse | null }) {
   const nav = useNavigate();
   const t = useT();
@@ -541,12 +561,26 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                   <span style={{ color: "var(--green)", display: "inline-flex" }}><Ic name="check" size={18} sw={1.8} /></span>
                   <span style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)" }}>{t("cover.created")}</span>
                 </div>
-                <p style={{ fontSize: "0.84rem", color: "var(--dim)", margin: 0, lineHeight: 1.5 }}>{t("cover.wizardHint")}</p>
-                {/* Two named ways out, side by side — not one long page. */}
-                <div data-testid="wiz-post-decision" style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-                  <button type="button" data-testid="wiz-to-op" onClick={() => nav(`/ops/${createdId}`)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--cyan)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}>{t("cover.toOp")}<Ic name="arrow" size={14} sw={1.8} /></button>
-                  <button type="button" data-testid="wiz-post-edit" aria-pressed={postMode === "edit"} onClick={() => setPostMode("edit")} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.6rem 1.4rem", border: postMode === "edit" ? "1px solid var(--edge-green)" : "1px solid var(--border)", background: postMode === "edit" ? "var(--tint-green)" : "transparent", color: postMode === "edit" ? "var(--green)" : "var(--dim)", fontFamily: MONO, fontSize: "0.78rem", borderRadius: 10, cursor: "pointer" }}><Ic name="edit" size={14} sw={1.7} /> Cover &amp; Freigabe ergänzen</button>
+                <p style={{ fontSize: "0.88rem", color: "var(--dim)", margin: 0, lineHeight: 1.55 }}>
+                  Sie liegt als Entwurf bereit. Was als Nächstes ansteht, hängt davon ab, was du
+                  vorhast — jeder Weg führt an einen Ort, nicht in ein Formular.
+                </p>
+                {/* §9.3: four named ways on, not one toggle. Since phase 3 every
+                    one of them is a real place, so these navigate rather than
+                    unfolding more of this page. */}
+                <div data-testid="wiz-post-decision" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))", gap: "0.6rem" }}>
+                  {postStep("wiz-post-fleet", "ship", "Flotte planen", "Bedarfe setzen, Einheiten annehmen, Sitze besetzen.", () => nav(`/ops/${createdId}?mode=manage&op=fleet`))}
+                  {postStep("wiz-post-briefing", "image", "Cover & Dokumente", "Briefing-Links, Missions-Cover und PDFs anhängen.", () => nav(`/ops/${createdId}?mode=manage&op=briefing`))}
+                  {postStep("wiz-post-announce", "chat", "In Discord ankündigen", "In einen Kanal posten und die Reichweite prüfen.", () => nav(`/ops/${createdId}?mode=manage&op=freigabe`))}
+                  {postStep("wiz-to-op", "eye", t("cover.toOp"), "Sehen, was die Crew sieht.", () => nav(`/ops/${createdId}`))}
                 </div>
+
+                {/* The wizard's own panels stay: finishing the cover without
+                    leaving is the convenience of having just created the thing,
+                    not a second place to manage it. */}
+                <button type="button" data-testid="wiz-post-edit" aria-expanded={postMode === "edit"} onClick={() => setPostMode(postMode === "edit" ? "decide" : "edit")} style={{ alignSelf: "flex-start", display: "inline-flex", alignItems: "center", gap: 7, padding: "0.5rem 1rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.74rem", borderRadius: 9, cursor: "pointer" }}>
+                  <Ic name="edit" size={14} sw={1.7} /> {postMode === "edit" ? "Hier zuklappen" : "Oder gleich hier erledigen"}
+                </button>
                 {postMode === "edit" && (
                   <div data-testid="wiz-post-panels" style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
                     <CoverPanel opId={createdId} csrf={csrf} onNotice={setNotice} />

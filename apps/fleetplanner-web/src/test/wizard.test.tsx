@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import { WizardPage } from "../pages/WizardPage";
 import { server } from "./setup";
@@ -17,10 +17,17 @@ const sessionOperator: SessionResponse = {
   memberships: [{ guildId: "guild_1", guildName: "RDOC", role: "fleetoperator" }],
 };
 
+// The wizard navigates away when a post-create way is taken; this exposes where to.
+function Probe() {
+  const loc = useLocation();
+  return <span data-testid="probe-url">{loc.pathname + loc.search}</span>;
+}
+
 function renderWizard() {
   return render(
     <MemoryRouter>
       <WizardPage session={sessionOperator} />
+      <Probe />
     </MemoryRouter>,
   );
 }
@@ -136,7 +143,7 @@ describe("wizard — draft survives leaving the page", () => {
 
 // ── create + post-create ─────────────────────────────────────────────────────
 describe("wizard — creating", () => {
-  it("creates exactly one op and then offers two named ways on", async () => {
+  it("creates exactly one op and then offers named ways on", async () => {
     let creates = 0;
     server.use(
       http.post(`${API}/operations`, async () => {
@@ -163,6 +170,48 @@ describe("wizard — creating", () => {
     expect(await screen.findByTestId("wiz-post-panels")).toBeInTheDocument();
     // A created op is no longer an unsent draft.
     expect(window.localStorage.getItem("fpw.wizard.draft.v1")).toBeNull();
+  });
+
+  it("names four ways on, and each one is a place rather than a form", async () => {
+    server.use(
+      http.post(`${API}/operations`, () => HttpResponse.json({ ok: true, id: "op_new" })),
+      http.get(`${API}/operations/op_new/cover`, () => HttpResponse.json({ serviceConfigured: false, cover: null })),
+    );
+    renderWizard();
+    await screen.findByTestId("create-page");
+    fillCore();
+    fireEvent.click(screen.getByTestId("wiz-step-5"));
+    fireEvent.click(screen.getByTestId("wiz-create"));
+    await screen.findByTestId("wiz-post-decision");
+
+    // Each way says what it is for; "weiter" with no noun is what §9.3 rejects.
+    expect(screen.getByTestId("wiz-post-fleet")).toHaveTextContent("Flotte planen");
+    expect(screen.getByTestId("wiz-post-briefing")).toHaveTextContent("Cover & Dokumente");
+    expect(screen.getByTestId("wiz-post-announce")).toHaveTextContent("In Discord ankündigen");
+    expect(screen.getByTestId("wiz-to-op")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("wiz-post-briefing"));
+    await waitFor(() =>
+      expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_new?mode=manage&op=briefing"),
+    );
+  });
+
+  it("leads the fleet and the announcement to the places phase 3 built", async () => {
+    server.use(
+      http.post(`${API}/operations`, () => HttpResponse.json({ ok: true, id: "op_new" })),
+      http.get(`${API}/operations/op_new/cover`, () => HttpResponse.json({ serviceConfigured: false, cover: null })),
+    );
+    renderWizard();
+    await screen.findByTestId("create-page");
+    fillCore();
+    fireEvent.click(screen.getByTestId("wiz-step-5"));
+    fireEvent.click(screen.getByTestId("wiz-create"));
+    await screen.findByTestId("wiz-post-decision");
+
+    fireEvent.click(screen.getByTestId("wiz-post-announce"));
+    await waitFor(() =>
+      expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_new?mode=manage&op=freigabe"),
+    );
   });
 
   it("cannot be created from an incomplete step 0", async () => {

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Vier benannte Wege aus dem Wizard, und lesbarer Sekundärtext (2026-08-22)
+
+Nach dem Anlegen einer Operation bot der Wizard „Zur Operation" und einen Umschalter. Jetzt stehen
+dort vier benannte Wege — Flotte planen, Cover & Dokumente, In Discord ankündigen, Operation
+ansehen — die seit der neuen Verwaltungs-IA jeweils an einen echten Ort führen. Die Panels im Wizard
+bleiben hinter „Oder gleich hier erledigen" erreichbar.
+
+### Fixed - Sekundärtext lag unter WCAG AA (2026-08-22)
+
+Der Graustufen-Verlauf für Nebentext war zum Hintergrund hin gemischt: auf einer Karte maß `--dim`
+3.36:1, `--dim2` 2.68:1 und `--dim3` 2.03:1 — und diese drei tragen den größten Teil der
+Erklärungstexte. Sie sind jetzt zu Offwhite hin gemischt und liegen alle über 4.5:1, bei gleicher
+Farbfamilie und weiterhin drei unterscheidbaren Stufen. `src/test/contrast.test.ts` rechnet die
+Werte aus der Stylesheet-Datei nach, damit sie nicht wieder abrutschen.
+
 ### Changed - Die Event-Verwaltung folgt jetzt der Arbeit, nicht den Komponenten (2026-08-22)
 
 Die Operator-Konsole gruppierte vorhandene Panels. Jetzt gibt es Orte für die Schritte, die man

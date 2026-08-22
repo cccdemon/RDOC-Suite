@@ -44,6 +44,14 @@ export const handlers = [
     HttpResponse.json({ title: String(params.slug), html: "<p>Test-Dokument</p>" }),
   ),
   http.get(`${API}/guilds/:id/partnerships`, () => HttpResponse.json({ partnerships: [] })),
+  // Both fire from VoicePanel/SquadLinkPanel the moment they mount, whether or
+  // not voice is on for the op — the early return is in the render, not in the
+  // effect. Without defaults they surface as unhandled-request noise in
+  // whichever test happens to run next.
+  http.get(`${API}/operations/:id/squadlink`, () =>
+    HttpResponse.json({ enabled: false, configured: false, started: false, link: null, storeUrl: null }),
+  ),
+  http.get(`${API}/operations/:id/voice/recipients`, () => HttpResponse.json({ userIds: [] })),
   http.get(`${API}/operations/:id/operator`, () =>
     HttpResponse.json({
       crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [],

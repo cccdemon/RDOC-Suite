@@ -4,7 +4,7 @@
 > ist: löschen. Die Historie steht im [Mergelog](RDOC-SUITE-MERGELOG.md), die inhaltliche Wahrheit in
 > der [Matrix](UI-UX-REDESIGN-MATRIX.md) (CLAUDE.md Regel 7).
 >
-> **Stand:** 2026-08-22, nach Phase 3.
+> **Stand:** 2026-08-22, nach Phase 4a.
 
 ---
 
@@ -20,7 +20,7 @@ Phasenmodell aus dessen §15.
 | 1 — Gates und Kontextfehler | **fertig ohne Codeänderung** — alle fünf §2.3-Risiken waren schon behoben und getestet |
 | 2 — OperationShell, Ansehen gegen Verwalten | **fertig** (`8f9f48a`) |
 | 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
-| 4 — Workflow und visuelle Hierarchie | **offen, als Nächstes** |
+| 4 — Workflow und visuelle Hierarchie | **teilweise** — Wizard-Erfolgszustand und Textkontrast erledigt; Kartentypen, Monospace-Disziplin und Aktionshierarchie offen |
 | 5 — Responsive und Accessibility | offen |
 | 6 — Verifikation | offen |
 
@@ -107,34 +107,40 @@ Zwei Dinge, die beim Weiterbauen zählen:
 - **Deutsche Anführungszeichen in JS-Stringliteralen** brauchen `„…“`. Ein `„…"` beendet den String;
   das hat im `ReleasePanel` einmal zugeschlagen und produziert kryptische `TS1005`-Kaskaden.
 
+
+### 4.2 Was Phase 4a gebaut hat
+
+- `styles.css` — die Tokens `--dim`, `--dim2`, `--dim3` sind literale Hexwerte mit dem gemessenen
+  Verhältnis als Kommentar. Vorher `color-mix` zum Hintergrund hin, und damit unter AA.
+- `src/test/contrast.test.ts` liest die Stylesheet-Datei und rechnet nach. Der dazu nötige
+  `node:fs`-Zugriff hängt an `src/test/node-shim.d.ts`, das genau zwei Signaturen deklariert —
+  `@types/node` würde dem Browser-Paket eine viel zu breite Typfläche geben.
+- `WizardPage` — vier benannte Wege aus dem Erfolgszustand; alle alten Testids erhalten.
+
 ---
 
-## 5. Phase 4 — der nächste Schritt
+## 5. Phase 4 — was noch fehlt
 
-Handoff §15 Phase 4. Phase 3 hat die Orte gebaut; Phase 4 macht sie lesbar.
+Erledigt: der Wizard-Erfolgszustand (§9.3) und der Textkontrast (§10.2, siehe
+`src/test/contrast.test.ts`). Offen:
 
-1. **Karten reduzieren** (§10.3). Es gibt heute genau eine Kartenoptik für Objekt, Formular,
-   Erklärung, Statistik und Arbeitsfläche. Erlaubt sind sieben semantische Typen; `ui.tsx` hat
-   `ObjectTile`, `ChoiceTile`, `WorkCard` und `DangerZone` bereits — sie werden nur nicht überall
-   benutzt.
-2. **Typografie und Kontrast** (§10.1/§10.2). Monospace nur für Status, Zeit, IDs und kurze
-   Eyebrows; keine Fließtexte in Monospace, keine Versalien für ganze Sätze. Mobile Fließtext
-   ~15–16 px.
-3. **Aktionshierarchie** (§10.4). Pro Kontext genau eine Primäraktion; `btnPrimary`/`btnGhost`
-   existieren, konkurrierende Akzentbuttons noch auch.
-4. **Wizard-Post-Create** (§9.3). Der Erfolgszustand soll vier benannte Wege anbieten statt zu
-   teleportieren. `AnnouncePanel` und `DocumentsPanel` hängen dort schon.
-5. **Statusabhängige Hinweise**, ohne Funktionen auszublenden.
+1. **Kartentypen** (§10.3). Objekt, Formular, Erklärung, Statistik und Arbeitsfläche sehen gleich
+   aus. `ui.tsx` hat `ObjectTile`, `ChoiceTile`, `WorkCard` und `DangerZone` — sie werden nur nicht
+   überall benutzt. Das `data-card`-Attribut macht den Typ prüfbar; dieselbe Mechanik wie beim
+   Kontrast: messen statt erinnern.
+2. **Monospace-Disziplin** (§10.1). Monospace gehört auf Status, Zeit, IDs und kurze Eyebrows. Heute
+   stehen auch ganze Erklärungssätze und Buttonbeschriftungen darin.
+3. **Aktionshierarchie** (§10.4). Pro Kontext genau eine Primäraktion.
 
 Danach Phase 5 (Responsive, Accessibility) und Phase 6 (Verifikation, manuelle Rollenmatrix).
 
 ## 6. Verifikation — was zuletzt grün war
 
-Alles am 22.08. nach dem letzten Phase-3-Commit gelaufen:
+Alles am 22.08. nach dem letzten Phase-4a-Commit gelaufen:
 
 ```bash
 ./scripts/test-stack.sh unit          # Backend  591 Tests, 40 Dateien
-./scripts/test-stack.sh unit:web      # SPA      189 Tests, 7 Dateien
+./scripts/test-stack.sh unit:web      # SPA      203 Tests, 8 Dateien
 ./scripts/test-stack.sh up            # Stack hoch (web :8099, api :3299, mock :4400)
 ./scripts/test-stack.sh e2e           # Playwright 119 passed, 3 skipped
 ./scripts/test-stack.sh smoke         # grün

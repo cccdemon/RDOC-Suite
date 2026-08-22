@@ -1,5 +1,54 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-08-22 (19): Redesign Phase 4, Rest — Kartentypen und Typografie
+
+Offen aus Eintrag (18), nachdem der Wizard-Erfolgszustand und der Textkontrast erledigt sind:
+
+- **Kartentypen** (Paragraph 10.3). Objekt, Formular, Erklaerung, Statistik und Arbeitsflaeche sehen
+  gleich aus. `ui.tsx` hat `ObjectTile`, `ChoiceTile`, `WorkCard` und `DangerZone`; sie werden nicht
+  ueberall benutzt. Das `data-card`-Attribut macht den Typ pruefbar — dieselbe Mechanik wie beim
+  Kontrast: messen statt erinnern.
+- **Monospace-Disziplin** (Paragraph 10.1). Monospace nur fuer Status, Zeit, IDs und kurze Eyebrows;
+  heute stehen auch ganze Erklaerungssaetze und Buttonbeschriftungen darin.
+- **Aktionshierarchie** (Paragraph 10.4). Pro Kontext genau eine Primaeraktion.
+
+## Completed - 2026-08-22 (18): Redesign Phase 4a — vier Wege aus dem Wizard, und lesbarer Text
+
+**Wizard-Erfolgszustand** (Paragraph 9.3). Nach dem Anlegen gab es zwei Wege: „Zur Operation" und
+einen Umschalter, der Cover, Dokumente und Ankuendigung an Ort und Stelle einblendet. Jetzt sind es
+vier benannte — Flotte planen, Cover & Dokumente, In Discord ankuendigen, Operation ansehen — und
+seit Phase 3 ist jeder davon ein echtes Ziel, also navigieren sie dorthin statt noch mehr von dieser
+Seite aufzuklappen. Die Panels im Wizard bleiben hinter „Oder gleich hier erledigen": sie sind die
+Bequemlichkeit direkt nach dem Anlegen, kein zweiter Verwaltungsort. Alle bisherigen Testids
+(`wiz-to-op`, `wiz-post-decision`, `wiz-post-edit`, `wiz-post-panels`) bleiben, kein E2E-Spec musste
+angefasst werden.
+
+**Textkontrast** (Paragraph 10.2). Der sekundaere Textverlauf war *zum Hintergrund hin* gemischt und
+lag damit unter AA — nachgerechnet auf einer Graphite-Karte: `--dim` 3.36:1, `--dim2` 2.68:1,
+`--dim3` 2.03:1. Diese drei tragen den groessten Teil des Erklaerungstexts im Produkt. Sie sind
+jetzt zu Offwhite hin gemischt, gleiche Steel-Familie, drei unterscheidbare Stufen, alle ueber 4.5:1
+auf beiden Flaechen: `--dim` #aeb4ba (6.30), `--dim2` #9ba4ab (5.20), `--dim3` #8f98a1 (4.50).
+
+Kontrast laesst sich auf dunklem Grund nicht mit dem Auge pruefen, deshalb
+[`src/test/contrast.test.ts`](../apps/fleetplanner-web/src/test/contrast.test.ts): der Test liest
+`styles.css` und rechnet die Verhaeltnisse gegen beide Flaechen aus. Ein Token, das wieder
+abgedunkelt wird, faellt dort auf und nicht in jemandes Augen. Der Test prueft ausserdem, dass die
+drei Stufen unterscheidbar bleiben — lesbar allein reicht nicht, die Rampe muss noch Hierarchie
+ausdruecken.
+
+Zwei Nebenbefunde:
+
+- Der Test brauchte `node:fs`; das SPA-Tsconfig fuehrt bewusst nur `vite/client`, damit App-Code
+  nicht versehentlich nach Node-APIs greift. Statt `@types/node` in ein Browser-Paket zu ziehen,
+  deklariert [`src/test/node-shim.d.ts`](../apps/fleetplanner-web/src/test/node-shim.d.ts) genau die
+  zwei benutzten Signaturen. (`?raw` waere schoener gewesen, aber vitest stubbt CSS-Importe.)
+- `VoicePanel` und `SquadLinkPanel` feuern ihre Fetches beim Mount, auch wenn Voice fuer die Operation
+  aus ist — der fruehe Return steht im Render, nicht im Effect. Ohne Defaults tauchte das als
+  unhandled-request-Rauschen in irgendeinem spaeteren Test auf; `test/handlers.ts` hat sie jetzt.
+
+Verifikation: SPA-Unit **203 Tests, 8 Dateien**, ohne unhandled-request-Meldung; Backend-Unit **591
+Tests**; Playwright **119 passed, 3 skipped**; Smoke gruen; `tsc --noEmit` und `vite build` gruen.
+
 ## Completed - 2026-08-22 (17): Redesign Phase 3 — die Verwaltungs-IA
 
 Handoff-Paragraph 7, in vier Commits plus einem Testvorlauf. Kein `/api/v1`-Vertrag wurde angefasst,
