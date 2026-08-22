@@ -625,3 +625,60 @@ a { color: var(--cyan); }
 @media (max-width: 760px) {
   [data-card], .fpw-card { max-width: 100%; }
 }
+
+/* ── §12: motion is a preference, not a decision the app makes ────────────────
+   Eight transitions and one keyframe animation shipped without ever asking. For
+   somebody who gets motion sick, or who turned the setting on because a screen
+   reader loses its place when things slide, that is not a nicety.
+   Not `animation: none` — a zero-length animation still fires its start and end
+   events, so anything waiting on `animationend` keeps working. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── §11: a finger is not a mouse pointer ─────────────────────────────────────
+   The height of a control belongs here rather than in each style object: an
+   inline `minHeight` beats any stylesheet rule, so a media query could never
+   raise it. `:where()` keeps the specificity at zero, so a component that
+   genuinely needs its own height still wins by saying so.
+   38 px is comfortable under a cursor; a thumb needs 44 (§11). */
+:where(button, [role="tab"], [role="button"]) {
+  min-height: 38px;
+}
+@media (max-width: 760px) {
+  :where(button, [role="tab"], [role="button"], a.btn) {
+    min-height: 44px;
+  }
+}
+
+/* ── §11: the management navigation on a phone ────────────────────────────────
+   Four work areas and up to five sub-views used to wrap, which on a phone meant
+   two or three stacked rows of buttons before any content started. They scroll
+   sideways instead — one row each, visibly cut off at the edge so it is obvious
+   there is more, and the active one is scrolled into view by the browser when it
+   receives focus. */
+@media (max-width: 760px) {
+  .fpw-manage-areas,
+  .fpw-manage-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    /* Fade the right edge so a cut-off row reads as scrollable rather than as
+       a row that happens to end there. */
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+  }
+  .fpw-manage-areas > *,
+  .fpw-manage-tabs > * {
+    flex: 0 0 auto;
+  }
+}

@@ -112,7 +112,7 @@ export function VoicePanel({
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
         {header}
-        <div style={{ padding: "1.4rem 1rem", textAlign: "center", color: "var(--dim2)", fontFamily: MONO, fontSize: "0.8rem", border: "1px dashed var(--wash)", borderRadius: 12 }}>SquadLink ist deaktiviert — oben aktivieren, um Sprach-Links zu vergeben.</div>
+        <div style={{ padding: "1.4rem 1rem", textAlign: "center", color: "var(--dim2)", fontFamily: "var(--body)", fontSize: "0.8rem", border: "1px dashed var(--wash)", borderRadius: 12 }}>SquadLink ist deaktiviert — oben aktivieren, um Sprach-Links zu vergeben.</div>
       </div>
     );
   }
@@ -137,7 +137,7 @@ export function VoicePanel({
           </>
         ))}
         {recipients.length === 0 ? (
-          <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Noch niemand eingeteilt.</div>
+          <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: "var(--body)" }}>Noch niemand eingeteilt.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
             {recipients.map((p) => {

@@ -34,6 +34,16 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-08-26",
+    title: "Better on a phone",
+    changes: [
+      "Managing an operation on a phone used to start with two or three stacked rows of buttons before any content. The area and tab rows now scroll sideways, one row each.",
+      "Buttons and other things you tap are bigger on a phone.",
+      "If your device is set to reduce motion, the Fleetplanner now respects that.",
+      "Empty states, hints and button labels are no longer set in the technical typeface — that stays for status, times and IDs.",
+    ],
+  },
+  {
     date: "2026-08-25",
     title: "Easier to read, clearer to finish",
     changes: [

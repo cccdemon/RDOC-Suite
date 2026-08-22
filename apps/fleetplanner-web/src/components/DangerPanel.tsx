@@ -19,7 +19,6 @@ const dangerButton: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   gap: 7,
-  minHeight: 38,
   padding: "0.5rem 1rem",
   border: "1px solid var(--edge-red)",
   background: "var(--tint-red)",

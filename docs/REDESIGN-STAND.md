@@ -4,7 +4,7 @@
 > ist: löschen. Die Historie steht im [Mergelog](RDOC-SUITE-MERGELOG.md), die inhaltliche Wahrheit in
 > der [Matrix](UI-UX-REDESIGN-MATRIX.md) (CLAUDE.md Regel 7).
 >
-> **Stand:** 2026-08-23, nach Phase 4b.
+> **Stand:** 2026-08-23, nach Phase 5a.
 
 ---
 
@@ -20,9 +20,9 @@ Phasenmodell aus dessen §15.
 | 1 — Gates und Kontextfehler | **fertig ohne Codeänderung** — alle fünf §2.3-Risiken waren schon behoben und getestet |
 | 2 — OperationShell, Ansehen gegen Verwalten | **fertig** (`8f9f48a`) |
 | 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
-| 4 — Workflow und visuelle Hierarchie | **fertig bis auf einen Handdurchgang** — Wizard, Kontrast, Aktionsrang, Kartentypen erledigt; Inline-Monospace in `OperatorPanel`/`OpDetailPage` offen |
-| 5 — Responsive und Accessibility | **offen, als Nächstes** |
-| 6 — Verifikation | offen |
+| 4 — Workflow und visuelle Hierarchie | **fertig** — Wizard, Kontrast, Aktionsrang, Kartentypen, Monospace |
+| 5 — Responsive und Accessibility | **teilweise** — Motion, Zielgrößen, Telefon-Navigation erledigt; Modals als Bottom-Sheet und progressive Offenlegung offen |
+| 6 — Verifikation | **offen, als Nächstes** |
 
 ---
 
@@ -126,41 +126,44 @@ Zwei Dinge, die beim Weiterbauen zählen:
   Vokabel gegen das, was `styles.css` tatsächlich stylt.
 - „Vorlage & Serie" ist zwei Karten mit je einer Hauptaktion.
 
-**Der Handdurchgang ist bewusst nicht gemacht.** Rund 350 `MONO`-Fundstellen liegen inline in
-`OperatorPanel` und `OpDetailPage`. Ohne Testabdeckung ist das reine Handarbeit; sie gehört in
-denselben Schritt wie Phase 5, weil beide Dateien dort ohnehin angefasst werden.
+**Nachtrag zur Zahl:** „rund 350 Fundstellen" war der rohe `MONO`-Token-Count. Nachgezählt sind es
+30 Stellen, an denen Monospace wirklich falsch stand; der Rest sind Versalien-Eyebrows, Zähler und
+Zeiten. Erledigt in Phase 5a.
 
 ---
 
-## 5. Phase 5 — der nächste Schritt
+## 5. Was noch offen ist
 
-Handoff §11 und §12. Aus Phase 4 bleibt ein Posten liegen, der hierher gehört, weil dieselben zwei
-Dateien angefasst werden:
+Aus §11 blieb zweierlei liegen, beides bewusst:
 
-0. **Inline-Monospace** in `OperatorPanel` (92 Stellen) und `OpDetailPage` (64). Die Quelle ist
-   sauber (`ui.tsx`), diese beiden Dateien setzen `MONO` direkt — auch auf Erklärungssätzen. Ein
-   Handdurchgang ohne Testabdeckung; deshalb zusammen mit der Responsive-Arbeit an denselben Dateien.
+1. **Modals als Bottom-Sheet auf Mobile.** Die Cover-Lightbox ist bereits Vollbild; betroffen wäre
+   der Vorlagenpicker im Wizard.
+2. **Progressive Offenlegung langer Startseiteninhalte** (§11, „nach 3–5 Kategorien").
 
-Dann Phase 5 selbst:
+Dann **Phase 6 — Verifikation** (§15 Phase 6, §17): manuelle Rollenmatrix Gast / Crew / Operator /
+Superadmin auf Desktop und Mobile, plus die zehn Abnahmeszenarien aus §17. Das ist Handarbeit am
+laufenden Stack und nichts, was ein Test abnimmt.
 
-1. **Mobile Verwaltungsnavigation** — die Bereichsleiste und die Tab-Reihe sind auf einem Telefon
-   zwei gequetschte Zeilen (§11).
-2. **Board und Warteliste** einspaltig unter ~700 px, Tabellen als Karten statt erzwungenem
-   Horizontalscroll.
-3. **Dialoge und Drawer** — Fokusfalle, Escape, Rückfokus sind im Drawer da; Modals sollen auf
-   Mobile Bottom-Sheet oder Vollbild sein.
-4. **Mindestzielgröße 44 × 44 px** für interaktive Flächen auf Mobile.
-5. **`prefers-reduced-motion`** respektieren.
+### Fallen, die schon zugeschnappt sind
 
-Danach Phase 6 (Verifikation, manuelle Rollenmatrix).
+- **`OperatorConsole.setTab` darf `mode` nicht aus der URL löschen** — sonst fliegt der Operator beim
+  ersten Tabklick aus der Verwaltung. Regressionstest in `nav.test.tsx`.
+- **Ein Inline-`minHeight` schlägt jede Media Query.** Deshalb liegt die Höhe interaktiver Flächen im
+  Stylesheet und nicht im Style-Objekt; `stylesheet.test.ts` hält das fest.
+- **Deutsche Anführungszeichen in JS-Stringliteralen** brauchen `„…“`. Ein `„…"` beendet den String
+  und produziert eine `TS1005`-Kaskade.
+- **`partnerTargetGuildIds` ist create-only** — die Partnerverteilung wird angezeigt, nicht angeboten.
 
 ## 6. Verifikation — was zuletzt grün war
 
-Alles am 23.08. nach dem letzten Phase-4b-Commit gelaufen:
+Alles am 23.08. nach dem letzten Phase-5a-Commit gelaufen:
+
+Unter Windows über Git Bash (`bash scripts/test-stack.sh …`) oder direkt mit
+`docker compose -f docker-compose.test.yml …`.
 
 ```bash
 ./scripts/test-stack.sh unit          # Backend  591 Tests, 40 Dateien
-./scripts/test-stack.sh unit:web      # SPA      208 Tests, 8 Dateien
+./scripts/test-stack.sh unit:web      # SPA      216 Tests, 9 Dateien
 ./scripts/test-stack.sh up            # Stack hoch (web :8099, api :3299, mock :4400)
 ./scripts/test-stack.sh e2e           # Playwright 119 passed, 3 skipped
 ./scripts/test-stack.sh smoke         # grün

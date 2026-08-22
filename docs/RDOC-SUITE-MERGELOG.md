@@ -1,5 +1,52 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (20): Redesign Phase 5a — Motion, Zielgroessen, Telefon-Navigation, Monospace
+
+**`prefers-reduced-motion` wurde nirgends beachtet** — acht Transitions und eine Keyframe-Animation,
+null Treffer im Stylesheet. Jetzt ein globaler Block. Nicht `animation: none`: eine Animation der
+Laenge null feuert weiterhin `animationend`, also bleibt alles funktionsfaehig, was darauf wartet.
+
+**Die Zielgroesse liess sich gar nicht anheben.** `btnBase` setzte `minHeight: 38` *inline*, und ein
+Inline-Style schlaegt jede Regel — eine Media Query haette den Wert nie erreicht. Die Hoehe liegt
+jetzt im Stylesheet (`:where(button, [role="tab"], [role="button"])`, Spezifitaet null, damit eine
+Komponente mit echtem Bedarf weiterhin gewinnt): 38 px unter dem Cursor, 44 px unter 760 px Breite.
+Dieselbe Falle in `DangerPanel` und `OperationShell` mit entfernt.
+
+Eine erste Fassung enthielt ausserdem eine `:has()`-Regel fuer die Mindestbreite von Icon-Buttons.
+Die ist wieder raus: genau diese Buttons setzen ihre Breite inline, die Regel haette also die Faelle
+verfehlt, fuer die sie gedacht war, und dabei so ausgesehen, als sei das Problem geloest.
+
+**Verwaltungs-Navigation auf dem Telefon.** Bereichsleiste und Tabreihe brachen um — vier Bereiche
+plus bis zu fuenf Unteransichten ergaben zwei bis drei gestapelte Knopfreihen, bevor der Inhalt
+anfing. Unter 760 px scrollen sie jetzt seitwaerts, je eine Zeile, mit einer Maske am rechten Rand,
+damit eine abgeschnittene Reihe nicht wie eine zu Ende gegangene Reihe aussieht.
+
+**Monospace-Durchgang — und eine Korrektur.** Eintrag (19) sprach von „rund 350 Fundstellen". Das war
+der rohe `MONO`-Token-Count; nachgezaehlt sind es **30 Stellen**, an denen Monospace wirklich falsch
+steht, der Rest sind Versalien-Eyebrows, Zaehler und Zeiten — genau die Faelle, die Paragraph 10.1
+behaelt. Geaendert: 16 Buttonbeschriftungen und Leerzustaende in `OperatorPanel`, `OpDetailPage` und
+`VoicePanel`, dazu drei Sonderfaelle — ein Fussnotentext, der bei 0.58 rem auch fuer eine Fussnote zu
+klein war; der Auto-Fill-Knopf, der sich eine Zeile mit einem Zaehler teilt, der Monospace behaelt;
+und ein Hinweissatz, der seine Monospace vom Eyebrow darueber geerbt hat. Der Raumlink im `<code>`
+bleibt Monospace: das ist eine ID.
+
+**Was schon stand** und beim Durchsehen bestaetigt wurde, statt neu gebaut zu werden: sichtbarer
+Fokusring mit Offset, `.fpw-sr-only`-Live-Region fuer die Board-Ansagen, Tabellen mit eigenem
+Horizontalscroll und klebender erster Spalte, Drawer ab 880 px, und keine Karte darf die Seite
+seitlich scrollen lassen.
+
+Gesichert in [`src/test/stylesheet.test.ts`](../apps/fleetplanner-web/src/test/stylesheet.test.ts).
+jsdom rechnet kein Layout und wertet keine Media Query aus, also sind das ausdruecklich keine
+Rendering-Pruefungen — sie halten fest, dass die Regeln da sind und nicht wieder ausgehebelt werden.
+Eine davon prueft, dass `btnBase` keine eigene Hoehe mehr setzt: genau daran waere die Media Query
+sonst wieder gescheitert.
+
+Verifikation: SPA-Unit **216 Tests, 9 Dateien**; Backend-Unit **591**; Playwright **119 passed, 3
+skipped**; Smoke gruen; `tsc --noEmit` und `vite build` gruen.
+
+Offen aus Paragraph 11: Modals als Bottom-Sheet auf Mobile, und die progressive Offenlegung langer
+Startseiteninhalte.
+
 ## Completed - 2026-08-23 (19): Redesign Phase 4b — Aktionsrang, Kartentypen, Monospace
 
 **Aktionshierarchie** (Paragraph 10.4). `btnPrimary` und `btnGhost` unterschieden sich durch eine

@@ -78,7 +78,7 @@ export function OperationShell({
         data-testid={`op-mode-${target}`}
         aria-pressed={on}
         onClick={() => onMode?.(target)}
-        style={{ display: "inline-flex", alignItems: "center", gap: 7, minHeight: 36, padding: "0.4rem 0.9rem", borderRadius: 9, cursor: "pointer", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid var(--border)", background: on ? "var(--cyan)" : "transparent", color: on ? "var(--bg)" : "var(--dim)" }}
+        style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "0.4rem 0.9rem", borderRadius: 9, cursor: "pointer", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", whiteSpace: "nowrap", fontWeight: on ? 700 : 500, border: on ? "1px solid var(--cyan)" : "1px solid var(--border)", background: on ? "var(--cyan)" : "transparent", color: on ? "var(--bg)" : "var(--dim)" }}
       >
         <Ic name={icon} size={14} sw={1.7} /> {label}
       </button>

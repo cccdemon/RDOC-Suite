@@ -482,7 +482,7 @@ export function OperatorPanel({
                   </button>
                 ))}
             </div>
-            <button type="button" onClick={(e) => { e.stopPropagation(); setPicker(null); }} style={{ padding: "0.4rem 0.6rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.64rem", borderRadius: 7, cursor: "pointer" }}>Schließen</button>
+            <button type="button" onClick={(e) => { e.stopPropagation(); setPicker(null); }} style={{ padding: "0.4rem 0.6rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: "var(--body)", fontSize: "0.64rem", borderRadius: 7, cursor: "pointer" }}>Schließen</button>
           </div>
         )}
       </div>
@@ -504,7 +504,7 @@ export function OperatorPanel({
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
         {flexPeople.length === 0 ? (
-          <div style={{ padding: "0.7rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Alle eingeteilt ✓</div>
+          <div style={{ padding: "0.7rem", textAlign: "center", color: "var(--dim3)", fontSize: "0.8rem", fontFamily: "var(--body)" }}>Alle eingeteilt ✓</div>
         ) : (
           flexPeople.map((r) => {
             const isPlacing = placing?.userId === r.userId;
@@ -575,7 +575,7 @@ export function OperatorPanel({
               <Avatar name={e.displayName} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <strong style={{ fontSize: "0.88rem", color: "var(--text-hi)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>{e.displayName}</strong>
-                {!e.userId && <div style={{ fontFamily: MONO, fontSize: "0.58rem", color: "var(--dim2)", marginTop: 1 }}>nicht verknüpft · muss sich einmal anmelden</div>}
+                {!e.userId && <div style={{ fontFamily: "var(--body)", fontSize: "0.74rem", color: "var(--dim2)", marginTop: 1 }}>nicht verknüpft · muss sich einmal anmelden</div>}
               </div>
               {e.seated ? (
                 <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, fontFamily: MONO, fontSize: "0.64rem", color: "var(--green)" }}><Ic name="check" size={12} sw={2} /> eingeteilt</span>
@@ -610,7 +610,7 @@ export function OperatorPanel({
               </div>
             )),
         )}
-        {open === 0 && <div style={{ padding: "0.5rem", color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Keine offenen Plätze ✓</div>}
+        {open === 0 && <div style={{ padding: "0.5rem", color: "var(--dim3)", fontSize: "0.8rem", fontFamily: "var(--body)" }}>Keine offenen Plätze ✓</div>}
       </div>
     </section>
   );
@@ -619,7 +619,7 @@ export function OperatorPanel({
     <section style={card}>
       {panelHead("chat", "var(--cyan)", "FRAGEN", openQ > 0 ? <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.58rem", color: "var(--gold)", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", padding: "0.08rem 0.4rem", borderRadius: 10 }}>{openQ} offen</span> : undefined)}
       <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-        {view.questions.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Keine Fragen.</div>}
+        {view.questions.length === 0 && <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: "var(--body)" }}>Keine Fragen.</div>}
         {view.questions.map((q) => (
           <div key={q.id} style={{ border: "1px solid var(--wash)", borderRadius: 9, padding: "0.6rem 0.65rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.4rem" }}><Avatar name={q.asker} /><strong style={{ fontSize: "0.82rem", color: "var(--text-hi)" }}>{q.asker}</strong></div>
@@ -759,7 +759,7 @@ export function OperatorPanel({
                 {reqSelect(u, sel, (id) => setAcceptReq((m) => ({ ...m, [u.id]: id })), `unit-bedarf-${u.id}`)}
               </label>
             )}
-            <button type="button" data-testid={`accept-${u.id}`} onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.7rem", border: "1px solid var(--edge-green)", background: "var(--tint-green)", color: "var(--green)", fontFamily: MONO, fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
+            <button type="button" data-testid={`accept-${u.id}`} onClick={() => boardAct(`pending-${u.id}`, (us) => us.map((x) => (x.id === u.id ? { ...x, status: "accepted" } : x)), () => decideUnit(op.id, u.id, "accept", csrf, sel || undefined))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.34rem 0.7rem", border: "1px solid var(--edge-green)", background: "var(--tint-green)", color: "var(--green)", fontFamily: "var(--body)", fontSize: "0.66rem", borderRadius: 7, cursor: "pointer" }}><Ic name="check" size={12} sw={2} /> Annehmen</button>
             <button type="button" data-testid={`reject-${u.id}`} title="Ablehnen" onClick={() => run(() => decideUnit(op.id, u.id, "reject", csrf))} style={{ flexShrink: 0, width: 26, height: 26, borderRadius: 6, border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ic name="x" size={12} sw={2} /></button>
             <SaveDot id={`pending-${u.id}`} />
           </div>
@@ -864,7 +864,7 @@ export function OperatorPanel({
             title="Alle noch nicht eingeteilten Soldaten in Squads der gewählten Größe aufteilen"
             disabled={cqbSoldiers.every((s) => s.assignedGroupId)}
             onClick={() => run(() => autoBundleCqb(op.id, csrf, bundleSize))}
-            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", color: "var(--gold)", fontFamily: MONO, fontSize: "0.6rem", borderRadius: 6, cursor: "pointer" }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "0.2rem 0.5rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", color: "var(--gold)", fontFamily: "var(--body)", fontSize: "0.72rem", borderRadius: 6, cursor: "pointer" }}
           >
             <Ic name="swap" size={11} sw={2} /> Auto-Bündeln
           </button>
@@ -922,7 +922,7 @@ export function OperatorPanel({
         </div>
       )}
       {cqbSoldiers.length === 0 ? (
-        <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: MONO }}>Noch keine CQB-Anmeldungen.</div>
+        <div style={{ color: "var(--dim3)", fontSize: "0.8rem", fontFamily: "var(--body)" }}>Noch keine CQB-Anmeldungen.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
           {cqbSoldiers.map((s) => {
@@ -1142,7 +1142,7 @@ export function OperatorPanel({
           onKeyDown={(e) => { if (e.key === "Enter" && newFormation.trim()) { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); } }}
           style={{ flex: "1 1 200px", boxSizing: "border-box", background: "var(--bg3)", border: "1px solid var(--border-hi)", color: "var(--text)", fontFamily: "var(--body)", fontSize: "0.86rem", padding: "0.4rem 0.55rem", borderRadius: 7, outline: "none" }}
         />
-        <button type="button" data-testid="formation-add" disabled={!newFormation.trim()} onClick={() => { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.7rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--purple)", fontFamily: MONO, fontSize: "0.7rem", borderRadius: 7, cursor: "pointer" }}><Ic name="plus" size={12} sw={2} /> Verband</button>
+        <button type="button" data-testid="formation-add" disabled={!newFormation.trim()} onClick={() => { run(() => createFormation(op.id, csrf, newFormation.trim())); setNewFormation(""); }} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.7rem", border: "1px solid var(--border-hi)", background: "var(--wash)", color: "var(--purple)", fontFamily: "var(--body)", fontSize: "0.7rem", borderRadius: 7, cursor: "pointer" }}><Ic name="plus" size={12} sw={2} /> Verband</button>
       </div>
     </section>
   );
@@ -1150,7 +1150,7 @@ export function OperatorPanel({
   const boardBlock = (
     <>
       <div style={{ fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.14em", color: "var(--dim)", marginBottom: "1rem" }}>
-        FLOTTEN-BOARD <span style={{ color: "var(--dim3)" }}>· Platz anklicken oder Person draufziehen</span>
+        FLOTTEN-BOARD <span style={{ fontFamily: "var(--body)", fontSize: "0.8rem", color: "var(--dim3)" }}>· Platz anklicken oder Person draufziehen</span>
       </div>
       <div className="fpw-board" style={{ gap: "0.85rem" }}>
         {lanes.map((lane) => (
@@ -1344,7 +1344,7 @@ export function OperatorPanel({
         <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.12em", color: "var(--gold)" }}>EINTEILEN-MODUS</span>
         <div style={{ color: "var(--text-hi)", fontSize: "0.92rem", marginTop: 1 }}><strong>{placing.name}</strong> — wähle unten einen offenen Platz <span style={{ color: "var(--gold)" }}>(grün markiert)</span>. Tab springt von Platz zu Platz, Enter setzt, Escape bricht ab.</div>
       </div>
-      <button type="button" data-testid="place-cancel" onClick={() => { setPlacing(null); setLive("Einteilen abgebrochen."); }} style={{ flexShrink: 0, padding: "0.42rem 0.8rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
+      <button type="button" data-testid="place-cancel" onClick={() => { setPlacing(null); setLive("Einteilen abgebrochen."); }} style={{ flexShrink: 0, padding: "0.42rem 0.8rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: "var(--body)", fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
     </div>
   );
 

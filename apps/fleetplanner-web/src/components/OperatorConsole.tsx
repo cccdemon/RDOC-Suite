@@ -331,7 +331,7 @@ function OperatorConsoleInner({
         {/* Two nested tablists pointing at one panel model two competing tab
             levels for a screen reader. The areas are a switcher (toolbar with
             pressed buttons); only the leaf tabs are tabs. */}
-        <div role="toolbar" aria-label="Arbeitsbereich" style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "0.6rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid var(--border)" }}>
+        <div role="toolbar" aria-label="Arbeitsbereich" className="fpw-manage-areas" style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "0.6rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid var(--border)" }}>
           {TAB_GROUPS.map((g, gi) => {
             const on = g.key === group;
             const badge = groupBadge(g.key);
@@ -359,7 +359,7 @@ function OperatorConsoleInner({
             );
           })}
         </div>
-        <div role="tablist" aria-label="Bereich" data-testid="manage-subtabs" style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "1.2rem", paddingLeft: "0.15rem" }}>
+        <div role="tablist" aria-label="Bereich" data-testid="manage-subtabs" className="fpw-manage-tabs" style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "1.2rem", paddingLeft: "0.15rem" }}>
           {tabsOf(group).map((k, ti) => {
             const meta = tabMeta(k);
             const on = tab === k;

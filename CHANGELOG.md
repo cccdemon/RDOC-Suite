@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Reduzierte Bewegung, größere Tippziele, Navigation auf dem Telefon (2026-08-23)
+
+`prefers-reduced-motion` wurde nicht beachtet — acht Transitions liefen unabhängig von der
+Systemeinstellung. Jetzt global entschärft, ohne Animationen ganz zu entfernen (eine Animation der
+Länge null feuert weiterhin ihre Events, damit nichts hängen bleibt, was darauf wartet).
+
+Die Mindesthöhe interaktiver Flächen ließ sich nicht anheben, weil sie inline gesetzt war und damit
+jede Stylesheet-Regel schlug. Sie liegt jetzt im Stylesheet: 38 px am Desktop, 44 px unter 760 px
+Breite.
+
+Bereichsleiste und Tab-Reihe der Event-Verwaltung brachen auf dem Telefon in zwei bis drei gestapelte
+Knopfreihen um. Sie scrollen jetzt seitwärts, je eine Zeile, mit sichtbarer Kante.
+
+### Changed - Weniger Monospace, wo Text gelesen wird (2026-08-23)
+
+30 Stellen in Board, Operationsseite und Voice-Panel standen in Monospace, obwohl es Fließtext oder
+Buttonbeschriftungen sind: Leerzustände, Hinweise, „Annehmen", „Abbrechen", „Platz nehmen".
+Versalien-Kategorien, Zähler, Zeiten und der Raumlink bleiben Monospace.
+
 ### Changed - Eine erkennbare Hauptaktion, und weniger Monospace (2026-08-23)
 
 `btnPrimary` und `btnGhost` unterschieden sich nur durch eine Randfarbe — beide Monospace, gleiche

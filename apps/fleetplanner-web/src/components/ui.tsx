@@ -135,7 +135,7 @@ export function CardHead({ icon, label, tone = "cyan", right }: { icon: string; 
 const btnBase: CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 7,
   fontFamily: "var(--body)", fontSize: "0.86rem", fontWeight: 600,
-  borderRadius: 9, cursor: "pointer", minHeight: 38, whiteSpace: "nowrap",
+  borderRadius: 9, cursor: "pointer", whiteSpace: "nowrap",
 };
 
 /** The one next action in a context. Filled, so it wins without being loud. */

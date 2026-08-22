@@ -733,7 +733,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               );
             })}
             {viewAs !== "self" && (
-              <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.62rem", color: "var(--gold)" }}>VORSCHAU — keine Operator-Steuerung</span>
+              <span style={{ marginLeft: "auto", fontFamily: "var(--body)", fontSize: "0.62rem", color: "var(--gold)" }}>VORSCHAU — keine Operator-Steuerung</span>
             )}
           </div>
         )}
@@ -1258,7 +1258,7 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                                     <span style={{ marginLeft: "auto", fontFamily: MONO, fontSize: "0.74rem", whiteSpace: "nowrap", color: met ? "var(--green)" : "var(--dim)" }}>{filledF}/{cap}{over ? " (über)" : ""}</span>
                                   </div>
                                   {empty ? (
-                                    <div style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.06em", color: "var(--dim3)" }}>Noch kein Jäger zugewiesen.</div>
+                                    <div style={{ fontFamily: "var(--body)", fontSize: "0.62rem", letterSpacing: "0.06em", color: "var(--dim3)" }}>Noch kein Jäger zugewiesen.</div>
                                   ) : (
                                     <div style={{ display: "flex", flexDirection: "column", gap: "0.7rem" }}>
                                       {fs.map((u) => unitCard(u, lane))}
@@ -1377,9 +1377,9 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
                           </div>
                           {me && csrf && (
                             inTeam ? (
-                              <button type="button" data-testid={`cqb-leave-${tm.id}`} onClick={() => run(() => cqbWithdraw(id!, csrf!))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Squad verlassen</button>
+                              <button type="button" data-testid={`cqb-leave-${tm.id}`} onClick={() => run(() => cqbWithdraw(id!, csrf!))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.8rem", border: "1px solid var(--edge-red)", background: "var(--tint-red)", color: "var(--red)", fontFamily: "var(--body)", fontSize: "0.72rem", borderRadius: 8, cursor: "pointer" }}>Squad verlassen</button>
                             ) : canJoin ? (
-                              <button type="button" data-testid={`cqb-join-${tm.id}`} disabled={full} onClick={() => run(() => cqbSignup(id!, csrf!, { groupId: tm.id }))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.9rem", border: `1px solid ${full ? "var(--wash)" : "var(--edge-gold)"}`, background: full ? "transparent" : "var(--tint-gold)", color: full ? "var(--dim3)" : "var(--gold)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 8, cursor: full ? "default" : "pointer" }}>{full ? "Voll" : <>Platz nehmen <Ic name="arrow" size={13} sw={1.8} /></>}</button>
+                              <button type="button" data-testid={`cqb-join-${tm.id}`} disabled={full} onClick={() => run(() => cqbSignup(id!, csrf!, { groupId: tm.id }))} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "0.4rem 0.9rem", border: `1px solid ${full ? "var(--wash)" : "var(--edge-gold)"}`, background: full ? "transparent" : "var(--tint-gold)", color: full ? "var(--dim3)" : "var(--gold)", fontFamily: "var(--body)", fontSize: "0.72rem", borderRadius: 8, cursor: full ? "default" : "pointer" }}>{full ? "Voll" : <>Platz nehmen <Ic name="arrow" size={13} sw={1.8} /></>}</button>
                             ) : null
                           )}
                         </article>
@@ -1661,7 +1661,7 @@ function StreamsSection({
           <button type="button" data-testid="op-stream-add" disabled={busy || !url.trim()} onClick={add} style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "0.45rem 0.8rem", border: "1px solid var(--edge-green)", background: "var(--tint-green)", color: "var(--green)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>
             <Ic name="check" size={13} sw={1.8} /> Hinzufügen
           </button>
-          <button type="button" onClick={() => { setOpen(false); setErr(null); }} style={{ flexShrink: 0, padding: "0.45rem 0.7rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: MONO, fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
+          <button type="button" onClick={() => { setOpen(false); setErr(null); }} style={{ flexShrink: 0, padding: "0.45rem 0.7rem", border: "1px solid var(--wash)", background: "transparent", color: "var(--dim)", fontFamily: "var(--body)", fontSize: "0.72rem", borderRadius: 7, cursor: "pointer" }}>Abbrechen</button>
           {err && <span style={{ flexBasis: "100%", color: "var(--red)", fontSize: "0.78rem" }}>{err}</span>}
         </div>
       ) : (
