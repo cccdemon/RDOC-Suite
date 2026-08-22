@@ -52,6 +52,32 @@ die zehn Schritte aus §15 und die Detailanforderungen aus §2, §5, §6, §9, �
 Eine bewusste Abweichung bleibt: kanonisch ist `?op=<leaf>` statt des in §6 vorgeschlagenen
 `?mode/section/sub`; die vorgeschlagene Form wird zusaetzlich akzeptiert.
 
+## Completed - 2026-08-22: E2E-Test-Login-Backdoor auf Produktion geschlossen
+
+Der Fleetplanner loggte beim Start `E2E test-login seam ENABLED`. Auf LXC 103 waren in `.env`
+**zwei** Dinge gesetzt: `E2E_TEST_LOGIN_SECRET` und `E2E_ALLOW_IN_PROD=1` — letzteres ist der
+explizite Opt-in, ohne den sich der Seam in Produktion selbst deaktiviert
+([routes/e2eAuth.ts](apps/fleetplanner/src/routes/e2eAuth.ts)). Wer das Secret kannte, konnte
+sich ohne Discord-OAuth als synthetischer `e2e-*`-Nutzer anmelden.
+
+Beide Zeilen aus `.env` entfernt (Backup `/opt/RDOC-Suite/.env.bak.20260822-121158`, root-only),
+`fleetplanner` mit `--force-recreate` neu gestartet.
+
+Verifikation:
+- Startlog enthaelt keine `E2E`-Zeile mehr; Server lauscht normal.
+- `POST /fleetplanner/e2e/cleanup` und `/fleetplanner/e2e/seed-ships` von aussen: **404** (die
+  Routen werden gar nicht mehr registriert).
+- `scripts/prod-e2e-readonly.sh`: ALL CHECKS PASSED.
+
+Folge fuer die Testsuite: E2E gegen die Live-Instanz geht bis auf Weiteres nicht mehr — das ist
+Absicht. Der lokale Docker-Stack ist davon unberuehrt und bleibt der Standardweg
+([docs/TESTING.md](docs/TESTING.md)).
+
+Nebenbefund (nicht angefasst): das Interest-Sync protokolliert im Minutentakt
+`Discord scheduled-event users fetch failed (404) — Unknown Guild Scheduled Event` fuer mehrere
+Ops, deren Discord-Event geloescht wurde. Fuellt das Log mit Stacktraces; gehoert als eigener
+Fix behandelt (verwaiste `discordEventId` erkennen und die Op aus dem Sync nehmen).
+
 ## Completed - 2026-08-22: Deploy `0ae079f` (IA-Ueberhaul + Audit-Feinschliff + Review-Fixes)
 
 `master` per Fast-Forward von `c7f164d` auf `0ae079f` gezogen (der Branch `feat/stream-event`
