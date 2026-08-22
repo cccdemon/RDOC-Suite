@@ -40,7 +40,7 @@ Panel die aktiven Partnerschaften und sagt klar, dass die Auswahl beim Anlegen f
 editierbarer Picker ueber einem Endpunkt, der die Aenderung nicht annimmt, waere ein Bedienelement,
 das stillschweigend nichts tut.
 
-**`<work>` — Offene Arbeit.** Die Konsole zeigte Bestand: Fuellgrad, Sitzzahl. Sie zeigte nie, was auf
+**`f2ed9f2` — Offene Arbeit.** Die Konsole zeigte Bestand: Fuellgrad, Sitzzahl. Sie zeigte nie, was auf
 eine Entscheidung wartet, also musste ein Operator die Tabs ablaufen, um herauszufinden, ob ihn etwas
 braucht. Das neue Standardziel zaehlt genau die Dinge, die andere Leute blockieren — wartende
 Einheiten, flexible Anmeldungen, freie Sitze auf angenommenen Einheiten, Discord-Interessenten ohne
