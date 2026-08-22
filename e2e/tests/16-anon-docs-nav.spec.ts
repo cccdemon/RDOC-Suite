@@ -169,7 +169,9 @@ test("logged-in shell: nav links present and logout works", async ({ browser }) 
 // ── Information architecture (2026-08-21) ────────────────────────────────────
 test("IA: action, groups, developer foot and mobile parity", async ({ browser }) => {
   await cleanup();
-  const actor: TestActor = await login("e2e-iauser", "crew", "crew");
+  // "Neue Operation" is gated on being a fleet operator somewhere, so the IA
+  // actor has to be one — a crew member must NOT see the action.
+  const actor: TestActor = await login("e2e-iauser", "fleetoperator", "fleetoperator");
   const ctx = await actorContext(browser, actor);
   const p = await ctx.newPage();
   try {

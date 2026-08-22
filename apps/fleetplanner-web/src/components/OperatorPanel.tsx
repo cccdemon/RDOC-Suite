@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Link } from "react-router-dom";
 import {
   addLeader,
   ApiError,
@@ -640,10 +641,13 @@ export function OperatorPanel({
     <section style={card}>
       <div style={railLabel}>OPERATOR-AKTIONEN</div>
       <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-        <a href={`/fleetplanner/ops/${op.id}/manage?tab=overview`} style={opActBtn}><Ic name="board" size={14} /> Operation bearbeiten</a>
-        <a href={`/fleetplanner/ops/${op.id}/manage?tab=fleet`} style={opActBtn}><Ic name="ship" size={14} /> Slots verwalten</a>
-        <a href={`/fleetplanner/ops/${op.id}/manage?tab=needs`} style={opActBtn}><Ic name="alert" size={14} /> Bedarfe verwalten</a>
-        <a href={`/fleetplanner/ops/${op.id}/manage?tab=admin`} style={opActBtn}><Ic name="bolt" size={14} /> Admin / Status</a>
+        {/* Router links, not absolute hrefs: production runs without a
+            /fleetplanner prefix, so those pointed nowhere. Tab keys and wording
+            follow the console (IA 2026-08-22). */}
+        <Link to={`/ops/${op.id}?op=eckdaten`} style={opActBtn}><Ic name="edit" size={14} /> Eckdaten bearbeiten</Link>
+        <Link to={`/ops/${op.id}?op=fleet`} style={opActBtn}><Ic name="ship" size={14} /> Board verwalten</Link>
+        <Link to={`/ops/${op.id}?op=needs`} style={opActBtn}><Ic name="alert" size={14} /> Bedarfe verwalten</Link>
+        <Link to={`/ops/${op.id}?op=admin`} style={opActBtn}><Ic name="bolt" size={14} /> Vorlage &amp; Serie</Link>
       </div>
     </section>
   );

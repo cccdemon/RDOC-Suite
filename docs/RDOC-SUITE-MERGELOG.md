@@ -52,6 +52,51 @@ die zehn Schritte aus §15 und die Detailanforderungen aus §2, §5, §6, §9, �
 Eine bewusste Abweichung bleibt: kanonisch ist `?op=<leaf>` statt des in §6 vorgeschlagenen
 `?mode/section/sub`; die vorgeschlagene Form wird zusaetzlich akzeptiert.
 
+## Completed - 2026-08-22: Review-Findings zur IA-Ueberarbeitung abgearbeitet
+
+Externes Review der IA-Arbeit, acht Findings, alle im Code bestaetigt und behoben.
+
+**P1 — ungueltiger `?guild=` loeste einen State-Zyklus aus.** Ein Deep Link auf eine fremde oder
+geloeschte Guild wurde ungeprueft uebernommen; die Fallback-Logik setzte danach wieder eine
+zulaessige, worauf der URL-Effekt erneut die ungueltige uebernahm — Endlosschleife aus
+State-Updates. Jetzt wird `?guild=` gegen die Mitgliedschaften geprueft (erst nachdem die Session
+geladen ist, sonst wuerde ein Deep Link vor dem Eintreffen der Daten verworfen), und die URL wird
+auf den tatsaechlich gezeigten Server kanonisiert — auch dann, wenn eine Seite auf eine andere
+Guild einengen musste. Der abgelehnte Link wird benannt statt stillschweigend ersetzt
+(`server-scope-unknown`, Audit §11).
+
+**P1 — "Neue Operation" wurde der falschen Zielgruppe angeboten.** `PRIMARY_ACTION` war nur mit
+`auth: true` geschuetzt, jedes eingeloggte Crew-Mitglied sah die Aktion und lief in den Gate des
+Wizards. Jetzt `needsManagedGuild: true`. Der Test, der das falsche Verhalten festgeschrieben
+hatte, prueft nun das richtige.
+
+**P2 — `/templates` war fuer Gaeste und Crew im Hauptmenue**, obwohl nur Operatoren Vorlagen
+anwenden koennen. Gleiches Gate.
+
+**P2 — Arbeitsbereiche waren fachlich falsch geschnitten.** Nach der Zielstruktur des Audits (§6):
+Fragen gehoeren zu *Planung*, Kommandanten zu *Kommunikation*. War genau andersherum.
+
+**P2 — Bedarfe waren nicht auffindbar** (der Editor haing unten am Board und an CQB). Eigener Tab
+"Bedarfe" in der Gruppe Flotte; `?op=needs` zeigt jetzt darauf statt auf das Board.
+
+**P2 — Tab hiess "Status, Vorlage & Serie", enthielt aber nur Vorlage und Serie** (der Status
+steht dauerhaft ueber allen Tabs). Heisst jetzt "Vorlage & Serie".
+
+**P2 — veraltete absolute Links** `/fleetplanner/ops/:id/manage?tab=…` im nicht eingebetteten
+OperatorPanel: Produktion laeuft ohne diesen Prefix. Sind jetzt Router-Links auf `?op=` mit den
+aktuellen Begriffen.
+
+**P3 — zwei konkurrierende Tab-Ebenen** zeigten beide auf dasselbe Panel. Die Arbeitsbereiche sind
+jetzt eine Toolbar mit `aria-pressed`; echte Tabs sind nur noch die Unterpunkte.
+
+Dazu die Hygiene-Punkte aus dem Review: die Testsuite hat **keine unbehandelten Requests** mehr
+(Default-Handler fuer `changelog/unseen`, `public/orgs`, `hangar`, `content/:slug`,
+`guilds/:id/partnerships`, `operations/:id/operator`) und **keine React-Style-Warnungen**
+(Shorthand/Longhand-Mischung bei `border`). Neue Tests fuer beide P1-Faelle.
+
+Ergebnis: `unit:web` 133 gruen, Backend 572 gruen, `e2e` 119 gruen (weiterhin nur `19-cover`,
+opt-in Service), `tsc --noEmit` sauber.
+
 ## Completed - 2026-08-22: "Needs sighting" aus der Roadmap entfernt
 
 Der Eintrag "silentknight: Paul Content nachliefern" war Unsinn (User 2026-08-22) und ist raus.

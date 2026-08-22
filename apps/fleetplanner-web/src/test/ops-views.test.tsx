@@ -306,7 +306,7 @@ describe("operator console — URL aliases and badge labels", () => {
     // Sub-tabs only render for the open work area, so the collapsed area carries
     // the count — that is exactly the case where a bare number says nothing.
     renderAt("/ops/op_1?op=cover");
-    const group = await screen.findByTestId("manage-group-kommunikation");
+    const group = await screen.findByTestId("manage-group-planung");
     const groupBadge = within(group).getByRole("status");
     expect(groupBadge).toHaveTextContent("1");
     expect(groupBadge).toHaveAttribute("aria-label", "1 offene Frage");

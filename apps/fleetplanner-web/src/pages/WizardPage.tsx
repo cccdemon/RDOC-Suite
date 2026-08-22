@@ -378,13 +378,13 @@ export function WizardPage({ session }: { session: SessionResponse | null }) {
                 )}
                 <div>
                   <label style={lbl} htmlFor="wiz-title-input">Event-Name <span style={{ color: "var(--gold)" }}>*</span></label>
-                  <input id="wiz-title-input" ref={titleRef} data-testid="wiz-title" type="text" maxLength={160} value={title} aria-invalid={!!errors.title} aria-describedby={errors.title ? "wiz-title-err" : undefined} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: "" })); }} placeholder="Operation Darkstar" style={{ ...inp, borderColor: errors.title ? "var(--edge-red)" : "var(--border)" }} />
+                  <input id="wiz-title-input" ref={titleRef} data-testid="wiz-title" type="text" maxLength={160} value={title} aria-invalid={!!errors.title} aria-describedby={errors.title ? "wiz-title-err" : undefined} onChange={(e) => { setTitle(e.target.value); setErrors((p) => ({ ...p, title: "" })); }} placeholder="Operation Darkstar" style={{ ...inp, border: `1px solid ${errors.title ? "var(--edge-red)" : "var(--border)"}` }} />
                   {errors.title && <span id="wiz-title-err" data-testid="wiz-err-title" style={{ display: "block", marginTop: "0.3rem", color: "var(--red)", fontFamily: MONO, fontSize: "0.66rem" }}>{errors.title}</span>}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.9rem" }}>
                   <div>
                     <label style={lbl} htmlFor="wiz-when-input">Startzeit <span style={{ color: "var(--gold)" }}>*</span></label>
-                    <input id="wiz-when-input" ref={whenRef} data-testid="wiz-when" type="datetime-local" value={scheduledAt} aria-invalid={!!errors.when} aria-describedby={errors.when ? "wiz-when-err" : undefined} onChange={(e) => { setScheduledAt(e.target.value); setErrors((p) => ({ ...p, when: "" })); }} style={{ ...inp, borderColor: errors.when ? "var(--edge-red)" : "var(--border)" }} />
+                    <input id="wiz-when-input" ref={whenRef} data-testid="wiz-when" type="datetime-local" value={scheduledAt} aria-invalid={!!errors.when} aria-describedby={errors.when ? "wiz-when-err" : undefined} onChange={(e) => { setScheduledAt(e.target.value); setErrors((p) => ({ ...p, when: "" })); }} style={{ ...inp, border: `1px solid ${errors.when ? "var(--edge-red)" : "var(--border)"}` }} />
                     {errors.when && <span id="wiz-when-err" data-testid="wiz-err-when" style={{ display: "block", marginTop: "0.3rem", color: "var(--red)", fontFamily: MONO, fontSize: "0.66rem" }}>{errors.when}</span>}
                   </div>
                   <div><label style={lbl}>Wiederholung</label><select data-testid="wiz-recur" value={freq} onChange={(e) => setFreq(e.target.value)} style={inp}>{RECUR.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}</select></div>

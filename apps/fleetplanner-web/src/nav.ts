@@ -44,12 +44,16 @@ export type NavGroup = {
   items: NavItem[];
 };
 
-/** "Neue Operation" — an action, rendered above the groups, not inside them. */
+/** "Neue Operation" — an action, rendered above the groups, not inside them.
+ *  Only a fleet operator can create one: the wizard's own gate says so after the
+ *  fact, and offering the action to everyone else is exactly the "Navigation nur
+ *  für tatsächlich erreichbare Bereiche" rule being broken. */
 export const PRIMARY_ACTION: NavItem = {
   to: "/ops/new",
   labelKey: "nav.opsNew",
   icon: "plus",
   auth: true,
+  needsManagedGuild: true,
 };
 
 export const NAV_GROUPS: NavGroup[] = [
@@ -58,7 +62,9 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: "nav.group.ops",
     items: [
       { to: "/operationen", labelKey: "nav.ops", icon: "board", match: ["/ops", "/calendar"] },
-      { to: "/templates", labelKey: "nav.templates", icon: "doc" },
+      // Templates can only be APPLIED by an operator (the page tells everyone
+      // else exactly that), so it is not a place a guest or crew member can go.
+      { to: "/templates", labelKey: "nav.templates", icon: "doc", auth: true, needsManagedGuild: true },
       { to: "/polls", labelKey: "nav.polls", icon: "check" },
       { to: "/ships", labelKey: "nav.ships", icon: "ship" },
     ],

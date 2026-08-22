@@ -60,6 +60,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       "The counters on the operator tabs say what they count instead of showing a bare number.",
       "Server pages say which server you are changing and what your role there is.",
       "Old links keep their parameters — /calendar?typ=combat lands on the same filtered view it always did.",
+      "A link to a Discord server you are not in now says so and shows you the one you are on, instead of flickering between the two.",
+      "\"Neue Operation\" and the template list only show up if you can actually use them — no more running into a locked door.",
+      "Bedarfe have their own tab next to the board, and the operator tabs are grouped the way the work actually splits up.",
     ],
   },
   {

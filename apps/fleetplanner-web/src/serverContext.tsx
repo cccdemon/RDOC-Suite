@@ -38,6 +38,8 @@ type ServerContextValue = {
   activeGuild: Membership | null;
   setActiveGuildId: (id: string | null) => void;
   access: NavAccess;
+  /** a `?guild=` that names a guild the viewer is not in (§11) */
+  unknownGuildId: string | null;
 };
 
 const Ctx = createContext<ServerContextValue>({
@@ -47,6 +49,7 @@ const Ctx = createContext<ServerContextValue>({
   activeGuild: null,
   setActiveGuildId: () => {},
   access: { anyGuild: false, managesGuild: false },
+  unknownGuildId: null,
 });
 
 /** Routes that address one server — those get `?guild=` pinned into the URL. */
@@ -77,12 +80,29 @@ export function ServerContextProvider({
     writeStored(id);
   }, []);
 
-  // A `?guild=` in the URL always wins — that is what makes a deep link into
-  // another server's settings work, and it keeps the nav in step with it.
+  // A `?guild=` in the URL wins — that is what makes a deep link into another
+  // server's settings work — but only if it names a guild the viewer is actually
+  // in. Adopting an unknown id used to start a loop: this effect set it, the
+  // membership check below reset it to a legitimate one, and this effect set it
+  // again. Until the session has loaded (`session === null`) nothing is decided,
+  // otherwise a deep link would be discarded before the memberships arrive.
   const urlGuild = searchParams.get("guild");
+  const sessionReady = session !== null;
+  const urlGuildKnown = !!urlGuild && memberships.some((m) => m.guildId === urlGuild);
   useEffect(() => {
-    if (urlGuild && urlGuild !== activeGuildId) setActiveGuildId(urlGuild);
-  }, [urlGuild, activeGuildId, setActiveGuildId]);
+    if (!sessionReady || !urlGuildKnown) return;
+    if (urlGuild !== activeGuildId) setActiveGuildId(urlGuild);
+  }, [sessionReady, urlGuildKnown, urlGuild, activeGuildId, setActiveGuildId]);
+
+  // Remember that we turned a deep link down, so the page can say so. Without
+  // this the notice would vanish in the same tick the URL is canonicalised; it
+  // is scoped to the path that carried the bad link.
+  const [rejected, setRejected] = useState<{ id: string; path: string } | null>(null);
+  useEffect(() => {
+    if (!sessionReady || !urlGuild || urlGuildKnown) return;
+    setRejected({ id: urlGuild, path: pathname });
+  }, [sessionReady, urlGuild, urlGuildKnown, pathname]);
+  const unknownGuildId = rejected && rejected.path === pathname ? rejected.id : null;
 
   // Drop a remembered guild the viewer no longer belongs to, and adopt the first
   // membership when nothing is remembered yet.
@@ -93,13 +113,16 @@ export function ServerContextProvider({
   }, [memberships, manageable, activeGuildId, setActiveGuildId]);
 
   // On a server screen the URL must say which server it is — otherwise a copied
-  // link means "whatever that person had selected".
+  // link means "whatever that person had selected". This also canonicalises an
+  // unusable `?guild=`: an unknown id, or one this screen had to narrow away
+  // from, is replaced by the server actually being shown.
   useEffect(() => {
-    if (!activeGuildId || urlGuild || !isServerRoute(pathname)) return;
+    if (!sessionReady || !activeGuildId || !isServerRoute(pathname)) return;
+    if (urlGuild === activeGuildId) return;
     const sp = new URLSearchParams(search);
     sp.set("guild", activeGuildId);
     navigate({ pathname, search: `?${sp.toString()}`, hash }, { replace: true });
-  }, [activeGuildId, urlGuild, pathname, search, hash, navigate]);
+  }, [sessionReady, activeGuildId, urlGuild, pathname, search, hash, navigate]);
 
   const value = useMemo<ServerContextValue>(
     () => ({
@@ -109,8 +132,9 @@ export function ServerContextProvider({
       activeGuild: memberships.find((m) => m.guildId === activeGuildId) ?? null,
       setActiveGuildId,
       access: { anyGuild: memberships.length > 0, managesGuild: manageable.length > 0 },
+      unknownGuildId,
     }),
-    [memberships, manageable, activeGuildId, setActiveGuildId],
+    [memberships, manageable, activeGuildId, setActiveGuildId, unknownGuildId],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

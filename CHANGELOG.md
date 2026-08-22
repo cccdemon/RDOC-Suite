@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Review-Findings zur IA-Ueberarbeitung (2026-08-22)
+
+- **Ungueltiger Serverkontext** (`serverContext.tsx`): ein `?guild=` auf eine fremde oder
+  geloeschte Guild wurde ungeprueft aktiv, die Fallback-Logik setzte zurueck, der URL-Effekt
+  wieder hin — ein Zyklus aus State-Updates. `?guild=` wird jetzt gegen die Mitgliedschaften
+  geprueft, die URL auf den gezeigten Server kanonisiert, und der abgelehnte Link wird benannt
+  (§11) statt stillschweigend ersetzt.
+- **"Neue Operation"** ist `needsManagedGuild`, nicht nur `auth` — Crew-Mitglieder liefen vorher
+  in den Gate des Wizards. `/templates` genauso: Vorlagen anwenden kann nur ein Operator.
+- **Arbeitsbereiche nach der Zielstruktur des Audits** (§6): Fragen unter *Planung*, Kommandanten
+  unter *Kommunikation* (war vertauscht). **Bedarfe** sind ein eigener Tab in *Flotte* statt
+  unten am Board und an CQB angehaengt; `?op=needs` zeigt darauf.
+- **"Status, Vorlage & Serie"** heisst "Vorlage & Serie" — der Status steht ueber allen Tabs, das
+  Panel enthielt ihn nie.
+- **Absolute `/fleetplanner/...`-Links** im nicht eingebetteten OperatorPanel sind Router-Links
+  auf `?op=`; Produktion laeuft ohne diesen Prefix.
+- **Eine Tab-Ebene**: die Arbeitsbereiche sind eine Toolbar mit `aria-pressed`, echte Tabs sind
+  nur die Unterpunkte. Vorher modellierten zwei verschachtelte Tablists dasselbe Panel.
+- **Testhygiene**: keine unbehandelten Requests mehr (Default-Handler in `test/handlers.ts`) und
+  keine React-Style-Warnungen (Shorthand/Longhand-Mischung bei `border`). Neue Tests fuer beide
+  P1-Faelle. 133 SPA-Unit-Tests.
+
 ### Changed - UI-Audit Feinschliff: die acht offenen Detailpunkte (2026-08-22)
 
 Nach den zehn Schritten aus §15 blieben beim Nachpruefen gegen den Bericht acht

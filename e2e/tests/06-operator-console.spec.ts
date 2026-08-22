@@ -65,6 +65,7 @@ test("each console tab button opens its panel", async () => {
   // inside a work area, so select the area first — same as a user would.
   const known: Array<[string, string, string]> = [
     ["flotte", "fleet", "operator-panel"],
+    ["flotte", "needs", "needs-editor"],
     ["planung", "eckdaten", "edit-title"],
     ["kommunikation", "voice", "voice-master-toggle"],
   ];
@@ -80,9 +81,9 @@ test("each console tab button opens its panel", async () => {
   // the console (panel content varies). IA 2026-08-21: the nine flat tabs are
   // four work areas now, so select the area first — same as a user would.
   const areas: Array<[string, string[]]> = [
-    ["flotte", ["fleet", "formations", "cqb"]],
-    ["planung", ["eckdaten", "cover", "commanders"]],
-    ["kommunikation", ["voice", "qa"]],
+    ["flotte", ["fleet", "needs", "cqb", "formations"]],
+    ["planung", ["eckdaten", "cover", "qa"]],
+    ["kommunikation", ["voice", "commanders"]],
     ["verwaltung", ["admin"]],
   ];
   for (const [area, tabs] of areas) {

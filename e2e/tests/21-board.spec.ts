@@ -47,7 +47,7 @@ test.beforeAll(async ({ browser }) => {
   opId = op.url().match(/ops\/([^/?]+)/)?.[1] ?? "";
 
   // A ship requirement so accepted ships have a Bedarf to bind into.
-  await op.goto(`ops/${opId}?op=fleet`);
+  await op.goto(`ops/${opId}?op=needs`);
   await expect(op.getByTestId("needs-editor")).toBeVisible({ timeout: 10_000 });
   await op.locator('[data-testid^="shiptype-"]').first().click();
   await op.getByTestId("need-add").click();

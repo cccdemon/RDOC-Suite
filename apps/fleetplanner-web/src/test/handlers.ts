@@ -34,6 +34,23 @@ export const handlers = [
       members: [],
     }),
   ),
+  // Defaults for the things every page pulls in passing. Without them msw's
+  // onUnhandledRequest:"error" buries the real assertions in noise — and a test
+  // that only passes because a background fetch failed is not a passing test.
+  http.get(`${API}/changelog/unseen`, () => HttpResponse.json({ entries: [], latest: null })),
+  http.get(`${API}/public/orgs`, () => HttpResponse.json({ orgs: [] })),
+  http.get(`${API}/hangar`, () => HttpResponse.json({ ships: [] })),
+  http.get(`${API}/content/:slug`, ({ params }) =>
+    HttpResponse.json({ title: String(params.slug), html: "<p>Test-Dokument</p>" }),
+  ),
+  http.get(`${API}/guilds/:id/partnerships`, () => HttpResponse.json({ partnerships: [] })),
+  http.get(`${API}/operations/:id/operator`, () =>
+    HttpResponse.json({
+      crewRequests: [], questions: [], hangarShares: [], auditLogs: [], requirements: [],
+      eventInterests: [], cqbTeams: [], cqbSoldiers: [], formations: [], fighterSquads: [],
+      assignablePeople: [],
+    }),
+  ),
   http.get(`${API}/operations/:id`, ({ params }) =>
     HttpResponse.json(
       { error: { code: "not_found", message: `Operation ${String(params.id)} not found.`, requestId: "req-test" } },

@@ -377,7 +377,7 @@ export function OperationenPage({ session }: { session: SessionResponse | null }
   );
 
   const tabBase: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 6, padding: "0.45rem 0.85rem", fontFamily: MONO, fontSize: "0.72rem", letterSpacing: "0.03em", borderRadius: 6, border: "1px solid transparent", background: "transparent", color: "var(--dim)", cursor: "pointer" };
-  const tabActive: React.CSSProperties = { ...tabBase, background: "var(--wash)", borderColor: "var(--border-hi)", color: "var(--cyan)" };
+  const tabActive: React.CSSProperties = { ...tabBase, background: "var(--wash)", border: "1px solid var(--border-hi)", color: "var(--cyan)" };
 
   return (
     <div data-testid="calendar-page">

@@ -65,7 +65,7 @@ test("resource links: add then remove a link", async () => {
 });
 
 test("needs editor: change and save CQB team count", async () => {
-  await op.goto(`ops/${opId}?op=fleet`);
+  await op.goto(`ops/${opId}?op=needs`);
   await expect(op.getByTestId("needs-editor")).toBeVisible({ timeout: 10_000 });
 
   const cqb = op.getByTestId("cqb-count");

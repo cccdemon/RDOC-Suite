@@ -45,7 +45,7 @@ test.afterAll(async () => {
 });
 
 test("needs editor: add a ship need, rename it, then remove it", async () => {
-  await op.goto(`ops/${opId}?op=fleet`);
+  await op.goto(`ops/${opId}?op=needs`);
   await expect(op.getByTestId("needs-editor")).toBeVisible({ timeout: 10_000 });
 
   await op.locator('[data-testid^="shiptype-"]').first().click();
@@ -67,7 +67,7 @@ test("needs editor: add a ship need, rename it, then remove it", async () => {
 
 test("op detail shows the needs overview with chips and slots", async () => {
   // Add a need first so the overview has content.
-  await op.goto(`ops/${opId}?op=fleet`);
+  await op.goto(`ops/${opId}?op=needs`);
   await op.locator('[data-testid^="shiptype-"]').first().click();
   await op.getByTestId("need-add").click();
   await op.locator('[data-testid^="need-row-"]').first().waitFor({ timeout: 10_000 });

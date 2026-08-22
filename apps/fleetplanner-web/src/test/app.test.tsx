@@ -993,8 +993,8 @@ describe("Op needs editor (Bedarfe)", () => {
         return HttpResponse.json({ ok: true, added: 1 });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1?op=fleet");
-    (await findByTestId("manage-tab-fleet")).click();
+    const { findByTestId } = renderAt("/ops/op_1?op=needs");
+    (await findByTestId("manage-tab-needs")).click();
     // the need name is now an inline-editable input (value, not text content)
     const needRow = await findByTestId("need-row-req_1");
     expect((needRow.querySelector("input") as HTMLInputElement).value).toBe("Flagship");
@@ -1016,8 +1016,8 @@ describe("Op needs editor (Bedarfe)", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1?op=fleet");
-    (await findByTestId("manage-tab-fleet")).click();
+    const { findByTestId } = renderAt("/ops/op_1?op=needs");
+    (await findByTestId("manage-tab-needs")).click();
     const count = (await findByTestId("fighters-count")) as HTMLInputElement;
     Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!.call(count, "3");
     count.dispatchEvent(new Event("input", { bubbles: true }));

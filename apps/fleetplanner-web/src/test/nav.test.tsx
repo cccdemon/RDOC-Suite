@@ -83,13 +83,21 @@ describe("IA — Neue Operation is an action", () => {
     expect(PRIMARY_ACTION.to).toBe("/ops/new");
   });
 
-  it("renders above the groups for members and not at all for guests", async () => {
-    useSession(sessionCrew);
+  it("renders above the groups for an operator, and not at all otherwise", async () => {
+    useSession(sessionOperator);
     const { unmount } = renderAt("/operationen");
     const action = await screen.findByTestId("nav-/ops/new");
     expect(action.className).toContain("nav-item-action");
     expect(action.closest(".nav-group")).toBeNull();
     unmount();
+
+    // Only a fleet operator can create an operation. Offering the action to a
+    // crew member means the wizard is the first thing that says no.
+    useSession(sessionCrew);
+    const second = renderAt("/operationen");
+    await screen.findByTestId("sidebar-nav");
+    expect(screen.queryByTestId("nav-/ops/new")).toBeNull();
+    second.unmount();
 
     useSession(sessionGuest);
     renderAt("/operationen");
@@ -103,7 +111,9 @@ describe("IA — role-dependent visibility", () => {
   it("hides login-gated entries from guests", () => {
     const tos = visibleItems(null, { anyGuild: false, managesGuild: false }).map((i) => i.to);
     expect(tos).toContain("/operationen");
-    expect(tos).toContain("/templates");
+    // Templates can only be applied by an operator, so they are not a place a
+    // guest or a crew member can usefully go.
+    expect(tos).not.toContain("/templates");
     expect(tos).not.toContain("/guilds");
     expect(tos).not.toContain("/konto");
     expect(tos).not.toContain("/konto/feedback");
@@ -301,10 +311,13 @@ describe("IA — operator console tabs live in the URL", () => {
 
   it("opens the work area that owns the deep-linked tab", async () => {
     operatorHandlers();
+    // Commanders is a communication job, not a detail of the Eckdaten (§6).
     renderAt("/ops/op_1?op=commanders");
     expect(await screen.findByTestId("manage-tab-commanders")).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("manage-group-planung")).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByTestId("manage-group-flotte")).toHaveAttribute("aria-selected", "false");
+    // The work areas are a switcher, not a second tab level: pressed, not selected.
+    expect(screen.getByTestId("manage-group-kommunikation")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByTestId("manage-group-flotte")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByTestId("manage-group-kommunikation")).not.toHaveAttribute("role", "tab");
     // Tabs of other areas are collapsed — nine flat tabs are gone.
     expect(screen.queryByTestId("manage-tab-qa")).toBeNull();
   });
@@ -320,7 +333,7 @@ describe("IA — operator console tabs live in the URL", () => {
 
     // History push, not replace: back lands on the previous work area again.
     fireEvent.click(screen.getByTestId("probe-back"));
-    await waitFor(() => expect(screen.getByTestId("manage-group-flotte")).toHaveAttribute("aria-selected", "true"));
+    await waitFor(() => expect(screen.getByTestId("manage-group-flotte")).toHaveAttribute("aria-pressed", "true"));
     expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_1?op=fleet");
   });
 
@@ -341,5 +354,45 @@ describe("IA — operator console tabs live in the URL", () => {
     renderAt("/ops/op_1");
     const back = await screen.findByTestId("breadcrumbs-back");
     expect(back).toHaveAttribute("href", "/operationen");
+  });
+});
+
+// ── 7. An unusable ?guild= must not fight the fallback (review 2026-08-22) ───
+describe("IA — server context rejects a guild the viewer is not in", () => {
+  it("falls back to a real membership and canonicalises the URL", async () => {
+    useSession(sessionOperator);
+    server.use(
+      http.get(`${API}/guilds/:id/settings`, ({ params }) =>
+        HttpResponse.json({
+          guild: { id: String(params.id), name: "RDOC", orgName: "RDOC", timezone: "Europe/Berlin", discordInviteUrl: null, admiralRoleId: null, ownerUserId: "x", canRemove: false },
+          members: [],
+        }),
+      ),
+    );
+    renderAt("/guilds/settings?guild=guild_does_not_exist");
+
+    // It settles on a guild the viewer actually manages...
+    await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("guild=guild_1"));
+    // ...and stays there instead of ping-ponging with the URL effect.
+    const settled = screen.getByTestId("probe-url").textContent;
+    await new Promise((r) => setTimeout(r, 60));
+    expect(screen.getByTestId("probe-url").textContent).toBe(settled);
+    expect(settled).not.toContain("guild_does_not_exist");
+    // ...and it says so rather than silently showing another server.
+    expect(screen.getByTestId("server-scope-unknown")).toBeInTheDocument();
+  });
+
+  it("still honours a deep link into a guild the viewer IS in", async () => {
+    useSession(sessionOperator);
+    server.use(
+      http.get(`${API}/guilds/:id/settings`, ({ params }) =>
+        HttpResponse.json({
+          guild: { id: String(params.id), name: "Second Fleet", orgName: "Second Fleet", timezone: "Europe/Berlin", discordInviteUrl: null, admiralRoleId: null, ownerUserId: "x", canRemove: false },
+          members: [],
+        }),
+      ),
+    );
+    renderAt("/guilds/settings?guild=guild_2");
+    await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("guild=guild_2"));
   });
 });

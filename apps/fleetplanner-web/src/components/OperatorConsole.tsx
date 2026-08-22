@@ -30,6 +30,7 @@ const STATUSES: Array<[string, string, string]> = [
 // called in the product (Subraum) and in Discord.
 const TABS = [
   { key: "fleet", label: "Board", icon: "ship" },
+  { key: "needs", label: "Bedarfe", icon: "alert" },
   { key: "formations", label: "Verbände", icon: "board" },
   { key: "cqb", label: "CQB", icon: "fps" },
   { key: "eckdaten", label: "Eckdaten", icon: "edit" },
@@ -37,17 +38,23 @@ const TABS = [
   { key: "commanders", label: "Kommandanten", icon: "lead" },
   { key: "voice", label: "Voice", icon: "mic" },
   { key: "qa", label: "Fragen", icon: "chat" },
-  { key: "admin", label: "Status, Vorlage & Serie", icon: "shield" },
+  // The panel holds the template and the series; the status lives in the header
+  // above every tab, so promising it here would describe a second place for it.
+  { key: "admin", label: "Vorlage & Serie", icon: "shield" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
 // IA 2026-08-21: nine equal tabs were a wall. They are now four work areas, each
 // holding the tabs that belong together. The leaf tab still IS the URL (`?op=`),
 // so every existing deep link keeps working and the group follows from the leaf.
+// Grouping follows the audit's own target structure (§6): questions are part of
+// planning an operation, commanders are a communication/leadership job — not a
+// detail of the Eckdaten. Bedarfe are their own place inside Flotte instead of
+// being hidden at the bottom of the board.
 const TAB_GROUPS = [
-  { key: "flotte", label: "Flotte", icon: "ship", tabs: ["fleet", "formations", "cqb"] },
-  { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "cover", "commanders"] },
-  { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["voice", "qa"] },
+  { key: "flotte", label: "Flotte", icon: "ship", tabs: ["fleet", "needs", "cqb", "formations"] },
+  { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "cover", "qa"] },
+  { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["voice", "commanders"] },
   { key: "verwaltung", label: "Verwaltung", icon: "shield", tabs: ["admin"] },
 ] as const;
 type GroupKey = (typeof TAB_GROUPS)[number]["key"];
@@ -72,7 +79,6 @@ function tabFromParams(sp: URLSearchParams): string | null {
 function resolveTab(raw: string | null): TabKey {
   if (TABS.some((t) => t.key === raw)) return raw as TabKey;
   if (raw === "overview") return "eckdaten";
-  if (raw === "needs") return "fleet";
   // A group name in `?op=` is legitimate too — it opens that area's first tab.
   const grp = TAB_GROUPS.find((g) => g.key === raw);
   if (grp) return grp.tabs[0] as TabKey;
@@ -297,7 +303,10 @@ function OperatorConsoleInner({
           <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--cyan)" }} />
           <span style={{ fontFamily: MONO, fontSize: "0.6rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>ARBEITSBEREICH</span>
         </div>
-        <div role="tablist" aria-label="Arbeitsbereich" style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "0.6rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid var(--border)" }}>
+        {/* Two nested tablists pointing at one panel model two competing tab
+            levels for a screen reader. The areas are a switcher (toolbar with
+            pressed buttons); only the leaf tabs are tabs. */}
+        <div role="toolbar" aria-label="Arbeitsbereich" style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap", padding: "0.55rem 0.6rem", marginBottom: "0.6rem", borderRadius: 13, background: "rgba(0,0,0,0.28)", border: "1px solid var(--border)" }}>
           {TAB_GROUPS.map((g, gi) => {
             const on = g.key === group;
             const badge = groupBadge(g.key);
@@ -305,10 +314,8 @@ function OperatorConsoleInner({
               <button
                 key={g.key}
                 type="button"
-                role="tab"
                 id={`manage-group-tab-${g.key}`}
-                aria-selected={on}
-                aria-controls="manage-panel"
+                aria-pressed={on}
                 tabIndex={on ? 0 : -1}
                 ref={(el) => { groupRefs.current[g.key] = el; }}
                 data-testid={`manage-group-${g.key}`}
@@ -375,14 +382,10 @@ function OperatorConsoleInner({
               ? <OperatorPanel op={op} csrf={csrf} embedded section={tab} onChanged={reload} onError={(m) => setNotice(m)} />
               : <p style={lbl}>ANMELDUNG ERFORDERLICH</p>
           )}
-          {/* Also on the CQB tab: that is where CQB teams are managed, and without
-              the editor there is no way to REQUEST any — the count control lived
-              on the fleet tab only, so "I asked for 2 teams" never reached the server. */}
-          {(tab === "fleet" || tab === "cqb") && (
-            <div style={{ marginTop: "1.6rem" }}>
-              <NeedsEditor opId={opId} csrf={csrf} />
-            </div>
-          )}
+          {/* Bedarfe used to be appended to the board and to CQB, which made them
+              findable only by knowing where they hid. They are their own tab now
+              (ship needs, fighter squads and CQB team count all live in here). */}
+          {tab === "needs" && <NeedsEditor opId={opId} csrf={csrf} />}
 
           {tab === "voice" && <VoicePanel op={op} csrf={csrf} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} onNotice={setNotice} />}
 

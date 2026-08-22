@@ -4,6 +4,7 @@
 // the design source does. Reuse these instead of hardcoding hex per page.
 import { useRef, type CSSProperties, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useServerContext } from "../serverContext";
 import { Ic } from "./Icons";
 
 export const MONO = "var(--mono)";
@@ -176,7 +177,7 @@ const linkTabBase: CSSProperties = {
   whiteSpace: "nowrap", borderBottom: "2px solid transparent", color: "var(--dim)",
   textDecoration: "none",
 };
-const linkTabActive: CSSProperties = { ...linkTabBase, color: "var(--cyan)", borderBottomColor: "var(--cyan)", fontWeight: 700 };
+const linkTabActive: CSSProperties = { ...linkTabBase, color: "var(--cyan)", borderBottom: "2px solid var(--cyan)", fontWeight: 700 };
 
 export type LinkTabItem = { key: string; label: string; to: string; icon?: string };
 
@@ -403,9 +404,18 @@ export function ServerScope({
   role?: string | null;
   testid?: string;
 }) {
+  const { unknownGuildId } = useServerContext();
   if (!guildName) return null;
   const roleLabel = role ? ROLE_LABEL[role] ?? role : null;
   return (
+    <>
+    {/* §11: a link into a server the viewer is not in must say so instead of
+        quietly showing a different one. */}
+    {unknownGuildId && (
+      <p role="status" data-testid="server-scope-unknown" style={{ margin: "0 0 0.6rem", padding: "0.5rem 0.7rem", border: "1px solid var(--edge-gold)", background: "var(--tint-gold)", borderRadius: 9, color: "var(--gold)", fontSize: "0.82rem", lineHeight: 1.45 }}>
+        Der verlinkte Server gehört nicht zu deinen — angezeigt wird stattdessen <strong>{guildName}</strong>.
+      </p>
+    )}
     <p
       data-testid={testid}
       style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem", margin: "0 0 1.1rem", fontFamily: MONO, fontSize: "0.66rem", letterSpacing: "0.06em", color: "var(--dim2)" }}
@@ -421,5 +431,6 @@ export function ServerScope({
         </>
       )}
     </p>
+    </>
   );
 }
