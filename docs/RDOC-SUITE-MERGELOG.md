@@ -1,5 +1,31 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-22: Deploy `67ece2e` (Kapitaens-DM + vier wiederhergestellte Funktionen)
+
+Drei Commits von `feat/stream-event` als Fast-Forward auf `master` (`5d7ecb9..67ece2e`):
+
+| Commit | Inhalt |
+|---|---|
+| `2b1a211` | Kapitaens-DM wieder angeschlossen und neu getextet; die vier Funktionen in `/api/v1` |
+| `d356c6c` | zwei Testschwaechen (Slug-Timeout, geteiltes Rate-Limit-Bucket) |
+| `67ece2e` | Doku, Roadmap, Backlog, Testcheckliste |
+
+`docker compose -f docker-compose.prod.yml up -d --build fleetplanner fleetplanner-web`. Prisma:
+"No pending migrations to apply" (57 Migrationen, kein Schema-Change — `OpPrimaryUnit` gab es schon,
+nur der Schreibweg fehlte).
+
+Nachkontrolle:
+- `scripts/prod-e2e-readonly.sh` — **ALL CHECKS PASSED**
+- Alle fuenf neuen Routen sind live geroutet und richtig gegatet: leerer Body → 400
+  (`Invalid body.`), gueltiger Body ohne Session → 401 (`Sign in required.`), nie ein 404.
+- `GET /api/v1/openapi.json` fuehrt `resource-links/order` (put), `cqb/auto-bundle` (post),
+  `cqb-teams/{groupId}` (delete+patch) und `primary-unit` (put+delete).
+- Backend-Log sauber, Server lauscht.
+
+**Manuell nachzuziehen** (braucht echte Discord-Nebenwirkungen, siehe Testcheckliste Phase 3+5):
+eine Einheit annehmen und pruefen, dass die DM beim Kapitaen ankommt; Auto-Buendeln, Squad
+aufloesen, Links sortieren und die Haupteinheit einmal in der echten Oberflaeche anfassen.
+
 ## Completed - 2026-08-22 (11): Kapitaens-DM angeschlossen, vier Altfunktionen in `/api/v1` nachgebaut
 
 ### 1. Die Kapitaens-DM feuert wieder
