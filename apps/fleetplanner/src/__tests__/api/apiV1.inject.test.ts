@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../../app.js";
+import { mutationLimiter } from "../../api/rateLimit.js";
 
 // FR-P2 Phase 2 — route-level tests for the /api/v1 slice via app.inject().
 // Runs without a database: covered routes either skip the DB (health, openapi,
@@ -157,20 +158,40 @@ describe("public orgs panel", () => {
 });
 
 describe("doc content", () => {
-  it("serves every handbook/legal slug and 404s an unknown one", async () => {
-    // The SPA's Handbuch + Rechtliches hubs render exactly these slugs; a typo
-    // in the registry would only show up as an empty page in the browser.
-    const slugs = [
-      "whatis", "whatis-tech", "architecture", "how-to",
-      "changelog", "why-unsigned", "sc-tools", "license", "impressum", "datenschutz",
-    ];
-    for (const slug of slugs) {
-      const res = await app.inject({ method: "GET", url: `/api/v1/content/${slug}` });
-      expect(res.statusCode, slug).toBe(200);
+  // The SPA's Handbuch + Rechtliches hubs render exactly these slugs; a typo in
+  // the registry would only show up as an empty page in the browser. One case
+  // per slug: rendering all ten in a single test took ~4.7s of the 5s budget on
+  // a loaded machine, and a failure named the whole batch instead of the slug.
+  it.each([
+    "whatis", "whatis-tech", "architecture", "how-to",
+    "changelog", "why-unsigned", "license", "impressum", "datenschutz",
+  ])("serves the %s page", async (slug) => {
+    const res = await app.inject({ method: "GET", url: `/api/v1/content/${slug}` });
+    expect(res.statusCode, slug).toBe(200);
+    const body = res.json();
+    expect(body.title, slug).toBeTruthy();
+    expect(body.html.length, slug).toBeGreaterThan(200);
+  });
+
+  // sc-tools is the one page built from the outside world: it pulls OpenGraph
+  // cards from every listed tool, each with a 5s abort. With no network the
+  // route sits there for the full timeout — so the test pins the documented
+  // fallback instead: an unreachable tool degrades to its curated card.
+  it("serves the sc-tools page from curated data when the tools are unreachable", async () => {
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = (() => Promise.reject(new Error("offline"))) as typeof globalThis.fetch;
+    try {
+      const res = await app.inject({ method: "GET", url: "/api/v1/content/sc-tools" });
+      expect(res.statusCode).toBe(200);
       const body = res.json();
-      expect(body.title, slug).toBeTruthy();
-      expect(body.html.length, slug).toBeGreaterThan(200);
+      expect(body.title).toBeTruthy();
+      expect(body.html.length).toBeGreaterThan(200);
+    } finally {
+      globalThis.fetch = realFetch;
     }
+  });
+
+  it("404s an unknown slug", async () => {
     const missing = await app.inject({ method: "GET", url: "/api/v1/content/does-not-exist" });
     expect(missing.statusCode).toBe(404);
     expect(missing.json().error.code).toBe("not_found");
@@ -282,6 +303,12 @@ describe("mutations (phase 5 slice 1) — auth/CSRF gates", () => {
     expect(doc.paths["/api/v1/operations/{id}/units/{unitId}"].delete).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/resource-links"].post).toBeTruthy();
     expect(doc.paths["/api/v1/operations/{id}/resource-links/{linkId}"].delete).toBeTruthy();
+    // The four capabilities that came back from the deleted form-POST layer.
+    expect(doc.paths["/api/v1/operations/{id}/resource-links/order"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/cqb/auto-bundle"].post).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/cqb-teams/{groupId}"].delete).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/primary-unit"].put).toBeTruthy();
+    expect(doc.paths["/api/v1/operations/{id}/primary-unit"].delete).toBeTruthy();
   });
 });
 
@@ -754,6 +781,52 @@ describe("guild settings — gates + validation", () => {
     expect(doc.paths["/api/v1/guilds/{id}/settings"].get).toBeTruthy();
     expect(doc.paths["/api/v1/guilds/{id}/settings"].patch).toBeTruthy();
     expect(doc.paths["/api/v1/guilds/{id}/members/{userId}/role"].put).toBeTruthy();
+  });
+});
+
+// The four capabilities that came back from the deleted form-POST layer
+// (2026-08-22). Anonymous inject requests all key on the same IP, so the
+// mutation budget is shared with every other describe in this file — reset it
+// rather than smuggling in a cookie (a cookie would send requireSessionJson to
+// the database, which these gate tests deliberately never reach).
+describe("restored capabilities — gates", () => {
+  beforeEach(() => mutationLimiter.reset());
+
+  const opId = "cmqaaaaaaaaaaaaaaaaaa1";
+  const unitId = "cmqcccccccccccccccccc3";
+  const linkId = "cmqdddddddddddddddddd4";
+  const groupId = "cmqeeeeeeeeeeeeeeeeee5";
+
+  it.each([
+    ["PUT", `/api/v1/operations/${opId}/resource-links/order`, { orderedIds: [linkId] }],
+    ["POST", `/api/v1/operations/${opId}/cqb/auto-bundle`, { size: 4 }],
+    ["DELETE", `/api/v1/operations/${opId}/cqb-teams/${groupId}`, undefined],
+    ["PUT", `/api/v1/operations/${opId}/primary-unit`, { unitId }],
+    ["DELETE", `/api/v1/operations/${opId}/primary-unit`, undefined],
+  ] as const)("%s %s without session → 401 JSON envelope", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      ...(body !== undefined ? { headers: { "content-type": "application/json" } } : {}),
+      ...(body !== undefined ? { payload: JSON.stringify(body) } : {}),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("unauthenticated");
+  });
+
+  it.each([
+    ["PUT", `/api/v1/operations/${opId}/resource-links/order`, { orderedIds: ["not-a-cuid"] }],
+    ["POST", `/api/v1/operations/${opId}/cqb/auto-bundle`, { size: 99 }],
+    ["PUT", `/api/v1/operations/${opId}/primary-unit`, { unitId: "nope" }],
+  ] as const)("%s %s with an invalid body → 400 before auth", async (method, url, body) => {
+    const res = await app.inject({
+      method,
+      url,
+      headers: { "content-type": "application/json" },
+      payload: JSON.stringify(body),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe("bad_request");
   });
 });
 

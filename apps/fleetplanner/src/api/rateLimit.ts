@@ -14,6 +14,13 @@ export class RateLimiter {
     private readonly windowMs: number,
   ) {}
 
+  /** Drop every bucket. Tests only: several suites share one process, and an
+   *  anonymous inject request keys on the same IP, so one suite would otherwise
+   *  spend the next suite's budget. */
+  reset(): void {
+    this.buckets.clear();
+  }
+
   /** Returns null when allowed, otherwise seconds until the window resets. */
   hit(key: string, now = Date.now()): number | null {
     // Opportunistic sweep so abandoned keys don't accumulate forever.
