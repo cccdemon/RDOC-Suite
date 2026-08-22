@@ -72,4 +72,4 @@ the `playwright` dependency version in lockstep with the image tag.
 Step 1+2 (FR-P4): engine import + render API + store + fleetplanner client.
 **Pending:** fleetplanner UI button + `opId→cover` persistence, editor mode
 (`/cover/edit/:id`), Discord-event-image / cross-post synergy. See
-[`docs/FR-P4-mission-cover-service.md`](../../docs/FR-P4-mission-cover-service.md).
+[`docs/FR-P4-mission-cover-service.md`](../../docs/archiv/FR-P4-mission-cover-service.md).

@@ -132,6 +132,22 @@ E2E_BASE_URL=https://suite.raumdock.org E2E_BASE_PATH=/fleetplanner \
 **Unset `E2E_TEST_LOGIN_SECRET` on the instance afterwards.** The read-only production smoke
 (`scripts/prod-e2e-readonly.sh`) needs no secret and is safe at any time.
 
+## Dead-code gate
+
+`npx knip` (config: [`knip.json`](../knip.json)) reports unused files, exports and dependencies.
+There is no pnpm script for it on purpose — it is a review tool, not a build step.
+
+Two things about the config are load-bearing:
+
+- Each workspace declares its **test files as entry points**. Without that, knip treats every
+  service that only tests exercise as unused and buries the real findings.
+- `apps/fleetplanner-web/src/api/types.ts` is ignored. It is a deliberate type-only mirror of the
+  contract package, so "nothing imports this name yet" is not a defect there.
+
+Known noise: run through `npx`, knip cannot load `vite.config.ts` / `vitest.config.ts` (it resolves
+`vite`/`vitest` from the repo root, where they are not installed) and prints three `ERROR: Error
+loading ...` lines. The analysis still runs; the errors are not findings.
+
 ## Things the suite deliberately does not test
 
 - **Ban/unban and instance-role changes from the admin console.** `listAllGuildsForAdmin()` hides the

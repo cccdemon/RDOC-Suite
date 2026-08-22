@@ -11,8 +11,8 @@ Discord oder die Partner oder Open, ähnlich den Operationen. Standardfeatures: 
   Logik (eigene Guild, alle aktiven Partner-Guilds, oder öffentlich). Nutzt `GuildMembership`
   (Mitglieder), `User`/`UserIdentity` (Wähler-Identität), Session-Auth + CSRF wie `/api/v1`.
 - **Blockiert:** nichts.
-- **Verwandt:** [archiv/FR-P3-roadmap-tab.md](archiv/FR-P3-roadmap-tab.md) (öffentliche, schreibgeschützte
-  Listen-Seite als UI-Muster), [archiv/opus-tennant-architecture.md](archiv/opus-tennant-architecture.md)
+- **Verwandt:** [archiv/FR-P3-roadmap-tab.md](FR-P3-roadmap-tab.md) (öffentliche, schreibgeschützte
+  Listen-Seite als UI-Muster), [archiv/opus-tennant-architecture.md](opus-tennant-architecture.md)
   (Visibility-/Partnership-Design). **Bewusst NICHT** Discord-native Polls — eigenes Modul im Fleetplanner.
 - **Quer:** Mergelog-first; Discord-IDs als String; Zod an der Boundary; per-Guild Tenant-Scoping;
   Fleetplanner ist API-only → Backend `/api/v1`, UI in der `fleetplanner-web` SPA.

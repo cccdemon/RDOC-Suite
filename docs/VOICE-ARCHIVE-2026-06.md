@@ -5,9 +5,9 @@ on 2026-06-12 because it is being **redesigned from scratch**. This document pre
 *as-removed* concept and implementation inventory so the redesign can reference what existed.
 
 Authoritative concept docs are kept and still apply as historical context:
-- [`docs/companion-voice-architecture.md`](companion-voice-architecture.md) — target voice
+- `docs/companion-voice-architecture.md` (gelöscht) — target voice
   architecture (Companion voice modes, Discord role IDs, Command Net vs Global Radio).
-- [`docs/FR-P3-federation-voice.md`](FR-P3-federation-voice.md) — cross-Discord federation
+- `docs/FR-P3-federation-voice.md` (abgelehnt, 2026-08-22 gelöscht) — cross-Discord federation
   voice (REJECTED 2026-06-07; kept for history).
 
 > This archive captures the *implementation* that was deleted; the two docs above capture the

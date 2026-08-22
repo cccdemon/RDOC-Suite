@@ -1,6 +1,6 @@
 # Softwarearchitektur — RDOC Fleetplanner
 
-Stand 2026-08-11. Quelle ist der Code, nicht die Erinnerung: Entitäten aus
+Stand 2026-08-22. Quelle ist der Code, nicht die Erinnerung: Entitäten aus
 [`prisma/schema.prisma`](../apps/fleetplanner/prisma/schema.prisma), Abläufe aus den Routen und
 Services. Wo Doku und Code auseinanderlaufen, gewinnt der Code — Abweichungen stehen in
 [§10](#10-altlasten-und-bekannte-abweichungen).
@@ -122,15 +122,14 @@ Regeln, die diese Schichtung trägt:
 
 | Verzeichnis | Inhalt | Anmerkung |
 |---|---|---|
-| `routes/apiV1.ts` | `/api/v1` — der aktuelle API-Layer | ~3.100 Zeilen; **neue Endpunkte kommen hierher** |
-| `routes/api.ts` | älterer SSR-naher Layer | historisch, wird nicht erweitert |
+| `routes/apiV1.ts` | `/api/v1` — **der** API-Layer | ~3.260 Zeilen, 121 Routen; der ältere Form-POST-Layer `routes/api.ts` ist 2026-08-22 entfallen |
 | `routes/auth.ts` | OAuth-Start/Callback, Discord-Verknüpfung, Logout | 3 Provider: Discord, GitHub, Google |
 | `routes/guilds.ts` | Bot-Installation, Guild-Callback, Diagnose | |
 | `routes/web.ts` | Crawler-HTML, `calendar.ics`, `participants.csv`, Asset-Proxy | einzige HTML-Ausgabe |
 | `routes/discordInteractions.ts` | `POST /discord/interactions` | Ed25519-Prüfung vor jeder Verarbeitung |
 | `routes/cover.ts` | Rücksprung des Cover-Editors | nur Redirect |
 | `routes/e2eAuth.ts` | Test-Seam | **existiert nur mit gesetztem `E2E_TEST_LOGIN_SECRET`** |
-| `api/openapi.ts` | Pfade + Schema-Registry | speist `/api/v1/openapi.json` und die Swagger-UI |
+| `api/openapi.ts` | Pfade + Schema-Registry | speist `/api/v1/openapi.json`; die Swagger-UI selbst rendert die SPA unter `/api-docs` |
 | `api/presenters.ts` | DTO-Mapping inkl. Redaktion | |
 | `api/rateLimit.ts` | zwei In-Memory-Limiter | Mutationen 20/min, Suche 60/min |
 | `api/docContent.ts` | Info-/Rechtsseiten als JSON | Slug → Builder |
@@ -138,7 +137,7 @@ Regeln, die diese Schichtung trägt:
 | `services/` | 43 Module — die Fachlogik | Inventar unten |
 | `config/env.ts` | Zod-Schema der Umgebung | **autoritative Env-Referenz**, nicht die `.env`-Vorlagen |
 | `i18n/` | 5 Locales (de, en, en-US, fr, es) | die SPA kennt nur de/en |
-| `web/` | Render-Helfer + Textbausteine | speist `docContent` und das Crawler-HTML |
+| `web/` | Render-Helfer + Textbausteine | speist `docContent` und das Crawler-HTML; die SSR-Seitenhuelle (`layout`) ist 2026-08-22 entfallen, geblieben ist die Wartungsseite |
 
 **Services nach Aufgabe:**
 
@@ -166,11 +165,11 @@ SPA**.
 | Baustein | Aufgabe |
 |---|---|
 | `App.tsx` | Router, Session-Laden, Shell |
-| `nav.ts` | `NAV_GROUPS` mit `gate`/`auth` — welche Rolle sieht welchen Link |
-| `api/client.ts` | 116 typisierte Aufrufe, ein Fehlerpfad (`ApiError`) |
+| `nav.ts` | `NAV_GROUPS` mit `gate`/`auth`/`needsGuild` — welche Rolle sieht welchen Link |
+| `api/client.ts` | 117 typisierte Aufrufe, ein Fehlerpfad (`ApiError`) |
 | `api/types.ts` | Re-Export der Contract-Typen (type-only) |
-| `pages/` | 28 Seiten |
-| `components/` | 23 Bausteine, u.a. `OperatorConsole`, `NeedsEditor`, `OfferShip`, `CoverPanel` |
+| `pages/` | 27 Seiten |
+| `components/` | 22 Bausteine, u.a. `OperatorConsole`, `NeedsEditor`, `OfferShip`, `CoverPanel`; `ui.tsx` haelt die Kartentypen (`ObjectTile`, `ChoiceTile`, `WorkCard`, `DangerZone`) |
 | `i18n.tsx` | de/en |
 | `seo.ts` | Titel, Beschreibung, OG-Bild, JSON-LD pro Seite |
 
@@ -689,7 +688,7 @@ und OAuth-Geheimnisse an diesen Host schickt.
 ### 8.4 Prüfebenen
 
 Vier Ebenen, alle lokal, Discord simuliert — Details in [`TESTING.md`](TESTING.md):
-Unit (572), DB-Integration (19), E2E (112), Smoke. Der Simulator
+Backend-Unit (574), SPA-Unit (133), DB-Integration (20), E2E (119), Smoke. Der Simulator
 [`tests/discord-mock`](../tests/discord-mock/) spricht die Discord-REST-Teilmenge und schickt
 signierte Interactions zurück.
 
@@ -705,20 +704,27 @@ signierte Interactions zurück.
 | Contracts als eigenes Paket | ein Typ für Backend und SPA | Paket muss vor dem SPA-Typecheck gebaut sein |
 | Security-Header nur in nginx | doppelte Header widersprachen sich | Backend-Antworten sind ohne den Proxy ungeschützt |
 | Sitzungstoken nur als Hash | DB-Leck ist nicht wiedereinspielbar | Sitzungen sind nicht aus der DB lesbar |
-| Zwei API-Layer | schrittweise Ablösung statt großer Umbau | `api.ts` lebt weiter, ohne zu wachsen |
+| Strangler statt Big Bang beim API-Umbau | schrittweise Ablösung, jederzeit lauffähig | der alte Layer lebte 2,5 Monate ungenutzt mit — bis 2026-08-22 |
 
 ---
 
 ## 10. Altlasten und bekannte Abweichungen
 
-- **`packages/db` + Root-`prisma/`** gehören zum entfernten Bridge/Bot-Schema. Kein lebender
-  Konsument; Löschkandidaten. Für den Fleetplanner immer
-  `--filter @rdoc-suite/fleetplanner db:*` verwenden.
-- **`routes/api.ts`** ist der ältere Layer neben `/api/v1`. Er wird bedient, nicht erweitert.
+- **`packages/db` und Root-`prisma/` sind seit 2026-08-22 gelöscht** — sie gehörten zum entfernten
+  Bridge/Bot-Schema und hatten keinen Konsumenten mehr. Prisma lebt nur noch in
+  `apps/fleetplanner/prisma`; benutze immer `--filter @rdoc-suite/fleetplanner db:*`.
+- **Vier Altfunktionen ohne Nachfolger.** Mit `routes/api.ts` (2026-08-22 gelöscht) verschwanden die
+  letzten Codepfade für *Ressourcenlinks umsortieren*, *CQB-Auto-Bundle*, *Squad auflösen* und
+  *Primäreinheit setzen*. Erreichbar war davon seit dem SPA-Umstieg nichts mehr.
+- **Die Kapitäns-DM bei „Einheit angenommen" feuert nicht.** `sendAcceptedCaptainVoiceDm` hängt an
+  keinem Endpunkt mehr; die `/api/v1`-Accept-Route schickt keine Nachricht. Bewusst stehen gelassen,
+  weil die Doku die DM zusagt — anschließen ist eine Produktentscheidung.
 - **Der Voice-Stack ist weg** (LiveKit 2026-06-18, Companion 2026-08-07). Der Fleetplanner überträgt
   kein Audio; er mintet nur einen Deep-Link in Subraum (subraum.cc). Die früheren **Funkrelais-Bots
-  existieren nicht mehr** — kein Modell, kein Service, keine Route. Übrig sind einige
-  `FLEETPLANNER_VOICE_*`-Variablen, die absichtlich tolerant validiert werden.
+  existieren nicht mehr** — kein Modell, kein Service, keine Route. Von der Voice-Ära sind nur die
+  zwei `FLEETPLANNER_VOICE_CLIENT_*`-Links übrig, die an die Captain-DM angehängt werden; die toten
+  `RELAY_BOTS_*`-, `RAUMDOCK_GUILD_ID`- und `DISCORD_BOT_TOKEN`-Variablen sind 2026-08-22 aus dem
+  Env-Schema entfernt.
 - **`MANAGE_ROLES` wird im Bot-Invite angefordert, aber nirgends benutzt.** Der Bot vergibt keine
   Discord-Rollen; er *liest* nur `admiralRoleId`. Die Berechtigung gehört aus der Invite-URL
   entfernt — das ändert die Installations-URL und ist deshalb eine eigene Entscheidung.

@@ -1,10 +1,12 @@
 # Fleetplanner API v1
 
-Stand 2026-06-11 (FR-P2 Phase 2 Read-Slice + Phase 5 Mutations-Slices 1–2). Maschinenlesbarer
-Vertrag: `GET /api/v1/openapi.json` (generiert aus den Zod-Contracts in
-`apps/fleetplanner/src/api/contracts/`). **Interaktive Doku: `GET /api/v1/docs`** (Swagger UI,
-public). Diese Datei ist die menschenlesbare Übersicht. Pfade sind relativ zur Suite-Base
-`https://suite.raumdock.org/fleetplanner`.
+Stand 2026-08-22. Maschinenlesbarer Vertrag: `GET /api/v1/openapi.json` (generiert aus den
+Zod-Contracts in `packages/fleetplanner-contracts` plus der Pfad-Registry in
+`apps/fleetplanner/src/api/openapi.ts`). **Die interaktive Swagger-UI rendert die SPA unter
+`/api-docs`** — das Backend liefert nur noch die Spezifikation als Daten, keine HTML-Doku
+(`GET /api/v1/docs` existiert nicht mehr). Diese Datei ist die menschenlesbare Übersicht, die
+vollständige Pfadliste steht im [Routen-Inventar](fleetplanner-route-inventory.md). Pfade sind
+relativ zur Suite-Base `https://suite.raumdock.org/fleetplanner`.
 
 ## Quickstart für externe Clients
 
@@ -64,7 +66,7 @@ Auth: optional + object-level AuthZ. Read-Model der Op-Detailseite.
 - `id` formatvalidiert (cuid-artig) ⇒ sonst `400`.
 `200 → OperationDetail` (Summary + description, guild{timezone, discordInviteUrl}, leaders,
 units→seats mit `claimedBy`, resourceLinks, `viewerRole`, `canManage`). Keine
-auditLogs/questions/hangarShares — Operator-Daten kommen später als eigene, role-gated Endpoints.
+auditLogs/questions/hangarShares — die liegen im role-gated `GET …/operator` (siehe unten).
 
 Das eingebettete `guild`-Objekt führt `discordInviteUrl` (string|null, aus den Server-Settings;
 treibt den „Auf Discord beitreten"-Link auf den Op-Panels) — sowohl in `OperationSummary` als auch
@@ -109,8 +111,11 @@ Pflicht bei vehicle, Squad-Name unique, requirement-fit). Nur open/draft.
 `200 → { ok: true, unitId }`
 
 ### PATCH /api/v1/operations/:id/units/:unitId
-Teilmenge: `{ captainNote? | squadName? }` (Captain, Op-Leader oder Fleetoperator).
-Ship-Tausch/Seat-Rebuild bewusst NICHT hier — bleibt im SSR-Flow bis FE-Parität.
+`{ captainNote?, squadName?, requirementId?, roleOverride? }` (Captain, Op-Leader oder
+Fleetoperator). `requirementId: null` löst die Bindung an den Bedarf, `roleOverride` überschreibt
+die aus dem Katalog abgeleitete Schiffsklasse. Ein **Ship-Tausch mit Seat-Rebuild ist bewusst nicht
+enthalten** — dafür Unit zurückziehen und neu anbieten. Träger- und Verbandszuordnung laufen über
+`PUT …/units/:unitId/carrier` bzw. `…/formation`.
 `DELETE` zieht die Unit zurück (Captain oder Fleetoperator). `200 → { ok: true }`
 
 ### POST /api/v1/operations/:id/resource-links
@@ -144,17 +149,29 @@ DM-Benachrichtigung best-effort. `DELETE` gibt den Platz frei (Captain-Seat ⇒ 
 ### POST /api/v1/operations/:id/questions/:qid/answer
 Body `{ answer ≤1000 }` — beantwortet eine Spielerfrage.
 
-## Noch nicht in v1 (Folge-Phasen laut FR-P2)
+## Was v1 inzwischen alles kann
 
-- Unit-Edit voll (Ship-Tausch, Seat-Rebuild, Carrier-Wechsel) — bleibt SSR bis FE-Parität.
-- Operator-/Admin-Read-Models (auditLogs, questions, hangarShares, crewRequests) — role-gated.
-- Operator-Workflows (accept/reject units, seats/assign, needs, leaders, status) — SSR.
-- ~~Rate-Limits~~ → umgesetzt: Mutationen 20/min, `/ships/search` 60/min pro Session/IP;
-  Überschreitung ⇒ `429` Envelope (`rate_limited`) + `retry-after`-Header.
-- ~~Mutating Prod-E2E~~ → `scripts/prod-e2e-mutating.sh`: läuft NUR mit
+Die frühere Liste „noch nicht in v1" ist abgearbeitet: Operator- und Admin-Read-Models,
+accept/reject, Sitzvergabe, Bedarfe, Verbände, Träger, Leader, Status, Cover, Dokumente, Streams,
+Umfragen, Partnerschaften, Hangar-Import und die Admin-Konsole liegen alle unter `/api/v1`
+(121 Routen, siehe [Routen-Inventar](fleetplanner-route-inventory.md)).
+
+Weiterhin **nicht** über v1:
+
+- **Ship-Tausch mit Seat-Rebuild** — Unit zurückziehen und neu anbieten.
+- **OAuth-Handshake, Feeds und Dateien** (`/auth/*`, `calendar.ics`, `participants.csv`,
+  Asset-Proxy) bleiben serverseitige Routen mit Redirect-/Datei-Antworten.
+- **Vier Altfunktionen ohne v1-Zwilling.** Mit dem Form-POST-Layer `routes/api.ts` (2026-08-22
+  geloescht) sind die letzten Codepfade fuer *Ressourcenlinks umsortieren*, *CQB-Auto-Bundle*,
+  *Squad aufloesen* und *Primaereinheit setzen* verschwunden. Erreichbar war davon seit dem
+  SPA-Umstieg nichts mehr; wer sie zurueck will, baut sie in `/api/v1`.
+
+Betriebliches:
+
+- **Rate-Limits:** Mutationen 20/min, `/ships/search` 60/min pro Session/IP; Überschreitung ⇒
+  `429`-Envelope (`rate_limited`) + `retry-after`-Header.
+- **Mutierender Prod-Smoke** (`scripts/prod-e2e-mutating.sh`): läuft NUR mit
   `E2E_ALLOW_PROD_MUTATIONS=1` + `E2E_TEST_OPERATION_ID` (Wegwerf-Op!) + `E2E_SESSION_COOKIE`;
-  testet cqb-signup/withdraw, hangar-share-Toggle+Restore, seat claim/unclaim (skip ohne
-  freien Seat), resource-link add/delete (skip ohne Operator-Rolle). Cleanup via trap auch
-  im Fehlerfall; Testdaten-Prefix `E2E-`.
-
-Routen-Inventar + Zielstatus je SSR-Route: [`fleetplanner-route-inventory.md`](fleetplanner-route-inventory.md).
+  testet cqb-signup/withdraw, hangar-share-Toggle+Restore, seat claim/unclaim, resource-link
+  add/delete. Cleanup via trap auch im Fehlerfall; Testdaten-Prefix `E2E-`. Der reine Lese-Smoke
+  `scripts/prod-e2e-readonly.sh` braucht nichts davon.

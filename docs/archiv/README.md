@@ -32,7 +32,21 @@ Moved here 2026-06-15 (stale "NOT yet implemented" headers; ROADMAP/CLAUDE.md = 
 | FR-P3-org-fleet | Guild ship roster (who owns what) + Discord contact | ✓ 2026-06-15 (MVP; bot-DM relay deferred) |
 | composition-rebuild-plan | Composition Board + Leader-Assign + Auto-Match (steps 1+2 in code, 3–5 open) | ⏸ archived 2026-06-15 (rebuild deferred, partial) |
 
-Still open (in [`../`](../)): FR-P1-SecurityAndImplenetationReview (review done, impl pending),
-FR-SPA-PARITY-RESTORE (partial), FR-P2-discord-autarkic-squadlink-lite-feasibility (study),
-FR-P3-federation-voice (rejected), FR-P3-inactivity-alert, FR-P5-item-database,
-FR-P3-polls (plan), orgmodule-implementationplan (plan).
+Moved here 2026-08-22 (feature shipped / report closed):
+
+| Doc | Feature | Status |
+| --- | --- | --- |
+| FR-P3-polls | Umfragen mit Guild-/Partner-/Public-Scope | ✓ 2026-06-24 |
+| FR-P3-stream-event | Stream-Markierung + Filter (Phase A + B1) | ✓ 2026-06-29 |
+| UI-UX-FUNKTIONS-AUDIT-CLAUDE-OPUS | IA-/Interaktions-Audit der SPA | ✓ 2026-08-22 (alle zehn Schritte + Detailpunkte) |
+| security-review-2026-06-01 | Statische Sicherheitsanalyse (0 kritisch, 3 mittel, 4 niedrig) | ✓ Befunde geschlossen 2026-06-24 |
+| websecurity-review-2026-06-01 | Externer Passiv-Check des Livestands | ✓ Header-Befund geschlossen (nginx ist die eine Header-Schicht) |
+
+Still open (in [`../`](../)): FR-SPA-PARITY-RESTORE (nur noch FR-D3),
+FR-P2-fleetplanner-light (Plan), FR-P3-inactivity-alert (Plan),
+orgmodule-implementationplan (Plan).
+
+Deleted rather than archived (rejected or superseded; history in the merge log):
+FR-P3-federation-voice, FR-P5-item-database, FR-P1-SecurityAndImplenetationReview,
+FR-P2-discord-autarkic-squadlink-lite-feasibility, the 2026-06-08 Claude-Code test report and the
+mission-creation-flow brainstorm.

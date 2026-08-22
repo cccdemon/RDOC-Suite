@@ -1,106 +1,210 @@
-# Fleetplanner Route Inventory (FR-P2 Phase 0)
+# Fleetplanner — Routen-Inventar
 
-Stand 2026-06-11. Grundlage für den Strangler-Split (FR-P2). Zielstatus je Route:
+Stand 2026-08-22, direkt aus `apps/fleetplanner/src/routes/` gezogen. Es gibt nur noch **einen**
+API-Layer: der aeltere Form-POST-Layer `routes/api.ts` (45 Redirect-Routen ohne Aufrufer) wurde am
+2026-08-22 geloescht. Der Vertrag (Fehler-Envelope,
+Auth, CSRF, Rate-Limits) steht in [fleetplanner-v1.md](fleetplanner-v1.md); die maschinenlesbare
+Fassung von `/api/v1` ist `GET /api/v1/openapi.json`.
 
-- **keep temporarily** — SSR bleibt, bis FE-Parität erreicht ist.
-- **api replacement** — bekommt einen `/api/v1`-Ersatz (JSON); SSR-Route bleibt parallel bis FE-Parität.
-- **delete after FE** — entfällt ersatzlos, sobald das FE die Funktion übernimmt (reine Form-POST-Redirect-Flows).
-- **stays** — bleibt dauerhaft serverseitig (OAuth-Handshake, Dateien, Feeds, Metrics).
+Wer bedient was:
 
-Erstes Strangler-Segment (Phase 2/4): **Operations Overview + Op Detail read-only.**
-
-## routes/web.ts — SSR-Seiten (GET)
-
-| Route | Domain | Zielstatus | /api/v1-Ersatz |
-|---|---|---|---|
-| `GET /` | ops | api replacement | `GET /api/v1/operations` |
-| `GET /ops/:id` | ops | api replacement | `GET /api/v1/operations/:id` |
-| `GET /ops/:id/manage` | ops/operator | api replacement (später) | Folge-Phase (Operator-API) |
-| `GET /ops/new`, `GET /ops/new/wizard` | ops | keep temporarily | Folge-Phase (POST /api/v1/operations) |
-| `GET /ops/:id/calendar.ics` | feeds | stays | — (Datei/Feed) |
-| `GET /ops/:id/participants.csv` | feeds | stays | — (Datei/Export) |
-| `GET /assets/mission-images/:file` | assets | stays | — (Static) |
-| `GET /profile` | account | keep temporarily | Folge-Phase (`GET/PATCH /api/v1/profile`) |
-| `GET /ships` | catalog | api replacement | `GET /api/v1/ships/search` |
-| `GET /templates` | marketplace | keep temporarily | Folge-Phase |
-| `GET /feedback` | misc | keep temporarily | Folge-Phase |
-| `GET /login`, `GET /account` | auth | keep temporarily | FE-Login-Page + `GET /api/v1/session` |
-| `GET /admin` | admin | keep temporarily | Folge-Phase (Admin-API) |
-| `GET /guilds/none` | guilds | keep temporarily | `GET /api/v1/guilds` |
-| Static: `/was-ist`, `/what-is`, `/how-to`, `/sc-tools`, `/changelog`, `/roadmap`, `/impressum`, `/privacy`, `/license`, `/why-unsigned` | static | keep temporarily | FE-Static-Pages |
-
-## routes/web.ts — Form-POSTs (Redirect-Flows)
-
-| Route | Zielstatus | /api/v1-Ersatz (Phase 5) |
+| Datei | Routen | Rolle |
 |---|---|---|
-| `POST /ops/new` | delete after FE | `POST /api/v1/operations` |
-| `POST /ops/:id/edit` (`/visibility`, `/delete`, `/recurrence/stop`) | delete after FE | `PATCH/DELETE /api/v1/operations/:id` |
-| `POST /ops/:id/questions`, `POST /ops/:id/questions/:qid/answer` | delete after FE | `POST /api/v1/operations/:id/questions[...]` |
-| `POST /profile/*` (opstyle, locale, ships, fleet-import, ships/:id/delete) | delete after FE | `PATCH /api/v1/profile`, `POST /api/v1/profile/ships` |
-| `POST /feedback` | delete after FE | `POST /api/v1/feedback` |
-| `POST /admin/*` (maintenance, users, ships/locations sync+config, feedback config, guild ban) | delete after FE | Admin-API Folge-Phase |
-| `POST /templates/:id/apply`, `POST /templates/:id/delete`, `POST /ops/:id/publish-template` | delete after FE | Template-API Folge-Phase |
+| `routes/apiV1.ts` | 121 | **Der API-Layer.** JSON, sanitisierter Fehler-Envelope (`sendError`). Alles Neue kommt hierher. |
+| `routes/web.ts` | 11 | Die einzige HTML-Ausgabe: Crawler-Dokumente, Feeds, Asset-Proxy. |
+| `routes/auth.ts` | 7 | OAuth-Handshake (Discord, GitHub, Google) + Discord-Verknüpfung + Logout. |
+| `routes/e2eAuth.ts` | 3 | Test-Seam — **existiert nur mit gesetztem `E2E_TEST_LOGIN_SECRET`**. |
+| `routes/guilds.ts` | 2 | Bot-Installation (Redirect zu Discord) und Rücksprung. |
+| `routes/discordInteractions.ts` | 1 | Discord→Server, Ed25519-geprüft. |
+| `routes/cover.ts` | 1 | Rücksprung des Cover-Editors (Token → Upsert → Redirect in die SPA). |
 
-## routes/api.ts — Form-POST "API" (Redirect-Antworten, kein JSON)
+Dazu registriert `app.ts` direkt `GET /health` und `GET /metrics` (Prometheus; Caddy blockt den Pfad
+nach außen mit 404).
 
-Alle `api replacement` in Phase 5 (JSON-Varianten, Services unverändert):
+---
 
-| Bestand | /api/v1-Ersatz |
-|---|---|
-| `POST /api/seats/:seatId/claim` / `unclaim` | `POST/DELETE /api/v1/operations/:id/seats/:seatId/claim` |
-| `POST /api/seats/:seatId/assign` / `unassign` | `POST/DELETE /api/v1/operations/:id/seats/:seatId/assignment` |
-| `POST /api/ops/:id/units` (+ `:unitId/edit|accept|reject|delete|seats|carrier|formation`) | `POST/PATCH/DELETE /api/v1/operations/:id/units[...]` |
-| `POST /api/ops/:id/cqb*` (signups, bundle, place, squads…) | `POST /api/v1/operations/:id/cqb[...]` |
-| `POST /api/ops/:id/crew-requests` (+ remove) | `PUT/DELETE /api/v1/operations/:id/crew-request` |
-| `POST /api/ops/:id/hangar-share` | `PUT /api/v1/operations/:id/hangar-share` |
-| `POST /api/ops/:id/needs/*` | `POST/PATCH/DELETE /api/v1/operations/:id/needs[...]` |
-| `POST /api/ops/:id/resource-links*` | `POST/DELETE/PATCH /api/v1/operations/:id/resource-links` |
-| `POST /api/ops/:id/leaders` (+ remove) | `PUT/DELETE /api/v1/operations/:id/leaders` |
-| `POST /api/ops/:id/status` | `PATCH /api/v1/operations/:id` |
-| `POST /api/ops/:id/seats/assign`, `/primary-unit`, `/formations*`, `/groups/*`, `/requirements/*` | Operator-API Folge-Phase |
-| `GET /api/ships` | `GET /api/v1/ships/search` (Phase 2) |
+## /api/v1 — `routes/apiV1.ts`
 
-## routes/auth.ts
+### /api/v1/health
+- `GET /api/v1/health`
+### /api/v1/openapi.json
+- `GET /api/v1/openapi.json`
+### /api/v1/session
+- `GET /api/v1/session`
+### /api/v1/content
+- `GET /api/v1/content/:slug`
+### /api/v1/roadmap
+- `GET /api/v1/roadmap`
+### /api/v1/public
+- `GET /api/v1/public/orgs`
+### /api/v1/account
+- `GET /api/v1/account`
+### /api/v1/profile
+- `PATCH /api/v1/profile`
+### /api/v1/changelog
+- `POST /api/v1/changelog/ack`
+- `GET /api/v1/changelog/unseen`
+### /api/v1/hangar
+- `GET /api/v1/hangar`
+- `POST /api/v1/hangar`
+- `DELETE /api/v1/hangar/:shipId`
+- `POST /api/v1/hangar/import`
+- `POST /api/v1/hangar/import/fleetyards`
+### /api/v1/operations
+- `GET /api/v1/operations`
+- `POST /api/v1/operations`
+- `DELETE /api/v1/operations/:id`
+- `GET /api/v1/operations/:id`
+- `PATCH /api/v1/operations/:id`
+- `POST /api/v1/operations/:id/announce`
+- `DELETE /api/v1/operations/:id/cover`
+- `GET /api/v1/operations/:id/cover`
+- `POST /api/v1/operations/:id/cover/edit-link`
+- `POST /api/v1/operations/:id/cover/generate`
+- `PATCH /api/v1/operations/:id/cqb-teams/:groupId`
+- `PUT /api/v1/operations/:id/cqb-teams/:groupId/carrier`
+- `POST /api/v1/operations/:id/cqb-teams/:groupId/members`
+- `DELETE /api/v1/operations/:id/cqb/:signupId`
+- `POST /api/v1/operations/:id/cqb/:signupId/assign`
+- `PATCH /api/v1/operations/:id/cqb/:signupId/late-arrival`
+- `DELETE /api/v1/operations/:id/cqb/signup`
+- `POST /api/v1/operations/:id/cqb/signup`
+- `POST /api/v1/operations/:id/documents`
+- `DELETE /api/v1/operations/:id/documents/:docId`
+- `GET /api/v1/operations/:id/documents/:docId`
+- `POST /api/v1/operations/:id/fighter-squads/auto-fill`
+- `POST /api/v1/operations/:id/formations`
+- `DELETE /api/v1/operations/:id/formations/:fid`
+- `PATCH /api/v1/operations/:id/formations/:fid`
+- `PUT /api/v1/operations/:id/groups/:gid/parent`
+- `PUT /api/v1/operations/:id/hangar-share`
+- `POST /api/v1/operations/:id/leaders`
+- `DELETE /api/v1/operations/:id/leaders/:userId`
+- `PUT /api/v1/operations/:id/member-slot`
+- `GET /api/v1/operations/:id/needs`
+- `DELETE /api/v1/operations/:id/needs/:reqId`
+- `PATCH /api/v1/operations/:id/needs/:reqId`
+- `PUT /api/v1/operations/:id/needs/cqb`
+- `PUT /api/v1/operations/:id/needs/fighters`
+- `POST /api/v1/operations/:id/needs/ships`
+- `GET /api/v1/operations/:id/operator`
+- `POST /api/v1/operations/:id/publish-template`
+- `POST /api/v1/operations/:id/questions`
+- `POST /api/v1/operations/:id/questions/:qid/answer`
+- `POST /api/v1/operations/:id/recurrence`
+- `POST /api/v1/operations/:id/recurrence/stop`
+- `POST /api/v1/operations/:id/resource-links`
+- `DELETE /api/v1/operations/:id/resource-links/:linkId`
+- `PATCH /api/v1/operations/:id/seats/:seatId`
+- `DELETE /api/v1/operations/:id/seats/:seatId/assignment`
+- `PUT /api/v1/operations/:id/seats/:seatId/assignment`
+- `DELETE /api/v1/operations/:id/seats/:seatId/claim`
+- `POST /api/v1/operations/:id/seats/:seatId/claim`
+- `PATCH /api/v1/operations/:id/seats/:seatId/late-arrival`
+- `GET /api/v1/operations/:id/squadlink`
+- `POST /api/v1/operations/:id/status`
+- `POST /api/v1/operations/:id/streams`
+- `DELETE /api/v1/operations/:id/streams/:streamId`
+- `POST /api/v1/operations/:id/units`
+- `DELETE /api/v1/operations/:id/units/:unitId`
+- `PATCH /api/v1/operations/:id/units/:unitId`
+- `POST /api/v1/operations/:id/units/:unitId/accept`
+- `PUT /api/v1/operations/:id/units/:unitId/carrier`
+- `PUT /api/v1/operations/:id/units/:unitId/formation`
+- `PATCH /api/v1/operations/:id/units/:unitId/late-arrival`
+- `POST /api/v1/operations/:id/units/:unitId/reject`
+- `GET /api/v1/operations/:id/voice/recipients`
+- `PUT /api/v1/operations/:id/voice/recipients`
+### /api/v1/templates
+- `GET /api/v1/templates`
+- `POST /api/v1/templates/:id/apply`
+### /api/v1/polls
+- `GET /api/v1/polls`
+- `POST /api/v1/polls`
+- `DELETE /api/v1/polls/:id`
+- `GET /api/v1/polls/:id`
+- `PATCH /api/v1/polls/:id`
+- `POST /api/v1/polls/:id/options`
+- `DELETE /api/v1/polls/:id/vote`
+- `POST /api/v1/polls/:id/vote`
+### /api/v1/guilds
+- `GET /api/v1/guilds`
+- `GET /api/v1/guilds/:id/channels`
+- `GET /api/v1/guilds/:id/diagnostics`
+- `GET /api/v1/guilds/:id/fleet`
+- `PUT /api/v1/guilds/:id/members/:userId/role`
+- `GET /api/v1/guilds/:id/partnerships`
+- `PUT /api/v1/guilds/:id/partnerships/:partnerGuildId/auto-share`
+- `POST /api/v1/guilds/:id/partnerships/:partnershipId/revoke`
+- `POST /api/v1/guilds/:id/partnerships/accept`
+- `POST /api/v1/guilds/:id/partnerships/events/:eventId/approve`
+- `POST /api/v1/guilds/:id/partnerships/events/:eventId/decline`
+- `POST /api/v1/guilds/:id/partnerships/invite`
+- `GET /api/v1/guilds/:id/settings`
+- `PATCH /api/v1/guilds/:id/settings`
+### /api/v1/admin
+- `GET /api/v1/admin/guilds`
+- `POST /api/v1/admin/guilds/:id/ban`
+- `POST /api/v1/admin/guilds/:id/unban`
+- `PUT /api/v1/admin/locations/config`
+- `POST /api/v1/admin/locations/sync`
+- `POST /api/v1/admin/maintenance`
+- `GET /api/v1/admin/settings`
+- `PUT /api/v1/admin/settings/feedback`
+- `PUT /api/v1/admin/ships/config`
+- `POST /api/v1/admin/ships/sync`
+- `GET /api/v1/admin/system/events`
+- `GET /api/v1/admin/system/health`
+- `GET /api/v1/admin/users`
+- `POST /api/v1/admin/users/:id/active`
+- `PUT /api/v1/admin/users/:id/role`
+### /api/v1/ships
+- `GET /api/v1/ships/search`
+### /api/v1/locations
+- `GET /api/v1/locations/search`
+### /api/v1/feedback
+- `POST /api/v1/feedback`
 
-| Route | Zielstatus |
-|---|---|
-| `GET /auth/:provider/start`, `GET /auth/:provider/callback`, `/auth/discord/*`, `/auth/logout` | stays (OAuth-Handshake; Redirects erlaubt) |
-| `GET /companion/download`, `GET /companion/mission` | stays (M2M/Companion, getrennt von Browser-API) |
+---
 
-## routes/guilds.ts
+## SSR / HTML — `routes/web.ts`
 
-| Route | Zielstatus | Ersatz |
-|---|---|---|
-| `GET /guilds`, `/guilds/settings`, `/guilds/diagnostics`, `/guilds/added` | api replacement (später) | `GET /api/v1/guilds` (Phase 2, Liste) + Folge-Phase Settings |
-| `POST /guilds/add|remove|switch`, `POST /guilds/members/:userId/role` | delete after FE | Guild-API Folge-Phase |
+nginx entscheidet per User-Agent: Crawler bekommen dieses HTML, Menschen die SPA.
 
-## routes/bridgeAdmin.ts
+- `GET /assets/mission-images/:file`
+- `GET /assets/ship-images/:id`
+- `GET /ops/:id`
+- `GET /polls/:id`
+- `GET /`
+- `GET /handbuch/:section`
+- `GET /handbuch`
+- `GET /rechtliches/:section`
+- `GET /rechtliches`
+- `GET /ops/:id/calendar.ics`
+- `GET /ops/:id/participants.csv`
 
-Bridge-Admin-UI (komplett): **keep temporarily** — nicht Teil des Fleetplanner-FE-Splits
-(eigener Service-Scope laut FR-P2 "Nicht im Scope"). Wird ggf. eigener Admin-FE-Schnitt.
+## Auth — `routes/auth.ts`
 
-## routes/cover.ts, discordInteractions.ts, partnerships.ts
+- `GET /auth/:provider/start`
+- `GET /auth/:provider/callback`
+- `GET /auth/discord/link/start`
+- `GET /auth/discord/link/callback`
+- `GET /auth/start`
+- `GET /auth/callback`
+- `POST /auth/logout`
 
-| Route | Zielstatus |
-|---|---|
-| Cover (`/cover/*`) | stays (eigener Microservice-Pfad, FR-P4) |
-| Discord Interactions Webhook | stays (Discord→Server, kein Browser) |
-| Partnerships SSR/POSTs | keep temporarily → Folge-Phase |
+## Discord, Cover, Guild-Installation
 
-## app.ts
+- `POST /discord/interactions`
+- `GET /ops/:id/cover/saved`
+- `GET /guilds/add`
+- `GET /guilds/added`
 
-| Route | Zielstatus |
-|---|---|
-| `GET /health`, `GET /metrics` | stays; zusätzlich `GET /api/v1/health` (Phase 2) |
+## Test-Seam — `routes/e2eAuth.ts`
 
-## Phase-2-Scope (dieses Increment)
+Nur registriert, wenn `E2E_TEST_LOGIN_SECRET` gesetzt ist (in Produktion zusätzlich nur mit
+`E2E_ALLOW_IN_PROD`). Ohne Secret antworten die Pfade mit 404, weil es sie nicht gibt.
 
-Neu, additiv, read-only — SSR unangetastet:
-
-- `GET /api/v1/health` (public)
-- `GET /api/v1/session` (optional auth)
-- `GET /api/v1/operations` (optional auth; Sichtbarkeit wie Home)
-- `GET /api/v1/operations/:id` (optional auth + object-level AuthZ)
-- `GET /api/v1/guilds` (auth)
-- `GET /api/v1/ships/search?q=` (optional auth)
-- `GET /api/v1/openapi.json` (public, Doku)
+- `POST /e2e/login`
+- `POST /e2e/seed-ships`
+- `POST /e2e/cleanup`

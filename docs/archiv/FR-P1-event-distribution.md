@@ -6,7 +6,7 @@
 
 ## Dependencies
 - **Depends on:** already-live `GuildPartnership` + `getActivePartnerGuildIds()` + Discord scheduled events (see infra below). **No dependency on F2/F3.** This is the base feature.
-- **Depended on by:** [FR-P3-federation-voice.md](FR-P3-federation-voice.md) (F2 needs `EventDistribution` + accept/opt-in), and the *series-distribution* part of [FR-P3-recurring-events.md](FR-P3-recurring-events.md) (F3 decision 4 approves a whole series here).
+- **Depended on by:** `FR-P3-federation-voice.md` (abgelehnt, gelöscht) (F2 needs `EventDistribution` + accept/opt-in), and the *series-distribution* part of [FR-P3-recurring-events.md](FR-P3-recurring-events.md) (F3 decision 4 approves a whole series here).
 
 ## Infra this builds on (already live)
 - **Partnerships** — `GuildPartnership` (status `pending|active|revoked`), `getActivePartnerGuildIds(guildId)`, mint/accept/revoke in [apps/fleetplanner/src/services/partnerships.ts](apps/fleetplanner/src/services/partnerships.ts). `partners` op-visibility is live.

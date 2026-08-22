@@ -1,19 +1,21 @@
-# Production stack for the Commander LXC (10.10.10.97).
+# Production stack for the RDOC-Suite LXC (10.10.10.99, LXC 103, /opt/RDOC-Suite).
+# NOT to be confused with DCCC, which lives on 10.10.10.97 in its own project.
 #
-# TLS-Terminierung läuft NICHT hier — Traefik auf dem LXC-Host terminiert
-# suite.raumdock.org routet:
-#   /              -> 302 redirect to /fleetplanner (root has no own page)
-#   /fleetplanner  -> http://127.0.0.1:3200  (fleetplanner, public entry point)
-#   /  (other)     -> 302 redirect to /fleetplanner (legacy bridge UI removed)
-# Traefik bekommt das Cert via Cloudflare-DNS-01 (siehe /etc/traefik/...).
+# TLS terminates in the caddy-rdoc service of this very stack (host network,
+# ACME over Cloudflare DNS-01, deploy/caddy-rdoc/Caddyfile). LXC 101 nginx does
+# TCP-SNI passthrough on :443 to this host's :9443. Caddy routes:
+#   /              -> 302 to /fleetplanner (the root host has no page of its own)
+#   /fleetplanner  -> fleetplanner-web (127.0.0.1:3210), the SPA nginx front door
+#                     that serves the app and proxies /api, /auth, /discord, /e2e
+#                     to the fleetplanner backend. handle_path strips the prefix,
+#                     which is why the backend runs with PUBLIC_BASE_PATH.
+#   /cover         -> mission-cover (127.0.0.1:3300), images + token-gated editor
+#   /monitoring    -> Prometheus (127.0.0.1:3001 is Grafana on its own host)
 #
-# LXC 101 nginx macht weiterhin TCP-SNI-Passthrough auf :443
-# -> 10.10.10.97:8443 (Traefik-websecure).
+# The voice stack (bridge, bot, relay-bots, LiveKit) was removed 2026-06;
+# restore reference: docs/LIVEKIT-ARCHIVE-2026-06.md.
 #
-# LiveKit (WebRTC SFU) wurde 2026-06-18 entfernt (verwaist seit Voice-Removal
-# 2026-06-12). Restore-Plan: docs/LIVEKIT-ARCHIVE-2026-06.md.
-#
-# Bring up:   docker compose -f docker-compose.prod.yml up -d
+# Bring up:   docker compose -f docker-compose.prod.yml up -d --build
 services:
   caddy-rdoc:
     build:
@@ -81,9 +83,10 @@ services:
       fleetplanner-db:
         condition: service_healthy
 
-  # FR-P2 Phase 3 — SPA frontend (read-only strangler slice against /api/v1).
-  # NOT publicly routed yet: the proxy keeps serving the SSR app. Bound to
-  # localhost only for shadow testing; Phase 4 wires /fleetplanner-next.
+  # React/Vite SPA — the real user interface. Its nginx is the single front door
+  # for /fleetplanner: it serves the bundle and proxies every API/auth/SSR
+  # request to the fleetplanner backend, and it is the canonical security-header
+  # layer (apps/fleetplanner-web/nginx.conf).
   fleetplanner-web:
     build:
       context: .
@@ -94,8 +97,7 @@ services:
     image: rdoc-suite-fleetplanner-web:latest
     container_name: rdoc-suite-fleetplanner-web
     restart: unless-stopped
-    # nginx here is the single front door for /fleetplanner and proxies API/auth
-    # /SSR to the backend, so it must share the network + start after it.
+    # Must start after the backend it proxies to.
     depends_on:
       - fleetplanner
     ports:

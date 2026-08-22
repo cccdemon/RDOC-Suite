@@ -7,6 +7,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed - Der Legacy-API-Layer `routes/api.ts` (2026-08-22)
+
+45 Form-POST-Routen, ~1.570 Zeilen, jede nach demselben Muster: CSRF prüfen, Rolle prüfen, Service
+rufen, per Redirect zurück auf die Seite. **Kein Aufrufer mehr** — nicht die SPA (`api/client.ts`
+spricht ausschließlich `/api/v1`), nicht die E2E-Suite, nicht die SSR-Seiten (`web.ts` registriert
+nur GETs), nicht die Skripte. Einziger Treffer im Repo war ein Test, der prüfte, dass die Routen
+*registriert sind* — der prüft jetzt das Gegenteil.
+
+- Drei geteilte Helfer sind umgezogen statt gelöscht: `assertRequirementFitsUnit` und
+  `assertUniqueSquadName` → `services/units.ts`, `canApproveUnits` → `services/guilds.ts` (neben
+  `effectiveOpRole`, wo es hingehört). `/api/v1` importiert sie von dort.
+- `@fastify/formbody` entfällt: `application/x-www-form-urlencoded` hat keinen Konsumenten mehr,
+  die schreibende Oberfläche ist jetzt vollständig JSON.
+- Mit dem Layer starben elf Service-Funktionen: `reorderResourceLinks`, `setPrimaryUnit`,
+  `clearPrimaryUnit`, `requireOpRole` sowie die CQB-Helfer `bundleSquad`, `assignToSquad`,
+  `reassignSignup`, `autoBundle`, `setSquadSize`, `joinSquad`, `setSquadCarrier`, `unbundle`.
+  Das manuelle Bündeln ist vom bedarfsgetriebenen Modell abgelöst (`needs/cqb` materialisiert die
+  Teams, `/api/v1/…/cqb-teams/*` verwaltet sie), deshalb ist davon fachlich nichts verloren
+  **außer** vier Funktionen ohne v1-Zwilling: Ressourcenlinks umsortieren, CQB-Auto-Bundle, Squad
+  auflösen, Primäreinheit setzen. Die waren seit dem SPA-Umstieg für niemanden erreichbar; als
+  Roadmap-Punkt notiert.
+- Tests entsprechend: `cqb.test.ts` prüft jetzt die überlebende Oberfläche (`placeInSquad`,
+  `renameSquad`), der `setPrimaryUnit`-Block in `primaryUnits.test.ts` ist weg.
+- Mitgenommen: `renderCover`, `ENGINE_BG_KEY`, `ENGINE_CONFIG_KEY` in `apps/mission-cover`
+  (`renderEngineConfig` hat `renderCover` abgelöst) und die aufruferlosen SSR-Helfer
+  `visibilityControl`/`visibilityTag` in `web/pages.ts`.
+
+### Fixed - Doku sagt nicht mehr, dass die Kapitäns-DM verschickt wird (2026-08-22)
+
+Beim Dead-Code-Durchgang aufgefallen: `sendAcceptedCaptainVoiceDm` hängt an **keinem** Endpunkt.
+Aufgerufen hat sie nur der alte Form-POST-Layer; `/api/v1/operations/:id/units/:unitId/accept`
+verschickt nichts. Seit dem SPA-Umstieg bekommt beim Annehmen einer Einheit also niemand eine DM,
+obwohl Backlog, Überblick und Testcheckliste sie zusagten.
+
+Die Funktion bleibt bewusst stehen (mit Kommentar im Code) — sie wieder anzuschließen und ihren
+Voice-Ära-Text neu zu fassen ist eine Produktentscheidung, kein Aufräumen. Backlog #2, Roadmap und
+Testcheckliste sagen jetzt den Ist-Zustand. Die **Sitzzuweisungs-DM** ist davon nicht betroffen,
+die verschickt `/api/v1` weiterhin.
+
+### Removed - Toter Code raus (2026-08-22)
+
+Der Auftrag war "erst toten Code entfernen, dann die Doku an den Quelltext angleichen".
+
+**Verwaiste Pakete und Konfiguration**
+
+- `packages/db` und Root-`prisma/` (Schema + 14 Migrationen) gelöscht — das war das Bridge/Bot-Schema
+  ohne lebenden Consumer. Dazu die Root-Skripte `db:generate`/`db:migrate`/`db:studio` und die
+  `prisma`/`@prisma/client`-Devdeps der Wurzel. Prisma lebt nur noch in `apps/fleetplanner/prisma`.
+- Root-`Caddyfile` gelöscht: es proxied `bridge:8787` und `livekit:7880`, beide seit Juni entfernt.
+  Die tatsächliche Prod-Konfiguration ist `deploy/caddy-rdoc/Caddyfile`.
+- `.env.te` (halbfertiges TODO-Template für Bridge/Bot) und
+  `scripts/generate-livekit-config.sh` gelöscht.
+- Nicht getrackte Altlasten von der Platte geräumt: `packages/shared/` (nur noch `dist`),
+  `msi/`, `nsis/`, `addOns/`, `videos/`.
+
+**Tote Env-Keys** aus `apps/fleetplanner/src/config/env.ts`: `RAUMDOCK_GUILD_ID`,
+`RELAY_BOTS_ADMIN_URL`, `RELAY_BOTS_ADMIN_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID` — im Code
+nirgends gelesen. Zod strippt unbekannte Keys, alte `.env`-Dateien brechen also nicht.
+
+**Toter Code im Quelltext** (jeder Treffer einzeln gegen Produktivcode, Tests und E2E geprüft):
+
+- Gelöscht: `layout()` samt `ROLE_LABEL` in `web/render.ts` (SSR-Seitenhülle; das Backend rendert
+  außer der Wartungsseite kein HTML mehr) und die Re-Exporte in `web/pages.ts`; `requireGuildRole`;
+  `listOperations`, `isOpVisibility`; `searchShips` (die Wiki-Fallback-Variante — benutzt wird
+  `searchLocalShips`), `vehicleFitsInShip`; `getTemplate`, `deleteTemplate`; `createSeats`;
+  `listResourceLinks`; `ensureTeamsMaterialized`; `silhouettesFor`; `getCover`;
+  `stopShipSyncScheduler`; `getCoverByOp` (mission-cover); die React-Komponenten `InfoCard`,
+  `FormSection`, `PageHead` und die Tokens `BODY`/`actionBar`; das Toast-Modul (`showToast` hatte
+  keinen einzigen Aufrufer, `ToastHost` rendert damit nie etwas — die Seiten haben eigene Toasts).
+- Nur das `export` entfernt (Symbol lebt modulintern weiter): ~40 Funktionen, Typen und Konstanten,
+  u.a. in `auth/providers.ts`, `auth/middleware.ts`, `services/needs.ts`, `services/slotKind.ts`,
+  `services/metrics.ts`, `services/streams.ts`, `i18n/index.ts`, `nav.ts`, `opStatus.ts`,
+  `serverContext.tsx`, `i18n.tsx`, `Avatar.tsx`.
+- Tote Coverage-Ausschlüsse (`services/livekit.ts`, `*voice*`) aus `vitest.config.ts`.
+
+**`knip.json` sagt jetzt die Wahrheit.** Vorher meldete das Gate 46 "unbenutzte" Dateien und 105
+Exporte, fast alles Fehlalarm: knip kannte die Testdateien nicht als Einstiegspunkte. Jetzt deklariert
+jedes Workspace seine Tests als `entry`, die CLI-Binaries stehen in `ignoreBinaries`, und der
+Typ-Barrel `api/types.ts` ist bewusst ausgenommen. Übrig bleiben drei Treffer in zwei Dateien mit
+laufender Fremdänderung (`mission-cover/services/render.ts`, `prefill.ts`) und drei Typen, die in
+exportierten Signaturen stecken.
+
+Verifiziert: Backend-Unit 574 grün, SPA-Unit 133 grün, DB-Integration 20 grün, E2E 122 grün,
+Smoke grün, beide Docker-Images bauen (das ist der Typecheck: `tsc` im Backend, `tsc --noEmit` +
+`vite build` in der SPA).
+
+### Changed - Dokumentation gegen den Quelltext gezogen (2026-08-22)
+
+- **`README.md`**: `packages/db`/Root-`prisma` raus, Env-Tabelle gegen das Zod-Schema geprüft
+  (`LOG_LEVEL`, `OAUTH_REDIRECT_URI` und `VOICEBOT_ENCRYPTION_KEY` existierten gar nicht),
+  Repository-Layout korrigiert.
+- **`.env.example`, `.env.prod.template`, `apps/fleetplanner/.env.example`** komplett neu gegen
+  `config/env.ts` + `docker-compose.prod.yml` geschrieben. Die Prod-Vorlage nannte `BRIDGE_*` und
+  `RELAY_BOTS_*` und verschwieg `CF_API_TOKEN`, `FLEETPLANNER_DB_PASSWORD`, `SESSION_SECRET` und die
+  Grafana-Zugangsdaten — mit ihr allein wäre der Stack nicht hochgekommen.
+- **`docker-compose.prod.yml`**: der Kopfkommentar beschrieb Traefik auf `10.10.10.97` (das ist
+  DCCC) und einen SPA-Container, der "noch nicht öffentlich geroutet" sei.
+- **`CLAUDE.md`**: `PUBLIC_BASE_PATH` ist in Produktion `/fleetplanner`, nicht `""` (Caddy strippt
+  das Präfix); das Zod-Schema validiert den Wert entgegen der bisherigen Angabe nicht. Dazu
+  Workspace-Tabelle, Doc-Index, Testbefehle und die offenen Entscheidungen.
+- **`docs/ARCHITEKTUR.md`**: Zahlen nachgezogen (Routen, Seiten, Komponenten, Testzahlen), §10
+  aktualisiert.
+- **`docs/api/fleetplanner-route-inventory.md`** neu erzeugt: alle 186 Routen aus dem Code, statt
+  eines Migrationsplans von Juni mit Dateien, die es nicht mehr gibt (`bridgeAdmin.ts`).
+- **`docs/api/fleetplanner-v1.md`**: `GET /api/v1/docs` existiert nicht mehr (Swagger-UI rendert die
+  SPA unter `/api-docs`); die Liste "noch nicht in v1" war abgearbeitet.
+- **`docs/ROADMAP.md`** auf das Offene eingedampft; **`docs/FLEETPLANNER-BACKLOG.md`** ohne die
+  Funkrelais-Bot-Pläne; **`docs/Testing-Checklist.md`** neu (die alte testete Companion-App,
+  Bridge-Admin und LiveKit-PTT); **`security-plan.md`** neu für den heutigen Stack.
+- **`docs/TESTING.md`** um das Dead-Code-Gate ergänzt, inklusive des bekannten knip-Rauschens.
+- Umgesetzte FR-Docs nach `docs/archiv/` (Polls, Stream-Event, UI-Audit, beide Security-Reviews),
+  abgelehnte gelöscht (Federation-Voice, Item-Database) — ebenso der erledigte Testbericht von
+  2026-06-08 und der Brainstorm zum Mission-Creation-Flow.
+
 ### Fixed - Mission-Cover: Positionierung und RDOC-Standardtexte (2026-08-22)
 
 Alle vier Presets in allen vier Formaten gerendert und angesehen (16 PNGs). Gefundene und

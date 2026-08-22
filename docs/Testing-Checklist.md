@@ -1,203 +1,178 @@
-# RDOC-Suite Testplan
+# Manuelle Abnahme vor dem Deploy
 
-## Systemübersicht
+Die automatisierte Suite (Backend-Unit, SPA-Unit, DB, E2E, Smoke) steht in
+[TESTING.md](TESTING.md) und deckt das meiste ab. Diese Liste ist das, was ein Mensch anfassen
+muss: echte Discord-Nebenwirkungen, Bedienbarkeit auf dem Handy und die Dinge, die nur mit
+echten Servern und echten Rollen auffallen.
 
-Zwei getrennte Subsysteme in einem Stack:
+Stand 2026-08-22. Reihenfolge ist Absicht — Phase 1 stellt die Voraussetzungen für alles Weitere.
 
-| System | URL | Zweck |
-|---|---|---|
-| Fleetplanner | `voice.raumdock.org` | SC Fleet-Op-Planung + Mission Voice |
-| Bridge Admin | `suite.raumdock.org/admin` | Channel-Commander PTT-Verwaltung |
-| Companion App | lokal | PTT-Client + Fleet-Voice-Client |
+**Ein System, eine URL:** `https://suite.raumdock.org/fleetplanner`. Es gibt keine Bridge, keine
+Companion-App und keine `voice.raumdock.org` mehr — Voice läuft in Subraum (subraum.cc), einer
+eigenen App, die der Fleetplanner nur per Deep-Link anspringt.
+
+**Vorher lesen:** die manuelle Abnahme läuft gegen **Produktion**. Alles, was hier angelegt wird,
+ist echt und für andere sichtbar. Test-Operationen mit `TEST-` beginnen lassen, `private` halten
+und hinterher löschen.
 
 ---
 
-## Phase 0: Rollen verstehen
+## Phase 0 — Rollen, die es wirklich gibt
 
-### Fleetplanner-Rollen (User.role)
+| Rolle | Wo sie lebt | Was sie darf |
+|---|---|---|
+| `superadmin` | `User.role` (global, instanzweit) | Admin-Konsole, Instanzverwaltung, Server sperren |
+| `fleetoperator` | `GuildMembership.role` (**pro Server**) | Operationen anlegen und verwalten, Servereinstellungen, Partnerschaften |
+| `crew` | `GuildMembership.role` (Default) | Operationen beitreten, Schiffe anbieten, Sitze belegen |
+| Gast | keine Session | nur öffentliche Operationen und das Handbuch |
 
-| Rolle | Kann |
+„Captain" ist **keine** Serverrolle, sondern der Kapitän einer Einheit innerhalb einer Operation.
+Discord-seitig wird genau eine Rolle gemappt: `admiralRoleId` → `fleetoperator`, beim Login.
+
+- [ ] Eigenes Konto ist `fleetoperator` im Testserver (oder `superadmin`)
+- [ ] Ein zweites Konto steht als reines `crew`-Mitglied bereit
+- [ ] Ein drittes Fenster ist **ausgeloggt** (Gast-Perspektive)
+
+## Phase 1 — Voraussetzungen
+
+- [ ] `docker compose -f docker-compose.prod.yml ps` → alle Container `Up`
+- [ ] `https://suite.raumdock.org/fleetplanner` lädt, Login mit Discord funktioniert
+- [ ] `E2E_TEST_LOGIN_SECRET` ist auf der Instanz **nicht** gesetzt
+      (Gegenprobe: `POST /e2e/login` antwortet 404)
+- [ ] Lese-Smoke grün: `E2E_BASE_URL=https://suite.raumdock.org ./scripts/prod-e2e-readonly.sh`
+- [ ] Server → **Diagnose**: Bot-Token gültig, Kanäle lesbar, keine roten Zeilen
+
+## Phase 2 — Operation anlegen (Assistent)
+
+„Neue Operation" ist eine Aktion über der Navigation, kein Menüpunkt, und nur für Fleetoperatoren
+sichtbar.
+
+1. **Eckdaten** — Titel, Zeitpunkt, Typ, System/Ort
+2. **Briefing** — Beschreibung, Ressourcenlinks, Dokumente
+3. **Veröffentlichung** — Sichtbarkeit (`privat` / `partner` / `öffentlich`), Ankündigungskanal
+4. **Bedarf** — Schiffsbedarfe, Jäger-Staffeln, CQB-Teams
+5. **Prüfen** — Zusammenfassung
+6. **Erstellen & Teilen** — Cover, Freigabe
+
+- [ ] „Weiter" bei leerem Pflichtfeld springt in das fehlerhafte Feld statt still weiterzugehen
+- [ ] Ein Eintrag in der Zusammenfassung führt zurück in den zugehörigen Schritt
+- [ ] Verlassen mit ungespeichertem Entwurf warnt
+- [ ] Nach dem Erstellen gibt es zwei klar getrennte Wege: Operation öffnen **oder** Cover ergänzen
+- [ ] Genau **eine** Operation entstanden (kein Doppel bei Doppelklick)
+- [ ] Vorlagen-Dialog: Escape schließt, Fokus kehrt auf den auslösenden Knopf zurück
+
+## Phase 3 — Discord-Nebenwirkungen (der eigentliche Grund für Handarbeit)
+
+- [ ] Operation veröffentlichen → im Discord erscheint ein **Scheduled Event** mit Titel, Zeit und
+      Link auf die Operation
+- [ ] Operation bearbeiten → dasselbe Event wird geändert, **kein zweites** Event
+- [ ] Stream-Operation → das Event trägt die Stream-Kennzeichnung
+- [ ] Ankündigung senden → Nachricht landet im gewählten Kanal
+- [ ] Operation absagen/löschen → Discord-Event verschwindet
+- [ ] Im Discord auf „Interessiert" klicken → der Pilot taucht binnen ~5 Minuten im Operator-Board
+      als unzugewiesener Teilnehmer auf; Zurückziehen entfernt ihn wieder
+- [ ] Sitz zuweisen → der zugewiesene Spieler bekommt eine DM (Operation, Einheit, Sitz, Kapitän)
+- [ ] Einheit annehmen → **derzeit kommt keine DM.** Die Funktion existiert, hängt aber an keinem
+      Endpunkt (siehe Backlog #2). Bis das entschieden ist: hier nichts erwarten
+- [ ] Erinnerung: `reminderOffsetMin` vor dem Start kommt die DM (einmal, nicht mehrfach)
+- [ ] Feedback über „Hilfe → Feedback" mit Screenshot → Ticket samt Bild im Feedback-Kanal
+
+## Phase 4 — Crew-Perspektive
+
+Mit dem zweiten Konto (`crew`):
+
+- [ ] Operation ist auffindbar (Liste, Kalender, Agenda) und die Kachel öffnet die Detailseite
+- [ ] Schiff aus dem Katalog **und** aus dem eigenen Hangar anbieten
+- [ ] Flexibel anmelden ohne Schiff
+- [ ] Freien Sitz belegen und wieder freigeben
+- [ ] Frage stellen; der Operator sieht und beantwortet sie
+- [ ] Verspätung mit Uhrzeit eintragen
+- [ ] Eigenes Schiff zurückziehen
+
+## Phase 5 — Operator-Konsole
+
+Vier Gruppen mit Unter-Tabs; der Tab steht in der URL (`?op=<tab>`).
+
+| Gruppe | Tabs |
 |---|---|
-| `superadmin` | Alles; global |
-| `fleetoperator` | Ops erstellen/managen, Units accept/reject |
-| `crew` | Default; kann Ops beitreten, Units registrieren, eigene Unit-Seats konfigurieren, Seats claimen |
+| Flotte | Board, Bedarfe, CQB, Verbände |
+| Planung | Eckdaten, Cover, Fragen |
+| Kommunikation | Voice, Kommandanten |
+| Verwaltung | Vorlage & Serie (inkl. Status und Gefahrenbereich) |
 
-Zuweisung: Fleetplanner-Admin setzt `user.role` direkt im Admin-UI oder via Discord-Rolle-Mapping in Guild-Settings (`admiralRoleId` -> `fleetoperator`).
+- [ ] Tab wechseln → URL ändert sich; Neuladen und Browser-Zurück landen im selben Tab
+- [ ] Deep-Link `…/ops/:id?op=fleet` öffnet direkt das Board
+- [ ] Einheit annehmen/ablehnen, Sitz zuweisen und wieder freigeben
+- [ ] **Drag-and-drop:** flexible Person auf freien Sitz ziehen — belegte und deaktivierte Sitze
+      nehmen nichts an, Escape bricht ab, ein Fehler rollt die Anzeige zurück
+- [ ] **Ohne Maus:** derselbe Vorgang über „Einteilen" → Person wählen → bestätigen, komplett per
+      Tastatur
+- [ ] **Auf dem Handy:** Auswahlmodus statt Ziehen, alles erreichbar
+- [ ] Bedarfe ändern, Verband anlegen, Fahrzeug/CQB-Team in ein Trägerschiff setzen
+- [ ] Cover erzeugen, im Editor anpassen, speichern → Bild erscheint an der Operation **und** am
+      Discord-Event
+- [ ] Als Vorlage veröffentlichen; Vorlage in einer neuen Operation anwenden
+- [ ] Serie anlegen, Serie stoppen
+- [ ] Gefahrenbereich ist räumlich abgesetzt und fragt vor dem Löschen nach
 
-### Bridge/Companion-Rollen (Channel Commander PTT)
+## Phase 6 — Server und Partner
 
-| Tier | Wer | Autorisierung |
-|---|---|---|
-| **Admin** | Discord-User auf AdminUser-Whitelist | `BRIDGE_SUPERADMIN_*` env-Seed oder Invite-Link |
-| **Admiral** | API `key:secret` vom Admin erhalten | Companion ADMIRAL-Tab; kann Sessions erstellen + Commander einladen |
-| **Commander** | One-shot Invite-Token vom Admiral | Companion SESSION-Tab |
+- [ ] Mit **mehreren** Servern: der aktive Server steht sichtbar im Seitenkopf und bleibt beim
+      Wechsel zwischen Übersicht, Org-Flotte, Einstellungen, Partnerschaften und Diagnose erhalten
+- [ ] Server wechseln → die serverbezogenen Seiten zeigen die Daten des neuen Servers
+- [ ] Einstellungen: Rolle-Mapping, Eventkanal, Zeitzone, Einladungslink, Erinnerungsvorlauf
+- [ ] Mitglied auf `fleetoperator` heben und wieder zurückstufen
+- [ ] Partnerschaft einladen, annehmen, Auto-Share setzen
+- [ ] Operation zum Partner teilen → Genehmigungs-DM mit Buttons; Annehmen erzeugt drüben ein Event
+- [ ] Genehmigung im Web-Postfach funktioniert auch ohne Discord-Buttons
+- [ ] Partnerschaft widerrufen → geteilte Events verschwinden
 
-Discord-Rolle für Commander: Snowflake in `GuildConfig.commanderRoleIds` (Bridge Admin → Konfig-Seite).
+## Phase 7 — Konto, Hangar, Umfragen
 
----
+- [ ] Hangar: Schiff manuell hinzufügen, CCU-JSON importieren, Fleetyards-Profil importieren
+- [ ] Nicht erkannte Import-Namen manuell zuordnen
+- [ ] Hangar für die Organisation freigeben → erscheint in der Org-Flotte
+- [ ] Sprache umschalten (de/en) — Auswahl überlebt das Neuladen
+- [ ] Verknüpfte Logins: Discord verknüpfen und die Liste stimmt
+- [ ] Umfrage anlegen (Einzel- und Mehrfachauswahl), abstimmen, Stimme zurückziehen, Ergebnis sehen
+- [ ] Umfrage löschen (nur wer darf)
 
-## Phase 1: Voraussetzungen prüfen
+## Phase 8 — Gast und Sichtbarkeit
 
-- [ ] `docker compose ps` auf Server → alle Container `Up`
-- [ ] `suite.raumdock.org/admin` → Login mit Discord möglich
-- [ ] `voice.raumdock.org` → Login mit Discord/GitHub/Google möglich
-- [ ] Bridge Admin → **Konfig** → "System aktiviert" = ✓
-- [ ] Bridge Admin → **Konfig** → Commander Role ID gesetzt (Discord-Rollen-Snowflake)
-- [ ] Fleetplanner: eigene User-Rolle = `fleetoperator` oder `superadmin`
+Im ausgeloggten Fenster:
 
----
+- [ ] Öffentliche Operation ist lesbar, **ohne** Spielernamen und ohne Missionslog
+- [ ] Private Operation liefert keinen Hinweis auf ihre Existenz
+- [ ] Handbuch und rechtliche Seiten sind erreichbar
+- [ ] Ein Link auf eine nicht-öffentliche Operation zeigt einen Login-Hinweis, keine 404-Sackgasse
+- [ ] Discord-Link-Vorschau einer öffentlichen Operation zeigt Titel, Zeit und Cover
 
-## Phase 2: Operation/Event erstellen
+## Phase 9 — Administration (superadmin)
 
-**Voraussetzung:** User hat `fleetoperator`- oder `superadmin`-Rolle im Fleetplanner.
+- [ ] Admin-Konsole: Server- und Nutzerliste, Rolle ändern, Konto deaktivieren
+- [ ] Schiffs- und Ortskatalog: „Jetzt synchronisieren" und Intervall ändern
+- [ ] System & Logs: Health, Jobs, Ereignisse
+- [ ] Wartungsmodus an → normale Nutzer sehen die Wartungsseite; wieder aus
+- [ ] Server sperren/entsperren
 
-### Schritt 1 — Neue Operation anlegen
+## Phase 10 — Oberfläche und Geräte
 
-1. `voice.raumdock.org` öffnen → Login
-2. Startseite: **+ New Operation** klicken (Button oben rechts)
-3. Formular ausfüllen:
-   - **Titel** — z. B. "Alpha Squadron Training"
-   - **Op-Typ** — `combat`, `pve`, `mining`, `salvage`, `training`, `mixed`, etc.
-   - **Scheduled At** — Datum + Uhrzeit
-   - **System** — `stanton`, `nyx`, oder `pyro`
-   - **Meeting Location** (optional)
-   - **Beschreibung** (optional)
-4. Absenden → Op-Detailseite, Status = `draft`
+- [ ] Mobile Navigation zeigt **dieselben Gruppen** wie die Desktop-Leiste
+- [ ] Schiffsdatenbank und Org-Flotte laufen auf dem Handy nicht seitlich über
+- [ ] Kalender/Agenda: Ansicht, Filter und Monat stehen in der URL und überleben Neuladen
+- [ ] Leerer Filterzustand nennt die aktiven Filter und bietet „Filter zurücksetzen"
+- [ ] Heller und dunkler Modus lesbar
+- [ ] Tastatur allein reicht durch Navigation, Tabs und Formulare; Fokus ist immer sichtbar
 
-- [ ] Op erscheint auf Startseite im Kalender-Board
-
-### Schritt 2 — Op strukturieren
-
-Auf der Op-Detailseite (als `fleetoperator`):
-
-1. **Leaders** → `Assign Leader` → User + Rolle wählen (`raid_leader`, `fleet_commander`, `event_leader`, `wing_commander`)
-2. **Composition** → `+ Add Group` → Gruppenname (z. B. "Strike Wing")
-3. In Gruppe: `+ Requirement` → Label + Kategorie + Anzahl + Notiz
-
-- [ ] Leader-Tag erscheint in Leaders-Sektion
-- [ ] Composition-Gruppe mit Requirements sichtbar
-
-### Schritt 3 — Op öffnen
-
-Status-Button **open** klicken:
-
-- [ ] Mission Voice Rooms Sektion zeigt "LIVE"
-- [ ] Discord-Rollen assignt: `commanderVoiceRoleId` -> Command Net User; `globalVoiceRoleId` -> Global Radio Net User
-
-### Schritt 4 — Unit registrieren (Crew-Perspektive)
-
-1. Als User mit `crew`-Rolle einloggen
-2. Op aufrufen → `+ Register a Unit`
-3. Ship suchen oder aus eigenem Profil wählen (oder FPS-Squad)
-4. Optional: Composition Slot wählen
-5. **Register Unit** klicken
-
-- [ ] Unit erscheint mit Status `pending`
-
-### Schritt 5 — Unit akzeptieren (als fleetoperator/leader)
-
-1. Unit-Card → **Accept**
-
-- [ ] Unit Status wechselt zu `accepted`
-- [ ] Seats sind claimbar
-
-### Schritt 6 — Discord-Rolle für Unit-Captain setzen
-
-Auf accepted Unit: **Commander**- oder **Admiral**-Button klicken (Bridge-Bot muss laufen).
-
-- [ ] Discord-Rolle wurde dem Captain zugewiesen (im Discord prüfen)
-
----
-
-## Phase 3: Companion App — Channel Commander PTT
-
-**Voraussetzung:** Discord-Konto hat Commander-Rolle auf dem Server (laut `GuildConfig.commanderRoleIds`).
-
-### Erste Einrichtung
-
-1. Companion App starten
-2. **Settings** → `Bridge URL` = `https://suite.raumdock.org` prüfen
-3. **Hotkey** wählen (Default: `Mouse4`) — `Change Hotkey` → Taste drücken
-4. **Sign in with Discord** → Server-ID eingeben → Browser öffnet Discord OAuth
-5. Autorisieren → Deep-Link `dccc://auth?token=…` wird gefangen
-
-- [ ] Status: Signed in: yes · Connection: connected
-
-**Mögliche Fehler:**
-
-| Fehler | Fix |
-|---|---|
-| `403 missing_commander_role` | Bridge Admin → Konfig → Commander Role ID prüfen; Rolle dem User geben |
-| `guild_not_enabled` | Bridge Admin → Konfig → "System aktiviert" ticken |
-| `403 not_a_member` | User ist kein Mitglied des Discord-Servers |
-
-### PTT testen
-
-1. Hotkey **gedrückt halten** → Fenster wird rot → "COMMANDER BRIDGE LIVE"
-2. Mikrofon-Permission bestätigen (einmalig)
-3. Hotkey loslassen → Bridge schließt sofort
-
-- [ ] Audio-Status zeigt `connected`
-- [ ] Bridge Admin → Monitoring → Session-Eintrag erscheint
-
----
-
-## Phase 4: Companion App — Fleet Voice (Fleetplanner)
-
-**Voraussetzung:** Unit in einer accepted Position für eine offene Op.
-
-### Einrichtung
-
-1. Companion Settings → `Fleetplanner URL` = `https://voice.raumdock.org`
-2. **FLEET LOGIN** Button → Webview öffnet OAuth (Discord/GitHub/Google)
-3. Autorisieren → Deep-Link `dccc://fleet-auth?token=…` wird gefangen
-
-- [ ] Token gespeichert; FLEET-Button zeigt Status
-
-### Verbindung
-
-App pollt `/api/companion/voice` alle 20 Sekunden. Wenn offene Op + accepted Unit existiert:
-
-- [ ] FLEET-Status = `connected`
-- [ ] `fleetRoomName` + `fleetOpTitle` in UI sichtbar
-
-### Fleet-PTT testen
-
-1. Fleet-PTT-Taste halten → `fleetPttActive = true`
-2. Crew im selben Unit-LiveKit-Room hört Audio
-
-- [ ] Kein Audio-Feedback von sich selbst (Kopfhörer nutzen)
-
----
-
-## Phase 5: Rollen-Zuweisung — Zusammenfassung
-
-| Person | Welche Rolle | Wo setzen |
-|---|---|---|
-| Erster Admin (Bootstrap) | Bridge `Admin` | `BRIDGE_SUPERADMIN_DISCORD_ID` + `_GUILD_ID` in `.env` |
-| Weitere Admins | Bridge `Admin` | Bridge Admin UI → Invite-Link |
-| PTT-Nutzer | Discord Commander-Rolle | Discord selbst; Snowflake in Bridge Admin → Konfig |
-| Admiral (Session-Ersteller) | Bridge `Admiral` (key:secret) | Bridge Admin UI → Admirals → Credential ausstellen |
-| Fleet-Op-Ersteller | Fleetplanner `fleetoperator` | Fleetplanner Admin oder Discord `admiralRoleId`-Mapping in Guild-Settings |
-| Unit-Captain | Mission Unit-Captain | Entsteht durch Unit-Registrierung und Accept, kein Fleetplanner-Rang |
-| Crew | Fleetplanner `crew` | Default; kann Units registrieren und Seats claimen |
-| Global Radio Net | Discord `globalVoiceRoleId` | Automatisch fuer Event/Raid/Wing Leader und explizit aktivierte Commanders |
-| Command Net | Discord `commanderVoiceRoleId` | Automatisch fuer accepted Unit-Captains, Event/Raid/Wing Leader und manuelle Commanders |
-
----
-
-## Schnell-Checkliste Gesamttest
+## Schnelldurchlauf
 
 ```
-[ ] Server-Stack läuft (docker compose ps)
-[ ] Bridge Admin: System aktiviert, Commander-Role-ID gesetzt
-[ ] Fleetplanner: eigene Rolle = fleetoperator (über Admin oder Discord-Mapping)
-[ ] Op erstellen → Status draft → open
-[ ] Als zweiter User: Unit registrieren
-[ ] Als fleetoperator: Unit accepten
-[ ] Companion: Fleet Login → Fleet Voice verbindet automatisch
-[ ] PTT-Test: Channel Commander Hotkey funktioniert (Fenster rot)
-[ ] PTT-Test: Fleet Hotkey funktioniert (fleetPttActive)
-[ ] Bridge Admin → Monitoring: Sessions erscheinen
+[ ] Stack läuft, Prod-Smoke grün, E2E-Seam aus
+[ ] Operation anlegen → Discord-Event da
+[ ] Crew bietet Schiff an → Operator nimmt an → DM kommt
+[ ] Sitz per Maus, per Tastatur und auf dem Handy vergeben
+[ ] Cover erzeugen → an Operation und Discord-Event sichtbar
+[ ] Partner-Teilen inkl. Genehmigung
+[ ] Gast sieht nur, was er sehen darf
+[ ] Testdaten wieder gelöscht
 ```
-

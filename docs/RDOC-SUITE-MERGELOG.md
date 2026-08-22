@@ -1,5 +1,183 @@
 # RDOC Suite Merge Log
 
+## Queued / Planned Step - 2026-08-22 (10): UI/UX-Workflow-Redesign-Handoff fuer Claude Code Opus
+
+Auftrag: Die abgeschlossene UI/UX- und Menuepruefung als maximal detailliertes, umsetzungsfertiges
+Handoff fuer Claude Code Opus dokumentieren. Schwerpunkt sind ein durchgaengiger Event-Lebenszyklus,
+eine fachlich nachvollziehbare Event-Verwaltung, klare visuelle Hierarchie sowie Desktop-, Mobile-,
+Touch-, Tastatur- und Screenreader-Paritaet. Alle heute erreichbaren Funktionen, API-Vertraege,
+Berechtigungen, Deep Links und Legacy-Redirects bleiben erhalten. Das Brandkit darf innerhalb seiner
+Grundidentitaet gestalterisch weiterentwickelt werden; Backend-Semantik wird nicht nebenbei geaendert.
+
+Geplantes Artefakt: `docs/UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md` mit Rollen- und Route-Matrix,
+Soll-Informationsarchitektur, Event-Workflow, Funktions-Migrationsmatrix, Komponenten- und
+Responsive-Regeln, Accessibility-Anforderungen, Umsetzungsschritten und pruefbaren
+Akzeptanzkriterien. Dokumentation בלבד; keine Produktivcode-Aenderung in diesem Schritt.
+
+## Completed - 2026-08-22 (9): Legacy-Layer `routes/api.ts` geloescht
+
+**Die Pruefung, die der User verlangt hat.** 45 Routen, alle nach demselben Muster: CSRF pruefen,
+Rolle pruefen, einen Service rufen, per `opReturnUrl` **zurueckredirecten** — die Form-POST-Aera vor
+der SPA. Aufrufer im gesamten Repo: keiner. Nicht die SPA (`api/client.ts` spricht ausschliesslich
+`/api/v1`), nicht die E2E-Suite, nicht `web.ts` (nur GETs), nicht die Skripte, nicht nginx. Der
+einzige Treffer war ein Inject-Test, der prueft, dass die Routen *registriert sind*.
+
+### Geloescht
+
+- `apps/fleetplanner/src/routes/api.ts` (~1.570 Zeilen) samt Import und `app.register` in `app.ts`.
+- `@fastify/formbody` — mit dem Layer verschwand der letzte Konsument von
+  `application/x-www-form-urlencoded`. Die schreibende Oberflaeche ist jetzt vollstaendig JSON.
+- Elf Service-Funktionen, die nur er rief: `reorderResourceLinks`, `setPrimaryUnit`,
+  `clearPrimaryUnit`, `requireOpRole`, `isTemplateVisibility` und die CQB-Helfer `bundleSquad`,
+  `assignToSquad`, `reassignSignup`, `autoBundle`, `setSquadSize`, `joinSquad`, `setSquadCarrier`,
+  `unbundle`.
+- Mitgenommen (Auftrag "2 Mitnehmen"): `renderCover`, `ENGINE_BG_KEY`, `ENGINE_CONFIG_KEY` in
+  `apps/mission-cover` — `renderEngineConfig` hat `renderCover` abgeloest. Die fremde uncommittete
+  Aenderung in denselben Dateien wurde nicht angefasst. Dazu die aufruferlosen SSR-Helfer
+  `visibilityControl` und `visibilityTag` in `web/pages.ts`.
+
+### Umgezogen statt geloescht
+
+`assertRequirementFitsUnit` + `assertUniqueSquadName` → `services/units.ts` (dort wohnt schon
+`registerUnit`), `canApproveUnits` → `services/guilds.ts` (direkt neben `effectiveOpRole`). `/api/v1`
+importierte sie bis dahin aus dem Legacy-Layer — der einzige Grund, warum die Datei ueberhaupt noch
+im Build hing.
+
+### Was fachlich verloren geht — und was nicht
+
+Das manuelle CQB-Buendeln ist laengst vom bedarfsgetriebenen Modell abgeloest: `needs/cqb`
+materialisiert die Teams, `/api/v1/…/cqb-teams/*` verwaltet sie (Mitglieder, Traeger, Umbenennen,
+Verspaetung), die SPA bedient das vollstaendig. **Vier** Faehigkeiten haben aber keinen v1-Zwilling
+und verlieren mit dem Layer ihren letzten Codepfad: Ressourcenlinks umsortieren, CQB-Auto-Bundle,
+Squad aufloesen, Primaereinheit setzen. Erreichbar war davon seit dem SPA-Umstieg nichts — als
+P4-Punkt in der Roadmap notiert.
+
+### Nebenbefund: die Kapitaens-DM feuert seit Monaten nicht
+
+`sendAcceptedCaptainVoiceDm` haengt an **keinem** Endpunkt. Gerufen hat sie nur der Legacy-Layer;
+`/api/v1/operations/:id/units/:unitId/accept` verschickt nichts. Beim Annehmen einer Einheit bekommt
+also niemand eine DM — obwohl Backlog, Ueberblick und Testcheckliste sie zusagten. Die Funktion
+bleibt **bewusst stehen**, mit Kommentar im Code: sie wieder anzuschliessen (und ihren
+Voice-Aera-Text neu zu fassen) ist eine Produktentscheidung, kein Aufraeumen. Backlog #2, Roadmap
+und Testcheckliste sagen jetzt den Ist-Zustand. Die Sitzzuweisungs-DM ist nicht betroffen, die
+verschickt `/api/v1` weiterhin.
+
+### Tests
+
+- `app.inject.test.ts`: der Test, der die Legacy-Routen als *vorhanden* pruefte, prueft jetzt, dass
+  sie **404** liefern (`/api/seats/:id/unassign`, `/api/ops/:id/status`, `GET /api/ships`).
+- `cqb.test.ts` auf die ueberlebende Oberflaeche umgestellt (`placeInSquad`, `renameSquad`),
+  `setPrimaryUnit`-Block aus `primaryUnits.test.ts` entfernt.
+
+### Doku
+
+Routen-Inventar (Legacy-Abschnitt raus, "ein API-Layer"), `fleetplanner-v1.md`, `CLAUDE.md` §3
+("Zwei API-Layer" → einer), `ARCHITEKTUR.md` (Modulinventar, Entscheidungstabelle, Altlasten),
+`security-plan.md` (der offene Punkt "zweite HTTP-Oberflaeche" faellt weg), Roadmap, Backlog #2,
+Testcheckliste, CHANGELOG.
+
+### Verifikation
+
+- `./scripts/test-stack.sh unit` — **569 gruen** (40 Dateien; netto -5 durch die entfallenen Tests)
+- `./scripts/test-stack.sh unit:web` — **133 gruen**
+- `./scripts/test-stack.sh db` — **20 gruen**
+- `./scripts/test-stack.sh smoke` — gruen
+- `./scripts/test-stack.sh e2e` — **122 gruen, 0 rot**
+- Docker-Images `fleetplanner`, `fleetplanner-web`, `mission-cover` gebaut (= Typecheck). Ein
+  Fehler kam dabei hoch und wurde gefixt: `TemplateVisibility` wurde noch von `PublishInput`
+  gebraucht und ist jetzt modullokal.
+- `npx knip` — ein einziger Treffer: die absichtlich stehen gelassene `sendAcceptedCaptainVoiceDm`.
+
+Noch nicht committed, nicht deployed.
+
+## Completed - 2026-08-22 (8): Toter Code entfernt, Doku an den Quelltext gezogen
+
+Auftrag: "aktualisiere die Dokumentation entsprechend am Quelltext, entferne vorher toten code."
+Umfang vom User bestaetigt (alle vier Loesch-, alle vier Doc-Buckets).
+
+### Geloescht
+
+**Verwaiste Pakete und Konfiguration**
+- `packages/db/` + Root-`prisma/` (Schema + 14 Migrationen) — Bridge/Bot-Schema, kein Consumer.
+- Root-`package.json`: `db:generate`/`db:migrate`/`db:studio` + `prisma`/`@prisma/client`-Devdeps.
+  `pnpm-lock.yaml` in Docker neu erzeugt (kein lokales pnpm), sonst scheitert
+  `pnpm install --frozen-lockfile` im Test-Image.
+- Root-`Caddyfile` — proxied `bridge:8787` und `livekit:7880`; die echte Konfiguration ist
+  `deploy/caddy-rdoc/Caddyfile`.
+- `.env.te`, `scripts/generate-livekit-config.sh`.
+- Nicht getrackt, nur Plattenmuell: `packages/shared/`, `msi/`, `nsis/`, `addOns/`, `videos/`.
+
+**Tote Env-Keys** (`config/env.ts`): `RAUMDOCK_GUILD_ID`, `RELAY_BOTS_ADMIN_URL`,
+`RELAY_BOTS_ADMIN_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_GUILD_ID`. Zod strippt Unbekanntes —
+alte `.env`-Dateien brechen nicht.
+
+**Toter Code.** `npx knip` meldete anfangs 46 Dateien und 105 Exporte; das meiste war Fehlalarm,
+weil knip die Testdateien nicht als Einstiegspunkte kannte. Jeder Treffer wurde einzeln gegen
+Produktivcode, Tests und E2E geprueft. Ergebnis: 21 echte Leichen geloescht (u.a. die SSR-Huelle
+`layout()` in `web/render.ts`, `requireGuildRole`, `listOperations`, `searchShips`,
+`vehicleFitsInShip`, `getTemplate`/`deleteTemplate`, `createSeats`, `ensureTeamsMaterialized`,
+`getCover`, `getCoverByOp`, das nie aufgerufene Toast-Modul, `InfoCard`/`FormSection`/`PageHead`),
+bei ~40 weiteren nur das `export` entfernt. Tote Coverage-Ausschluesse (`livekit.ts`, `*voice*`)
+aus `vitest.config.ts`.
+
+**`knip.json` repariert:** Testdateien als `entry` je Workspace, CLI-Binaries in `ignoreBinaries`,
+der Typ-Barrel `api/types.ts` bewusst ignoriert. Uebrig: drei Treffer in `mission-cover`
+(`render.ts`, `prefill.ts` — dort liegt eine fremde, uncommittete Aenderung, angefasst wurde
+nichts) und drei Typen, die in exportierten Signaturen stecken.
+
+### Doku
+
+- `README.md`, `CLAUDE.md`, `docs/ARCHITEKTUR.md`, `docs/TESTING.md` (neu: Dead-Code-Gate),
+  `docs/ROADMAP.md` (nur noch Offenes), `docs/FLEETPLANNER-BACKLOG.md`,
+  `docs/FLEETPLANNER-UEBERBLICK.md`, `docs/privacy.md`, `docs/Testing-Checklist.md` (neu — die alte
+  testete Companion-App, Bridge-Admin und LiveKit-PTT), `security-plan.md` (neu — beschrieb
+  komplett den entfernten Voice-Stack).
+- `docs/api/fleetplanner-route-inventory.md` **aus dem Code neu erzeugt** (186 Routen) statt eines
+  Migrationsplans von Juni mit Dateien, die es nicht mehr gibt.
+- `docs/api/fleetplanner-v1.md`: `GET /api/v1/docs` gibt es nicht mehr; die Liste "noch nicht in v1"
+  war abgearbeitet.
+- Alle drei `.env`-Vorlagen gegen `config/env.ts` + Compose neu geschrieben.
+- `docker-compose.prod.yml`-Kopfkommentar: beschrieb Traefik auf `10.10.10.97` (= DCCC).
+- Archiviert: Polls, Stream-Event, UI-Audit, beide Security-Reviews. Geloescht: Federation-Voice,
+  Item-Database, Testbericht 2026-06-08, Mission-Creation-Brainstorm.
+
+**Drei sachliche Fehler in der Doku gefunden und korrigiert:**
+1. `PUBLIC_BASE_PATH` ist in Produktion `/fleetplanner` (Compose), nicht `""` wie CLAUDE.md und
+   README behaupteten. Caddy strippt das Praefix; der Wert wird nur fuer absolute Links wieder
+   angehaengt.
+2. Das Zod-Schema **validiert** `PUBLIC_BASE_PATH` nicht (CLAUDE.md behauptete "nur `""` oder mit
+   fuehrendem `/`").
+3. Die README-Env-Tabelle fuehrte `LOG_LEVEL`, `OAUTH_REDIRECT_URI` und `VOICEBOT_ENCRYPTION_KEY` —
+   keine davon existiert im Schema.
+
+### Bewusst nicht angefasst
+
+- **`routes/api.ts`** (45 Form-POST-Routen, ~1.570 Zeilen): kein Client im Repo ruft ihn noch auf,
+  jede Funktion existiert unter `/api/v1`. Das Loeschen aendert aber eine oeffentlich erreichbare
+  HTTP-Oberflaeche — eigene Entscheidung, jetzt dokumentiert in Routen-Inventar und Security-Plan.
+- **`apps/mission-cover/src/services/render.ts` + `prefill.ts`**: dort liegt eine fremde,
+  uncommittete Aenderung im Baum (`renderCover`, `ENGINE_BG_KEY`, `ENGINE_CONFIG_KEY` sind tot,
+  wurden aber stehen gelassen, um diese Arbeit nicht zu verheddern).
+- **`apps/fleetplanner-web/src/api/types.ts`**: 20 ungenutzte Typ-Re-Exporte. Der Barrel spiegelt
+  absichtlich das Contract-Paket; jedes Pruning waere Churn beim naechsten Feature.
+
+### Verifikation
+
+- `./scripts/test-stack.sh unit` — **574 gruen**
+- `./scripts/test-stack.sh unit:web` — **133 gruen**
+- `./scripts/test-stack.sh db` — **20 gruen**
+- `docker compose -f docker-compose.test.yml build fleetplanner fleetplanner-web` — beide Images
+  gebaut, das ist der Typecheck (`tsc` im Backend, `tsc --noEmit` + `vite build` in der SPA)
+- `npx knip` — von 105 auf 6 Treffer, alle bewusst stehen gelassen
+- `./scripts/test-stack.sh smoke` — gruen (HTTP-Oberflaeche, genau ein CSP-Header, Auth-Gates,
+  Seam weist ein falsches Secret ab)
+- `./scripts/test-stack.sh e2e` — **122 gruen, 0 rot** (`19-cover` skippt ohne `--with-cover`)
+
+Damit ist auch die geloeschte SSR-Huelle abgesichert: die Crawler-Dokumente, `calendar.ics` und
+`participants.csv` laufen weiter durch `routes/web.ts`.
+
+Noch nicht committed, nicht deployed.
+
 ## Completed - 2026-08-22: UI-Audit Feinschliff — die acht offenen Detailpunkte (`c3ea46d`)
 
 Die zehn Schritte aus §15 sind umgesetzt; beim Nachpruefen gegen den Bericht blieben acht
@@ -102,6 +280,40 @@ Ergebnis (2026-08-22), beide Richtungen verifiziert:
 - Dienst gestartet -> 3 passed.
 - `up --with-cover` baut, startet und wartet korrekt; ohne Flag warnt `up`.
 - Volle E2E-Suite mit Renderer: **122 passed, 0 failed** — erstmals komplett gruen.
+
+## Queued / Planned Step - 2026-08-22 (7): Mission-Cover — Positionierung und RDOC-Standardtexte
+
+Befund nach dem Rendern aller vier Presets in allen vier Formaten (16 PNGs, angesehen):
+
+1. **Jedes Format ausser 16:9 exportiert die Editor-Oberflaeche mit.** `render.ts` fotografiert
+   `#mission-cover-canvas`; das Element ist `width:100%` mit `maxWidth` und `aspectRatio`, haengt
+   also am Layout des Editors. Im Hochformat-Viewport (9:16 -> 620x1040) ist die Canvas hoeher
+   als das Fenster, Playwright scrollt beim Element-Screenshot, und die sticky Editor-Leisten
+   rutschen ins Bild. Ergebnis: halbes Cover, darunter "PRESETS & SCHRIFT", "COVER EXPORTIEREN".
+   Fix: fuer den Export wird die Canvas per injiziertem CSS auf exakt WxH fixiert
+   (`position:fixed`, `top/left:0`, kein Transform, kein Rahmen) und alles andere ausgeblendet.
+   Der Export haengt damit nicht mehr am responsiven Verhalten des Editors.
+2. **Badges verzerren ausserhalb von 16:9.** Breite kommt aus `badgeSize/1200`, Hoehe aus
+   `badgeSize/675` — zwei verschiedene Bezugsgroessen. In 9:16 wird aus dem quadratischen Badge
+   ein 34x106-Rechteck. Fix: Breite in Prozent, Hoehe ueber `aspect-ratio: 1`.
+3. **Badges liegen im Header.** Standardposition y=90 (13 % von 675) schneidet die Zeile
+   "MISSION DOSSIER >>>". Fix: neue Standardpositionen unterhalb der Kopfzeile.
+4. **QR-Code ueberdeckt den Fusstext** und liegt in schmalen Formaten teilweise ausserhalb der
+   Canvas (er ist 80x80 CSS-Pixel unabhaengig von der Canvasbreite, die Position aber prozentual).
+   Fix: formatabhaengige Standardposition, die den QR innerhalb der Flaeche und ueber dem
+   Fussbereich haelt.
+5. **Zeilenumbrueche im Zieltext gehen verloren.** `EditableText` rendert in einem `<span>` ohne
+   `white-space`, also wird aus der ASSETS-Liste ein Fliesstext. Fix: `pre-line` im
+   Multiline-Modus.
+
+**Standardtexte:** `securityText` steht auf `"CCO SPECIAL OPERATIONS COMMAND // VI5E TASK FORCE"`,
+`dossierLabel` auf `"MISSION DOSSIER >>>"`. Beides sind Platzhalter aus dem Ursprungswerkzeug und
+werden auf RDOC gedreht.
+
+**Nicht angefasst:** die Autoren-Credits auf Vi5E (`AUTHOR_CREDIT` in `schema.ts`, Links im
+Editor-Fuss, Nennung in beiden READMEs). Das ist die Urheberangabe der Engine, nicht ein
+Platzhaltertext — die gegen "RDOC" zu tauschen waere eine falsche Zuschreibung. Der Punkt geht
+zurueck an den User.
 
 ## Completed - 2026-08-22: E2E-Test-Login-Backdoor auf Produktion geschlossen
 

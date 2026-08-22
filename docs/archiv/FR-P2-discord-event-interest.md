@@ -81,7 +81,7 @@ Fleetplanner identity:
    with a `discordEventId` and status `open | locked | in_progress`; stop once
    `completed | cancelled`.
 4. **Privacy:** YES — add the new data class (Discord interest RSVPs: snowflake + display name per
-   op) to [docs/privacy.md](privacy.md) as part of the build.
+   op) to [docs/privacy.md](../privacy.md) as part of the build.
 
 ## Build order
 1. Schema `EventInterest` + migration; scheduler poll + diff (no UI yet) — data lands.

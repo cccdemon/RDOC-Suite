@@ -1,6 +1,6 @@
 # RDOC Fleetplanner — Was er kann und wofür er gedacht ist
 
-*Vollständiger deutscher Überblick. Stand: 2026-08-12 (Funktionsumfang gegen den Quelltext geprüft).
+*Vollständiger deutscher Überblick. Stand: 2026-08-22 (Funktionsumfang gegen den Quelltext geprüft).
 Erreichbar unter `https://suite.raumdock.org/fleetplanner`.*
 
 ## Wofür ist der Fleetplanner gedacht?
@@ -62,11 +62,21 @@ zurückziehen — ohne separaten "Bearbeiten"-Modus.
 - **Annehmen/Ablehnen** durch den Operator; Ablehnen gibt Sitze wieder frei. Auto-Match schlägt
   passende Slots vor (Kategorie = Hinweis, keine harte Sperre).
 
-### 5. Operator-Arbeitsbereich (Manage)
-Aufgeräumte Oberfläche mit **Statusfluss** (Entwurf → Offen → Gesperrt → Startet → Live → Fertig),
-einer "Nächster-Schritt"-Leiste und **Aufmerksamkeits-Tabs** (Gold umrandet, wo etwas zu tun ist):
-Übersicht / Fleet / Crew / Voice / Voice-Zugriff / Admin. Aktionen aktualisieren nur den betroffenen
-Bereich (kein ständiges Neuladen).
+### 5. Operator-Arbeitsbereich (Verwalten)
+Auf der Operationsseite umschaltbar zwischen **Ansehen** und **Verwalten**. Der Arbeitsbereich hat
+seit dem IA-Umbau (August 2026) vier Gruppen statt neun gleichrangiger Tabs:
+
+| Gruppe | Enthält |
+|---|---|
+| Flotte | Board, Bedarfe, CQB, Verbände |
+| Planung | Eckdaten, Cover, Fragen |
+| Kommunikation | Voice, Kommandanten |
+| Verwaltung | Vorlage & Serie, Status, Gefahrenbereich |
+
+Dazu der **Statusfluss** (Entwurf → Offen → Gesperrt → Startet → Live → Fertig), Zähler an den Tabs,
+die sagen, was sie zählen ("3 offene Fragen"), und eine URL, die den offenen Tab mitführt: ein
+Deep-Link, ein Neuladen oder der Zurück-Knopf landen dort, wo man war. Aktionen aktualisieren nur den
+betroffenen Bereich.
 
 ### 6. Schiffe & Profil
 - **Schiffskatalog** aus der Star-Citizen-Wiki-API, lokal gecacht, wöchentlich aktualisiert.

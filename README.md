@@ -46,7 +46,9 @@ It integrates with Discord through the official Bot API and OAuth2 only — no s
 | Package                          | Purpose                                                                                       |
 | -------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `packages/fleetplanner-contracts` | Zod schemas for the API. **Single source of truth** — backend and SPA import the same types. |
-| `packages/db`                    | Prisma client wrapper. Belongs to the removed bridge/bot schema; effectively vestigial.         |
+
+`packages/fleetplanner-contracts` is the only package left. `packages/db` and the root
+`prisma/` schema belonged to the removed bridge/bot stack and were deleted on 2026-08-22.
 
 ## Architecture
 
@@ -193,19 +195,21 @@ Fleetplanner applies its Prisma migrations on container start.
 
 | Group         | Variables                                                                                     |
 | ------------- | --------------------------------------------------------------------------------------------- |
-| Core          | `SESSION_SECRET`, `DATABASE_URL`, `NODE_ENV`, `LOG_LEVEL`, `PUBLIC_BASE_PATH`, `PORT`, `HOST`, `TRUST_PROXY` |
+| Core          | `SESSION_SECRET`, `DATABASE_URL`, `NODE_ENV`, `PUBLIC_BASE_PATH`, `PORT`, `HOST`, `TRUST_PROXY` |
 | Database      | `FLEETPLANNER_DB_PASSWORD` (compose, PostgreSQL container)                                     |
-| Discord       | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_FLEETPLANNER_CLIENT_ID`, `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_PUBLIC_KEY` |
-| URLs          | `WEB_PUBLIC_URL`, `FLEETPLANNER_PUBLIC_URL`, `OAUTH_REDIRECT_URI`                              |
+| Discord       | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_FLEETPLANNER_CLIENT_ID`, `DISCORD_FLEETPLANNER_CLIENT_SECRET`, `DISCORD_FLEETPLANNER_BOT_TOKEN`, `DISCORD_FLEETPLANNER_PUBLIC_KEY` |
+| Discord endpoints | `DISCORD_API_BASE`, `DISCORD_AUTHORIZE_BASE`, `DISCORD_SITE_BASE` — real Discord by default; only the local test stack points them at the simulator, and a non-default value is logged loudly at boot |
+| URLs          | `WEB_PUBLIC_URL`, `FLEETPLANNER_PUBLIC_URL` (compose input for `WEB_PUBLIC_URL`)                |
 | Bootstrap     | `SUPERADMIN_DISCORD_ID`, `SUPERADMIN_CONTACT`                                                  |
-| Encryption    | `VOICEBOT_ENCRYPTION_KEY` — encrypts stored Discord voice-bot tokens. **Set once, never change it**, or every stored token has to be re-entered. |
 | Mission cover | `MISSIONCOVER_SERVICE_SECRET`, `MISSIONCOVER_SERVICE_URL`, `MISSIONCOVER_PUBLIC_URL`           |
-| Monitoring    | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`                                                 |
-| Optional      | `MAINTENANCE_MODE`, alternative login providers (`GITHUB_*`, `GOOGLE_*`)                       |
+| Voice link    | `SQUADLINK_ROOM_AUTH_SECRET`, `SQUADLINK_WS_URL`, `SQUADLINK_STORE_URL` — unset secret hides the voice card |
+| Monitoring    | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`; TLS needs `CF_API_TOKEN` for Caddy's DNS-01 challenge |
+| Optional      | `MAINTENANCE_MODE`, alternative login providers (`GITHUB_*`, `GOOGLE_*`), the captain-DM links (`FLEETPLANNER_VOICE_CLIENT_*`) |
+| Test seam     | `E2E_TEST_LOGIN_SECRET`, `E2E_ALLOW_IN_PROD`, `E2E_TEST_LOGIN_EXPIRES` — leave unset in production, see [docs/TESTING.md](docs/TESTING.md) |
 
-The authoritative list is the Zod schema in [`apps/fleetplanner/src/config/env.ts`](apps/fleetplanner/src/config/env.ts) — it validates at startup and will reject a bad config.
+The authoritative list is the Zod schema in [`apps/fleetplanner/src/config/env.ts`](apps/fleetplanner/src/config/env.ts) — it validates at startup and will reject a bad config. Unknown keys are dropped silently, so a variable that is not in that schema does nothing.
 
-Both `.env` templates have drifted and should be treated as incomplete: [`.env.example`](.env.example) is missing `DISCORD_CLIENT_ID`, `WEB_PUBLIC_URL`, `SUPERADMIN_DISCORD_ID` and `VOICEBOT_ENCRYPTION_KEY`, and [`.env.prod.template`](.env.prod.template) still carries `BRIDGE_*` and `RELAY_BOTS_*` keys for services that no longer exist.
+Both templates ([`.env.example`](.env.example) for development, [`.env.prod.template`](.env.prod.template) for the server) were rewritten against that schema on 2026-08-22.
 
 ## Repository layout
 
@@ -222,15 +226,18 @@ Both `.env` templates have drifted and should be treated as incomplete: [`.env.e
 |   |-- caddy-rdoc/
 |   `-- grafana/
 |-- docs/                 # merge log, roadmap, feature requests, privacy
+|-- e2e/                  # Playwright suite (own npm project, not in the workspace)
 |-- packages/
-|   |-- db/               # Prisma wrapper (vestigial, see above)
 |   `-- fleetplanner-contracts/  # Zod API contracts — source of truth
-|-- prisma/               # schema of the removed bridge/bot stack (vestigial)
+|-- scripts/              # test-stack.sh and the production smoke scripts
+|-- tests/                # Discord simulator + test-stack Dockerfiles
 |-- docker-compose.prod.yml
+|-- docker-compose.test.yml
 `-- package.json
 ```
 
-The root `prisma/` directory and the root `pnpm db:generate` / `db:migrate` / `db:studio` scripts belong to the removed bridge/bot services. Fleetplanner uses its own schema and its own scripts; use the `--filter @rdoc-suite/fleetplanner` variants.
+Prisma lives in one place only: `apps/fleetplanner/prisma`. Use the
+`--filter @rdoc-suite/fleetplanner db:*` scripts — the root has no `db:*` scripts.
 
 ## Scripts
 

@@ -4,7 +4,7 @@ What the **RDOC Fleetplanner** stores, where it lives and how long. This is the 
 inventory behind the user-facing privacy page (`/rechtliches/datenschutz`, built in
 `apps/fleetplanner/src/web/pages.ts`). Have legal counsel review before publishing a formal notice.
 
-Stand 2026-08-12, checked against `apps/fleetplanner/prisma/schema.prisma`.
+Stand 2026-08-22, checked against `apps/fleetplanner/prisma/schema.prisma`.
 
 > **Was rewritten on 2026-08-12.** The previous version documented the Channel Commander voice
 > bridge — `CommanderSession`, `GuildConfig`, a Companion session JWT, LiveKit tokens and bridge
@@ -16,7 +16,7 @@ Stand 2026-08-12, checked against `apps/fleetplanner/prisma/schema.prisma`.
 | Data | Where | Why | Retention |
 | --- | --- | --- | --- |
 | Discord (or GitHub/Google) **account id + username** | `UserIdentity.providerId` / `.username` | Links the login to the account; the Discord id is also how DMs and RSVPs are matched | Until the identity is unlinked or the account is deleted |
-| **Display name, avatar hash, language, layout preference** | `User` | Shows who is who and renders the UI in the chosen language | Until the account is deleted |
+| **Display name, avatar hash, language, op-detail layout, Fleetyards username, last acknowledged changelog** | `User` | Shows who is who, renders the UI in the chosen language, and lets the hangar import re-sync with one click | Until the account is deleted |
 | **Instance role, active flag, joined / last-seen timestamps** | `User` | Permission checks; the last-seen date shows operators who is still around | Until the account is deleted |
 | **Session** | `UserSession.tokenHash` (SHA-256), `csrfToken`, `expiresAt` | Keeps you signed in | 30 days, or until logout |
 | **Server membership + role** | `GuildMembership` | Decides what you may do *in that server* | Until the membership is removed or the server is deleted |

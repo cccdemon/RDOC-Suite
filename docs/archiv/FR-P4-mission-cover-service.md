@@ -265,7 +265,7 @@ Neuer Service in [docker-compose.prod.yml](../docker-compose.prod.yml):
 - **Editor jetzt oder später** (Phase 5) — MVP geht ohne (nur Auto-Render).
 - **Image-Größe akzeptabel?** Playwright/Chromium-Image ist groß; Alternative satori nur falls
   Look-Verlust ok (nicht empfohlen).
-- In [docs/ROADMAP.md](ROADMAP.md) eintragen.
+- In [docs/ROADMAP.md](../ROADMAP.md) eintragen.
 
 ---
 
