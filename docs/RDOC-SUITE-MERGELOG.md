@@ -52,6 +52,23 @@ die zehn Schritte aus §15 und die Detailanforderungen aus §2, §5, §6, §9, �
 Eine bewusste Abweichung bleibt: kanonisch ist `?op=<leaf>` statt des in §6 vorgeschlagenen
 `?mode/section/sub`; die vorgeschlagene Form wird zusaetzlich akzeptiert.
 
+## Completed - 2026-08-22: Deploy `0ae079f` (IA-Ueberhaul + Audit-Feinschliff + Review-Fixes)
+
+`master` per Fast-Forward von `c7f164d` auf `0ae079f` gezogen (der Branch `feat/stream-event`
+enthielt alles), gepusht, auf LXC 103 `git pull` und
+`docker compose -f docker-compose.prod.yml up -d --build fleetplanner fleetplanner-web`.
+
+- Prisma: "No pending migrations to apply" — kein Schema-Wechsel in diesem Deploy.
+- Beide Container laufen, Backend lauscht auf :3200.
+- `scripts/prod-e2e-readonly.sh` gegen https://suite.raumdock.org: ALL CHECKS PASSED.
+- Stichprobe der neuen Pfade unter dem echten Base-Path: `/fleetplanner/operationen?view=liste`,
+  `/fleetplanner/templates`, `/fleetplanner/ops/new`, `/fleetplanner/calendar?typ=combat` — alle 200.
+
+**Offen und sicherheitsrelevant:** der Fleetplanner loggt beim Start
+`E2E test-login seam ENABLED`. Auf der Produktionsinstanz ist also `E2E_TEST_LOGIN_SECRET`
+weiterhin gesetzt — die Test-Login-Backdoor (nur synthetische `e2e-*`-Nutzer) steht offen. Laut
+`docs/TESTING.md` gehoert sie nach einem Lauf entfernt. Nicht von diesem Deploy verursacht.
+
 ## Completed - 2026-08-22: Review-Findings zur IA-Ueberarbeitung abgearbeitet
 
 Externes Review der IA-Arbeit, acht Findings, alle im Code bestaetigt und behoben.
