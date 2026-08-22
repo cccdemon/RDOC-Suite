@@ -80,8 +80,17 @@ import {
 } from "../services/partnerships.js";
 import { createSeriesForOp, upcomingOccurrences } from "../services/recurrence.js";
 import { runDiscordInstallDiagnostics } from "../services/discordDiagnostics.js";
-import { assignSeat, claimSeat, deleteUnit, registerUnit, setUnitStatus, unclaimSeat } from "../services/units.js";
-import { listPublicOrgs } from "../services/guilds.js";
+import {
+  assertRequirementFitsUnit,
+  assertUniqueSquadName,
+  assignSeat,
+  claimSeat,
+  deleteUnit,
+  registerUnit,
+  setUnitStatus,
+  unclaimSeat,
+} from "../services/units.js";
+import { canApproveUnits, listPublicOrgs } from "../services/guilds.js";
 import {
   addShipNeeds,
   getOperationNeeds,
@@ -105,7 +114,6 @@ import { addOpDocument, getOpDocument, openOpDocument, removeOpDocument, MAX_OP_
 import { addStream, removeStream, streamOwner } from "../services/streams.js";
 import { sendDiscordDm } from "../services/discord.js";
 import { searchLocalShips } from "../services/scwiki.js";
-import { assertRequirementFitsUnit, assertUniqueSquadName, canApproveUnits } from "./api.js";
 import {
   AnswerQuestionRequestSchema,
   ApplyTemplateRequestSchema,

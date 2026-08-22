@@ -800,6 +800,11 @@ export function verifyDiscordInteraction(
   }
 }
 
+// NOT WIRED. The SSR route that called this went with routes/api.ts on
+// 2026-08-22; the /api/v1 accept endpoint sends no DM, so accepting a unit has
+// been silent since the SPA cutover. Kept on purpose: the docs promise this DM
+// and the decision whether to hook it into /api/v1 (and to rewrite its
+// voice-era wording) belongs to the product owner, not to a cleanup pass.
 export async function sendAcceptedCaptainVoiceDm(
   userId: string,
   input: { operationTitle: string; unitName: string; operationUrl: string },

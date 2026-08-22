@@ -66,7 +66,7 @@ export function defaultPrimaryUnit(units: UserUnit[]): UserUnit | null {
 }
 
 /** Explicit per-user primary-unit choices for the op (userId → unitId). */
-export async function getPrimaryChoices(operationId: string): Promise<Map<string, string>> {
+async function getPrimaryChoices(operationId: string): Promise<Map<string, string>> {
   const rows = await prisma.opPrimaryUnit.findMany({
     where: { operationId },
     select: { userId: true, unitId: true },
@@ -96,30 +96,6 @@ export async function resolvePrimaryUnits(operationId: string): Promise<Map<stri
 
 /** Persist a user's primary-unit choice. Validates the user is actually in that
  *  accepted unit. `setByUserId` records who chose it (self or a leader). */
-export async function setPrimaryUnit(
-  operationId: string,
-  userId: string,
-  unitId: string,
-  setByUserId: string,
-): Promise<void> {
-  const units = (await userUnitsByUser(operationId)).get(userId) ?? [];
-  if (!units.some((u) => u.unitId === unitId)) {
-    throw new Error("User is not assigned to that unit");
-  }
-  await prisma.opPrimaryUnit.upsert({
-    where: { operationId_userId: { operationId, userId } },
-    update: { unitId, setByUserId },
-    create: { operationId, userId, unitId, setByUserId },
-  });
-}
-
-/** Drop an explicit choice → falls back to the system default. */
-export async function clearPrimaryUnit(operationId: string, userId: string): Promise<void> {
-  await prisma.opPrimaryUnit
-    .delete({ where: { operationId_userId: { operationId, userId } } })
-    .catch(() => {});
-}
-
 export type MultiPositionAssignment = {
   userId: string;
   username: string;

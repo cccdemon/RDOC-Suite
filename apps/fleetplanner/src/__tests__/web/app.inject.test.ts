@@ -69,17 +69,20 @@ describe("csrf gate", () => {
   });
 });
 
-describe("operator seat-unassign route", () => {
-  it("is registered and rejects unauthenticated POST (never a 2xx success)", async () => {
-    const res = await app.inject({
-      method: "POST",
-      url: "/api/seats/some-seat-id/unassign",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      payload: "_csrf=x",
-    });
-    // requireAuth runs first → 302 to /login for an anonymous caller. A 404 would
-    // mean the route was never registered.
-    expect(res.statusCode).not.toBe(404);
-    expect(res.statusCode).toBeGreaterThanOrEqual(300);
+describe("the legacy form-POST layer is gone", () => {
+  // routes/api.ts (45 redirect-answering form POSTs) was removed 2026-08-22: no
+  // client called it any more and every action lives under /api/v1. These are
+  // the two shapes it served — both must now be unroutable, not merely rejected.
+  it.each(["/api/seats/some-seat-id/unassign", "/api/ops/some-op-id/status"])(
+    "%s is not routed",
+    async (url) => {
+      const res = await app.inject({ method: "POST", url, payload: {} });
+      expect(res.statusCode).toBe(404);
+    },
+  );
+
+  it("GET /api/ships is gone — the catalog lives at /api/v1/ships/search", async () => {
+    const res = await app.inject({ method: "GET", url: "/api/ships?q=aurora" });
+    expect(res.statusCode).toBe(404);
   });
 });

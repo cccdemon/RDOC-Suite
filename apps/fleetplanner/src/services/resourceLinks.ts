@@ -6,7 +6,7 @@
 import { prisma } from "../db.js";
 
 export type ResourceLinkKind = "link" | "youtube" | "rsi_hub" | "gdoc" | "image";
-export const RESOURCE_LINK_KINDS: readonly ResourceLinkKind[] = [
+const RESOURCE_LINK_KINDS: readonly ResourceLinkKind[] = [
   "link",
   "youtube",
   "rsi_hub",
@@ -15,7 +15,7 @@ export const RESOURCE_LINK_KINDS: readonly ResourceLinkKind[] = [
 ];
 
 /** Hard cap on links per op — keeps the briefing card from becoming clutter. */
-export const MAX_RESOURCE_LINKS = 10;
+const MAX_RESOURCE_LINKS = 10;
 
 /**
  * Validate a user-supplied URL. Only absolute http/https URLs are accepted —
@@ -79,13 +79,6 @@ function fallbackTitle(url: string): string {
   }
 }
 
-export async function listResourceLinks(operationId: string) {
-  return prisma.operationResourceLink.findMany({
-    where: { operationId },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
-}
-
 /**
  * Append a link to an op. Returns `null` when the URL is invalid or the op is
  * already at MAX_RESOURCE_LINKS. `kind` defaults to the derived value; pass a
@@ -124,20 +117,4 @@ export async function addResourceLink(
 /** Remove a link (scoped to the op so a stray id can't delete another op's link). */
 export async function removeResourceLink(operationId: string, linkId: string): Promise<void> {
   await prisma.operationResourceLink.deleteMany({ where: { id: linkId, operationId } });
-}
-
-/** Persist a new order. Ids not belonging to the op are ignored. */
-export async function reorderResourceLinks(operationId: string, orderedIds: string[]): Promise<void> {
-  const links = await prisma.operationResourceLink.findMany({
-    where: { operationId },
-    select: { id: true },
-  });
-  const valid = new Set(links.map((l) => l.id));
-  await prisma.$transaction(
-    orderedIds
-      .filter((id) => valid.has(id))
-      .map((id, i) =>
-        prisma.operationResourceLink.update({ where: { id }, data: { sortOrder: i } }),
-      ),
-  );
 }

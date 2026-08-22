@@ -1,11 +1,9 @@
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
-import formbody from "@fastify/formbody";
 import multipart from "@fastify/multipart";
 import { getEnv } from "./config/env.js";
 import { authRoutes } from "./routes/auth.js";
 import { webRoutes } from "./routes/web.js";
-import { apiRoutes } from "./routes/api.js";
 import { apiV1Routes } from "./routes/apiV1.js";
 import { guildRoutes } from "./routes/guilds.js";
 import { e2eAuthRoutes } from "./routes/e2eAuth.js";
@@ -77,7 +75,6 @@ export async function buildApp() {
   });
 
   await app.register(cookie);
-  await app.register(formbody);
   // Feedback form screenshot uploads (multipart). Limits are also enforced
   // per-file in the /feedback route; this is the hard plugin-level guard.
   await app.register(multipart, {
@@ -122,7 +119,6 @@ export async function buildApp() {
   await app.register(e2eAuthRoutes); // self-disables unless E2E_TEST_LOGIN_SECRET is set
   await app.register(coverRoutes);
   await app.register(discordInteractionRoutes);
-  await app.register(apiRoutes);
   // FR-P2: JSON-only /api/v1 read slice (strangler split — SSR stays in parallel).
   await app.register(apiV1Routes);
 

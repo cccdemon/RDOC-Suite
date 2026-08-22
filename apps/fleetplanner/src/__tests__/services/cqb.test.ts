@@ -1,7 +1,9 @@
 import { vi, describe, it, expect, beforeEach } from "vitest";
 
-// Mock the Prisma client — cqb.ts is thin DB logic; we assert the calls + the
-// one piece of real logic (autoBundle chunking).
+// Mock the Prisma client — cqb.ts is thin DB logic, so we assert the calls it
+// builds. The manual bundling helpers (bundleSquad/autoBundle/unbundle/
+// assignToSquad) went with routes/api.ts on 2026-08-22: teams are materialised
+// from the CQB need now, and /api/v1 drives them through the cqb-teams routes.
 vi.mock("../../db.js", () => ({
   prisma: {
     cqbSignup: {
@@ -16,6 +18,10 @@ vi.mock("../../db.js", () => ({
       count: vi.fn(),
       deleteMany: vi.fn(),
       findFirst: vi.fn(),
+      updateMany: vi.fn(),
+    },
+    crewAssignmentRequest: {
+      deleteMany: vi.fn(),
     },
     // Slot allocation (formations.nextFreeSlot) reads both member tables to find
     // the lowest free place in a group.
@@ -25,14 +31,7 @@ vi.mock("../../db.js", () => ({
   },
 }));
 
-import {
-  createSignup,
-  withdrawSignup,
-  bundleSquad,
-  autoBundle,
-  unbundle,
-  assignToSquad,
-} from "../../services/cqb.js";
+import { createSignup, withdrawSignup, placeInSquad, renameSquad } from "../../services/cqb.js";
 import { prisma } from "../../db.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,6 +51,8 @@ beforeEach(() => {
   // Empty group by default → the next free slot is 0 (the Captain seat).
   p.cqbSignup.findMany.mockResolvedValue([]);
   p.fleetUnit.findMany.mockResolvedValue([]);
+  p.compositionGroup.updateMany.mockResolvedValue({ count: 1 });
+  p.crewAssignmentRequest.deleteMany.mockResolvedValue({ count: 0 });
 });
 
 describe("createSignup", () => {
@@ -75,94 +76,39 @@ describe("withdrawSignup", () => {
   });
 });
 
-describe("bundleSquad", () => {
-  it("creates a squad group and assigns the selected signups", async () => {
-    await bundleSquad("op1", "Alpha", ["s1", "s2"]);
-    expect(p.compositionGroup.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ name: "Alpha", kind: "squad" }) }),
-    );
-    // Slots are handed out in the given order — the first signup becomes Captain.
-    expect(p.cqbSignup.updateMany).toHaveBeenNthCalledWith(
-      1,
+describe("placeInSquad", () => {
+  it("slots the player into the group and drops their flexible request", async () => {
+    await placeInSquad("op1", "u1", "grp");
+    expect(p.cqbSignup.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ id: "s1", assignedGroupId: null }),
-        data: { assignedGroupId: "grp", status: "accepted", slotIndex: 0 },
+        where: { operationId_userId: { operationId: "op1", userId: "u1" } },
+        update: expect.objectContaining({ assignedGroupId: "grp", status: "accepted" }),
       }),
     );
-    expect(p.cqbSignup.updateMany).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({
-        where: expect.objectContaining({ id: "s2", assignedGroupId: null }),
-        data: { assignedGroupId: "grp", status: "accepted", slotIndex: 1 },
-      }),
-    );
-  });
-
-  it("skips the assign update when no signups are given", async () => {
-    await bundleSquad("op1", "Empty", []);
-    expect(p.compositionGroup.create).toHaveBeenCalledTimes(1);
-    expect(p.cqbSignup.updateMany).not.toHaveBeenCalled();
-  });
-});
-
-describe("autoBundle", () => {
-  it("chunks the pool into squads of N", async () => {
-    p.cqbSignup.findMany.mockResolvedValue([
-      { id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" },
-    ]);
-    const created = await autoBundle("op1", 2);
-    expect(created).toBe(3); // 2 + 2 + 1
-    expect(p.compositionGroup.create).toHaveBeenCalledTimes(3);
-  });
-
-  it("clamps size below 2 to the default of 4", async () => {
-    p.cqbSignup.findMany.mockResolvedValue([
-      { id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" },
-    ]);
-    const created = await autoBundle("op1", 0);
-    expect(created).toBe(2); // 4 + 1
-  });
-
-  it("clamps size above 8", async () => {
-    p.cqbSignup.findMany.mockResolvedValue(Array.from({ length: 9 }, (_, i) => ({ id: "x" + i })));
-    const created = await autoBundle("op1", 99);
-    expect(created).toBe(2); // 8 + 1
-  });
-
-  it("creates nothing for an empty pool", async () => {
-    p.cqbSignup.findMany.mockResolvedValue([]);
-    const created = await autoBundle("op1", 4);
-    expect(created).toBe(0);
-    expect(p.compositionGroup.create).not.toHaveBeenCalled();
-  });
-});
-
-describe("unbundle", () => {
-  it("frees members then deletes the squad group", async () => {
-    await unbundle("op1", "g1");
-    expect(p.cqbSignup.updateMany).toHaveBeenCalledWith({
-      where: { operationId: "op1", assignedGroupId: "g1" },
-      data: { assignedGroupId: null, status: "pending", slotIndex: null },
-    });
-    expect(p.compositionGroup.deleteMany).toHaveBeenCalledWith({
-      where: { id: "g1", operationId: "op1", kind: "squad" },
-    });
-  });
-});
-
-describe("assignToSquad", () => {
-  it("assigns when the target squad exists", async () => {
-    await assignToSquad("op1", "s1", "g1");
-    expect(p.cqbSignup.updateMany).toHaveBeenCalledWith({
-      where: { id: "s1", operationId: "op1" },
-      // Empty squad → the newcomer takes slot 0 and is therefore the Captain.
-      data: { assignedGroupId: "g1", status: "accepted", slotIndex: 0 },
+    // A person who now holds a seat must not stay in the flexible pool.
+    expect(p.crewAssignmentRequest.deleteMany).toHaveBeenCalledWith({
+      where: { operationId: "op1", userId: "u1" },
     });
   });
 
-  it("does nothing when the target squad is missing", async () => {
-    p.compositionGroup.findFirst.mockResolvedValue(null);
-    await assignToSquad("op1", "s1", "gX");
-    expect(p.cqbSignup.updateMany).not.toHaveBeenCalled();
+  it("does nothing when the group belongs to another operation", async () => {
+    p.compositionGroup.findFirst.mockResolvedValueOnce(null);
+    await placeInSquad("op1", "u1", "foreign");
+    expect(p.cqbSignup.upsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("renameSquad", () => {
+  it("renames a squad of this operation only", async () => {
+    await renameSquad("op1", "grp", "  Bravo  ");
+    expect(p.compositionGroup.updateMany).toHaveBeenCalledWith({
+      where: { id: "grp", operationId: "op1", kind: "squad" },
+      data: { name: "Bravo" },
+    });
+  });
+
+  it("ignores an empty name", async () => {
+    await renameSquad("op1", "grp", "   ");
+    expect(p.compositionGroup.updateMany).not.toHaveBeenCalled();
   });
 });

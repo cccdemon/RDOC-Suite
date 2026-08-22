@@ -1,8 +1,7 @@
 import { pathToFileURL } from "node:url";
 import { chromium, type Browser } from "playwright";
 import { getEnv, allowedImageHosts } from "../config/env.js";
-import { buildEngineConfig, cssDimensions, type EngineConfig } from "./prefill.js";
-import type { CoverRequest } from "../schema.js";
+import { cssDimensions, type EngineConfig } from "./prefill.js";
 
 let _browser: Browser | null = null;
 
@@ -38,13 +37,6 @@ function enqueue<T>(task: () => Promise<T>): Promise<T> {
   const run = queue.then(task, task);
   queue = run.catch(() => {});
   return run;
-}
-
-export function renderCover(req: CoverRequest): Promise<RenderResult> {
-  const config = buildEngineConfig(req);
-  const { w, h } = cssDimensions(req.format, req.data, config);
-  const bg = req.data.backgroundImage ?? null;
-  return enqueue(() => doRender(config, bg, w, h));
 }
 
 // Render directly from a full engine config (editor save round-trip). The

@@ -193,5 +193,3 @@ export function buildEngineConfig(req: CoverRequest): EngineConfig {
   return { ...base, ...(req.config ?? {}) };
 }
 
-export const ENGINE_BG_KEY = "star-citizen-cover-generator-bg";
-export const ENGINE_CONFIG_KEY = "star-citizen-cover-generator-config";

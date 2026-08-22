@@ -17,7 +17,6 @@ import {
   defaultPrimaryUnit,
   getMultiPositionAssignments,
   resolvePrimaryUnits,
-  setPrimaryUnit,
   userUnitsByUser,
   type UserUnit,
 } from "../../services/primaryUnits.js";
@@ -131,49 +130,6 @@ describe("resolvePrimaryUnits", () => {
 
     expect(resolved.get("user-a")).toBe("ship-1");
     expect(resolved.get("user-b")).toBe("squad-1");
-  });
-});
-
-describe("setPrimaryUnit", () => {
-  it("rejects choices for units the user is not assigned to", async () => {
-    db.fleetUnit.findMany.mockResolvedValue([
-      {
-        id: "unit-1",
-        unitType: "ship",
-        squadName: null,
-        createdAt: createdAt(1),
-        captainId: "user-a",
-        ship: { name: "Carrack" },
-        seats: [],
-      },
-    ]);
-
-    await expect(setPrimaryUnit("op-1", "user-b", "unit-1", "leader")).rejects.toThrow(
-      "User is not assigned to that unit",
-    );
-    expect(db.opPrimaryUnit.upsert).not.toHaveBeenCalled();
-  });
-
-  it("upserts valid choices with the setter id", async () => {
-    db.fleetUnit.findMany.mockResolvedValue([
-      {
-        id: "unit-1",
-        unitType: "ship",
-        squadName: null,
-        createdAt: createdAt(1),
-        captainId: "user-a",
-        ship: { name: "Carrack" },
-        seats: [],
-      },
-    ]);
-
-    await setPrimaryUnit("op-1", "user-a", "unit-1", "leader");
-
-    expect(db.opPrimaryUnit.upsert).toHaveBeenCalledWith({
-      where: { operationId_userId: { operationId: "op-1", userId: "user-a" } },
-      update: { unitId: "unit-1", setByUserId: "leader" },
-      create: { operationId: "op-1", userId: "user-a", unitId: "unit-1", setByUserId: "leader" },
-    });
   });
 });
 

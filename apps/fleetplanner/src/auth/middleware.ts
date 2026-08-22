@@ -2,18 +2,18 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type { User } from "@prisma/client";
 import { loadSession } from "./session.js";
 import { basePath } from "../config/env.js";
-import { resolveActiveGuild, guildRoleAtLeast, effectiveOpRole, type GuildRole } from "../services/guilds.js";
+import { resolveActiveGuild } from "../services/guilds.js";
 
 export type AuthContext = { user: User; sessionId: string; csrfToken: string };
 
 /** Auth context plus the active guild (tenant) and the user's role in it. */
-export type GuildContext = AuthContext & {
+type GuildContext = AuthContext & {
   guildId: string;
   guildName: string;
   guildRole: string;
 };
 
-export type UserRole = "superadmin" | "fleetoperator" | "crew";
+type UserRole = "superadmin" | "fleetoperator" | "crew";
 
 const ROLE_RANK: Record<UserRole, number> = {
   superadmin: 4,
@@ -23,7 +23,7 @@ const ROLE_RANK: Record<UserRole, number> = {
 
 const ACTIVE_GUILD_COOKIE = "fp_guild";
 
-export function activeGuildCookie(request: FastifyRequest): string | undefined {
+function activeGuildCookie(request: FastifyRequest): string | undefined {
   return (request.cookies as Record<string, string | undefined>)[ACTIVE_GUILD_COOKIE];
 }
 
@@ -50,7 +50,7 @@ export async function optionalAuth(request: FastifyRequest): Promise<AuthContext
  * NO guild membership, redirects to /guilds/none (the "add the bot / join
  * a Discord" page). Returns null when a redirect was issued.
  */
-export async function requireGuild(
+async function requireGuild(
   request: FastifyRequest,
   reply: FastifyReply,
 ): Promise<GuildContext | null> {
@@ -63,45 +63,3 @@ export async function requireGuild(
   }
   return { ...ctx, guildId: active.guildId, guildName: active.guildName, guildRole: active.role };
 }
-
-/**
- * Like requireGuild, but also enforces a minimum role WITHIN the active
- * guild. A superadmin is NOT auto-granted here — outside the admin console
- * they act on their real GuildMembership.role. Cross-guild powers live in
- * the admin console (requireSuperadmin + instance-management endpoints).
- */
-export async function requireGuildRole(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  minRole: GuildRole,
-): Promise<GuildContext | null> {
-  const gctx = await requireGuild(request, reply);
-  if (!gctx) return null;
-  if (!guildRoleAtLeast(gctx.guildRole, minRole)) {
-    reply.code(403).send({ error: "forbidden" });
-    return null;
-  }
-  return gctx;
-}
-
-/**
- * Enforce a minimum role within a SPECIFIC operation's guild (used by
- * op-scoped API routes that act on an op id rather than the active guild).
- * 403s non-members and users below the required role.
- */
-export async function requireOpRole(
-  request: FastifyRequest,
-  reply: FastifyReply,
-  operationId: string,
-  minRole: GuildRole,
-): Promise<AuthContext | null> {
-  const ctx = await requireAuth(request, reply);
-  if (!ctx) return null;
-  const role = await effectiveOpRole(ctx.user.id, ctx.user.role, operationId);
-  if (!role || !guildRoleAtLeast(role, minRole)) {
-    reply.code(403).send({ error: "forbidden" });
-    return null;
-  }
-  return ctx;
-}
-

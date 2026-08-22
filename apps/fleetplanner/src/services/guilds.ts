@@ -78,7 +78,7 @@ export async function installGuild(
  * partnerships and bots stay in the DB; the guild vanishes from all lists
  * and can be reactivated by adding the bot again (unless banned).
  */
-export async function deactivateGuild(guildId: string): Promise<void> {
+async function deactivateGuild(guildId: string): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (prisma.guild.update as any)({ where: { id: guildId }, data: { active: false } });
 }
@@ -463,4 +463,27 @@ export async function resolveActiveGuild(
   });
   if (!first) return null;
   return { guildId: first.guildId, role: first.role, guildName: first.guild.name };
+}
+
+// Per-operation management gate. All op-level roles share the SAME rights
+// (user requirement): the guild's fleet operators, the op CREATOR
+// (Event Manager), and any appointed op LEADER (Raid Leiter / Wing Commander).
+// A superadmin is NOT auto-granted — effectiveOpRole resolves their real
+// guild membership; cross-guild powers live in the admin console.
+export async function canApproveUnits(userId: string, instanceRole: string, operationId: string) {
+  const opRole = await effectiveOpRole(userId, instanceRole, operationId);
+  if (opRole === "fleetoperator") return true;
+  // The creator keeps full control of their own op even if their guild role is
+  // only crew (or they later lose guild membership).
+  const op = await prisma.operation.findUnique({
+    where: { id: operationId },
+    select: { createdById: true },
+  });
+  if (op?.createdById === userId) return true;
+  if (!opRole) return false;
+  const leader = await prisma.operationLeader.findUnique({
+    where: { operationId_userId: { operationId, userId } },
+    select: { id: true },
+  });
+  return !!leader;
 }

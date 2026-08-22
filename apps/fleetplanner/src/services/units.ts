@@ -354,3 +354,78 @@ export async function unclaimSeat(seatId: string, userId: string, userRole: stri
     throw new Error("Cannot release captain seat; delete the unit instead");
   await prisma.seatAssignment.update({ where: { id: seatId }, data: { userId: null } });
 }
+
+// ── Rules an offered unit must satisfy ──────────────────────────────
+// Moved here from routes/api.ts when that legacy layer was deleted
+// (2026-08-22); /api/v1 is the only caller.
+
+const REQUIREMENT_CATEGORIES = [
+  "fps",
+  "capital",
+  "subcapital",
+  "fighter",
+  "support",
+  "ground",
+  "transport",
+  "mining",
+  "salvage",
+  "exploration",
+  "any",
+] as const;
+
+export async function assertRequirementFitsUnit(
+  operationId: string,
+  requirementId: string | undefined,
+  unitType: string,
+  selectedShipId: string | undefined,
+  currentUnitId?: string,
+) {
+  if (!requirementId) return;
+  const requirement = await prisma.compositionRequirement.findUnique({
+    where: { id: requirementId },
+    include: {
+      group: { select: { operationId: true } },
+      fleetUnits: { select: { id: true, status: true } },
+    },
+  });
+  if (!requirement || requirement.group.operationId !== operationId) {
+    throw new Error("Fleet Requirement slot does not belong to this operation");
+  }
+  // Over-fulfilment is allowed (a need may be exceeded), so a full slot is NOT a
+  // hard block — the board shows "(über)". We only validate op-ownership + category.
+  if (
+    !REQUIREMENT_CATEGORIES.includes(
+      requirement.category as (typeof REQUIREMENT_CATEGORIES)[number],
+    )
+  ) {
+    throw new Error("Fleet Requirement slot has an invalid category");
+  }
+  if (requirement.category === "any") return;
+  if (unitType === "squad" && !["fps", "ground"].includes(requirement.category)) {
+    throw new Error("FPS squads can only fill FPS, ground or any slots");
+  }
+  // Ship ↔ slot category is a HINT, not a hard gate: e.g. a subcapital with
+  // punch can fill a capital role. The board flags mismatches (✓ marks a
+  // match) and the FleetOperator decides — we do NOT block on it.
+}
+
+export async function assertUniqueSquadName(
+  operationId: string,
+  squadName: string | undefined,
+  currentUnitId?: string,
+): Promise<void> {
+  const normalized = squadName?.trim().toLocaleLowerCase();
+  if (!normalized) return;
+  const squads = await prisma.fleetUnit.findMany({
+    where: {
+      operationId,
+      unitType: "squad",
+      status: { not: "rejected" },
+      ...(currentUnitId ? { id: { not: currentUnitId } } : {}),
+    },
+    select: { squadName: true },
+  });
+  if (squads.some((unit) => unit.squadName?.trim().toLocaleLowerCase() === normalized)) {
+    throw new Error("Squad name already exists in this operation");
+  }
+}

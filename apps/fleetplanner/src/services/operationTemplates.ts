@@ -11,12 +11,9 @@ import {
   type OperationBlueprint,
 } from "./opBlueprint.js";
 
-export type TemplateVisibility = "guild" | "partners" | "public";
-export const TEMPLATE_VISIBILITIES: readonly TemplateVisibility[] = ["guild", "partners", "public"];
-
-export function isTemplateVisibility(v: string): v is TemplateVisibility {
-  return (TEMPLATE_VISIBILITIES as readonly string[]).includes(v);
-}
+/** Visibility of a published template. The runtime guard lives in the zod
+ *  contract now; this type only shapes the service input. */
+type TemplateVisibility = "guild" | "partners" | "public";
 
 interface PublishInput {
   op: Parameters<typeof serializeOp>[0] & { opType: string };
@@ -85,15 +82,8 @@ export async function listTemplatesForGuild(
   });
 }
 
-export async function getTemplate(id: string) {
-  return prisma.operationTemplate.findUnique({
-    where: { id },
-    include: { ownerGuild: { select: { id: true, name: true, orgName: true } } },
-  });
-}
-
 /** Whether a member of `guildId` is allowed to instantiate this template. */
-export async function canUseTemplate(
+async function canUseTemplate(
   template: { ownerGuildId: string; visibility: string; published: boolean },
   guildId: string,
 ): Promise<boolean> {
@@ -127,9 +117,4 @@ export async function applyTemplate(
     data: { usageCount: { increment: 1 } },
   });
   return op;
-}
-
-/** Delete a template — only the owning guild may. */
-export async function deleteTemplate(id: string, ownerGuildId: string): Promise<void> {
-  await prisma.operationTemplate.deleteMany({ where: { id, ownerGuildId } });
 }
