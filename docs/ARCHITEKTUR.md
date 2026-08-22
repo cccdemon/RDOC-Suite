@@ -713,12 +713,6 @@ signierte Interactions zurück.
 - **`packages/db` und Root-`prisma/` sind seit 2026-08-22 gelöscht** — sie gehörten zum entfernten
   Bridge/Bot-Schema und hatten keinen Konsumenten mehr. Prisma lebt nur noch in
   `apps/fleetplanner/prisma`; benutze immer `--filter @rdoc-suite/fleetplanner db:*`.
-- **Vier Altfunktionen ohne Nachfolger.** Mit `routes/api.ts` (2026-08-22 gelöscht) verschwanden die
-  letzten Codepfade für *Ressourcenlinks umsortieren*, *CQB-Auto-Bundle*, *Squad auflösen* und
-  *Primäreinheit setzen*. Erreichbar war davon seit dem SPA-Umstieg nichts mehr.
-- **Die Kapitäns-DM bei „Einheit angenommen" feuert nicht.** `sendAcceptedCaptainVoiceDm` hängt an
-  keinem Endpunkt mehr; die `/api/v1`-Accept-Route schickt keine Nachricht. Bewusst stehen gelassen,
-  weil die Doku die DM zusagt — anschließen ist eine Produktentscheidung.
 - **Der Voice-Stack ist weg** (LiveKit 2026-06-18, Companion 2026-08-07). Der Fleetplanner überträgt
   kein Audio; er mintet nur einen Deep-Link in Subraum (subraum.cc). Die früheren **Funkrelais-Bots
   existieren nicht mehr** — kein Modell, kein Service, keine Route. Von der Voice-Ära sind nur die

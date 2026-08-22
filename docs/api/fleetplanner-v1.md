@@ -154,17 +154,24 @@ Body `{ answer ≤1000 }` — beantwortet eine Spielerfrage.
 Die frühere Liste „noch nicht in v1" ist abgearbeitet: Operator- und Admin-Read-Models,
 accept/reject, Sitzvergabe, Bedarfe, Verbände, Träger, Leader, Status, Cover, Dokumente, Streams,
 Umfragen, Partnerschaften, Hangar-Import und die Admin-Konsole liegen alle unter `/api/v1`
-(121 Routen, siehe [Routen-Inventar](fleetplanner-route-inventory.md)).
+(126 Routen, siehe [Routen-Inventar](fleetplanner-route-inventory.md)). Die vier Faehigkeiten, die
+mit dem geloeschten Form-POST-Layer ihren letzten Codepfad verloren hatten, sind am 2026-08-22 in v1
+nachgebaut:
+
+| Faehigkeit | Endpunkt | Gate |
+|---|---|---|
+| Ressourcenlinks umsortieren | `PUT /api/v1/operations/:id/resource-links/order` | Op-Manager |
+| CQB-Auto-Bundle | `POST /api/v1/operations/:id/cqb/auto-bundle` | Operator |
+| Squad aufloesen | `DELETE /api/v1/operations/:id/cqb-teams/:groupId` | Operator |
+| Primaereinheit setzen/loeschen | `PUT`/`DELETE /api/v1/operations/:id/primary-unit` | jeder fuer sich; Operator auch fuer andere |
+
+`OperationDetail` fuehrt dazu neu `viewerPrimaryUnitId` (die eigene Wahl, `null` = Automatik).
 
 Weiterhin **nicht** über v1:
 
 - **Ship-Tausch mit Seat-Rebuild** — Unit zurückziehen und neu anbieten.
 - **OAuth-Handshake, Feeds und Dateien** (`/auth/*`, `calendar.ics`, `participants.csv`,
   Asset-Proxy) bleiben serverseitige Routen mit Redirect-/Datei-Antworten.
-- **Vier Altfunktionen ohne v1-Zwilling.** Mit dem Form-POST-Layer `routes/api.ts` (2026-08-22
-  geloescht) sind die letzten Codepfade fuer *Ressourcenlinks umsortieren*, *CQB-Auto-Bundle*,
-  *Squad aufloesen* und *Primaereinheit setzen* verschwunden. Erreichbar war davon seit dem
-  SPA-Umstieg nichts mehr; wer sie zurueck will, baut sie in `/api/v1`.
 
 Betriebliches:
 

@@ -10,7 +10,7 @@ Wer bedient was:
 
 | Datei | Routen | Rolle |
 |---|---|---|
-| `routes/apiV1.ts` | 121 | **Der API-Layer.** JSON, sanitisierter Fehler-Envelope (`sendError`). Alles Neue kommt hierher. |
+| `routes/apiV1.ts` | 126 | **Der API-Layer.** JSON, sanitisierter Fehler-Envelope (`sendError`). Alles Neue kommt hierher. |
 | `routes/web.ts` | 11 | Die einzige HTML-Ausgabe: Crawler-Dokumente, Feeds, Asset-Proxy. |
 | `routes/auth.ts` | 7 | OAuth-Handshake (Discord, GitHub, Google) + Discord-Verknüpfung + Logout. |
 | `routes/e2eAuth.ts` | 3 | Test-Seam — **existiert nur mit gesetztem `E2E_TEST_LOGIN_SECRET`**. |
@@ -62,6 +62,7 @@ nach außen mit 404).
 - `POST /api/v1/operations/:id/cover/edit-link`
 - `POST /api/v1/operations/:id/cover/generate`
 - `PATCH /api/v1/operations/:id/cqb-teams/:groupId`
+- `DELETE /api/v1/operations/:id/cqb-teams/:groupId`
 - `PUT /api/v1/operations/:id/cqb-teams/:groupId/carrier`
 - `POST /api/v1/operations/:id/cqb-teams/:groupId/members`
 - `DELETE /api/v1/operations/:id/cqb/:signupId`
@@ -69,6 +70,7 @@ nach außen mit 404).
 - `PATCH /api/v1/operations/:id/cqb/:signupId/late-arrival`
 - `DELETE /api/v1/operations/:id/cqb/signup`
 - `POST /api/v1/operations/:id/cqb/signup`
+- `POST /api/v1/operations/:id/cqb/auto-bundle`
 - `POST /api/v1/operations/:id/documents`
 - `DELETE /api/v1/operations/:id/documents/:docId`
 - `GET /api/v1/operations/:id/documents/:docId`
@@ -81,6 +83,8 @@ nach außen mit 404).
 - `POST /api/v1/operations/:id/leaders`
 - `DELETE /api/v1/operations/:id/leaders/:userId`
 - `PUT /api/v1/operations/:id/member-slot`
+- `PUT /api/v1/operations/:id/primary-unit`
+- `DELETE /api/v1/operations/:id/primary-unit`
 - `GET /api/v1/operations/:id/needs`
 - `DELETE /api/v1/operations/:id/needs/:reqId`
 - `PATCH /api/v1/operations/:id/needs/:reqId`
@@ -94,6 +98,7 @@ nach außen mit 404).
 - `POST /api/v1/operations/:id/recurrence`
 - `POST /api/v1/operations/:id/recurrence/stop`
 - `POST /api/v1/operations/:id/resource-links`
+- `PUT /api/v1/operations/:id/resource-links/order`
 - `DELETE /api/v1/operations/:id/resource-links/:linkId`
 - `PATCH /api/v1/operations/:id/seats/:seatId`
 - `DELETE /api/v1/operations/:id/seats/:seatId/assignment`

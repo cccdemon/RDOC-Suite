@@ -1,18 +1,72 @@
 # RDOC Suite Merge Log
 
-## Queued / Planned Step - 2026-08-22 (10): UI/UX-Workflow-Redesign-Handoff fuer Claude Code Opus
+## Completed - 2026-08-22 (11): Kapitaens-DM angeschlossen, vier Altfunktionen in `/api/v1` nachgebaut
 
-Auftrag: Die abgeschlossene UI/UX- und Menuepruefung als maximal detailliertes, umsetzungsfertiges
-Handoff fuer Claude Code Opus dokumentieren. Schwerpunkt sind ein durchgaengiger Event-Lebenszyklus,
-eine fachlich nachvollziehbare Event-Verwaltung, klare visuelle Hierarchie sowie Desktop-, Mobile-,
-Touch-, Tastatur- und Screenreader-Paritaet. Alle heute erreichbaren Funktionen, API-Vertraege,
-Berechtigungen, Deep Links und Legacy-Redirects bleiben erhalten. Das Brandkit darf innerhalb seiner
-Grundidentitaet gestalterisch weiterentwickelt werden; Backend-Semantik wird nicht nebenbei geaendert.
+### 1. Die Kapitaens-DM feuert wieder
 
-Geplantes Artefakt: `docs/UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md` mit Rollen- und Route-Matrix,
-Soll-Informationsarchitektur, Event-Workflow, Funktions-Migrationsmatrix, Komponenten- und
-Responsive-Regeln, Accessibility-Anforderungen, Umsetzungsschritten und pruefbaren
-Akzeptanzkriterien. Dokumentation בלבד; keine Produktivcode-Aenderung in diesem Schritt.
+`sendUnitAcceptedDm` (vorher `sendAcceptedCaptainVoiceDm`) haengt am Accept-Zweig von
+`POST /api/v1/operations/:id/units/:unitId/accept`. Text neu: Operation, Einheit, Startzeit, Link;
+die Voice-Zeilen nur, wenn `FLEETPLANNER_VOICE_CLIENT_*` konfiguriert ist — vorher versprach die DM
+auch ohne Konfiguration einen "voice client" aus der LiveKit-Zeit.
+
+**Dabei einen echten Fehler gebaut und gefunden:** die erste Fassung holte die Discord-ID mit
+`await` **innerhalb** des try-Blocks. `discordUserIdForFleetplannerUser` *wirft* aber, wenn der
+Kapitaen nie Discord verknuepft hat (GitHub-/Google-Login) — die Annahme kippte dann mit 409,
+obwohl sie in der Datenbank laengst passiert war. Der DB-Integrationstest hat das sofort gezeigt
+(`registers a squad, accepts it, and creates seats`: erwartet 200, bekam 409). Jetzt liegt die
+komplette Zustellung in einem `void (async () => …)().catch(…)`, und der Test traegt den Grund als
+Kommentar.
+
+### 2. Die vier Faehigkeiten sind zurueck
+
+Jeweils Contract → Service → Route → OpenAPI → SPA-Client → Bedienelement → Test:
+
+| Faehigkeit | Endpunkt | Bedienung | Gate |
+|---|---|---|---|
+| Ressourcenlinks umsortieren | `PUT …/resource-links/order` | Hoch/Runter-Knoepfe pro Zeile im Briefing-Panel | Op-Manager |
+| CQB-Auto-Bundle | `POST …/cqb/auto-bundle` | Knopf im CQB-Tab mit Groessenauswahl 2–8 | Operator |
+| Squad aufloesen | `DELETE …/cqb-teams/:groupId` | Knopf am Team; Soldaten gehen in den Pool zurueck | Operator |
+| Primaereinheit | `PUT`/`DELETE …/primary-unit` | Auswahl unter „Dein Status", sichtbar ab zwei Einheiten | selbst; Operator auch fuer andere |
+
+Die Service-Funktionen kamen aus der Git-Historie zurueck (`reorderResourceLinks`, `bundleSquad`,
+`autoBundle`, `unbundle`, `setPrimaryUnit`, `clearPrimaryUnit`) statt neu erfunden zu werden —
+fachlich waren sie in Ordnung, ihnen fehlte nur der Aufrufer. `OperationDetail` fuehrt neu
+`viewerPrimaryUnitId`, damit die Oberflaeche die eigene Wahl anzeigen kann statt nur zu schreiben.
+Sortieren ist bewusst **kein** Drag: Knoepfe funktionieren auch per Tastatur und auf dem Handy.
+
+### 3. Interest-Sync — war schon erledigt
+
+`DiscordEventGoneError` (Discord-Fehlercode 10070) loescht die tote `discordEventId` und nimmt die
+Operation aus dem Poll; seit `e0ff975` auf Produktion. Nur die Doku hinkte hinterher. Queued-Eintrag
+(5) ist damit geschlossen.
+
+### Zwei Testschwaechen nebenbei behoben
+
+- **`serves every handbook/legal slug`** rendert zehn Handbuchseiten in einem `it` und brauchte 4,7s
+  von 5s Budget — gruen oder rot je nach Maschinenlast. Jetzt ein Fall pro Slug. Dabei kam heraus,
+  dass **`sc-tools` allein ueber 5s braucht**: die Seite holt OpenGraph-Karten von jedem gelisteten
+  Werkzeug mit je 5s Abbruch, ohne Netz wartet sie die volle Zeit ab. Der Test stubbt `fetch` jetzt
+  und prueft stattdessen den dokumentierten Rueckfall auf die kuratierten Karten.
+- **`RateLimiter.reset()`** fuer Tests: anonyme `inject`-Requests teilen sich einen IP-Key, eine
+  `describe`-Gruppe verbraucht also das Mutationsbudget der naechsten (die neuen Gate-Tests liefen
+  prompt in ein 429). Zuruecksetzen statt sich per Cookie ein eigenes Bucket zu erschleichen — ein
+  Cookie haette `requireSessionJson` in die Datenbank geschickt, die diese Tests nie erreichen.
+
+### Doku
+
+Routen-Inventar (126 Routen), `fleetplanner-v1.md` (die vier neuen Endpunkte + `viewerPrimaryUnitId`),
+`ARCHITEKTUR.md` (beide Altlasten-Punkte gestrichen), Roadmap und Backlog #2 geschlossen,
+Testcheckliste erweitert (DM-Erwartung wieder gueltig, Auto-Buendeln, Aufloesen, Sortieren,
+Haupteinheit), beide Changelogs.
+
+### Verifikation
+
+- `unit` **591 gruen** (+10) · `unit:web` **136 gruen** (+3) · `db` **20 gruen**
+- Images `fleetplanner` + `fleetplanner-web` gebaut (Typecheck)
+- `smoke` gruen; `e2e` **119 gruen, 0 rot** (3 Cover-Specs skippen ohne `--with-cover`)
+- `npx knip`: keine neuen Treffer
+
+Noch nicht committed, nicht deployed.
 
 ## Completed - 2026-08-22: Deploy `3be2db2` (Dead-Code-Aufraeumen + Legacy-Layer + Doku)
 

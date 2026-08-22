@@ -20,9 +20,6 @@ Stand: 2026-08-22.
 | P3 | Volle Mehrsprachigkeit | [archiv/FR-P3-language-switch.md](archiv/FR-P3-language-switch.md) | `User.locale` (existiert) | Teilweise: Backend/SSR kennt de/en/en-US/fr/es, die SPA nur de/en |
 | P3 | Composition Board — Schritte 3–5 (Auto-Match, Leader-Assign-Rest) | [archiv/composition-rebuild-plan.md](archiv/composition-rebuild-plan.md) | Composition-/FleetUnit-Modell | Schritte 1+2 im Code, Rebuild 2026-06-15 zurückgestellt |
 | P3 | Schiffsdatenbank verlinkt auf die Quelle (FR-D3) | [FR-SPA-PARITY-RESTORE.md](FR-SPA-PARITY-RESTORE.md) | `ShipSummary` (existiert) | Letzter offener Punkt der SPA-Parität |
-| P3 | Kapitäns-DM bei „Einheit angenommen" wieder anschließen | — | `sendAcceptedCaptainVoiceDm`, `/api/v1/…/units/:unitId/accept` | Die DM hängt an keinem Endpunkt mehr (der alte SSR-Layer trug sie); Text ist außerdem noch Voice-Ära. Entweder anschließen und neu texten — oder die Zusage aus der Doku nehmen |
-| P4 | Interest-Sync räumt tote `discordEventId` auf | — | `eventInterest` | Queued im Mergelog (2026-08-22): gelöschte Discord-Events werden endlos gepollt (404 `10070`) |
-| P4 | Vier Altfunktionen ohne v1-Zwilling neu bauen — falls gewünscht | — | `/api/v1` | Ressourcenlinks umsortieren, CQB-Auto-Bundle, Squad auflösen, Primäreinheit setzen. Kamen nur über den 2026-08-22 gelöschten Form-POST-Layer und waren seit dem SPA-Umstieg für niemanden erreichbar |
 | P5 | Bot-Invite auf Least Privilege kürzen (`MANAGE_CHANNELS`, `CONNECT`, `MOVE_MEMBERS`, `MANAGE_ROLES` raus) | — | `BOT_PERMISSIONS` in `routes/guilds.ts` | Bewusste Entscheidung nötig: ändert die Installations-URL |
 
 ## Abgelehnt oder verworfen — nicht ohne Ansage wiederbeleben
@@ -41,6 +38,8 @@ Nur als Orientierung, welche großen Brocken weg sind — die vollständige Hist
 
 | Feature | Fertig |
 |---|---|
+| Kapitäns-DM bei „Einheit angenommen" wieder angeschlossen und neu getextet; Ressourcenlinks sortieren, CQB-Auto-Bundle, Squad auflösen und Primäreinheit in `/api/v1` nachgebaut | 2026-08-22 |
+| Interest-Sync räumt tote `discordEventId` auf (Discord-Fehlercode 10070) | 2026-08-22 |
 | UI-/IA-Überarbeitung nach dem Audit (Serverkontext, URL-Tabs, Kartentypen, Drag-and-drop-Alternativen, Wizard-Validierung) | 2026-08-22 |
 | Testsuite auf lokalem Docker-Stack + Discord-Simulator (Backend-Unit, SPA-Unit, DB, E2E, Smoke) | 2026-08-10 … 2026-08-22 |
 | Stream-Markierung + Filter | 2026-06-29 |

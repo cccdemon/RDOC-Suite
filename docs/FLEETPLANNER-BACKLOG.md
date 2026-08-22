@@ -24,22 +24,20 @@ Sitzvergabe) liegt in `POST /api/v1/operations/:id/units` bzw.
 
 Eine RSI-Hangar-API gibt es weiterhin nicht — Scraping bleibt bewusst außen vor.
 
-## #2 — Discord-DM bei angenommener Einheit `[ ]` — **feuert derzeit nicht**
+## #2 — Discord-DM bei angenommener Einheit `[x]`
 
-`sendAcceptedCaptainVoiceDm` steht in `services/discord.ts`, hängt aber an **keinem Endpunkt**: die
-Funktion wurde vom alten Form-POST-Layer aufgerufen, und `/api/v1/operations/:id/units/:unitId/accept`
-schickt keine Nachricht. Seit dem SPA-Umstieg bekommt also niemand die DM. Aufgefallen beim
-Dead-Code-Durchgang am 2026-08-22; die Funktion blieb deshalb bewusst stehen.
+`sendUnitAcceptedDm` in `services/discord.ts`, ausgeloest von
+`POST /api/v1/operations/:id/units/:unitId/accept` — **best effort**: ein Discord-Fehler kippt die
+Annahme nicht. Die DM nennt Operation, Einheit, Startzeit und Link; die Voice-Zeilen kommen nur,
+wenn `FLEETPLANNER_VOICE_CLIENT_*` gesetzt ist.
 
-Zwei Entscheidungen hängen daran:
-1. **Anschließen oder streichen?** Anschließen heißt: im Accept-Handler aufrufen (best effort, ein
-   Discord-Fehler darf die Annahme nicht kippen).
-2. **Text.** Der Wortlaut ist Voice-Ära ("captain voice rights", "Download voice client") und passt
-   nicht mehr zu Subraum.
+Vorgeschichte: die Funktion hing seit dem SPA-Umstieg an keinem Endpunkt mehr (der alte
+Form-POST-Layer war ihr einziger Aufrufer) und versprach im Text noch "captain voice rights" und
+einen "voice client" aus der LiveKit-Zeit. Beides ist am 2026-08-22 behoben.
 
-**Weiterhin offen:** Die DM erreicht nur Nutzer mit verknüpfter Discord-Identität. Wer sich über
-GitHub/Google angemeldet und Discord nie verknüpft hat, bekommt nichts — eine In-App-Benachrichtigung
-als Fallback fehlt.
+**Offen `[ ]`:** Die DM erreicht nur Nutzer mit verknuepfter Discord-Identitaet. Wer sich ueber
+GitHub/Google angemeldet und Discord nie verknuepft hat, bekommt nichts — eine
+In-App-Benachrichtigung als Fallback fehlt.
 
 ## #3 — Erinnerungs-DM vor dem Start `[x]`
 
@@ -86,8 +84,8 @@ Einstellbar unter „Server → Einstellungen" (`PATCH /api/v1/guilds/:id/settin
 
 Aktuelle Liste; die alten Einträge sind erledigt und stehen im Changelog.
 
-- `[ ]` **Interest-Sync poll gelöschte Discord-Events endlos** — alle fünf Minuten 404 `10070` im
-  Log, weil nichts die tote `discordEventId` aufräumt. Queued im Mergelog (2026-08-22).
+- `[x]` **Interest-Sync pollte gelöschte Discord-Events endlos** — `DiscordEventGoneError`
+  (Fehlercode 10070) löscht die tote `discordEventId` und nimmt die Operation aus dem Poll.
 - `[ ]` **Schiffsdatenbank verlinkt die Quelle nicht** (FR-D3, siehe
   [FR-SPA-PARITY-RESTORE.md](FR-SPA-PARITY-RESTORE.md)).
 - `[x]` **Stream-Markierung + Filter** (exrelax) — 2026-06-29.

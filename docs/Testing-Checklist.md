@@ -72,8 +72,8 @@ sichtbar.
 - [ ] Im Discord auf „Interessiert" klicken → der Pilot taucht binnen ~5 Minuten im Operator-Board
       als unzugewiesener Teilnehmer auf; Zurückziehen entfernt ihn wieder
 - [ ] Sitz zuweisen → der zugewiesene Spieler bekommt eine DM (Operation, Einheit, Sitz, Kapitän)
-- [ ] Einheit annehmen → **derzeit kommt keine DM.** Die Funktion existiert, hängt aber an keinem
-      Endpunkt (siehe Backlog #2). Bis das entschieden ist: hier nichts erwarten
+- [ ] Einheit annehmen → der Kapitän bekommt eine DM mit Operation, Einheit, Startzeit und Link
+      (Voice-Zeilen nur, wenn `FLEETPLANNER_VOICE_CLIENT_*` gesetzt ist)
 - [ ] Erinnerung: `reminderOffsetMin` vor dem Start kommt die DM (einmal, nicht mehrfach)
 - [ ] Feedback über „Hilfe → Feedback" mit Screenshot → Ticket samt Bild im Feedback-Kanal
 
@@ -88,6 +88,7 @@ Mit dem zweiten Konto (`crew`):
 - [ ] Frage stellen; der Operator sieht und beantwortet sie
 - [ ] Verspätung mit Uhrzeit eintragen
 - [ ] Eigenes Schiff zurückziehen
+- [ ] Wer in zwei Einheiten sitzt, sieht unter „Dein Status" die Auswahl der Haupteinheit
 
 ## Phase 5 — Operator-Konsole
 
@@ -109,6 +110,9 @@ Vier Gruppen mit Unter-Tabs; der Tab steht in der URL (`?op=<tab>`).
       Tastatur
 - [ ] **Auf dem Handy:** Auswahlmodus statt Ziehen, alles erreichbar
 - [ ] Bedarfe ändern, Verband anlegen, Fahrzeug/CQB-Team in ein Trägerschiff setzen
+- [ ] CQB: „Auto-Bündeln" teilt den Pool in Squads der gewählten Größe; ein Squad auflösen gibt
+      seine Soldaten in den Pool zurück (niemand fliegt aus der Operation)
+- [ ] Briefing: Ressourcenlinks mit den Pfeiltasten-Knöpfen sortieren — Reihenfolge überlebt Reload
 - [ ] Cover erzeugen, im Editor anpassen, speichern → Bild erscheint an der Operation **und** am
       Discord-Event
 - [ ] Als Vorlage veröffentlichen; Vorlage in einer neuen Operation anwenden

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Vier Funktionen zurück in `/api/v1`, Kapitäns-DM wieder angeschlossen (2026-08-22)
+
+Die drei offenen Punkte aus dem Dead-Code-Durchgang, vom User entschieden.
+
+**Die Kapitäns-DM feuert wieder.** `sendUnitAcceptedDm` (vorher
+`sendAcceptedCaptainVoiceDm`) hängt jetzt am Accept-Zweig von
+`POST /api/v1/operations/:id/units/:unitId/accept` — **best effort**, wie die Sitzzuweisungs-DM: ein
+Discord-Fehler darf eine Annahme, die in der Datenbank schon passiert ist, nicht rückgängig machen.
+Der Text ist neu: Operation, Einheit, Startzeit, Link. Die Voice-Zeilen kommen nur noch, wenn die
+`FLEETPLANNER_VOICE_CLIENT_*`-Links konfiguriert sind — vorher versprach die DM auch ohne
+Konfiguration einen "voice client" aus der LiveKit-Zeit.
+
+**Die vier Funktionen ohne v1-Zwilling sind nachgebaut** — jeweils Contract → Service → Route →
+OpenAPI → SPA-Client → Bedienelement → Test:
+
+| Funktion | Endpunkt | Bedienung |
+|---|---|---|
+| Ressourcenlinks umsortieren | `PUT …/resource-links/order` | Hoch/Runter-Knöpfe pro Zeile im Briefing-Panel — kein Drag-only, damit Tastatur und Touch denselben Weg haben |
+| CQB-Auto-Bundle | `POST …/cqb/auto-bundle` | Knopf im CQB-Tab mit Größenauswahl (2–8) |
+| Squad auflösen | `DELETE …/cqb-teams/:groupId` | Knopf am Team; die Soldaten gehen in den Pool zurück, nicht aus der Operation |
+| Primäreinheit setzen/löschen | `PUT`/`DELETE …/primary-unit` | Auswahl unter „Dein Status", sichtbar sobald jemand Plätze in mehreren Einheiten hält |
+
+Die Service-Funktionen kamen aus der Git-Historie zurück statt neu erfunden zu werden — fachlich
+waren sie in Ordnung, ihnen fehlte nur der Aufrufer. `OperationDetail` führt dafür neu
+`viewerPrimaryUnitId`; die Gates: Op-Manager für die Links, Operator für CQB, die Primäreinheit
+setzt jeder für sich und ein Operator zusätzlich für andere.
+
+**Interest-Sync** (dritter Punkt) war bereits erledigt: `DiscordEventGoneError` löscht seit `e0ff975`
+die tote `discordEventId` und nimmt die Operation aus dem Poll. Nur die Doku hinkte hinterher.
+
+### Fixed - Zwei Testschwächen, die beim Erweitern aufgefallen sind (2026-08-22)
+
+- **Der Slug-Test lief in sein eigenes Timeout.** `serves every handbook/legal slug` rendert zehn
+  Handbuchseiten in einem einzigen `it` und brauchte dafür auf einer belegten Maschine 4,7 s von
+  5 s Budget — grün oder rot je nach Tagesform, und im Fehlerfall nannte er die Sammlung statt den
+  Slug. Jetzt ein Fall pro Slug.
+- **`RateLimiter.reset()`** für Tests: anonyme `inject`-Requests teilen sich einen IP-Key, also
+  verbraucht eine `describe`-Gruppe das Mutationsbudget der nächsten. Neue Gate-Tests setzen den
+  Zähler zurück, statt sich mit einem Cookie ein eigenes Bucket zu erschleichen (ein Cookie hätte
+  `requireSessionJson` in die Datenbank geschickt, die diese Tests bewusst nie erreichen).
+
 ### Removed - Der Legacy-API-Layer `routes/api.ts` (2026-08-22)
 
 45 Form-POST-Routen, ~1.570 Zeilen, jede nach demselben Muster: CSRF prüfen, Rolle prüfen, Service
