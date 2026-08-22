@@ -73,6 +73,36 @@ die uebrigen Ops weiterlaufen; 10004 raeumt nicht auf).
 Ergebnis: Backend 574 gruen, `tsc --noEmit` sauber, `e2e` 119 gruen (30-discord-events und
 33-discord-interest gezielt nachgefahren).
 
+## Queued / Planned Step - 2026-08-22 (6): `19-cover` — der Test war rot, nicht das Feature
+
+Befund: **kein Produktbug.** Der Test-Stack konfiguriert das Backend auf
+`MISSIONCOVER_SERVICE_URL=http://mission-cover:3300`, startet den Dienst aber nicht — er haengt
+am Compose-Profil `cover` (grosses Chromium-Image). Ergebnis: `serviceConfigured()` meldet true,
+die Oberflaeche bietet "Generieren" an, der Aufruf laeuft ins Leere und der Test wartet 60
+Sekunden auf ein Bild, das nie kommt. Mit gestartetem Dienst sind alle drei Cover-Tests gruen
+(lokal verifiziert 2026-08-22).
+
+Auch geprueft und in Ordnung: faellt der Dienst aus, antwortet
+`POST /api/v1/operations/:id/cover/generate` mit 502 + `Cover render failed.` und schreibt eine
+Logzeile. Das ist ehrliches Degradieren, kein Fix noetig.
+
+Gefixt wird also die Testerzaehlung:
+
+1. `scripts/test-stack.sh up --with-cover` startet den Dienst mit und wartet auf seine Health;
+   `all --with-cover` reicht das durch. Ohne Flag bleibt alles wie bisher (kein 800-MB-Image
+   fuer jeden, der nur die Navigation testet).
+2. `e2e/tests/19-cover.spec.ts` **prueft den Dienst und ueberspringt mit Begruendung**, statt in
+   einen nichtssagenden Timeout zu laufen. Wer die Cover-Tests wirklich fahren will, sieht in der
+   Skip-Meldung, welches Kommando fehlt.
+3. `docs/TESTING.md`: Flag dokumentiert, und der Satz "Cover ist opt-in" steht dort, wo man ihn
+   sucht — bei den vier Ebenen, nicht nur in der Ports-Tabelle.
+
+Ergebnis (2026-08-22), beide Richtungen verifiziert:
+- Dienst gestoppt -> `19-cover` meldet 3 skipped mit dem Startkommando in der Meldung.
+- Dienst gestartet -> 3 passed.
+- `up --with-cover` baut, startet und wartet korrekt; ohne Flag warnt `up`.
+- Volle E2E-Suite mit Renderer: **122 passed, 0 failed** — erstmals komplett gruen.
+
 ## Completed - 2026-08-22: E2E-Test-Login-Backdoor auf Produktion geschlossen
 
 Der Fleetplanner loggte beim Start `E2E test-login seam ENABLED`. Auf LXC 103 waren in `.env`

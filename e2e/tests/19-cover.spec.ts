@@ -5,7 +5,23 @@ import { actorContext, cleanup, login, type TestActor } from "../helpers/auth.js
 // mission-cover service), the resulting image + edit/delete controls, and the
 // op-detail cover lightbox. Generation hits the render service, so the generate
 // test is given a longer budget.
+//
+// The renderer is opt-in in the local stack (it pulls a ~800 MB Chromium image),
+// while the backend is always configured to talk to it. Without the service this
+// file used to fail on an invisible image after 60s, which reads like a broken
+// feature; it says what is missing instead.
 test.describe.configure({ mode: "serial" });
+
+const COVER_HEALTH_URL = process.env.E2E_COVER_HEALTH_URL ?? "http://localhost:3399/health";
+
+async function coverServiceUp(): Promise<boolean> {
+  try {
+    const res = await fetch(COVER_HEALTH_URL, { signal: AbortSignal.timeout(3000) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 let operator: TestActor;
 let ctx: BrowserContext;
@@ -19,6 +35,10 @@ function futureLocal(days: number): string {
 }
 
 test.beforeAll(async ({ browser }) => {
+  test.skip(
+    !(await coverServiceUp()),
+    `mission-cover renderer not reachable at ${COVER_HEALTH_URL} — start it with: ./scripts/test-stack.sh up --with-cover`,
+  );
   await cleanup();
   operator = await login("e2e-operator", "fleetoperator", "fleetoperator");
   ctx = await actorContext(browser, operator);

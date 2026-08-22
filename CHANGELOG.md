@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - `19-cover` war rot, weil der Renderer fehlte, nicht das Feature (2026-08-22)
+
+Der einzige dauerhaft rote Test der Suite. Kein Produktbug: der Test-Stack konfiguriert das
+Backend auf `MISSIONCOVER_SERVICE_URL=http://mission-cover:3300`, startet den Dienst aber nicht
+(Compose-Profil `cover`, ~800 MB Chromium). Also bot die Oberflaeche "Generieren" an, der Aufruf
+lief ins Leere, und der Test wartete 60 Sekunden auf ein Bild — was aussieht wie ein kaputtes
+Feature. Mit gestartetem Dienst sind alle drei Cover-Tests gruen.
+
+- `./scripts/test-stack.sh up --with-cover` startet den Renderer mit und wartet auf seine Health;
+  `all` reicht das Flag durch. Ohne Flag warnt `up` jetzt ausdruecklich, dass `19-cover` skippen
+  wird.
+- `e2e/tests/19-cover.spec.ts` prueft den Dienst und **ueberspringt mit Begruendung samt
+  Kommando**, statt in einen nichtssagenden Timeout zu laufen.
+- `docs/TESTING.md` erklaert das dort, wo man es sucht.
+
+Mit laufendem Renderer ist die E2E-Suite erstmals vollstaendig gruen: **122/122**.
+
+Ebenfalls geprueft, unveraendert gelassen: faellt der Dienst im Betrieb aus, antwortet
+`POST /api/v1/operations/:id/cover/generate` mit 502 + `Cover render failed.` und loggt den
+Fehler — ehrliches Degradieren, kein Fix noetig.
+
 ### Fixed - Interest-Sync haengt nicht mehr an geloeschten Discord-Events (2026-08-22)
 
 Auf Produktion schrieb der Interest-Poll alle fuenf Minuten Stacktraces

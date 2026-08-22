@@ -3,6 +3,7 @@
 # One entry point for the local test stack (docker-compose.test.yml).
 #
 #   ./scripts/test-stack.sh up       build + start + wait until healthy
+#   ./scripts/test-stack.sh up --with-cover   ... plus the mission-cover renderer
 #   ./scripts/test-stack.sh down     stop and remove everything
 #   ./scripts/test-stack.sh reset    wipe DB + Discord simulator state, keep containers
 #   ./scripts/test-stack.sh logs     follow all logs (or: logs fleetplanner)
@@ -13,7 +14,8 @@
 #   ./scripts/test-stack.sh db       DB-integration tests in Docker (stack postgres)
 #   ./scripts/test-stack.sh db:local     same, local pnpm + its own throwaway PG
 #   ./scripts/test-stack.sh e2e      Playwright against the running stack
-#   ./scripts/test-stack.sh all      up → unit → db → e2e → down
+#   ./scripts/test-stack.sh all      up → unit → unit:web → db → smoke → e2e → down
+#                                    (accepts --with-cover as well)
 #
 # Everything is local: Discord is tests/discord-mock, the database is a tmpfs
 # postgres, and no production host is contacted at any point.
@@ -27,6 +29,9 @@ COMPOSE=(docker compose -f docker-compose.test.yml)
 WEB_URL="${TEST_STACK_WEB_URL:-http://localhost:8099}"
 API_URL="${TEST_STACK_API_URL:-http://localhost:3299}"
 MOCK_URL="${TEST_STACK_MOCK_URL:-http://localhost:4400}"
+# The cover renderer is opt-in: it pulls a ~800 MB Chromium image, which nobody
+# needs to test navigation. `--with-cover` starts it and lets 19-cover run.
+COVER_URL="${TEST_STACK_COVER_URL:-http://localhost:3399}"
 E2E_SECRET="test-e2e-login-secret-local-stack-0123456789"
 
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -50,6 +55,12 @@ wait_for() {
   return 1
 }
 
+# `--with-cover` anywhere in the arguments; returns 0 when present.
+want_cover() {
+  for a in "$@"; do [[ "$a" == "--with-cover" ]] && return 0; done
+  return 1
+}
+
 cmd_up() {
   require_docker
   info "Building and starting the local test stack"
@@ -57,8 +68,18 @@ cmd_up() {
   wait_for "$MOCK_URL/__mock/health" "discord-mock"
   wait_for "$API_URL/api/v1/health" "fleetplanner backend"
   wait_for "$WEB_URL/" "fleetplanner-web (nginx front door)"
+  if want_cover "$@"; then
+    info "Starting the mission-cover renderer (first build pulls Chromium, ~800 MB)"
+    "${COMPOSE[@]}" --profile cover up -d --build mission-cover
+    wait_for "$COVER_URL/health" "mission-cover renderer"
+  fi
   echo
   ok "Stack is up:  web $WEB_URL   api $API_URL   discord-mock $MOCK_URL"
+  if want_cover "$@"; then
+    ok "cover renderer $COVER_URL"
+  else
+    warn "mission-cover NOT started — 19-cover will skip. Start it with: ./scripts/test-stack.sh up --with-cover"
+  fi
 }
 
 cmd_down() {
@@ -171,7 +192,7 @@ cmd_e2e() {
 }
 
 cmd_all() {
-  cmd_up
+  cmd_up "$@"
   cmd_unit
   cmd_unit_web
   cmd_db

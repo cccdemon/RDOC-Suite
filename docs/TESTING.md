@@ -5,9 +5,17 @@ production, a live Discord app, or a backdoor open on a public host.
 
 ```bash
 ./scripts/test-stack.sh up      # build + start the local stack
+./scripts/test-stack.sh up --with-cover   # ... plus the mission-cover renderer
 ./scripts/test-stack.sh all     # up → unit → unit:web → db → smoke → e2e → down
 ./scripts/test-stack.sh down    # stop and delete everything
 ```
+
+**The cover renderer is opt-in.** `mission-cover` pulls a ~800 MB Chromium image, which nobody
+needs to test navigation, so a plain `up` leaves it out — and `e2e/tests/19-cover.spec.ts` then
+**skips with that reason** instead of timing out on an image that was never going to render. Pass
+`--with-cover` (to `up` or to `all`) to have the renderer started, waited for, and the three cover
+tests actually run. Note that the backend is always pointed at the service, so the skip is about
+the renderer being absent, not about the feature being off.
 
 ## The four levels
 
@@ -52,7 +60,7 @@ browser → fleetplanner-web (nginx :8099) → fleetplanner (:3299) → postgres
 | 8099 | fleetplanner-web | the app — what the browser and the E2E suite talk to |
 | 3299 | fleetplanner | backend directly (API-level checks, log tailing) |
 | 4400 | discord-mock | Discord simulator + `/__mock` control plane |
-| 3399 | mission-cover | cover render service — **opt-in**: `docker compose -f docker-compose.test.yml --profile cover up -d mission-cover` (pulls a ~800 MB Chromium image) |
+| 3399 | mission-cover | cover render service — **opt-in**: `./scripts/test-stack.sh up --with-cover` (pulls a ~800 MB Chromium image). Without it `19-cover` skips. |
 | 55432 | postgres | throwaway DB (tmpfs — gone on `down`) |
 
 Config lives in `tests/stack/env.test`. Its secrets are committed on purpose: the stack must come up
