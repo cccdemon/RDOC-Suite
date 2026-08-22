@@ -7,7 +7,7 @@ import { prisma } from "../db.js";
 import { normalizeUrl } from "./resourceLinks.js";
 
 export type StreamPlatform = "twitch" | "youtube" | "vdo_ninja" | "other";
-export const STREAM_PLATFORMS: readonly StreamPlatform[] = ["twitch", "youtube", "vdo_ninja", "other"];
+const STREAM_PLATFORMS: readonly StreamPlatform[] = ["twitch", "youtube", "vdo_ninja", "other"];
 
 /** Hard cap per op — keeps the streams list from becoming clutter. */
 export const MAX_STREAMS = 20;

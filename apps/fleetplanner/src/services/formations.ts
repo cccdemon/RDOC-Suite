@@ -11,7 +11,7 @@ const DEFAULT_FIGHTER_SQUAD_SIZE = 2;
 // Groups that can hold members with positional slots (slot 0 = Captain).
 const SLOTTED_KINDS = ["squad", "fighter_squad", "formation"] as const;
 
-export async function fighterSquadCapacity(operationId: string): Promise<number> {
+async function fighterSquadCapacity(operationId: string): Promise<number> {
   const req = await prisma.compositionRequirement.findFirst({
     where: { group: { operationId }, needType: "fighter_squad" },
     select: { squadSize: true },
@@ -25,7 +25,7 @@ export async function fighterSquadCapacity(operationId: string): Promise<number>
  * built their Staffeln as `formation` groups (pre-2026-07-20 rosters) — those
  * keep working, so no data migration is needed.
  */
-export async function fighterSquads(operationId: string) {
+async function fighterSquads(operationId: string) {
   const squads = await prisma.compositionGroup.findMany({
     where: { operationId, kind: "fighter_squad" },
     orderBy: { order: "asc" },
@@ -146,7 +146,7 @@ export async function setMemberSlot(
 }
 
 /** How many fighters (fighter-class units + placed person-pilots) sit in a group. */
-export async function groupFighterCount(operationId: string, groupId: string): Promise<number> {
+async function groupFighterCount(operationId: string, groupId: string): Promise<number> {
   const units = await prisma.fleetUnit.findMany({
     where: { operationId, formationId: groupId, unitType: "ship", status: { not: "rejected" } },
     select: { unitType: true, roleOverride: true, ship: { select: { size: true, career: true, role: true } } },

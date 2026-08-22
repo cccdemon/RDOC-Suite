@@ -20,9 +20,6 @@ import type { SharedHangar } from "../services/hangarShare.js";
 import type { MissionParticipant } from "../services/participants.js";
 import type { MultiPositionAssignment } from "../services/primaryUnits.js";
 
-// ── Re-export layout for routes ─────────────────────────────────────
-export { layout, rawHtml } from "./render.js";
-
 // ── Types returned by getOperation() includes ───────────────────────
 type OpFull = Awaited<ReturnType<typeof import("../services/operations.js").getOperation>>;
 type UnitFull = NonNullable<OpFull>["units"][number];
@@ -134,38 +131,6 @@ const VISIBILITY_META: Record<string, { cls: string; icon: string }> = {
   partners: { cls: "tag-gold", icon: "🤝" },
   public: { cls: "tag-green", icon: "🌐" },
 };
-
-function visibilityTag(visibility: string): SafeHtml {
-  const key = VISIBILITY_META[visibility] ? visibility : "private";
-  const m = VISIBILITY_META[key];
-  return html`<span class="tag ${m.cls}">${m.icon} ${t(`vis.${key}`).toUpperCase()}</span>`;
-}
-
-/**
- * Visibility control: a select + save button for op leaders, or a plain
- * badge for everyone else. `action` is the POST target.
- */
-function visibilityControl(opts: {
-  visibility: string;
-  canEdit: boolean;
-  action: string;
-  csrfToken?: string;
-}): SafeHtml {
-  if (!opts.canEdit) return visibilityTag(opts.visibility);
-  const option = (value: string, label: string): SafeHtml =>
-    html`<option value="${value}" ${opts.visibility === value ? safe("selected") : ""}>
-      ${label}
-    </option>`;
-  return html`<form method="post" action="${opts.action}" class="opv2-inline-form">
-    <input type="hidden" name="_csrf" value="${opts.csrfToken ?? ""}" />
-    <select name="visibility" aria-label="${t("vis.aria")}">
-      ${option("private", `🔒 ${t("vis.private.long")}`)}
-      ${option("partners", `🤝 ${t("vis.partners.long")}`)}
-      ${option("public", `🌐 ${t("vis.public.long")}`)}
-    </select>
-    <button type="submit" class="btn btn-sm">${t("vis.set")}</button>
-  </form>`;
-}
 
 function roleLabel(role: string): string {
   return role.replace(/_/g, " ");

@@ -3,8 +3,34 @@
   "ignore": [
     "e2e/**",
     "tests/**",
-    "apps/mission-cover/engine/**"
+    "apps/mission-cover/engine/**",
+    "apps/fleetplanner-web/src/api/types.ts"
   ],
-  "ignoreBinaries": ["vitest"],
-  "ignoreDependencies": ["@prisma/client"]
+  "ignoreBinaries": ["vitest", "vite", "tsc", "tsx", "prisma", "eslint", "prettier"],
+  "workspaces": {
+    ".": {
+      "entry": [],
+      "project": [],
+      "ignoreDependencies": ["eslint", "prettier"]
+    },
+    "apps/fleetplanner": {
+      "entry": ["src/index.ts", "src/__tests__/**/*.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["prisma", "@prisma/client", "@vitest/coverage-v8", "tsx"]
+    },
+    "apps/fleetplanner-web": {
+      "entry": ["src/main.tsx", "src/test/**/*.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["jsdom"]
+    },
+    "apps/mission-cover": {
+      "entry": ["src/index.ts", "src/__tests__/**/*.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreDependencies": ["tsx"]
+    },
+    "packages/fleetplanner-contracts": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  }
 }

@@ -13,7 +13,7 @@ const INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6h
 
 let running = false;
 
-export async function runCoverCleanup(log: Logger): Promise<void> {
+async function runCoverCleanup(log: Logger): Promise<void> {
   if (running || !coverServiceConfigured()) return;
   running = true;
   try {

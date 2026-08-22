@@ -40,12 +40,6 @@ const schema = z.object({
   // Google OAuth (optional — leave unset to hide Google login button)
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-  // Optional legacy alias kept only so old environments still parse.
-  // Fleetplanner Discord actions require DISCORD_FLEETPLANNER_BOT_TOKEN.
-  DISCORD_GUILD_ID: z.string().optional(),
-  // Guild that is always allowed to use LiveKit voice sessions regardless of voiceEnabled flag.
-  RAUMDOCK_GUILD_ID: z.string().optional(),
-  DISCORD_BOT_TOKEN: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_ID: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_SECRET: z.string().optional(),
   DISCORD_FLEETPLANNER_BOT_TOKEN: z.string().optional(),
@@ -64,14 +58,10 @@ const schema = z.object({
   // incoming HTTP interactions (FR-P1 event-distribution approval buttons).
   // Set the app's "Interactions Endpoint URL" to <WEB_PUBLIC_URL>/discord/interactions.
   DISCORD_FLEETPLANNER_PUBLIC_KEY: z.string().optional(),
-  // Voice/SquadLink stack was removed 2026-06-12; these are leftover (often empty)
-  // env vars. Kept lenient so a stale/empty value doesn't fail-fast the boot.
-  // LiveKit (LIVEKIT_*/RELAY_LIVEKIT_ROOM) removed 2026-06-18 — see
-  // docs/LIVEKIT-ARCHIVE-2026-06.md for the restore plan.
+  // Optional links appended to the captain DM (services/discord.ts): where to get
+  // the voice client and its config. Both unset = the DM carries no voice section.
   FLEETPLANNER_VOICE_CLIENT_DOWNLOAD_URL: z.string().optional(),
   FLEETPLANNER_VOICE_CLIENT_CONFIG_URL: z.string().optional(),
-  RELAY_BOTS_ADMIN_URL: z.string().optional(),
-  RELAY_BOTS_ADMIN_SECRET: z.string().optional(),
 
   // E2E test-login seam (scripts/e2e). When set (>=32 chars), enables the
   // /e2e/login + /e2e/cleanup backdoor for synthetic e2e-* test players ONLY.
@@ -131,8 +121,8 @@ export function basePath(suffix = ""): string {
   return `${getEnv().PUBLIC_BASE_PATH}${suffix}`;
 }
 
-export const DEFAULT_DISCORD_API_BASE = "https://discord.com/api/v10";
-export const DEFAULT_DISCORD_SITE_BASE = "https://discord.com";
+const DEFAULT_DISCORD_API_BASE = "https://discord.com/api/v10";
+const DEFAULT_DISCORD_SITE_BASE = "https://discord.com";
 
 /** REST + OAuth token/authorize base (`…/api/v10`), overridable for the test stack. */
 export function discordApiBase(): string {

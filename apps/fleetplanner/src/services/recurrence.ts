@@ -161,7 +161,7 @@ let running = false;
  * lead time, materialise a concrete Operation (status "open"), then advance to
  * the following occurrence. Enforces seriesEnd / seriesCount (Discord can't).
  */
-export async function spawnDueOccurrences(log: Logger): Promise<void> {
+async function spawnDueOccurrences(log: Logger): Promise<void> {
   if (running) return;
   running = true;
   try {

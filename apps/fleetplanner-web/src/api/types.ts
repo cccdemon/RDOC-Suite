@@ -53,6 +53,3 @@ export type {
   UpdatePollOption,
 } from "@rdoc-suite/fleetplanner-contracts";
 
-// The error code union is referenced directly by the client; mirror it from
-// the ApiError contract shape.
-export type ApiErrorCode = import("@rdoc-suite/fleetplanner-contracts").ApiError["error"]["code"];

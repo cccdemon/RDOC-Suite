@@ -4,10 +4,6 @@ import { getActivePartnerGuildIds } from "./partnerships.js";
 export type OpVisibility = "private" | "partners" | "public";
 export const OP_VISIBILITIES: readonly OpVisibility[] = ["private", "partners", "public"];
 
-export function isOpVisibility(v: string): v is OpVisibility {
-  return (OP_VISIBILITIES as readonly string[]).includes(v);
-}
-
 export type CreateOperationInput = {
   guildId: string;
   title: string;
@@ -139,23 +135,6 @@ export async function getOperation(id: string) {
       documents: { orderBy: { createdAt: "asc" } },
       // FR-P3 Phase B: self-service streamer links.
       streams: { include: { user: { select: { id: true, username: true } } }, orderBy: { createdAt: "asc" } },
-    },
-  });
-}
-
-export async function listOperations(guildId: string, includePast = false) {
-  const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  return prisma.operation.findMany({
-    where: {
-      guildId,
-      ...(includePast ? {} : { scheduledAt: { gte: cutoff } }),
-    },
-    orderBy: { scheduledAt: "asc" },
-    include: {
-      guild: { select: { id: true, name: true, iconHash: true, timezone: true, discordInviteUrl: true } },
-      createdBy: true,
-      leaders: { include: { user: true } },
-      units: { select: { id: true, status: true, seats: { select: { userId: true } } } },
     },
   });
 }

@@ -54,7 +54,7 @@ export function discordOAuthClientSecret(): string | undefined {
   return env.DISCORD_FLEETPLANNER_CLIENT_SECRET ?? env.DISCORD_CLIENT_SECRET;
 }
 
-export function discordAuthorizeUrl(state: string, redirectUri: string): string {
+function discordAuthorizeUrl(state: string, redirectUri: string): string {
   const env = getEnv();
   const p = new URLSearchParams({
     client_id: discordOAuthClientId()!,
@@ -68,7 +68,7 @@ export function discordAuthorizeUrl(state: string, redirectUri: string): string 
   return `${discordAuthorizeBase()}/oauth2/authorize?${p}`;
 }
 
-export async function discordExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
+async function discordExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
   const tokenRes = await fetch(`${discordApiBase()}/oauth2/token`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
@@ -123,7 +123,7 @@ export function githubEnabled(): boolean {
   return !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET);
 }
 
-export function githubAuthorizeUrl(state: string, redirectUri: string): string {
+function githubAuthorizeUrl(state: string, redirectUri: string): string {
   const env = getEnv();
   const p = new URLSearchParams({
     client_id: env.GITHUB_CLIENT_ID!,
@@ -134,7 +134,7 @@ export function githubAuthorizeUrl(state: string, redirectUri: string): string {
   return `https://github.com/login/oauth/authorize?${p}`;
 }
 
-export async function githubExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
+async function githubExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
   const env = getEnv();
   const tokenRes = await fetch("https://github.com/login/oauth/access_token", {
     method: "POST",
@@ -190,7 +190,7 @@ export function googleEnabled(): boolean {
   return !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET);
 }
 
-export function googleAuthorizeUrl(state: string, redirectUri: string): string {
+function googleAuthorizeUrl(state: string, redirectUri: string): string {
   const env = getEnv();
   const p = new URLSearchParams({
     client_id: env.GOOGLE_CLIENT_ID!,
@@ -203,7 +203,7 @@ export function googleAuthorizeUrl(state: string, redirectUri: string): string {
   return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
 
-export async function googleExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
+async function googleExchange(code: string, redirectUri: string): Promise<ExternalProfile> {
   const env = getEnv();
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",

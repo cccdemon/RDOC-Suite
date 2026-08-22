@@ -8,7 +8,6 @@ import { useServerContext } from "../serverContext";
 import { Ic } from "./Icons";
 
 export const MONO = "var(--mono)";
-export const BODY = "var(--body)";
 
 export const card: CSSProperties = {
   border: "1px solid var(--border)",
@@ -17,7 +16,7 @@ export const card: CSSProperties = {
   padding: "1.1rem 1.2rem",
 };
 
-export const cardHead: CSSProperties = {
+const cardHead: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "0.55rem",
@@ -37,7 +36,7 @@ export function tint(color: string, pct: number): string {
   return `color-mix(in srgb, ${color} ${pct}%, transparent)`;
 }
 
-export function chip(color: string): CSSProperties {
+function chip(color: string): CSSProperties {
   return {
     width: 28,
     height: 28,
@@ -120,38 +119,6 @@ export function CardHead({ icon, label, tone = "cyan", right }: { icon: string; 
     </div>
   );
 }
-
-/** Page section heading (mono kicker + h1). */
-export function PageHead({ icon, kicker, title, right }: { icon: string; kicker: string; title: string; right?: ReactNode }) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", gap: "0.6rem 1rem", marginBottom: "1.4rem" }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginBottom: "0.4rem" }}>
-          <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name={icon} size={17} sw={1.7} /></span>
-          <span style={{ fontFamily: MONO, fontSize: "0.62rem", letterSpacing: "0.14em", color: "var(--dim2)" }}>{kicker}</span>
-        </div>
-        <h1 style={{ fontFamily: "var(--display)", fontWeight: 400, fontSize: "1.4rem", lineHeight: 1.2, color: "var(--text-hi)", margin: 0 }}>{title}</h1>
-      </div>
-      {right}
-    </div>
-  );
-}
-
-export const actionBar: CSSProperties = {
-  position: "sticky",
-  bottom: 0,
-  marginTop: "1.2rem",
-  display: "flex",
-  flexWrap: "wrap",
-  alignItems: "center",
-  gap: "0.6rem",
-  padding: "0.85rem 1rem",
-  background: "rgba(18, 20, 22,0.92)",
-  backdropFilter: "blur(8px)",
-  border: "1px solid var(--border)",
-  borderRadius: 12,
-  zIndex: 5,
-};
 
 export const btnPrimary: CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 7, padding: "0.55rem 1.3rem",
@@ -299,22 +266,6 @@ export function ChoiceTile({
   );
 }
 
-/** Says something, does nothing: no hover, no pointer, no click target. */
-export function InfoCard({
-  children, testid, style, className,
-}: {
-  children: ReactNode;
-  testid?: string;
-  style?: CSSProperties;
-  className?: string;
-}) {
-  return (
-    <div data-card="info" data-testid={testid} className={`fpw-card${className ? " " + className : ""}`} style={style}>
-      {children}
-    </div>
-  );
-}
-
 /** Holds its own local actions; the card itself is not a target. */
 export function WorkCard({
   children, testid, style, className,
@@ -327,33 +278,6 @@ export function WorkCard({
   return (
     <section data-card="work" data-testid={testid} className={`fpw-card${className ? " " + className : ""}`} style={style}>
       {children}
-    </section>
-  );
-}
-
-/** Grouped inputs: heading, optional description, fields, actions at the end. */
-export function FormSection({
-  title, description, children, actions, testid, style, headIcon,
-}: {
-  title: string;
-  description?: ReactNode;
-  children: ReactNode;
-  actions?: ReactNode;
-  testid?: string;
-  style?: CSSProperties;
-  headIcon?: string;
-}) {
-  return (
-    <section data-card="form" data-testid={testid} className="fpw-card" style={style}>
-      <div style={{ ...cardHead, marginBottom: description ? "0.35rem" : "1rem" }}>
-        {headIcon && <span style={{ color: "var(--cyan)", display: "inline-flex" }}><Ic name={headIcon} size={15} sw={1.6} /></span>}
-        {title}
-      </div>
-      {description && (
-        <p style={{ margin: "0 0 1rem", color: "var(--dim)", fontSize: "0.84rem", lineHeight: 1.5 }}>{description}</p>
-      )}
-      {children}
-      {actions && <div className="fpw-form-actions">{actions}</div>}
     </section>
   );
 }

@@ -53,11 +53,11 @@ const Ctx = createContext<ServerContextValue>({
 });
 
 /** Routes that address one server — those get `?guild=` pinned into the URL. */
-export const SERVER_ROUTES: string[] = NAV_GROUPS.flatMap((g) => g.items)
+const SERVER_ROUTES: string[] = NAV_GROUPS.flatMap((g) => g.items)
   .filter((it) => it.server)
   .map((it) => it.to);
 
-export function isServerRoute(pathname: string): boolean {
+function isServerRoute(pathname: string): boolean {
   return SERVER_ROUTES.some((r) => pathname === r || pathname.startsWith(r + "/"));
 }
 

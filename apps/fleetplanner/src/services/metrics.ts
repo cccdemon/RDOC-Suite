@@ -13,7 +13,7 @@ import { OP_VISIBILITIES } from "./operations.js";
  * reachable as /fleetplanner/metrics through Caddy, so Caddy blocks that path
  * (see deploy/caddy-rdoc/Caddyfile).
  */
-export const registry = new Registry();
+const registry = new Registry();
 
 collectDefaultMetrics({ register: registry, prefix: "fleetplanner_" });
 

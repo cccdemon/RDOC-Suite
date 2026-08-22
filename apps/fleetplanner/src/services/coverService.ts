@@ -5,7 +5,7 @@ import { getEnv } from "../config/env.js";
 // URL. The fleetplanner never renders; it sends the op payload and stores only
 // the returned image URL/id.
 
-export type CoverAsset = { name: string; role?: string };
+type CoverAsset = { name: string; role?: string };
 
 export type CoverData = {
   title: string;
@@ -94,14 +94,6 @@ export async function requestCover(req: CoverRequest): Promise<CoverResponse> {
     body: JSON.stringify(req),
   });
   await expectOk(res, "render");
-  return (await res.json()) as CoverResponse;
-}
-
-/** Fetch metadata for a previously rendered cover. */
-export async function getCover(id: string): Promise<CoverResponse | null> {
-  const res = await coverFetch(`/v1/covers/${encodeURIComponent(id)}`);
-  if (res.status === 404) return null;
-  await expectOk(res, "get");
   return (await res.json()) as CoverResponse;
 }
 

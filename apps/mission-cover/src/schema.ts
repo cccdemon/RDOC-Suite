@@ -22,13 +22,13 @@ const dataOrHttpImage = z
   .refine((s) => s.startsWith("data:image/") || /^https?:\/\//.test(s), "must be a data:image or http(s) URL");
 
 // Asset / unit row shown in the cover's asset list.
-export const coverAssetSchema = z.object({
+const coverAssetSchema = z.object({
   name: z.string().max(120),
   role: z.string().max(120).optional(),
 });
 
 // Branding overlay. Defaults to CCO when omitted (see prefill.ts).
-export const coverBrandingSchema = z.object({
+const coverBrandingSchema = z.object({
   footerTitle: z.string().max(200).optional(),
   securityText: z.string().max(200).optional(),
   fileCode: z.string().max(120).optional(),

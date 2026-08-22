@@ -16,9 +16,9 @@ import { es } from "./dicts/es.js";
 export const LOCALES = ["de", "en", "en-US", "fr", "es"] as const;
 export type Locale = (typeof LOCALES)[number];
 
-export const DEFAULT_LOCALE: Locale = "de";
+const DEFAULT_LOCALE: Locale = "de";
 
-export const localeSchema = z.enum(LOCALES);
+const localeSchema = z.enum(LOCALES);
 
 /** Native display names shown in the language picker (not translated). */
 export const LOCALE_NAMES: Record<Locale, string> = {

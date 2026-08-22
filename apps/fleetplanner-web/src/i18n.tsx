@@ -503,7 +503,7 @@ const DICT: Record<Locale, Record<string, string>> = {
   },
 };
 
-export function translate(locale: Locale, key: string, params?: Record<string, string | number>): string {
+function translate(locale: Locale, key: string, params?: Record<string, string | number>): string {
   let s = DICT[locale]?.[key] ?? DICT.de[key] ?? key;
   if (params) for (const [k, v] of Object.entries(params)) s = s.replaceAll(`{${k}}`, String(v));
   return s;

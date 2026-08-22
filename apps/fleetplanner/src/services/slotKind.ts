@@ -16,7 +16,7 @@
 
 export type SlotKind = "fest" | "typ" | "rolle_offen" | "frei";
 
-export interface SlotInput {
+interface SlotInput {
   /** A concrete seat exists on an accepted, ship-bound FleetUnit. */
   hasConcreteShip?: boolean;
   /** Captain/pilot position (seat order 0) — the one who brings the ship. */
@@ -60,7 +60,7 @@ export function slotNeedsOwnShip(kind: SlotKind): boolean {
   return kind === "typ";
 }
 
-export type CategoryBucket = "ships" | "fighter" | "ground";
+type CategoryBucket = "ships" | "fighter" | "ground";
 
 /**
  * Group a requirement/unit into one of the three mission-board categories,

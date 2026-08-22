@@ -102,12 +102,6 @@ export async function getPng(id: string): Promise<Buffer | null> {
   }
 }
 
-export async function getCoverByOp(opId: string): Promise<CoverMeta | null> {
-  const idx = await readIndex();
-  const id = idx[opId];
-  return id ? getMeta(id) : null;
-}
-
 // Delete a stored cover (png + meta) and drop any op-index entry pointing at it.
 export async function deleteCover(id: string): Promise<void> {
   await fs.rm(pngPath(id), { force: true });

@@ -68,41 +68,6 @@ function labelFromWikiValue(value: unknown): string {
   return "";
 }
 
-// ── Search ships (local DB first, fall back to wiki) ───────────────
-
-export async function searchShips(query: string, limit = 20): Promise<Ship[]> {
-  const q = query.trim();
-  if (!q) return [];
-
-  const local = await prisma.ship.findMany({
-    where: { name: { contains: q, mode: "insensitive" } },
-    take: limit,
-    orderBy: { name: "asc" },
-  });
-  if (local.length >= 5) return local;
-
-  // Fetch from wiki and cache results
-  try {
-    const res = await fetch(`${WIKI_BASE}/vehicles?name=${encodeURIComponent(q)}&limit=20`, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!res.ok) return local;
-    const body = await res.json() as WikiVehicleList;
-    for (const stub of body.data ?? []) {
-      if (!stub.slug) continue;
-      await fetchAndCacheShip(stub.slug).catch(() => null);
-    }
-    return prisma.ship.findMany({
-      where: { name: { contains: q, mode: "insensitive" } },
-      take: limit,
-      orderBy: { name: "asc" },
-    });
-  } catch {
-    return local;
-  }
-}
-
 // ── Fetch single ship by slug (with cache) ─────────────────────────
 
 export async function searchLocalShips(query: string, limit = 20): Promise<Ship[]> {
@@ -122,7 +87,7 @@ export async function searchLocalShips(query: string, limit = 20): Promise<Ship[
   });
 }
 
-export async function fetchAndCacheShip(slug: string, force = false): Promise<Ship | null> {
+async function fetchAndCacheShip(slug: string, force = false): Promise<Ship | null> {
   const cached = await prisma.ship.findUnique({ where: { slug } });
   if (!force && cached && Date.now() - cached.syncedAt.getTime() < CACHE_TTL_MS) return cached;
 
@@ -227,50 +192,4 @@ export function shipCanCarryVehicle(
   } catch {
     return false;
   }
-}
-
-/**
- * Does THIS vehicle physically fit into THIS ship? Compares the vehicle's
- * bounding box (rawJson.dimension) against the carrier's cargo-grid openings,
- * allowing a 90° yaw (length/width may swap). Unknown vehicle dimensions →
- * allow (can't verify). (FR-P1 Phase 4c.)
- */
-export function vehicleFitsInShip(
-  vehicle: { rawJson?: string | null } | null | undefined,
-  carrier: { size?: string | null; rawJson?: string | null } | null | undefined,
-): { fits: boolean; reason?: string } {
-  if (!shipCanCarryVehicle(carrier)) {
-    return { fits: false, reason: "This ship has no cargo bay big enough for a vehicle." };
-  }
-  let grids: Array<{ width?: number; height?: number; length?: number }> = [];
-  let dim: { length?: number; width?: number; height?: number } | null = null;
-  try {
-    const c = JSON.parse(carrier?.rawJson ?? "{}") as {
-      cargo_grids?: Array<{ width?: number; height?: number; length?: number }>;
-    };
-    grids = Array.isArray(c.cargo_grids) ? c.cargo_grids : [];
-    const v = JSON.parse(vehicle?.rawJson ?? "{}") as {
-      dimension?: { length?: number; width?: number; height?: number };
-    };
-    dim = v.dimension ?? null;
-  } catch {
-    return { fits: true }; // can't parse → don't block
-  }
-  const vL = Number(dim?.length),
-    vW = Number(dim?.width),
-    vH = Number(dim?.height);
-  if (!vL || !vW || !vH) return { fits: true }; // unknown size → allow
-  const ok = grids.some((g) => {
-    const gW = Number(g?.width),
-      gH = Number(g?.height),
-      gL = Number(g?.length);
-    if (!(vH <= gH)) return false;
-    return (vL <= gL && vW <= gW) || (vL <= gW && vW <= gL);
-  });
-  return ok
-    ? { fits: true }
-    : {
-        fits: false,
-        reason: `Vehicle (${vL}×${vW}×${vH}m) does not fit this ship's cargo bay.`,
-      };
 }

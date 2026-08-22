@@ -73,7 +73,7 @@ export async function searchLocations(
   });
 }
 
-export async function syncLocationCatalog(): Promise<{ fetched: number; failed: number; total: number }> {
+async function syncLocationCatalog(): Promise<{ fetched: number; failed: number; total: number }> {
   let fetched = 0;
   let failed = 0;
   let total = 0;

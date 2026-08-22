@@ -6,7 +6,7 @@ import { prisma } from "../db.js";
 import { getSyncState } from "./shipSync.js";
 import { getLocationSyncState } from "./locations.js";
 
-export type HealthStatus = "ok" | "warn" | "error" | "down";
+type HealthStatus = "ok" | "warn" | "error" | "down";
 
 // Mirror of the sync runners' stale-claim threshold: a run still flagged running
 // but untouched for longer than this is stuck (crashed without releasing).

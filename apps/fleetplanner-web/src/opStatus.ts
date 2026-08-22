@@ -50,7 +50,7 @@ export function opStatusBadge(op: {
 }
 
 /** Visibility, in the same words the wizard and the edit form use. */
-export const VISIBILITY_LABEL: Record<string, string> = {
+const VISIBILITY_LABEL: Record<string, string> = {
   private: "PRIVAT",
   guild: "PRIVAT", // legacy value
   partners: "PARTNER",

@@ -6,7 +6,6 @@ import { useTheme } from "./theme";
 import { LocaleProvider } from "./i18n";
 import { ServerContextProvider } from "./serverContext";
 import { Sidebar, MobileNav } from "./components/Sidebar";
-import { ToastHost } from "./components/Toast";
 import { OperationenPage } from "./pages/CalendarPage";
 import { StartPage } from "./pages/StartPage";
 import { OpDetailPage } from "./pages/OpDetailPage";
@@ -168,7 +167,6 @@ export function App() {
           </Routes>
         </div>
       </div>
-      <ToastHost />
     </div>
     </ServerContextProvider>
     </LocaleProvider>

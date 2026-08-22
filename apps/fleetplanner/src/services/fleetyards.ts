@@ -48,7 +48,7 @@ function extract(m: FyModel): { silhouette: string | null; store: string | null 
 }
 
 /** Pull the Fleetyards model list into the local cache. Returns count synced. */
-export async function syncFleetyards(): Promise<{ count: number }> {
+async function syncFleetyards(): Promise<{ count: number }> {
   await prisma.fleetyardsSyncState.upsert({
     where: { id: "singleton" },
     create: { id: "singleton", running: true },
@@ -103,19 +103,6 @@ export async function syncFleetyards(): Promise<{ count: number }> {
   }
 }
 
-/** Map normalized ship name → silhouette URL for the given names (one query). */
-export async function silhouettesFor(names: string[]): Promise<Map<string, string>> {
-  const keys = [...new Set(names.map(normShipName).filter(Boolean))];
-  if (keys.length === 0) return new Map();
-  const rows = await prisma.fleetyardsShip.findMany({
-    where: { nameKey: { in: keys }, silhouetteUrl: { not: null } },
-    select: { nameKey: true, silhouetteUrl: true },
-  });
-  const map = new Map<string, string>();
-  for (const r of rows) if (r.silhouetteUrl) map.set(r.nameKey, r.silhouetteUrl);
-  return map;
-}
-
 /** Kick a sync on boot if the cache is empty or stale (fire-and-forget). */
 export async function ensureFleetyardsFresh(): Promise<void> {
   try {
@@ -150,7 +137,7 @@ export class FleetyardsUserNotFound extends Error {
   }
 }
 
-export type FleetyardsHull = {
+type FleetyardsHull = {
   /** Fleetyards model slug, e.g. "orig-325a" — the reliable join key. */
   modelSlug: string | null;
   /** Fleetyards model name, e.g. "325a" — fallback when the slug is unknown here. */

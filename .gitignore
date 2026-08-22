@@ -26,14 +26,11 @@ out/
 .vite/
 *.tsbuildinfo
 
-# Prisma / databases
+# Prisma / databases (only apps/fleetplanner has a schema)
 *.db
 *.db-journal
 *.sqlite
 *.sqlite-journal
-prisma/*.db
-prisma/migrations/dev.db*
-packages/db/generated/
 
 # Logs
 logs/
@@ -52,10 +49,10 @@ Thumbs.db
 *.swp
 *~
 
-# Marketing / tutorial videos (local-only, never committed)
+# Marketing / tutorial videos and packaged installers (local-only, never
+# committed). The directories were cleared 2026-08-22; the patterns stay so a
+# regenerated artifact cannot slip into a commit.
 videos/
-
-# Local build artifacts / packaged installers (never committed)
 addOns/
 msi/
 nsis/
@@ -77,7 +74,5 @@ backup-*.sql
 .tmp/
 tmp/
 screenshot*.png
-Chaos Crew Voice Console — Design System-handoff.zip
-chaos-crew-admin.css
 .design-bundle/
 

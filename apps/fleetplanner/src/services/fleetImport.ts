@@ -33,7 +33,7 @@ export type FleetEntry = {
  * Name → catalog ship resolver. Built once per import (one catalog query) and
  * reused for every entry.
  */
-export async function buildShipMatcher(): Promise<(rawName: string) => { id: string } | undefined> {
+async function buildShipMatcher(): Promise<(rawName: string) => { id: string } | undefined> {
   const ships = await prisma.ship.findMany({ select: { id: true, name: true } });
   const byName = new Map(ships.map((s) => [norm(s.name), s]));
   const toks = (s: string) => norm(s).split(" ").filter(Boolean);

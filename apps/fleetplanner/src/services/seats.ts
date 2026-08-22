@@ -36,11 +36,3 @@ export function specForSquad(squadSize: number): SeatSpec[] {
   }
   return specs;
 }
-
-export async function createSeats(unitId: string, specs: SeatSpec[]): Promise<SeatAssignment[]> {
-  return prisma.$transaction(
-    specs.map((s) =>
-      prisma.seatAssignment.create({ data: { unitId, label: s.label, seatType: s.seatType, order: s.order } })
-    )
-  );
-}

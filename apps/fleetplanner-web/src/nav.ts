@@ -19,7 +19,7 @@ export type NavAccess = {
   managesGuild: boolean;
 };
 
-export const NO_ACCESS: NavAccess = { anyGuild: false, managesGuild: false };
+const NO_ACCESS: NavAccess = { anyGuild: false, managesGuild: false };
 
 export type NavItem = {
   to: string;

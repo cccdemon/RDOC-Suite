@@ -106,7 +106,7 @@ type OpDetailRow = OpListRow & {
 
 // `redact` hides player identities — anonymous (not-logged-in) viewers of a
 // public op must never see usernames; a claimed seat shows only "occupied".
-export function presentSeat(s: SeatRow, redact = false): Seat {
+function presentSeat(s: SeatRow, redact = false): Seat {
   const claimed = !!(s.userId && s.user);
   return {
     id: s.id,

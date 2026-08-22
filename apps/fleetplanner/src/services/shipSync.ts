@@ -142,10 +142,3 @@ export function startShipSyncScheduler(log?: { info: (msg: string) => void; erro
   timer = setInterval(() => void tick(), TICK_MS);
   timer.unref?.();
 }
-
-export function stopShipSyncScheduler(): void {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-}

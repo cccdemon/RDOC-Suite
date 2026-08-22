@@ -1,7 +1,7 @@
 // 22px initials square — identical to the design's avatarStyle()/AV color hash.
 const AV_COLORS = ["var(--cyan)", "var(--purple)", "var(--green)", "var(--gold)", "var(--pink)"];
 
-export function avatarColor(name: string): string {
+function avatarColor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
   return AV_COLORS[h % AV_COLORS.length];

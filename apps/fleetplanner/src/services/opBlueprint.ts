@@ -14,7 +14,7 @@ import { deriveKind, normalizeUrl } from "./resourceLinks.js";
 
 export const BLUEPRINT_VERSION = 1;
 
-export interface BlueprintRequirement {
+interface BlueprintRequirement {
   category: string;
   label: string;
   count: number;
@@ -25,7 +25,7 @@ export interface BlueprintRequirement {
   squadSize: number | null;
 }
 
-export interface BlueprintGroup {
+interface BlueprintGroup {
   name: string;
   kind: string;
   order: number;
