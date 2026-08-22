@@ -82,8 +82,8 @@ test("each console tab button opens its panel", async () => {
   // four work areas now, so select the area first — same as a user would.
   const areas: Array<[string, string[]]> = [
     ["flotte", ["fleet", "needs", "cqb", "formations"]],
-    ["planung", ["eckdaten", "cover", "qa"]],
-    ["kommunikation", ["voice", "commanders"]],
+    ["planung", ["eckdaten", "briefing"]],
+    ["kommunikation", ["qa", "commanders", "voice"]],
     ["verwaltung", ["admin"]],
   ];
   for (const [area, tabs] of areas) {
@@ -103,9 +103,9 @@ test("console tabs are addressable: reload and back keep the work area", async (
   await expect(op.getByTestId("manage-tab-fleet")).toHaveAttribute("aria-selected", "true");
 
   await op.getByTestId("manage-group-kommunikation").click();
-  await expect(op).toHaveURL(/op=voice/);
+  await expect(op).toHaveURL(/op=qa/);
   await op.reload();
-  await expect(op.getByTestId("manage-tab-voice")).toHaveAttribute("aria-selected", "true", { timeout: 10_000 });
+  await expect(op.getByTestId("manage-tab-qa")).toHaveAttribute("aria-selected", "true", { timeout: 10_000 });
 
   await op.goBack();
   await expect(op.getByTestId("manage-tab-fleet")).toHaveAttribute("aria-selected", "true", { timeout: 10_000 });

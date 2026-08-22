@@ -282,7 +282,7 @@ describe("operator console — URL aliases and badge labels", () => {
       http.get(`${API}/operations/op_1`, () => HttpResponse.json({ ...opDetailFixture, canManage: true })),
     );
     renderAt("/ops/op_1?mode=manage&section=planung&sub=cover");
-    const tab = await screen.findByTestId("manage-tab-cover");
+    const tab = await screen.findByTestId("manage-tab-briefing");
     expect(tab).toHaveAttribute("aria-selected", "true");
 
     // Switching writes the canonical form and drops the aliases.
@@ -305,8 +305,8 @@ describe("operator console — URL aliases and badge labels", () => {
     );
     // Sub-tabs only render for the open work area, so the collapsed area carries
     // the count — that is exactly the case where a bare number says nothing.
-    renderAt("/ops/op_1?op=cover");
-    const group = await screen.findByTestId("manage-group-planung");
+    renderAt("/ops/op_1?op=fleet");
+    const group = await screen.findByTestId("manage-group-kommunikation");
     const groupBadge = within(group).getByRole("status");
     expect(groupBadge).toHaveTextContent("1");
     expect(groupBadge).toHaveAttribute("aria-label", "1 offene Frage");

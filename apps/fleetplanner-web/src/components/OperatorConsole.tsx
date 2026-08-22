@@ -10,6 +10,7 @@ import { CommandersPanel } from "./CommandersPanel";
 import { EckdatenForm } from "./EckdatenForm";
 import { VoicePanel } from "./VoicePanel";
 import { ResourceLinksPanel } from "./ResourceLinksPanel";
+import { DocumentsPanel } from "./DocumentsPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 import { FieldSaveProvider, GlobalSaveBadge, SaveDot, useFieldSave } from "./fieldSave";
 import { OP_STATUSES } from "./opStatus";
@@ -30,7 +31,10 @@ const TABS = [
   { key: "formations", label: "Verbände", icon: "board" },
   { key: "cqb", label: "CQB", icon: "fps" },
   { key: "eckdaten", label: "Eckdaten", icon: "edit" },
-  { key: "cover", label: "Cover", icon: "image" },
+  // Everything a participant reads before the op: the briefing text lives in
+  // Eckdaten, but the links, the cover and the PDFs used to sit in three
+  // different places — one of them the participant page itself (§7.1).
+  { key: "briefing", label: "Briefing & Medien", icon: "image" },
   { key: "commanders", label: "Kommandanten", icon: "lead" },
   { key: "voice", label: "Voice", icon: "mic" },
   { key: "qa", label: "Fragen", icon: "chat" },
@@ -47,10 +51,15 @@ type TabKey = (typeof TABS)[number]["key"];
 // planning an operation, commanders are a communication/leadership job — not a
 // detail of the Eckdaten. Bedarfe are their own place inside Flotte instead of
 // being hidden at the bottom of the board.
+// Order is deliberate and stays as it is: an operator opens this screen far more
+// often to work a running operation than to set one up, so the fleet comes
+// first. The handoff proposes planning first, which follows the lifecycle — a
+// product decision, taken 2026-08-22 in favour of the daily job.
 const TAB_GROUPS = [
-  { key: "flotte", label: "Flotte", icon: "ship", tabs: ["fleet", "needs", "cqb", "formations"] },
-  { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "cover", "qa"] },
-  { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["voice", "commanders"] },
+  { key: "flotte", label: "Besatzung & Flotte", icon: "ship", tabs: ["fleet", "needs", "cqb", "formations"] },
+  { key: "planung", label: "Planung", icon: "edit", tabs: ["eckdaten", "briefing"] },
+  // Questions are a communication job, not a detail of the Eckdaten (§7.3).
+  { key: "kommunikation", label: "Kommunikation", icon: "chat", tabs: ["qa", "commanders", "voice"] },
   { key: "verwaltung", label: "Verwaltung", icon: "shield", tabs: ["admin"] },
 ] as const;
 type GroupKey = (typeof TAB_GROUPS)[number]["key"];
@@ -75,6 +84,9 @@ function tabFromParams(sp: URLSearchParams): string | null {
 function resolveTab(raw: string | null): TabKey {
   if (TABS.some((t) => t.key === raw)) return raw as TabKey;
   if (raw === "overview") return "eckdaten";
+  // `?op=cover` is the /ops/:id/cover redirect and every bookmark made before
+  // the cover joined the other media. It still has to land on the cover.
+  if (raw === "cover") return "briefing";
   // A group name in `?op=` is legitimate too — it opens that area's first tab.
   const grp = TAB_GROUPS.find((g) => g.key === raw);
   if (grp) return grp.tabs[0] as TabKey;
@@ -370,10 +382,19 @@ function OperatorConsoleInner({
 
         <div className="fpw-popin" role="tabpanel" id="manage-panel" aria-labelledby={`manage-tab-id-${tab}`} tabIndex={-1}>
           {tab === "eckdaten" && (
-            <>
-              <EckdatenForm op={op} csrf={csrf} onNotice={setNotice} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} />
+            <EckdatenForm op={op} csrf={csrf} onNotice={setNotice} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} />
+          )}
+
+          {/* One place for everything a participant will read or open. The links
+              hung off the Eckdaten form, the cover had a tab of its own, and the
+              documents were only reachable from the participant page — an
+              operator had to know all three spots. */}
+          {tab === "briefing" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.1rem" }}>
               <ResourceLinksPanel op={op} opId={opId} csrf={csrf} onChanged={reload} onNotice={setNotice} />
-            </>
+              <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />
+              <DocumentsPanel opId={opId} csrf={csrf} canManage initialDocs={op.documents} onNotice={setNotice} />
+            </div>
           )}
 
           {(tab === "fleet" || tab === "cqb" || tab === "formations" || tab === "qa") && (
@@ -387,8 +408,6 @@ function OperatorConsoleInner({
           {tab === "needs" && <NeedsEditor opId={opId} csrf={csrf} />}
 
           {tab === "voice" && <VoicePanel op={op} csrf={csrf} voiceEnabled={voiceEnabled} onToggleVoice={toggleVoice} onNotice={setNotice} />}
-
-          {tab === "cover" && <CoverPanel opId={opId} csrf={csrf} onNotice={setNotice} />}
 
           {tab === "commanders" && <CommandersPanel op={op} csrf={csrf} onChanged={reload} onNotice={setNotice} />}
 

@@ -532,7 +532,7 @@ describe("Op detail — restored capabilities", () => {
         return HttpResponse.json({ ok: true });
       }),
     );
-    const { findByTestId } = renderAt("/ops/op_1?mode=manage&op=eckdaten");
+    const { findByTestId } = renderAt("/ops/op_1?mode=manage&op=briefing");
     // The first row cannot move up, the second can move up.
     expect(await findByTestId("rlink-up-link_1")).toBeDisabled();
     (await findByTestId("rlink-up-link_2")).click();

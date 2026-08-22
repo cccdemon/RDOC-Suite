@@ -874,7 +874,10 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
               )}
               <StreamsSection op={op} csrf={csrf} meId={me?.id ?? null} canManage={op.canManage} onChanged={load} />
               <div style={{ marginTop: "1rem" }}>
-                <DocumentsPanel opId={op.id} csrf={csrf} canManage={op.canManage} initialDocs={op.documents} onNotice={setNotice} />
+                {/* Read-only here on purpose: uploading and deleting live in
+                    Verwalten › Briefing & Medien, so the same editor is not
+                    offered in two places (§7.2). Participants still read them. */}
+                <DocumentsPanel opId={op.id} csrf={csrf} canManage={false} initialDocs={op.documents} onNotice={setNotice} />
               </div>
             </div>
           </div>

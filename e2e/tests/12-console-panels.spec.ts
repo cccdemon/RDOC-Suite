@@ -51,7 +51,7 @@ test.afterAll(async () => {
 });
 
 test("resource links: add then remove a link", async () => {
-  await op.goto(`ops/${opId}?op=eckdaten`);
+  await op.goto(`ops/${opId}?op=briefing`);
   await expect(op.getByTestId("rlinks-panel")).toBeVisible({ timeout: 10_000 });
 
   await op.getByTestId("rlink-url").fill("https://example.com/e2e");
@@ -91,7 +91,7 @@ test("commanders: add then remove a leader", async () => {
   await expect(op.getByTestId("commanders-panel")).toBeVisible();
 });
 
-test("cover panel renders with its controls", async () => {
+test("cover panel renders with its controls (legacy ?op=cover alias)", async () => {
   await op.goto(`ops/${opId}?op=cover`);
   await expect(op.getByTestId("cover-panel")).toBeVisible({ timeout: 10_000 });
   // Either an existing cover image or the empty state + generate affordance.

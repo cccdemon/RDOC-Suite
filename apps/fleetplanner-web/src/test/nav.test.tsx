@@ -319,7 +319,7 @@ describe("IA — operator console tabs live in the URL", () => {
     expect(screen.getByTestId("manage-group-flotte")).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByTestId("manage-group-kommunikation")).not.toHaveAttribute("role", "tab");
     // Tabs of other areas are collapsed — nine flat tabs are gone.
-    expect(screen.queryByTestId("manage-tab-qa")).toBeNull();
+    expect(screen.queryByTestId("manage-tab-fleet")).toBeNull();
   });
 
   it("selecting an area writes the tab into the URL and browser-back returns", async () => {
@@ -328,8 +328,8 @@ describe("IA — operator console tabs live in the URL", () => {
     await screen.findByTestId("manage-tab-fleet");
 
     fireEvent.click(screen.getByTestId("manage-group-kommunikation"));
-    expect(await screen.findByTestId("manage-tab-voice")).toHaveAttribute("aria-selected", "true");
-    await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_1?op=voice"));
+    expect(await screen.findByTestId("manage-tab-qa")).toHaveAttribute("aria-selected", "true");
+    await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("/ops/op_1?op=qa"));
 
     // History push, not replace: back lands on the previous work area again.
     fireEvent.click(screen.getByTestId("probe-back"));
@@ -344,8 +344,15 @@ describe("IA — operator console tabs live in the URL", () => {
     unmount();
 
     operatorHandlers();
-    renderAt("/ops/op_1?op=verwaltung");
+    const second = renderAt("/ops/op_1?op=verwaltung");
     expect(await screen.findByTestId("manage-tab-admin")).toHaveAttribute("aria-selected", "true");
+    second.unmount();
+
+    // The cover joined the other media in "Briefing & Medien". Every bookmark
+    // and the /ops/:id/cover redirect still say ?op=cover, so it has to land.
+    operatorHandlers();
+    renderAt("/ops/op_1?op=cover");
+    expect(await screen.findByTestId("manage-tab-briefing")).toHaveAttribute("aria-selected", "true");
   });
 
   it("the operation detail page offers a breadcrumb back to the list", async () => {
@@ -416,7 +423,7 @@ describe("IA — an operation has a view mode and a manage mode", () => {
     renderAt("/ops/op_1?mode=manage");
     fireEvent.click(await screen.findByTestId("manage-group-kommunikation"));
 
-    expect(await screen.findByTestId("manage-tab-voice")).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByTestId("manage-tab-qa")).toHaveAttribute("aria-selected", "true");
     await waitFor(() => expect(screen.getByTestId("probe-url")).toHaveTextContent("mode=manage"));
     expect(screen.getByTestId("operator-console")).toBeInTheDocument();
   });
