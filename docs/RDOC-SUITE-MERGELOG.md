@@ -52,6 +52,27 @@ die zehn Schritte aus §15 und die Detailanforderungen aus §2, §5, §6, §9, �
 Eine bewusste Abweichung bleibt: kanonisch ist `?op=<leaf>` statt des in §6 vorgeschlagenen
 `?mode/section/sub`; die vorgeschlagene Form wird zusaetzlich akzeptiert.
 
+## Queued / Planned Step - 2026-08-22 (5): Interest-Sync haengt an geloeschten Discord-Events
+
+Auf Produktion protokolliert der Interest-Sync alle fuenf Minuten Stacktraces:
+`Discord scheduled-event users fetch failed (404): {"message": "Unknown Guild Scheduled Event",
+"code": 10070}` — fuer mehrere Ops, deren Discord-Event geloescht wurde. Der Poll versucht es
+endlos weiter, weil nichts die tote `discordEventId` aufraeumt.
+
+1. `listScheduledEventUsers` wirft bei Discord-Code **10070** einen typisierten
+   `DiscordEventGoneError` statt eines generischen `Error` mit Textnachricht.
+2. `runInterestSync` faengt genau den ab, setzt `operation.discordEventId = null` und loggt
+   **eine** Info-Zeile. Die Op faellt damit beim naechsten Tick aus der Abfrage.
+3. Bewusst NICHT aufgeraeumt wird bei **10004** (Unknown Guild) oder anderen 404ern: da kann das
+   Event noch existieren und nur der Bot den Zugriff verloren haben — die Verknuepfung zu loeschen
+   waere dann Datenverlust. Solche Faelle bleiben eine Fehlerzeile.
+
+Tests: Ergaenzung von `src/__tests__/services/eventInterest.test.ts` (10070 raeumt auf und laesst
+die uebrigen Ops weiterlaufen; 10004 raeumt nicht auf).
+
+Ergebnis: Backend 574 gruen, `tsc --noEmit` sauber, `e2e` 119 gruen (30-discord-events und
+33-discord-interest gezielt nachgefahren).
+
 ## Completed - 2026-08-22: E2E-Test-Login-Backdoor auf Produktion geschlossen
 
 Der Fleetplanner loggte beim Start `E2E test-login seam ENABLED`. Auf LXC 103 waren in `.env`

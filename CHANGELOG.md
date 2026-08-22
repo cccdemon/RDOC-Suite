@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Interest-Sync haengt nicht mehr an geloeschten Discord-Events (2026-08-22)
+
+Auf Produktion schrieb der Interest-Poll alle fuenf Minuten Stacktraces
+(`Unknown Guild Scheduled Event`, Code 10070) fuer Ops, deren Discord-Event geloescht wurde —
+niemand raeumte die tote `discordEventId` auf, also versuchte es der Sync endlos weiter.
+
+- [services/discord.ts](apps/fleetplanner/src/services/discord.ts): Code 10070 wirft jetzt einen
+  typisierten `DiscordEventGoneError` statt eines generischen `Error` mit Textnachricht.
+- [services/eventInterest.ts](apps/fleetplanner/src/services/eventInterest.ts): `runInterestSync`
+  faengt genau den ab, setzt `discordEventId = null` und loggt eine Info-Zeile. Die Op faellt beim
+  naechsten Tick aus der Abfrage.
+- **Nicht** aufgeraeumt wird bei Code 10004 (Unknown Guild) oder anderen 404ern: dort kann das
+  Event noch existieren und nur der Bot den Zugriff verloren haben — die Verknuepfung zu loeschen
+  waere Datenverlust. Solche Faelle bleiben eine Fehlerzeile.
+
+Tests: +2 in `src/__tests__/services/eventInterest.test.ts` (574 Backend-Tests).
+
 ### Fixed - Review-Findings zur IA-Ueberarbeitung (2026-08-22)
 
 - **Ungueltiger Serverkontext** (`serverContext.tsx`): ein `?guild=` auf eine fremde oder

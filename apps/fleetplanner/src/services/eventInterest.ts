@@ -10,7 +10,7 @@
 // Shadows are claimed on the pilot's first Discord login (claimInterestShadows).
 
 import { prisma } from "../db.js";
-import { listScheduledEventUsers } from "./discord.js";
+import { DiscordEventGoneError, listScheduledEventUsers } from "./discord.js";
 
 type Logger = { info: (msg: string) => void; error: (e: unknown, msg: string) => void };
 
@@ -169,6 +169,19 @@ export async function runInterestSync(log: Logger): Promise<void> {
           );
         }
       } catch (e) {
+        // The event was deleted on Discord. Nothing to poll ever again, so drop
+        // the dangling id — otherwise this op writes a stacktrace every tick,
+        // which is exactly what it did on production for weeks.
+        if (e instanceof DiscordEventGoneError) {
+          await prisma.operation.update({
+            where: { id: op.id },
+            data: { discordEventId: null },
+          });
+          log.info(
+            `[interest] op ${op.id}: Discord event ${op.discordEventId} is gone — link removed, no longer polled`,
+          );
+          continue;
+        }
         log.error(e, `[interest] sync failed for op ${op.id}`);
       }
     }

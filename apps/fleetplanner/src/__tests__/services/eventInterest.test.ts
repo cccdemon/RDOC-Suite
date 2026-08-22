@@ -13,16 +13,25 @@ vi.mock("../../db.js", () => ({
       count: vi.fn(),
     },
     seatAssignment: { updateMany: vi.fn() },
-    operation: { findMany: vi.fn() },
+    operation: { findMany: vi.fn(), update: vi.fn() },
   },
 }));
 
-vi.mock("../../services/discord.js", () => ({
-  listScheduledEventUsers: vi.fn(),
-}));
+vi.mock("../../services/discord.js", async () => {
+  class DiscordEventGoneError extends Error {
+    constructor(
+      readonly guildId: string,
+      readonly eventId: string,
+    ) {
+      super(`Discord scheduled event ${eventId} (guild ${guildId}) no longer exists`);
+      this.name = "DiscordEventGoneError";
+    }
+  }
+  return { listScheduledEventUsers: vi.fn(), DiscordEventGoneError };
+});
 
 import { prisma } from "../../db.js";
-import { listScheduledEventUsers } from "../../services/discord.js";
+import { DiscordEventGoneError, listScheduledEventUsers } from "../../services/discord.js";
 import {
   claimInterestShadows,
   interestSummary,
@@ -173,6 +182,40 @@ describe("runInterestSync", () => {
       where: { status: { in: ["open", "locked", "in_progress"] }, discordEventId: { not: null } },
       select: { id: true, guildId: true, discordEventId: true },
     });
+  });
+
+  it("forgets a Discord event that no longer exists instead of polling it forever", async () => {
+    db.operation.findMany.mockResolvedValue([
+      { id: "op1", guildId: "g1", discordEventId: "e1" },
+      { id: "op2", guildId: "g1", discordEventId: "e2" },
+    ]);
+    discord.mockRejectedValueOnce(new DiscordEventGoneError("g1", "e1")).mockResolvedValueOnce([]);
+
+    await runInterestSync(log);
+
+    // The dangling link is dropped — next tick the op is out of the query.
+    expect(db.operation.update).toHaveBeenCalledWith({
+      where: { id: "op1" },
+      data: { discordEventId: null },
+    });
+    // ...and it is an ordinary log line, not a stacktrace every five minutes.
+    expect(log.error).not.toHaveBeenCalled();
+    // The other op is still polled.
+    expect(discord).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the link when the bot merely lost access to the guild", async () => {
+    db.operation.findMany.mockResolvedValue([{ id: "op1", guildId: "g1", discordEventId: "e1" }]);
+    // 10004 "Unknown Guild" — the event may still exist, so dropping the id
+    // would be data loss. Stays an error.
+    discord.mockRejectedValueOnce(
+      new Error('Discord scheduled-event users fetch failed (404): {"message": "Unknown Guild", "code": 10004}'),
+    );
+
+    await runInterestSync(log);
+
+    expect(db.operation.update).not.toHaveBeenCalled();
+    expect(log.error).toHaveBeenCalledTimes(1);
   });
 
   it("keeps polling the remaining ops when one op's sync throws", async () => {

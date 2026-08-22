@@ -530,6 +530,33 @@ export async function updatePartnerScheduledEvent(
 // bot token only — NO privileged gateway intent. Paginates via ?after.
 export type ScheduledEventUser = { discordUserId: string; displayName: string };
 
+/**
+ * The scheduled event this op points at is gone on Discord's side (error code
+ * 10070). Distinct from every other failure because it is the one case where
+ * retrying can never succeed — the caller is expected to forget the event id.
+ * NOT thrown for 10004 (Unknown Guild): there the event may still exist and only
+ * the bot lost access, and dropping the link would be data loss.
+ */
+export class DiscordEventGoneError extends Error {
+  constructor(
+    readonly guildId: string,
+    readonly eventId: string,
+  ) {
+    super(`Discord scheduled event ${eventId} (guild ${guildId}) no longer exists`);
+    this.name = "DiscordEventGoneError";
+  }
+}
+
+/** Discord's JSON error code, if the body carries one. */
+function discordErrorCode(body: string): number | null {
+  try {
+    const parsed = JSON.parse(body) as { code?: unknown };
+    return typeof parsed.code === "number" ? parsed.code : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function listScheduledEventUsers(
   guildId: string,
   eventId: string,
@@ -554,6 +581,9 @@ export async function listScheduledEventUsers(
     });
     if (!res.ok) {
       const err = await res.text().catch(() => res.statusText);
+      if (res.status === 404 && discordErrorCode(err) === 10070) {
+        throw new DiscordEventGoneError(guildId, eventId);
+      }
       throw new Error(`Discord scheduled-event users fetch failed (${res.status}): ${err}`);
     }
     const batch = (await res.json()) as Array<{
