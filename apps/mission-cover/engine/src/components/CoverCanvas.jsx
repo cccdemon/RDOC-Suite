@@ -12,6 +12,9 @@ const EditableText = ({ text, onChange, className, style, placeholder = "Klicken
       style={{
         pointerEvents: 'auto',
         cursor: 'text',
+        // A <span> collapses newlines, which turned the objective's ASSETS list
+        // into one run-on paragraph. Multiline fields keep their breaks.
+        ...(multiline ? { whiteSpace: 'pre-line' } : null),
         ...style
       }}
       onBlur={(e) => {
@@ -477,7 +480,10 @@ export default function CoverCanvas({
             }}
           >
             {!bgImage && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(56, 189, 248, 0.08)', fontFamily: "'Orbitron', sans-serif" }}>
+              // Editor affordance: tells the user to load a background. The server
+              // render hides it — an exported cover must not carry a hint that was
+              // meant for the person editing it.
+              <div data-editor-only="true" style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'rgba(56, 189, 248, 0.08)', fontFamily: "'Orbitron', sans-serif" }}>
                 <svg viewBox="0 0 100 100" style={{ width: '192px', height: '192px', stroke: 'currentColor', fill: 'none', opacity: 0.2 }}>
                   <circle cx="50" cy="50" r="40" strokeWidth="1" strokeDasharray="4,8" />
                   <path d="M50,10 L50,90 M10,50 L90,50" strokeWidth="0.5" strokeDasharray="2,4" />
@@ -564,17 +570,24 @@ export default function CoverCanvas({
             style={{
               position: 'absolute',
               left: `${((logo1X ?? 40) / 1200) * 100}%`,
-              top: `${((logo1Y ?? 90) / 675) * 100}%`,
+              // 90 put the badge across the "MISSION DOSSIER" line.
+              top: `${((logo1Y ?? 150) / 675) * 100}%`,
+              // Width from the 1200px reference, height from the width: taking
+              // height from the 675px reference made the badge a 34x106 sliver
+              // on a 9:16 canvas.
               width: `${(badgeSize / 1200) * 100}%`,
-              height: `${(badgeSize / 675) * 100}%`,
+              aspectRatio: '1 / 1',
               zIndex: 35, cursor: 'move', userSelect: 'none', pointerEvents: 'auto',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              // The dashed frame and the dark backdrop mark the drag target in the
+              // editor; the export strips them (see data-badge-frame in render.ts).
               border: '1px dashed rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(0, 0, 0, 0.35)',
               backdropFilter: 'blur(2px)', borderRadius: '4px', padding: '12px',
               boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
               opacity: getLayerOpacity('logos')
             }}
+            data-badge-frame="true"
             onMouseDown={(e) => handleBadgeDragStart(e, 1)}
             onTouchStart={(e) => handleBadgeDragStart(e, 1)}
             title="Community Badge - Ziehen zum Verschieben (20px Snap)"
@@ -588,18 +601,24 @@ export default function CoverCanvas({
           <div
             style={{
               position: 'absolute',
-              left: `${((logo2X ?? 200) / 1200) * 100}%`,
-              top: `${((logo2Y ?? 90) / 675) * 100}%`,
+              left: `${((logo2X ?? 140) / 1200) * 100}%`,
+              top: `${((logo2Y ?? 150) / 675) * 100}%`,
+              // Width from the 1200px reference, height from the width: taking
+              // height from the 675px reference made the badge a 34x106 sliver
+              // on a 9:16 canvas.
               width: `${(badgeSize / 1200) * 100}%`,
-              height: `${(badgeSize / 675) * 100}%`,
+              aspectRatio: '1 / 1',
               zIndex: 35, cursor: 'move', userSelect: 'none', pointerEvents: 'auto',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              // The dashed frame and the dark backdrop mark the drag target in the
+              // editor; the export strips them (see data-badge-frame in render.ts).
               border: '1px dashed rgba(255, 255, 255, 0.25)',
               backgroundColor: 'rgba(0, 0, 0, 0.35)',
               backdropFilter: 'blur(2px)', borderRadius: '4px', padding: '12px',
               boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
               opacity: getLayerOpacity('logos')
             }}
+            data-badge-frame="true"
             onMouseDown={(e) => handleBadgeDragStart(e, 2)}
             onTouchStart={(e) => handleBadgeDragStart(e, 2)}
             title="Star Citizen Logo - Ziehen zum Verschieben (20px Snap)"

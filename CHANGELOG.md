@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Mission-Cover: Positionierung und RDOC-Standardtexte (2026-08-22)
+
+Alle vier Presets in allen vier Formaten gerendert und angesehen (16 PNGs). Gefundene und
+behobene Fehler:
+
+- **Jedes Format ausser 16:9 exportierte die Editor-Oberflaeche mit.** `render.ts` fotografiert
+  `#mission-cover-canvas`; das Element ist `width:100%` mit `max-width` und `aspect-ratio`, haengt
+  also am responsiven Layout des Editors. Im Hochformat-Viewport war es hoeher als das Fenster,
+  Playwright scrollte fuer den Element-Screenshot, und die sticky Editor-Leisten rutschten ins
+  Bild — die 9:16-Ausgabe zeigte ein halbes Cover und darunter "COVER EXPORTIEREN". Fuer den
+  Export wird die Canvas jetzt per injiziertem CSS auf exakt WxH fixiert und alles andere
+  ausgeblendet.
+- **Badges verzerrten ausserhalb von 16:9**: Breite kam aus `badgeSize/1200`, Hoehe aus
+  `badgeSize/675`. Auf 9:16 wurde aus dem quadratischen Badge ein 34x106-Streifen. Jetzt Breite
+  in Prozent, Hoehe ueber `aspect-ratio: 1`.
+- **Badges lagen in der Kopfzeile** (Standard y=90 schnitt "MISSION DOSSIER"). Neue
+  Standardpositionen unterhalb der Kopfzeile.
+- **QR-Code ueberdeckte den Fusstext** und ragte in schmalen Formaten aus der Canvas — er ist
+  80x80 CSS-Pixel unabhaengig von der Canvasbreite, war aber prozentual platziert. Neue
+  formatabhaengige Standardpositionen (`OVERLAY_PLACEMENT` in `prefill.ts`), die QR und Badges
+  in jedem Format innerhalb der Flaeche und ausserhalb der Textbereiche halten.
+- **Zeilenumbrueche gingen verloren**: `EditableText` rendert in einem `<span>`, die ASSETS-Liste
+  wurde zu Fliesstext. Multiline-Felder bekommen `white-space: pre-line`.
+- **Editor-Hilfen landeten im Export**: der Hinweis "Kein Hintergrundbild geladen" und die
+  gestrichelten Drag-Rahmen um die Badges. Beide sind als `data-editor-only` /
+  `data-badge-frame` markiert und werden beim Export entfernt.
+
+**Standardtexte auf RDOC**: `securityText` war
+`"CCO SPECIAL OPERATIONS COMMAND // VI5E TASK FORCE"` -> `"RDOC FLOTTENKOMMANDO //
+EINSATZPLANUNG"`, `dossierLabel` `"MISSION DOSSIER >>>"` -> `"RDOC EINSATZBEFEHL >>>"`. Beides
+bleibt per `data.branding` ueberschreibbar.
+
+Nicht angetastet: die Autoren-Credits auf Vi5E (`AUTHOR_CREDIT`, Editor-Fuss, READMEs). Das ist
+die Urheberangabe der Engine, kein Platzhaltertext.
+
+Tests: +6 in `apps/mission-cover/src/__tests__/prefill.test.ts` (Badge- und QR-Platzierung je
+Format, RDOC-Branding, Ueberschreibbarkeit). E2E `19-cover` gruen.
+
 ### Fixed - `19-cover` war rot, weil der Renderer fehlte, nicht das Feature (2026-08-22)
 
 Der einzige dauerhaft rote Test der Suite. Kein Produktbug: der Test-Stack konfiguriert das

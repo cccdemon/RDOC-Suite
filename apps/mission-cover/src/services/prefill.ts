@@ -94,6 +94,35 @@ export function cssDimensions(format: CoverFormat, data: CoverData, config?: Eng
   }
 }
 
+/**
+ * Badge and QR placement per format, in the engine's 1200x675 reference units
+ * (the engine turns them into percentages of the real canvas).
+ *
+ * The engine's own defaults are tuned for 16:9 only, and two of them are wrong
+ * everywhere: the badges sat across the "MISSION DOSSIER" line, and the QR —
+ * which is a fixed 80x80 CSS pixels no matter how wide the canvas is — was
+ * placed at 87.5%, so on a 540px-wide 9:16 canvas part of it hung over the
+ * edge, and on 16:9 it covered the security footer.
+ *
+ * Kept in reference units rather than pixels so a person dragging the badge in
+ * the editor afterwards still works with the same coordinate system.
+ */
+const OVERLAY_PLACEMENT: Record<CoverFormat, {
+  badgeSize: number; logo1X: number; logo1Y: number; logo2X: number; logo2Y: number;
+  qrX: number; qrY: number;
+}> = {
+  // canvas 1200x675
+  "16:9": { badgeSize: 70, logo1X: 40, logo1Y: 150, logo2X: 134, logo2Y: 150, qrX: 1092, qrY: 465 },
+  // canvas 800x800 — a badge needs more reference width to keep its pixel size
+  "1:1": { badgeSize: 96, logo1X: 40, logo1Y: 150, logo2X: 160, logo2Y: 150, qrX: 1038, qrY: 498 },
+  // canvas 540x960 — the narrow one; everything has to stay well inside
+  "9:16": { badgeSize: 115, logo1X: 40, logo1Y: 150, logo2X: 179, logo2Y: 150, qrX: 960, qrY: 527 },
+  // canvas 1000x750
+  "4:3": { badgeSize: 77, logo1X: 40, logo1Y: 150, logo2X: 141, logo2Y: 150, qrX: 1070, qrY: 486 },
+  // free size — treat like 16:9 and let the caller override
+  custom: { badgeSize: 70, logo1X: 40, logo1Y: 150, logo2X: 134, logo2Y: 150, qrX: 1092, qrY: 465 },
+};
+
 /** Build the full engine config from an op payload. */
 export function buildEngineConfig(req: CoverRequest): EngineConfig {
   const style = PRESET_STYLE[req.preset];
@@ -113,10 +142,10 @@ export function buildEngineConfig(req: CoverRequest): EngineConfig {
     name: req.preset,
     ...style,
 
-    // CCO default branding (overridable via data.branding).
-    dossierLabel: b.footerTitle ?? "MISSION DOSSIER >>>",
+    // RDOC default branding (overridable per request via data.branding).
+    dossierLabel: b.footerTitle ?? "RDOC EINSATZBEFEHL >>>",
     statusLabel: "STATUS: BEREIT // STANDBY",
-    securityText: b.securityText ?? "CCO SPECIAL OPERATIONS COMMAND // VI5E TASK FORCE",
+    securityText: b.securityText ?? "RDOC FLOTTENKOMMANDO // EINSATZPLANUNG",
     fileCode: b.fileCode ?? `DATEI: ${req.opId}`,
 
     // Op text.
@@ -133,10 +162,10 @@ export function buildEngineConfig(req: CoverRequest): EngineConfig {
     accentColor: d.accentColor ?? style.accentColor,
     glowColor: d.primaryColor ? `${d.primaryColor}66` : style.glowColor,
 
-    // Badges / extras.
+    // Badges / extras — placed per format, see OVERLAY_PLACEMENT.
     showCommunityBadge: true,
     showScBadge: true,
-    badgeSize: 75,
+    ...OVERLAY_PLACEMENT[req.format],
     cropMarks: true,
     colorFilter: "none",
     focusLensBlur: 0,
@@ -144,7 +173,7 @@ export function buildEngineConfig(req: CoverRequest): EngineConfig {
     subtitleSize: 13,
     titleEffect: "glow",
 
-    // QR from briefing permalink.
+    // QR from briefing permalink (position comes from OVERLAY_PLACEMENT above).
     qrEnabled: Boolean(d.briefingUrl),
     qrUrl: d.briefingUrl ?? "",
 

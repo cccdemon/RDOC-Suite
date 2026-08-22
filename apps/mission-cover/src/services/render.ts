@@ -114,6 +114,48 @@ async function doRender(config: EngineConfig, bg: string | null, w: number, h: n
     const node = page.locator("#mission-cover-canvas");
     await node.waitFor({ state: "visible", timeout: env.RENDER_TIMEOUT_MS });
 
+    // Pin the canvas for the shot. In the editor it is `width:100%` with a
+    // max-width and an aspect-ratio, so its real size depends on the editor's
+    // responsive layout: in a portrait viewport (9:16) it grew taller than the
+    // window, Playwright scrolled to capture the element, and the sticky editor
+    // toolbars slid into the frame — every non-16:9 export contained "PRESETS &
+    // SCHRIFT" and half a cover. Fixed at 0,0 in exactly the requested size, with
+    // everything else hidden, the export is the cover and nothing else.
+    await page.addStyleTag({
+      content: `
+        html, body { margin: 0 !important; padding: 0 !important; overflow: hidden !important; background: #000 !important; }
+        body > * { visibility: hidden !important; }
+        #mission-cover-canvas, #mission-cover-canvas * { visibility: visible !important; }
+        /* Editor affordances are not cover content: the "load a background"
+           hint and the dashed drag frames around the badges were both being
+           baked into the delivered PNG. */
+        #mission-cover-canvas [data-editor-only] { display: none !important; }
+        #mission-cover-canvas [data-badge-frame] {
+          border: 0 !important;
+          background: transparent !important;
+          backdrop-filter: none !important;
+          box-shadow: none !important;
+          padding: 0 !important;
+        }
+        #mission-cover-canvas {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: ${w}px !important;
+          height: ${h}px !important;
+          max-width: none !important;
+          min-width: 0 !important;
+          aspect-ratio: auto !important;
+          transform: none !important;
+          box-shadow: none !important;
+          border: 0 !important;
+          margin: 0 !important;
+          z-index: 2147483647 !important;
+        }
+      `,
+    });
+    await page.evaluate(() => window.scrollTo(0, 0));
+
     // Let webfonts + QR + background settle before snapshot.
     await page.evaluate(() => (document as any).fonts?.ready).catch(() => {});
     await page.waitForTimeout(400);

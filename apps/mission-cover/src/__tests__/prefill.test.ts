@@ -74,3 +74,65 @@ describe("buildEngineConfig", () => {
     expect(c.titleSize).toBe(99);
   });
 });
+
+// ── Overlay placement (2026-08-22) ───────────────────────────────────────────
+// The engine's own defaults are 16:9-only: the badges sat across the header
+// line and the QR — 80 fixed CSS pixels wide however wide the canvas is — was
+// anchored at 87.5%, which hangs over the edge of a 540px 9:16 canvas.
+describe("buildEngineConfig — overlay placement", () => {
+  const placementReq = (format: "16:9" | "1:1" | "9:16" | "4:3") =>
+    req({ format, data: { title: "T", briefingUrl: "https://example.com/op" } });
+
+  it("keeps the badges clear of the header in every format", () => {
+    for (const f of ["16:9", "1:1", "9:16", "4:3"] as const) {
+      const c = buildEngineConfig(placementReq(f));
+      // Reference units are 1200x675; the header bar ends around y=110.
+      expect(Number(c.logo1Y)).toBeGreaterThanOrEqual(140);
+      expect(Number(c.logo2Y)).toBeGreaterThanOrEqual(140);
+    }
+  });
+
+  it("keeps the two badges from overlapping each other", () => {
+    for (const f of ["16:9", "1:1", "9:16", "4:3"] as const) {
+      const c = buildEngineConfig(placementReq(f));
+      expect(Number(c.logo2X) - Number(c.logo1X)).toBeGreaterThanOrEqual(Number(c.badgeSize));
+    }
+  });
+
+  it("keeps the whole QR code inside the canvas", () => {
+    const QR_PX = 80;
+    for (const f of ["16:9", "1:1", "9:16", "4:3"] as const) {
+      const c = buildEngineConfig(placementReq(f));
+      const { w, h } = cssDimensions(f, { title: "T" }, c);
+      // The engine turns qrX/qrY into percentages of the real canvas.
+      const left = (Number(c.qrX) / 1200) * w;
+      const top = (Number(c.qrY) / 675) * h;
+      expect(left + QR_PX).toBeLessThanOrEqual(w);
+      expect(top + QR_PX).toBeLessThanOrEqual(h);
+    }
+  });
+
+  it("leaves room between the QR and the footer band", () => {
+    for (const f of ["16:9", "1:1", "9:16", "4:3"] as const) {
+      const c = buildEngineConfig(placementReq(f));
+      const { h } = cssDimensions(f, { title: "T" }, c);
+      const bottom = (Number(c.qrY) / 675) * h + 80;
+      expect(h - bottom).toBeGreaterThanOrEqual(60);
+    }
+  });
+});
+
+describe("buildEngineConfig — branding", () => {
+  it("defaults to RDOC wording, not the source tool's placeholder", () => {
+    const c = buildEngineConfig(req());
+    expect(String(c.securityText)).toContain("RDOC");
+    expect(String(c.securityText)).not.toMatch(/vi5e|cco/i);
+    expect(String(c.dossierLabel)).toContain("RDOC");
+  });
+
+  it("still lets a caller override the branding", () => {
+    const c = buildEngineConfig(req({ data: { title: "T", branding: { securityText: "EIGENER TEXT", footerTitle: "EIGENER TITEL" } } }));
+    expect(c.securityText).toBe("EIGENER TEXT");
+    expect(c.dossierLabel).toBe("EIGENER TITEL");
+  });
+});
