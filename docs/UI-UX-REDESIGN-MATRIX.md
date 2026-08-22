@@ -162,14 +162,14 @@ messbar.
 | `assignCqbSoldier` | `POST /operations/:id/cqb/:id/assign` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
 | `removeCqbSoldier` | `DELETE /operations/:id/cqb/:id` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
 | `addCqbTeamMember` | `POST /operations/:id/cqb-teams/:id/members` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
-| `autoFillFighters` | `POST /operations/:id/fighter-squads/auto-fill` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
+| `autoFillFighters` | `POST /operations/:id/fighter-squads/auto-fill` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
 | `setUnitLateArrival` | `PATCH /operations/:id/units/:id/late-arrival` | OpDetailPage | Ansehen | **fehlt** |
 | `setSeatLateArrival` | `PATCH /operations/:id/seats/:id/late-arrival` | OpDetailPage | Ansehen | **fehlt** |
 | `setCqbLateArrival` | `PATCH /operations/:id/cqb/:id/late-arrival` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
 | `assignCqbTeamCarrier` | `PUT /operations/:id/cqb-teams/:id/carrier` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
-| `createFormation` | `POST /operations/:id/formations` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
-| `deleteFormation` | `DELETE /operations/:id/formations/:id` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
-| `renameFormation` | `PATCH /operations/:id/formations/:id` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
+| `createFormation` | `POST /operations/:id/formations` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
+| `deleteFormation` | `DELETE /operations/:id/formations/:id` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
+| `renameFormation` | `PATCH /operations/:id/formations/:id` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
 | `renameCqbTeam` | `PATCH /operations/:id/cqb-teams/:id` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
 | `autoBundleCqb` | `POST /operations/:id/cqb/auto-bundle` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
 | `dissolveCqbTeam` | `DELETE /operations/:id/cqb-teams/:id` | OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
@@ -192,11 +192,11 @@ messbar.
 | `addResourceLink` | `POST /operations/:id/resource-links` | ResourceLinksPanel,WizardPage | Verwalten › Planung › Briefing & Medien + Wizard | ja |
 | `removeResourceLink` | `DELETE /operations/:id/resource-links/:id` | ResourceLinksPanel | Verwalten › Planung › Briefing & Medien | ja |
 | `reorderResourceLinks` | `PUT /operations/:id/resource-links/order` | ResourceLinksPanel | Verwalten › Planung › Briefing & Medien | ja |
-| `opDocumentUrl` | `? :id/operations/:id/documents/:id` | DocumentsPanel | Verwalten › Planung › Briefing & Medien | **fehlt** |
-| `uploadOpDocument` | `GET /operations/:id/documents` | DocumentsPanel | Verwalten › Planung › Briefing & Medien | **fehlt** |
-| `deleteOpDocument` | `DELETE /operations/:id/documents/:id` | DocumentsPanel | Verwalten › Planung › Briefing & Medien | **fehlt** |
-| `addStream` | `POST /operations/:id/streams` | OpDetailPage | Ansehen | **fehlt** |
-| `removeStream` | `DELETE /operations/:id/streams/:id` | OpDetailPage | Ansehen | **fehlt** |
+| `opDocumentUrl` | `? :id/operations/:id/documents/:id` | DocumentsPanel | Verwalten › Planung › Briefing & Medien | ja |
+| `uploadOpDocument` | `GET /operations/:id/documents` | DocumentsPanel | Verwalten › Planung › Briefing & Medien | ja |
+| `deleteOpDocument` | `DELETE /operations/:id/documents/:id` | DocumentsPanel | Verwalten › Planung › Briefing & Medien | ja |
+| `addStream` | `POST /operations/:id/streams` | OpDetailPage | Ansehen | ja |
+| `removeStream` | `DELETE /operations/:id/streams/:id` | OpDetailPage | Ansehen | ja |
 | `addLeader` | `POST /operations/:id/leaders` | CommandersPanel,OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | ja |
 | `removeLeader` | `DELETE /operations/:id/leaders/:id` | CommandersPanel,OperatorPanel | Verwalten › Besatzung & Flotte (Board/CQB/Verbände; qa → Kommunikation) | **fehlt** |
 | `getHangar` | `GET /hangar` | OfferShip,ProfilePage,ShipsPage | Ansehen › Teilnahmeoptionen | ja |
@@ -318,39 +318,56 @@ Spec nie auf.
 | `fieldSave` | 1/1 | niedrig |
 | `ui` | 0/1 | **hoch** |
 
-### 5.1 Ungetestete Bedienelemente in den Trägern, die das Redesign anfasst
+### 5.1 Bedienelemente in den Trägern, die das Redesign anfasst
 
-Weder von einem Playwright-Spec noch von einer SPA-Unit-Suite angesteuert. Diese Elemente sind
-beim Verschieben **ungesichert** — hier gehören die Tests aus §15 Phase 0.4 hin, bevor Phase 2
-beginnt.
+Ursprünglicher Befund: 40 Bedienelemente in den umzuziehenden Trägern waren weder von einem
+Playwright-Spec noch von einer SPA-Unit-Suite angesteuert. Am 22.08. hat
+[`test/preserved-controls.test.tsx`](../apps/fleetplanner-web/src/test/preserved-controls.test.tsx)
+(25 Tests) die handlungsfähigen davon geschlossen. Diese Tests halten den **Bedienweg** fest —
+welches Element angefasst wird und welcher Request daraus wird — nicht das Layout, damit sie den
+Umzug überleben, den sie absichern.
 
-- **OperatorPanel** — `operator-loading` `op-pick-search` `interest-panel` `leader-add-toggle` `pending-block` `cqb-block` `cqb-bundle-size` `fighter-block` `fighter-autofill` `formation-block` `formation-name` `formation-add` 
-- **OpDetailPage** — `verband-chip` `op-series-badge` `op-stream-badge` `my-status` `primary-unit` `calendar-export` `lane-empty-fighter` `lane-empty-cqb` `op-series` `mission-log` `mission-log-toggle` `op-streams` `op-stream-platform` `op-stream-url` `op-stream-label` `op-stream-add` `op-stream-open` 
-- **DocumentsPanel** — `documents-panel` `doc-input` `doc-upload` 
-- **SquadLinkPanel** — `squadlink-panel` `squadlink-join` `squadlink-copy` `squadlink-store` 
-- **VoicePanel** — `voice-copy` `voice-assign-all` 
-- **NeedsEditor** — `needs-notice` `cqb-size` 
-- **ChangelogPopup** — `changelog-popup` `changelog-ok` 
+Geschlossen:
+
+- **Streams in `OpDetailPage`** — Formular öffnen, Plattform/URL/Label senden, leere URL blockiert,
+  eigenen Stream löschen, fremden Stream nicht löschen können.
+- **`DocumentsPanel`** — vollständig: leerer Zustand, Nur-Lese-Sicht, PDF-Upload, Nicht-PDF wird im
+  Browser abgewiesen, Löschen, Fünf-Dateien-Grenze.
+- **`SquadLinkPanel`** — vollständig: Voice aus, Server nicht konfiguriert, Operation nicht
+  gestartet, Deep-Link plus Kopieren plus Store-Link.
+- **`OperatorPanel` Verbände** — anlegen per Button und per Enter, namenlos blockiert, umbenennen
+  beim Fokusverlust, löschen.
+- **`OperatorPanel` CQB und Jäger** — Auto-Bündeln mit der gewählten Squad-Größe, deaktiviert wenn
+  alle eingeteilt sind, Jäger-Auto-Fill.
+- **Teilnahmezustand in `OpDetailPage`** — „bereits angemeldet", Haupteinheit-Auswahl bei mehreren
+  Einheiten, keine Auswahl bei einer, leere Bahn zeigt „KEIN BEDARF".
+
+Nebenbefund: der CQB-Test hat ein falsches Testfixture aufgedeckt (`signupId` statt `id`), das die
+React-Key-Warnung ausgelöst hat. Ursache war ein `as never`-Cast, der die Vertragsabweichung vor dem
+Compiler versteckt hat. Die Fixtures dieser Suite sind jetzt cast-frei und damit typgeprüft.
+
+Weiterhin offen — bewusst, nicht vergessen:
+
+| Element | Warum noch offen |
+|---|---|
+| `mission-log`, `mission-log-toggle` | Ansichtszustand ohne Mutation; das Redesign fasst ihn nicht an |
+| `calendar-export`, `op-series`, `op-series-badge`, `verband-chip`, `op-stream-badge` | Anzeigeelemente ohne eigenen Bedienweg |
+| `cqb-block`, `fighter-block`, `formation-block`, `pending-block`, `op-streams`, `interest-panel` | Container, deren Inhalt jetzt getestet ist |
+| `voice-copy`, `voice-assign-all` | `VoicePanel` — gehört zu „Kommunikation › Voice & Teilnehmer", noch nicht geschlossen |
+| `needs-notice`, `cqb-size` | `NeedsEditor` — Bedarfe bleiben ein eigener Ort, Umzugsrisiko gering |
+| `changelog-popup`, `changelog-ok`, `operator-loading`, `op-pick-search`, `leader-add-toggle` | ausserhalb der Operations-IA bzw. reine Suchfelder |
 
 ---
 
 ## 6. Was Phase 0 offen lässt
 
-### 6.1 Testschulden, die vor Phase 2 zu schliessen sind
+### 6.1 Testschulden — Stand nach Phase 0.4
 
-Priorität nach Umbaurisiko, nicht nach Anzahl:
-
-1. **`OpDetailPage` Streams** (`op-streams`, `op-stream-platform`, `op-stream-url`,
-   `op-stream-label`, `op-stream-add`, `op-stream-open`) — frisch gebaut auf `feat/stream-event`
-   und komplett ungetestet. Das Redesign verschiebt sie nach „Ansehen › Streams".
-2. **`DocumentsPanel`** (3/3 ungetestet) — wandert von der Teilnehmeransicht nach
-   „Planung › Briefing & Medien". Upload und Löschen ohne Test zu verschieben ist der
-   gefährlichste Einzelschritt im ganzen Plan.
-3. **`OperatorPanel` Verbände und CQB-Blöcke** (`formation-add`, `formation-name`, `fighter-autofill`,
-   `cqb-bundle-size`) — wandern in eigene Unteransichten.
-4. **`SquadLinkPanel`** (4/4 ungetestet) — Voice-Deep-Link, wandert nach „Kommunikation".
-5. **`OpDetailPage` Teilnahmezustand** (`my-status`, `primary-unit`, `lane-empty-*`) — bleibt in
-   „Ansehen", ändert aber Reihenfolge und Kartentyp.
+Die fünf Posten dieser Liste sind abgearbeitet; die Begründung je Element steht in Abschnitt 5.1.
+Was bleibt, ist `VoicePanel` (`voice-copy`, `voice-assign-all`) und `NeedsEditor`
+(`needs-notice`, `cqb-size`). Beide ziehen zwar um, aber als geschlossene Panels an einen
+benannten Ort — das Risiko ist ein anderes als bei einem Bedienelement, das aus einer Seite in eine
+andere wandert. Sie gehören vor Phase 3 geschlossen, nicht vor Phase 2.
 
 ### 6.2 Produktentscheidungen, die der Handoff voraussetzt
 

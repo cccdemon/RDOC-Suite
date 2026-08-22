@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Tests für die Bedienelemente, die das UI-Redesign verschiebt (2026-08-22)
+
+`apps/fleetplanner-web/src/test/preserved-controls.test.tsx` sichert 25 Bedienwege ab, die vorher
+weder ein Playwright-Spec noch eine Unit-Suite angesteuert hat und die das Redesign an einen anderen
+Ort bringen soll: Streams auf der Operationsseite, den kompletten Dokumenten-Upload, das
+SquadLink-Voice-Panel, Verbände anlegen/umbenennen/löschen, CQB-Auto-Bündeln, Jäger-Auto-Fill und
+den eigenen Teilnahmezustand samt Haupteinheit-Auswahl.
+
+Die Tests prüfen, welches Element angefasst wird und welcher Request daraus entsteht — nicht das
+Layout. So überleben sie den Umzug, den sie absichern.
+
+### Fixed - Ein Testfixture wich vom API-Vertrag ab (2026-08-22)
+
+`cqbSoldiers` trägt laut `@rdoc-suite/fleetplanner-contracts` ein `id`; ein Fixture schrieb
+`signupId` und versteckte die Abweichung hinter einem `as never`-Cast, was sich als React-Key-Warnung
+zeigte. Die Fixtures der neuen Suite sind cast-frei und damit typgeprüft.
+
 ### Added - Route- und Funktions-Erhaltungsmatrix für das UI/UX-Redesign (2026-08-22)
 
 `docs/UI-UX-REDESIGN-MATRIX.md` ist das Sicherungsnetz für den Umbau der SPA: alle 122 Exporte aus

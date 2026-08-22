@@ -1,5 +1,48 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-22 (14): Redesign Phase 0.4 — die ungesicherten Bedienelemente getestet
+
+Handoff-Paragraph 15 Phase 0.4, Arbeitsliste aus Abschnitt 6.1 der
+[`UI-UX-REDESIGN-MATRIX.md`](UI-UX-REDESIGN-MATRIX.md). Neu:
+[`apps/fleetplanner-web/src/test/preserved-controls.test.tsx`](../apps/fleetplanner-web/src/test/preserved-controls.test.tsx),
+25 Tests. Kein Produktivcode angefasst.
+
+Die Tests halten den **Bedienweg** fest — welches Element angefasst wird und welcher Request daraus
+wird — nicht das Layout. Ein Test, der die heutige Kartenstruktur festnagelt, wuerde beim Umzug
+brechen und damit genau das Signal zerstoeren, das er geben soll.
+
+Abgedeckt:
+
+- **Streams** in `OpDetailPage`: Formular oeffnen, Plattform/URL/Label senden, leere URL blockiert,
+  eigenen Stream loeschen, fremden nicht.
+- **`DocumentsPanel`** vollstaendig: leerer Zustand, Nur-Lese-Sicht, PDF-Upload, Nicht-PDF wird im
+  Browser abgewiesen statt an den Server geschickt, Loeschen, Fuenf-Dateien-Grenze.
+- **`SquadLinkPanel`** vollstaendig: Voice aus, Server nicht konfiguriert, Operation nicht
+  gestartet, und der fertige Fall mit Deep-Link, Kopieren und Store-Link.
+- **Verbaende** im `OperatorPanel`: anlegen per Button und per Enter, namenlos blockiert, umbenennen
+  beim Fokusverlust, loeschen.
+- **CQB und Jaeger**: Auto-Buendeln mit der gewaehlten Squad-Groesse, deaktiviert wenn alle
+  eingeteilt sind, Jaeger-Auto-Fill.
+- **Teilnahmezustand**: „bereits angemeldet", Haupteinheit-Auswahl bei mehreren Einheiten, keine
+  Auswahl bei einer, leere Bahn zeigt „KEIN BEDARF".
+
+**Ein Fixture-Fehler kam dabei ans Licht.** Der CQB-Test loeste eine React-Key-Warnung aus. Ursache
+war nicht die Komponente, sondern das Testfixture: `cqbSoldiers` traegt laut Vertrag ein `id`, das
+Fixture schrieb `signupId`, und ein `as never`-Cast hat die Abweichung vor dem Compiler versteckt.
+Alle Fixtures dieser Suite sind jetzt cast-frei und damit typgeprueft — ein Cast, der einen
+Vertragsbruch verbirgt, macht aus einem gruenen Test eine Falschaussage.
+
+Offen geblieben und im Mergelog wie in Abschnitt 5.1 der Matrix benannt: `VoicePanel`
+(`voice-copy`, `voice-assign-all`) und `NeedsEditor` (`needs-notice`, `cqb-size`). Beide ziehen um,
+aber als geschlossene Panels an einen benannten Ort — vor Phase 3 faellig, nicht vor Phase 2. Die
+uebrigen ehemals offenen Testids sind Container oder reine Anzeigeelemente; die Tabelle in
+Abschnitt 5.1 nennt fuer jedes den Grund.
+
+Verifikation: `./scripts/test-stack.sh unit:web` → **161 Tests, 7 Dateien, alle gruen**, keine
+unhandled-request-Warnung und keine React-Warnung mehr.
+`docker compose -f docker-compose.test.yml build fleetplanner-web` → `tsc --noEmit` und `vite build`
+gruen (die Suite liegt unter `src`, wird vom Typecheck also erfasst).
+
 ## Completed - 2026-08-22 (13): Redesign Phase 0 + 1 — Inventar erzeugt, Phase 1 war bereits erledigt
 
 Erster Schritt aus Eintrag (12). Ergebnis: [`docs/UI-UX-REDESIGN-MATRIX.md`](UI-UX-REDESIGN-MATRIX.md).
