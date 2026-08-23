@@ -1,5 +1,42 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (23): Die pruefbare Haelfte von Phase 6 ist jetzt ein Spec
+
+Neu: `e2e/tests/22-role-matrix.spec.ts`, neun Tests gegen den echten Stack. Alles, was auf einer
+Papierliste steht, wird beim naechsten Mal von Hand geprueft oder gar nicht — und die Rollenmatrix
+aus Paragraph 16 ist keine Ermessensfrage, sondern eine Behauptung.
+
+Abgedeckt: was Gast, Crew ohne Operator-Server, Operator und Superadmin im Menue angeboten bekommen
+und was nicht; dass Crew nicht per `?mode=manage` in die Verwaltung kommt; dass Desktop und Drawer
+dieselben Ziele fuehren; und dass elf Alt-Links auf ihrem Inhalt landen (`/manage`, `/edit`,
+`/cover`, `?op=cover`, `?op=qa`, `?op=needs`, `?op=admin`, `/calendar` samt mitgeschickter Query,
+`/profile`, `/account`, `/feedback`).
+
+**Der Spec hat zwei echte Sachen gefunden, und einen Fehler in sich selbst.**
+
+*Produkt:* die Menuegruppe hiess „Admin / System". Paragraph 3.4 verbietet ausdruecklich, die
+Instanzverwaltung mit dem generischen Wort „Admin" zu fuehren, und Paragraph 4.1 nennt die Gruppe
+ADMINISTRATION — innerhalb einer Operation heisst derselbe Bereich „Verwaltung", und die beiden
+duerfen nicht dasselbe Wort tragen. Umbenannt in beiden Sprachen.
+
+*Test:* die erste Fassung wartete auf `sidebar-nav`, und das Rail rendert **bevor** `/session`
+antwortet. Damit waren alle „diese Rolle bekommt X nicht"-Pruefungen trivial wahr — sie haetten fuer
+jede Rolle bestanden, auch fuer die, die X bekommen soll. Jede Rolle wartet jetzt auf einen Eintrag,
+den nur sie hat (Gast: `login-link`, Crew: `nav-/konto`, Operator: `nav-/ops/new`, Superadmin:
+`nav-/admin`); erst dessen Erscheinen beweist, dass die Gates angewandt wurden. Ein gruener Test, der
+nichts prueft, ist schlimmer als kein Test.
+
+Nebenbei: `innerText` liefert den *gerenderten* Text, und die Gruppenlabels sind per CSS Versalien —
+der Vergleich musste case-insensitiv werden.
+
+**Was Handarbeit bleibt:** die acht Fragen aus Paragraph 19. Ob jemand ohne Handbuch weiss, was als
+Naechstes dran ist, prueft kein Spec. Die Checkliste in
+[`REDESIGN-ABNAHME.md`](REDESIGN-ABNAHME.md) bleibt dafuer stehen; die jetzt automatisierten Punkte
+sind dort als erledigt markiert.
+
+Verifikation: Playwright **128 passed, 3 skipped** (vorher 119 — die neun sind neu); SPA-Unit **219**;
+Backend-Unit **591**; Smoke gruen; `tsc --noEmit` und `vite build` gruen.
+
 ## Completed - 2026-08-23 (22): Abnahme-Checkliste fuer Phase 6
 
 [`docs/REDESIGN-ABNAHME.md`](REDESIGN-ABNAHME.md). Phase 6 des Handoffs ist Handarbeit: 219 SPA- und

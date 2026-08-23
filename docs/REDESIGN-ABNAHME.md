@@ -7,7 +7,7 @@
 > **Grundlage:** [`UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md`](UI-UX-WORKFLOW-REDESIGN-CLAUDE-OPUS.md)
 > §15 Phase 6, §16, §17 und §19.
 >
-> **Warum von Hand:** 219 SPA-Tests und 119 Playwright-Tests sagen, dass die Bedienwege
+> **Warum von Hand:** 219 SPA-Tests und 128 Playwright-Tests sagen, dass die Bedienwege
 > funktionieren. Sie sagen nicht, ob jemand ohne Handbuch weiß, was als Nächstes dran ist. Das ist
 > die Frage aus §19, und sie beantwortet nur ein Mensch.
 
@@ -95,7 +95,22 @@ Blick.
 
 ---
 
-## 3. Die zehn Szenarien aus §17
+## 3. Was schon automatisch geprüft wird
+
+`e2e/tests/22-role-matrix.spec.ts` (neun Tests) nimmt dir den mechanischen Teil ab und läuft bei
+jedem `e2e`-Durchgang mit:
+
+- die Rollenmatrix aus §16 — was jede der vier Rollen im Menü angeboten bekommt und was nicht;
+- dass Crew nicht per `?mode=manage` in die Verwaltung kommt;
+- dass Desktop und Drawer dieselben Ziele führen;
+- die elf Alt-Links aus §16.
+
+Die Haken unten zu diesen Punkten kannst du überspringen — sie sind mit **[auto]** markiert. Was
+bleibt, ist das, was ein Spec nicht beurteilen kann.
+
+---
+
+## 4. Die zehn Szenarien aus §17
 
 Jedes ist ein Durchlauf, kein Klick. Bei jedem Schritt zählt nicht nur, *ob* es geht, sondern ob es
 ohne Raten geht.
@@ -104,7 +119,7 @@ ohne Raten geht.
 
 - [ ] <http://localhost:8099/start> zeigt fünf Funktionskarten, nicht fünfzehn.
 - [ ] „10 weitere Funktionen zeigen" klappt den Rest **an Ort und Stelle** auf.
-- [ ] Menü kennt **kein** „Neue Operation", keine Vorlagen, kein Konto, keine Serververwaltung.
+- [x] **[auto]** Menü kennt kein „Neue Operation", keine Vorlagen, kein Konto, keine Serververwaltung.
 - [ ] `/operationen` → eine öffentliche Operation öffnen; Briefing ist lesbar.
 - [ ] Kein Verwaltungsmodus sichtbar, dafür ein verständlicher Anmelde-Hinweis.
 
@@ -114,7 +129,7 @@ ohne Raten geht.
 - [ ] Flexibel anmelden → Zustand wechselt sichtbar.
 - [ ] Frage stellen → sie erscheint.
 - [ ] Eigenes Schiff anbieten, eigenen Sitz nehmen, Angebot zurückziehen.
-- [ ] **Kein** „Verwalten"-Umschalter. `?mode=manage` an die URL hängen ändert daran nichts.
+- [x] **[auto]** Kein „Verwalten"-Umschalter, auch nicht per `?mode=manage`.
 
 ### 3 — Operator, Desktop: anlegen
 
@@ -156,9 +171,9 @@ ohne Raten geht.
 
 ### 8 — Superadmin
 
-- [ ] `/admin` und `/admin/system` erreichbar.
-- [ ] „Administration" im Menü ist begrifflich getrennt von der „Verwaltung" *innerhalb* einer
-      Operation.
+- [x] **[auto]** `/admin` und `/admin/system` erreichbar.
+- [x] **[auto]** „Administration" im Menü ist begrifflich getrennt von der „Verwaltung"
+      *innerhalb* einer Operation. (Hieß bis 23.08. „Admin / System" — vom Spec gefunden.)
 
 ### 9 — Tastatur, ohne Maus
 
@@ -176,9 +191,9 @@ ohne Raten geht.
 - [ ] Tab wechseln → Zurück landet auf dem vorherigen Tab, **nicht** in der Teilnehmeransicht.
 - [ ] Neu laden hält Modus und Tab.
 
-### Alte Links (§16)
+### Alte Links (§16) — **[auto]**
 
-Alle müssen weiterhin auf ihrem Inhalt landen — mit `<id>` einer echten Operation:
+Vollständig im Spec abgedeckt. Nur nachsehen, wenn du einen Link kennst, der dort fehlt:
 
 - [ ] `/ops/<id>/manage` → Board im Verwaltungsmodus
 - [ ] `/ops/<id>/edit` → Eckdaten
@@ -201,7 +216,7 @@ Alle müssen weiterhin auf ihrem Inhalt landen — mit `<id>` einer echten Opera
 
 ---
 
-## 4. Schlussgatter (§19)
+## 5. Schlussgatter (§19)
 
 Das Redesign ist erst fertig, wenn ein Nutzer diese acht Fragen in **jedem** Kernablauf ohne Raten
 beantworten kann. Grüne Tests reichen dafür ausdrücklich nicht.
@@ -217,7 +232,7 @@ beantworten kann. Grüne Tests reichen dafür ausdrücklich nicht.
 
 ---
 
-## 5. Wenn etwas nicht stimmt
+## 6. Wenn etwas nicht stimmt
 
 Notieren mit: Rolle, Fenstergröße, URL, was du erwartet hast, was passiert ist. Die URL ist wichtig —
 Modus und Tab stehen darin, ein Fall ist damit reproduzierbar.

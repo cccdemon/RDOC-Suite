@@ -22,7 +22,7 @@ Phasenmodell aus dessen §15.
 | 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
 | 4 — Workflow und visuelle Hierarchie | **fertig** — Wizard, Kontrast, Aktionsrang, Kartentypen, Monospace |
 | 5 — Responsive und Accessibility | **fertig** |
-| 6 — Verifikation | **offen, als Nächstes** |
+| 6 — Verifikation | **teilweise** — Rollenmatrix und Alt-Links als Spec (`22-role-matrix`); die §19-Fragen bleiben Handarbeit |
 
 ---
 
@@ -160,7 +160,7 @@ die Frage aus §19.
 
 ## 6. Verifikation — was zuletzt grün war
 
-Alles am 23.08. nach dem letzten Phase-5b-Commit gelaufen:
+Alles am 23.08. nach dem letzten Commit gelaufen:
 
 Unter Windows über Git Bash (`bash scripts/test-stack.sh …`) oder direkt mit
 `docker compose -f docker-compose.test.yml …`.
@@ -169,7 +169,7 @@ Unter Windows über Git Bash (`bash scripts/test-stack.sh …`) oder direkt mit
 ./scripts/test-stack.sh unit          # Backend  591 Tests, 40 Dateien
 ./scripts/test-stack.sh unit:web      # SPA      219 Tests, 9 Dateien
 ./scripts/test-stack.sh up            # Stack hoch (web :8099, api :3299, mock :4400)
-./scripts/test-stack.sh e2e           # Playwright 119 passed, 3 skipped
+./scripts/test-stack.sh e2e           # Playwright 128 passed, 3 skipped
 ./scripts/test-stack.sh smoke         # grün
 ./scripts/test-stack.sh down
 docker compose -f docker-compose.test.yml build fleetplanner-web   # tsc --noEmit + vite build

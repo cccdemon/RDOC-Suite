@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Die Rollenmatrix und die Alt-Links sind jetzt getestet (2026-08-23)
+
+`e2e/tests/22-role-matrix.spec.ts` prüft gegen den laufenden Stack, was Gast, Crew, Operator und
+Superadmin im Menü angeboten bekommen — und was nicht —, dass Crew nicht per `?mode=manage` in die
+Verwaltung kommt, dass Desktop und Mobile dieselben Ziele führen, und dass elf alte Links auf ihrem
+Inhalt landen.
+
+### Fixed - Die Menügruppe hieß „Admin / System" (2026-08-23)
+
+Der Redesign-Handoff verbietet, die Instanzverwaltung unter dem generischen Wort „Admin" zu führen:
+innerhalb einer Operation heißt derselbe Bereich „Verwaltung". Die Gruppe heißt jetzt in beiden
+Sprachen „Administration".
+
 ### Changed - Dialoge als Bottom-Sheet, Startseite gefaltet (2026-08-23)
 
 Changelog-Hinweis und Vorlagenpicker waren zentrierte Kästen mit fester Breite — auf einem Telefon
