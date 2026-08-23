@@ -312,3 +312,40 @@ describe("surface and action vocabulary", () => {
     expect(btnGhost.fontFamily).toBe("var(--body)");
   });
 });
+
+// ── §11: long pages fold, dialogs become sheets ──────────────────────────────
+describe("progressive disclosure and mobile dialogs", () => {
+  it("the start page shows five features and says how many it is holding back", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
+    renderAt("/start");
+    await screen.findByTestId("start-page");
+
+    // Fifteen cards in a row is fifteen stacked cards on a phone.
+    expect(screen.getAllByTestId(/^start-feature-/)).toHaveLength(5);
+    const more = screen.getByTestId("start-features-more");
+    // Not a bare "more" — the count is the reason to press it.
+    expect(more).toHaveTextContent("10 weitere Funktionen zeigen");
+  });
+
+  it("unfolds the rest in place rather than sending the reader elsewhere", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionGuest)));
+    renderAt("/start");
+    await screen.findByTestId("start-page");
+
+    fireEvent.click(screen.getByTestId("start-features-more"));
+    expect(screen.getAllByTestId(/^start-feature-/)).toHaveLength(15);
+    // The button has done its job and stops taking up a tap target.
+    expect(screen.queryByTestId("start-features-more")).toBeNull();
+  });
+
+  it("the template picker asks to be a sheet on a phone", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionOperator)));
+    renderAt("/ops/new");
+    fireEvent.click(await screen.findByTestId("templates-link"));
+
+    // The class is the opt-in; the breakpoint itself lives in styles.css, which
+    // jsdom does not evaluate.
+    expect(await screen.findByTestId("template-picker")).toHaveClass("fpw-sheet-panel");
+    expect(screen.getByTestId("template-picker-backdrop")).toHaveClass("fpw-sheet");
+  });
+});

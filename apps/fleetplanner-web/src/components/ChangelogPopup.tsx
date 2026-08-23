@@ -36,10 +36,12 @@ export function ChangelogPopup({ session }: { session: SessionResponse | null })
       role="dialog"
       aria-modal="true"
       data-testid="changelog-popup"
+      className="fpw-sheet"
       style={{ position: "fixed", inset: 0, zIndex: 11000, background: "rgba(18, 20, 22,0.74)", display: "flex", alignItems: "center", justifyContent: "center", overflowY: "auto", padding: "4vh 1rem" }}
       onClick={close}
     >
       <div
+        className="fpw-sheet-panel"
         onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 560, background: "var(--bg, var(--bg2))", border: "1px solid var(--border)", borderRadius: 14, padding: "1.5rem 1.6rem", boxShadow: "0 24px 70px rgba(0,0,0,0.6)" }}
       >

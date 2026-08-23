@@ -51,6 +51,12 @@ test("the start page describes only features that exist", async () => {
   await pg.goto("start");
   const page = pg.getByTestId("start-page");
   await expect(page).toBeVisible({ timeout: 10_000 });
+
+  // §11 folds the feature list after five cards. Unfold it first — the point of
+  // this test is that every block renders, not how many are visible at rest.
+  const more = pg.getByTestId("start-features-more");
+  if (await more.count()) await more.click();
+
   const text = await page.innerText();
 
   // Removed with the voice stack (2026-06/08): there are no relay bots, and the

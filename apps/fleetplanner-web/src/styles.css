@@ -682,3 +682,30 @@ a { color: var(--cyan); }
     flex: 0 0 auto;
   }
 }
+
+/* ── §11: a dialog on a phone is a sheet ──────────────────────────────────────
+   A 560 px card centred in a 390 px viewport is a card with no room left around
+   it: rounded corners against the screen edge, and the content squeezed by the
+   backdrop padding it does not need. Below the touch breakpoint the panel takes
+   the bottom of the screen instead, keeps its own scroll, and rounds only the
+   two corners that are still visible.
+   `.fpw-sheet` goes on the backdrop, `.fpw-sheet-panel` on the dialog itself. */
+@media (max-width: 760px) {
+  .fpw-sheet {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .fpw-sheet-panel {
+    max-width: none !important;
+    width: 100% !important;
+    max-height: 92vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 16px 16px 0 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    /* Clear of the home indicator on a phone that has one. */
+    padding-bottom: max(1.2rem, env(safe-area-inset-bottom)) !important;
+  }
+}

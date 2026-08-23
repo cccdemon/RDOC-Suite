@@ -4,7 +4,7 @@
 > ist: löschen. Die Historie steht im [Mergelog](RDOC-SUITE-MERGELOG.md), die inhaltliche Wahrheit in
 > der [Matrix](UI-UX-REDESIGN-MATRIX.md) (CLAUDE.md Regel 7).
 >
-> **Stand:** 2026-08-23, nach Phase 5a.
+> **Stand:** 2026-08-23, nach Phase 5.
 
 ---
 
@@ -21,7 +21,7 @@ Phasenmodell aus dessen §15.
 | 2 — OperationShell, Ansehen gegen Verwalten | **fertig** (`8f9f48a`) |
 | 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
 | 4 — Workflow und visuelle Hierarchie | **fertig** — Wizard, Kontrast, Aktionsrang, Kartentypen, Monospace |
-| 5 — Responsive und Accessibility | **teilweise** — Motion, Zielgrößen, Telefon-Navigation erledigt; Modals als Bottom-Sheet und progressive Offenlegung offen |
+| 5 — Responsive und Accessibility | **fertig** |
 | 6 — Verifikation | **offen, als Nächstes** |
 
 ---
@@ -134,15 +134,15 @@ Zeiten. Erledigt in Phase 5a.
 
 ## 5. Was noch offen ist
 
-Aus §11 blieb zweierlei liegen, beides bewusst:
+Nur noch **Phase 6 — Verifikation** (§15 Phase 6, §17). Das ist Handarbeit am laufenden Stack:
 
-1. **Modals als Bottom-Sheet auf Mobile.** Die Cover-Lightbox ist bereits Vollbild; betroffen wäre
-   der Vorlagenpicker im Wizard.
-2. **Progressive Offenlegung langer Startseiteninhalte** (§11, „nach 3–5 Kategorien").
+- Rollenmatrix Gast / Crew / Operator / Superadmin, je Desktop und Mobile.
+- Die zehn Abnahmeszenarien aus §17 — vom Gast auf dem Telefon bis zum Multi-Guild-Deep-Link mit
+  ungültiger Guild-ID.
 
-Dann **Phase 6 — Verifikation** (§15 Phase 6, §17): manuelle Rollenmatrix Gast / Crew / Operator /
-Superadmin auf Desktop und Mobile, plus die zehn Abnahmeszenarien aus §17. Das ist Handarbeit am
-laufenden Stack und nichts, was ein Test abnimmt.
+Eine Testsuite nimmt das nicht ab: 219 SPA-Tests und 119 Playwright-Tests sagen, dass die Bedienwege
+funktionieren, nicht dass ein Operator ohne Handbuch weiß, was als Nächstes dran ist. Genau das ist
+die Frage aus §19.
 
 ### Fallen, die schon zugeschnappt sind
 
@@ -153,17 +153,20 @@ laufenden Stack und nichts, was ein Test abnimmt.
 - **Deutsche Anführungszeichen in JS-Stringliteralen** brauchen `„…“`. Ein `„…"` beendet den String
   und produziert eine `TS1005`-Kaskade.
 - **`partnerTargetGuildIds` ist create-only** — die Partnerverteilung wird angezeigt, nicht angeboten.
+- **Eine CSS-Regel, die inline gesetzte Werte treffen soll, trifft sie nicht.** Die verworfene
+  `:has()`-Regel für Icon-Button-Breiten wäre an genau den Buttons vorbeigegangen, für die sie
+  gedacht war.
 
 ## 6. Verifikation — was zuletzt grün war
 
-Alles am 23.08. nach dem letzten Phase-5a-Commit gelaufen:
+Alles am 23.08. nach dem letzten Phase-5b-Commit gelaufen:
 
 Unter Windows über Git Bash (`bash scripts/test-stack.sh …`) oder direkt mit
 `docker compose -f docker-compose.test.yml …`.
 
 ```bash
 ./scripts/test-stack.sh unit          # Backend  591 Tests, 40 Dateien
-./scripts/test-stack.sh unit:web      # SPA      216 Tests, 9 Dateien
+./scripts/test-stack.sh unit:web      # SPA      219 Tests, 9 Dateien
 ./scripts/test-stack.sh up            # Stack hoch (web :8099, api :3299, mock :4400)
 ./scripts/test-stack.sh e2e           # Playwright 119 passed, 3 skipped
 ./scripts/test-stack.sh smoke         # grün

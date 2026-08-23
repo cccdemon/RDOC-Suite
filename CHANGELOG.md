@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - Dialoge als Bottom-Sheet, Startseite gefaltet (2026-08-23)
+
+Changelog-Hinweis und Vorlagenpicker waren zentrierte Kästen mit fester Breite — auf einem Telefon
+mit Rundungen gegen den Bildschirmrand. Unter 760 px nehmen sie jetzt den unteren Rand ein, mit
+eigenem Scroll und frei vom Home-Indicator.
+
+Die Startseite zeigt fünf ihrer fünfzehn Funktionskarten und faltet den Rest hinter einen Knopf, der
+die Anzahl nennt. Aufgeklappt wird an Ort und Stelle.
+
 ### Fixed - Reduzierte Bewegung, größere Tippziele, Navigation auf dem Telefon (2026-08-23)
 
 `prefers-reduced-motion` wurde nicht beachtet — acht Transitions liefen unabhängig von der

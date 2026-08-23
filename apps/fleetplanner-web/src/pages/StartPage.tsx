@@ -20,6 +20,9 @@ import { useSeo } from "../seo";
 
 const MONO = "var(--mono)";
 
+/** How much of the feature list stands before the fold (§11: three to five). */
+const FEATURE_PREVIEW = 5;
+
 const FEATURES = [
   { key: "ops", icon: "board" },
   { key: "fleet", icon: "ship" },
@@ -175,6 +178,9 @@ function UsedBy() {
 export function StartPage({ session }: { session: SessionResponse | null }) {
   const t = useT();
   const signedIn = !!session?.user;
+  // §11: fifteen feature cards in a row is fifteen stacked cards on a phone.
+  const [allFeatures, setAllFeatures] = useState(false);
+  const shownFeatures = allFeatures ? FEATURES : FEATURES.slice(0, FEATURE_PREVIEW);
 
   useSeo({
     title: t("start.seo.title"),
@@ -279,8 +285,9 @@ export function StartPage({ session }: { session: SessionResponse | null }) {
       <section style={{ marginBottom: "2rem" }}>
         <SectionTitle>{t("start.features.title")}</SectionTitle>
         <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start", flexWrap: "wrap" }}>
-        <div style={{ flex: "999 1 520px", minWidth: 0, display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
-          {FEATURES.map((f) => (
+        <div style={{ flex: "999 1 520px", minWidth: 0 }}>
+        <div id="start-features" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
+          {shownFeatures.map((f) => (
             <div
               key={f.key}
               data-testid={`start-feature-${f.key}`}
@@ -295,6 +302,22 @@ export function StartPage({ session }: { session: SessionResponse | null }) {
               <p style={{ color: "var(--dim)", fontSize: "0.9rem", lineHeight: 1.6, margin: 0 }}>{t(`start.f.${f.key}.body`)}</p>
             </div>
           ))}
+        </div>
+        {/* The rest is folded, not dropped: the list is already on this page and
+            the button says how much of it is still below. */}
+        {!allFeatures && (
+          <button
+            type="button"
+            data-testid="start-features-more"
+            aria-expanded={false}
+            aria-controls="start-features"
+            onClick={() => setAllFeatures(true)}
+            className="btn"
+            style={{ marginTop: "1rem" }}
+          >
+            <Ic name="plus" size={14} sw={1.8} /> {FEATURES.length - FEATURE_PREVIEW} weitere Funktionen zeigen
+          </button>
+        )}
         </div>
         <UsedBy />
         </div>

@@ -1,5 +1,32 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (21): Redesign Phase 5b — Dialoge als Sheet, Startseite gefaltet
+
+Damit ist Phase 5 durch.
+
+**Dialoge auf dem Telefon.** Ein 560 px breiter Kasten, zentriert in einem 390 px breiten Fenster,
+ist ein Kasten ohne Platz drumherum: abgerundete Ecken gegen den Bildschirmrand, und der Inhalt
+gequetscht von einem Backdrop-Padding, das er nicht braucht. Unter 760 px nehmen Changelog-Hinweis
+und Vorlagenpicker jetzt den unteren Bildschirmrand ein, mit eigenem Scroll, nur oben abgerundet und
+mit `env(safe-area-inset-bottom)` frei vom Home-Indicator. Zwei Klassen — `.fpw-sheet` auf das
+Backdrop, `.fpw-sheet-panel` auf den Dialog. Fokusfalle, Escape und Rueckfokus waren schon da und
+sind nicht angefasst. Die Cover-Lightbox ist ohnehin Vollbild.
+
+**Startseite.** Fuenfzehn Feature-Karten hintereinander sind auf einem Telefon fuenfzehn gestapelte
+Karten. Es stehen fuenf, dann ein Knopf, der sagt, wie viele noch kommen — die Liste ist gefaltet,
+nicht gekuerzt, und sie klappt an Ort und Stelle auf statt woanders hinzufuehren.
+
+Der E2E-Spec `16-anon-docs-nav` prueft, dass jeder Feature-Block Titel und Text rendert und keinen
+rohen i18n-Key zeigt. Er klappt jetzt zuerst auf: die Absicht des Tests ist die Vollstaendigkeit der
+Bloecke, nicht wie viele davon im Ruhezustand sichtbar sind.
+
+Verifikation: SPA-Unit **219 Tests, 9 Dateien**; Backend-Unit **591**; Playwright **119 passed, 3
+skipped**; Smoke gruen; `tsc --noEmit` und `vite build` gruen.
+
+Damit bleibt aus dem Handoff nur noch **Phase 6 — Verifikation** (Paragraph 15 Phase 6 und
+Paragraph 17): die manuelle Rollenmatrix und die zehn Abnahmeszenarien. Das ist Handarbeit am
+laufenden Stack und nichts, was eine Testsuite abnimmt.
+
 ## Completed - 2026-08-23 (20): Redesign Phase 5a — Motion, Zielgroessen, Telefon-Navigation, Monospace
 
 **`prefers-reduced-motion` wurde nirgends beachtet** — acht Transitions und eine Keyframe-Animation,
