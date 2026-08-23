@@ -1,5 +1,31 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23: Deploy `d17491e` — das UI/UX-Redesign ist live
+
+`67ece2e..d17491e`, 13 Commits, auf LXC 103 unter `/opt/RDOC-Suite`. Gebaut und neu gestartet:
+`fleetplanner` und `fleetplanner-web`.
+
+Der komplette Redesign-Durchlauf: Phase 0 (Inventar und Sicherungsnetz), 1 (Gates — war bereits
+behoben), 2 (OperationShell, Ansehen gegen Verwalten), 3 (Verwaltungs-IA), 4 (Workflow und visuelle
+Hierarchie), 5 (Responsive und Accessibility), 6 (Verifikation).
+
+Migrationen: **keine offenen** — 57 gefunden, nichts anzuwenden. Das war reine Oberflaechenarbeit,
+kein Schema und kein `/api/v1`-Vertrag wurde angefasst.
+
+Nachkontrolle nach dem Start:
+
+- `docker compose ps`: `fleetplanner` und `fleetplanner-web` frisch hoch, DB healthy, alle uebrigen
+  Dienste unberuehrt.
+- `Server listening at http://127.0.0.1:3200`, keine Fehler im Startlog.
+- `GET /fleetplanner/start` und `/fleetplanner/api/v1/health` → 200.
+- Das ausgelieferte CSS traegt `--dim3: #8f98a1` und den `prefers-reduced-motion`-Block, der neue
+  Build liegt also wirklich an.
+- `scripts/prod-e2e-readonly.sh`: **ALL CHECKS PASSED** (28 Checks, GET-only).
+
+Offen bleibt nur die Abnahme nach Paragraph 19 — die acht Fragen in
+[`REDESIGN-ABNAHME.md`](REDESIGN-ABNAHME.md) Abschnitt 0. Die beantwortet der User an der
+Produktivinstanz; kein Test nimmt sie ab.
+
 ## Completed - 2026-08-23 (25): Phase 6 fertig — und drei Sachen, die dabei aufgefallen sind
 
 Damit ist an Phase 6 nur noch offen, was ohnehin auf den Prod-Deploy wartet: die acht Fragen aus
