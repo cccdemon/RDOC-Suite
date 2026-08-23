@@ -1,5 +1,23 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (24): Die Abnahmefragen warten auf die Produktivinstanz
+
+Entscheidung des Users: die Urteilsfragen aus Paragraph 19 werden beantwortet, wenn das Redesign
+live ist — nicht am lokalen Docker-Stack. Der hat keine echten Daten, keine echte Guild und keine
+Mitspieler; ob ein Operator ohne Handbuch weiterkommt, laesst sich daran nicht beurteilen.
+
+[`docs/REDESIGN-ABNAHME.md`](REDESIGN-ABNAHME.md) ist entsprechend umgestellt:
+
+- Das Schlussgatter steht jetzt vorn und ist ausdruecklich als **nach dem Deploy** markiert.
+- Die acht Fragen sind in Klartext uebersetzt. „Wo bin ich?" sagt niemandem etwas; „du bist drei
+  Klicks tief in einer Operation — steht irgendwo, dass du in einer Operation bist?" schon. Jede
+  Frage nennt jetzt den Fehler, den sie meint, und was vorher daran kaputt war.
+- Die Anleitung sagt, dass es kein Abhaken ist, sondern ein Durchlauf mit einer einzigen Frage:
+  stockt es irgendwo?
+
+Der lokale Teil der Checkliste (Stack starten, Rollen anmelden, die zehn Szenarien) bleibt stehen —
+er ist weiterhin brauchbar, um vor einem Deploy etwas Konkretes nachzusehen.
+
 ## Completed - 2026-08-23 (23): Die pruefbare Haelfte von Phase 6 ist jetzt ein Spec
 
 Neu: `e2e/tests/22-role-matrix.spec.ts`, neun Tests gegen den echten Stack. Alles, was auf einer

@@ -8,8 +8,61 @@
 > §15 Phase 6, §16, §17 und §19.
 >
 > **Warum von Hand:** 219 SPA-Tests und 128 Playwright-Tests sagen, dass die Bedienwege
-> funktionieren. Sie sagen nicht, ob jemand ohne Handbuch weiß, was als Nächstes dran ist. Das ist
-> die Frage aus §19, und sie beantwortet nur ein Mensch.
+> funktionieren. Sie sagen nicht, ob jemand ohne Handbuch weiß, was als Nächstes dran ist.
+>
+> **Der eigentliche Test steht in Abschnitt 0 und findet nach dem Deploy statt.** Die Abschnitte
+> darunter sind das lokale Werkzeug, falls du vorher etwas Konkretes nachsehen willst.
+
+---
+
+## 0. Das Schlussgatter — **nach dem Deploy**
+
+Diese acht Fragen sind der eigentliche Abnahmetest (§19). Sie werden **an der Produktivinstanz**
+beantwortet, nicht am lokalen Stack: der hat keine echten Daten, keine echte Guild und keine
+Mitspieler, und ob jemand ohne Handbuch weiterkommt, lässt sich daran nicht beurteilen.
+
+Es ist **kein Abhaken**. Es ist ein Durchlauf — Operation anlegen, verwalten, zurück in die
+Teilnehmeransicht, rund zehn Minuten — mit einer einzigen Frage im Kopf: **stockt es irgendwo?**
+Musstest du kurz suchen, zweimal hinsehen oder etwas ausprobieren, um sicher zu sein? Diese Stelle
+ist der Befund. Notieren, wo.
+
+Die Fragen sind Fehler, in Frageform. Was jede meint:
+
+**1 · Wo bin ich?**
+Du bist drei Klicks tief in einer Operation. Steht irgendwo, dass du in einer Operation bist und
+nicht in den Servereinstellungen? *Vorher: die Konsole hing ohne Überschrift unter der Seite — man
+sah nicht, wo das eine aufhört und das andere anfängt.*
+
+**2 · Welche Operation, welcher Server?**
+Drei Operationen in zwei Tabs offen, du bearbeitest Bedarfe. Steht der Name der Operation auf dem
+Bildschirm? *Vorher nicht — der Titel stand im Hero, den hattest du längst weggescrollt.*
+
+**3 · In welcher Rolle handle ich?**
+Siehst du diese Seite gerade als Operator oder als normales Crew-Mitglied? Dieselbe Seite
+funktioniert für beide anders.
+
+**4 · Was ist der aktuelle Status?**
+Entwurf oder offen? Weiß die Crew schon davon? Wer das nicht sieht, kündigt eine Operation an, die
+noch niemand sehen kann.
+
+**5 · Was ist die wichtigste offene Aufgabe?**
+Du öffnest die Verwaltung. Sagt der Bildschirm, dass drei Einheiten auf deine Entscheidung warten?
+*Vorher stand da der Füllgrad — eine Zahl, die niemanden blockiert.*
+
+**6 · Was passiert, wenn ich den hervorgehobenen Knopf drücke?**
+Wenn sechs Knöpfe gleich aussehen, ist keiner hervorgehoben. Und wenn „Löschen" aussieht wie
+„Speichern", drückt es irgendwann jemand.
+
+**7 · Wie komme ich zurück zur Teilnehmeransicht?**
+Du bist im Arbeitsplatz. Gibt es einen sichtbaren Weg zurück zu dem, was die Crew sieht — oder musst
+du die URL ändern und die Zurück-Taste probieren?
+
+**8 · Wo finde ich jede bisherige Funktion?**
+Du hast das Cover letzte Woche über einen eigenen Tab gemacht. Den Tab gibt es nicht mehr. Findest
+du das Cover trotzdem?
+
+> Wenn nichts stockt, ist das Redesign durch — dann können dieses Dokument und
+> [`REDESIGN-STAND.md`](REDESIGN-STAND.md) gelöscht werden.
 
 ---
 
@@ -216,23 +269,7 @@ Vollständig im Spec abgedeckt. Nur nachsehen, wenn du einen Link kennst, der do
 
 ---
 
-## 5. Schlussgatter (§19)
-
-Das Redesign ist erst fertig, wenn ein Nutzer diese acht Fragen in **jedem** Kernablauf ohne Raten
-beantworten kann. Grüne Tests reichen dafür ausdrücklich nicht.
-
-- [ ] Wo bin ich?
-- [ ] Welche Operation und welchen Discord-Server bearbeite ich?
-- [ ] In welcher Rolle handle ich?
-- [ ] Was ist der aktuelle Status?
-- [ ] Was ist die wichtigste offene Aufgabe?
-- [ ] Was passiert, wenn ich die hervorgehobene Aktion ausführe?
-- [ ] Wie komme ich zurück zur Teilnehmeransicht?
-- [ ] Wo finde ich jede bisherige Funktion?
-
----
-
-## 6. Wenn etwas nicht stimmt
+## 5. Wenn etwas nicht stimmt
 
 Notieren mit: Rolle, Fenstergröße, URL, was du erwartet hast, was passiert ist. Die URL ist wichtig —
 Modus und Tab stehen darin, ein Fall ist damit reproduzierbar.

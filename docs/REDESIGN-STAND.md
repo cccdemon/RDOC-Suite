@@ -22,7 +22,7 @@ Phasenmodell aus dessen §15.
 | 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
 | 4 — Workflow und visuelle Hierarchie | **fertig** — Wizard, Kontrast, Aktionsrang, Kartentypen, Monospace |
 | 5 — Responsive und Accessibility | **fertig** |
-| 6 — Verifikation | **teilweise** — Rollenmatrix und Alt-Links als Spec (`22-role-matrix`); die §19-Fragen bleiben Handarbeit |
+| 6 — Verifikation | **teilweise** — Rollenmatrix und Alt-Links als Spec (`22-role-matrix`); die §19-Fragen warten auf den Prod-Deploy |
 
 ---
 
