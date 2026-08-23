@@ -163,7 +163,9 @@ describe("IA — server context", () => {
     expect(navHref(list, "guild_2")).toBe("/guilds");
   });
 
-  it("choosing a server in the rail rewrites the server links and survives navigation", async () => {
+  // Skipped while the picker is hidden (mergelog 26). Not deleted: this is the
+  // acceptance test for putting it back.
+  it.skip("choosing a server in the rail rewrites the server links and survives navigation", async () => {
     useSession(sessionOperator);
     renderAt("/operationen");
 
@@ -220,7 +222,9 @@ describe("IA — server context", () => {
 
 // ── 5. Mobile navigation ─────────────────────────────────────────────────────
 describe("IA — mobile navigation", () => {
-  it("replaces the flat select with the same groups and gates as the rail", async () => {
+  // Skipped while the picker is hidden (mergelog 26) — it asserts the drawer
+  // carries the picker too.
+  it.skip("replaces the flat select with the same groups and gates as the rail", async () => {
     useSession(sessionOperator);
     renderAt("/operationen");
 

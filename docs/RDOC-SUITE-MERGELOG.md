@@ -1,5 +1,29 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (26): Serverpicker im Menue vorlaeufig ausgeblendet
+
+Auf Ansage des Users, bis der Geltungsbereich morgen repariert wird.
+
+**Der Befund dahinter.** Der Picker setzt den aktiven Server, aber nur vier Seiten lesen ihn:
+Org-Flotte, Server-Einstellungen, Partnerschaften, Diagnose. Der **Wizard** und die **Vorlagen**
+haben ein eigenes `useState` und starten auf `operatorGuilds[0]` — wer im Menue VERSE waehlt und
+„Neue Operation" drueckt, steht im Wizard auf einem anderen Server. Ein Steuerelement, das die
+Auswahl dort nicht durchreicht, wo sie am meisten kostet, ist schlimmer als keins: es sieht so aus,
+als haette man gewaehlt.
+
+**Was das Ausblenden kostet.** Server-Einstellungen, Partnerschaften und Diagnose haben je ein
+eigenes Server-Select und verlieren nichts. **Org-Flotte hat keins** und bleibt auf dem gemerkten
+Server; ueber `?guild=<id>` ist sie weiterhin erreichbar, weil `useGuildSelection` eine gueltige
+URL-Guild uebernimmt.
+
+**Wie es abgeschaltet ist.** Eine Konstante `SERVER_PICKER_ENABLED = false` in `Sidebar.tsx`, nicht
+geloeschter Code. Der `serverContext` bleibt vollstaendig in Betrieb — die vier Seiten, die
+`?guild=` und die Kanonisierung der URL funktionieren unveraendert. Morgen ist es ein Einzeiler
+zurueck, zusammen mit dem eigentlichen Fix (Wizard und Vorlagen auf `useGuildSelection`).
+
+Die zwei Unit-Tests, die den Picker bedienen, sind mit `it.skip` und einem Verweis auf diesen
+Eintrag stillgelegt statt geloescht — sie sind die Abnahme fuer den Fix.
+
 ## Completed - 2026-08-23: Deploy `d17491e` — das UI/UX-Redesign ist live
 
 `67ece2e..d17491e`, 13 Commits, auf LXC 103 unter `/opt/RDOC-Suite`. Gebaut und neu gestartet:

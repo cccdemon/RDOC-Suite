@@ -149,6 +149,17 @@ function NavLinkItem({
 
 // The active server, right above the screens that belong to it — so "Org-Flotte"
 // and "Server-Einstellungen" are never ambiguous about *which* server (goal 4).
+// TEMPORARILY OFF (2026-08-23, mergelog 26). The picker sets the active server,
+// but only four screens read it — the create wizard and the templates page keep
+// their own state and start on the first operator guild. Choosing VERSE here and
+// pressing "Neue Operation" therefore lands on a different server, which is
+// worse than having no control at all: it looks like the choice was made.
+//
+// Back on together with the fix (wizard + templates on useGuildSelection). The
+// context itself stays live: ?guild=, URL canonicalisation and the four screens
+// that honour it are untouched.
+const SERVER_PICKER_ENABLED = false;
+
 function ServerPicker({ prefix }: { prefix: string }) {
   const t = useT();
   const { memberships, activeGuildId, setActiveGuildId } = useServerContext();
@@ -202,7 +213,7 @@ function NavTree({
       {groups.map((g) => (
         <div className="nav-group" key={g.id} data-testid={`${prefix}group-${g.id}`}>
           <div className="nav-group-label">{t(g.labelKey)}</div>
-          {g.id === "server" && <ServerPicker prefix={prefix} />}
+          {SERVER_PICKER_ENABLED && g.id === "server" && <ServerPicker prefix={prefix} />}
           {g.items.map((it) => (
             <NavLinkItem
               key={it.to}
