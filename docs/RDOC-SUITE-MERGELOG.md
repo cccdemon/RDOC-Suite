@@ -1,5 +1,47 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (27): `GET /changelog/unseen` verlangte einen CSRF-Token
+
+Vom User in der Browserkonsole der Produktivinstanz gemeldet: ein Stacktrace ohne Meldung, dazu
+`{"error":{"code":"forbidden","message":"Invalid CSRF token."}}` auf
+`GET /fleetplanner/api/v1/changelog/unseen`. Die minifizierten Frames liessen sich im
+ausgelieferten Bundle aufloesen — `dt` ist der `get()`-Helfer, `Jx` ist `getUnseenChangelog()`.
+
+**Der Fehler.** Die Route lief durch `requireSessionJson`, und das verlangt einen
+`x-csrf-token`-Header. Der `get()`-Helfer der SPA schickt keinen — ein Lesezugriff hat nichts zu
+faelschen. Ergebnis: **jeder angemeldete Nutzer** bekam bei jedem Seitenaufruf 403 und einen
+Fehler in der Konsole, das Changelog-Popup erschien nie. Ein anonymer Besucher bekam 401, was
+plausibel aussieht — deshalb faellt es weder im Smoke noch beim Ausprobieren auf.
+
+Es ist derselbe Fehler wie beim Vorlagen-Marktplatz, der weiter unten in derselben Datei einen
+Kommentar dazu traegt. Zweimal dieselbe Form, also ist die Absicherung strukturell statt ein
+dritter Einzelfall: [`__tests__/api/csrf-on-reads.test.ts`](../apps/fleetplanner/src/__tests__/api/csrf-on-reads.test.ts)
+liest `routes/apiV1.ts` und lehnt **jede** GET-Route ab, die durch `requireSessionJson` geht.
+
+**Zwei Sachen beim Testschreiben.** Die erste Fassung des Guards meldete zusaetzlich
+`/guilds/:id/diagnostics` — ein Fehlalarm: der Helfer `requireSuperadmin` ist zwischen zwei Routen
+deklariert und ruft `requireSessionJson` legitim auf, mein Slicer schrieb ihn der Route darueber zu.
+Der Schnitt endet jetzt auch an Funktionsdeklarationen.
+
+Und der Guard wurde gegengeprueft: Fehler wieder eingebaut → beide Tests rot, Fehler entfernt →
+gruen. Ein Test, von dem man nicht weiss, ob er ausloest, ist keiner — dieselbe Lektion wie beim
+Rollenmatrix-Spec, wo drei „bestandene" Tests nichts geprueft hatten.
+
+Kein Redesign-Fehler: die Route ist aelter als diese Arbeit. Gefunden hat ihn erst der Blick in die
+Konsole der laufenden Instanz.
+
+**Der Fix hat sofort die E2E-Suite umgeworfen** — 20 von 139 rot, und zwar alles, was eine Operation
+anlegt. Ursache war nicht der Fix, sondern seine Folge: `/changelog/unseen` antwortet wieder, also
+erscheint das „Was ist neu?"-Popup — ein modaler Dialog ueber der ganzen Seite, der jeden Klick
+abfaengt. Die Specs mussten das nie behandeln, weil das Popup seit Langem tot war.
+
+Behoben in `e2e/helpers/auth.ts`: der Login quittiert das Changelog gleich mit. Kein Spec handelt
+vom Popup, und ein Dialog, den niemand wegklickt, blockiert jeden anderen.
+
+Nebenbei ein Eigentor: ich hatte zwei Playwright-Laeufe gleichzeitig gegen denselben Stack gestartet.
+Deren `cleanup()` loeschen sich gegenseitig die Daten — der erste Lauf brauchte 21,9 Minuten statt
+1,3 und meldete Unsinn. Ein Lauf pro Stack.
+
 ## Completed - 2026-08-23 (26): Serverpicker im Menue vorlaeufig ausgeblendet
 
 Auf Ansage des Users, bis der Geltungsbereich morgen repariert wird.

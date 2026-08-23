@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Das Changelog-Popup schlug für jeden angemeldeten Nutzer fehl (2026-08-23)
+
+`GET /api/v1/changelog/unseen` lief durch die CSRF-Prüfung, die für Mutationen gedacht ist. Der
+Lese-Helfer der SPA schickt keinen `x-csrf-token`, also antwortete die Route jedem eingeloggten
+Nutzer mit 403 — sichtbar als Fehler in der Browserkonsole bei jedem Seitenaufruf, und das Popup
+erschien nie. Anonyme Besucher bekamen 401, weshalb es keinem Smoke-Test auffiel.
+
+Derselbe Fehler war zuvor schon beim Vorlagen-Marktplatz aufgetreten. `csrf-on-reads.test.ts` lehnt
+jetzt jede GET-Route ab, die durch die Mutations-Guard läuft.
+
 ### Fixed - Ein Link in einen anderen Discord-Server wurde verworfen (2026-08-23)
 
 `?guild=<andere Guild>` zeigte zwar den verlinkten Server an, schrieb die Adresse aber auf den

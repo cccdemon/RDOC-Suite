@@ -42,6 +42,14 @@ export async function login(
   });
   if (!res.ok()) throw new Error(`e2e login failed for ${username}: ${res.status()} ${await res.text()}`);
   const body = (await res.json()) as { userId: string; guildId: string; csrfToken: string; discordId: string | null };
+  // Start with the "what's new" popup already acknowledged. It is a modal over
+  // the whole page, so an unseen changelog entry blocks every click in every
+  // spec — and none of them are about the popup. (It was invisible until the
+  // /changelog/unseen CSRF fix on 2026-08-23, which is why no spec ever met it.)
+  await ctx
+    .post(`${APP}/api/v1/changelog/ack`, { headers: { "x-csrf-token": body.csrfToken } })
+    .catch(() => undefined);
+
   const state = await ctx.storageState();
   const sid = state.cookies.find((c) => c.name === "fp_sid")?.value ?? "";
   await ctx.dispose();

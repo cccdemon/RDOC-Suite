@@ -554,8 +554,12 @@ export async function apiV1Routes(app: FastifyInstance) {
   // SPA shows a one-shot modal after login and acks below. Uses the same session
   // guard as everything else; no partner/guild scoping — it's per-user.
   app.get("/api/v1/changelog/unseen", async (req, reply) => {
-    const ctx = await requireSessionJson(req, reply);
-    if (!ctx) return;
+    // A GET requires a session but NOT a CSRF token — the SPA's get() helper
+    // sends no x-csrf-token, so this rejected every logged-in reader with 403
+    // and the popup never appeared. Same mistake as the templates list further
+    // down; CSRF belongs on the state-changing half, which is the ack below.
+    const ctx = await optionalAuth(req);
+    if (!ctx) return sendError(reply, req, 401, "unauthenticated", "Sign in required.");
     const u = await prisma.user.findUnique({
       where: { id: ctx.user.id },
       select: { lastSeenChangelog: true },
