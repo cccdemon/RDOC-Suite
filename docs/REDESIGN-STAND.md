@@ -134,7 +134,8 @@ Zeiten. Erledigt in Phase 5a.
 
 ## 5. Was noch offen ist
 
-Nur noch **Phase 6 — Verifikation** (§15 Phase 6, §17). Das ist Handarbeit am laufenden Stack:
+Nur noch **Phase 6 — Verifikation** (§15 Phase 6, §17). Das ist Handarbeit am laufenden Stack —
+Ablauf, Anmeldung je Rolle und Haken stehen in [`REDESIGN-ABNAHME.md`](REDESIGN-ABNAHME.md):
 
 - Rollenmatrix Gast / Crew / Operator / Superadmin, je Desktop und Mobile.
 - Die zehn Abnahmeszenarien aus §17 — vom Gast auf dem Telefon bis zum Multi-Guild-Deep-Link mit

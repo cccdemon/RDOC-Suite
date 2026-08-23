@@ -1,5 +1,28 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (22): Abnahme-Checkliste fuer Phase 6
+
+[`docs/REDESIGN-ABNAHME.md`](REDESIGN-ABNAHME.md). Phase 6 des Handoffs ist Handarbeit: 219 SPA- und
+119 Playwright-Tests sagen, dass die Bedienwege funktionieren, nicht ob jemand ohne Handbuch weiss,
+was als Naechstes dran ist. Das ist die Frage aus Paragraph 19.
+
+Inhalt: Stack-Start unter Windows ohne Git Bash (`docker compose -f docker-compose.test.yml up -d
+--build`, vier Container), ein Anmelde-Schnipsel je Rolle, die zehn Szenarien aus Paragraph 17 als
+abhakbare Schritte, die Liste der Alt-Links aus Paragraph 16, die Mobile-Spezifika aus Paragraph 11,
+und die acht Fragen aus Paragraph 19 als Schlussgatter.
+
+**Der Anmeldeweg ist nachgeprueft, nicht angenommen.** nginx reicht unbekannte Pfade ans Backend
+durch, also geht `POST /e2e/login` same-origin aus der Browserkonsole auf Port 8099 und setzt
+`fp_sid` direkt fuer die Oberflaeche — kein Cookie-Basteln noetig. Geprueft wurde ausserdem, dass die
+Sitzung mit der erwarteten Rolle zurueckkommt (`e2e-op` = Guild-Fleetoperator, `e2e-admin` =
+Superadmin) und dass ein zweiter Aufruf mit `guildId` die erste Mitgliedschaft **nicht ersetzt**,
+sondern eine zweite anlegt — genau das braucht der Multi-Guild-Fall.
+
+Der Seam existiert nur lokal: ohne `E2E_TEST_LOGIN_SECRET` registriert `routes/e2eAuth.ts` die
+Routen gar nicht, und in Produktion ist die Variable leer.
+
+Wegwerfdokument — loeschen, wenn die Abnahme durch ist.
+
 ## Completed - 2026-08-23 (21): Redesign Phase 5b — Dialoge als Sheet, Startseite gefaltet
 
 Damit ist Phase 5 durch.
