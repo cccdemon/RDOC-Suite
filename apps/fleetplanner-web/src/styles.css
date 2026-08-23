@@ -535,7 +535,11 @@ a { color: var(--cyan); }
   border: 1px solid var(--border); background: transparent; color: var(--dim);
   border-radius: 7px; padding: 0.35rem; cursor: pointer;
 }
+/* The drawer is a modal panel over the page, not a block that pushes it down
+   (§4.2). It is only ever rendered below the breakpoint, so the desktop rules
+   below just keep it out of the way. */
 .mobile-drawer { display: none; border: 1px solid var(--border); border-radius: 10px; background: var(--chrome); padding: 0.8rem 0.7rem; margin-bottom: 1.2rem; }
+.mobile-drawer-backdrop { display: none; }
 
 /* toast */
 .toast { position: fixed; left: 50%; bottom: 1.4rem; transform: translateX(-50%); z-index: 10000; background: var(--bg2); border: 1px solid var(--border-hi); border-radius: 10px; padding: 0.7rem 1.1rem; font-family: var(--mono); font-size: 0.78rem; color: var(--text); }
@@ -558,7 +562,28 @@ a { color: var(--cyan); }
   .sidebar { display: none; }
   .app-content { padding: 1rem clamp(0.8rem, 3vw, 1.4rem) 4rem; }
   .mobile-head { display: flex; }
-  .mobile-drawer { display: block; }
+  .mobile-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    background: color-mix(in srgb, var(--rdoc-space) 74%, transparent);
+  }
+  .mobile-drawer {
+    display: block;
+    position: fixed;
+    z-index: 9001;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(20rem, 88vw);
+    margin: 0;
+    border-radius: 0 14px 14px 0;
+    border-left: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
 
 /* Focus ring (BrandGuide §8): visible, brand-coloured, and never only a colour

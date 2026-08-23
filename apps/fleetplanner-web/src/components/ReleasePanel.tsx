@@ -4,7 +4,7 @@ import type { OperationDetail } from "../api/types";
 import { AnnouncePanel } from "./AnnouncePanel";
 import { Ic } from "./Icons";
 import { CardHead, MONO, card } from "./ui";
-import { OP_STATUSES, statusMeta } from "./opStatus";
+import { OP_STATUSES, statusMeta } from "../opStatus";
 
 // Handoff §7.1 — "Freigabe & Verteilung".
 //

@@ -4,7 +4,7 @@ import type { OperationMode } from "../operationMode";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { Ic } from "./Icons";
 import { MONO } from "./ui";
-import { statusMeta } from "./opStatus";
+import { statusMeta } from "../opStatus";
 
 // Handoff §6.1 — the permanent object header.
 //

@@ -22,7 +22,7 @@ Phasenmodell aus dessen §15.
 | 3 — Verwaltungs-IA | **fertig** — Briefing & Medien, Freigabe & Verteilung, Offene Arbeit, Gefahrenbereich |
 | 4 — Workflow und visuelle Hierarchie | **fertig** — Wizard, Kontrast, Aktionsrang, Kartentypen, Monospace |
 | 5 — Responsive und Accessibility | **fertig** |
-| 6 — Verifikation | **teilweise** — Rollenmatrix und Alt-Links als Spec (`22-role-matrix`); die §19-Fragen warten auf den Prod-Deploy |
+| 6 — Verifikation | **fertig, bis auf §19** — alle sieben Schritte gefahren, Rollenmatrix/Alt-Links/Tastatur/Verlauf als Specs; die acht Fragen warten auf den Prod-Deploy |
 
 ---
 
@@ -154,6 +154,11 @@ die Frage aus §19.
 - **Deutsche Anführungszeichen in JS-Stringliteralen** brauchen `„…“`. Ein `„…"` beendet den String
   und produziert eine `TS1005`-Kaskade.
 - **`partnerTargetGuildIds` ist create-only** — die Partnerverteilung wird angezeigt, nicht angeboten.
+- **Zwei Effekte im selben Commit sehen einander nicht.** Der kanonisierende Guild-Effekt in
+  `serverContext.tsx` las die *alte* aktive Guild und überschrieb damit den Deep Link, den der
+  Übernahme-Effekt gerade adoptierte. Wer dort etwas ändert: `urlGuildKnown` ist der Wächter.
+- **`npx knip` nach größeren Umbauten laufen lassen.** Es hat eine Statustabelle gefunden, die ich
+  selbst dupliziert hatte — ausgerechnet mit dem Kommentar, es gäbe nur eine.
 - **Eine CSS-Regel, die inline gesetzte Werte treffen soll, trifft sie nicht.** Die verworfene
   `:has()`-Regel für Icon-Button-Breiten wäre an genau den Buttons vorbeigegangen, für die sie
   gedacht war.
@@ -167,9 +172,10 @@ Unter Windows über Git Bash (`bash scripts/test-stack.sh …`) oder direkt mit
 
 ```bash
 ./scripts/test-stack.sh unit          # Backend  591 Tests, 40 Dateien
+./scripts/test-stack.sh db            # DB-Integration 20 Tests, 2 Dateien
 ./scripts/test-stack.sh unit:web      # SPA      219 Tests, 9 Dateien
 ./scripts/test-stack.sh up            # Stack hoch (web :8099, api :3299, mock :4400)
-./scripts/test-stack.sh e2e           # Playwright 128 passed, 3 skipped
+./scripts/test-stack.sh e2e           # Playwright 136 passed, 3 skipped
 ./scripts/test-stack.sh smoke         # grün
 ./scripts/test-stack.sh down
 docker compose -f docker-compose.test.yml build fleetplanner-web   # tsc --noEmit + vite build

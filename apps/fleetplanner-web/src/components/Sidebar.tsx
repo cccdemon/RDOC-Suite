@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { logout } from "../api/client";
 import type { SessionResponse } from "../api/types";
@@ -268,19 +268,59 @@ export function MobileNav({ session, theme, setThemeId }: { session: SessionResp
   const t = useT();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   // Navigating always closes the drawer — including via browser back.
   useEffect(() => { setOpen(false); }, [pathname]);
+
+  // §4.2 asks for overlay, Escape, focus trap, focus return and close-on-navigate.
+  // Only the last one existed. The drawer used to be an inline panel that pushed
+  // the page down, which is also why a focus trap would have been wrong: you do
+  // not trap somebody inside a region they can scroll past. It is a modal now, so
+  // all five belong together.
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    // Move focus in, so a keyboard user is where the menu is.
+    panel?.querySelector<HTMLElement>('a, button, select, [tabindex]:not([tabindex="-1"])')?.focus();
+
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (e.key !== "Tab" || !panel) return;
+      const items = [...panel.querySelectorAll<HTMLElement>('a, button, select, [tabindex]:not([tabindex="-1"])')]
+        .filter((el) => !el.hasAttribute("disabled"));
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      // Wrap at both ends rather than letting focus escape to the page behind.
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      // Focus goes back where it came from — otherwise it lands at the top of
+      // the document and the reader starts over.
+      toggleRef.current?.focus();
+    };
+  }, [open]);
 
   return (
     <>
       <div className="mobile-head">
         <button
           type="button"
+          ref={toggleRef}
           className="nav-icon mobile-nav-toggle"
           data-testid="mobile-nav-toggle"
           aria-expanded={open}
           aria-controls="mobile-nav-drawer"
+          aria-haspopup="dialog"
           aria-label={t("sidebar.menuAria")}
           onClick={() => setOpen((v) => !v)}
         >
@@ -292,15 +332,28 @@ export function MobileNav({ session, theme, setThemeId }: { session: SessionResp
         <UserChip session={session} />
       </div>
       {open && (
-        <nav id="mobile-nav-drawer" className="mobile-drawer" data-testid="mobile-nav-drawer">
-          <NavTree session={session} prefix="mnav-" onNavigate={() => setOpen(false)} />
-          <div className="nav-foot-links">
-            <DeveloperLinks prefix="mnav-" onNavigate={() => setOpen(false)} />
-            <Link to="/rechtliches" data-testid="mnav-legal" className="nav-dev-link" onClick={() => setOpen(false)}>
-              {t("sidebar.legal")}
-            </Link>
+        <>
+          <div className="mobile-drawer-backdrop" data-testid="mobile-nav-backdrop" onClick={() => setOpen(false)} />
+          <div
+            id="mobile-nav-drawer"
+            ref={panelRef}
+            className="mobile-drawer"
+            data-testid="mobile-nav-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t("sidebar.menuAria")}
+          >
+            <nav>
+              <NavTree session={session} prefix="mnav-" onNavigate={() => setOpen(false)} />
+            </nav>
+            <div className="nav-foot-links">
+              <DeveloperLinks prefix="mnav-" onNavigate={() => setOpen(false)} />
+              <Link to="/rechtliches" data-testid="mnav-legal" className="nav-dev-link" onClick={() => setOpen(false)}>
+                {t("sidebar.legal")}
+              </Link>
+            </div>
           </div>
-        </nav>
+        </>
       )}
     </>
   );

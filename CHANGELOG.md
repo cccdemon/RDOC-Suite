@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Ein Link in einen anderen Discord-Server wurde verworfen (2026-08-23)
+
+`?guild=<andere Guild>` zeigte zwar den verlinkten Server an, schrieb die Adresse aber auf den
+gemerkten zurück — Inhalt und URL widersprachen sich, und der nächste Render übernahm die URL
+wieder. Zwei Effekte liefen gegeneinander; der kanonisierende hält jetzt still, solange die URL eine
+Guild nennt, in der man tatsächlich ist. Gefunden von `e2e/tests/23-keyboard-history.spec.ts`.
+
+### Fixed - Das mobile Menü war kein Dialog (2026-08-23)
+
+Der Drawer schloss nur beim Navigieren: kein Escape, keine Fokusfalle, kein Rückfokus, kein Overlay.
+Er ist jetzt ein modaler Dialog über der Seite — Escape schließt, Tab bleibt darin, und der Fokus
+kehrt auf die Menütaste zurück statt an den Seitenanfang.
+
+### Added - Tastatur, Browserverlauf und Multi-Guild sind getestet (2026-08-23)
+
+`e2e/tests/23-keyboard-history.spec.ts`: acht Tests für Serverwechsel per Deep Link, Links in fremde
+Server, Fokusverhalten des Drawers, Pfeiltasten in der Verwaltungsnavigation, Löschen per Tastatur,
+und dass Ansicht, Modus und Tab die Zurück-Taste überleben.
+
+### Changed - Ein Statusvokabular statt zwei (2026-08-23)
+
+Beim Umbau war eine zweite Statustabelle entstanden, mit abweichenden Farben für dieselben Zustände.
+Die settbaren Status leiten sich jetzt aus derselben Tabelle ab wie die Badges in Liste und Kalender.
+
 ### Added - Die Rollenmatrix und die Alt-Links sind jetzt getestet (2026-08-23)
 
 `e2e/tests/22-role-matrix.spec.ts` prüft gegen den laufenden Stack, was Gast, Crew, Operator und

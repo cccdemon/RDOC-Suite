@@ -16,7 +16,7 @@ import { ReleasePanel } from "./ReleasePanel";
 import { OpenWorkPanel } from "./OpenWorkPanel";
 import { CardHead, MONO, btnGhost, btnPrimary, card, inp, lbl } from "./ui";
 import { FieldSaveProvider, GlobalSaveBadge, SaveDot, useFieldSave } from "./fieldSave";
-import { OP_STATUSES } from "./opStatus";
+import { OP_STATUSES } from "../opStatus";
 
 // IA merge D + Operator-Console redesign (Variante A "Tabs + Live"): one screen,
 // adaptive section of the op-detail page (op.canManage). Persistent status header

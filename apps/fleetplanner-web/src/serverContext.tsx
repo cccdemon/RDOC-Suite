@@ -119,10 +119,17 @@ export function ServerContextProvider({
   useEffect(() => {
     if (!sessionReady || !activeGuildId || !isServerRoute(pathname)) return;
     if (urlGuild === activeGuildId) return;
+    // A URL naming a guild the viewer IS in is a deep link the adopt effect
+    // above has not applied yet — both effects run in the same commit, and this
+    // one sees the *old* active guild. Rewriting here overwrote the deep link
+    // before it took effect: the page showed the linked server while the URL
+    // said the remembered one, and the next render adopted the URL back. Let
+    // the adopt settle; the next pass finds them equal and does nothing.
+    if (urlGuildKnown) return;
     const sp = new URLSearchParams(search);
     sp.set("guild", activeGuildId);
     navigate({ pathname, search: `?${sp.toString()}`, hash }, { replace: true });
-  }, [sessionReady, activeGuildId, urlGuild, pathname, search, hash, navigate]);
+  }, [sessionReady, activeGuildId, urlGuild, urlGuildKnown, pathname, search, hash, navigate]);
 
   const value = useMemo<ServerContextValue>(
     () => ({

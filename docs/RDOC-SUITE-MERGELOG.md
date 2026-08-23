@@ -1,5 +1,49 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-08-23 (25): Phase 6 fertig — und drei Sachen, die dabei aufgefallen sind
+
+Damit ist an Phase 6 nur noch offen, was ohnehin auf den Prod-Deploy wartet: die acht Fragen aus
+Paragraph 19.
+
+**Erst zwei Korrekturen an frueheren Eintraegen.**
+
+Eintrag (21) sagt, im Drawer seien „Fokusfalle, Escape und Rueckfokus schon da". Fuer den
+Vorlagenpicker stimmt das, fuer den **Mobile-Drawer** nicht: `MobileNav` hatte nur „schliesst nach
+Navigation". Kein Escape, keine Fokusfalle, kein Rueckfokus, kein Overlay — vier von fuenf Punkten
+aus Paragraph 4.2 fehlten. Der Drawer war ausserdem ein Inline-Panel, das die Seite nach unten
+schob; eine Fokusfalle waere darin sogar falsch gewesen, denn man sperrt niemanden in einen Bereich,
+an dem er vorbeiscrollen kann. Er ist jetzt ein modaler Dialog mit Backdrop, und damit gehoeren alle
+fuenf zusammen.
+
+Und: Paragraph 15 Phase 6 listet sieben Verifikationsschritte. Ich habe sechs nach jedem Schritt
+gefahren und die **DB-Integrationstests** kein einziges Mal — trotzdem stand „Phase 6" in den
+Meldungen. Nachgeholt: 20 Tests, 2 Dateien, gruen. Sie waren nie rot, aber das wusste ich nicht.
+
+**Neu: `e2e/tests/23-keyboard-history.spec.ts`**, acht Tests fuer die Szenarien aus Paragraph 17, die
+Mechanik sind statt Ermessen: Multi-Guild samt Link in eine fremde Guild (7), Tastaturbedienung (9),
+Browserverlauf (10).
+
+**Der Spec hat einen echten Fehler gefunden.** Ein Deep Link auf `?guild=<andere Guild>` wurde
+verworfen: die Seite zeigte den verlinkten Server, die URL wurde aber auf den gemerkten
+zurueckgeschrieben, und der naechste Render uebernahm die URL wieder — Inhalt und Adresse
+widersprachen sich. Ursache: die beiden Effekte in `serverContext.tsx` laufen im selben Commit, und
+der kanonisierende sieht noch die *alte* aktive Guild. Er haelt jetzt still, solange die URL eine
+Guild nennt, in der der Betrachter tatsaechlich ist — die Uebernahme besitzt diesen Fall. Der
+Unit-Test dafuer existierte und war gruen; in jsdom faellt das Timing anders.
+
+**Und eine Dublette, die ich selbst gebaut hatte.** `npx knip` zeigte `components/opStatus.ts` —
+angelegt in Phase 2 mit dem Kommentar „Statusvokabular an einer Stelle", waehrend `src/opStatus.ts`
+schon existierte. Zwei Tabellen fuer dieselben Zustaende, mit abweichenden Farben („Abgesagt" einmal
+`--red`, einmal `--red2`). Zusammengefuehrt: die settbaren Lebenszyklus-Status leiten sich jetzt aus
+derselben `STATUS`-Tabelle ab wie die Badges. `requestedMode` ist nicht mehr exportiert.
+
+Knip meldet noch drei ungenutzte Typen (`OpStatusKey`, `ServiceHealth`, `SyncHealth`) — Altbestand,
+nicht aus dieser Arbeit.
+
+Verifikation, diesmal alle sieben Punkte: Contracts und SPA-Build gruen; SPA-Unit **219**;
+Backend-Unit **591**; **DB-Integration 20**; Smoke gruen; Playwright **136 passed, 3 skipped**
+(vorher 128).
+
 ## Completed - 2026-08-23 (24): Die Abnahmefragen warten auf die Produktivinstanz
 
 Entscheidung des Users: die Urteilsfragen aus Paragraph 19 werden beantwortet, wenn das Redesign

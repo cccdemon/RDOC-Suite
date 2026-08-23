@@ -49,6 +49,45 @@ export function opStatusBadge(op: {
   return { key: "open", ...STATUS.open };
 }
 
+/**
+ * The statuses an operator can actually SET, in the order the control offers
+ * them. `opStatusBadge` above answers a different question — what badge an
+ * operation shows, which folds in capacity ("FAST VOLL") and the clock. Those
+ * are derived and nobody can pick them.
+ *
+ * Both read their words and colours from the same STATUS table, because the
+ * alternative is what this file was created to stop: the same state showing up
+ * as two different words in two different views.
+ */
+const SETTABLE: Array<{ value: string; key: OpStatusKey }> = [
+  { value: "draft", key: "draft" },
+  { value: "open", key: "open" },
+  { value: "locked", key: "locked" },
+  { value: "starting", key: "starting" },
+  { value: "in_progress", key: "running" },
+  { value: "completed", key: "done" },
+  { value: "cancelled", key: "cancelled" },
+];
+
+export type OpStatusMeta = { value: string; label: string; color: string };
+
+/** Sentence case, because these sit in prose and on buttons — the badge
+ *  component uppercases its own copy for the badge context. */
+function sentence(label: string): string {
+  return label.charAt(0) + label.slice(1).toLowerCase();
+}
+
+export const OP_STATUSES: OpStatusMeta[] = SETTABLE.map(({ value, key }) => ({
+  value,
+  label: sentence(STATUS[key].label),
+  color: STATUS[key].color,
+}));
+
+/** Unknown values keep their raw name rather than vanishing from a header. */
+export function statusMeta(value: string): OpStatusMeta {
+  return OP_STATUSES.find((s) => s.value === value) ?? { value, label: value, color: "var(--dim2)" };
+}
+
 /** Visibility, in the same words the wizard and the edit form use. */
 const VISIBILITY_LABEL: Record<string, string> = {
   private: "PRIVAT",

@@ -19,7 +19,7 @@ const TAB_KEYS = ["op", "sub", "section"] as const;
  * The mode a URL asks for, before permissions are considered.
  * `null` means the URL is silent and the caller may pick its own default.
  */
-export function requestedMode(sp: URLSearchParams): OperationMode | null {
+function requestedMode(sp: URLSearchParams): OperationMode | null {
   const explicit = sp.get("mode");
   if (explicit === "manage" || explicit === "view") return explicit;
   // A tab in the URL is an old management link. Honour it rather than dropping
