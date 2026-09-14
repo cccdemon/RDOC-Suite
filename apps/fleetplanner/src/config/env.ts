@@ -24,8 +24,8 @@ const schema = z.object({
   // Useful during deploys; leave unset for normal operation.
   MAINTENANCE_MODE: z.string().optional(),
   WEB_PUBLIC_URL: httpUrl.default("http://localhost:3200"),
-  // At least one OAuth provider must be configured. Discord is the
-  // original provider; GitHub and Google are alternatives.
+  // Discord is the only login provider (see DISCORD_FLEETPLANNER_CLIENT_*;
+  // these two are the legacy alias).
   DISCORD_CLIENT_ID: z.string().optional(),
   DISCORD_CLIENT_SECRET: z.string().optional(),
   SUPERADMIN_DISCORD_ID: z.string().optional(),
@@ -33,13 +33,6 @@ const schema = z.object({
   // (e.g. to request Voice Permission). Discord handle, email, or URL.
   SUPERADMIN_CONTACT: z.string().optional(),
 
-  // GitHub OAuth (optional — leave unset to hide GitHub login button)
-  GITHUB_CLIENT_ID: z.string().optional(),
-  GITHUB_CLIENT_SECRET: z.string().optional(),
-
-  // Google OAuth (optional — leave unset to hide Google login button)
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_ID: z.string().optional(),
   DISCORD_FLEETPLANNER_CLIENT_SECRET: z.string().optional(),
   DISCORD_FLEETPLANNER_BOT_TOKEN: z.string().optional(),

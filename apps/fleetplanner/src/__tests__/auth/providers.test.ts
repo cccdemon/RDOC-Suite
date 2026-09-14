@@ -67,3 +67,33 @@ describe("discordEnabled", () => {
     expect(discordEnabled()).toBe(false);
   });
 });
+
+describe("safeReturnTo — post-login redirect target", () => {
+  it("accepts a same-site relative path, query included", async () => {
+    const { safeReturnTo } = await loadProviders();
+    expect(safeReturnTo("/ops/cmtg4auvn0041nn07695h17hu")).toBe("/ops/cmtg4auvn0041nn07695h17hu");
+    expect(safeReturnTo("/ops/abc?op=roster")).toBe("/ops/abc?op=roster");
+  });
+
+  it("refuses anything a browser could read as another origin", async () => {
+    const { safeReturnTo } = await loadProviders();
+    for (const bad of ["https://evil.example", "//evil.example", "/\evil.example", "evil", "", "/ops/\nx", "/ops/\tx"]) {
+      expect(safeReturnTo(bad)).toBeUndefined();
+    }
+  });
+
+  it("refuses non-strings, oversized input and the auth routes themselves", async () => {
+    const { safeReturnTo } = await loadProviders();
+    expect(safeReturnTo(undefined)).toBeUndefined();
+    expect(safeReturnTo(["/ops/a"])).toBeUndefined();
+    expect(safeReturnTo("/" + "a".repeat(600))).toBeUndefined();
+    expect(safeReturnTo("/auth/discord/start")).toBeUndefined();
+  });
+
+  it("carries returnTo through the OAuth state exactly once", async () => {
+    const { issueState, consumeState } = await loadProviders();
+    const state = issueState("discord", "/ops/abc");
+    expect(consumeState(state)).toEqual({ provider: "discord", returnTo: "/ops/abc" });
+    expect(consumeState(state)).toBeNull();
+  });
+});

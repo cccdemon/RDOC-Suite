@@ -1,5 +1,45 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-09-14 (2): „Jetzt mit Discord anmelden" auf der Operationsseite
+
+Auftrag des Users: Wer als Gast (nicht eingeloggt) eine Operation oeffnet, z.B.
+`/fleetplanner/ops/<id>`, muss einen auffaelligen Knopf „Jetzt mit Discord anmelden" sehen — und
+**nur** dann. Heute sieht ein Gast die Seite ohne jeden Hinweis, wie er sich anmeldet.
+
+**Umsetzung.** Banner in `OpDetailPage.tsx` ueber dem Hero, gerendert nur wenn die Session geladen
+ist und keinen User hat (waehrend des Ladens nicht, damit er bei Eingeloggten nicht aufblitzt). Der
+Operator-Vorschau-Modus „Gast" zeigt ihn ebenfalls, weil er genau diese Sicht nachstellt.
+
+**Rueckweg.** Heute landet jeder Login auf `/`. Ein Gast, der vom Event aus einloggt, muesste die
+Operation danach neu suchen. Deshalb nimmt `/auth/discord/start` ein optionales `returnTo` an und
+der Callback leitet dorthin zurueck. `returnTo` wird serverseitig im OAuth-State gehalten (nicht im
+Cookie) und nur als **relativer Pfad** akzeptiert (`/…`, kein `//`, kein `\`, keine Steuerzeichen) —
+sonst ist das ein Open Redirect. Ungueltig → wie bisher `/`.
+
+**Nicht lokal verifiziert:** Docker Desktop lief nicht, lokal gibt es kein TypeScript. Der
+Prod-Image-Build (tsc Backend, tsc + vite SPA) ist der erste Typecheck; Unit-Tests
+(`safeReturnTo`, Gast-/Eingeloggt-Banner) sind geschrieben, aber noch nicht gelaufen.
+
+## Completed - 2026-09-14 (1): Anmeldung nur noch ueber Discord
+
+Auftrag des Users: alle Anmeldemoeglichkeiten ausser Discord entfernen — kein GitHub, kein Google.
+
+**Was rausfliegt.** GitHub- und Google-OAuth in `auth/providers.ts` (Authorize-URL, Token-Tausch,
+`githubEnabled`/`googleEnabled`), die `GITHUB_*`/`GOOGLE_*`-Variablen im Env-Schema und in
+`.env.example`, die zwei Buttons auf der SPA-Loginseite samt i18n-Keys (SPA und SSR-Dicts), die
+Badges auf der Kontoseite. Dazu der **Discord-Verknuepfungsfluss** (`/auth/discord/link/*`,
+`linkIdentity`, Button „Discord verknuepfen"): er existierte nur, damit GitHub-/Google-Konten
+Discord nachtraeglich anhaengen koennen. Ohne diese Logins hat jedes Konto Discord ab der ersten
+Anmeldung — der Button waere toter Code.
+
+**Was bleibt.** `UserIdentity.provider` bleibt ein String, keine Migration. Bestehende GitHub-/
+Google-Identitaeten in der Datenbank bleiben liegen; ein Konto, das *nur* so eine Identitaet hat,
+kann sich nicht mehr anmelden. `/auth/start` und `/auth/callback` (Alt-Redirects auf Discord)
+bleiben.
+
+Doku nachziehen: `ARCHITEKTUR.md`, `privacy.md`, Routen-Inventar, README, SSR-Datenschutztexte,
+beide Changelogs.
+
 ## Completed - 2026-08-23 (27): `GET /changelog/unseen` verlangte einen CSRF-Token
 
 Vom User in der Browserkonsole der Produktivinstanz gemeldet: ein Stacktrace ohne Meldung, dazu

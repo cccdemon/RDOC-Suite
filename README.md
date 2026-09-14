@@ -204,7 +204,7 @@ Fleetplanner applies its Prisma migrations on container start.
 | Mission cover | `MISSIONCOVER_SERVICE_SECRET`, `MISSIONCOVER_SERVICE_URL`, `MISSIONCOVER_PUBLIC_URL`           |
 | Voice link    | `SQUADLINK_ROOM_AUTH_SECRET`, `SQUADLINK_WS_URL`, `SQUADLINK_STORE_URL` — unset secret hides the voice card |
 | Monitoring    | `GRAFANA_ADMIN_USER`, `GRAFANA_ADMIN_PASSWORD`; TLS needs `CF_API_TOKEN` for Caddy's DNS-01 challenge |
-| Optional      | `MAINTENANCE_MODE`, alternative login providers (`GITHUB_*`, `GOOGLE_*`), the captain-DM links (`FLEETPLANNER_VOICE_CLIENT_*`) |
+| Optional      | `MAINTENANCE_MODE`, the captain-DM links (`FLEETPLANNER_VOICE_CLIENT_*`) |
 | Test seam     | `E2E_TEST_LOGIN_SECRET`, `E2E_ALLOW_IN_PROD`, `E2E_TEST_LOGIN_EXPIRES` — leave unset in production, see [docs/TESTING.md](docs/TESTING.md) |
 
 The authoritative list is the Zod schema in [`apps/fleetplanner/src/config/env.ts`](apps/fleetplanner/src/config/env.ts) — it validates at startup and will reject a bad config. Unknown keys are dropped silently, so a variable that is not in that schema does nothing.

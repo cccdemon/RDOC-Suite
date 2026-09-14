@@ -884,13 +884,10 @@ export const en: Record<string, string> = {
 
   // Login / account / error pages
   "login.withDiscord": "Login with Discord",
-  "login.withGithub": "Login with GitHub",
-  "login.withGoogle": "Login with Google",
   "login.subtitle": "Star Citizen fleet operations — calendar, unit registration, seat assignment.",
   "login.publicVisible": "Public operations are visible without login.",
   "login.browseOps": "Browse operations →",
   "account.since": "since",
-  "account.linkDiscord": "Link Discord account",
   "account.title": "MY ACCOUNT",
   "account.tabTitle": "My Account",
   "account.linkedAccounts": "Linked accounts",
@@ -942,7 +939,6 @@ export const en: Record<string, string> = {
   "guilds.noServerBody": "Fleetplanner is organised per Discord server. To start planning, add the bot to a Discord you manage — or log in with a Discord account that is a member of a server where the bot is already installed.",
   "guilds.addBotMy": "Add Fleetplanner bot to my Discord",
   "guilds.alreadyMember": "Already a member somewhere? {link}",
-  "guilds.linkDiscord": "Link your Discord account →",
   "guilds.getStarted": "Get started",
 
   // Guild settings

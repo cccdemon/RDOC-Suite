@@ -631,7 +631,7 @@ export function howToBody(bp: string, superadminContact?: string): SafeHtml {
       <div class="section-title">Getting started — for Admirals</div>
       <div class="card" style="padding:1rem;max-width:52rem">
         <ol style="margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.6rem">
-          <li><strong>Login</strong> via Discord (or GitHub / Google if configured).</li>
+          <li><strong>Login</strong> via Discord.</li>
           <li>
             Click <strong>Servers → + Add Fleetplanner bot to a Discord</strong> and authorise the
             bot on your server. You become that server's Admiral.
@@ -910,11 +910,10 @@ export function datenschutzBody(bp: string): SafeHtml {
         <ul class="text-dim text-sm mt-1" style="padding-left:1.25rem;line-height:1.7">
           <li>An internal account ID, your instance role and an active flag, plus join and last-seen timestamps.</li>
           <li>
-            For each linked login (Discord, and optionally GitHub or Google): the external account ID,
-            display name, avatar URL, and an email address <em>if the provider returns one</em>. Our
-            Discord login requests only <span class="text-mono">identify</span> and
+            For your Discord login: the Discord account ID, display name and avatar URL. The login
+            requests only <span class="text-mono">identify</span> and
             <span class="text-mono">guilds</span> — it does <strong>not</strong> request your Discord
-            email. GitHub and Google logins do include your email.
+            email.
           </li>
           <li>
             The list of Discord server IDs you share with the bot (from the
@@ -970,7 +969,7 @@ export function datenschutzBody(bp: string): SafeHtml {
       <div class="card" style="padding:1.25rem;margin-top:1rem">
         <div class="card-title">Third parties</div>
         <p class="text-dim text-sm mt-1">
-          Login is handled via <strong>Discord</strong> (and optionally GitHub or Google). When you
+          Login is handled via <strong>Discord</strong>. When you
           authenticate, your IP address is transmitted to that provider. The bot reads your Discord
           guild list and posts scheduled events to servers you administer. Legal basis: Art. 6(1)(b)
           GDPR (performance of the service you request) and Art. 6(1)(f) GDPR (legitimate interest in

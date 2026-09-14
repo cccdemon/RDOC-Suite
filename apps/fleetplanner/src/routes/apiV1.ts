@@ -2878,8 +2878,8 @@ export async function apiV1Routes(app: FastifyInstance) {
           await logAudit(p.data.id, ctx.user.id, ctx.user.username, `unit:${decision}`, "");
 
           // Tell the captain — strictly best effort. Note the lookup is INSIDE
-          // the catch: discordUserIdForFleetplannerUser throws for a captain who
-          // never linked Discord (GitHub/Google login), and a missing DM must
+          // the catch: discordUserIdForFleetplannerUser throws for a captain
+          // without a Discord identity (legacy GitHub/Google account), and a missing DM must
           // never turn an accept that already happened into a 409.
           if (decision === "accept" && unit.captainId) {
             const env = getEnv();

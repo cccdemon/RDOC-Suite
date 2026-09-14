@@ -12,7 +12,7 @@ Wer bedient was:
 |---|---|---|
 | `routes/apiV1.ts` | 126 | **Der API-Layer.** JSON, sanitisierter Fehler-Envelope (`sendError`). Alles Neue kommt hierher. |
 | `routes/web.ts` | 11 | Die einzige HTML-Ausgabe: Crawler-Dokumente, Feeds, Asset-Proxy. |
-| `routes/auth.ts` | 7 | OAuth-Handshake (Discord, GitHub, Google) + Discord-Verknüpfung + Logout. |
+| `routes/auth.ts` | 5 | Discord-OAuth-Handshake, zwei Alt-Redirects, Logout. |
 | `routes/e2eAuth.ts` | 3 | Test-Seam — **existiert nur mit gesetztem `E2E_TEST_LOGIN_SECRET`**. |
 | `routes/guilds.ts` | 2 | Bot-Installation (Redirect zu Discord) und Rücksprung. |
 | `routes/discordInteractions.ts` | 1 | Discord→Server, Ed25519-geprüft. |
@@ -192,8 +192,6 @@ nginx entscheidet per User-Agent: Crawler bekommen dieses HTML, Menschen die SPA
 
 - `GET /auth/:provider/start`
 - `GET /auth/:provider/callback`
-- `GET /auth/discord/link/start`
-- `GET /auth/discord/link/callback`
 - `GET /auth/start`
 - `GET /auth/callback`
 - `POST /auth/logout`

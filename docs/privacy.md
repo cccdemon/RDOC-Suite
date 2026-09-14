@@ -15,7 +15,7 @@ Stand 2026-08-22, checked against `apps/fleetplanner/prisma/schema.prisma`.
 
 | Data | Where | Why | Retention |
 | --- | --- | --- | --- |
-| Discord (or GitHub/Google) **account id + username** | `UserIdentity.providerId` / `.username` | Links the login to the account; the Discord id is also how DMs and RSVPs are matched | Until the identity is unlinked or the account is deleted |
+| Discord **account id + username** (older accounts may still carry a GitHub/Google identity from before 2026-09-14) | `UserIdentity.providerId` / `.username` | Links the login to the account; the Discord id is also how DMs and RSVPs are matched | Until the identity is unlinked or the account is deleted |
 | **Display name, avatar hash, language, op-detail layout, Fleetyards username, last acknowledged changelog** | `User` | Shows who is who, renders the UI in the chosen language, and lets the hangar import re-sync with one click | Until the account is deleted |
 | **Instance role, active flag, joined / last-seen timestamps** | `User` | Permission checks; the last-seen date shows operators who is still around | Until the account is deleted |
 | **Session** | `UserSession.tokenHash` (SHA-256), `csrfToken`, `expiresAt` | Keeps you signed in | 30 days, or until logout |

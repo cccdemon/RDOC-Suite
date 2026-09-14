@@ -1,6 +1,5 @@
 // Find-or-create a User via a provider identity.
-// Handles: new user creation, returning users, superadmin bootstrap,
-// and linking a new identity to an already-logged-in user.
+// Handles: new user creation, returning users, superadmin bootstrap.
 
 import { prisma } from "../db.js";
 import { getEnv } from "../config/env.js";
@@ -10,7 +9,7 @@ import { claimInterestShadows } from "../services/eventInterest.js";
 
 export type IdentityResult =
   | { ok: true; userId: string }
-  | { ok: false; reason: "account_disabled" | "already_linked_to_another" };
+  | { ok: false; reason: "account_disabled" };
 
 /**
  * Called after a successful OAuth exchange. Finds or creates both the
@@ -35,27 +34,22 @@ export async function resolveIdentity(profile: ExternalProfile): Promise<Identit
     if (!existing.user.active) return { ok: false, reason: "account_disabled" };
 
     // Promote to superadmin if Discord ID matches SUPERADMIN_DISCORD_ID
-    if (profile.provider === "discord") {
-      await maybeSuperadmin(existing.user.id, profile.providerId);
-    }
+    await maybeSuperadmin(existing.user.id, profile.providerId);
     await prisma.user.update({
       where: { id: existing.user.id },
       data: { lastSeenAt: new Date(), username: profile.username },
     });
-    if (profile.provider === "discord") {
-      if (profile.discordGuildIds) {
-        await syncUserGuildMemberships(existing.user.id, profile.discordGuildIds).catch(() => {});
-      }
-      // FR-P2: claim any shadow event-interest captured before this login.
-      await claimInterestShadows(existing.user.id, profile.providerId).catch(() => {});
+    if (profile.discordGuildIds) {
+      await syncUserGuildMemberships(existing.user.id, profile.discordGuildIds).catch(() => {});
     }
+    // FR-P2: claim any shadow event-interest captured before this login.
+    await claimInterestShadows(existing.user.id, profile.providerId).catch(() => {});
     return { ok: true, userId: existing.user.id };
   }
 
   // No existing identity — create a fresh user + identity
   const env = getEnv();
-  const isSuperadmin =
-    profile.provider === "discord" && env.SUPERADMIN_DISCORD_ID === profile.providerId;
+  const isSuperadmin = env.SUPERADMIN_DISCORD_ID === profile.providerId;
 
   const user = await prisma.user.create({
     data: {
@@ -73,60 +67,11 @@ export async function resolveIdentity(profile: ExternalProfile): Promise<Identit
       },
     },
   });
-  if (profile.provider === "discord") {
-    if (profile.discordGuildIds) {
-      await syncUserGuildMemberships(user.id, profile.discordGuildIds).catch(() => {});
-    }
-    await claimInterestShadows(user.id, profile.providerId).catch(() => {});
+  if (profile.discordGuildIds) {
+    await syncUserGuildMemberships(user.id, profile.discordGuildIds).catch(() => {});
   }
+  await claimInterestShadows(user.id, profile.providerId).catch(() => {});
   return { ok: true, userId: user.id };
-}
-
-/**
- * Link a new OAuth identity to an existing user (e.g. a GitHub user
- * wants to also link their Discord). Fails if the identity is already
- * claimed by a different user.
- */
-export async function linkIdentity(
-  userId: string,
-  profile: ExternalProfile,
-): Promise<IdentityResult> {
-  const existing = await prisma.userIdentity.findUnique({
-    where: { provider_providerId: { provider: profile.provider, providerId: profile.providerId } },
-  });
-
-  if (existing) {
-    if (existing.userId === userId) {
-      // Already linked to this user — update display info and return ok.
-      await prisma.userIdentity.update({
-        where: { id: existing.id },
-        data: { username: profile.username, email: profile.email, avatarUrl: profile.avatarUrl },
-      });
-      return { ok: true, userId };
-    }
-    return { ok: false, reason: "already_linked_to_another" };
-  }
-
-  await prisma.userIdentity.create({
-    data: {
-      userId,
-      provider: profile.provider,
-      providerId: profile.providerId,
-      username: profile.username,
-      email: profile.email,
-      avatarUrl: profile.avatarUrl,
-    },
-  });
-  // If linking Discord + matches SUPERADMIN_DISCORD_ID → promote
-  if (profile.provider === "discord") {
-    await maybeSuperadmin(userId, profile.providerId);
-    if (profile.discordGuildIds) {
-      await syncUserGuildMemberships(userId, profile.discordGuildIds).catch(() => {});
-    }
-    // FR-P2: claim shadow event-interest now that this Discord id is linked.
-    await claimInterestShadows(userId, profile.providerId).catch(() => {});
-  }
-  return { ok: true, userId };
 }
 
 async function maybeSuperadmin(userId: string, discordId: string): Promise<void> {

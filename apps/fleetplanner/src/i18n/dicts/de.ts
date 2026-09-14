@@ -855,13 +855,10 @@ export const de: Record<string, string> = {
 
 
   "login.withDiscord": "Mit Discord anmelden",
-  "login.withGithub": "Mit GitHub anmelden",
-  "login.withGoogle": "Mit Google anmelden",
   "login.subtitle": "Star-Citizen-Flottenoperationen — Kalender, Einheiten-Registrierung, Sitz-Zuweisung.",
   "login.publicVisible": "Öffentliche Operationen sind ohne Anmeldung sichtbar.",
   "login.browseOps": "Operationen durchsuchen →",
   "account.since": "seit",
-  "account.linkDiscord": "Discord-Konto verknüpfen",
   "account.title": "MEIN KONTO",
   "account.tabTitle": "Mein Konto",
   "account.linkedAccounts": "Verknüpfte Konten",
@@ -909,7 +906,6 @@ export const de: Record<string, string> = {
   "guilds.noServerBody": "Fleetplanner ist pro Discord-Server organisiert. Um zu planen, füge den Bot zu einem von dir verwalteten Discord hinzu — oder melde dich mit einem Discord-Konto an, das Mitglied eines Servers ist, auf dem der Bot bereits installiert ist.",
   "guilds.addBotMy": "Fleetplanner-Bot zu meinem Discord hinzufügen",
   "guilds.alreadyMember": "Schon irgendwo Mitglied? {link}",
-  "guilds.linkDiscord": "Discord-Konto verknüpfen →",
   "guilds.getStarted": "Loslegen",
 
   "gs.assigned": "zugewiesen",

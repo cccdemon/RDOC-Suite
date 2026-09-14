@@ -66,6 +66,21 @@ describe("Op detail", () => {
     expect(screen.queryByText(/Platz nehmen/)).not.toBeInTheDocument();
   });
 
+  it("guest: prominent Discord sign-in that returns to this operation", async () => {
+    renderAt("/ops/op_1");
+    const btn = await screen.findByTestId("op-guest-login-btn");
+    expect(btn).toHaveTextContent("Jetzt mit Discord anmelden");
+    expect(btn).toHaveAttribute("href", "/fleetplanner/auth/discord/start?returnTo=%2Fops%2Fop_1");
+  });
+
+  it("signed in: no guest sign-in banner", async () => {
+    server.use(http.get(`${API}/session`, () => HttpResponse.json(sessionCrew)));
+    renderAt("/ops/op_1");
+    expect(await screen.findByTestId("op-title")).toBeInTheDocument();
+    await screen.findAllByText("Crew One");
+    expect(screen.queryByTestId("op-guest-login")).not.toBeInTheDocument();
+  });
+
   it("404 from the API → not-found state, no internals leaked", async () => {
     renderAt("/ops/op_unknown");
     expect(await screen.findByTestId("error-404")).toBeInTheDocument();

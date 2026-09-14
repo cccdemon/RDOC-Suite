@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - „Jetzt mit Discord anmelden" auf der Operationsseite (2026-09-14)
+
+Ein nicht eingeloggter Besucher sieht auf `/ops/:id` über dem Hero einen auffälligen Banner mit
+Discord-Login-Knopf (`op-guest-login`); Eingeloggte nie, auch nicht kurz während die Session lädt.
+Der Knopf geht auf `/auth/discord/start?returnTo=/ops/<id>`, der Callback leitet danach zurück zur
+Operation statt auf `/`. `returnTo` liegt im serverseitigen OAuth-State und wird von
+`safeReturnTo` nur als relativer Pfad akzeptiert (kein `//`, kein `\`, keine Steuerzeichen, nicht
+`/auth/*`) — kein Open Redirect.
+
+### Removed - Anmeldung über GitHub und Google (2026-09-14)
+
+Login geht nur noch über Discord. Entfernt: GitHub-/Google-OAuth in `auth/providers.ts`, die
+`GITHUB_*`-/`GOOGLE_*`-Variablen im Env-Schema und in `.env.example`, die zwei Buttons der
+SPA-Loginseite samt i18n-Keys, die Provider-Badges der Kontoseite. Mit ihnen fällt der
+Discord-Verknüpfungsfluss (`/auth/discord/link/start|callback`, `linkIdentity`, Button „Discord
+verknüpfen") — er diente nur Konten ohne Discord-Login. Die Redirect-URI
+`…/auth/discord/link/callback` kann im Discord-Portal gelöscht werden.
+
+Keine Migration: `UserIdentity.provider` bleibt ein String, alte GitHub-/Google-Zeilen bleiben
+stehen. Ein Konto, das **nur** eine solche Identität hat, kommt nicht mehr hinein.
+
 ### Fixed - Das Changelog-Popup schlug für jeden angemeldeten Nutzer fehl (2026-08-23)
 
 `GET /api/v1/changelog/unseen` lief durch die CSRF-Prüfung, die für Mutationen gedacht ist. Der

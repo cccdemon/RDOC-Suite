@@ -737,6 +737,30 @@ export function OpDetailPage({ session }: { session: SessionResponse | null }) {
             )}
           </div>
         )}
+        {/* Guest sign-in: a logged-out visitor gets a prominent way in, and comes
+            back to this operation afterwards (?returnTo, validated server-side).
+            Hidden while the session is still loading so a signed-in user never
+            sees it flash; the operator's "Gast" preview shows it on purpose. */}
+        {session !== null && !me && (
+          <section
+            data-testid="op-guest-login"
+            style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.9rem 1.4rem", marginBottom: "1.1rem", padding: "1.1rem 1.3rem", border: "2px solid #5865f2", borderRadius: 14, background: "rgba(88,101,242,0.16)", boxShadow: "0 0 0 4px rgba(88,101,242,0.12)" }}
+          >
+            <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: "1.05rem", color: "var(--text-hi)", marginBottom: "0.25rem" }}>{t("opd.guestLogin.title")}</div>
+              <div style={{ color: "var(--text)", fontSize: "0.9rem", lineHeight: 1.5 }}>{t("opd.guestLogin.body")}</div>
+            </div>
+            <a
+              href={`/fleetplanner/auth/discord/start?returnTo=${encodeURIComponent(`/ops/${op.id}`)}`}
+              rel="nofollow"
+              data-testid="op-guest-login-btn"
+              style={{ flex: "0 0 auto", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "0.6rem", minHeight: 48, padding: "0.8rem 1.5rem", borderRadius: 10, background: "#5865f2", color: "#ffffff", fontWeight: 700, fontSize: "1rem", textDecoration: "none", boxShadow: "0 4px 14px rgba(88,101,242,0.45)" }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.3 4.4A19.8 19.8 0 0 0 15.4 2.9a13.8 13.8 0 0 0-.6 1.3 18.3 18.3 0 0 0-5.5 0A12.6 12.6 0 0 0 8.6 2.9 19.7 19.7 0 0 0 3.7 4.4C.6 9 .1 13.6.3 18.1a19.9 19.9 0 0 0 6 3 14.3 14.3 0 0 0 1.2-2 13 13 0 0 1-1.9-.9l.4-.3c3.7 1.7 7.7 1.7 11.3 0l.4.3c-.6.4-1.2.7-1.9.9.3.7.8 1.4 1.2 2a19.8 19.8 0 0 0 6-3c.4-5.2-.7-9.8-3.5-13.7zM8.5 15.3c-1.2 0-2.1-1.1-2.1-2.4S7.3 10.5 8.5 10.5s2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4zm7 0c-1.2 0-2.1-1.1-2.1-2.4s.9-2.4 2.1-2.4 2.1 1.1 2.1 2.4-.9 2.4-2.1 2.4z" /></svg>
+              {t("opd.guestLogin.cta")}
+            </a>
+          </section>
+        )}
         {/* HERO — two columns with the operation banner image */}
         <section
           style={{

@@ -123,7 +123,7 @@ Regeln, die diese Schichtung trägt:
 | Verzeichnis | Inhalt | Anmerkung |
 |---|---|---|
 | `routes/apiV1.ts` | `/api/v1` — **der** API-Layer | ~3.260 Zeilen, 121 Routen; der ältere Form-POST-Layer `routes/api.ts` ist 2026-08-22 entfallen |
-| `routes/auth.ts` | OAuth-Start/Callback, Discord-Verknüpfung, Logout | 3 Provider: Discord, GitHub, Google |
+| `routes/auth.ts` | OAuth-Start/Callback, Logout | nur Discord (GitHub/Google 2026-09-14 entfernt) |
 | `routes/guilds.ts` | Bot-Installation, Guild-Callback, Diagnose | |
 | `routes/web.ts` | Crawler-HTML, `calendar.ics`, `participants.csv`, Asset-Proxy | einzige HTML-Ausgabe |
 | `routes/discordInteractions.ts` | `POST /discord/interactions` | Ed25519-Prüfung vor jeder Verarbeitung |
@@ -282,7 +282,7 @@ erDiagram
         string role "fleetoperator | crew (PRO GUILD)"
     }
     UserIdentity {
-        string provider "discord | github | google | e2e"
+        string provider "discord | e2e (Altbestand: github, google)"
         string providerId
     }
     UserSession {

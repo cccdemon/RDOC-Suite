@@ -163,13 +163,13 @@ model GuildMembership {
 }
 
 // ── OAuth identities ───────────────────────────────────────────────
-// One user can have multiple provider-logins (discord + github + google).
-// provider: "discord" | "github" | "google"
-// providerId: the external account ID (Discord snowflake, GitHub user id, Google sub).
+// Login is Discord-only. "github"/"google" rows can still exist from before
+// 2026-09-14 (those providers were removed); "e2e" is the test-login seam.
+// providerId: the external account ID (Discord snowflake).
 model UserIdentity {
   id         String   @id @default(cuid())
   userId     String
-  provider   String // discord | github | google
+  provider   String // discord | e2e (legacy: github | google)
   providerId String // external account id
   username   String? // display name at provider
   email      String?

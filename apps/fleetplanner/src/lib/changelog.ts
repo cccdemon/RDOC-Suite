@@ -34,6 +34,15 @@ export function unseenChangelog(lastSeen: string | null): ChangelogEntry[] {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-09-14",
+    title: "Sign in with Discord only",
+    changes: [
+      "Opening an operation without being signed in now shows a big \"Sign in with Discord now\" button — and after signing in you land right back on that operation.",
+      "The GitHub and Google sign-in buttons are gone. Discord is now the only way to log in.",
+      "The \"Link Discord\" button on your account page is gone too — every account already signs in with Discord.",
+    ],
+  },
+  {
     date: "2026-08-26",
     title: "Better on a phone",
     changes: [
