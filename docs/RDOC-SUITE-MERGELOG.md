@@ -1,5 +1,15 @@
 # RDOC Suite Merge Log
 
+## Completed - 2026-09-14: Deploy `3916c94` — Discord-only Login, Gast-Anmeldeknopf
+
+`git pull` + `up -d --build fleetplanner fleetplanner-web` auf LXC 103. Beide Images bauten gruen —
+das war der erste Typecheck dieser Aenderung (lokal lief kein Docker). Nachkontrolle live:
+`/ops/<id>` 200; `/auth/discord/start?returnTo=…` 302 zu Discord; `/auth/github/start` 302 mit
+„Provider not configured"; `/auth/discord/link/start` 404; das ausgelieferte SPA-Bundle enthaelt
+`op-guest-login-btn`. Keine Fehler im Backend-Log. Die Unit-Tests sind weiterhin nicht gelaufen.
+Offen fuer den User: Klick-Abnahme im Browser (Banner als Gast, Rueckkehr nach Login) und die
+Redirect-URI `…/auth/discord/link/callback` im Discord-Portal loeschen.
+
 ## Completed - 2026-09-14 (2): „Jetzt mit Discord anmelden" auf der Operationsseite
 
 Auftrag des Users: Wer als Gast (nicht eingeloggt) eine Operation oeffnet, z.B.
